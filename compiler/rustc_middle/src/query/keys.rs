@@ -363,7 +363,7 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
     }
 }
 
-impl QueryKey for (LocalDefId, DefPathData, Option<DepNode>, usize) {
+impl QueryKey for (LocalDefId, DefPathData, DepNode, usize) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

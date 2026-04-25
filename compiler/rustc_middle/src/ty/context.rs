@@ -1431,7 +1431,7 @@ impl<'tcx> TyCtxt<'tcx> {
 #[instrument(level = "trace", skip(tcx), ret)]
 fn create_def_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (parent, data, query, index): (LocalDefId, DefPathData, Option<DepNode>, usize),
+    (parent, data, query, index): (LocalDefId, DefPathData, DepNode, usize),
 ) -> LocalDefId {
     // `query` and `index` are guaranteed to change for each successive call to
     // `create_def_raw`, but in a predictable manner.
@@ -1482,31 +1482,30 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
 
-        // `create_def_raw` is a query, so it can be replayed by the dep-graph engine. However, we
-        // may invoke it multiple times with the same `(parent, data)` pair, and we expect to
-        // create *different* definitions from them. In order to make this compatible with the
-        // general model of queries, we add additional information which must change at each call.
-        let (dep_node, query_local_index) = ty::tls::with_context(|icx| match icx.task_deps {
-            // If we are inside a query, we can only use local information, and no global
-            // mutable state. The current query's name and the number of calls to `create_def`
-            // are local to the current query, so are ok to use.
+        let def_id = ty::tls::with_context(|icx| match icx.task_deps {
+            // `create_def_raw` is a query, so it can be replayed by the dep-graph engine.
+            // However, we may invoke it multiple times with the same `(parent, data)` pair,
+            // and we expect to create *different* definitions from them.
+            //
+            // In order to make this compatible with the general model of queries, we add
+            // additional information which must change at each call.
             TaskDepsRef::Allow(deps) => {
                 let opt_dep_node_and_index = deps.lock().next_query_local_index();
-                if let Some((dep_node, index)) = opt_dep_node_and_index {
-                    (Some(dep_node), index)
-                } else {
+                let Some((dep_node, index)) = opt_dep_node_and_index else {
                     // No idea how to support this for now...
                     bug!("trying to create a definition from an anonymous query")
-                }
+                };
+                self.create_def_raw((parent, data, dep_node, index))
             }
-            // If we are not tracking dependencies, we can use global mutable state,
-            // so we use the total number of definitions as a proxy.
+
+            // If we are not tracking dependencies, we can use global mutable state.
             TaskDepsRef::EvalAlways | TaskDepsRef::Forbid | TaskDepsRef::Ignore => {
-                let global_count = self.untracked.definitions.read().def_index_count();
-                (None, global_count)
+                // This query is `eval_always`, so we can access untracked data.
+                let mut disambiguator_state = self.untracked_disambiguator_state.lock();
+                let disambiguator = disambiguator_state.get_or_create(parent);
+                self.untracked.definitions.write().create_def(parent, data, disambiguator)
             }
         });
-        let def_id = self.create_def_raw((parent, data, dep_node, query_local_index));
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);

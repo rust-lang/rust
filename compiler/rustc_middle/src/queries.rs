@@ -204,7 +204,7 @@ rustc_queries! {
     query create_def_raw(key: (
         LocalDefId, // parent
         DefPathData, // def_path_data
-        Option<DepNode>, // caller query
+        DepNode, // caller query
         usize, // counter of calls to `create_def_raw` by the caller query
     )) -> LocalDefId {
         // Accesses untracked data
