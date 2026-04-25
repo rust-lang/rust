@@ -1,5 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
+use std::cmp::Ordering;
 use std::mem;
 
 use itertools::Itertools;
@@ -374,24 +375,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn import_decl_vis(&self, decl: Decl<'ra>, import: ImportSummary) -> Visibility {
         assert!(import.vis.is_accessible_from(import.nearest_parent_mod, self.tcx));
         let decl_vis = decl.vis();
-        if decl_vis.is_at_least(import.vis, self.tcx) {
-            // Ordered, import is less visible than the imported declaration, or the same,
-            // use the import's visibility.
-            import.vis
-        } else if decl_vis.is_accessible_from(import.nearest_parent_mod, self.tcx) {
-            // Ordered, imported declaration is less visible than the import, but is still visible
+        if decl_vis.partial_cmp(import.vis, self.tcx) == Some(Ordering::Less)
+            && decl_vis.is_accessible_from(import.nearest_parent_mod, self.tcx)
+            && pub_use_of_private_extern_crate_hack(import, decl).is_none()
+        {
+            // Imported declaration is less visible than the import, but is still visible
             // from the current module, use the declaration's visibility.
-            assert!(import.vis.is_at_least(decl_vis, self.tcx));
-            if pub_use_of_private_extern_crate_hack(import, decl).is_some() {
-                import.vis
-            } else {
-                decl_vis.expect_local()
-            }
+            decl_vis.expect_local()
         } else {
-            // Ordered or not, the imported declaration is too private for the current module.
+            // Good case - imported declaration is more visible than the import, or the same,
+            // use the import's visibility.
+            // Bad case - imported declaration is too private for the current module.
             // It doesn't matter what visibility we choose here (except in the `PRIVATE_MACRO_USE`
-            // case), because either some error will be reported, or the import declaration
-            // will be thrown away (unfortunately cannot use delayed bug here for this reason).
+            // and `PUB_USE_OF_PRIVATE_EXTERN_CRATE` cases), because either some error will be
+            // reported, or the import declaration will be thrown away (unfortunately cannot use
+            // delayed bug here for this reason).
             // Use import visibility to keep the all declaration visibilities in a module ordered.
             import.vis
         }
@@ -404,7 +402,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind
             && (vis == import.vis
-                || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
+                || max_vis.get().is_none_or(|max_vis| vis.greater_than(max_vis, self.tcx)))
         {
             max_vis.set_unchecked(Some(vis))
         }
@@ -475,7 +473,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // FIXME: remove this when `warn_ambiguity` is removed (#149195).
                 self.arenas.alloc_decl((*old_glob_decl).clone())
             }
-        } else if !old_glob_decl.vis().is_at_least(glob_decl.vis(), self.tcx) {
+        } else if glob_decl.vis().greater_than(old_glob_decl.vis(), self.tcx) {
             // We are glob-importing the same item but with greater visibility.
             // All visibilities here are ordered because all of them are ancestors of `module`.
             // FIXME: Update visibility in place, but without regressions
@@ -1251,7 +1249,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     });
                 }
                 if let Some(max_vis) = max_vis.get()
-                    && !max_vis.is_at_least(import.vis, self.tcx)
+                    && import.vis.greater_than(max_vis, self.tcx)
                 {
                     let def_id = self.local_def_id(id);
                     self.lint_buffer.buffer_lint(
@@ -1500,7 +1498,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return;
             };
 
-            if !binding.vis().is_at_least(import.vis, this.tcx) {
+            if import.vis.greater_than(binding.vis(), this.tcx) {
                 reexport_error = Some((ns, binding));
                 if let Visibility::Restricted(binding_def_id) = binding.vis()
                     && binding_def_id.is_top_level_module()

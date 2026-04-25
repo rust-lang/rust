@@ -924,7 +924,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         let field_vis = self
                             .try_resolve_visibility(&field.vis, false)
                             .unwrap_or(Visibility::Public);
-                        if ctor_vis.is_at_least(field_vis, self.r.tcx) {
+                        if ctor_vis.greater_than(field_vis, self.r.tcx) {
                             ctor_vis = field_vis;
                         }
                         field_visibilities.push(field_vis.to_def_id());
