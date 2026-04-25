@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `!: From<()>` is not satisfied
-  --> $DIR/try-block-never-type-fallback.rs:20:9
+  --> $DIR/try-block-never-type-fallback.rs:19:9
    |
 LL |     bar(try { x? });
    |     --- ^^^^^^^^^^ the trait `From<()>` is not implemented for `!`
@@ -10,7 +10,7 @@ LL |     bar(try { x? });
    = help: you might have intended to use the type `()` here instead
    = note: required for `()` to implement `Into<!>`
 note: required by a bound in `bar`
-  --> $DIR/try-block-never-type-fallback.rs:15:23
+  --> $DIR/try-block-never-type-fallback.rs:14:23
    |
 LL | fn bar(_: Result<impl Into<!>, u32>) {
    |                       ^^^^^^^ required by this bound in `bar`

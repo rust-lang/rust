@@ -1,4 +1,3 @@
-#![feature(never_type)]
 use std::mem::{forget, transmute};
 
 fn main() {

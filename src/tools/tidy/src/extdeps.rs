@@ -11,6 +11,8 @@ const ALLOWED_SOURCES: &[&str] = &[
     r#""registry+https://github.com/rust-lang/crates.io-index""#,
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
+    // cargo depends on gix which breaks with Infallible = !, fallback = ()
+    r#""git+https://github.com/WaffleLapkin/gitoxide.git?rev=5f35221159e1e31292aa5e706c7d495e53e061a2#5f35221159e1e31292aa5e706c7d495e53e061a2""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
