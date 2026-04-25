@@ -164,8 +164,6 @@ fn compile_codegen_unit_impl(
         triton_codegen.codegen(tcx, mono_item).expect("Failed to generate MLIR for instance");
     }
 
-    eprintln!("MLIR module pre-verify: {}", mlir_module.llmod().as_operation().to_string());
-
     let mlir_module_ok = mlir_module.llmod().as_operation().verify();
     if !mlir_module_ok {
         panic!("MLIR module failed verification");

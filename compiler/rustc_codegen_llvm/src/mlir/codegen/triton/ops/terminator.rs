@@ -190,6 +190,8 @@ impl<'a> TritonCodegen<'a> {
             "core::ops::Mul::mul" => TritonCodegen::codegen_mul_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Add::add" => TritonCodegen::codegen_add_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Sub::sub" => TritonCodegen::codegen_sub_call as LocalCallHandler<'a, 'tcx>,
+            "core::ops::BitAnd::bitand" => TritonCodegen::codegen_and_call as LocalCallHandler<'a, 'tcx>,
+            "core::ops::BitOr::bitor" => TritonCodegen::codegen_or_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Div::div" => TritonCodegen::codegen_fdiv_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::program_id" => {
                 TritonCodegen::codegen_program_id as LocalCallHandler<'a, 'tcx>
@@ -212,6 +214,11 @@ impl<'a> TritonCodegen<'a> {
             "triton::types::Comparison::lt" => {
                 TritonCodegen::codegen_lt_call as LocalCallHandler<'a, 'tcx>
             }
+            "triton::types::Comparison::ge" => TritonCodegen::codegen_ge_call as LocalCallHandler<'a, 'tcx>,
+            "triton::types::Comparison::gt" => TritonCodegen::codegen_gt_call as LocalCallHandler<'a, 'tcx>,
+            "triton::types::Comparison::le" => TritonCodegen::codegen_le_call as LocalCallHandler<'a, 'tcx>,
+            "triton::types::Comparison::eq" => TritonCodegen::codegen_eq_call as LocalCallHandler<'a, 'tcx>,
+            "triton::types::Comparison::ne" => TritonCodegen::codegen_ne_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::gt" => TritonCodegen::codegen_gt_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::ge" => TritonCodegen::codegen_ge_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::lt" => TritonCodegen::codegen_triton_lt_call as LocalCallHandler<'a, 'tcx>,
@@ -591,6 +598,15 @@ impl<'a> TritonCodegen<'a> {
         let ctx = self.module.context();
         let otherwise_bb = targets.otherwise();
         let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
+
+        // Save a snapshot of ssa_values for every branch target so that sibling branches
+        // (processed earlier in DFS) cannot corrupt the SSA state of later siblings.
+        // The snapshot is taken once here, before any phi-arg collection mutates state.
+        let snapshot = state.ssa_values.clone();
+        for (_, target) in targets.iter() {
+            state.branch_snapshots.entry(target).or_insert_with(|| snapshot.clone());
+        }
+        state.branch_snapshots.entry(targets.otherwise()).or_insert_with(|| snapshot.clone());
 
         match cases.as_slice() {
             [] => self.codegen_goto(location, &otherwise_bb, mlir_block, basic_blocks, state),

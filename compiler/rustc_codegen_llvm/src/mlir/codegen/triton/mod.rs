@@ -140,6 +140,10 @@ pub(crate) struct CodegenState<'c, 'p> {
     /// Later predecessors (processed after the join in DFS) use these saved values
     /// instead of the stale join-block arg values that are now in ssa_values.
     pub(crate) pre_join_ssa_values: HashMap<(BasicBlock, Local), Value<'c, 'p>>,
+    /// Snapshot of ssa_values taken at each SwitchInt/cond_br point, keyed by target block.
+    /// Restored at the start of each target block so that sibling branches (processed first
+    /// in DFS) cannot pollute the SSA state seen by later siblings.
+    pub(crate) branch_snapshots: HashMap<BasicBlock, HashMap<Local, Value<'c, 'p>>>,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
@@ -162,6 +166,7 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             phi_join_locals: HashMap::new(),
             phi_block_args: HashMap::new(),
             pre_join_ssa_values: HashMap::new(),
+            branch_snapshots: HashMap::new(),
         }
     }
 }
@@ -424,6 +429,11 @@ fn compute_reachable_blocks<'tcx>(
 ///
 /// This function traces backward through single-predecessor linear chains from each
 /// predecessor of the join block, so it catches assignments that are a few hops back.
+///
+/// A fixpoint iteration is used to propagate phi locals through nested join blocks:
+/// when tracing from a predecessor stops at an inner join block, that inner join's
+/// already-computed phi locals are included (so outer joins can detect values that flow
+/// through an inner join without a direct `Assign` statement in the intermediate block).
 fn compute_phi_join_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir: &Body<'tcx>,
@@ -449,7 +459,10 @@ fn compute_phi_join_locals<'tcx>(
     //   • a block with multiple forward successors (another branch point)
     //   • a block with multiple predecessors (another join point)
     //   • an already-visited block
-    let collect_chain_locals = |start: BasicBlock, join_preds: &HashSet<BasicBlock>| -> HashSet<Local> {
+    // When stopping at a multi-predecessor block (inner join), `known_phis[current]`
+    // is included: these are phi locals that the inner join already merges, so they
+    // "flow through" to the outer join without a new `Assign` statement.
+    let collect_chain_locals = |start: BasicBlock, join_preds: &HashSet<BasicBlock>, known_phis: &HashMap<BasicBlock, Vec<Local>>| -> HashSet<Local> {
         let mut locals: HashSet<Local> = HashSet::new();
         let mut current = start;
         let mut visited: HashSet<BasicBlock> = HashSet::new();
@@ -473,7 +486,51 @@ fn compute_phi_join_locals<'tcx>(
                 .filter(|&s| reachable_bbs.contains(&s) && !loop_region_blocks.contains(&s))
                 .count();
             if succ_count != 1 {
-                // Divergence point — stop.
+                // Divergence point (multiple successors = branch block).
+                // Also trace backward through its single-predecessor ancestor chain to
+                // find locals defined BEFORE this branch.  These pre-branch definitions
+                // are live on ALL paths through the branch, so they count as "defined"
+                // for every predecessor chain of the outer join.
+                // Stop the ancestor trace at the next join (multiple preds) or branch.
+                let mut ancestor = current;
+                loop {
+                    let anc_preds: Vec<BasicBlock> = pred_map
+                        .get(&ancestor)
+                        .map(|ps| {
+                            ps.iter()
+                                .filter(|&&b| {
+                                    reachable_bbs.contains(&b)
+                                        && !loop_region_blocks.contains(&b)
+                                })
+                                .copied()
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    if anc_preds.len() != 1 {
+                        break; // join block or entry — stop
+                    }
+                    let prev = anc_preds[0];
+                    // Collect pre-branch assignments.
+                    for stmt in &mir.basic_blocks[prev].statements {
+                        if let StatementKind::Assign(assign) = &stmt.kind {
+                            let (place, _) = assign.as_ref();
+                            if place.projection.is_empty() {
+                                locals.insert(place.local);
+                            }
+                        }
+                    }
+                    // Stop if prev is itself another branch point (to avoid
+                    // collecting locals from unrelated sibling branches).
+                    let prev_succ_count = mir.basic_blocks[prev]
+                        .terminator()
+                        .successors()
+                        .filter(|&s| reachable_bbs.contains(&s) && !loop_region_blocks.contains(&s))
+                        .count();
+                    if prev_succ_count != 1 {
+                        break;
+                    }
+                    ancestor = prev;
+                }
                 break;
             }
             // Follow the single backward predecessor.
@@ -489,7 +546,13 @@ fn compute_phi_join_locals<'tcx>(
                 })
                 .unwrap_or_default();
             if filtered_preds.len() != 1 {
-                break; // Another join point or entry — stop.
+                // Inner join block — propagate its known phi locals to the outer join.
+                if let Some(inner_phis) = known_phis.get(&current) {
+                    for &l in inner_phis {
+                        locals.insert(l);
+                    }
+                }
+                break;
             }
             let prev = filtered_preds[0];
             // Stop when we reach another direct predecessor of the join block
@@ -502,48 +565,63 @@ fn compute_phi_join_locals<'tcx>(
         locals
     };
 
+    // Fixpoint: recompute phi locals until no new ones are discovered.
+    // Inner joins (e.g. the `else if` sub-merge) are computed first; their phi locals
+    // then propagate via `known_phis` into outer joins on subsequent iterations.
     let mut result: HashMap<BasicBlock, Vec<Local>> = HashMap::new();
-    for (join_bb, preds) in &pred_map {
-        if preds.len() < 2 {
-            continue;
-        }
-        // Count how many predecessor chains each local appears in.
-        // A local is only a valid phi if it's redefined on 2+ distinct paths — otherwise
-        // it has no value on the "other" path and can't be passed as a block arg.
-        let mut chain_count: HashMap<Local, usize> = HashMap::new();
-        let mut local_order: Vec<Local> = Vec::new();
-        for &pred_bb in preds {
-            for local in collect_chain_locals(pred_bb, preds) {
-                let entry = chain_count.entry(local).or_insert(0);
-                if *entry == 0 {
-                    local_order.push(local);
+    loop {
+        let known_phis = result.clone();
+        let mut new_result: HashMap<BasicBlock, Vec<Local>> = HashMap::new();
+
+        for (join_bb, preds) in &pred_map {
+            if preds.len() < 2 {
+                continue;
+            }
+            // Count how many predecessor chains each local appears in.
+            // A local is only a valid phi if it's redefined on 2+ distinct paths — otherwise
+            // it has no value on the "other" path and can't be passed as a block arg.
+            let mut chain_count: HashMap<Local, usize> = HashMap::new();
+            let mut local_order: Vec<Local> = Vec::new();
+            for &pred_bb in preds {
+                for local in collect_chain_locals(pred_bb, preds, &known_phis) {
+                    let entry = chain_count.entry(local).or_insert(0);
+                    if *entry == 0 {
+                        local_order.push(local);
+                    }
+                    *entry += 1;
                 }
-                *entry += 1;
+            }
+            let mut phi_locals: Vec<Local> = Vec::new();
+            for local in local_order {
+                if chain_count[&local] < 2 {
+                    continue; // Only redefined on one path — no phi needed.
+                }
+                let raw_ty = mir.local_decls[local].ty;
+                // Skip Option and Tuple locals — tracked in separate tables.
+                if is_option_ty(tcx, raw_ty) {
+                    continue;
+                }
+                if matches!(raw_ty.kind(), rustc_middle::ty::TyKind::Tuple(_)) {
+                    continue;
+                }
+                phi_locals.push(local);
+            }
+            if !phi_locals.is_empty() {
+                println!(
+                    "[PHI] join block {:?} has {} phi locals: {:?}",
+                    join_bb,
+                    phi_locals.len(),
+                    phi_locals
+                );
+                new_result.insert(*join_bb, phi_locals);
             }
         }
-        let mut phi_locals: Vec<Local> = Vec::new();
-        for local in local_order {
-            if chain_count[&local] < 2 {
-                continue; // Only redefined on one path — no phi needed.
-            }
-            let raw_ty = mir.local_decls[local].ty;
-            // Skip Option and Tuple locals — tracked in separate tables.
-            if is_option_ty(tcx, raw_ty) {
-                continue;
-            }
-            if matches!(raw_ty.kind(), rustc_middle::ty::TyKind::Tuple(_)) {
-                continue;
-            }
-            phi_locals.push(local);
-        }
-        if !phi_locals.is_empty() {
-            println!(
-                "[PHI] join block {:?} has {} phi locals: {:?}",
-                join_bb,
-                phi_locals.len(),
-                phi_locals
-            );
-            result.insert(*join_bb, phi_locals);
+
+        let old_total: usize = result.values().map(|v| v.len()).sum();
+        let new_total: usize = new_result.values().map(|v| v.len()).sum();
+        result = new_result;
+        if new_total == old_total {
+            break;
         }
     }
     result
@@ -1586,6 +1664,14 @@ impl<'a> TritonCodegen<'a> {
         basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
     ) -> Result<(), MlirError> {
         let mlir_block = basic_blocks.get(&bb).expect("block not found");
+
+        // If a branch snapshot was saved for this block (at the SwitchInt that targets it),
+        // restore ssa_values from that snapshot so sibling branches processed earlier in DFS
+        // don't pollute the SSA state seen here.  Phi block args (applied below) override
+        // the snapshot for join-block locals.
+        if let Some(snapshot) = state.branch_snapshots.remove(&bb) {
+            state.ssa_values = snapshot;
+        }
 
         // At join blocks, the phi block args represent merged values for locals.
         // Before overwriting, save the current ssa_values for each phi local so that
