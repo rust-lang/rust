@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-Apple arm64e visionOS.
+Apple ARM64e visionOS.
 
 ## Target maintainers
 
@@ -10,11 +10,8 @@ Apple arm64e visionOS.
 
 ## Requirements
 
-This target is cross-compiled and supports `std`.
-
-This target requires the visionOS SDK provided by Xcode.
-
-The deployment target can be configured with `XROS_DEPLOYMENT_TARGET`.
+See the docs on [`*-apple-visionos`](apple-visionos.md) for general visionOS
+requirements.
 
 ## Building the target
 
