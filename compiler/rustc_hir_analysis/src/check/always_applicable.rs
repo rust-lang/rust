@@ -11,7 +11,7 @@ use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -64,6 +64,8 @@ pub(crate) fn check_drop_impl(
                 adt_def.did(),
                 adt_to_impl_args,
             )?;
+
+            ensure_all_fields_are_const_destruct(tcx, drop_impl_did, adt_def.did())?;
 
             ensure_impl_predicates_are_implied_by_item_defn(
                 tcx,
@@ -171,6 +173,64 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
         ),
     );
     Err(err.emit())
+}
+
+fn ensure_all_fields_are_const_destruct<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_def_id: LocalDefId,
+    adt_def_id: DefId,
+) -> Result<(), ErrorGuaranteed> {
+    if !tcx.is_conditionally_const(impl_def_id) {
+        return Ok(());
+    }
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+
+    let impl_span = tcx.def_span(impl_def_id.to_def_id());
+    let env =
+        ty::EarlyBinder::bind(tcx.param_env(impl_def_id)).instantiate_identity().skip_norm_wip();
+    let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
+    let destruct_trait = tcx.lang_items().destruct_trait().unwrap();
+    for field in tcx.adt_def(adt_def_id).all_fields() {
+        let field_ty = field.ty(tcx, args);
+        let cause = traits::ObligationCause::new(
+            tcx.def_span(field.did),
+            impl_def_id,
+            ObligationCauseCode::Misc,
+        );
+        ocx.register_obligation(traits::Obligation::new(
+            tcx,
+            cause,
+            env,
+            ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                trait_ref: ty::TraitRef::new(tcx, destruct_trait, [field_ty]),
+                constness: ty::BoundConstness::Maybe,
+            }),
+        ));
+    }
+    ocx.evaluate_obligations_error_on_ambiguity()
+        .into_iter()
+        .map(|error| {
+            let ty::ClauseKind::HostEffect(eff) =
+                error.root_obligation.predicate.expect_clause().kind().no_bound_vars().unwrap()
+            else {
+                unreachable!()
+            };
+            let field_ty = eff.trait_ref.self_ty();
+            let diag = struct_span_code_err!(
+                tcx.dcx(),
+                error.root_obligation.cause.span,
+                E0367,
+                "`{field_ty}` does not implement `[const] Destruct`",
+            )
+            .with_span_note(impl_span, "required for this `Drop` impl");
+            if field_ty.has_param() {
+                // FIXME: suggest adding `[const] Destruct` by teaching
+                // `suggest_restricting_param_bound` about const traits.
+            }
+            Err(diag.emit())
+        })
+        .collect()
 }
 
 /// Confirms that all predicates defined on the `Drop` impl (`drop_impl_def_id`) are able to be
