@@ -61,7 +61,7 @@ use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
-use crate::parser::{ArgParser, MetaItemOrLitParser, RefPathParser};
+use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, RefPathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
     ParsedDescription,
@@ -554,7 +554,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     ///
     /// The provided span is used as a fallback for diagnostic generation in case `arg` does not
     /// contain any. It should be the span of the node that contains `arg`.
-    pub(crate) fn single_element_list<'arg>(
+    pub(crate) fn expect_single_element_list<'arg>(
         &mut self,
         arg: &'arg ArgParser,
         span: Span,
@@ -564,12 +564,58 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             return None;
         };
 
-        let Some(single) = l.single() else {
+        let Some(single) = l.as_single() else {
             self.adcx().expected_single_argument(l.span, l.len());
             return None;
         };
 
         Some(single)
+    }
+
+    /// Asserts that an [`ArgParser`] is a list and returns it, or emits an error and returns
+    /// `None`.
+    ///
+    /// Some examples:
+    ///
+    /// - `#[allow(clippy::complexity)]`: `(clippy::complexity)` is a list
+    /// - `#[rustfmt::skip::macros(target_macro_name)]`: `(target_macro_name)` is a list
+    ///
+    /// This is a higher-level (and harder to misuse) wrapper over [`ArgParser::as_list`]. That
+    /// allows using `?` when the attribute parsing function allows it. You may still want to use
+    /// [`ArgParser::as_list`] for the following reasons:
+    ///
+    /// - You want to emit your own diagnostics (for instance, with [`SharedContext::emit_err`]).
+    /// - The attribute can be parsed in multiple ways and it does not make sense to emit an error.
+    pub(crate) fn expect_list<'arg>(
+        &mut self,
+        args: &'arg ArgParser,
+        span: Span,
+    ) -> Option<&'arg MetaItemListParser> {
+        let list = args.as_list();
+        if list.is_none() {
+            self.adcx().expected_list(span, args);
+        }
+        list
+    }
+
+    /// Asserts that a [`MetaItemListParser`] contains a single element and returns it, or emits an
+    /// error and returns `None`.
+    ///
+    /// This is a higher-level (and harder to misuse) wrapper over [`MetaItemListParser::as_single`].
+    /// That allows using `?` to early return. You may still want to use
+    /// [`MetaItemListParser::as_single`] for the following reasons:
+    ///
+    /// - You want to emit your own diagnostics (for instance, with [`SharedContext::emit_err`]).
+    /// - The attribute can be parsed in multiple ways and it does not make sense to emit an error.
+    pub(crate) fn expect_single<'arg>(
+        &mut self,
+        list: &'arg MetaItemListParser,
+    ) -> Option<&'arg MetaItemOrLitParser> {
+        let single = list.as_single();
+        if single.is_none() {
+            self.adcx().expected_single_argument(list.span, list.len());
+        }
+        single
     }
 }
 

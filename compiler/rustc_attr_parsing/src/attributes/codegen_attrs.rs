@@ -24,7 +24,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let single = cx.single_element_list(args, cx.attr_span)?;
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let res = match single.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
             Some(sym::size) => OptimizeAttr::Size,
@@ -75,7 +75,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let arg = cx.single_element_list(args, cx.attr_span)?;
+        let arg = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::on, sym::off]);
@@ -371,8 +371,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
             let used_by = match args {
                 ArgParser::NoArgs => UsedBy::Default,
                 ArgParser::List(list) => {
-                    let Some(l) = list.single() else {
-                        cx.adcx().expected_single_argument(list.span, list.len());
+                    let Some(l) = cx.expect_single(list) else {
                         return;
                     };
 
@@ -463,9 +462,7 @@ fn parse_tf_attribute<S: Stage>(
     args: &ArgParser,
 ) -> impl IntoIterator<Item = (Symbol, Span)> {
     let mut features = Vec::new();
-    let ArgParser::List(list) = args else {
-        let attr_span = cx.attr_span;
-        cx.adcx().expected_list(attr_span, args);
+    let Some(list) = cx.expect_list(args, cx.attr_span) else {
         return features;
     };
     if list.is_empty() {
@@ -588,11 +585,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut on_set = SanitizerSet::empty();
         let mut off_set = SanitizerSet::empty();
@@ -719,11 +712,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(meta_item_list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let meta_item_list = cx.expect_list(args, cx.attr_span)?;
 
         let mut prefix = None;
         let mut entry = None;

@@ -311,11 +311,7 @@ pub(crate) fn parse_stability<S: Stage>(
     let mut feature = None;
     let mut since = None;
 
-    let ArgParser::List(list) = args else {
-        let attr_span = cx.attr_span;
-        cx.adcx().expected_list(attr_span, args);
-        return None;
-    };
+    let list = cx.expect_list(args, cx.attr_span)?;
 
     for param in list.mixed() {
         let param_span = param.span();
@@ -383,11 +379,7 @@ pub(crate) fn parse_unstability<S: Stage>(
     let mut implied_by = None;
     let mut old_name = None;
 
-    let ArgParser::List(list) = args else {
-        let attr_span = cx.attr_span;
-        cx.adcx().expected_list(attr_span, args);
-        return None;
-    };
+    let list = cx.expect_list(args, cx.attr_span)?;
 
     for param in list.mixed() {
         let Some(param) = param.meta_item() else {
@@ -503,11 +495,7 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableRemovedParser {
             return None;
         }
 
-        let ArgParser::List(list) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
 
         for param in list.mixed() {
             let Some(param) = param.meta_item() else {

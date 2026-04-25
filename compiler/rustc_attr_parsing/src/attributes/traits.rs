@@ -17,11 +17,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let mut array = false;
         let mut boxed_slice = false;
-        let Some(args) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let args = cx.expect_list(args, cx.attr_span)?;
         if args.is_empty() {
             cx.adcx().expected_at_least_one_argument(args.span);
             return None;

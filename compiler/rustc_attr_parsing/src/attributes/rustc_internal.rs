@@ -30,11 +30,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let span = cx.attr_span;
-            cx.adcx().expected_list(span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut fn_names = ThinVec::new();
 
@@ -130,11 +126,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["N"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::List(meta_items) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let meta_items = cx.expect_list(args, cx.attr_span)?;
 
         let mut parsed_indexes = ThinVec::new();
         let mut errored = false;
@@ -185,7 +177,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Field)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let arg = cx.single_element_list(args, cx.attr_span)?;
+        let arg = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let MetaItemOrLitParser::Lit(MetaItemLit { kind: LitKind::Str(lint_message, _), .. }) = arg
         else {
@@ -210,11 +202,7 @@ fn parse_cgu_fields<S: Stage>(
     args: &ArgParser,
     accepts_kind: bool,
 ) -> Option<(Symbol, Symbol, Option<CguKind>)> {
-    let Some(args) = args.list() else {
-        let attr_span = cx.attr_span;
-        cx.adcx().expected_list(attr_span, args);
-        return None;
-    };
+    let args = cx.expect_list(args, cx.attr_span)?;
 
     let mut cfg = None::<(Symbol, Span)>;
     let mut module = None::<(Symbol, Span)>;
@@ -359,7 +347,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"audit_that = "...""#]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let single = cx.single_element_list(args, cx.attr_span)?;
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let Some(arg) = single.meta_item() else {
             cx.adcx().expected_name_value(single.span(), None);
@@ -418,11 +406,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut fallback = None::<Ident>;
         let mut diverging_block_default = None::<Ident>;
@@ -703,9 +687,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
         cx: &mut AcceptContext<'_, '_, S>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
+        let Some(list) = cx.expect_list(args, cx.attr_span) else {
             return ThinVec::new();
         };
 
@@ -825,11 +807,8 @@ impl<S: Stage> CombineAttributeParser<S> for RustcCleanParser {
         if !cx.cx.sess.opts.unstable_opts.query_dep_graph {
             cx.emit_err(AttributeRequiresOpt { span: cx.attr_span, opt: "-Z query-dep-graph" });
         }
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
+
         let mut except = None;
         let mut loaded_from_disk = None;
         let mut cfg = None;
@@ -926,11 +905,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
         match args {
             ArgParser::NoArgs => Some(AttributeKind::RustcIfThisChanged(cx.attr_span, None)),
             ArgParser::List(list) => {
-                let Some(item) = list.single() else {
-                    let attr_span = cx.attr_span;
-                    cx.adcx().expected_single_argument(attr_span, list.len());
-                    return None;
-                };
+                let item = cx.expect_single(list)?;
                 let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
                     cx.adcx().expected_identifier(item.span());
                     return None;
@@ -988,7 +963,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
         if !cx.cx.sess.opts.unstable_opts.query_dep_graph {
             cx.emit_err(AttributeRequiresOpt { span: cx.attr_span, opt: "-Z query-dep-graph" });
         }
-        let item = cx.single_element_list(args, cx.attr_span)?;
+        let item = cx.expect_single_element_list(args, cx.attr_span)?;
         let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
             cx.adcx().expected_identifier(item.span());
             return None;

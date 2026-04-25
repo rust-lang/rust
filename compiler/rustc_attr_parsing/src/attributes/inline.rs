@@ -37,10 +37,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
         match args {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
-                let Some(l) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span, list.len());
-                    return None;
-                };
+                let l = cx.expect_single(list)?;
 
                 match l.meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
@@ -78,10 +75,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
-                let Some(l) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span, list.len());
-                    return None;
-                };
+                let l = cx.expect_single(list)?;
 
                 let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
                     cx.adcx().expected_string_literal(l.span(), l.lit());
