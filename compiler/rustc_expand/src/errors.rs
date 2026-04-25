@@ -545,6 +545,49 @@ mod metavar_exprs {
         pub span: Span,
         pub key: MacroRulesNormalizedIdent,
     }
+
+    #[derive(Diagnostic)]
+    #[diag(r#"`${"{"}concat(..){"}"}` is not generating a valid identifier"#)]
+    pub(crate) struct ConcatInvalidIdent {
+        #[primary_span]
+        pub span: Span,
+        #[subdiagnostic]
+        pub reason: InvalidIdentReason,
+    }
+
+    #[derive(Subdiagnostic)]
+    pub(crate) enum InvalidIdentReason {
+        #[note(r#"this `${"{"}concat(..){"}"}` invocation generated an empty ident"#)]
+        Empty,
+        #[note(r#"this `${"{"}concat(..){"}"}` invocation generated `{$symbol}`, but {$start} is neither '_' nor XID_Start"#)]
+        #[note(
+            "see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers"
+        )]
+        InvalidStart { symbol: Symbol, start: char },
+        #[note(r#"this `${"{"}concat(..){"}"}` invocation generated `{$symbol}`, but {$not_continue} is not XID_Continue"#)]
+        #[note(
+            "see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers"
+        )]
+        InvalidContinue { symbol: Symbol, not_continue: char },
+    }
+
+    impl InvalidIdentReason {
+        pub(crate) fn new(symbol: Symbol) -> Self {
+            let mut chars = symbol.as_str().chars();
+            if let Some(start) = chars.next() {
+                if rustc_lexer::is_id_start(start) {
+                    let not_continue = chars
+                        .find(|c| !rustc_lexer::is_id_continue(*c))
+                        .expect("InvalidIdentReason: cannot find invalid ident reason");
+                    InvalidIdentReason::InvalidContinue { symbol, not_continue }
+                } else {
+                    InvalidIdentReason::InvalidStart { symbol, start }
+                }
+            } else {
+                InvalidIdentReason::Empty
+            }
+        }
+    }
 }
 
 #[derive(Diagnostic)]
