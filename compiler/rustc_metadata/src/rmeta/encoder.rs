@@ -340,6 +340,9 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
 
         // Encode the start position relative to the file start, so we profit more from the
         // variable-length integer encoding.
+        // IMPORTANT: if this is ever changed, the public api span hashing must be updated. It
+        // currently uses the `hash_spans_as_parentless` option to make sure spans are hashed not
+        // relative to their parent, but relative to their file.
         let lo = self.lo - source_file.start_pos;
 
         // Encode length which is usually less than span.hi and profits more
@@ -2760,7 +2763,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         dep_node,
         tcx,
         || {
-            tcx.with_stable_hashing_context(|hcx| {
+            tcx.with_stable_hashing_context(|mut hcx| {
+                hcx.set_hash_spans_as_parentless(true);
                 let is_proc_macro = tcx.crate_types().contains(&CrateType::ProcMacro);
                 let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
                     & !is_proc_macro

@@ -7,7 +7,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
+use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span, SpanData};
 
 // Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
 // initialize it lazily.
@@ -38,8 +38,16 @@ impl<'a> StableHashState<'a> {
             untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: CachingSourceMap::Unused(sess.source_map()),
-            stable_hash_controls: StableHashControls { hash_spans: hash_spans_initial },
+            stable_hash_controls: StableHashControls {
+                hash_spans: hash_spans_initial,
+                hash_spans_as_parentless: false,
+            },
         }
+    }
+
+    #[inline]
+    pub fn set_hash_spans_as_parentless(&mut self, hash_spans_as_parentless: bool) {
+        self.stable_hash_controls.hash_spans_as_parentless = hash_spans_as_parentless;
     }
 
     #[inline]
@@ -70,32 +78,19 @@ impl<'a> StableHashState<'a> {
     pub fn stable_hash_controls(&self) -> StableHashControls {
         self.stable_hash_controls
     }
-}
 
-impl<'a> StableHashCtxt for StableHashState<'a> {
-    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
-    /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
-    /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
-    /// containing `SourceFile` has moved within the `SourceMap`.
-    ///
-    /// Also note that we are hashing byte offsets for the column, not unicode codepoint offsets.
-    /// For the purpose of the hash that's sufficient. Also, hashing filenames is expensive so we
-    /// avoid doing it twice when the span starts and ends in the same file, which is almost always
-    /// the case.
-    ///
-    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
-    fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
+    fn stable_hash_span_data(&mut self, span: SpanData, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
         const TAG_RELATIVE_SPAN: u8 = 2;
 
-        if !self.stable_hash_controls().hash_spans {
+        if span.parent.is_some() && self.stable_hash_controls().hash_spans_as_parentless {
+            let mut span = span;
+            span.parent = None;
+            self.stable_hash_span_data(span, hasher);
             return;
         }
-
-        let span = Span::from_raw_span(raw_span);
-        let span = span.data_untracked();
         span.ctxt.stable_hash(self, hasher);
         span.parent.stable_hash(self, hasher);
 
@@ -157,6 +152,30 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
     }
+}
+
+impl<'a> StableHashCtxt for StableHashState<'a> {
+    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
+    /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
+    /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
+    /// containing `SourceFile` has moved within the `SourceMap`.
+    ///
+    /// Also note that we are hashing byte offsets for the column, not unicode codepoint offsets.
+    /// For the purpose of the hash that's sufficient. Also, hashing filenames is expensive so we
+    /// avoid doing it twice when the span starts and ends in the same file, which is almost always
+    /// the case.
+    ///
+    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
+    #[inline]
+    fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
+        if !self.stable_hash_controls().hash_spans {
+            return;
+        }
+
+        let span = Span::from_raw_span(raw_span);
+        let span = span.data_untracked();
+        self.stable_hash_span_data(span, hasher);
+    }
 
     #[inline]
     fn def_path_hash(&self, raw_def_id: RawDefId) -> RawDefPathHash {
@@ -176,7 +195,15 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
     #[inline]
     fn assert_default_stable_hash_controls(&self, msg: &str) {
         let stable_hash_controls = self.stable_hash_controls;
-        let StableHashControls { hash_spans } = stable_hash_controls;
+        let StableHashControls {
+            hash_spans,
+            // This is only used for public api hashing of rmeta.
+            //
+            // The expn hashes are encoded in the rmeta and all spans are encoded without their
+            // parent in rmeta. If it is ok to give the information like this to dependent crates
+            // it should be ok to ignore this setting here.
+            hash_spans_as_parentless: _,
+        } = stable_hash_controls;
 
         // Note that we require that `hash_spans` be the inverse of the global `-Z
         // incremental-ignore-spans` option. Normally, this option is disabled, in which case
