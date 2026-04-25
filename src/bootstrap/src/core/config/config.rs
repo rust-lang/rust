@@ -2448,17 +2448,7 @@ pub(crate) fn update_submodule<'a>(
         return;
     }
 
-    // Submodule updating actually happens during in the dry run mode. We need to make sure that
-    // all the git commands below are actually executed, because some follow-up code
-    // in bootstrap might depend on the submodules being checked out. Furthermore, not all
-    // the command executions below work with an empty output (produced during dry run).
-    // Therefore, all commands below are marked with `run_in_dry_run()`, so that they also run in
-    // dry run mode.
-    let submodule_git = || {
-        let mut cmd = helpers::git(Some(&absolute_path));
-        cmd.run_in_dry_run();
-        cmd
-    };
+    let submodule_git = || helpers::git(Some(&absolute_path));
 
     // Determine commit checked out in submodule.
     let checked_out_hash =
@@ -2466,7 +2456,7 @@ pub(crate) fn update_submodule<'a>(
     let checked_out_hash = checked_out_hash.trim_end();
     // Determine commit that the submodule *should* have.
     let recorded = helpers::git(Some(dwn_ctx.src))
-        .run_in_dry_run()
+        .run_in_dry_run() // otherwise parsing `actual_hash` fails
         .args(["ls-tree", "HEAD"])
         .arg(relative_path)
         .run_capture_stdout(dwn_ctx.exec_ctx)
@@ -2482,11 +2472,12 @@ pub(crate) fn update_submodule<'a>(
         return;
     }
 
-    println!("Updating submodule {relative_path}");
+    if !dwn_ctx.exec_ctx.dry_run() {
+        println!("Updating submodule {relative_path}");
+    };
 
     helpers::git(Some(dwn_ctx.src))
         .allow_failure()
-        .run_in_dry_run()
         .args(["submodule", "-q", "sync"])
         .arg(relative_path)
         .run(dwn_ctx.exec_ctx);
@@ -2497,12 +2488,10 @@ pub(crate) fn update_submodule<'a>(
         // even though that has no relation to the upstream for the submodule.
         let current_branch = helpers::git(Some(dwn_ctx.src))
             .allow_failure()
-            .run_in_dry_run()
             .args(["symbolic-ref", "--short", "HEAD"])
             .run_capture(dwn_ctx.exec_ctx);
 
         let mut git = helpers::git(Some(dwn_ctx.src)).allow_failure();
-        git.run_in_dry_run();
         if current_branch.is_success() {
             // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
             // This syntax isn't accepted by `branch.{branch}`. Strip it.
