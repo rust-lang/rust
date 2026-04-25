@@ -70,7 +70,7 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
-use crate::item::{Disambiguators, Owners};
+use crate::item::Owners;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -91,10 +91,9 @@ mod pat;
 mod path;
 pub mod stability;
 
-struct LoweringContext<'a, 'hir, R> {
+struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'a mut R,
-    disambiguators: &'a mut Disambiguators,
+    resolver: &'a ResolverAstLowering<'hir>,
     current_disambiguator: PerParentDisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -139,6 +138,16 @@ struct LoweringContext<'a, 'hir, R> {
     /// NodeIds that are lowered inside the current HIR owner. Only used for duplicate lowering check.
     #[cfg(debug_assertions)]
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+    /// The `NodeId` space is split in two.
+    /// `0..resolver.next_node_id` are created by the resolver on the AST.
+    /// The higher part `resolver.next_node_id..next_node_id` are created during lowering.
+    next_node_id: NodeId,
+    /// Maps the `NodeId`s created during lowering to `LocalDefId`s.
+    node_id_to_def_id: NodeMap<LocalDefId>,
+    /// Overlay over resolver's `partial_res_map` used by delegation.
+    /// This only contains `PartialRes::new(Res::Local(self_param_id))`,
+    /// so we only store `self_param_id`.
+    partial_res_overrides: NodeMap<NodeId>,
 
     allow_contracts: Arc<[Symbol]>,
     allow_try_trait: Arc<[Symbol]>,
@@ -154,13 +163,12 @@ struct LoweringContext<'a, 'hir, R> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R, disambiguators: &'a mut Disambiguators) -> Self {
+impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             tcx,
             resolver,
-            disambiguators,
             current_disambiguator: Default::default(),
             arena: tcx.hir_arena,
 
@@ -176,6 +184,9 @@ impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
             #[cfg(debug_assertions)]
             node_id_to_local_id: Default::default(),
             trait_map: Default::default(),
+            next_node_id: resolver.next_node_id,
+            node_id_to_def_id: NodeMap::default(),
+            partial_res_overrides: NodeMap::default(),
 
             // Lowering state.
             try_block_scope: TryBlockScope::Function,
@@ -239,81 +250,6 @@ impl SpanLowerer {
     }
 }
 
-struct ResolverDelayedAstLowering<'a, 'tcx> {
-    node_id_to_def_id: NodeMap<LocalDefId>,
-    partial_res_map: NodeMap<PartialRes>,
-    next_node_id: NodeId,
-    base: &'a ResolverAstLowering<'tcx>,
-}
-
-// FIXME(fn_delegation): delegate this trait impl to `self.base`
-impl<'a, 'tcx> ResolverAstLoweringExt<'tcx> for ResolverDelayedAstLowering<'a, 'tcx> {
-    fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'tcx>) -> Option<Vec<usize>> {
-        self.base.legacy_const_generic_args(expr, tcx)
-    }
-
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).copied().or_else(|| self.base.get_partial_res(id))
-    }
-
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
-        self.base.get_import_res(id)
-    }
-
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.base.get_label_res(id)
-    }
-
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.base.get_lifetime_res(id)
-    }
-
-    fn extra_lifetime_params(&self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.base.extra_lifetime_params(id)
-    }
-
-    fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
-        self.base.delegation_info(id)
-    }
-
-    fn opt_local_def_id(&self, id: NodeId) -> Option<LocalDefId> {
-        self.node_id_to_def_id.get(&id).copied().or_else(|| self.base.opt_local_def_id(id))
-    }
-
-    fn local_def_id(&self, id: NodeId) -> LocalDefId {
-        self.opt_local_def_id(id).expect("must have def_id")
-    }
-
-    fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
-        self.base.lifetime_elision_allowed(id)
-    }
-
-    fn insert_new_def_id(&mut self, node_id: NodeId, def_id: LocalDefId) {
-        self.node_id_to_def_id.insert(node_id, def_id);
-    }
-
-    fn insert_partial_res(&mut self, node_id: NodeId, res: PartialRes) {
-        self.partial_res_map.insert(node_id, res);
-    }
-
-    fn trait_candidates(&self, node_id: NodeId) -> Option<&'tcx [hir::TraitCandidate<'tcx>]> {
-        self.base.trait_candidates(node_id)
-    }
-
-    #[inline]
-    fn next_node_id(&mut self) -> NodeId {
-        next_node_id(&mut self.next_node_id)
-    }
-}
-
-fn next_node_id(current_id: &mut NodeId) -> NodeId {
-    let start = *current_id;
-    let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-    *current_id = ast::NodeId::from_u32(next);
-
-    start
-}
-
 #[extension(trait ResolverAstLoweringExt<'tcx>)]
 impl<'tcx> ResolverAstLowering<'tcx> {
     fn legacy_const_generic_args(&self, expr: &Expr, tcx: TyCtxt<'tcx>) -> Option<Vec<usize>> {
@@ -327,7 +263,10 @@ impl<'tcx> ResolverAstLowering<'tcx> {
             return None;
         }
 
-        let def_id = self.get_partial_res(expr.id)?.full_res()?.opt_def_id()?;
+        // We do not need to look at `partial_res_overrides`. That map only contains overrides for
+        // `self_param` locals. And here we are looking for the function definition that `expr`
+        // resolves to.
+        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
 
         // We only support cross-crate argument rewriting. Uses
         // within the same crate should be updated to use the new
@@ -342,10 +281,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
             RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
-    }
-
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).copied()
     }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
@@ -370,8 +305,8 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
+    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, LifetimeRes)] {
+        self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 
     fn delegation_info(&self, id: LocalDefId) -> Option<&DelegationInfo> {
@@ -388,23 +323,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 
     fn lifetime_elision_allowed(&self, id: NodeId) -> bool {
         self.lifetime_elision_allowed.contains(&id)
-    }
-
-    fn insert_new_def_id(&mut self, node_id: NodeId, def_id: LocalDefId) {
-        self.node_id_to_def_id.insert(node_id, def_id);
-    }
-
-    fn insert_partial_res(&mut self, node_id: NodeId, res: PartialRes) {
-        self.partial_res_map.insert(node_id, res);
-    }
-
-    fn trait_candidates(&self, node_id: NodeId) -> Option<&'tcx [hir::TraitCandidate<'tcx>]> {
-        self.trait_map.get(&node_id).copied()
-    }
-
-    #[inline]
-    fn next_node_id(&mut self) -> NodeId {
-        next_node_id(&mut self.next_node_id)
     }
 }
 
@@ -546,7 +464,7 @@ enum TryBlockScope {
 }
 
 fn index_crate<'a, 'b>(
-    resolver: &'b impl ResolverAstLoweringExt<'a>,
+    resolver: &'b ResolverAstLowering<'b>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
     let mut indexer = Indexer { resolver, index: IndexVec::new() };
@@ -556,12 +474,12 @@ fn index_crate<'a, 'b>(
 
     return indexer.index;
 
-    struct Indexer<'a, 'b, R> {
-        resolver: &'b R,
+    struct Indexer<'a, 'b> {
+        resolver: &'b ResolverAstLowering<'b>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
-    impl<'a, 'b, R: ResolverAstLoweringExt<'a>> visit::Visitor<'a> for Indexer<'a, 'b, R> {
+    impl<'a, 'b> visit::Visitor<'a> for Indexer<'a, 'b> {
         fn visit_attribute(&mut self, _: &'a Attribute) {
             // We do not want to lower expressions that appear in attributes,
             // as they are not accessible to the rest of the HIR.
@@ -618,7 +536,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     tcx.ensure_done().early_lint_checks(());
     tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
     tcx.ensure_done().get_lang_items(());
-    let (mut resolver, krate) = tcx.resolver_for_lowering().steal();
+    let (resolver, krate) = tcx.resolver_for_lowering().steal();
 
     let ast_index = index_crate(&resolver, &krate);
     let mut owners = IndexVec::from_fn_n(
@@ -626,13 +544,11 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
         tcx.definitions_untracked().def_index_count(),
     );
 
-    let mut disambiguators = Disambiguators::Default(resolver.disambiguators.steal());
     let mut lowerer = item::ItemLowerer {
         tcx,
-        resolver: &mut resolver,
+        resolver: &resolver,
         ast_index: &ast_index,
         owners: Owners::IndexVec(&mut owners),
-        disambiguators: &mut disambiguators,
     };
 
     let mut delayed_ids: FxIndexSet<LocalDefId> = Default::default();
@@ -651,11 +567,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
 
-    let Disambiguators::Default(disambiguators) = disambiguators else { unreachable!() };
-    let delayed_disambigs =
-        Arc::new(disambiguators.into_items().map(|(id, d)| (id, Steal::new(d))).collect());
-
-    let delayed_resolver = Steal::new((resolver, krate, delayed_disambigs));
+    let delayed_resolver = Steal::new((resolver, krate));
     mid_hir::Crate::new(owners, delayed_ids, delayed_resolver, opt_hir_hash)
 }
 
@@ -663,26 +575,18 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let krate = tcx.hir_crate(());
 
-    let (resolver, krate, delayed_disambigs) = &*krate.delayed_resolver.borrow();
+    let (resolver, krate) = &*krate.delayed_resolver.borrow();
 
     // FIXME!!!(fn_delegation): make ast index lifetime same as resolver,
     // as it is too bad to reindex whole crate on each delegation lowering.
     let ast_index = index_crate(resolver, krate);
 
-    let mut resolver = ResolverDelayedAstLowering {
-        next_node_id: resolver.next_node_id,
-        partial_res_map: Default::default(),
-        node_id_to_def_id: Default::default(),
-        base: resolver,
-    };
-
     let mut map = Default::default();
     let mut lowerer = item::ItemLowerer {
         tcx,
-        resolver: &mut resolver,
+        resolver: &resolver,
         ast_index: &ast_index,
         owners: Owners::Map(&mut map),
-        disambiguators: &mut Disambiguators::Delayed(Arc::clone(delayed_disambigs)),
     };
 
     lowerer.lower_node(def_id);
@@ -719,10 +623,10 @@ enum GenericArgsMode {
     Silence,
 }
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     fn create_def(
         &mut self,
-        node_id: ast::NodeId,
+        node_id: NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
         span: Span,
@@ -744,23 +648,36 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             .def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-        self.resolver.insert_new_def_id(node_id, def_id);
+        self.node_id_to_def_id.insert(node_id, def_id);
 
         def_id
     }
 
     fn next_node_id(&mut self) -> NodeId {
-        self.resolver.next_node_id()
+        let start = self.next_node_id;
+        let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.next_node_id = NodeId::from_u32(next);
+        start
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver.opt_local_def_id(node)
+        self.node_id_to_def_id
+            .get(&node)
+            .or_else(|| self.resolver.node_id_to_def_id.get(&node))
+            .copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
+    }
+
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
+        match self.partial_res_overrides.get(&id) {
+            Some(self_param_id) => Some(PartialRes::new(Res::Local(*self_param_id))),
+            None => self.resolver.partial_res_map.get(&id).copied(),
+        }
     }
 
     /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
@@ -782,12 +699,12 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let owner_id = self.owner_id(owner);
         let def_id = owner_id.def_id;
 
-        let new_disambig = match &mut self.disambiguators {
-            Disambiguators::Default(map) => map.remove(&def_id),
-            Disambiguators::Delayed(map) => map.get(&def_id).map(Steal::steal),
-        };
-
-        let new_disambig = new_disambig.unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
+        let new_disambig = self
+            .resolver
+            .disambiguators
+            .get(&def_id)
+            .map(|s| s.steal())
+            .unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
 
         let disambiguator = std::mem::replace(&mut self.current_disambiguator, new_disambig);
         let current_attrs = std::mem::take(&mut self.attrs);
@@ -893,8 +810,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_candidates(ast_node_id) {
-            self.trait_map.insert(hir_id.local_id, traits);
+        if let Some(traits) = self.resolver.trait_map.get(&ast_node_id) {
+            self.trait_map.insert(hir_id.local_id, &traits[..]);
         }
 
         // Check whether the same `NodeId` is lowered more than once.
@@ -935,7 +852,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     }
 
     fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
-        self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
+        self.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
@@ -1073,8 +990,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
-            .into_iter()
-            .filter_map(|(ident, node_id, res)| {
+            .iter()
+            .filter_map(|&(ident, node_id, res)| {
                 self.lifetime_res_to_generic_param(
                     ident,
                     node_id,
@@ -1400,7 +1317,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     // FIXME: Should we be handling `(PATH_TO_CONST)`?
                     TyKind::Path(None, path) => {
                         if let Some(res) = self
-                            .resolver
                             .get_partial_res(ty.id)
                             .and_then(|partial_res| partial_res.full_res())
                         {
@@ -1451,7 +1367,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         // The other cases when a qpath should be opportunistically made a trait object are handled
         // by `ty_path`.
         if qself.is_none()
-            && let Some(partial_res) = self.resolver.get_partial_res(t.id)
+            && let Some(partial_res) = self.get_partial_res(t.id)
             && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
         {
             let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
@@ -1805,7 +1721,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 let [segment] = path.segments.as_slice() else {
                     panic!();
                 };
-                let res = self.resolver.get_partial_res(*id).map_or(Res::Err, |partial_res| {
+                let res = self.get_partial_res(*id).map_or(Res::Err, |partial_res| {
                     partial_res.full_res().expect("no partial res expected for precise capture arg")
                 });
                 hir::PreciseCapturingArg::Param(hir::PreciseCapturingNonLifetimeArg {
@@ -2334,7 +2250,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         match rbp {
             RelaxedBoundPolicy::Allowed => return,
             RelaxedBoundPolicy::AllowedIfOnTyParam(id, params) => {
-                if let Some(res) = self.resolver.get_partial_res(id).and_then(|r| r.full_res())
+                if let Some(res) = self.get_partial_res(id).and_then(|r| r.full_res())
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {
@@ -2804,7 +2720,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         };
 
         let maybe_res =
-            self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
+            self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
         if let ExprKind::Path(qself, path) = &expr.kind
             && path.is_potential_trivial_const_arg()
             && matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _)))
@@ -3116,10 +3032,7 @@ impl<'hir> GenericArgsCtor<'hir> {
             && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
-    fn into_generic_args(
-        self,
-        this: &LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
-    ) -> &'hir hir::GenericArgs<'hir> {
+    fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
             args: this.arena.alloc_from_iter(self.args),
             constraints: self.constraints,

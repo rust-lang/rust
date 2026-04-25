@@ -10,10 +10,11 @@ use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
 };
-use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
-use crate::{AllowReturnTypeNotation, ImplTraitPosition};
+use super::{
+    AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
+};
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
@@ -287,7 +288,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         hir_id: hir::HirId,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {
-        match self.resolver.get_partial_res(p.id).map(|d| d.expect_full_res()) {
+        match self.get_partial_res(p.id).map(|d| d.expect_full_res()) {
             // `None` can occur in body-less function signatures
             res @ (None | Some(Res::Local(_))) => {
                 let binding_id = match res {

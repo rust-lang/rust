@@ -39,7 +39,7 @@
 use std::iter;
 
 use ast::visit::Visitor;
-use hir::def::{DefKind, PartialRes, Res};
+use hir::def::{DefKind, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
@@ -105,7 +105,7 @@ static ATTRS_ADDITIONS: &[AttrAdditionInfo] = &[
     },
 ];
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
@@ -266,7 +266,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     }
 
     fn get_resolution_id(&self, node_id: NodeId) -> Option<DefId> {
-        self.resolver.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
+        self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
     // Function parameter count, including C variadic `...` if present.
@@ -417,7 +417,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     && idx == 0
                 {
                     let mut self_resolver = SelfResolver {
-                        resolver: this.resolver,
+                        ctxt: this,
                         path_id: delegation.id,
                         self_param_id: pat_node_id,
                     };
@@ -665,25 +665,24 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     }
 }
 
-struct SelfResolver<'a, R> {
-    resolver: &'a mut R,
+struct SelfResolver<'a, 'b, 'hir> {
+    ctxt: &'a mut LoweringContext<'b, 'hir>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl<'tcx, R: ResolverAstLoweringExt<'tcx>> SelfResolver<'_, R> {
+impl SelfResolver<'_, '_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
-        if let Some(res) = self.resolver.get_partial_res(id)
+        if let Some(res) = self.ctxt.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
             && sig_id == self.path_id
         {
-            let new_res = PartialRes::new(Res::Local(self.self_param_id));
-            self.resolver.insert_partial_res(id, new_res);
+            self.ctxt.partial_res_overrides.insert(id, self.self_param_id);
         }
     }
 }
 
-impl<'ast, 'tcx, R: ResolverAstLoweringExt<'tcx>> Visitor<'ast> for SelfResolver<'_, R> {
+impl<'ast> Visitor<'ast> for SelfResolver<'_, '_, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }

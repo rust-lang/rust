@@ -1908,6 +1908,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg })
             })
             .collect();
+        let disambiguators = self
+            .disambiguators
+            .into_items()
+            .map(|(def_id, disamb)| (def_id, Steal::new(disamb)))
+            .collect();
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
@@ -1939,7 +1944,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_infos: self.delegation_infos,
-            disambiguators: Steal::new(self.disambiguators),
+            disambiguators,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }

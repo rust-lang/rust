@@ -8,7 +8,7 @@ use rustc_middle::{bug, ty};
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, sym};
 
-use crate::{LoweringContext, ResolverAstLoweringExt};
+use crate::LoweringContext;
 
 #[derive(Clone, Copy)]
 pub(super) enum DelegationGenericsKind {
@@ -114,7 +114,7 @@ impl DelegationGenericsKind {
 impl<'hir> HirOrTyGenerics<'hir> {
     pub(super) fn into_hir_generics(
         &mut self,
-        ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
+        ctx: &mut LoweringContext<'_, 'hir>,
         span: Span,
     ) -> &mut HirOrTyGenerics<'hir> {
         if let HirOrTyGenerics::Ty(ty) = self {
@@ -140,7 +140,7 @@ impl<'hir> HirOrTyGenerics<'hir> {
 
     pub(super) fn into_generic_args(
         &self,
-        ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
+        ctx: &mut LoweringContext<'_, 'hir>,
         span: Span,
     ) -> &'hir hir::GenericArgs<'hir> {
         match self {
@@ -174,7 +174,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
     pub(super) fn all_params(
         &mut self,
         span: Span,
-        ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
+        ctx: &mut LoweringContext<'_, 'hir>,
     ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
         // Now we always call `into_hir_generics` both on child and parent,
         // however in future we would not do that, when scenarios like
@@ -208,7 +208,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
     pub(super) fn all_predicates(
         &mut self,
         span: Span,
-        ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
+        ctx: &mut LoweringContext<'_, 'hir>,
     ) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
         // Now we always call `into_hir_generics` both on child and parent,
         // however in future we would not do that, when scenarios like
@@ -226,7 +226,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
     }
 }
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn uplift_delegation_generics(
         &mut self,
         delegation: &Delegation,
