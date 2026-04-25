@@ -2,6 +2,7 @@ use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
 use rustc_ast::tokenstream::TokenStreamIter;
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
+use rustc_errors::Applicability;
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
@@ -88,16 +89,17 @@ fn parse(
             continue;
         };
 
-        // Push a metavariable with no fragment specifier at the given span
-        let mut missing_fragment_specifier = |span| {
+        let fallback_metavar_decl =
+            |span| TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT };
+        // Emit a missing-fragment diagnostic and return a `TokenTree` fallback so parsing can
+        // continue.
+        let missing_fragment_specifier = |span, add_span| {
             sess.dcx().emit_err(errors::MissingFragmentSpecifier {
                 span,
-                add_span: span.shrink_to_hi(),
+                add_span,
                 valid: VALID_FRAGMENT_NAMES_MSG,
             });
-
-            // Fall back to a `TokenTree` since that will match anything if we continue expanding.
-            result.push(TokenTree::MetaVarDecl { span, name: ident, kind: NonterminalKind::TT });
+            fallback_metavar_decl(span)
         };
 
         // Not consuming the next token immediately, as it may not be a colon
@@ -112,13 +114,39 @@ fn parse(
             // since if it's not a token then it will be an invalid declaration.
             let Some(tokenstream::TokenTree::Token(token, _)) = iter.next() else {
                 // Invalid, return a nice source location as `var:`
-                missing_fragment_specifier(colon_span.with_lo(start_sp.lo()));
+                result.push(missing_fragment_specifier(
+                    colon_span.with_lo(start_sp.lo()),
+                    colon_span.shrink_to_hi(),
+                ));
                 continue;
             };
 
             let Some((fragment, _)) = token.ident() else {
                 // No identifier for the fragment specifier;
-                missing_fragment_specifier(token.span);
+                if token.kind == token::Dollar
+                    && iter.peek().is_some_and(|next| {
+                        matches!(
+                            next,
+                            tokenstream::TokenTree::Token(next_token, _)
+                                if next_token.ident().is_some()
+                        )
+                    })
+                {
+                    let mut err =
+                        sess.dcx().struct_span_err(token.span, "missing fragment specifier");
+                    err.note("fragment specifiers must be provided");
+                    err.help(VALID_FRAGMENT_NAMES_MSG);
+                    err.span_suggestion_verbose(
+                        token.span,
+                        "fragment specifiers should not be prefixed with `$`",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                    result.push(fallback_metavar_decl(token.span));
+                } else {
+                    result.push(missing_fragment_specifier(token.span, token.span.shrink_to_hi()));
+                }
                 continue;
             };
 
@@ -146,7 +174,7 @@ fn parse(
         } else {
             // Whether it's none or some other tree, it doesn't belong to
             // the current meta variable, returning the original span.
-            missing_fragment_specifier(start_sp);
+            result.push(missing_fragment_specifier(start_sp, start_sp.shrink_to_hi()));
         }
     }
     result

@@ -108,8 +108,6 @@ class DefaultSyntheticProvider:
         return self.valobj.GetNumChildren()
 
     def get_child_index(self, name: str) -> int:
-        if self.is_ptr and name == "$$dereference$$":
-            return self.valobj.Dereference().GetSyntheticValue()
         return self.valobj.GetIndexOfChildWithName(name)
 
     def get_child_at_index(self, index: int) -> Optional[SBValue]:
@@ -133,13 +131,17 @@ class IndirectionSyntheticProvider:
         return 1
 
     def get_child_index(self, name: str) -> int:
-        if self.is_ptr and name == "$$dereference$$":
+        if name == "$$dereference$$":
             return 0
         return -1
 
     def get_child_at_index(self, index: int) -> Optional[SBValue]:
         if index == 0:
-            return self.valobj.Dereference().GetSyntheticValue()
+            value = self.valobj.Dereference()
+            if (synth := value.GetSyntheticValue()).IsValid():
+                return synth
+            else:
+                return value
         return None
 
     def update(self):
@@ -266,7 +268,7 @@ def aggregate_field_summary(valobj: SBValue, _dict) -> Generator[str, None, None
         if summary is None:
             summary = child.value
             if summary is None:
-                if is_tuple_fields(child):
+                if is_tuple_fields(child.GetType().fields):
                     summary = TupleSummaryProvider(child, _dict)
                 else:
                     summary = StructSummaryProvider(child, _dict)
@@ -569,7 +571,9 @@ class ClangEncodedEnumProvider:
         self.variant = all_variants.GetChildAtIndex(index)
         self.value = self.variant.GetChildMemberWithName(
             ClangEncodedEnumProvider.VALUE_MEMBER_NAME
-        ).GetSyntheticValue()
+        )
+        if (synth := self.value.GetSyntheticValue()).IsValid():
+            self.value = synth
 
     def _getCurrentVariantIndex(self, all_variants: SBValue) -> int:
         default_index = 0
@@ -651,9 +655,10 @@ class MSVCEnumSyntheticProvider:
                     ).GetValueAsUnsigned()
                     if tag == discr:
                         self.variant = child
-                        self.value = child.GetChildMemberWithName(
-                            "value"
-                        ).GetSyntheticValue()
+                        self.value = child.GetChildMemberWithName("value")
+                        if (synth := self.value.GetSyntheticValue()).IsValid():
+                            self.value = synth
+
                         return
                 else:  # if invalid, DISCR must be a range
                     begin: int = (
@@ -671,16 +676,18 @@ class MSVCEnumSyntheticProvider:
                     if begin < end:
                         if begin <= tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
+                            if (synth := self.value.GetSyntheticValue()).IsValid():
+                                self.value = synth
+
                             return
                     else:
                         if tag >= begin or tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
+                            if (synth := self.value.GetSyntheticValue()).IsValid():
+                                self.value = synth
+
                             return
         else:  # if invalid, tag is a 128 bit value
             tag_lo: int = self.valobj.GetChildMemberWithName(
@@ -714,9 +721,9 @@ class MSVCEnumSyntheticProvider:
                     discr: int = (exact_hi << 64) | exact_lo
                     if tag == discr:
                         self.variant = child
-                        self.value = child.GetChildMemberWithName(
-                            "value"
-                        ).GetSyntheticValue()
+                        self.value = child.GetChildMemberWithName("value")
+                        if (synth := self.value.GetSyntheticValue()).IsValid():
+                            self.value = synth
                         return
                 else:  # if invalid, DISCR must be a range
                     begin_lo: int = (
@@ -748,16 +755,16 @@ class MSVCEnumSyntheticProvider:
                     if begin < end:
                         if begin <= tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
+                        if (synth := self.value.GetSyntheticValue()).IsValid():
+                            self.value = synth
                             return
                     else:
                         if tag >= begin or tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
+                        if (synth := self.value.GetSyntheticValue()).IsValid():
+                            self.value = synth
                             return
 
     def num_children(self) -> int:

@@ -47,12 +47,20 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let mut patch = Vec::new();
 
     for (bb, bb_data) in traversal::preorder(body) {
-        if let TerminatorKind::Call { ref args, .. } = bb_data.terminator().kind {
+        if let TerminatorKind::Call { ref args, ref destination, .. } = bb_data.terminator().kind {
             let loc = Location { block: bb, statement_index: bb_data.statements.len() };
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
             live.seek_to_block_end(bb);
             let mut state = live.get().clone();
+
+            // Don't turn into a move if the local is used as an index
+            // projection for the destination place.
+            LivenessTransferFunction(&mut state).visit_place(
+                destination,
+                visit::PlaceContext::MutatingUse(visit::MutatingUseContext::Call),
+                loc,
+            );
 
             for (index, arg) in args.iter().map(|a| &a.node).enumerate().rev() {
                 if let Operand::Copy(place) = *arg
