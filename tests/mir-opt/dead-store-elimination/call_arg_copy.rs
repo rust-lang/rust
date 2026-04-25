@@ -40,7 +40,31 @@ fn move_packed(packed: Packed) {
     }
 }
 
+#[inline(never)]
+fn passthrough_usize(a: usize) -> usize {
+    a
+}
+
+// EMIT_MIR call_arg_copy.move_index.DeadStoreElimination-final.diff
+#[custom_mir(dialect = "analysis")]
+fn move_index(a: [usize; 10], b: usize) {
+    // CHECK-LABEL: fn move_index(
+    // CHECK: = passthrough_usize(copy _2)
+    mir! {
+        {
+            // The index is used again after the operand is evaluated to
+            // evaluate the destionation place, so the argument cannot be turned
+            // into a move.
+            Call(a[b] = passthrough_usize(b), ReturnTo(ret), UnwindContinue())
+        }
+        ret = {
+            Return()
+        }
+    }
+}
+
 fn main() {
     move_simple(1);
     move_packed(Packed { x: 0, y: 1 });
+    move_index([0; _], 1);
 }
