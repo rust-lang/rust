@@ -205,6 +205,7 @@ pub trait Interner:
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
     fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
     -> ty::EarlyBinder<Self, Self::Ty>;
+    fn is_type_const(self, def_id: Self::DefId) -> bool;
     fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 

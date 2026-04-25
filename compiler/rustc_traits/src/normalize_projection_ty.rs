@@ -90,8 +90,12 @@ fn normalize_canonicalized_free_alias<'tcx>(
                 ty::AliasTermKind::FreeTy { def_id } => {
                     tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
                 }
-                ty::AliasTermKind::FreeConst { def_id } => {
+                ty::AliasTermKind::FreeConst { def_id } if tcx.is_type_const(def_id) => {
                     tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+                }
+                ty::AliasTermKind::FreeConst { .. } => {
+                    traits::evaluate_const(ocx.infcx, goal.to_term(tcx).expect_const(), param_env)
+                        .into()
                 }
                 kind => panic!("expected free alias, found {kind:?}"),
             };

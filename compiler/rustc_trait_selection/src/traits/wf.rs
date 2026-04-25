@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::ConstKind::Unevaluated(uv) => {
                 if !c.has_escaping_bound_vars() {
                     // Skip type consts as mGCA doesn't support evaluatable clauses
-                    if !tcx.is_type_const(uv.def) {
+                    if !tcx.is_type_const(uv.def) && !tcx.features().generic_const_args() {
                         let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                             ty::ClauseKind::ConstEvaluatable(c),
                         ));

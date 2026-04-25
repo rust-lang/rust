@@ -732,14 +732,30 @@ impl<I: Interner> AliasTerm<I> {
             AliasTermKind::InherentTy { def_id } => AliasTyKind::Inherent { def_id },
             AliasTermKind::OpaqueTy { def_id } => AliasTyKind::Opaque { def_id },
             AliasTermKind::FreeTy { def_id } => AliasTyKind::Free { def_id },
-            AliasTermKind::InherentConst { .. }
+            kind @ (AliasTermKind::InherentConst { .. }
             | AliasTermKind::FreeConst { .. }
             | AliasTermKind::UnevaluatedConst { .. }
-            | AliasTermKind::ProjectionConst { .. } => {
-                panic!("Cannot turn `UnevaluatedConst` into `AliasTy`")
+            | AliasTermKind::ProjectionConst { .. }) => {
+                panic!("Cannot turn `{}` into `AliasTy`", kind.descr())
             }
         };
         ty::AliasTy { kind, args: self.args, _use_alias_ty_new_instead: () }
+    }
+
+    pub fn expect_ct(self, interner: I) -> ty::UnevaluatedConst<I> {
+        let def_id = match self.kind(interner) {
+            AliasTermKind::InherentConst { def_id }
+            | AliasTermKind::FreeConst { def_id }
+            | AliasTermKind::UnevaluatedConst { def_id }
+            | AliasTermKind::ProjectionConst { def_id } => def_id,
+            kind @ (AliasTermKind::ProjectionTy { .. }
+            | AliasTermKind::InherentTy { .. }
+            | AliasTermKind::OpaqueTy { .. }
+            | AliasTermKind::FreeTy { .. }) => {
+                panic!("Cannot turn `{}` into `UnevaluatedConst`", kind.descr())
+            }
+        };
+        ty::UnevaluatedConst { def: def_id.try_into().unwrap(), args: self.args }
     }
 
     // FIXME: remove this function (access the field instead)

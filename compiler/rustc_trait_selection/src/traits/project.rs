@@ -549,8 +549,16 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         ty::AliasTermKind::InherentTy { def_id } => {
             tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip().into()
         }
-        ty::AliasTermKind::InherentConst { def_id } => {
+        ty::AliasTermKind::InherentConst { def_id } if tcx.is_type_const(def_id) => {
             tcx.const_of_item(def_id).instantiate(tcx, args).skip_norm_wip().into()
+        }
+        ty::AliasTermKind::InherentConst { .. } => {
+            // FIXME(gca): This is dead code at the moment. It should eventually call
+            // super::evaluate_const like projected consts do in confirm_impl_candidate in this
+            // file. However, how generic args are represented for IACs is up in the air right now.
+            // Will super::evaluate_const eventually take the inherent_args or the impl_args form of
+            // args? It might be either.
+            panic!("References to inherent associated consts should have been blocked");
         }
         kind => panic!("expected inherent alias, found {kind:?}"),
     };
@@ -617,11 +625,13 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
     alias_term.rebase_inherent_args_onto_impl(impl_args, tcx)
 }
 
+#[derive(Debug)]
 enum Projected<'tcx> {
     Progress(Progress<'tcx>),
     NoProgress(ty::Term<'tcx>),
 }
 
+#[derive(Debug)]
 struct Progress<'tcx> {
     term: ty::Term<'tcx>,
     obligations: PredicateObligations<'tcx>,
@@ -652,7 +662,7 @@ impl<'tcx> Progress<'tcx> {
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
 // FIXME(mgca): While this supports constants, it is only used for types by default right now
-#[instrument(level = "info", skip(selcx))]
+#[instrument(level = "info", ret, skip(selcx))]
 fn project<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -2060,7 +2070,21 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             ty::AliasTermKind::ProjectionConst { .. } => {
                 let uv = ty::UnevaluatedConst::new(assoc_term.item.def_id, args);
                 let ct = ty::Const::new_unevaluated(tcx, uv);
-                super::evaluate_const(selcx.infcx, ct, param_env).into()
+                // We don't want to use super::evaluate_const, because that returns its parameter
+                // unchanged if it is too generic to evaluate. We are passing the `impl` form of the
+                // constant to evaluate_const (with generic arguments corresponding to the impl
+                // block), but we want to return the original, non-rebased, trait `Self` form of the
+                // constant (with generic arguments being the trait `Self` type) in Projected::NoProgress.
+                match super::try_evaluate_const(selcx.infcx, ct, param_env) {
+                    Ok(evaluated) => evaluated.into(),
+                    Err(
+                        super::EvaluateConstErr::EvaluationFailure(e)
+                        | super::EvaluateConstErr::InvalidConstParamTy(e),
+                    ) => ty::Const::new_error(tcx, e).into(),
+                    Err(super::EvaluateConstErr::HasGenericsOrInfers) => {
+                        return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
+                    }
+                }
             }
             kind => panic!("expected projection alias, found {kind:?}"),
         };

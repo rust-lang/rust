@@ -696,7 +696,10 @@ pub fn try_evaluate_const<'tcx>(
                     // logic does not go through type system normalization. If it did this would
                     // be a backwards compatibility problem as we do not enforce "syntactic" non-
                     // usage of generic parameters like we do here.
-                    if uv.args.has_non_region_param() || uv.args.has_non_region_infer() {
+                    if uv.args.has_non_region_param()
+                        || uv.args.has_non_region_infer()
+                        || uv.args.has_non_region_placeholders()
+                    {
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
 

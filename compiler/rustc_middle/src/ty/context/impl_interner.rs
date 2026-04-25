@@ -177,6 +177,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of_opaque_hir_typeck(def_id)
     }
+    fn is_type_const(self, def_id: DefId) -> bool {
+        self.is_type_const(def_id)
+    }
     fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
         self.const_of_item(def_id)
     }

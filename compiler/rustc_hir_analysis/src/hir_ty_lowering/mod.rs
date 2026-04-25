@@ -3041,7 +3041,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if tcx.is_type_const(def_id) {
+        // FIXME(gca): Intentionally disallowing paths to inherent associated non-type constants
+        // until a refactoring for how generic args for IACs are represented has been landed.
+        let is_inherent_assoc_const = tcx.def_kind(def_id)
+            == DefKind::AssocConst { is_type_const: false }
+            && tcx.def_kind(tcx.parent(def_id)) == DefKind::Impl { of_trait: false };
+        if tcx.is_type_const(def_id)
+            || tcx.features().generic_const_args() && !is_inherent_assoc_const
+        {
             Ok(())
         } else {
             let mut err = self.dcx().struct_span_err(

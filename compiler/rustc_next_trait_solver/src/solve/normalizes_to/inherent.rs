@@ -56,8 +56,17 @@ where
             ty::AliasTermKind::InherentTy { def_id } => {
                 cx.type_of(def_id).instantiate(cx, inherent_args).skip_norm_wip().into()
             }
-            ty::AliasTermKind::InherentConst { def_id } => {
+            ty::AliasTermKind::InherentConst { def_id } if cx.is_type_const(def_id) => {
                 cx.const_of_item(def_id).instantiate(cx, inherent_args).skip_norm_wip().into()
+            }
+            ty::AliasTermKind::InherentConst { .. } => {
+                // FIXME(gca): This is dead code at the moment. It should eventually call
+                // self.evaluate_const like projected consts do in consider_impl_candidate in
+                // normalizes_to/mod.rs. However, how generic args are represented for IACs is up in
+                // the air right now.
+                // Will self.evaluate_const eventually take the inherent_args or the impl_args form
+                // of args? It might be either.
+                panic!("References to inherent associated consts should have been blocked");
             }
             kind => panic!("expected inherent alias, found {kind:?}"),
         };

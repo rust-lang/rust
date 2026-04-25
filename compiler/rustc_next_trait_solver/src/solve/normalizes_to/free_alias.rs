@@ -34,8 +34,14 @@ where
             ty::AliasTermKind::FreeTy { def_id } => {
                 cx.type_of(def_id).instantiate(cx, free_alias.args).skip_norm_wip().into()
             }
-            ty::AliasTermKind::FreeConst { def_id } => {
+            ty::AliasTermKind::FreeConst { def_id } if cx.is_type_const(def_id) => {
                 cx.const_of_item(def_id).instantiate(cx, free_alias.args).skip_norm_wip().into()
+            }
+            ty::AliasTermKind::FreeConst { .. } => {
+                return self.evaluate_const_and_instantiate_normalizes_to_term(
+                    goal,
+                    free_alias.expect_ct(cx),
+                );
             }
             kind => panic!("expected free alias, found {kind:?}"),
         };
