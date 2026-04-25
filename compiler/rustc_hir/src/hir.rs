@@ -1550,7 +1550,7 @@ impl Attribute {
 }
 
 /// Attributes owned by a HIR owner.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AttributeMap<'tcx> {
     pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
     /// Preprocessed `#[define_opaque]` attribute.

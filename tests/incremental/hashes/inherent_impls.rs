@@ -27,9 +27,9 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[rustc_clean(cfg="bpass2", except="owner,associated_item_def_ids")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[rustc_clean(cfg="bpass5", except="owner,associated_item_def_ids")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     #[rustc_clean(cfg="bpass3")]
@@ -54,12 +54,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2",except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2",except="owner,optimized_mir,promoted_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5",except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5",except="owner,optimized_mir,promoted_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn method_body() {
         println!("Hello, world!");
@@ -85,12 +85,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     #[inline]
     pub fn method_body_inlined() {
@@ -112,12 +112,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+    #[rustc_clean(cfg="bpass5", except="owner")]
     #[rustc_clean(cfg="bpass6")]
     fn     method_privacy() { }
 }
@@ -141,17 +141,17 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     #[rustc_clean(
         cfg="bpass2",
-        except="opt_hir_owner_nodes,fn_sig,generics_of,typeck_root,associated_item,optimized_mir",
+        except="owner,fn_sig,generics_of,typeck_root,associated_item,optimized_mir",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="opt_hir_owner_nodes,fn_sig,generics_of,typeck_root,associated_item,optimized_mir",
+        except="owner,fn_sig,generics_of,typeck_root,associated_item,optimized_mir",
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn method_selfness(&self) { }
@@ -170,12 +170,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig,typeck_root,optimized_mir")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,typeck_root,optimized_mir")]
     #[rustc_clean(cfg="bpass6")]
     pub fn method_selfmutness(&mut self) { }
 }
@@ -189,9 +189,9 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[rustc_clean(cfg="bpass2", except="owner,associated_item_def_ids")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,associated_item_def_ids")]
+#[rustc_clean(cfg="bpass5", except="owner,associated_item_def_ids")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     #[rustc_clean(cfg="bpass2")]
@@ -220,12 +220,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig,typeck_root,optimized_mir")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,typeck_root,optimized_mir")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_method_parameter(&self, _: i32) { }
 }
@@ -245,12 +245,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass6")]
     pub fn change_method_parameter_name(&self, b: i64) { }
 }
@@ -270,12 +270,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn change_method_return_type(&self) -> u32 { 0 }
 }
@@ -322,12 +322,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass6")]
     pub fn change_method_parameter_order(&self, b: i64, a: i64) { }
 }
@@ -347,12 +347,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub unsafe fn make_method_unsafe(&self) { }
 }
@@ -372,12 +372,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub extern "C" fn make_method_extern(&self) { }
 }
@@ -397,12 +397,12 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub extern "system" fn change_method_calling_convention(&self) { }
 }
@@ -431,7 +431,7 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     // Warning: Note that `typeck_root` are coming up clean here.
@@ -443,9 +443,9 @@ impl Foo {
     // if we lower generics before the body, then the `HirId` for
     // things in the body will be affected. So if you start to see
     // `typeck_root` appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,fn_sig")]
+    #[rustc_clean(cfg="bpass2", except="owner,fn_sig")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,fn_sig,generics_of")]
+    #[rustc_clean(cfg="bpass5", except="owner,fn_sig,generics_of")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
 }
@@ -480,7 +480,7 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     // Warning: Note that `typeck_root` are coming up clean here.
@@ -494,12 +494,12 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="bpass2",
-        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of",
+        except="owner,generics_of,predicates_of,type_of",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of",
+        except="owner,generics_of,predicates_of,type_of",
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_type_parameter_to_method<T>(&self) { }
@@ -526,17 +526,17 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     #[rustc_clean(
         cfg="bpass2",
-        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
+        except="owner,generics_of,predicates_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
+        except="owner,generics_of,predicates_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -572,7 +572,7 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     // Warning: Note that `typeck_root` are coming up clean here.
@@ -586,12 +586,12 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="bpass2",
-        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
+        except="owner,generics_of,predicates_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="opt_hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
+        except="owner,generics_of,predicates_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
@@ -621,7 +621,7 @@ impl Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
     // Warning: Note that `typeck_root` are coming up clean here.
@@ -633,9 +633,9 @@ impl Foo {
     // generics before the body, then the `HirId` for things in the
     // body will be affected. So if you start to see `typeck_root`
     // appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,predicates_of")]
+    #[rustc_clean(cfg="bpass2", except="owner,predicates_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,predicates_of")]
+    #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_trait_bound_to_type_param_of_method<T: Clone>(&self) { }
 }
@@ -678,9 +678,9 @@ impl Bar<u32> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,generics_of")]
+#[rustc_clean(cfg="bpass2", except="owner,generics_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,generics_of")]
+#[rustc_clean(cfg="bpass5", except="owner,generics_of")]
 #[rustc_clean(cfg="bpass6")]
 impl<T> Bar<T> {
     #[rustc_clean(
@@ -705,9 +705,9 @@ impl Bar<u32> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Bar<u64> {
     #[rustc_clean(cfg="bpass2", except="fn_sig,optimized_mir,typeck_root")]
@@ -726,9 +726,9 @@ impl<T> Bar<T> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl<T: 'static> Bar<T> {
     #[rustc_clean(cfg="bpass2")]
@@ -747,9 +747,9 @@ impl<T> Bar<T> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl<T: Clone> Bar<T> {
     #[rustc_clean(cfg="bpass2")]

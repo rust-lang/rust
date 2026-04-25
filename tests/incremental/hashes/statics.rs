@@ -27,7 +27,7 @@ static     STATIC_VISIBILITY: u8 = 0;
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 pub static STATIC_VISIBILITY: u8 = 0;
 
@@ -37,9 +37,9 @@ pub static STATIC_VISIBILITY: u8 = 0;
 static STATIC_MUTABILITY: u8 = 0;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 static mut STATIC_MUTABILITY: u8 = 0;
 
@@ -88,9 +88,9 @@ static STATIC_THREAD_LOCAL: u8 = 0;
 static STATIC_CHANGE_TYPE_1: i16 = 0;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="bpass2", except="owner,type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="bpass5", except="owner,type_of")]
 #[rustc_clean(cfg="bpass6")]
 static STATIC_CHANGE_TYPE_1: u64 = 0;
 
@@ -100,17 +100,17 @@ static STATIC_CHANGE_TYPE_1: u64 = 0;
 static STATIC_CHANGE_TYPE_2: Option<i8> = None;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="bpass2", except="owner,type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="bpass5", except="owner,type_of")]
 #[rustc_clean(cfg="bpass6")]
 static STATIC_CHANGE_TYPE_2: Option<u16> = None;
 
 
 // Change value between simple literals
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 static STATIC_CHANGE_VALUE_1: i16 = {
     #[cfg(any(bpass1,bpass4))]
@@ -122,9 +122,9 @@ static STATIC_CHANGE_VALUE_1: i16 = {
 
 
 // Change value between expressions
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 static STATIC_CHANGE_VALUE_2: i16 = {
     #[cfg(any(bpass1,bpass4))]
@@ -134,9 +134,9 @@ static STATIC_CHANGE_VALUE_2: i16 = {
     { 1 + 2 }
 };
 
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 static STATIC_CHANGE_VALUE_3: i16 = {
     #[cfg(any(bpass1,bpass4))]
@@ -146,9 +146,9 @@ static STATIC_CHANGE_VALUE_3: i16 = {
     { 2 * 3 }
 };
 
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 static STATIC_CHANGE_VALUE_4: i16 = {
     #[cfg(any(bpass1,bpass4))]
@@ -170,15 +170,15 @@ mod static_change_type_indirectly {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedType2 as Type;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="bpass2", except="owner,type_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="bpass5", except="owner,type_of")]
     #[rustc_clean(cfg="bpass6")]
     static STATIC_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="bpass2", except="owner,type_of")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="bpass5", except="owner,type_of")]
     #[rustc_clean(cfg="bpass6")]
     static STATIC_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

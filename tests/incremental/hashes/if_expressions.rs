@@ -28,9 +28,9 @@ pub fn change_condition(x: bool) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_condition(x: bool) -> u32 {
     if !x {
@@ -51,9 +51,9 @@ pub fn change_then_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_then_branch(x: bool) -> u32 {
     if x {
@@ -76,9 +76,9 @@ pub fn change_else_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_else_branch(x: bool) -> u32 {
     if x {
@@ -104,9 +104,9 @@ pub fn add_else_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_else_branch(x: bool) -> u32 {
     let mut ret = 1;
@@ -132,9 +132,9 @@ pub fn change_condition_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_condition_if_let(x: Option<u32>) -> u32 {
     if let Some(_ ) = x {
@@ -157,9 +157,9 @@ pub fn change_then_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_then_branch_if_let(x: Option<u32>) -> u32 {
     if let Some(x) = x {
@@ -182,9 +182,9 @@ pub fn change_else_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_else_branch_if_let(x: Option<u32>) -> u32 {
     if let Some(x) = x {
@@ -210,9 +210,9 @@ pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,typeck_root,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,typeck_root,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
     let mut ret = 1;

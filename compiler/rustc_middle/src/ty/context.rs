@@ -55,6 +55,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -759,8 +760,6 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
-
         let node = hir::OwnerNode::Synthetic;
         let bodies = Default::default();
         let attrs = hir::AttributeMap::EMPTY;
@@ -768,14 +767,21 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
             self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
-        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
-            opt_hash_including_bodies,
-            nodes: IndexVec::from_elem_n(
-                hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
-                1,
-            ),
-            bodies,
-        })));
+
+        self.owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
+            nodes: self.tcx.arena.alloc(hir::OwnerNodes {
+                opt_hash_including_bodies,
+                nodes: IndexVec::from_elem_n(
+                    hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
+                    1,
+                ),
+                bodies,
+            }),
+            parenting: self.tcx.arena.alloc(Default::default()),
+            delayed_lints: self.tcx.arena.alloc(Default::default()),
+            trait_map: self.tcx.arena.alloc(Default::default()),
+        }));
+
         self.feed_owner_id().hir_attr_map(attrs);
     }
 }

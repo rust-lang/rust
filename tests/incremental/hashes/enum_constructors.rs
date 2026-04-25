@@ -38,9 +38,9 @@ pub fn change_field_value_struct_like() -> Enum {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_field_value_struct_like() -> Enum {
     Enum::Struct {
@@ -63,9 +63,9 @@ pub fn change_field_order_struct_like() -> Enum {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 // FIXME(michaelwoerister):Interesting. I would have thought that that changes the MIR. And it
 // would if it were not all constants
@@ -104,9 +104,9 @@ pub fn change_constructor_path_struct_like() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_constructor_path_struct_like() {
     let _ = Enum2::Struct {
@@ -129,9 +129,9 @@ pub fn change_constructor_variant_struct_like() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_constructor_variant_struct_like() {
     let _ = Enum2::Struct2 {
@@ -149,9 +149,9 @@ pub mod change_constructor_path_indirectly_struct_like {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::Enum2 as TheEnum;
 
-    #[rustc_clean(cfg="bpass2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="fn_sig,owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="fn_sig,owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn function() -> TheEnum {
         TheEnum::Struct {
@@ -171,9 +171,9 @@ pub mod change_constructor_variant_indirectly_struct_like {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::Enum2::Struct2 as Variant;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass6")]
     pub fn function() -> Enum2 {
         Variant {
@@ -192,9 +192,9 @@ pub fn change_field_value_tuple_like() -> Enum {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_field_value_tuple_like() -> Enum {
     Enum::Tuple(0, 1, 3)
@@ -211,12 +211,12 @@ pub fn change_constructor_path_tuple_like() {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg="bpass2",
-    except="opt_hir_owner_nodes,typeck_root"
+    except="owner,typeck_root"
 )]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(
     cfg="bpass5",
-    except="opt_hir_owner_nodes,typeck_root"
+    except="owner,typeck_root"
 )]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_constructor_path_tuple_like() {
@@ -234,12 +234,12 @@ pub fn change_constructor_variant_tuple_like() {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg="bpass2",
-    except="opt_hir_owner_nodes,typeck_root"
+    except="owner,typeck_root"
 )]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(
     cfg="bpass5",
-    except="opt_hir_owner_nodes,typeck_root"
+    except="owner,typeck_root"
 )]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_constructor_variant_tuple_like() {
@@ -254,9 +254,9 @@ pub mod change_constructor_path_indirectly_tuple_like {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::Enum2 as TheEnum;
 
-    #[rustc_clean(cfg="bpass2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="fn_sig,owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="fn_sig,owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn function() -> TheEnum {
         TheEnum::Tuple(0, 1, 2)
@@ -273,9 +273,9 @@ pub mod change_constructor_variant_indirectly_tuple_like {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::Enum2::Tuple2 as Variant;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn function() -> Enum2 {
         Variant(0, 1, 2)
@@ -302,9 +302,9 @@ pub fn change_constructor_path_c_like() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir,typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_constructor_path_c_like() {
     let _x = Clike2::B;
@@ -319,9 +319,9 @@ pub fn change_constructor_variant_c_like() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_constructor_variant_c_like() {
     let _x = Clike::C;
@@ -335,9 +335,9 @@ pub mod change_constructor_path_indirectly_c_like {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::Clike2 as TheEnum;
 
-    #[rustc_clean(cfg="bpass2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2", except="fn_sig,owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5", except="fn_sig,owner,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn function() -> TheEnum {
         TheEnum::B
@@ -354,9 +354,9 @@ pub mod change_constructor_variant_indirectly_c_like {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::Clike::B as Variant;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass2", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="bpass5", except="owner,optimized_mir")]
     #[rustc_clean(cfg="bpass6")]
     pub fn function() -> Clike {
         Variant

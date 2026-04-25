@@ -24,9 +24,9 @@ fn change_simple_index(slice: &[u32]) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+#[rustc_clean(except="owner", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn change_simple_index(slice: &[u32]) -> u32 {
     slice[4]
@@ -41,9 +41,9 @@ fn change_lower_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+#[rustc_clean(except="owner", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn change_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[2..5]
@@ -58,9 +58,9 @@ fn change_upper_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+#[rustc_clean(except="owner", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn change_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..7]
@@ -75,9 +75,9 @@ fn add_lower_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass2")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass5")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn add_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[3..4]
@@ -92,9 +92,9 @@ fn add_upper_bound(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass2")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass5")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn add_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..7]
@@ -109,9 +109,9 @@ fn change_mutability(slice: &mut [u32]) -> u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass2")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass5")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn change_mutability(slice: &mut [u32]) -> u32 {
     (&    slice[3..5])[0]
@@ -126,9 +126,9 @@ fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass2")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass5")]
+#[rustc_clean(except="owner,typeck_root", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
     &slice[3..=7]
