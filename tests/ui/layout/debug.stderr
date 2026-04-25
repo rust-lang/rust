@@ -614,6 +614,246 @@ error: the type `T` does not have a fixed layout
 LL | type TooGeneric<T> = T;
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 20 previous errors
+error: layout_of(Option<bool>) = Layout {
+           size: Size(1 bytes),
+           align: AbiAlign {
+               abi: Align(1 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=2,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=2,
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=2,
+               },
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 2,
+               },
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           in_memory_order: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+                   Layout {
+                       size: Size(1 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/debug.rs:93:1
+   |
+LL | type OptBool = Option<bool>;
+   | ^^^^^^^^^^^^
+
+error: layout_of(Option<char>) = Layout {
+           size: Size(4 bytes),
+           align: AbiAlign {
+               abi: Align(4 bytes),
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=1114112,
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               in_memory_order: [
+                   0,
+               ],
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=1114112,
+               },
+           ),
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=1114112,
+               },
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 1114112,
+               },
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(0 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           in_memory_order: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
+                   },
+                   Layout {
+                       size: Size(4 bytes),
+                       align: AbiAlign {
+                           abi: Align(4 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 0..=1114111,
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 0..=1114111,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/debug.rs:96:1
+   |
+LL | type OptChar = Option<char>;
+   | ^^^^^^^^^^^^
+
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
