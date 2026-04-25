@@ -2,6 +2,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_errors::PResult;
+use rustc_span::Span;
 
 use crate::exp;
 use crate::parser::{AttrWrapper, ForceCollect, Parser, Restrictions, Trailing, UsePreAttrPos};
@@ -35,5 +36,15 @@ impl<'a> Parser<'a> {
             let _ = self.eat(exp!(Comma));
         }
         Ok(TokenStream::from_ast(&expr))
+    }
+
+    /// Parses outer attributes before a `cfg_select!` branch for recovery.
+    pub fn parse_cfg_select_branch_outer_attrs(&mut self) -> PResult<'a, Option<Vec<Span>>> {
+        let attrs = self.parse_outer_attributes()?;
+        if attrs.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(attrs.take_for_recovery(self.psess).into_iter().map(|attr| attr.span).collect()))
     }
 }

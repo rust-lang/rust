@@ -27,25 +27,5 @@ LL | |     /// line3
    |
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
-error: unused doc comment
-  --> $DIR/unused-doc-comments-for-macros.rs:20:9
-   |
-LL | /         /// line1
-LL | |         /// line2
-LL | |         /// line3
-   | |_________________^
-   |
-   = help: use `//` for a plain comment
-
-error: unused doc comment
-  --> $DIR/unused-doc-comments-for-macros.rs:24:9
-   |
-LL | /         /// line1
-LL | |         /// line2
-LL | |         /// line3
-   | |_________________^
-   |
-   = help: use `//` for a plain comment
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
