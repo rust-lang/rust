@@ -382,6 +382,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.containers_deriving_copy.contains(&expn_id)
     }
 
+    fn has_derive_ord(&self, expn_id: LocalExpnId) -> bool {
+        self.containers_deriving_ord.contains(&expn_id)
+    }
+
     fn resolve_derives(
         &mut self,
         expn_id: LocalExpnId,
@@ -401,6 +405,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             resolutions: derive_paths(),
             helper_attrs: Vec::new(),
             has_derive_copy: false,
+            has_derive_ord: false,
         });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
         for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
@@ -423,6 +428,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                                 );
                             }
                             entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
+                            entry.has_derive_ord |= ext.builtin_name == Some(sym::Ord);
                             ext
                         }
                         Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
@@ -457,6 +463,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         // `has_derive_copy` hasn't been set yet.
         if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
             self.containers_deriving_copy.insert(expn_id);
+        }
+        // Similar to the above `Copy` and `Clone` case, the code generated for
+        // `derive(PartialOrd)` changes if `derive(Ord)` is also present.
+        // FIXME(makai410): this also doesn't work with `#[derive(PartialOrd)] #[derive(Ord)]`.
+        if entry.has_derive_ord || self.has_derive_ord(parent_scope.expansion) {
+            self.containers_deriving_ord.insert(expn_id);
         }
         assert!(self.derive_data.is_empty());
         self.derive_data = derive_data;

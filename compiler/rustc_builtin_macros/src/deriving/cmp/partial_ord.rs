@@ -1,7 +1,7 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety};
+use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
-use thin_vec::thin_vec;
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -41,6 +41,38 @@ pub(crate) fn expand_deriving_partial_ord(
     } else {
         true
     };
+
+    let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+    let has_derive_ord = cx.resolver.has_derive_ord(container_id);
+    let is_simple_candidate = |params: &ThinVec<ast::GenericParam>| -> bool {
+        has_derive_ord
+            && !params.iter().any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
+    };
+
+    let default_substructure = combine_substructure(Box::new(|cx, span, substr| {
+        cs_partial_cmp(cx, span, substr, discr_then_data)
+    }));
+    let simple_substructure = combine_substructure(Box::new(|cx, span, _| {
+        cs_partial_cmp_simple(cx, span, cx.expr_ident(span, Ident::new(sym::other, span)))
+    }));
+    let (is_simple, substructure) = match item {
+        Annotatable::Item(annitem) => match &annitem.kind {
+            // For unit structs/zero-variant enums, the default generated code is better.
+            ItemKind::Struct(.., ast::VariantData::Unit(..)) => (false, default_substructure),
+            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => {
+                (false, default_substructure)
+            }
+            ItemKind::Struct(_, ast::Generics { params, .. }, _)
+            | ItemKind::Enum(_, ast::Generics { params, .. }, _)
+                if is_simple_candidate(params) =>
+            {
+                (true, simple_substructure)
+            }
+            _ => (false, default_substructure),
+        },
+        _ => (false, default_substructure),
+    };
+
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: Bounds::empty(),
@@ -49,9 +81,7 @@ pub(crate) fn expand_deriving_partial_ord(
         ret_ty,
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
-            cs_partial_cmp(cx, span, substr, discr_then_data)
-        })),
+        combine_substructure: substructure,
     };
 
     let trait_def = TraitDef {
@@ -68,7 +98,18 @@ pub(crate) fn expand_deriving_partial_ord(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+}
+
+// Special case for the type deriving both `PartialOrd` and `Ord`. Builds:
+// ```
+// Some(::core::cmp::Ord::cmp(self, other))
+// ```
+fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
+    let ord_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+    let cmp_expr =
+        cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
+    BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
 }
 
 fn cs_partial_cmp(
@@ -98,7 +139,8 @@ fn cs_partial_cmp(
         |cx, fold| match fold {
             CsFold::Single(field) => {
                 let [other_expr] = &field.other_selflike_exprs[..] else {
-                    cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                    cx.dcx()
+                        .span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
                 };
                 let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, partial_cmp_path.clone(), args)

@@ -18,8 +18,6 @@ struct StructA(String);
 //~| ERROR: cannot move out of a shared reference [E0507]
 //~| ERROR: cannot move out of a shared reference [E0507]
 //~| ERROR: cannot move out of a shared reference [E0507]
-//~| ERROR: cannot move out of a shared reference [E0507]
-//~| ERROR: cannot move out of a shared reference [E0507]
 
 
 // Unrelated impl: additinal diagnostic should NOT be emitted
