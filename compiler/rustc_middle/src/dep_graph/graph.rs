@@ -335,11 +335,7 @@ impl DepGraphData {
         let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
-            let task_deps = Lock::new(TaskDeps::new(
-                #[cfg(debug_assertions)]
-                Some(dep_node),
-                0,
-            ));
+            let task_deps = Lock::new(TaskDeps::new(Some(dep_node), 0));
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
@@ -372,11 +368,7 @@ impl DepGraphData {
 
         // Large numbers of reads are common enough here that pre-sizing `read_set`
         // to 128 actually helps perf on some benchmarks.
-        let task_deps = Lock::new(TaskDeps::new(
-            #[cfg(debug_assertions)]
-            None,
-            128,
-        ));
+        let task_deps = Lock::new(TaskDeps::new(None, 128));
         let result = with_deps(TaskDepsRef::Allow(&task_deps), op);
         let task_deps = task_deps.into_inner();
         let reads = task_deps.reads;
@@ -486,7 +478,7 @@ impl DepGraph {
 
                     #[cfg(debug_assertions)]
                     {
-                        if let Some(target) = task_deps.node
+                        if let Some(target) = task_deps.current_dep_node
                             && let Some(ref forbidden_edge) = data.current.forbidden_edge
                         {
                             let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
@@ -1220,8 +1212,10 @@ pub enum TaskDepsRef<'a> {
 
 #[derive(Debug)]
 pub struct TaskDeps {
-    #[cfg(debug_assertions)]
-    node: Option<DepNode>,
+    current_dep_node: Option<DepNode>,
+
+    /// Counter inside this query.
+    local_index: usize,
 
     /// A vector of `DepNodeIndex`, basically.
     reads: EdgesVec,
@@ -1238,13 +1232,22 @@ impl TaskDeps {
     const LINEAR_SCAN_MAX: usize = 16;
 
     #[inline]
-    fn new(#[cfg(debug_assertions)] node: Option<DepNode>, read_set_capacity: usize) -> Self {
+    fn new(current_dep_node: Option<DepNode>, read_set_capacity: usize) -> Self {
         TaskDeps {
-            #[cfg(debug_assertions)]
-            node,
+            current_dep_node,
+            local_index: 0,
             reads: EdgesVec::new(),
             read_set: FxHashSet::with_capacity_and_hasher(read_set_capacity, Default::default()),
         }
+    }
+}
+
+impl TaskDeps {
+    pub fn next_query_local_index(&mut self) -> Option<(DepNode, usize)> {
+        let node = self.current_dep_node?;
+        let index = self.local_index;
+        self.local_index = index + 1;
+        Some((node, index))
     }
 }
 
