@@ -2,9 +2,9 @@ use super::prelude::*;
 
 pub(crate) struct MustUseParser;
 
-impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
+impl SingleAttributeParser for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Enum),
@@ -25,7 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::MustUse {
             span: cx.attr_span,
             reason: match args {

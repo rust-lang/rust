@@ -7,21 +7,21 @@ const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
     AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate), Warn(Target::MacroCall)]);
 
 pub(crate) struct ProcMacroParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
+impl NoArgsAttributeParser for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacro;
 }
 
 pub(crate) struct ProcMacroAttributeParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
+impl NoArgsAttributeParser for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacroAttribute;
 }
 
 pub(crate) struct ProcMacroDeriveParser;
-impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
+impl SingleAttributeParser for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(
@@ -29,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
         "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let (trait_name, helper_attrs) = parse_derive_like(cx, args, true)?;
         Some(AttributeKind::ProcMacroDerive {
             trait_name: trait_name.expect("Trait name is mandatory, so it is present"),
@@ -40,20 +40,20 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
 }
 
 pub(crate) struct RustcBuiltinMacroParser;
-impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
+impl SingleAttributeParser for RustcBuiltinMacroParser {
     const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
         template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;
         Some(AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, span: cx.attr_span })
     }
 }
 
-fn parse_derive_like<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_derive_like(
+    cx: &mut AcceptContext<'_, '_>,
     args: &ArgParser,
     trait_name_mandatory: bool,
 ) -> Option<(Option<Symbol>, ThinVec<Symbol>)> {

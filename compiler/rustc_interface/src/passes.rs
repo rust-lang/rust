@@ -6,7 +6,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
 use rustc_ast::{self as ast, CRATE_NODE_ID};
-use rustc_attr_parsing::{AttributeParser, Early, ShouldEmit};
+use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
@@ -1423,7 +1423,7 @@ pub fn collect_crate_types(
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         if let Some(Attribute::Parsed(AttributeKind::CrateType(crate_type))) =
-            AttributeParser::<Early>::parse_limited_should_emit(
+            AttributeParser::parse_limited_should_emit(
                 session,
                 attrs,
                 &[sym::crate_type],

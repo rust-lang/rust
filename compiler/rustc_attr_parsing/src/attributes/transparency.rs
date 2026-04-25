@@ -4,16 +4,16 @@ use super::prelude::*;
 
 pub(crate) struct RustcMacroTransparencyParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcMacroTransparencyParser {
+impl SingleAttributeParser for RustcMacroTransparencyParser {
     const PATH: &[Symbol] = &[sym::rustc_macro_transparency];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Custom(|cx, used, unused| {
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Custom(|cx, used, unused| {
         cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
     });
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: ["transparent", "semiopaque", "opaque"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, None);

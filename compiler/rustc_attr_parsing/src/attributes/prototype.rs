@@ -6,7 +6,7 @@ use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::SingleAttributeParser;
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
 use crate::target_checking::AllowedTargets;
@@ -14,14 +14,14 @@ use crate::target_checking::Policy::Allow;
 
 pub(crate) struct CustomMirParser;
 
-impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
+impl SingleAttributeParser for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut dialect = None;
@@ -60,8 +60,8 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
     }
 }
 
-fn extract_value<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn extract_value(
+    cx: &mut AcceptContext<'_, '_>,
     key: Symbol,
     arg: &ArgParser,
     span: Span,
@@ -89,8 +89,8 @@ fn extract_value<S: Stage>(
     *out_val = Some((value_sym, val.value_span));
 }
 
-fn parse_dialect<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_dialect(
+    cx: &mut AcceptContext<'_, '_>,
     dialect: Option<(Symbol, Span)>,
     failed: &mut bool,
 ) -> Option<(MirDialect, Span)> {
@@ -111,8 +111,8 @@ fn parse_dialect<S: Stage>(
     Some((dialect, span))
 }
 
-fn parse_phase<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_phase(
+    cx: &mut AcceptContext<'_, '_>,
     phase: Option<(Symbol, Span)>,
     failed: &mut bool,
 ) -> Option<(MirPhase, Span)> {
@@ -136,8 +136,8 @@ fn parse_phase<S: Stage>(
     Some((phase, span))
 }
 
-fn check_custom_mir<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn check_custom_mir(
+    cx: &mut AcceptContext<'_, '_>,
     dialect: Option<(MirDialect, Span)>,
     phase: Option<(MirPhase, Span)>,
     failed: &mut bool,

@@ -4,7 +4,7 @@ use super::prelude::*;
 
 pub(crate) struct CoroutineParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for CoroutineParser {
+impl NoArgsAttributeParser for CoroutineParser {
     const PATH: &[Symbol] = &[sym::coroutine];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Closure)]);
     const CREATE: fn(rustc_span::Span) -> AttributeKind = |span| AttributeKind::Coroutine(span);

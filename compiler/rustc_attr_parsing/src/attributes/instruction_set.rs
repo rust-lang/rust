@@ -5,7 +5,7 @@ use crate::session_diagnostics;
 
 pub(crate) struct InstructionSetParser;
 
-impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
+impl SingleAttributeParser for InstructionSetParser {
     const PATH: &[Symbol] = &[sym::instruction_set];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
@@ -16,7 +16,7 @@ impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         const POSSIBLE_SYMBOLS: &[Symbol] = &[sym::arm_a32, sym::arm_t32];
         const POSSIBLE_ARM_SYMBOLS: &[Symbol] = &[sym::a32, sym::t32];
         let maybe_meta_item = cx.expect_single_element_list(args, cx.attr_span)?;

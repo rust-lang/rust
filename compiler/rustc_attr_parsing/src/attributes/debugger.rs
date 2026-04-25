@@ -4,7 +4,7 @@ use super::prelude::*;
 
 pub(crate) struct DebuggerViualizerParser;
 
-impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
+impl CombineAttributeParser for DebuggerViualizerParser {
     const PATH: &[Symbol] = &[sym::debugger_visualizer];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::Crate)]);
@@ -17,7 +17,7 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
     const CONVERT: ConvertFn<Self::Item> = |v, _| AttributeKind::DebuggerVisualizer(v);
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;

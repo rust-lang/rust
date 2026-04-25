@@ -17,7 +17,7 @@ use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::{AttributeParser, Late, session_diagnostics as errors};
+use crate::{AttributeParser, session_diagnostics as errors};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
@@ -30,7 +30,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     // Check input tokens for built-in and key-value attributes.
     match builtin_attr_info {
         Some(BuiltinAttribute { name, .. }) => {
-            if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
+            if AttributeParser::is_parsed_attribute(slice::from_ref(&name)) {
                 return;
             }
             match parse_meta(psess, attr) {
