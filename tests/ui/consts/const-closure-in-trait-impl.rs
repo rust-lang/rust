@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(const_closures, const_destruct, const_trait_impl)]
 
 use std::marker::Destruct;
@@ -17,8 +19,6 @@ impl const T for S {
 
     fn b(&mut self) {
         self.a(const || {});
-        //~^ ERROR: cannot use `const` closures outside of const contexts
-        //~| ERROR: [const] Fn()` is not satisfied
     }
 }
 
