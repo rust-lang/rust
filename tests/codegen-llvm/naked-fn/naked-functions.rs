@@ -22,7 +22,7 @@
 //@[thumb] needs-llvm-components: arm
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, cfg_target_object_format)]
 #![no_core]
 
 extern crate minicore;
@@ -170,14 +170,17 @@ pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
 }
 
 // linux,linux_no_function_sections: .pushsection .text.some_different_name,\22ax\22, @progbits
-// macos:            .pushsection .text.some_different_name,regular,pure_instructions
+// macos: .pushsection __TEXT,different,regular,pure_instructions
 // win_x86_msvc,win_x86_gnu,win_i686_gnu: .section .text.some_different_name,\22xr\22
 // win_x86_gnu_function_sections: .section .text.some_different_name,\22xr\22
 // thumb:            .pushsection .text.some_different_name,\22ax\22, %progbits
 // CHECK-LABEL: test_link_section:
 #[no_mangle]
 #[unsafe(naked)]
-#[link_section = ".text.some_different_name"]
+#[link_section = cfg_select!(
+    target_object_format = "mach-o" =>  "__TEXT,different",
+    _ => ".text.some_different_name"
+)]
 pub extern "C" fn test_link_section() {
     cfg_select! {
         all(target_arch = "arm", target_feature = "thumb-mode") => {

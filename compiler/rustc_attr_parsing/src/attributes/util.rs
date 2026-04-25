@@ -41,7 +41,7 @@ pub(crate) fn parse_single_integer<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
 ) -> Option<u128> {
-    let single = cx.single_element_list(args, cx.attr_span)?;
+    let single = cx.expect_single_element_list(args, cx.attr_span)?;
     let Some(lit) = single.lit() else {
         cx.adcx().expected_integer_literal(single.span());
         return None;

@@ -1,0 +1,42 @@
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `,`
+  --> $DIR/cfg-attr-parsed-span-issue-154801.rs:3:16
+   |
+LL |     #[cfg_attr(, (cc))]
+   |                ^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
+help: must be of the form
+   |
+LL -     #[cfg_attr(, (cc))]
+LL +     #[cfg_attr(predicate, attr1, attr2, ...)]
+   |
+
+error: `#[inline]` attribute cannot be used on expressions
+  --> $DIR/cfg-attr-parsed-span-issue-154801.rs:9:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = help: `#[inline]` can only be applied to functions
+
+error[E0308]: mismatched types
+  --> $DIR/cfg-attr-parsed-span-issue-154801.rs:4:5
+   |
+LL | fn main() {
+   |          - expected `()` because of default return type
+...
+LL |     _x
+   |     ^^ expected `()`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/cfg-attr-parsed-span-issue-154801.rs:10:5
+   |
+LL | fn inline_case() {
+   |                 - help: try adding a return type: `-> i32`
+...
+LL |     _x
+   |     ^^ expected `()`, found integer
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

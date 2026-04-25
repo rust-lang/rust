@@ -81,7 +81,7 @@ fn parse_unstable<S: Stage>(
 ) -> impl IntoIterator<Item = Symbol> {
     let mut res = Vec::new();
 
-    let Some(list) = args.list() else {
+    let Some(list) = args.as_list() else {
         cx.emit_err(session_diagnostics::ExpectsFeatureList {
             span: cx.attr_span,
             name: symbol.to_ident_string(),

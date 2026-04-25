@@ -1098,8 +1098,8 @@ pub enum AttributeKind {
 
     /// Represents [`#[link_section]`](https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute)
     LinkSection {
-        name: Symbol,
         span: Span,
+        name: Symbol,
     },
 
     /// Represents `#[linkage]`.
