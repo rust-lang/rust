@@ -63,18 +63,15 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 }
 
                 if emit_error {
-                    self.stage.emit_err(
-                        self.sess,
-                        crate::session_diagnostics::UnsafeAttrOutsideUnsafe {
-                            span: path_span,
-                            suggestion: not_from_proc_macro.then(|| {
-                                crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
-                                    left: diag_span.shrink_to_lo(),
-                                    right: diag_span.shrink_to_hi(),
-                                }
-                            }),
-                        },
-                    );
+                    self.emit_err(crate::session_diagnostics::UnsafeAttrOutsideUnsafe {
+                        span: path_span,
+                        suggestion: not_from_proc_macro.then(|| {
+                            crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion {
+                                left: diag_span.shrink_to_lo(),
+                                right: diag_span.shrink_to_hi(),
+                            }
+                        }),
+                    });
                 } else {
                     emit_lint(
                         LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
@@ -97,13 +94,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             // - Normal builtin attribute
             // - Writing `#[unsafe(..)]` is not permitted on normal builtin attributes
             (AttributeSafety::Normal, Safety::Unsafe(unsafe_span)) => {
-                self.stage.emit_err(
-                    self.sess,
-                    crate::session_diagnostics::InvalidAttrUnsafe {
-                        span: unsafe_span,
-                        name: attr_path.clone(),
-                    },
-                );
+                self.emit_err(crate::session_diagnostics::InvalidAttrUnsafe {
+                    span: unsafe_span,
+                    name: attr_path.clone(),
+                });
             }
 
             // - Normal builtin attribute

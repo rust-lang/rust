@@ -4,14 +4,14 @@ use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_errors::{Diag, DiagCtxtHandle, Level, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
 use rustc_session::Session;
 use rustc_session::lint::LintId;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym, ErrorGuaranteed};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
@@ -273,6 +273,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'sess> {
         self.sess().dcx()
+    }
+
+    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
+        self.stage.should_emit().emit_err(self.sess.dcx().create_err(diag))
     }
 
     /// Parse a list of attributes.
