@@ -1371,8 +1371,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                             )
                                         });
 
-                                        // FIXME(mgca): code duplication with other places we lower
-                                        // the rhs' of associated const bindings
                                         self.lower_assoc_const_binding_rhs(
                                             ct,
                                             constraint.ident,
