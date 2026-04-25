@@ -32,8 +32,12 @@ use rustc_data_structures::sync::{
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateIdMap};
-use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
+use rustc_hir::def_id::{
+    CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateIdMap,
+};
+use rustc_hir::definitions::{
+    DefPathData, Definitions, PerParentDisambiguatorState, PerParentDisambiguatorsMap,
+};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
@@ -857,6 +861,9 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) hooks: crate::hooks::Providers,
 
     untracked: Untracked,
+    /// This is shared untracked state for creating new definitions.
+    /// It should only be accessed by the `create_def_raw` query.
+    untracked_disambiguator_state: Lock<LocalDefIdMap<PerParentDisambiguatorState>>,
 
     pub query_system: QuerySystem<'tcx>,
     pub(crate) dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
@@ -1118,6 +1125,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
+            untracked_disambiguator_state: Lock::new(Default::default()),
             query_system,
             dep_kind_vtables,
             ty_rcache: Default::default(),
@@ -1428,10 +1436,9 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed =
-            self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
+            self.tcx.create_def(parent, name, def_kind, override_def_path_data);
 
         feed.def_span(self.span);
         feed
@@ -1446,9 +1453,11 @@ impl<'tcx> TyCtxt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
+        let mut disambiguators = self.untracked_disambiguator_state.lock();
+        let disambiguator = disambiguators.get_or_create(parent);
+
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
