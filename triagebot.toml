@@ -1283,7 +1283,7 @@ Please ensure that if you've changed the output:
 """
 cc = ["@aDotInTheVoid", "@obi1kenobi"]
 
-[mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
+[mentions."tests/ui/derives/deriving-all-codegen.stdout"]
 message = "Changes to the code generated for builtin derived traits."
 cc = ["@nnethercote"]
 
