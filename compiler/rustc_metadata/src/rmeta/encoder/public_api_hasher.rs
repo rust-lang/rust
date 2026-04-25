@@ -74,7 +74,7 @@ impl<I> Default for RDRHashAll<I> {
 }
 
 pub(crate) struct PublicApiHashingContext<'a> {
-    hcx: StableHashState<'a>,
+    pub(crate) hcx: StableHashState<'a>,
     hash_public_api: bool,
 }
 
