@@ -57,25 +57,7 @@ use crate::{
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: HirId| -> bool {
-            for attr in self.tcx.hir_attrs(id) {
-                // For the purpose of rendering suggestions, disregard attributes
-                // that originate from desugaring of any kind. For example, `x?`
-                // desugars to `#[allow(unreachable_code)] match ...`. Failing to
-                // ignore the prefix attribute in the desugaring would cause this
-                // suggestion:
-                //
-                //     let y: u32 = x?.try_into().unwrap();
-                //                    ++++++++++++++++++++
-                //
-                // to be rendered as:
-                //
-                //     let y: u32 = (x?).try_into().unwrap();
-                //                  +  +++++++++++++++++++++
-                if attr.span().desugaring_kind().is_none() {
-                    return true;
-                }
-            }
-            false
+            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,
