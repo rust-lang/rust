@@ -53,7 +53,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                     self.context.opt_span_lint(
                         lint_id.lint,
                         span,
-                        DiagAndSess { callback, sess: self.context.sess() },
+                        DiagAndSess { callback, sess: self.context.sess(), tcx: self.tcx },
                     );
                 }
             }

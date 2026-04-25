@@ -4,20 +4,28 @@ use rustc_data_structures::sync::DynSend;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
+use rustc_session::{Session, SessionAndCrateName};
+use rustc_span::Symbol;
+use rustc_span::def_id::CrateNum;
 
-mod check_cfg;
-
-pub struct DiagAndSess<'sess> {
+pub struct DiagAndSess<'sess, 'tcx> {
     pub callback: Box<
         dyn for<'b> FnOnce(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + 'static,
     >,
     pub sess: &'sess Session,
+    pub tcx: Option<TyCtxt<'tcx>>,
 }
 
-impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
+impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        (self.callback)(dcx, level, self.sess)
+        let crate_name: Option<&dyn Fn(CrateNum) -> Symbol> = match self.tcx {
+            Some(tcx) => Some(&move |crate_num| tcx.crate_name(crate_num)),
+            None => None,
+        };
+        let sess = SessionAndCrateName { sess: self.sess, crate_name };
+        // FIXME: remove this transmute call once lifetime coercion issue is fixed.
+        let sess: SessionAndCrateName<'static> = unsafe { std::mem::transmute(sess) };
+        (self.callback)(dcx, level, &sess)
     }
 }
 
@@ -30,16 +38,7 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 }
 
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        match self.diagnostic {
-            &AttributeLintKind::UnexpectedCfgName(name, value) => {
-                check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
-                    .into_diag(dcx, level)
-            }
-            &AttributeLintKind::UnexpectedCfgValue(name, value) => {
-                check_cfg::unexpected_cfg_value(self.sess, self.tcx, name, value)
-                    .into_diag(dcx, level)
-            }
-        }
+    fn into_diag(self, _dcx: DiagCtxtHandle<'a>, _level: Level) -> Diag<'a, ()> {
+        panic!("should never be called")
     }
 }

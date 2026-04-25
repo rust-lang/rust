@@ -653,10 +653,7 @@ pub enum DeprecatedSinceKind {
 }
 
 #[derive(Debug)]
-pub enum AttributeLintKind {
-    UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
-    UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-}
+pub enum AttributeLintKind {}
 
 pub type RegisteredTools = FxIndexSet<Ident>;
 

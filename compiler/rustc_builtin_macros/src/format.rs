@@ -620,8 +620,9 @@ fn make_format_args(
                                 name.push('$')
                             };
                             let span_to_replace = if let Ok(positional_arg_content) = sess
-                                .downcast_ref::<rustc_session::Session>()
+                                .downcast_ref::<rustc_session::SessionAndCrateName<'_>>()
                                 .expect("expected a `Session`")
+                                .sess
                                 .source_map()
                                 .span_to_snippet(positional_arg_to_replace)
                                 && positional_arg_content.starts_with(':')

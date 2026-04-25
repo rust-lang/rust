@@ -22,12 +22,12 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, Visibility};
-use rustc_session::Session;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
     AMBIGUOUS_PANIC_IMPORTS, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::utils::was_invoked_from_cargo;
+use rustc_session::{Session, SessionAndCrateName};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
@@ -526,8 +526,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             root_span,
             move |dcx, level, sess| {
                 let (replacement, applicability) = match sess
-                    .downcast_ref::<Session>()
+                    .downcast_ref::<SessionAndCrateName<'_>>()
                     .expect("expected a `Session`")
+                    .sess
                     .source_map()
                     .span_to_snippet(root_span)
                 {

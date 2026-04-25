@@ -1068,7 +1068,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                     DelayedLint::Dynamic(attribute_lint) => {
                         let info = rustc_session::SessionAndCrateName {
                             sess: tcx.sess,
-                            crate_name: &move |crate_num: CrateNum| tcx.crate_name(crate_num),
+                            crate_name: Some(&move |crate_num: CrateNum| tcx.crate_name(crate_num)),
                         };
                         tcx.emit_node_span_lint(
                             attribute_lint.lint_id.lint,

@@ -523,8 +523,9 @@ impl Resolver<'_, '_> {
                         errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
                     };
                     let test_module_span = test_module_span.map(|span| {
-                        sess.downcast_ref::<rustc_session::Session>()
+                        sess.downcast_ref::<rustc_session::SessionAndCrateName<'_>>()
                             .expect("expected a `Session`")
+                            .sess
                             .source_map()
                             .guess_head_span(span)
                     });

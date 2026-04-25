@@ -2357,8 +2357,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     elided_lifetime_span,
                     move |dcx, level, sess| {
                         let source_map = sess
-                            .downcast_ref::<rustc_session::Session>()
+                            .downcast_ref::<rustc_session::SessionAndCrateName<'_>>()
                             .expect("expected a `Session`")
+                            .sess
                             .source_map();
                         errors::ElidedLifetimesInPaths {
                             subdiag: elided_lifetime_in_path_suggestion(

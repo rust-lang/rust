@@ -23,6 +23,7 @@ use crate::errors::{
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
+pub(crate) mod check_cfg;
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;

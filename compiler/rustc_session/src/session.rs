@@ -1467,5 +1467,5 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
 #[derive(Clone, Copy)]
 pub struct SessionAndCrateName<'sess> {
     pub sess: &'sess Session,
-    pub crate_name: &'sess dyn Fn(CrateNum) -> Symbol,
+    pub crate_name: Option<&'sess dyn Fn(CrateNum) -> Symbol>,
 }
