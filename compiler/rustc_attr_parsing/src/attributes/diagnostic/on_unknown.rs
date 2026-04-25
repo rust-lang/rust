@@ -31,7 +31,7 @@ impl OnUnknownParser {
 
         // At early parsing we get passed `Target::Crate` regardless of the item we're on.
         // Only do target checking if we're late.
-        let early = matches!(cx.stage.should_emit(), ShouldEmit::Nothing);
+        let early = matches!(cx.should_emit, ShouldEmit::Nothing);
 
         if !early && !matches!(cx.target, Target::Use) {
             let target_span = cx.target_span;
