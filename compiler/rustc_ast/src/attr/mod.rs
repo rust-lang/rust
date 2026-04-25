@@ -235,34 +235,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn deprecation_note(&self) -> Option<Ident> {
-        match &self.kind {
-            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
-                let meta = &normal.item;
-
-                // #[deprecated = "..."]
-                if let Some(s) = meta.value_str() {
-                    return Some(Ident { name: s, span: meta.span() });
-                }
-
-                // #[deprecated(note = "...")]
-                if let Some(list) = meta.meta_item_list() {
-                    for nested in list {
-                        if let Some(mi) = nested.meta_item()
-                            && mi.path == sym::note
-                            && let Some(s) = mi.value_str()
-                        {
-                            return Some(Ident { name: s, span: mi.span });
-                        }
-                    }
-                }
-
-                None
-            }
-            _ => None,
-        }
-    }
-
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
