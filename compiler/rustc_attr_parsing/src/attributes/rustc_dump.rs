@@ -96,9 +96,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcDumpLayoutParser {
         cx: &mut AcceptContext<'_, '_, S>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        let ArgParser::List(items) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
+        let Some(items) = cx.expect_list(args, cx.attr_span) else {
             return vec![];
         };
 
