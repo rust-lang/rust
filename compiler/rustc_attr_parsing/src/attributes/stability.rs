@@ -272,9 +272,9 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
             }
         }
 
-        let (stability, span) = self.stability?;
+        let (stability, _) = self.stability?;
 
-        Some(AttributeKind::RustcConstStability { stability, span })
+        Some(AttributeKind::RustcConstStability { stability })
     }
 }
 

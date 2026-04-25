@@ -97,7 +97,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
 
 fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
     let depr = find_attr!(tcx, def_id,
-        Deprecated { deprecation, span: _ } => *deprecation
+        Deprecated { deprecation, .. } => **deprecation
     );
 
     let Some(depr) = depr else {
@@ -218,7 +218,7 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
 
     let const_stable_indirect = find_attr!(tcx, def_id, RustcConstStableIndirect);
     let const_stab =
-        find_attr!(tcx, def_id, RustcConstStability { stability, span: _ } => *stability);
+        find_attr!(tcx, def_id, RustcConstStability { stability } => *stability);
 
     // After checking the immediate attributes, get rid of the span and compute implied
     // const stability: inherit feature gate from regular stability.
@@ -379,6 +379,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                 }
             }
         }
+        let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
 
         // If the current node is a function with const stability attributes (directly given or
         // implied), check if the function/method is const or the parent impl block is const.
@@ -386,7 +387,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         if let Some(fn_sig) = fn_sig
             && !fn_sig.header.is_const()
             && const_stab.is_some()
-            && find_attr_span!(RustcConstStability).is_some()
+            && find_attr!(attrs, RustcConstStability{..})
         {
             self.tcx.dcx().emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span });
         }
@@ -396,19 +397,19 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && let Some(fn_sig) = fn_sig
             && const_stab.is_const_stable()
             && !stab.is_some_and(|s| s.is_stable())
-            && let Some(const_span) = find_attr_span!(RustcConstStability)
+            && find_attr!( attrs, RustcConstStability {..})
         {
             self.tcx
                 .dcx()
-                .emit_err(errors::ConstStableNotStable { fn_sig_span: fn_sig.span, const_span });
+                .emit_err(errors::ConstStableNotStable { fn_sig_span: fn_sig.span });
         }
 
         if let Some(stab) = &const_stab
             && stab.is_const_stable()
             && stab.const_stable_indirect
-            && let Some(span) = find_attr_span!(RustcConstStability)
+            && find_attr!(attrs, RustcConstStability {..})
         {
-            self.tcx.dcx().emit_err(errors::RustcConstStableIndirectPairing { span });
+            self.tcx.dcx().emit_err(errors::RustcConstStableIndirectPairing { span: rustc_span::DUMMY_SP });
         }
     }
 

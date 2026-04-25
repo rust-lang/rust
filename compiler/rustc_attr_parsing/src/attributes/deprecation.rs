@@ -162,7 +162,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
         }
 
         Some(AttributeKind::Deprecated {
-            deprecation: Deprecation { since, note, suggestion },
+            deprecation: Box::new(Deprecation { since, note, suggestion }),
             span: cx.attr_span,
         })
     }

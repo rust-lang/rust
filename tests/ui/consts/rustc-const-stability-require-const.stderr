@@ -49,16 +49,12 @@ LL | pub extern "C" fn foo_c() {}
 error: attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
   --> $DIR/rustc-const-stability-require-const.rs:52:1
    |
-LL | #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
-   | ---------------------------------------------------------------- attribute specified here
 LL | const fn barfoo_unmarked() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`
   --> $DIR/rustc-const-stability-require-const.rs:57:1
    |
-LL | #[rustc_const_stable(feature = "barfoo_const", since = "1.0.0")]
-   | ---------------------------------------------------------------- attribute specified here
 LL | pub const fn barfoo_unstable() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

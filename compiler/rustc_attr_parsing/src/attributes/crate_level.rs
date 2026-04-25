@@ -171,7 +171,6 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
         Some(AttributeKind::PatternComplexityLimit {
             limit: cx.parse_limit_int(nv)?,
             attr_span: cx.attr_span,
-            limit_span: nv.value_span,
         })
     }
 }

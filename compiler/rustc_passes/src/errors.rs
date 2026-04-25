@@ -898,8 +898,6 @@ pub(crate) struct MissingConstErr {
 pub(crate) struct ConstStableNotStable {
     #[primary_span]
     pub fn_sig_span: Span,
-    #[label("attribute specified here")]
-    pub const_span: Span,
 }
 
 #[derive(Diagnostic)]
