@@ -7,6 +7,7 @@ use std::hash::Hash;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::stable_hasher::StableHash;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_hir::hir_id::OwnerId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
@@ -358,5 +359,13 @@ impl<'tcx> QueryKey for (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<
 impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
+    }
+}
+
+impl QueryKey for (LocalDefId, DisambiguatedDefPathData) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
     }
 }

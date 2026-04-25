@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable, extension};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
@@ -114,6 +114,28 @@ impl PerParentDisambiguatorState {
             next: Default::default(),
         }
     }
+
+    /// If there are multiple definitions with the same DefPathData and the same parent, use
+    /// `self` to differentiate them. Distinct `PerParentDisambiguatorState` instances are not
+    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
+    /// and `data` pair is distinct from other instances.
+    pub fn disambiguate(
+        &mut self,
+        _parent: LocalDefId,
+        data: DefPathData,
+    ) -> DisambiguatedDefPathData {
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(
+            _parent,
+            self.parent.expect("must be set"),
+            "provided parent and parent in disambiguator must be the same"
+        );
+
+        let next_disamb = self.next.entry(data).or_insert(0);
+        let disambiguator = *next_disamb;
+        *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+        DisambiguatedDefPathData { disambiguator, data }
+    }
 }
 
 #[extension(pub trait PerParentDisambiguatorsMap)]
@@ -183,7 +205,7 @@ impl DefKey {
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have, e.g., two impls for the same type in
 /// the same module, they do get distinct `DefId`s.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Encodable, BlobDecodable, HashStable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32,
@@ -277,7 +299,7 @@ impl DefPath {
 }
 
 /// New variants should only be added in synchronization with `enum DefKind`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable, HashStable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -384,16 +406,7 @@ impl Definitions {
     }
 
     /// Creates a definition with a parent definition.
-    /// If there are multiple definitions with the same DefPathData and the same parent, use
-    /// `disambiguator` to differentiate them. Distinct `DisambiguatorState` instances are not
-    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
-    /// and `data` pair is distinct from other instances.
-    pub fn create_def(
-        &mut self,
-        parent: LocalDefId,
-        data: DefPathData,
-        disambiguator: &mut PerParentDisambiguatorState,
-    ) -> LocalDefId {
+    pub fn create_def(&mut self, parent: LocalDefId, data: DisambiguatedDefPathData) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -402,26 +415,9 @@ impl Definitions {
         );
 
         // The root node must be created in `new()`.
-        assert!(data != DefPathData::CrateRoot);
+        assert!(data.data != DefPathData::CrateRoot);
 
-        // Find the next free disambiguator for this key.
-        let disambiguator = {
-            #[cfg(debug_assertions)]
-            debug_assert_eq!(
-                parent,
-                disambiguator.parent.expect("must be set"),
-                "provided parent and parent in disambiguator must be the same"
-            );
-
-            let next_disamb = disambiguator.next.entry(data).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
-        let key = DefKey {
-            parent: Some(parent.local_def_index),
-            disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
-        };
+        let key = DefKey { parent: Some(parent.local_def_index), disambiguated_data: data };
 
         let parent_hash = self.table.def_path_hash(parent.local_def_index);
         let def_path_hash = key.compute_stable_hash(parent_hash);

@@ -67,6 +67,7 @@ use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
+use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
@@ -196,6 +197,17 @@ rustc_queries! {
         // Accesses untracked data
         eval_always
         desc { "getting the source span" }
+    }
+
+    /// Create a new definition.
+    ///
+    /// This query is meant to wrap a side-effect and return the resulting newly created
+    /// definition. In incremental mode, when replaying a query, this query caches the side-effect
+    /// to avoid performing it twice.
+    query create_def_raw(key: (LocalDefId, DisambiguatedDefPathData)) -> LocalDefId {
+        // Accesses untracked data
+        eval_always
+        desc { "create a new definition for `{}::{:?}`", tcx.def_path_str(key.0), key.1 }
     }
 
     /// Represents crate as a whole (as distinct from the top-level crate module).

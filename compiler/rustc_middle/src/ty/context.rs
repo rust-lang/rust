@@ -32,7 +32,9 @@ use rustc_data_structures::sync::{
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateIdMap};
-use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
+use rustc_hir::definitions::{
+    DefPathData, Definitions, DisambiguatedDefPathData, PerParentDisambiguatorState,
+};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
@@ -52,7 +54,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
-use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepKindVTable, TaskDepsRef};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -1283,6 +1285,23 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
+fn create_def_raw_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (parent, data): (LocalDefId, DisambiguatedDefPathData),
+) -> LocalDefId {
+    // The following call has the side effect of modifying the tables inside `definitions`.
+    // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
+    // decode the on-disk cache.
+    //
+    // Any LocalDefId which is used within queries, either as key or result, either:
+    // - has been created before the construction of the TyCtxt;
+    // - has been created by this call to `create_def`.
+    // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
+    // comp. engine itself.
+    tcx.untracked.definitions.write().create_def(parent, data)
+}
+
 impl<'tcx> TyCtxtAt<'tcx> {
     /// Create a new definition within the incr. comp. engine.
     pub fn create_def(
@@ -1312,25 +1331,29 @@ impl<'tcx> TyCtxt<'tcx> {
         disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
-        // The following call has the side effect of modifying the tables inside `definitions`.
-        // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
-        // decode the on-disk cache.
-        //
-        // Any LocalDefId which is used within queries, either as key or result, either:
-        // - has been created before the construction of the TyCtxt;
-        // - has been created by this call to `create_def`.
-        // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
-        // comp. engine itself.
-        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
 
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Find the next free disambiguator for this key.
+        let data = disambiguator.disambiguate(parent, data);
+
+        let def_id = ty::tls::with_context(|icx| match icx.task_deps {
+            // `create_def_raw` is a query, so it can be replayed by the dep-graph engine.
+            // However, we may invoke it multiple times with the same `(parent, data)` pair,
+            // and we expect to create *different* definitions from them.
+            //
+            // In order to make this compatible with the general model of queries, we add
+            // additional information which must change at each call.
+            TaskDepsRef::Allow(..) => self.create_def_raw((parent, data)),
+
+            // If we are not tracking dependencies, we can use global mutable state.
+            // This is only an optimization to avoid the cost of registering the dep-node.
+            TaskDepsRef::EvalAlways | TaskDepsRef::Forbid | TaskDepsRef::Ignore => {
+                self.untracked.definitions.write().create_def(parent, data)
+            }
+        });
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
+
         // Unique types created for closures participate in type privacy checking.
         // They have visibilities inherited from the module they are defined in.
         // Visibilities for opaque types are meaningless, but still provided
@@ -2763,4 +2786,5 @@ pub fn provide(providers: &mut Providers) {
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
+    providers.create_def_raw = create_def_raw_provider;
 }
