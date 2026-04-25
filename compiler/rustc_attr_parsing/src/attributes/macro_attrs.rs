@@ -142,7 +142,7 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
         let local_inner_macros = match args {
             ArgParser::NoArgs => false,
             ArgParser::List(list) => {
-                let Some(l) = list.single() else {
+                let Some(l) = list.as_single() else {
                     cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
@@ -174,7 +174,7 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let single = cx.single_element_list(args, cx.attr_span)?;
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
         let Some(mi) = single.meta_item() else {
             cx.adcx().expected_not_literal(single.span());
             return None;

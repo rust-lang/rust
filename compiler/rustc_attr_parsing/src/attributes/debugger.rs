@@ -20,7 +20,7 @@ impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
         cx: &mut AcceptContext<'_, '_, S>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        let single = cx.single_element_list(args, cx.attr_span)?;
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
         let Some(mi) = single.meta_item() else {
             cx.adcx().expected_name_value(single.span(), None);
             return None;

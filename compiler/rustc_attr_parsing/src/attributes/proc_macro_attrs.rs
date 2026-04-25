@@ -57,7 +57,7 @@ fn parse_derive_like<S: Stage>(
     args: &ArgParser,
     trait_name_mandatory: bool,
 ) -> Option<(Option<Symbol>, ThinVec<Symbol>)> {
-    let Some(list) = args.list() else {
+    let Some(list) = args.as_list() else {
         // For #[rustc_builtin_macro], it is permitted to leave out the trait name
         if args.no_args().is_ok() && !trait_name_mandatory {
             return Some((None, ThinVec::new()));
@@ -101,10 +101,7 @@ fn parse_derive_like<S: Stage>(
             cx.adcx().expected_specific_argument(attrs.span(), &[sym::attributes]);
             return None;
         }
-        let Some(attr_list) = attr_list.args().list() else {
-            cx.adcx().expected_list(attrs.span(), attr_list.args());
-            return None;
-        };
+        let attr_list = cx.expect_list(attr_list.args(), attrs.span())?;
 
         // Parse item in `attributes(...)` argument
         for attr in attr_list.mixed() {

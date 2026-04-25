@@ -28,10 +28,11 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                     Some(str_value)
                 }
                 ArgParser::List(list) => {
-                    let help = list.single().and_then(|item| item.meta_item()).and_then(|item| {
-                        item.args().no_args().ok()?;
-                        Some(item.path().to_string())
-                    });
+                    let help =
+                        list.as_single().and_then(|item| item.meta_item()).and_then(|item| {
+                            item.args().no_args().ok()?;
+                            Some(item.path().to_string())
+                        });
                     cx.adcx().warn_ill_formed_attribute_input_with_help(
                         ILL_FORMED_ATTRIBUTE_INPUT,
                         help,
@@ -71,10 +72,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
                     Some(str_value)
                 }
                 ArgParser::List(list) => {
-                    let Some(single) = list.single() else {
-                        cx.adcx().expected_single_argument(list.span, list.len());
-                        return None;
-                    };
+                    let single = cx.expect_single(list)?;
                     let Some(single) = single.meta_item() else {
                         cx.adcx().expected_name_value(single.span(), Some(sym::expected));
                         return None;
@@ -140,17 +138,13 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(args) = args.list() else {
+        let Some(args) = args.as_list() else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_specific_argument_and_list(attr_span, &[sym::assert_eq, sym::debug]);
             return None;
         };
 
-        let Some(arg) = args.single() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_single_argument(attr_span, args.len());
-            return None;
-        };
+        let arg = cx.expect_single(args)?;
 
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::assert_eq, sym::debug]);
@@ -203,7 +197,7 @@ impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let single = cx.single_element_list(args, cx.attr_span)?;
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let Some(meta) = single.meta_item() else {
             cx.adcx().expected_not_literal(single.span());
