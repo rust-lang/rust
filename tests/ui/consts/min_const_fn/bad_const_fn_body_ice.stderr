@@ -1,21 +1,16 @@
-error[E0015]: cannot call non-const associated function `Box::<[i32; 3]>::new_uninit` in constant functions
-  --> $DIR/bad_const_fn_body_ice.rs:2:5
+error[E0015]: cannot call non-const function `non_const` in constant functions
+  --> $DIR/bad_const_fn_body_ice.rs:6:5
    |
-LL |     vec![1, 2, 3]
-   |     ^^^^^^^^^^^^^
+LL |     non_const()
+   |     ^^^^^^^^^^^
    |
+note: function `non_const` is not const
+  --> $DIR/bad_const_fn_body_ice.rs:1:1
+   |
+LL | fn non_const() -> Vec<i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const function `std::boxed::box_assume_init_into_vec_unsafe::<i32, 3>` in constant functions
-  --> $DIR/bad_const_fn_body_ice.rs:2:5
-   |
-LL |     vec![1, 2, 3]
-   |     ^^^^^^^^^^^^^
-   |
-note: function `box_assume_init_into_vec_unsafe` is not const
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0015`.

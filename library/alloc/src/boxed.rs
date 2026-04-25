@@ -244,7 +244,8 @@ pub struct Box<
 #[rustc_no_mir_inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[cfg(not(no_global_oom_handling))]
-fn box_new_uninit(layout: Layout) -> *mut u8 {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+const fn box_new_uninit(layout: Layout) -> *mut u8 {
     match Global.allocate(layout) {
         Ok(ptr) => ptr.as_mut_ptr(),
         Err(_) => handle_alloc_error(layout),
@@ -256,10 +257,11 @@ fn box_new_uninit(layout: Layout) -> *mut u8 {
 /// This is unsafe, but has to be marked as safe or else we couldn't use it in `vec!`.
 #[doc(hidden)]
 #[unstable(feature = "liballoc_internals", issue = "none")]
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 #[inline(always)]
 #[cfg(not(no_global_oom_handling))]
 #[rustc_diagnostic_item = "box_assume_init_into_vec_unsafe"]
-pub fn box_assume_init_into_vec_unsafe<T, const N: usize>(
+pub const fn box_assume_init_into_vec_unsafe<T, const N: usize>(
     b: Box<MaybeUninit<[T; N]>>,
 ) -> crate::vec::Vec<T> {
     unsafe { (b.assume_init() as Box<[T]>).into_vec() }
@@ -305,10 +307,11 @@ impl<T> Box<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "new_uninit", since = "1.82.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[must_use]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
+    pub const fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         // This is the same as `Self::new_uninit_in(Global)`, but manually inlined (just like
         // `Box::new`).
 
@@ -1193,8 +1196,9 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// assert_eq!(*five, 5)
     /// ```
     #[stable(feature = "new_uninit", since = "1.82.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline(always)]
-    pub unsafe fn assume_init(self) -> Box<T, A> {
+    pub const unsafe fn assume_init(self) -> Box<T, A> {
         // This is used in the `vec!` macro, so we optimize for minimal IR generation
         // even in debug builds.
         // SAFETY: `Box<T>` and `Box<MaybeUninit<T>>` have the same layout.
@@ -1660,8 +1664,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
-    pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
+    pub const fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
         let mut b = mem::ManuallyDrop::new(b);
         // We carefully get the raw pointer out in a way that Miri's aliasing model understands what
         // is happening: using the primitive "deref" of `Box`. In case `A` is *not* `Global`, we
