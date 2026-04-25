@@ -185,12 +185,22 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
             };
         }
 
-        // Find the buffer containing the last newline
-        // FIXME: This is overly slow if there are very many bufs and none contain
-        // newlines. e.g. writev() on Linux only writes up to 1024 slices, so
-        // scanning the rest is wasted effort. This makes write_all_vectored()
-        // quadratic.
-        let last_newline_buf_idx = bufs
+        // Find the buffer containing the last newline within the first
+        // MAX_BUFS_TO_SCAN slices. The cap is what keeps write_all_vectored()
+        // from going quadratic when callers pass many newline-free slices --
+        // without it, every iteration of the outer loop rescans every
+        // remaining buffer. 1024 is a portable, generous upper bound: it is
+        // the value of UIO_MAXIOV / IOV_MAX on Linux and the BSDs (and the
+        // hardcoded cap in sys::net::connection::socket::solid), so on those
+        // platforms it also lines up with the most a single writev() can
+        // retire. On platforms whose syscall cap is smaller (POSIX requires
+        // only 16) or that have no cap at all (Windows), the constant still
+        // serves its primary purpose of bounding scan work; newlines past
+        // the cap fall through the buffered path, and the outer loop in
+        // write_all_vectored() preserves correctness everywhere.
+        const MAX_BUFS_TO_SCAN: usize = 1024;
+        let scan = &bufs[..bufs.len().min(MAX_BUFS_TO_SCAN)];
+        let last_newline_buf_idx = scan
             .iter()
             .enumerate()
             .rev()

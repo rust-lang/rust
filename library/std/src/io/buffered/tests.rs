@@ -752,6 +752,58 @@ fn line_vectored_partial_and_errors() {
     }
 }
 
+/// Regression test for the quadratic scan in `LineWriterShim::write_vectored`.
+///
+/// When given a long list of newline-free buffers and a sink that only
+/// retires a few slices per call, the previous implementation rescanned all
+/// remaining buffers on every iteration of `write_all_vectored`, producing
+/// O(N^2) work. The fix caps the scan to a constant prefix; this test
+/// verifies that bytes still come out in order when the only newline lives
+/// past that cap.
+#[test]
+fn line_vectored_long_input_past_scan_cap() {
+    /// Vectored sink that retires at most one non-empty slice per call,
+    /// mimicking a writev() bounded by IOV_MAX.
+    #[derive(Default)]
+    struct OneSliceSink {
+        buffer: Vec<u8>,
+    }
+
+    impl Write for OneSliceSink {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+            for b in bufs {
+                if !b.is_empty() {
+                    self.buffer.extend_from_slice(b);
+                    return Ok(b.len());
+                }
+            }
+            Ok(0)
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+        fn is_write_vectored(&self) -> bool {
+            true
+        }
+    }
+
+    // Place the only newline well past the 1024-slice scan cap.
+    const N: usize = 1500;
+    const NEWLINE_AT: usize = 1400;
+    let bytes: Vec<u8> = (0..N).map(|i| if i == NEWLINE_AT { b'\n' } else { b'a' }).collect();
+    let mut io_slices: Vec<IoSlice<'_>> = bytes.chunks(1).map(IoSlice::new).collect();
+
+    let mut writer = LineWriter::new(OneSliceSink::default());
+    writer.write_all_vectored(&mut io_slices).unwrap();
+    writer.flush().unwrap();
+
+    assert_eq!(writer.get_ref().buffer, bytes);
+}
+
 /// Test that, in cases where vectored writing is not enabled, the
 /// LineWriter uses the normal `write` call, which more-correctly handles
 /// partial lines
