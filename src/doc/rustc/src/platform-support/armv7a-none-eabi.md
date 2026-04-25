@@ -1,7 +1,6 @@
 # `armv7a-none-eabi*` and `thumbv7a-none-eabi*`
 
-* **Tier: 2** (`armv7a-none-eabi` and `armv7a-none-eabihf`)
-* **Tier: 3** (`thumbv7a-none-eabi` and `thumbv7a-none-eabihf`)
+* **Tier: 2**
 * **Library Support:** core and alloc (bare-metal, `#![no_std]`)
 
 Bare-metal target for CPUs in the Armv7-A architecture family, supporting dual
