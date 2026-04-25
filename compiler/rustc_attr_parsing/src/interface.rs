@@ -14,11 +14,13 @@ use rustc_session::lint::LintId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
-use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
+use crate::context::{
+    ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
+};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
-use crate::{Late, OmitDoc, ShouldEmit};
+use crate::{OmitDoc, ShouldEmit};
 
 pub enum EmitAttribute {
     Static(AttributeLintKind),
@@ -344,7 +346,7 @@ impl<'sess> AttributeParser<'sess> {
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-                    if let Some(accept) = Late::parsers().accepters.get(parts.as_slice()) {
+                    if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
                             lower_span(n.item.span()),
@@ -483,7 +485,7 @@ impl<'sess> AttributeParser<'sess> {
             &[sym::cfg_attr],
         ];
 
-        Late::parsers().accepters.contains_key(path)
+        ATTRIBUTE_PARSERS.accepters.contains_key(path)
             || EARLY_PARSED_ATTRIBUTES.contains(&path)
             || SPECIAL_ATTRIBUTES.contains(&path)
     }

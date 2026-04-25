@@ -5,14 +5,13 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
-use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
+use rustc_ast::{AttrStyle, MetaItemLit};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
@@ -67,7 +66,6 @@ use crate::session_diagnostics::{
 };
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeParser, EmitAttribute};
-use crate::context::private::Sealed;
 
 type GroupType = LazyLock<GroupTypeInner>;
 
@@ -90,20 +88,6 @@ pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> Option<Attribut
 macro_rules! attribute_parsers {
     (
         pub(crate) static $name: ident = [$($names: ty),* $(,)?];
-    ) => {
-        mod early {
-            use super::*;
-
-            attribute_parsers!(@[Early] pub(crate) static $name = [$($names),*];);
-        }
-        mod late {
-            use super::*;
-
-            attribute_parsers!(@[Late] pub(crate) static $name = [$($names),*];);
-        }
-    };
-    (
-        @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         pub(crate) static $name: GroupType = LazyLock::new(|| {
             let mut accepters = BTreeMap::<_, GroupTypeInnerAccept>::new();
@@ -338,46 +322,6 @@ attribute_parsers!(
     ];
 );
 
-mod private {
-    pub trait Sealed {}
-    impl Sealed for super::Early {}
-    impl Sealed for super::Late {}
-}
-
-// allow because it's a sealed trait
-#[allow(private_interfaces)]
-pub trait Stage: Sized + 'static + Sealed {
-    type Id: Copy;
-
-    fn parsers() -> &'static GroupType;
-}
-
-// allow because it's a sealed trait
-#[allow(private_interfaces)]
-impl Stage for Early {
-    type Id = NodeId;
-
-    fn parsers() -> &'static GroupType {
-        &early::ATTRIBUTE_PARSERS
-    }
-}
-
-// allow because it's a sealed trait
-#[allow(private_interfaces)]
-impl Stage for Late {
-    type Id = HirId;
-
-    fn parsers() -> &'static GroupType {
-        &late::ATTRIBUTE_PARSERS
-    }
-}
-
-/// Used when parsing attributes for miscellaneous things *before* ast lowering
-pub struct Early;
-
-/// used when parsing attributes during ast lowering
-pub struct Late;
-
 /// Context given to every attribute parser when accepting
 ///
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
@@ -605,8 +549,6 @@ pub struct SharedContext<'p, 'sess> {
     pub(crate) target_span: Span,
     pub(crate) target: rustc_hir::Target,
 
-    /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
-    /// is `Late` and is the ID of the syntactical component this attribute was applied to.
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 }
 
