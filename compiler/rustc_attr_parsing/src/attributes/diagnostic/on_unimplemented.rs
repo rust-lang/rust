@@ -13,12 +13,7 @@ pub(crate) struct OnUnimplementedParser {
 }
 
 impl OnUnimplementedParser {
-    fn parse<'sess, S: Stage>(
-        &mut self,
-        cx: &mut AcceptContext<'_, 'sess, S>,
-        args: &ArgParser,
-        mode: Mode,
-    ) {
+    fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         let span = cx.attr_span;
         self.span = Some(span);
 
@@ -39,8 +34,8 @@ impl OnUnimplementedParser {
     }
 }
 
-impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[
+impl AttributeParser for OnUnimplementedParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[
         (
             &[sym::diagnostic, sym::on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
@@ -59,7 +54,7 @@ impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
     //FIXME attribute is not parsed for non-traits but diagnostics are issued in `check_attr.rs`
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(span) = self.span {
             Some(AttributeKind::OnUnimplemented {
                 span,

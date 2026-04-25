@@ -1,5 +1,4 @@
 use std::convert::identity;
-use std::marker::PhantomData;
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
@@ -19,7 +18,7 @@ use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, 
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
-use crate::{Early, Late, OmitDoc, ShouldEmit};
+use crate::{Late, OmitDoc, ShouldEmit};
 
 pub enum EmitAttribute {
     Static(AttributeLintKind),
@@ -32,11 +31,10 @@ pub enum EmitAttribute {
 
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
-pub struct AttributeParser<'sess, S: Stage = Late> {
+pub struct AttributeParser<'sess> {
     pub(crate) tools: Vec<Symbol>,
     pub(crate) features: Option<&'sess Features>,
     pub(crate) sess: &'sess Session,
-    pub(crate) stage: PhantomData<S>,
     pub(crate) should_emit: ShouldEmit,
 
     /// *Only* parse attributes with this symbol.
@@ -45,7 +43,7 @@ pub struct AttributeParser<'sess, S: Stage = Late> {
     parse_only: Option<&'static [Symbol]>,
 }
 
-impl<'sess> AttributeParser<'sess, Early> {
+impl<'sess> AttributeParser<'sess> {
     /// This method allows you to parse attributes *before* you have access to features or tools.
     /// One example where this is necessary, is to parse `feature` attributes themselves for
     /// example.
@@ -121,8 +119,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
     ) -> Vec<Attribute> {
-        let mut p =
-            Self { features, tools: Vec::new(), parse_only, sess, stage: PhantomData, should_emit };
+        let mut p = Self { features, tools: Vec::new(), parse_only, sess, should_emit };
         p.parse_attribute_list(
             attrs,
             target_span,
@@ -150,7 +147,7 @@ impl<'sess> AttributeParser<'sess, Early> {
         target: Target,
         features: Option<&'sess Features>,
         emit_errors: ShouldEmit,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
         allow_expr_metavar: AllowExprMetavar,
         expected_safety: AttributeSafety,
@@ -206,17 +203,10 @@ impl<'sess> AttributeParser<'sess, Early> {
         features: Option<&'sess Features>,
         should_emit: ShouldEmit,
         args: &I,
-        parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &I) -> T,
+        parse_fn: fn(cx: &mut AcceptContext<'_, '_>, item: &I) -> T,
         template: &AttributeTemplate,
     ) -> T {
-        let mut parser = Self {
-            features,
-            tools: Vec::new(),
-            parse_only: None,
-            sess,
-            stage: PhantomData,
-            should_emit,
-        };
+        let mut parser = Self { features, tools: Vec::new(), parse_only: None, sess, should_emit };
         let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: EmitAttribute| match kind {
             EmitAttribute::Static(kind) => {
                 sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
@@ -234,7 +224,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 &mut emit_lint,
             );
         }
-        let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
+        let mut cx: AcceptContext<'_, 'sess> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
                 target_span,
@@ -252,21 +242,14 @@ impl<'sess> AttributeParser<'sess, Early> {
     }
 }
 
-impl<'sess, S: Stage> AttributeParser<'sess, S> {
+impl<'sess> AttributeParser<'sess> {
     pub fn new(
         sess: &'sess Session,
         features: &'sess Features,
         tools: Vec<Symbol>,
         should_emit: ShouldEmit,
     ) -> Self {
-        Self {
-            features: Some(features),
-            tools,
-            parse_only: None,
-            sess,
-            should_emit,
-            stage: PhantomData,
-        }
+        Self { features: Some(features), tools, parse_only: None, sess, should_emit }
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
@@ -311,7 +294,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
-        let mut finalizers: Vec<FinalizeFn<S>> = Vec::with_capacity(attrs.len());
+        let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -361,7 +344,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-                    if let Some(accept) = S::parsers().accepters.get(parts.as_slice()) {
+                    if let Some(accept) = Late::parsers().accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
                             lower_span(n.item.span()),
@@ -411,7 +394,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             continue;
                         }
 
-                        let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
+                        let mut cx: AcceptContext<'_, 'sess> = AcceptContext {
                             shared: SharedContext {
                                 cx: self,
                                 target_span,

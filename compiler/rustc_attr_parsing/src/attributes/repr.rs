@@ -15,7 +15,7 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 // FIXME(jdonszelmann): is a vec the right representation here even? isn't it just a struct?
 pub(crate) struct ReprParser;
 
-impl<S: Stage> CombineAttributeParser<S> for ReprParser {
+impl CombineAttributeParser for ReprParser {
     type Item = (ReprAttr, Span);
     const PATH: &[Symbol] = &[sym::repr];
     const CONVERT: ConvertFn<Self::Item> =
@@ -27,7 +27,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     );
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let mut reprs = Vec::new();
@@ -98,7 +98,7 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
     }
 }
 
-fn parse_repr<S: Stage>(cx: &AcceptContext<'_, '_, S>, param: &MetaItemParser) -> Option<ReprAttr> {
+fn parse_repr(cx: &AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<ReprAttr> {
     use ReprAttr::*;
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
@@ -187,8 +187,8 @@ enum AlignKind {
     Align,
 }
 
-fn parse_repr_align<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+fn parse_repr_align(
+    cx: &AcceptContext<'_, '_>,
     list: &MetaItemListParser,
     param_span: Span,
     align_kind: AlignKind,
@@ -248,10 +248,7 @@ fn parse_repr_align<S: Stage>(
     }
 }
 
-fn parse_alignment<S: Stage>(
-    node: &LitKind,
-    cx: &AcceptContext<'_, '_, S>,
-) -> Result<Align, String> {
+fn parse_alignment(node: &LitKind, cx: &AcceptContext<'_, '_>) -> Result<Align, String> {
     let LitKind::Int(literal, LitIntType::Unsuffixed) = node else {
         return Err("not an unsuffixed integer".to_string());
     };
@@ -287,7 +284,7 @@ impl RustcAlignParser {
     const PATH: &[Symbol] = &[sym::rustc_align];
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
-    fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
+    fn parse(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         match args {
             ArgParser::NoArgs | ArgParser::NameValue(_) => {
                 let attr_span = cx.attr_span;
@@ -320,8 +317,8 @@ impl RustcAlignParser {
     }
 }
 
-impl<S: Stage> AttributeParser<S> for RustcAlignParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+impl AttributeParser for RustcAlignParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -331,7 +328,7 @@ impl<S: Stage> AttributeParser<S> for RustcAlignParser {
         Allow(Target::ForeignFn),
     ]);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         let (align, span) = self.0?;
         Some(AttributeKind::RustcAlign { align, span })
     }
@@ -344,17 +341,17 @@ impl RustcAlignStaticParser {
     const PATH: &[Symbol] = &[sym::rustc_align_static];
     const TEMPLATE: AttributeTemplate = RustcAlignParser::TEMPLATE;
 
-    fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
+    fn parse(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         self.0.parse(cx, args)
     }
 }
 
-impl<S: Stage> AttributeParser<S> for RustcAlignStaticParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+impl AttributeParser for RustcAlignStaticParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         let (align, span) = self.0.0?;
         Some(AttributeKind::RustcAlign { align, span })
     }

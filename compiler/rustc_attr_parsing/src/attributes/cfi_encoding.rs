@@ -1,6 +1,6 @@
 use super::prelude::*;
 pub(crate) struct CfiEncodingParser;
-impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
+impl SingleAttributeParser for CfiEncodingParser {
     const PATH: &[Symbol] = &[sym::cfi_encoding];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Struct),
@@ -10,7 +10,7 @@ impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "encoding");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(name_value) = args.name_value() else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, Some(sym::cfi_encoding));

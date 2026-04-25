@@ -15,7 +15,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    AttributeParser, AttributeSafety, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit,
+    AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
     eval_config_entry, parse_cfg, validate_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -2296,7 +2296,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     crate::errors::MacroCallUnusedDocComment { span: attr.span },
                 );
             } else if rustc_attr_parsing::is_builtin_attr(attr)
-                && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
+                && !AttributeParser::is_parsed_attribute(&attr.path())
             {
                 let attr_name = attr.name().unwrap();
                 self.cx.sess.psess.buffer_lint(

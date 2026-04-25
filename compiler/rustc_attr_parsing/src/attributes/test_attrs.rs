@@ -5,9 +5,9 @@ use super::prelude::*;
 
 pub(crate) struct IgnoreParser;
 
-impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
+impl SingleAttributeParser for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(
@@ -15,7 +15,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::Ignore {
             span: cx.attr_span,
             reason: match args {
@@ -46,9 +46,9 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
 
 pub(crate) struct ShouldPanicParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
+impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
     const TEMPLATE: AttributeTemplate = template!(
@@ -56,7 +56,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
             span: cx.attr_span,
             reason: match args {
@@ -98,12 +98,12 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
 
 pub(crate) struct ReexportTestHarnessMainParser;
 
-impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
+impl SingleAttributeParser for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             let inner_span = cx.inner_span;
             cx.adcx().expected_name_value(
@@ -124,7 +124,7 @@ impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
 
 pub(crate) struct RustcAbiParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
+impl SingleAttributeParser for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -137,7 +137,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(args) = args.as_list() else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_specific_argument_and_list(attr_span, &[sym::assert_eq, sym::debug]);
@@ -169,7 +169,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
 
 pub(crate) struct RustcDelayedBugFromInsideQueryParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser {
+impl NoArgsAttributeParser for RustcDelayedBugFromInsideQueryParser {
     const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
@@ -177,7 +177,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser
 
 pub(crate) struct RustcEvaluateWhereClausesParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
+impl NoArgsAttributeParser for RustcEvaluateWhereClausesParser {
     const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -191,12 +191,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
 
 pub(crate) struct TestRunnerParser;
 
-impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
+impl SingleAttributeParser for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let Some(meta) = single.meta_item() else {
@@ -210,7 +210,7 @@ impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
 
 pub(crate) struct RustcTestMarkerParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
+impl SingleAttributeParser for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Const),
@@ -219,7 +219,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "test_path");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(name_value) = args.name_value() else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, Some(sym::rustc_test_marker));

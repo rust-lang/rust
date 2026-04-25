@@ -6,10 +6,9 @@ use rustc_session::lint::builtin::UNSAFE_ATTR_OUTSIDE_UNSAFE;
 use rustc_span::Span;
 
 use crate::attributes::AttributeSafety;
-use crate::context::Stage;
 use crate::{AttributeParser, EmitAttribute, ShouldEmit, errors};
 
-impl<'sess, S: Stage> AttributeParser<'sess, S> {
+impl<'sess> AttributeParser<'sess> {
     pub fn check_attribute_safety(
         &mut self,
         attr_path: &AttrPath,

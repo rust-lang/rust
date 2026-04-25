@@ -12,8 +12,8 @@ pub(crate) struct OnUnmatchArgsParser {
     directive: Option<(Span, Directive)>,
 }
 
-impl<S: Stage> AttributeParser<S> for OnUnmatchArgsParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+impl AttributeParser for OnUnmatchArgsParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_unmatch_args],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
@@ -45,7 +45,7 @@ impl<S: Stage> AttributeParser<S> for OnUnmatchArgsParser {
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(span) = self.span {
             Some(AttributeKind::OnUnmatchArgs {
                 span,

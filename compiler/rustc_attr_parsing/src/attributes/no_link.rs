@@ -1,9 +1,9 @@
 use super::prelude::*;
 
 pub(crate) struct NoLinkParser;
-impl<S: Stage> NoArgsAttributeParser<S> for NoLinkParser {
+impl NoArgsAttributeParser for NoLinkParser {
     const PATH: &[Symbol] = &[sym::no_link];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::ExternCrate),
         Warn(Target::Field),
