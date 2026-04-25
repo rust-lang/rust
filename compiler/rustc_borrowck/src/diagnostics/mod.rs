@@ -602,8 +602,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
             BorrowedContentSource::DerefMutableRef
-        } else {
+        } else if base_ty.is_ref() {
             BorrowedContentSource::DerefSharedRef
+        } else {
+            // Custom type implementing `Deref` (e.g. `MyBox<T>`, `Rc<T>`, `Arc<T>`)
+            // that wasn't detected via the MIR init trace above. This can happen
+            // when the deref base is initialized by a regular statement rather than
+            // a `TerminatorKind::Call` with `CallSource::OverloadedOperator`.
+            BorrowedContentSource::OverloadedDeref(base_ty)
         }
     }
 
@@ -1002,6 +1008,14 @@ struct CapturedMessageOpt {
     maybe_reinitialized_locations_is_empty: bool,
 }
 
+/// Tracks whether [`MirBorrowckCtxt::explain_captures`] emitted a clone
+/// suggestion, so callers can avoid emitting redundant suggestions downstream.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub(super) enum CloneSuggestion {
+    Emitted,
+    NotEmitted,
+}
+
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Finds the spans associated to a move or copy of move_place at location.
     pub(super) fn move_spans(
@@ -1226,7 +1240,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         move_spans: UseSpans<'tcx>,
         moved_place: Place<'tcx>,
         msg_opt: CapturedMessageOpt,
-    ) {
+    ) -> CloneSuggestion {
         let CapturedMessageOpt {
             is_partial_move: is_partial,
             is_loop_message,
@@ -1235,6 +1249,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             has_suggest_reborrow,
             maybe_reinitialized_locations_is_empty,
         } = msg_opt;
+        let mut suggested_cloning = false;
         if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } = move_spans {
             let place_name = self
                 .describe_place(moved_place.as_ref())
@@ -1461,10 +1476,26 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             has_sugg = true;
                         }
                         if let Some(clone_trait) = tcx.lang_items().clone_trait() {
-                            let sugg = if moved_place
+                            // Check whether the deref is from a custom Deref impl
+                            // (e.g. Rc, Box) or a built-in reference deref.
+                            // For built-in derefs with Clone fully satisfied, we skip
+                            // the UFCS suggestion here and let `suggest_cloning`
+                            // downstream emit a simpler `.clone()` suggestion instead.
+                            let has_overloaded_deref =
+                                moved_place.iter_projections().any(|(place, elem)| {
+                                    matches!(elem, ProjectionElem::Deref)
+                                        && matches!(
+                                            self.borrowed_content_source(place),
+                                            BorrowedContentSource::OverloadedDeref(_)
+                                                | BorrowedContentSource::OverloadedIndex(_)
+                                        )
+                                });
+
+                            let has_deref = moved_place
                                 .iter_projections()
-                                .any(|(_, elem)| matches!(elem, ProjectionElem::Deref))
-                            {
+                                .any(|(_, elem)| matches!(elem, ProjectionElem::Deref));
+
+                            let sugg = if has_deref {
                                 let (start, end) = if let Some(expr) = self.find_expr(move_span)
                                     && let Some(_) = self.clone_on_reference(expr)
                                     && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
@@ -1490,43 +1521,58 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 self.infcx.param_env,
                             ) && !has_sugg
                             {
-                                let msg = match &errors[..] {
-                                    [] => "you can `clone` the value and consume it, but this \
-                                           might not be your desired behavior"
-                                        .to_string(),
-                                    [error] => {
-                                        format!(
-                                            "you could `clone` the value and consume it, if the \
-                                             `{}` trait bound could be satisfied",
-                                            error.obligation.predicate,
-                                        )
-                                    }
-                                    _ => {
-                                        format!(
-                                            "you could `clone` the value and consume it, if the \
-                                             following trait bounds could be satisfied: {}",
-                                            listify(&errors, |e: &FulfillmentError<'tcx>| format!(
-                                                "`{}`",
-                                                e.obligation.predicate
-                                            ))
-                                            .unwrap(),
-                                        )
-                                    }
-                                };
-                                err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
-                                for error in errors {
-                                    if let FulfillmentErrorCode::Select(
-                                        SelectionError::Unimplemented,
-                                    ) = error.code
-                                        && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                                            pred,
-                                        )) = error.obligation.predicate.kind().skip_binder()
-                                    {
-                                        self.infcx.err_ctxt().suggest_derive(
-                                            &error.obligation,
-                                            err,
-                                            error.obligation.predicate.kind().rebind(pred),
-                                        );
+                                let skip_for_simple_clone =
+                                    has_deref && !has_overloaded_deref && errors.is_empty();
+                                if !skip_for_simple_clone {
+                                    let msg = match &errors[..] {
+                                        [] => "you can `clone` the value and consume it, but \
+                                               this might not be your desired behavior"
+                                            .to_string(),
+                                        [error] => {
+                                            format!(
+                                                "you could `clone` the value and consume it, if \
+                                                 the `{}` trait bound could be satisfied",
+                                                error.obligation.predicate,
+                                            )
+                                        }
+                                        _ => {
+                                            format!(
+                                                "you could `clone` the value and consume it, if \
+                                                 the following trait bounds could be satisfied: \
+                                                 {}",
+                                                listify(
+                                                    &errors,
+                                                    |e: &FulfillmentError<'tcx>| format!(
+                                                        "`{}`",
+                                                        e.obligation.predicate
+                                                    )
+                                                )
+                                                .unwrap(),
+                                            )
+                                        }
+                                    };
+                                    err.multipart_suggestion(
+                                        msg,
+                                        sugg,
+                                        Applicability::MaybeIncorrect,
+                                    );
+
+                                    suggested_cloning = errors.is_empty();
+
+                                    for error in errors {
+                                        if let FulfillmentErrorCode::Select(
+                                            SelectionError::Unimplemented,
+                                        ) = error.code
+                                            && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(
+                                                pred,
+                                            )) = error.obligation.predicate.kind().skip_binder()
+                                        {
+                                            self.infcx.err_ctxt().suggest_derive(
+                                                &error.obligation,
+                                                err,
+                                                error.obligation.predicate.kind().rebind(pred),
+                                            );
+                                        }
                                     }
                                 }
                             }
@@ -1558,6 +1604,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 })
             }
         }
+        if suggested_cloning { CloneSuggestion::Emitted } else { CloneSuggestion::NotEmitted }
     }
 
     /// Skip over locals that begin with an underscore or have no name
