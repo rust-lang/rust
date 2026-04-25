@@ -287,6 +287,16 @@ fn main() {
         cfg.flag(&*flag);
     }
 
+    // When linking a shared (dylib) LLVM on MSVC, the LLVM build itself is compiled with
+    // `/Zc:dllexportInlines-` (see llvm-project's AddLLVM.cmake) so that inline class members
+    // are *not* dllexport'ed (to stay under the 64k export-symbol limit). The consumer must
+    // match that flag, otherwise it emits `__imp_` references for those inline members (e.g.
+    // `Module::setTargetTriple`, `Function::getAttributes`) that the DLL intentionally does not
+    // export, breaking the link. With the flag, the in-header inline bodies are used directly.
+    if target.contains("msvc") && tracked_env_var_os("LLVM_LINK_SHARED").is_some() {
+        cfg.flag("/Zc:dllexportInlines-");
+    }
+
     // Remap ci-llvm include paths in debug info for reproducible builds.
     if let Some(maps) = tracked_env_var_os("RUSTC_DEBUGINFO_MAP")
         && let Some(maps_str) = maps.to_str()
