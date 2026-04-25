@@ -12,7 +12,7 @@ use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{HashStableContext, Ident, Span, Symbol, sym};
+use rustc_span::{HashStableContext, Ident, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -651,9 +651,6 @@ pub enum DeprecatedSinceKind {
     InFuture,
     InVersion(String),
 }
-
-#[derive(Debug)]
-pub enum AttributeLintKind {}
 
 pub type RegisteredTools = FxIndexSet<Ident>;
 

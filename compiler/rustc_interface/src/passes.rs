@@ -24,12 +24,9 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
-use rustc_hir::lints::DelayedLint;
 use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{
-    BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
-};
+use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -1052,32 +1049,16 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
             for lint in delayed_lints {
-                match lint {
-                    DelayedLint::AttributeParsing(attribute_lint) => {
-                        tcx.emit_node_span_lint(
-                            attribute_lint.lint_id.lint,
-                            attribute_lint.id,
-                            attribute_lint.span.clone(),
-                            DecorateAttrLint {
-                                sess: tcx.sess,
-                                tcx: Some(tcx),
-                                diagnostic: &attribute_lint.kind,
-                            },
-                        );
-                    }
-                    DelayedLint::Dynamic(attribute_lint) => {
-                        let info = rustc_session::SessionAndCrateName {
-                            sess: tcx.sess,
-                            crate_name: Some(&move |crate_num: CrateNum| tcx.crate_name(crate_num)),
-                        };
-                        tcx.emit_node_span_lint(
-                            attribute_lint.lint_id.lint,
-                            attribute_lint.id,
-                            attribute_lint.span.clone(),
-                            DiagCallback { callback: &attribute_lint.callback, info },
-                        );
-                    }
-                }
+                let info = rustc_session::SessionAndCrateName {
+                    sess: tcx.sess,
+                    crate_name: Some(&move |crate_num: CrateNum| tcx.crate_name(crate_num)),
+                };
+                tcx.emit_node_span_lint(
+                    lint.lint_id.lint,
+                    lint.id,
+                    lint.span.clone(),
+                    DiagCallback { callback: &lint.callback, info },
+                );
             }
         }
     }

@@ -478,7 +478,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         callback: F,
         span: impl Into<MultiSpan>,
     ) {
-        self.emit_lint_inner(lint, EmitAttribute::Dynamic(Box::new(callback)), span);
+        self.emit_lint_inner(lint, EmitAttribute(Box::new(callback)), span);
     }
 
     fn emit_lint_inner(

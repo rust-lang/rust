@@ -611,7 +611,7 @@ fn make_format_args(
                 span: Some(arg_name.span.into()),
                 node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
-                diagnostic: DecorateDiagCompat::Dynamic(Box::new(move |dcx, level, sess| {
+                diagnostic: DecorateDiagCompat(Box::new(move |dcx, level, sess| {
                     let (suggestion, name) =
                         if let Some(positional_arg_to_replace) = position_sp_to_replace {
                             let mut name = arg_name.name.to_string();

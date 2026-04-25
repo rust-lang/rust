@@ -7,7 +7,7 @@
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
+use rustc_errors::{BufferedEarlyLint, LintBuffer};
 use rustc_feature::Features;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
@@ -15,9 +15,9 @@ use rustc_session::lint::LintPass;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
+use crate::DiagAndSess;
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
-use crate::{DecorateAttrLint, DiagAndSess};
 
 pub(super) mod diagnostics;
 
@@ -37,26 +37,11 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
-            match diagnostic {
-                DecorateDiagCompat::Builtin(b) => {
-                    self.context.opt_span_lint(
-                        lint_id.lint,
-                        span,
-                        DecorateAttrLint {
-                            sess: self.context.sess(),
-                            tcx: self.tcx,
-                            diagnostic: &b,
-                        },
-                    );
-                }
-                DecorateDiagCompat::Dynamic(callback) => {
-                    self.context.opt_span_lint(
-                        lint_id.lint,
-                        span,
-                        DiagAndSess { callback, sess: self.context.sess(), tcx: self.tcx },
-                    );
-                }
-            }
+            self.context.opt_span_lint(
+                lint_id.lint,
+                span,
+                DiagAndSess { callback: diagnostic.0, sess: self.context.sess(), tcx: self.tcx },
+            );
         }
     }
 

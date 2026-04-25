@@ -344,7 +344,7 @@ impl ParseSess {
             lint,
             Some(span.into()),
             node_id,
-            DecorateDiagCompat::Dynamic(Box::new(|dcx, level, _| callback(dcx, level))),
+            DecorateDiagCompat(Box::new(|dcx, level, _| callback(dcx, level))),
         )
     }
 
@@ -364,7 +364,7 @@ impl ParseSess {
             lint,
             Some(span.into()),
             node_id,
-            DecorateDiagCompat::Dynamic(Box::new(|dcx, level, sess| {
+            DecorateDiagCompat(Box::new(|dcx, level, sess| {
                 let sess = sess
                     .downcast_ref::<SessionAndCrateName<'_>>()
                     .expect("expected a `SessionAndCrateName`");
