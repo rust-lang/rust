@@ -5,10 +5,10 @@ LL | use crate::both::private::S;
    |                           ^ private struct import
    |
 note: the struct import `S` is defined here...
-  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:8:24
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
    |
-LL |         pub(super) use crate::m::*;
-   |                        ^^^^^^^^^^^
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
 note: ...and refers to the struct `S` which is defined here
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:2:5
    |
@@ -27,10 +27,10 @@ LL |     use crate::both::private::S;
    |                               ^ private struct import
    |
 note: the struct import `S` is defined here...
-  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:8:24
+  --> $DIR/ambiguous-import-visibility-globglob-priv.rs:7:13
    |
-LL |         pub(super) use crate::m::*;
-   |                        ^^^^^^^^^^^
+LL |         use crate::m::*;
+   |             ^^^^^^^^^^^
 note: ...and refers to the struct `S` which is defined here
   --> $DIR/ambiguous-import-visibility-globglob-priv.rs:2:5
    |

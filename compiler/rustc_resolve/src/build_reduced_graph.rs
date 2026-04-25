@@ -93,7 +93,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity: CmCell::new(ambiguity),
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
             warn_ambiguity: CmCell::new(true),
-            vis: CmCell::new(vis),
+            initial_vis: vis,
+            ambiguity_vis_max: CmCell::new(None),
+            ambiguity_vis_min: CmCell::new(None),
             span,
             expansion,
             parent_module: Some(parent.to_module()),

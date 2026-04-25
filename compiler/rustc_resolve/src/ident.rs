@@ -490,6 +490,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             }
                             Some(Finalize { import, .. }) => import,
                         };
+                        this.get_mut().maybe_push_glob_vs_glob_vis_ambiguity(
+                            ident,
+                            orig_ident_span,
+                            decl,
+                            import,
+                        );
 
                         if let Some(&(innermost_decl, _)) = innermost_results.first() {
                             // Found another solution, if the first one was "weak", report an error.
@@ -777,6 +783,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         ret.map_err(ControlFlow::Continue)
+    }
+
+    fn maybe_push_glob_vs_glob_vis_ambiguity(
+        &mut self,
+        ident: IdentKey,
+        orig_ident_span: Span,
+        decl: Decl<'ra>,
+        import: Option<ImportSummary>,
+    ) {
+        let Some(import) = import else { return };
+        let vis1 = self.import_decl_vis(decl, import);
+        let vis2 = self.import_decl_vis_ext(decl, import, true);
+        if vis1 != vis2 {
+            self.ambiguity_errors.push(AmbiguityError {
+                kind: AmbiguityKind::GlobVsGlob,
+                ambig_vis: Some((vis1, vis2)),
+                ident: ident.orig(orig_ident_span),
+                b1: decl.ambiguity_vis_max.get().unwrap_or(decl),
+                b2: decl.ambiguity_vis_min.get().unwrap_or(decl),
+                scope1: Scope::ModuleGlobs(decl.parent_module.unwrap(), None),
+                scope2: Scope::ModuleGlobs(decl.parent_module.unwrap(), None),
+                warning: Some(AmbiguityWarning::GlobImport),
+            });
+        }
     }
 
     fn maybe_push_ambiguity(
