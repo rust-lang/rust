@@ -834,7 +834,8 @@ fn test_timeout_zero_duration() {
 fn linger() {
     let addr = next_test_ip4();
     let _listener = t!(TcpListener::bind(&addr));
-    let stream = t!(TcpStream::connect(&addr));
+
+    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
 
     assert_eq!(None, t!(stream.linger()));
     t!(stream.set_linger(Some(Duration::from_secs(1))));
@@ -849,8 +850,7 @@ fn linger() {
 fn keepalive() {
     let addr = next_test_ip4();
     let _listener = t!(TcpListener::bind(&addr));
-
-    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let stream = t!(TcpStream::connect(&addr));
 
     assert_eq!(false, t!(stream.keepalive()));
     t!(stream.set_keepalive(true));
