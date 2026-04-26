@@ -1,6 +1,5 @@
 //@ aux-build: external-impl-restriction.rs
 #![feature(impl_restriction)]
-#![expect(incomplete_features)]
 
 extern crate external_impl_restriction as external;
 
