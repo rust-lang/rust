@@ -218,10 +218,11 @@ impl FormatString {
 /// ```
 #[derive(Debug)]
 pub struct FormatArgs {
+    /// The name of the item the attribute is on.
     pub this: String,
-    pub this_sugared: String,
-    pub item_context: &'static str,
-    pub generic_args: Vec<(Symbol, String)>,
+    pub this_sugared: String = String::new(),
+    pub item_context: &'static str = "",
+    pub generic_args: Vec<(Symbol, String)> = Vec::new(),
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
