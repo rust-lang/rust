@@ -342,6 +342,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             return;
         }
 
+        #[expect(rustc::bad_opt_access, reason = "We explicitly handle #![crate_name] below")]
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {

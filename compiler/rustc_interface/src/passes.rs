@@ -1345,6 +1345,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> CrateNa
 
     let validate = |name, span| CrateName::from_normalized(sess, name, span);
 
+    #[expect(rustc::bad_opt_access, reason = "Can't use crate_name(). We are crate_name().")]
     if let Some(crate_name) = &sess.opts.crate_name {
         let crate_name = Symbol::intern(crate_name);
         if let Some((attr_crate_name, span)) = attr_crate_name

@@ -1429,10 +1429,14 @@ impl<'tcx> TyCtxtAt<'tcx> {
 
 /// Operations on the crate name.
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn local_crate_name(self) -> Symbol {
+        self.crate_name(LOCAL_CRATE)
+    }
+
     /// Check if this crate is a Cargo build script.
     /// Should only be used for diagnostics.
     pub fn is_build_script(self) -> bool {
-        self.crate_name(LOCAL_CRATE) == sym::build_script_build && was_invoked_from_cargo()
+        self.local_crate_name() == sym::build_script_build && was_invoked_from_cargo()
     }
 }
 

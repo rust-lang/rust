@@ -17,6 +17,6 @@ pub fn access_bad_option(sess: Session) {
     let _ = sess.opts.crate_types;
     //~^ ERROR use `TyCtxt::crate_types` instead of this field
 
-    let _ = sess.opts.crate_name;
+    let _ = sess.opts.prints;
     // okay!
 }

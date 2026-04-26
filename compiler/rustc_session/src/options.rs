@@ -337,6 +337,7 @@ top_level_options!(
         prints: Vec<PrintRequest> [UNTRACKED],
         cg: CodegenOptions [SUBSTRUCT] { TARGET_MODIFIER: CodegenOptions(CodegenOptionsTargetModifiers) },
         externs: Externs [UNTRACKED],
+        #[rustc_lint_opt_deny_field_access("use `tcx.local_crate_name()` instead of this field")]
         crate_name: Option<String> [TRACKED],
         /// Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
