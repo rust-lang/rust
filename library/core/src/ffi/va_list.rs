@@ -333,7 +333,7 @@ mod sealed {
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
 #[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe: sealed::Sealed {}
+pub unsafe trait VaArgSafe: Copy + sealed::Sealed {}
 
 crate::cfg_select! {
     any(target_arch = "avr", target_arch = "msp430") => {
