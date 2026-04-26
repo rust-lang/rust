@@ -13,7 +13,6 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
-use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::{CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
@@ -1187,10 +1186,7 @@ pub trait ResolverExpand<'tcx> {
 pub trait LintStoreExpand {
     fn pre_expansion_lint(
         &self,
-        sess: &Session,
         tcx: TyCtxt<'_>,
-        features: &Features,
-        registered_tools: &RegisteredTools,
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[Box<Item>],

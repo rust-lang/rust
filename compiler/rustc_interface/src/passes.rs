@@ -16,7 +16,6 @@ use rustc_data_structures::thousands;
 use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
-use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
@@ -31,7 +30,7 @@ use rustc_lint::{
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
@@ -86,29 +85,24 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
 }
 
 fn pre_expansion_lint<'a>(
-    sess: &Session,
     tcx: TyCtxt<'_>,
-    features: &Features,
     lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
     check_node: impl EarlyCheckNode<'a>,
     node_name: Symbol,
 ) {
-    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str()).run(
-        || {
+    tcx.sess
+        .prof
+        .generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str())
+        .run(|| {
             rustc_lint::check_ast_node(
-                sess,
                 tcx,
-                features,
                 true,
                 lint_store,
-                registered_tools,
                 None,
                 rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
                 check_node,
             );
-        },
-    );
+        });
 }
 
 // Cannot implement directly for `LintStore` due to trait coherence.
@@ -117,24 +111,13 @@ struct LintStoreExpandImpl<'a>(&'a LintStore);
 impl LintStoreExpand for LintStoreExpandImpl<'_> {
     fn pre_expansion_lint(
         &self,
-        sess: &Session,
         tcx: TyCtxt<'_>,
-        features: &Features,
-        registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(
-            sess,
-            tcx,
-            features,
-            self.0,
-            registered_tools,
-            (node_id, attrs, items),
-            name,
-        );
+        pre_expansion_lint(tcx, self.0, (node_id, attrs, items), name);
     }
 }
 
@@ -154,15 +137,7 @@ fn configure_and_expand(
     let lint_store = unerased_lint_store(tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
-    pre_expansion_lint(
-        sess,
-        tcx,
-        features,
-        lint_store,
-        tcx.registered_tools(()),
-        lint_check_node,
-        crate_name,
-    );
+    pre_expansion_lint(tcx, lint_store, lint_check_node, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     let num_standard_library_imports = sess.time("crate_injection", || {
@@ -480,12 +455,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
-        sess,
         tcx,
-        tcx.features(),
         false,
         lint_store,
-        tcx.registered_tools(()),
         Some(lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
@@ -1049,11 +1021,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             attribute_lint.lint_id.lint,
                             attribute_lint.id,
                             attribute_lint.span.clone(),
-                            DecorateAttrLint {
-                                sess: tcx.sess,
-                                tcx,
-                                diagnostic: &attribute_lint.kind,
-                            },
+                            DecorateAttrLint { tcx, diagnostic: &attribute_lint.kind },
                         );
                     }
                     DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(

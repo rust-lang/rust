@@ -8,9 +8,7 @@ use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, AttrVec, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
-use rustc_feature::Features;
-use rustc_middle::ty::{RegisteredTools, TyCtxt};
-use rustc_session::Session;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::LintPass;
 use rustc_span::{Ident, Span};
 use tracing::debug;
@@ -42,11 +40,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
                     self.context.opt_span_lint(
                         lint_id.lint,
                         span,
-                        DecorateAttrLint {
-                            sess: self.context.sess(),
-                            tcx: self.tcx,
-                            diagnostic: &b,
-                        },
+                        DecorateAttrLint { tcx: self.tcx, diagnostic: &b },
                     );
                 }
                 DecorateDiagCompat::Dynamic(callback) => {
@@ -328,22 +322,19 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [Box<ast
 }
 
 pub fn check_ast_node<'a>(
-    sess: &Session,
     tcx: TyCtxt<'_>,
-    features: &Features,
     pre_expansion: bool,
     lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
     let context = EarlyContext::new(
-        sess,
-        features,
+        tcx.sess,
+        tcx.features(),
         !pre_expansion,
         lint_store,
-        registered_tools,
+        tcx.registered_tools(()),
         lint_buffer.unwrap_or_default(),
     );
 
@@ -353,17 +344,16 @@ pub fn check_ast_node<'a>(
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
     if passes.is_empty() {
-        check_ast_node_inner(sess, tcx, check_node, context, builtin_lints);
+        check_ast_node_inner(tcx, check_node, context, builtin_lints);
     } else {
         let mut passes: Vec<_> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
         passes.push(Box::new(builtin_lints));
         let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
-        check_ast_node_inner(sess, tcx, check_node, context, pass);
+        check_ast_node_inner(tcx, check_node, context, pass);
     }
 }
 
 fn check_ast_node_inner<'a, T: EarlyLintPass>(
-    sess: &Session,
     tcx: TyCtxt<'_>,
     check_node: impl EarlyCheckNode<'a>,
     context: EarlyContext<'_>,
@@ -379,7 +369,7 @@ fn check_ast_node_inner<'a, T: EarlyLintPass>(
     for (id, lints) in cx.context.buffered.map {
         if !lints.is_empty() {
             assert!(
-                sess.dcx().has_errors().is_some(),
+                tcx.sess.dcx().has_errors().is_some(),
                 "failed to process buffered lint here (dummy = {})",
                 id == ast::DUMMY_NODE_ID
             );

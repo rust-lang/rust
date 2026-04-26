@@ -62,7 +62,7 @@ fn to_check_cfg_arg(name: Ident, value: Option<Symbol>, quotes: EscapeQuotes) ->
 }
 
 fn cargo_help_sub(
-    sess: &Session,
+    tcx: TyCtxt<'_>,
     inst: &impl Fn(EscapeQuotes) -> String,
 ) -> lints::UnexpectedCfgCargoHelp {
     // We don't want to suggest the `build.rs` way to expected cfgs if we are already in a
@@ -70,7 +70,7 @@ fn cargo_help_sub(
     // `build_script_build`) to try to figure out if we are building a Cargo build script
 
     let unescaped = &inst(EscapeQuotes::No);
-    if let Some("build_script_build") = sess.opts.crate_name.as_deref() {
+    if let Some("build_script_build") = tcx.sess.opts.crate_name.as_deref() {
         lints::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
     } else {
         lints::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
@@ -106,11 +106,12 @@ fn cargo_macro_help(tcx: TyCtxt<'_>, span: Span) -> Option<lints::UnexpectedCfgC
 }
 
 pub(super) fn unexpected_cfg_name(
-    sess: &Session,
     tcx: TyCtxt<'_>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> lints::UnexpectedCfgName {
+    let sess = tcx.sess;
+
     #[allow(rustc::potential_query_instability)]
     let possibilities: Vec<Symbol> = sess.psess.check_config.expecteds.keys().copied().collect();
 
@@ -268,7 +269,7 @@ pub(super) fn unexpected_cfg_name(
 
     let invocation_help = if is_from_cargo {
         let help = if !is_feature_cfg && !is_from_external_macro {
-            Some(cargo_help_sub(sess, &inst))
+            Some(cargo_help_sub(tcx, &inst))
         } else {
             None
         };
@@ -288,11 +289,12 @@ pub(super) fn unexpected_cfg_name(
 }
 
 pub(super) fn unexpected_cfg_value(
-    sess: &Session,
     tcx: TyCtxt<'_>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> lints::UnexpectedCfgValue {
+    let sess = tcx.sess;
+
     let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name) else {
         bug!(
             "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
@@ -406,7 +408,7 @@ pub(super) fn unexpected_cfg_value(
                 Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
         } else if can_suggest_adding_value && !is_from_external_macro {
-            Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
+            Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(tcx, &inst)))
         } else {
             None
         };

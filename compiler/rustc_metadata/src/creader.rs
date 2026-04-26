@@ -771,7 +771,7 @@ impl CStore {
                         CrateOrigin::Extern,
                     )
                     .is_err();
-                err.report(tcx.sess, span, missing_core);
+                err.report(tcx, span, missing_core);
                 None
             }
         }
