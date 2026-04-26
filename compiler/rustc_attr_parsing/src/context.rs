@@ -84,8 +84,7 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
 
 pub(crate) type AcceptFn<S> =
     Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess, S>, &ArgParser) + Send + Sync>;
-pub(crate) type FinalizeFn<S> =
-    Box<dyn Send + Sync + Fn(&mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>>;
+pub(crate) type FinalizeFn<S> = fn(&mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>;
 
 macro_rules! attribute_parsers {
     (
@@ -131,10 +130,10 @@ macro_rules! attribute_parsers {
                                     }),
                                     safety: <$names as crate::attributes::AttributeParser<$stage>>::SAFETY,
                                     allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
-                                    finalizer: Box::new(|cx| {
+                                    finalizer: |cx| {
                                         let state = STATE_OBJECT.take();
                                         state.finalize(cx)
-                                    })
+                                    }
                                 });
                             }
                             Entry::Occupied(_) => panic!("Attribute {path:?} has multiple accepters"),
