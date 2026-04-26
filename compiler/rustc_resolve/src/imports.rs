@@ -886,12 +886,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 let args = FormatArgs {
                     this,
-                    // Unused
-                    this_sugared: String::new(),
-                    // Unused
-                    item_context: "",
-                    // Unused
-                    generic_args: Vec::new(),
+                    ..
                 };
                 let CustomDiagnostic { message, label, notes, .. } = directive.eval(None, &args);
 
