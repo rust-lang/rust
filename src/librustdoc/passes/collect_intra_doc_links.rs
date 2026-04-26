@@ -1126,7 +1126,7 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
+            let Attribute::Parsed(AttributeKind::Deprecated { deprecation }) =
                 attr
             else {
                 continue;
@@ -1144,7 +1144,7 @@ impl LinkCollector<'_, '_> {
             // inlined item.
             // <https://github.com/rust-lang/rust/pull/151120>
             let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id
-                && find_attr!(tcx, inline_stmt_id, Deprecated { span, ..} if span == depr_span)
+                && find_attr!(tcx, inline_stmt_id, Deprecated { ..})
             {
                 inline_stmt_id.to_def_id()
             } else {
