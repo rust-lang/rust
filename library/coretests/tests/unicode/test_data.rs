@@ -639,6 +639,16 @@ pub(super) static CN_PLANES_0_3: &[RangeInclusive<char>; 730] = &[
 ];
 
 #[rustfmt::skip]
+pub(super) static DEFAULT_IGNORABLE_CODE_POINT: &[RangeInclusive<char>; 17] = &[
+    '\u{ad}'..='\u{ad}', '\u{34f}'..='\u{34f}', '\u{61c}'..='\u{61c}', '\u{115f}'..='\u{1160}',
+    '\u{17b4}'..='\u{17b5}', '\u{180b}'..='\u{180f}', '\u{200b}'..='\u{200f}',
+    '\u{202a}'..='\u{202e}', '\u{2060}'..='\u{206f}', '\u{3164}'..='\u{3164}',
+    '\u{fe00}'..='\u{fe0f}', '\u{feff}'..='\u{feff}', '\u{ffa0}'..='\u{ffa0}',
+    '\u{fff0}'..='\u{fff8}', '\u{1bca0}'..='\u{1bca3}', '\u{1d173}'..='\u{1d17a}',
+    '\u{e0000}'..='\u{e0fff}',
+];
+
+#[rustfmt::skip]
 pub(super) static GRAPHEME_EXTEND: &[RangeInclusive<char>; 383] = &[
     '\u{300}'..='\u{36f}', '\u{483}'..='\u{489}', '\u{591}'..='\u{5bd}', '\u{5bf}'..='\u{5bf}',
     '\u{5c1}'..='\u{5c2}', '\u{5c4}'..='\u{5c5}', '\u{5c7}'..='\u{5c7}', '\u{610}'..='\u{61a}',
