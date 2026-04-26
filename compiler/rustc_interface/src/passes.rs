@@ -98,7 +98,7 @@ fn pre_expansion_lint<'a>(
         || {
             rustc_lint::check_ast_node(
                 sess,
-                Some(tcx),
+                tcx,
                 features,
                 true,
                 lint_store,
@@ -481,7 +481,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
-        Some(tcx),
+        tcx,
         tcx.features(),
         false,
         lint_store,
@@ -1051,7 +1051,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             attribute_lint.span.clone(),
                             DecorateAttrLint {
                                 sess: tcx.sess,
-                                tcx: Some(tcx),
+                                tcx,
                                 diagnostic: &attribute_lint.kind,
                             },
                         );

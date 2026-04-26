@@ -89,15 +89,11 @@ fn rustc_macro_help(span: Span) -> Option<lints::UnexpectedCfgRustcMacroHelp> {
     }
 }
 
-fn cargo_macro_help(
-    tcx: Option<TyCtxt<'_>>,
-    span: Span,
-) -> Option<lints::UnexpectedCfgCargoMacroHelp> {
+fn cargo_macro_help(tcx: TyCtxt<'_>, span: Span) -> Option<lints::UnexpectedCfgCargoMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
     if let Some(def_id) = oexpn.macro_def_id
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
         && def_id.krate != LOCAL_CRATE
-        && let Some(tcx) = tcx
     {
         Some(lints::UnexpectedCfgCargoMacroHelp {
             macro_kind: macro_kind.descr(),
@@ -111,7 +107,7 @@ fn cargo_macro_help(
 
 pub(super) fn unexpected_cfg_name(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
+    tcx: TyCtxt<'_>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> lints::UnexpectedCfgName {
@@ -293,7 +289,7 @@ pub(super) fn unexpected_cfg_name(
 
 pub(super) fn unexpected_cfg_value(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
+    tcx: TyCtxt<'_>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> lints::UnexpectedCfgValue {

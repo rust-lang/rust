@@ -25,7 +25,7 @@ impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
 /// Directly creating the lint structs is expensive, using this will only decorate the lint structs when needed.
 pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
     pub sess: &'sess Session,
-    pub tcx: Option<TyCtxt<'tcx>>,
+    pub tcx: TyCtxt<'tcx>,
     pub diagnostic: &'a AttributeLintKind,
 }
 

@@ -29,7 +29,7 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 /// `check_*` methods.
 pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
     context: EarlyContext<'ecx>,
-    tcx: Option<TyCtxt<'tcx>>,
+    tcx: TyCtxt<'tcx>,
     pass: T,
 }
 
@@ -329,7 +329,7 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [Box<ast
 
 pub fn check_ast_node<'a>(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
+    tcx: TyCtxt<'_>,
     features: &Features,
     pre_expansion: bool,
     lint_store: &LintStore,
@@ -364,7 +364,7 @@ pub fn check_ast_node<'a>(
 
 fn check_ast_node_inner<'a, T: EarlyLintPass>(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
+    tcx: TyCtxt<'_>,
     check_node: impl EarlyCheckNode<'a>,
     context: EarlyContext<'_>,
     pass: T,
