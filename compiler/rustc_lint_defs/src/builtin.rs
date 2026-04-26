@@ -4078,8 +4078,12 @@ declare_lint! {
     /// and actionable warning of similar quality to our other diagnostics. See this tracking
     /// issue for more details: <https://github.com/rust-lang/rust/issues/136096>.
     pub LINKER_MESSAGES,
-    Allow,
-    "warnings emitted at runtime by the target-specific linker program"
+    Warn,
+    "warnings emitted at runtime by the target-specific linker program",
+    // Linker messages don't live up to the high standard people expect of rustc's errors.
+    // Prevent `-D warnings` from applying to it.
+    // It's still possible to pass `-D linker-messages` specifically.
+    ignore_deny_warnings
 }
 
 declare_lint! {
