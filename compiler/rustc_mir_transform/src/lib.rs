@@ -502,12 +502,16 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     }
 
     let body = tcx.mir_drops_elaborated_and_const_checked(def);
-    let body = match tcx.hir_body_const_context(def) {
+    let body = match tcx.hir_body_owner_kind(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
-        Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
-        Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
-        None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
+        hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) => body.steal(),
+        hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure
+            if tcx.is_const_fn(def.to_def_id()) =>
+        {
+            body.borrow().clone()
+        }
+        kind => bug!("`mir_for_ctfe` called on non-const {kind:?}: {def:?}"),
     };
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
@@ -797,13 +801,19 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         return shim::build_adt_ctor(tcx, did.to_def_id());
     }
 
-    match tcx.hir_body_const_context(did) {
-        // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
-        // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
-        // computes and caches its result.
-        Some(hir::ConstContext::ConstFn) => tcx.ensure_done().mir_for_ctfe(did),
-        None => {}
-        Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
+    match tcx.hir_body_owner_kind(did) {
+        hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure
+            if tcx.is_const_fn(did.to_def_id()) =>
+        {
+            // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
+            // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
+            // computes and caches its result.
+            tcx.ensure_done().mir_for_ctfe(did);
+        }
+        hir::BodyOwnerKind::Fn | hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::GlobalAsm => {}
+        kind @ (hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_)) => {
+            bug!("do not use `optimized_mir` for {kind:?}: {did:?}")
+        }
     }
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
