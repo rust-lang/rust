@@ -97,7 +97,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
 
 fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
     let depr = find_attr!(tcx, def_id,
-        Deprecated { deprecation, .. } => **deprecation
+        Deprecated { deprecation, .. } => *deprecation
     );
 
     let Some(depr) = depr else {
@@ -324,6 +324,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         let depr = self.tcx.lookup_deprecation_entry(def_id);
         let stab = self.tcx.lookup_stability(def_id);
         let const_stab = self.tcx.lookup_const_stability(def_id);
+        let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
 
         macro_rules! find_attr_span {
             ($name:ident) => {{
@@ -334,9 +335,9 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 
         if stab.is_none()
             && depr.map_or(false, |d| d.attr.is_since_rustc_version())
-            && let Some(span) = find_attr_span!(Deprecated)
+            && find_attr!(attrs, Deprecated { .. })
         {
-            self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span });
+            self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span: rustc_span::DUMMY_SP });
         }
 
         if let Some(stab) = stab {
@@ -379,7 +380,6 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                 }
             }
         }
-        let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
 
         // If the current node is a function with const stability attributes (directly given or
         // implied), check if the function/method is const or the parent impl block is const.

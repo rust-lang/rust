@@ -150,8 +150,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcAllowConstFnUnstable(_, first_span)) => {
                     self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
                 }
-                Attribute::Parsed(AttributeKind::Deprecated { span: attr_span, .. }) => {
-                    self.check_deprecated(hir_id, *attr_span, target)
+                Attribute::Parsed(AttributeKind::Deprecated { .. }) => {
+                    // FIXME move to attr parsing
+                    self.check_deprecated(hir_id, rustc_span::DUMMY_SP, target)
                 }
                 Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)

@@ -1013,8 +1013,7 @@ pub enum AttributeKind {
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecated {
-        deprecation: Box<Deprecation>,
-        span: Span,
+        deprecation: Deprecation,
     },
 
     /// Represents `#[diagnostic::do_not_recommend]`.
