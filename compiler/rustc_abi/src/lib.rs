@@ -2054,8 +2054,7 @@ impl Niche {
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
 
-        let niche = v.end.wrapping_add(1)..v.start;
-        let available = niche.end.wrapping_sub(niche.start) & max_value;
+        let available = v.start.wrapping_sub(v.end).wrapping_sub(1) & max_value;
         if count > available {
             return None;
         }
@@ -2083,7 +2082,17 @@ impl Niche {
             Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
         };
         let distance_end_zero = max_value - v.end;
-        if v.start > v.end {
+        // FIXME: this ought to work for `bool` too, but that seems to be hitting a miscompilation
+        // <https://github.com/rust-lang/rust/pull/155473#issuecomment-4302036343>
+        if count == 1 && v != (WrappingRange { start: 0, end: 1 }) {
+            // We only need one, so just pick the one closest to zero.
+            // Not only does that obviously use zero if it's possible, but it also
+            // simplifies testing things like `Option<char>`, since looking for `-1`
+            // is easier than looking for `1114112` (and matches clang's `WEOF`).
+            let next_up = size.sign_extend(v.end.wrapping_add(1)).unsigned_abs();
+            let next_down = size.sign_extend(v.start.wrapping_sub(1)).unsigned_abs();
+            if next_down <= next_up { move_start(v) } else { move_end(v) }
+        } else if v.start > v.end {
             // zero is unavailable because wrapping occurs
             move_end(v)
         } else if v.start <= distance_end_zero {

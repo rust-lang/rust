@@ -88,3 +88,9 @@ union EmptyUnion {} //~ ERROR: has an unknown layout
 // (this error is never emitted to users).
 #[rustc_dump_layout(debug)]
 type TooGeneric<T> = T; //~ ERROR: does not have a fixed layout
+
+#[rustc_dump_layout(debug)]
+type OptBool = Option<bool>; //~ ERROR: layout_of
+
+#[rustc_dump_layout(debug)]
+type OptChar = Option<char>; //~ ERROR: layout_of

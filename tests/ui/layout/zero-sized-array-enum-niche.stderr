@@ -370,7 +370,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        I16,
                        false,
                    ),
-                   valid_range: 0..=1,
+                   valid_range: (..=0) | (65535..),
                },
            ),
            uninhabited: false,
@@ -380,12 +380,12 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                        I16,
                        false,
                    ),
-                   valid_range: 0..=1,
+                   valid_range: (..=0) | (65535..),
                },
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
-                   niche_start: 1,
+                   niche_start: 65535,
                },
                tag_field: 0,
                variants: [

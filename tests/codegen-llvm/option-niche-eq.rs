@@ -82,3 +82,14 @@ pub fn bool_eq(l: Option<bool>, r: Option<bool>) -> bool {
     // CHECK-NEXT: ret i1
     l == r
 }
+
+// CHECK-LABEL: @bool_ref_eq
+#[no_mangle]
+pub fn bool_ref_eq(l: &Option<bool>, r: &Option<bool>) -> bool {
+    // CHECK: start:
+    // CHECK-NEXT: load i8
+    // CHECK-NEXT: load i8
+    // CHECK-NEXT: icmp eq i8
+    // CHECK-NEXT: ret i1
+    l == r
+}

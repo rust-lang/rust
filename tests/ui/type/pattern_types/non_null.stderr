@@ -57,7 +57,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                            0,
                        ),
                    ),
-                   valid_range: (..=0) | (1..),
+                   valid_range: 0..=18446744073709551615,
                },
            ),
            fields: Arbitrary {
@@ -77,7 +77,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                            0,
                        ),
                    ),
-                   valid_range: (..=0) | (1..),
+                   valid_range: 0..=18446744073709551615,
                },
                tag_encoding: Niche {
                    untagged_variant: 1,
