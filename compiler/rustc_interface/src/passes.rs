@@ -289,14 +289,13 @@ fn configure_and_expand(
 fn print_macro_stats(ecx: &ExtCtxt<'_, '_>) {
     use std::fmt::Write;
 
-    let crate_name = ecx.ecfg.crate_name.as_str();
-    let crate_name = if crate_name == "build_script_build" {
-        // This is a build script. Get the package name from the environment.
+    let crate_name = if ecx.resolver.tcx().is_build_script() {
+        // Get the package name from the environment.
         let pkg_name =
             std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "<unknown crate>".to_string());
         format!("{pkg_name} build script")
     } else {
-        crate_name.to_string()
+        ecx.resolver.tcx().local_crate_name()
     };
 
     // No instability because we immediately sort the produced vector.

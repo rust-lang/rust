@@ -43,6 +43,7 @@ use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
+use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
@@ -1423,6 +1424,14 @@ impl<'tcx> TyCtxtAt<'tcx> {
 
         feed.def_span(self.span);
         feed
+    }
+}
+
+/// Operations on the crate name.
+impl<'tcx> TyCtxt<'tcx> {
+    /// Check if this crate is a Cargo build script.
+    pub fn is_build_script(self) -> bool {
+        self.crate_name(LOCAL_CRATE) == sym::build_script_build && was_invoked_from_cargo()
     }
 }
 

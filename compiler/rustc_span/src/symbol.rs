@@ -541,6 +541,7 @@ symbols! {
         breakpoint,
         bridge,
         bswap,
+        build_script_build,
         built,
         builtin_syntax,
         bundle,
