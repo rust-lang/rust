@@ -266,6 +266,14 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             .iter()
             .chain(std::iter::once(self.root_def_id));
         for def_id in all_bodies {
+            // The list of promoted from a given body is a flat list,
+            // in topological order from innermost to outermost.
+            let promoted = self.tcx.promoted_mir(def_id);
+            for &promoted_def_id in promoted {
+                let result = borrowck_collect_region_constraints(self, promoted_def_id);
+                self.collect_region_constraints_results.insert(promoted_def_id, result);
+            }
+
             let result = borrowck_collect_region_constraints(self, def_id);
             self.collect_region_constraints_results.insert(def_id, result);
         }

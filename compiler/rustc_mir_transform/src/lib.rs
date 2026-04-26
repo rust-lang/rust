@@ -337,6 +337,16 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
         }
     }
 
+    // Now, the add promoted MIR from all those bodies into the set.
+    let mut promoted = Vec::new();
+    for &item in set.iter() {
+        if tcx.trivial_const(item).is_none() {
+            let promoted_in_item = tcx.promoted_mir(item);
+            promoted.extend_from_slice(&promoted_in_item.raw);
+        }
+    }
+    set.extend(promoted.into_iter());
+
     // tuple struct/variant constructors have MIR, but they don't have a BodyId,
     // so we need to build them separately.
     for item in tcx.hir_crate_items(()).free_items() {
@@ -427,9 +437,10 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
 fn mir_promoted(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> (&Steal<Body<'_>>, &Steal<IndexVec<Promoted, Body<'_>>>) {
+) -> (&Steal<Body<'_>>, &IndexVec<Promoted, LocalDefId>) {
     debug_assert!(!tcx.is_trivial_const(def), "Tried to get mir_promoted of a trivial const");
     debug_assert!(!tcx.is_constructor(def.to_def_id()));
+    debug_assert_ne!(tcx.def_kind(def), DefKind::Promoted);
 
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
@@ -482,7 +493,7 @@ fn mir_promoted(
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
-    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
+    (tcx.alloc_steal_mir(body), tcx.arena.alloc(promoted))
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
@@ -530,8 +541,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         None
     };
 
-    let is_fn_like = tcx.def_kind(def).is_fn_like();
-    if is_fn_like {
+    if tcx.def_kind(def).is_fn_like() {
         // Do not compute the mir call graph without said call graph actually being used.
         if pm::should_run_pass(tcx, &inline::Inline, pm::Optimizations::Allowed)
             || inline::ForceInline::should_run_pass_for_callee(tcx, def.to_def_id())
@@ -830,19 +840,13 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
 /// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
 /// constant evaluation once all generic parameters become known.
-fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_>> {
-    if tcx.is_constructor(def.to_def_id()) {
-        return tcx.arena.alloc(IndexVec::new());
+fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, LocalDefId> {
+    if tcx.is_trivial_const(def)
+        || tcx.is_constructor(def.to_def_id())
+        || tcx.def_kind(def) == DefKind::Promoted
+    {
+        return const { &IndexVec::new() };
     }
 
-    if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_done().mir_borrowck(tcx.typeck_root_def_id_local(def));
-    }
-    let mut promoted = tcx.mir_promoted(def).1.steal();
-
-    for body in &mut promoted {
-        run_analysis_to_runtime_passes(tcx, body);
-    }
-
-    tcx.arena.alloc(promoted)
+    tcx.mir_promoted(def).1
 }

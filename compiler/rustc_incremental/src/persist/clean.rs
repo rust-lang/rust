@@ -64,7 +64,7 @@ const BASE_IMPL: &[&str] =
 
 /// DepNodes for exported mir bodies, which is relevant in "executable"
 /// code, i.e., functions+methods
-const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir];
+const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::mir_for_ctfe];
 
 /// Struct, Enum and Union DepNodes
 ///

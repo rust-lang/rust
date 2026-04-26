@@ -615,7 +615,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 match tcx.def_kind(self.mir_def) {
-                    DefKind::InlineConst => {
+                    DefKind::InlineConst | DefKind::Promoted => {
                         // This is required for `AscribeUserType` canonical query, which will call
                         // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
                         // into borrowck, which is ICE #78174.

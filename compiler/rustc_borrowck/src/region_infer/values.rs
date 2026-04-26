@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
@@ -42,15 +42,11 @@ pub(crate) struct LivenessValues {
     /// The map from locations to points.
     location_map: Rc<DenseLocationMap>,
 
-    /// Which regions are live. This is exclusive with the fine-grained tracking in `points`, and
-    /// currently only used for validating promoteds (which don't care about more precise tracking).
-    live_regions: Option<FxHashSet<RegionVid>>,
-
     /// For each region: the points where it is live.
     ///
     /// This is not initialized for promoteds, because we don't care *where* within a promoted a
     /// region is live, only that it is.
-    points: Option<SparseIntervalMatrix<RegionVid, PointIndex>>,
+    points: SparseIntervalMatrix<RegionVid, PointIndex>,
 
     /// When using `-Zpolonius=next`, the set of loans that are live at a given point in the CFG.
     live_loans: Option<LiveLoans>,
@@ -60,21 +56,7 @@ impl LivenessValues {
     /// Create an empty map of regions to locations where they're live.
     pub(crate) fn with_specific_points(location_map: Rc<DenseLocationMap>) -> Self {
         LivenessValues {
-            live_regions: None,
-            points: Some(SparseIntervalMatrix::new(location_map.num_points())),
-            location_map,
-            live_loans: None,
-        }
-    }
-
-    /// Create an empty map of regions to locations where they're live.
-    ///
-    /// Unlike `with_specific_points`, does not track exact locations where something is live, only
-    /// which regions are live.
-    pub(crate) fn without_specific_points(location_map: Rc<DenseLocationMap>) -> Self {
-        LivenessValues {
-            live_regions: Some(Default::default()),
-            points: None,
+            points: SparseIntervalMatrix::new(location_map.num_points()),
             location_map,
             live_loans: None,
         }
@@ -83,52 +65,30 @@ impl LivenessValues {
     /// Returns the liveness matrix of points where each region is live. Panics if the liveness
     /// values have been created without any per-point data (that is, for promoteds).
     pub(crate) fn points(&self) -> &SparseIntervalMatrix<RegionVid, PointIndex> {
-        self.points
-            .as_ref()
-            .expect("this `LivenessValues` wasn't created using `with_specific_points`")
+        &self.points
     }
 
     /// Iterate through each region that has a value in this set.
     pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> {
-        self.points.as_ref().expect("use with_specific_points").rows()
-    }
-
-    /// Iterate through each region that has a value in this set.
-    // We are passing query instability implications to the caller.
-    #[rustc_lint_query_instability]
-    #[allow(rustc::potential_query_instability)]
-    pub(crate) fn live_regions_unordered(&self) -> impl Iterator<Item = RegionVid> {
-        self.live_regions.as_ref().unwrap().iter().copied()
+        self.points.rows()
     }
 
     /// Records `region` as being live at the given `location`.
     pub(crate) fn add_location(&mut self, region: RegionVid, location: Location) {
         let point = self.location_map.point_from_location(location);
         debug!("LivenessValues::add_location(region={:?}, location={:?})", region, location);
-        if let Some(points) = &mut self.points {
-            points.insert(region, point);
-        } else if self.location_map.point_in_range(point) {
-            self.live_regions.as_mut().unwrap().insert(region);
-        }
+        self.points.insert(region, point);
     }
 
     /// Records `region` as being live at all the given `points`.
     pub(crate) fn add_points(&mut self, region: RegionVid, points: &IntervalSet<PointIndex>) {
         debug!("LivenessValues::add_points(region={:?}, points={:?})", region, points);
-        if let Some(this) = &mut self.points {
-            this.union_row(region, points);
-        } else if points.iter().any(|point| self.location_map.point_in_range(point)) {
-            self.live_regions.as_mut().unwrap().insert(region);
-        }
+        self.points.union_row(region, points);
     }
 
     /// Records `region` as being live at all the control-flow points.
     pub(crate) fn add_all_points(&mut self, region: RegionVid) {
-        if let Some(points) = &mut self.points {
-            points.insert_all_into_row(region);
-        } else {
-            self.live_regions.as_mut().unwrap().insert(region);
-        }
+        self.points.insert_all_into_row(region);
     }
 
     /// Returns whether `region` is marked live at the given
@@ -142,23 +102,12 @@ impl LivenessValues {
     /// [`point`][rustc_mir_dataflow::points::PointIndex].
     #[inline]
     pub(crate) fn is_live_at_point(&self, region: RegionVid, point: PointIndex) -> bool {
-        if let Some(points) = &self.points {
-            points.row(region).is_some_and(|r| r.contains(point))
-        } else {
-            unreachable!(
-                "Should be using LivenessValues::with_specific_points to ask whether live at a location"
-            )
-        }
+        self.points.row(region).is_some_and(|r| r.contains(point))
     }
 
     /// Returns an iterator of all the points where `region` is live.
     fn live_points(&self, region: RegionVid) -> impl Iterator<Item = PointIndex> {
-        let Some(points) = &self.points else {
-            unreachable!(
-                "Should be using LivenessValues::with_specific_points to ask whether live at a location"
-            )
-        };
-        points
+        self.points
             .row(region)
             .into_iter()
             .flat_map(|set| set.iter())
@@ -328,10 +277,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     /// elements for the region `from` from `values` and add them to
     /// the region `to` in `self`.
     pub(crate) fn merge_liveness(&mut self, to: N, from: RegionVid, values: &LivenessValues) {
-        let Some(value_points) = &values.points else {
-            panic!("LivenessValues must track specific points for use in merge_liveness");
-        };
-        if let Some(set) = value_points.row(from) {
+        if let Some(set) = values.points.row(from) {
             self.points.union_row(to, set);
         }
     }

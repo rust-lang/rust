@@ -28,30 +28,17 @@ fn setup_for_eval<'tcx>(
     cid: GlobalId<'tcx>,
     layout: TyAndLayout<'tcx>,
 ) -> InterpResult<'tcx, (InternKind, MPlaceTy<'tcx>)> {
-    let tcx = *ecx.tcx;
-    assert!(
-        cid.promoted.is_some()
-            || matches!(
-                ecx.tcx.def_kind(cid.instance.def_id()),
-                DefKind::Const { .. }
-                    | DefKind::Static { .. }
-                    | DefKind::ConstParam
-                    | DefKind::AnonConst
-                    | DefKind::InlineConst
-                    | DefKind::AssocConst { .. }
-            ),
-        "Unexpected DefKind: {:?}",
-        ecx.tcx.def_kind(cid.instance.def_id())
-    );
     assert!(layout.is_sized());
 
-    let intern_kind = if cid.promoted.is_some() {
-        InternKind::Promoted
-    } else {
-        match tcx.static_mutability(cid.instance.def_id()) {
-            Some(m) => InternKind::Static(m),
-            None => InternKind::Constant,
-        }
+    let intern_kind = match ecx.tcx.def_kind(cid.instance.def_id()) {
+        DefKind::Static { mutability, .. } => InternKind::Static(mutability),
+        DefKind::Promoted => InternKind::Promoted,
+        DefKind::Const { .. }
+        | DefKind::ConstParam
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::AssocConst { .. } => InternKind::Constant,
+        dk => bug!("Unexpected DefKind: {dk:?}"),
     };
 
     let return_place = if let InternKind::Static(_) = intern_kind {
@@ -438,15 +425,14 @@ fn const_validate_mplace<'tcx>(
     let mut ref_tracking = RefTracking::new(mplace.clone(), mplace.layout.ty);
     let mut inner = false;
     while let Some((mplace, path)) = ref_tracking.next() {
-        let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {
-            _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
-            Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`
-            None => {
-                // This is a normal `const` (not promoted).
-                // The outermost allocation is always only copied, so having `UnsafeCell` in there
-                // is okay despite them being in immutable memory.
-                CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner }
-            }
+        let mode = match ecx.tcx.def_kind(cid.instance.def_id()) {
+            DefKind::Promoted => CtfeValidationMode::Promoted,
+            // a `static`
+            DefKind::Static { mutability, .. } => CtfeValidationMode::Static { mutbl: mutability },
+            // This is a normal `const` (not promoted).
+            // The outermost allocation is always only copied, so having `UnsafeCell` in there
+            // is okay despite them being in immutable memory.
+            _ => CtfeValidationMode::Const { allow_immutable_unsafe_cell: !inner },
         };
         ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)
             .report_err()

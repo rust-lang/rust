@@ -1134,12 +1134,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
 
     rustc_hir_analysis::check_crate(tcx);
-    // Freeze definitions as we don't add new ones at this point.
-    // We need to wait until now since we synthesize a by-move body
-    // for all coroutine-closures.
-    //
-    // This improves performance by allowing lock-free access to them.
-    tcx.untracked().definitions.freeze();
 
     sess.time("MIR_borrow_checking", || {
         tcx.par_hir_body_owners(|def_id| {
@@ -1165,6 +1159,12 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 || tcx.hir_body_const_context(def_id).is_some()
             {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
+
+                if tcx.trivial_const(def_id).is_none() {
+                    for &promoted in tcx.promoted_mir(def_id) {
+                        tcx.ensure_ok().mir_drops_elaborated_and_const_checked(promoted);
+                    }
+                }
             }
             if tcx.is_coroutine(def_id.to_def_id())
                 && (!tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()))

@@ -179,12 +179,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
                 self.tcx().def_path_str(body.source.def_id())
             ));
         // ignore-tidy-odd-backticks the literal below is fine
-        write!(w, "// MIR for `{def_path}")?;
-        match body.source.promoted {
-            None => write!(w, "`")?,
-            Some(promoted) => write!(w, "::{promoted:?}`")?,
-        }
-        writeln!(w, " {} {}", self.disambiguator, self.pass_name)?;
+        writeln!(w, "// MIR for `{def_path}` {} {}", self.disambiguator, self.pass_name)?;
         if let Some(ref layout) = body.coroutine_layout_raw() {
             writeln!(w, "/* coroutine_layout = {layout:#?} */")?;
         }
@@ -201,10 +196,6 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
     fn dump_path(&self, extension: &str, body: &Body<'tcx>) -> PathBuf {
         let tcx = self.tcx();
         let source = body.source;
-        let promotion_id = match source.promoted {
-            Some(id) => format!("-{id:?}"),
-            None => String::new(),
-        };
 
         let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
             String::new()
@@ -277,7 +268,7 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
         let pass_name = self.pass_name;
         let disambiguator = self.disambiguator;
         let file_name = format!(
-            "{crate_name}.{item_name}{shim_disambiguator}{promotion_id}{pass_num}.{pass_name}.{disambiguator}.{extension}",
+            "{crate_name}.{item_name}{shim_disambiguator}{pass_num}.{pass_name}.{disambiguator}.{extension}",
         );
 
         file_path.push(&file_name);
@@ -337,9 +328,12 @@ pub fn write_mir_pretty<'tcx>(
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
             writer.write_mir_fn(body, w)?;
 
-            for body in tcx.promoted_mir(def_id) {
-                writeln!(w)?;
-                writer.write_mir_fn(body, w)?;
+            if let Some(def_id) = def_id.as_local() {
+                for body in tcx.promoted_mir(def_id) {
+                    writeln!(w)?;
+                    let body = tcx.mir_for_ctfe(body.to_def_id());
+                    writer.write_mir_fn(body, w)?;
+                }
             }
             Ok(())
         };
@@ -621,20 +615,21 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
         }
         _ => tcx.is_closure_like(def_id),
     };
-    match (kind, body.source.promoted) {
-        (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
-        (DefKind::Const { .. } | DefKind::AssocConst { .. }, _) => write!(w, "const ")?,
-        (DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false }, _) => {
+    match kind {
+        DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::Promoted => {
+            write!(w, "const ")?
+        }
+        DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false } => {
             write!(w, "static ")?
         }
-        (DefKind::Static { safety: _, mutability: hir::Mutability::Mut, nested: false }, _) => {
+        DefKind::Static { safety: _, mutability: hir::Mutability::Mut, nested: false } => {
             write!(w, "static mut ")?
         }
-        (_, _) if is_function => write!(w, "fn ")?,
+        _ if is_function => write!(w, "fn ")?,
         // things like anon const, not an item
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        DefKind::AnonConst | DefKind::InlineConst => {}
         // `global_asm!` have fake bodies, which we may dump after mir-build
-        (DefKind::GlobalAsm, _) => {}
+        DefKind::GlobalAsm => {}
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
@@ -646,7 +641,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
         write!(w, "::{p:?}")?;
     }
 
-    if body.source.promoted.is_none() && is_function {
+    if is_function {
         write!(w, "(")?;
 
         // fn argument types.

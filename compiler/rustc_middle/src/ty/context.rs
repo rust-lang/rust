@@ -60,7 +60,7 @@ use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
-use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind};
 use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
@@ -860,13 +860,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.arena.alloc(Steal::new(mir))
     }
 
-    pub fn alloc_steal_promoted(
-        self,
-        promoted: IndexVec<Promoted, Body<'tcx>>,
-    ) -> &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
-        self.arena.alloc(Steal::new(promoted))
-    }
-
     pub fn mk_adt_def(
         self,
         did: DefId,
@@ -1374,6 +1367,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
         // Depend on the `analysis` query to ensure compilation if finished.
         self.ensure_ok().analysis(());
+        self.ensure_done().mir_keys(());
 
         let definitions = &self.untracked.definitions;
         gen {
@@ -1395,6 +1389,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
         // Depend on the `analysis` query to ensure compilation if finished.
         self.ensure_ok().analysis(());
+        self.ensure_done().mir_keys(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -1407,6 +1402,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure_ok().hir_crate_items(());
+        self.ensure_ok().analysis(());
+        self.ensure_done().mir_keys(());
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         self.untracked.definitions.freeze().def_path_hash_to_def_index_map()

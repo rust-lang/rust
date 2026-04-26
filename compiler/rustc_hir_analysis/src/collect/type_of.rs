@@ -1,6 +1,7 @@
 use core::ops::ControlFlow;
 
 use rustc_errors::{Applicability, StashKey, Suggestions};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg, HirId};
@@ -21,6 +22,11 @@ mod opaque;
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, Ty<'_>> {
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
+
+    if let DefKind::Promoted | DefKind::InlineConst = tcx.def_kind(def_id) {
+        let substs = ty::GenericArgs::identity_for_item(tcx, def_id);
+        return ty::EarlyBinder::bind(substs.as_inline_const().ty());
+    }
 
     // If we are computing `type_of` the synthesized associated type for an RPITIT in the impl
     // side, use `collect_return_position_impl_trait_in_trait_tys` to infer the value of the
@@ -222,8 +228,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::AnonConst(_) => anon_const_type_of(&icx, def_id),
 
         Node::ConstBlock(_) => {
-            let args = ty::GenericArgs::identity_for_item(tcx, def_id.to_def_id());
-            args.as_inline_const().ty()
+            bug!("InlineConst should have been handled by type_of")
         }
 
         Node::GenericParam(param) => match &param.kind {

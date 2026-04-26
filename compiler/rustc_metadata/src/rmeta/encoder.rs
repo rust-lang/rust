@@ -1849,13 +1849,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
                 }
             }
-            let mut is_trivial = false;
             if encode_const {
                 if let Some((val, ty)) = tcx.trivial_const(def_id) {
-                    is_trivial = true;
                     record!(self.tables.trivial_const[def_id.to_def_id()] <- (val, ty));
                 } else {
-                    is_trivial = false;
                     record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
                 }
 
@@ -1875,10 +1872,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            if !is_trivial {
-                record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
-            }
-
             if self.tcx.is_coroutine(def_id.to_def_id())
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
