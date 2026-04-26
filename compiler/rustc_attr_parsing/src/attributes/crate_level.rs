@@ -16,11 +16,7 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::NameValue(n) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let n = cx.expect_name_value(args, cx.attr_span, None)?;
 
         let Some(name) = n.value_as_str() else {
             cx.adcx().expected_string_literal(n.value_span, Some(n.value_as_lit()));
@@ -47,11 +43,7 @@ impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
         cx: &mut AcceptContext<'_, '_, S>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        let ArgParser::NameValue(n) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let n = cx.expect_name_value(args, cx.attr_span, None)?;
 
         let Some(crate_type) = n.value_as_str() else {
             cx.adcx().expected_string_literal(n.value_span, Some(n.value_as_lit()));
@@ -95,11 +87,7 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::NameValue(nv) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
 
         Some(AttributeKind::RecursionLimit {
             limit: cx.parse_limit_int(nv)?,
@@ -117,11 +105,7 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::NameValue(nv) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
 
         Some(AttributeKind::MoveSizeLimit {
             limit: cx.parse_limit_int(nv)?,
@@ -140,11 +124,7 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::NameValue(nv) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
 
         Some(AttributeKind::TypeLengthLimit {
             limit: cx.parse_limit_int(nv)?,
@@ -162,11 +142,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::NameValue(nv) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
 
         Some(AttributeKind::PatternComplexityLimit {
             limit: cx.parse_limit_int(nv)?,
@@ -219,14 +195,7 @@ impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let inner_span = cx.inner_span;
-            cx.adcx().expected_name_value(
-                args.span().unwrap_or(inner_span),
-                Some(sym::windows_subsystem),
-            );
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.inner_span, Some(sym::windows_subsystem))?;
 
         let kind = match nv.value_as_str() {
             Some(sym::console) => WindowsSubsystemKind::Console,
@@ -326,7 +295,7 @@ impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
         let mut res = Vec::new();
 
         for elem in list.mixed() {
-            let Some(elem) = elem.meta_item() else {
+            let Some(elem) = elem.as_meta_item() else {
                 cx.adcx().expected_identifier(elem.span());
                 continue;
             };
@@ -372,7 +341,7 @@ impl<S: Stage> CombineAttributeParser<S> for RegisterToolParser {
         let mut res = Vec::new();
 
         for elem in list.mixed() {
-            let Some(elem) = elem.meta_item() else {
+            let Some(elem) = elem.as_meta_item() else {
                 cx.adcx().expected_identifier(elem.span());
                 continue;
             };

@@ -82,7 +82,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                             group.uses_attr_spans.push(cx.attr_span);
 
                             for item in list.mixed() {
-                                let Some(item) = item.meta_item() else {
+                                let Some(item) = item.as_meta_item() else {
                                     cx.adcx().expected_identifier(item.span());
                                     continue;
                                 };
@@ -146,7 +146,7 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
                     cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.as_meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::local_inner_macros) => true,
                     _ => {
                         cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
@@ -175,7 +175,7 @@ impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
-        let Some(mi) = single.meta_item() else {
+        let Some(mi) = single.as_meta_item() else {
             cx.adcx().expected_not_literal(single.span());
             return None;
         };

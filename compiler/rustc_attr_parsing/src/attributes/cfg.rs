@@ -116,7 +116,7 @@ pub fn parse_cfg_entry<S: Stage>(
                 else {
                     return Err(cx.adcx().expected_identifier(meta.path().span()));
                 };
-                parse_name_value(name, meta.path().span(), a.name_value(), meta.span(), cx)?
+                parse_name_value(name, meta.path().span(), a.as_name_value(), meta.span(), cx)?
             }
         },
         MetaItemOrLitParser::Lit(lit) => match lit.kind {
@@ -178,23 +178,16 @@ fn parse_cfg_entry_target<S: Stage>(
     let mut result = ThinVec::new();
     for sub_item in list.mixed() {
         // First, validate that this is a NameValue item
-        let Some(sub_item) = sub_item.meta_item() else {
-            cx.adcx().expected_name_value(sub_item.span(), None);
-            continue;
-        };
-        let Some(nv) = sub_item.args().name_value() else {
-            cx.adcx().expected_name_value(sub_item.span(), None);
+        let Some((name, value)) = cx.expect_name_value(sub_item, sub_item.span(), None) else {
             continue;
         };
 
         // Then, parse it as a name-value item
-        let Some(name) = sub_item.path().word_sym().filter(|s| !s.is_path_segment_keyword()) else {
-            return Err(cx.adcx().expected_identifier(sub_item.path().span()));
-        };
+        if name.is_path_segment_keyword() {
+            return Err(cx.adcx().expected_identifier(name.span));
+        }
         let name = Symbol::intern(&format!("target_{name}"));
-        if let Ok(cfg) =
-            parse_name_value(name, sub_item.path().span(), Some(nv), sub_item.span(), cx)
-        {
+        if let Ok(cfg) = parse_name_value(name, sub_item.span(), Some(value), sub_item.span(), cx) {
             result.push(cfg);
         }
     }

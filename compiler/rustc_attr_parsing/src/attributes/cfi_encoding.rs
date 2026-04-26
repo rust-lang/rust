@@ -11,11 +11,7 @@ impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "encoding");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(name_value) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, Some(sym::cfi_encoding));
-            return None;
-        };
+        let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::cfi_encoding))?;
 
         let Some(value_str) = name_value.value_as_str() else {
             cx.adcx().expected_string_literal(name_value.value_span, None);

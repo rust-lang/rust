@@ -49,7 +49,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
             }
 
             reprs.extend(
-                param.meta_item().and_then(|mi| parse_repr(cx, &mi)).map(|r| (r, param.span())),
+                param.as_meta_item().and_then(|mi| parse_repr(cx, &mi)).map(|r| (r, param.span())),
             );
         }
 

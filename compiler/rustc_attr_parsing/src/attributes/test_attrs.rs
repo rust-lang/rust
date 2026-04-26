@@ -29,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                 }
                 ArgParser::List(list) => {
                     let help =
-                        list.as_single().and_then(|item| item.meta_item()).and_then(|item| {
+                        list.as_single().and_then(|item| item.as_meta_item()).and_then(|item| {
                             item.args().no_args().ok()?;
                             Some(item.path().to_string())
                         });
@@ -73,20 +73,14 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
                 }
                 ArgParser::List(list) => {
                     let single = cx.expect_single(list)?;
-                    let Some(single) = single.meta_item() else {
-                        cx.adcx().expected_name_value(single.span(), Some(sym::expected));
-                        return None;
-                    };
-                    if !single.path().word_is(sym::expected) {
+                    let (ident, arg) =
+                        cx.expect_name_value(single, single.span(), Some(sym::expected))?;
+                    if ident.name != sym::expected {
                         cx.adcx().expected_specific_argument_strings(list.span, &[sym::expected]);
                         return None;
                     }
-                    let Some(nv) = single.args().name_value() else {
-                        cx.adcx().expected_name_value(single.span(), Some(sym::expected));
-                        return None;
-                    };
-                    let Some(expected) = nv.value_as_str() else {
-                        cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                    let Some(expected) = arg.value_as_str() else {
+                        cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
                         return None;
                     };
                     Some(expected)
@@ -104,14 +98,11 @@ impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let inner_span = cx.inner_span;
-            cx.adcx().expected_name_value(
-                args.span().unwrap_or(inner_span),
-                Some(sym::reexport_test_harness_main),
-            );
-            return None;
-        };
+        let nv = cx.expect_name_value(
+            args,
+            args.span().unwrap_or(cx.inner_span),
+            Some(sym::reexport_test_harness_main),
+        )?;
 
         let Some(name) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
@@ -149,7 +140,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::assert_eq, sym::debug]);
 
-        let Some(arg) = arg.meta_item() else {
+        let Some(arg) = arg.as_meta_item() else {
             fail_incorrect_argument(args.span);
             return None;
         };
@@ -199,7 +190,7 @@ impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
-        let Some(meta) = single.meta_item() else {
+        let Some(meta) = single.as_meta_item() else {
             cx.adcx().expected_not_literal(single.span());
             return None;
         };
@@ -220,11 +211,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "test_path");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(name_value) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, Some(sym::rustc_test_marker));
-            return None;
-        };
+        let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_test_marker))?;
 
         let Some(value_str) = name_value.value_as_str() else {
             cx.adcx().expected_string_literal(name_value.value_span, None);

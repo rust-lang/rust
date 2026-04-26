@@ -121,7 +121,7 @@ fn parse_keyword_and_attribute<S: Stage>(
     attr_value: &mut Option<(Symbol, Span)>,
     attr_name: Symbol,
 ) {
-    let Some(nv) = args.name_value() else {
+    let Some(nv) = args.as_name_value() else {
         expected_name_value(cx, args.span().unwrap_or(path.span()), path.word_sym());
         return;
     };
@@ -410,7 +410,7 @@ impl DocParser {
                                     super::cfg::parse_name_value(
                                         name,
                                         sub_item.path().span(),
-                                        a.name_value(),
+                                        a.as_name_value(),
                                         sub_item.span(),
                                         cx,
                                     )
@@ -421,7 +421,7 @@ impl DocParser {
                                         // If `value` is `Some`, `a.name_value()` will always return
                                         // `Some` as well.
                                         value: value
-                                            .map(|v| (v, a.name_value().unwrap().value_span)),
+                                            .map(|v| (v, a.as_name_value().unwrap().value_span)),
                                     })
                                 }
                             }
@@ -515,8 +515,9 @@ impl DocParser {
         }
         macro_rules! string_arg_and_crate_level {
             ($ident: ident) => {{
-                let Some(nv) = args.name_value() else {
-                    expected_name_value(cx, args.span().unwrap_or(path.span()), path.word_sym());
+                let Some(nv) =
+                    cx.expect_name_value(args, args.span().unwrap_or(path.span()), path.word_sym())
+                else {
                     return;
                 };
 
@@ -622,7 +623,7 @@ impl DocParser {
                     span,
                 );
             }
-            Some(sym::include) if let Some(nv) = args.name_value() => {
+            Some(sym::include) if let Some(nv) = args.as_name_value() => {
                 let inner = match cx.attr_style {
                     AttrStyle::Outer => "",
                     AttrStyle::Inner => "!",

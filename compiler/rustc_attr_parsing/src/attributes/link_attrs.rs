@@ -36,11 +36,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(name) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
@@ -95,7 +91,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         let mut wasm_import_module = None;
         let mut import_name_type = None;
         for item in items.mixed() {
-            let Some(item) = item.meta_item() else {
+            let Some(item) = item.as_meta_item() else {
                 cx.adcx().expected_not_literal(item.span());
                 continue;
             };
@@ -261,12 +257,11 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::name);
             return true;
         }
-        let Some(nv) = item.args().name_value() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::name));
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::name)) else {
             return false;
         };
         let Some(link_name) = nv.value_as_str() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::name));
+            cx.adcx().expected_string_literal(nv.args_span(), Some(nv.value_as_lit()));
             return false;
         };
 
@@ -288,12 +283,11 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::kind);
             return true;
         }
-        let Some(nv) = item.args().name_value() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::kind));
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::kind)) else {
             return true;
         };
         let Some(link_kind) = nv.value_as_str() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::kind));
+            cx.adcx().expected_string_literal(item.span(), Some(nv.value_as_lit()));
             return true;
         };
 
@@ -368,12 +362,11 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::modifiers);
             return true;
         }
-        let Some(nv) = item.args().name_value() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::modifiers));
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::modifiers)) else {
             return true;
         };
         let Some(link_modifiers) = nv.value_as_str() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::modifiers));
+            cx.adcx().expected_string_literal(item.span(), Some(nv.value_as_lit()));
             return true;
         };
         *modifiers = Some((link_modifiers, nv.value_span));
@@ -410,12 +403,13 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::wasm_import_module);
             return true;
         }
-        let Some(nv) = item.args().name_value() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::wasm_import_module));
+        let Some(nv) =
+            cx.expect_name_value(item.args(), item.span(), Some(sym::wasm_import_module))
+        else {
             return true;
         };
         let Some(link_wasm_import_module) = nv.value_as_str() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::wasm_import_module));
+            cx.adcx().expected_string_literal(item.span(), Some(nv.value_as_lit()));
             return true;
         };
         *wasm_import_module = Some((link_wasm_import_module, item.span()));
@@ -431,12 +425,12 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::import_name_type);
             return true;
         }
-        let Some(nv) = item.args().name_value() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::import_name_type));
+        let Some(nv) = cx.expect_name_value(item.args(), item.span(), Some(sym::import_name_type))
+        else {
             return true;
         };
         let Some(link_import_name_type) = nv.value_as_str() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::import_name_type));
+            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return true;
         };
         if cx.sess().target.arch != Arch::X86 {
@@ -503,11 +497,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(name) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
@@ -638,11 +628,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(name_value) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, Some(sym::linkage));
-            return None;
-        };
+        let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::linkage))?;
 
         let Some(value) = name_value.value_as_str() else {
             cx.adcx()

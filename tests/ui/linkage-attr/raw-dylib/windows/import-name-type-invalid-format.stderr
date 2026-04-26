@@ -2,9 +2,9 @@ error[E0539]: malformed `link` attribute input
   --> $DIR/import-name-type-invalid-format.rs:9:1
    |
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = 6)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------^^
-   |                                          |
-   |                                          expected this to be of the form `import_name_type = "..."`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                                                             |
+   |                                                             expected a string literal here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
 
