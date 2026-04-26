@@ -303,7 +303,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             self.expr_span.shrink_to_lo(),
                             "dereference the expression",
                             "*",
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
                     } else {
                         err.help(format!(
