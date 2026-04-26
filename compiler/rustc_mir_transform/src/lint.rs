@@ -66,6 +66,12 @@ impl<'a, 'tcx> Lint<'a, 'tcx> {
     }
 }
 
+/// Checks whether reading `src` while assigning to `dest` would violate MIR's
+/// non-overlap requirement for assignments.
+fn places_conflict_for_assignment<'tcx>(dest: Place<'tcx>, src: Place<'tcx>) -> bool {
+    dest == src || (dest.local == src.local && !dest.is_indirect() && !src.is_indirect())
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         if context.is_use() {
@@ -96,11 +102,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                 // The sides of an assignment must not alias.
                 if forbid_aliasing {
                     VisitPlacesWith(|src: Place<'tcx>, _| {
-                        if *dest == src
-                            || (dest.local == src.local
-                                && !dest.is_indirect()
-                                && !src.is_indirect())
-                        {
+                        if places_conflict_for_assignment(*dest, src) {
                             self.fail(
                                 location,
                                 format!(

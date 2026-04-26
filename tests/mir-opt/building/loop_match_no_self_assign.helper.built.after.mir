@@ -1,30 +1,31 @@
-// MIR for `break_to_block_unit` after built
+// MIR for `helper` after built
 
-fn break_to_block_unit() -> u8 {
+fn helper() -> u8 {
     let mut _0: u8;
-    let mut _1: i32;
+    let mut _1: u8;
     let mut _2: !;
-    let mut _3: i32;
+    let mut _3: u8;
+    let mut _4: !;
     scope 1 {
         debug state => _1;
     }
 
     bb0: {
         StorageLive(_1);
-        _1 = const 0_i32;
+        _1 = const 0_u8;
         FakeRead(ForLet(None), _1);
         StorageLive(_2);
         goto -> bb1;
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb10];
+        falseUnwind -> [real: bb2, unwind: bb11];
     }
 
     bb2: {
         PlaceMention(_1);
-        _3 = const 2_i32;
-        goto -> bb5;
+        _3 = copy _1;
+        goto -> bb7;
     }
 
     bb3: {
@@ -33,7 +34,7 @@ fn break_to_block_unit() -> u8 {
     }
 
     bb4: {
-        goto -> bb6;
+        unreachable;
     }
 
     bb5: {
@@ -41,25 +42,29 @@ fn break_to_block_unit() -> u8 {
     }
 
     bb6: {
-        goto -> bb7;
+        goto -> bb8;
     }
 
     bb7: {
+        goto -> bb8;
+    }
+
+    bb8: {
         _1 = copy _3;
         goto -> bb1;
     }
 
-    bb8: {
+    bb9: {
         unreachable;
     }
 
-    bb9: {
+    bb10: {
         StorageDead(_2);
         StorageDead(_1);
         return;
     }
 
-    bb10 (cleanup): {
+    bb11 (cleanup): {
         resume;
     }
 }

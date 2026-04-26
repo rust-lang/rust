@@ -326,36 +326,61 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
 
                     let state_place = scrutinee_place_builder.to_place(this);
+                    let state_result = this.temp(state_ty, expr_span);
+                    let state_result_place = Place::from(state_result);
 
                     // This is logic for the labeled block: a block is a drop scope, hence
                     // `in_scope`, and a labeled block can be broken out of with a `break 'label`,
                     // hence the `in_breakable_scope`.
                     //
+                    // The state update is still modeled like `state = 'blk: { ... }`: normal
+                    // match arm results and ordinary breaks to the block are first written to
+                    // `state_result_place`, then written back to `state_place`. This avoids
+                    // building an overlapping assignment like `state = state`.
+                    //
                     // Then `in_const_continuable_scope` stores information for the lowering of
-                    // `#[const_continue]`, and finally the match is lowered in the standard way.
+                    // `#[const_continue]`, which still updates the actual `state_place` directly
+                    // so it can jump to the statically known next match branch.
                     unpack!(
                         body_block = this.in_scope(
                             (region_scope, source_info),
                             LintLevel::Inherited,
                             move |this| {
-                                this.in_breakable_scope(None, state_place, expr_span, |this| {
-                                    Some(this.in_const_continuable_scope(
-                                        Box::from(arms),
-                                        built_tree.clone(),
-                                        state_place,
-                                        expr_span,
-                                        |this| {
-                                            this.lower_match_arms(
-                                                state_place,
-                                                scrutinee_place_builder,
-                                                scrutinee_span,
-                                                arms,
-                                                built_tree,
-                                                this.source_info(match_span),
+                                this.in_const_continuable_scope(
+                                    Box::from(arms),
+                                    built_tree.clone(),
+                                    state_place,
+                                    expr_span,
+                                    |this| {
+                                        let block = this
+                                            .in_breakable_scope(
+                                                None,
+                                                state_result_place,
+                                                expr_span,
+                                                |this| {
+                                                    Some(this.lower_match_arms(
+                                                        state_result_place,
+                                                        scrutinee_place_builder,
+                                                        scrutinee_span,
+                                                        arms,
+                                                        built_tree,
+                                                        this.source_info(match_span),
+                                                    ))
+                                                },
                                             )
-                                        },
-                                    ))
-                                })
+                                            .into_block();
+
+                                        this.cfg.push_assign(
+                                            block,
+                                            source_info,
+                                            state_place,
+                                            Rvalue::Use(
+                                                this.consume_by_copy_or_move(state_result_place),
+                                            ),
+                                        );
+                                        block.unit()
+                                    },
+                                )
                             }
                         )
                     );
