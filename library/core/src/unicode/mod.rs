@@ -9,14 +9,14 @@ pub use unicode_data::conversions;
 #[rustfmt::skip]
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
 pub(crate) use unicode_data::case_ignorable::lookup as Case_Ignorable;
+pub(crate) use unicode_data::cf::lookup as Cf;
+pub(crate) use unicode_data::cn_planes_0_3::lookup as Cn_planes_0_3;
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
 pub(crate) use unicode_data::lt::lookup as Lt;
 pub(crate) use unicode_data::n::lookup as N;
 pub(crate) use unicode_data::uppercase::lookup as Uppercase;
 pub(crate) use unicode_data::white_space::lookup as White_Space;
-
-pub(crate) mod printable;
 
 #[allow(unreachable_pub)]
 pub mod unicode_data;

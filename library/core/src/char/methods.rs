@@ -5,7 +5,6 @@ use crate::panic::const_panic;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::unicode::printable::is_printable;
 use crate::unicode::{self, conversions};
 
 impl char {
@@ -478,18 +477,29 @@ impl char {
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         match self {
-            '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
-            '\t' => EscapeDebug::backslash(ascii::Char::SmallT),
-            '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
-            '\n' => EscapeDebug::backslash(ascii::Char::SmallN),
-            '\\' => EscapeDebug::backslash(ascii::Char::ReverseSolidus),
+            // Special escapes
             '\"' if args.escape_double_quote => EscapeDebug::backslash(ascii::Char::QuotationMark),
             '\'' if args.escape_single_quote => EscapeDebug::backslash(ascii::Char::Apostrophe),
-            _ if args.escape_grapheme_extender && self.is_grapheme_extender() => {
+            '\\' => EscapeDebug::backslash(ascii::Char::ReverseSolidus),
+            '\n' => EscapeDebug::backslash(ascii::Char::SmallN),
+            '\t' => EscapeDebug::backslash(ascii::Char::SmallT),
+            '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
+            '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
+
+            // ASCII fast path
+            '\x20'..='\x7E' => EscapeDebug::printable(self),
+
+            _ if self.is_control()
+                || self.is_private_use()
+                || self.is_whitespace()
+                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || self.is_format_control()
+                || self.is_unassigned() =>
+            {
                 EscapeDebug::unicode(self)
             }
-            _ if is_printable(self) => EscapeDebug::printable(self),
-            _ => EscapeDebug::unicode(self),
+
+            _ => EscapeDebug::printable(self),
         }
     }
 
@@ -1108,6 +1118,111 @@ impl char {
         // the set of codepoints in `Cc` will never change.
         // So we can just hard-code the patterns to match against instead of using a table.
         matches!(self, '\0'..='\x1f' | '\x7f'..='\u{9f}')
+    }
+
+    /// Returns `true` if this `char` has the general category for [private-use characters].
+    /// These characters do not have an interpretation specified by Unicode; individual programs
+    /// and users are free to assign them whatever meaning they like.
+    ///
+    /// [private-use characters]: https://www.unicode.org/faq/private_use#private_use
+    ///
+    /// Private-use characters (code points with the general category of `Co`) are [described] in Chapter 23
+    /// (Special Areas and Format Characters) of the Unicode Standard, and [specified] in the
+    /// Unicode Character Database [`UnicodeData.txt`]. The full set of private-use characters is
+    /// `'\u{E000}'..='\u{F8FF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}'`,
+    /// and will never change.
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-23/#G19184
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    #[must_use]
+    #[inline]
+    const fn is_private_use(self) -> bool {
+        // According to
+        // https://www.unicode.org/policies/stability_policy.html#Property_Value,
+        // the set of codepoints in `Co` will never change.
+        // So we can just hard-code the patterns to match against instead of using a table.
+        matches!(self, '\u{E000}'..='\u{F8FF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}')
+    }
+
+    /// Returns `true` if this `char` has the general category for format control characters.
+    ///
+    /// Format controls (code points with the general category of `Cf`) are [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character
+    /// Database [`UnicodeData.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore(private)
+    /// assert!('\u{AD}'.is_format_control()); // SOFT HYPHEN
+    /// assert!('\u{200B}'.is_format_control()); // ZERO WIDTH SPACE
+    /// assert!('\u{E0041}'.is_format_control()); // TAG LATIN CAPITAL LETTER A
+    /// assert!('۝'.is_format_control()); // ARABIC END OF AYAH
+    /// assert!('𓐲'.is_format_control()); // EGYPTIAN HIEROGLYPH INSERT AT TOP START
+    /// assert!(!'q'.is_format_control());
+    /// ```
+    #[must_use]
+    #[inline]
+    fn is_format_control(self) -> bool {
+        self > '\u{AC}' && unicode::Cf(self)
+    }
+
+    /// Returns `true` if this `char` has not yet been assigned a meaning by Unicode, as of
+    /// [`UNICODE_VERSION`].
+    ///
+    /// [`UNICODE_VERSION`]: Self::UNICODE_VERSION
+    ///
+    /// These characters may have a meaning assigned in the future,
+    /// except for the 66 [noncharacters] which will never be assigned a meaning.
+    ///
+    /// [noncharacters]: https://www.unicode.org/faq/private_use#noncharacters
+    ///
+    /// Many of Unicode's [stability policies] apply only to assigned characters.
+    ///
+    /// [stability policies]: https://www.unicode.org/policies/stability_policy.html
+    ///
+    /// Unassigned characters (code points with the general category of `Cn`) are [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character Database
+    /// by their exclusion from [`UnicodeData.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore(private)
+    /// assert!('\u{FFFE}'.is_unassigned()); // noncharacter, will never be assigned
+    ///
+    /// //assert!('\u{7AAAA}'.is_unassigned()); // not currently assigned, but may be in the future,
+    ///                                         // so we shouldn't rely on the current status
+    ///
+    /// assert!(!'γ'.is_unassigned()); // once a character is assigned, it stays assigned forever
+    /// ```
+    #[must_use]
+    #[inline]
+    fn is_unassigned(self) -> bool {
+        match self {
+            '\0'..='\u{377}' => false,
+            '\u{378}'..='\u{3FFFD}' => unicode::Cn_planes_0_3(self),
+            // Assigned character ranges in planes 4 and above.
+            // `src/tools/unicode-table-generator/src/main.rs` asserts that this is correct
+            '\u{E0001}'
+            | '\u{E0020}'..='\u{E007F}'
+            | '\u{E0100}'..='\u{E01EF}'
+            | '\u{F0000}'..='\u{FFFFD}'
+            | '\u{100000}'..='\u{10FFFD}' => false,
+            _ => true,
+        }
     }
 
     /// Returns `true` if this `char` has the `Grapheme_Extend` property.
