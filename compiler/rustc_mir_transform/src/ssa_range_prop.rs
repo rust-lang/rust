@@ -143,14 +143,13 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         self.super_statement(statement, location);
         match &statement.kind {
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(operand)) => {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(operand))
                 if let Some(place) = operand.place()
-                    && self.is_ssa(place)
-                {
-                    let successor = location.successor_within_block();
-                    let range = WrappingRange { start: 1, end: 1 };
-                    self.insert_range(place, successor, range);
-                }
+                    && self.is_ssa(place) =>
+            {
+                let successor = location.successor_within_block();
+                let range = WrappingRange { start: 1, end: 1 };
+                self.insert_range(place, successor, range);
             }
             _ => {}
         }
@@ -159,58 +158,56 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
         match &terminator.kind {
-            TerminatorKind::Assert { cond, expected, target, .. } => {
+            TerminatorKind::Assert { cond, expected, target, .. }
                 if let Some(place) = cond.place()
+                    && self.is_ssa(place) =>
+            {
+                let successor = Location { block: *target, statement_index: 0 };
+                if location.dominates(successor, &self.dominators) {
+                    assert_ne!(location.block, successor.block);
+                    let val = *expected as u128;
+                    let range = WrappingRange { start: val, end: val };
+                    self.insert_range(place, successor, range);
+                }
+            }
+            TerminatorKind::SwitchInt { discr, targets }
+                if let Some(place) = discr.place()
                     && self.is_ssa(place)
-                {
-                    let successor = Location { block: *target, statement_index: 0 };
-                    if location.dominates(successor, &self.dominators) {
+                    // Reduce the potential compile-time overhead.
+                    && targets.all_targets().len() < 16 =>
+            {
+                let mut distinct_targets: FxHashMap<BasicBlock, u64> = FxHashMap::default();
+                for (_, target) in targets.iter() {
+                    let targets = distinct_targets.entry(target).or_default();
+                    *targets += 1;
+                }
+                for (val, target) in targets.iter() {
+                    if distinct_targets[&target] != 1 {
+                        // FIXME: For multiple targets, the range can be the union of their values.
+                        continue;
+                    }
+                    let successor = Location { block: target, statement_index: 0 };
+                    if self.unique_predecessors.contains(successor.block) {
                         assert_ne!(location.block, successor.block);
-                        let val = *expected as u128;
                         let range = WrappingRange { start: val, end: val };
                         self.insert_range(place, successor, range);
                     }
                 }
-            }
-            TerminatorKind::SwitchInt { discr, targets } => {
-                if let Some(place) = discr.place()
-                    && self.is_ssa(place)
-                    // Reduce the potential compile-time overhead.
-                    && targets.all_targets().len() < 16
-                {
-                    let mut distinct_targets: FxHashMap<BasicBlock, u64> = FxHashMap::default();
-                    for (_, target) in targets.iter() {
-                        let targets = distinct_targets.entry(target).or_default();
-                        *targets += 1;
-                    }
-                    for (val, target) in targets.iter() {
-                        if distinct_targets[&target] != 1 {
-                            // FIXME: For multiple targets, the range can be the union of their values.
-                            continue;
-                        }
-                        let successor = Location { block: target, statement_index: 0 };
-                        if self.unique_predecessors.contains(successor.block) {
-                            assert_ne!(location.block, successor.block);
-                            let range = WrappingRange { start: val, end: val };
-                            self.insert_range(place, successor, range);
-                        }
-                    }
 
-                    // FIXME: The range for the otherwise target be extend to more types.
-                    // For instance, `val` is within the range [4, 1) at the otherwise target of `matches!(val, 1 | 2 | 3)`.
-                    let otherwise = Location { block: targets.otherwise(), statement_index: 0 };
-                    if place.ty(self.local_decls, self.tcx).ty.is_bool()
-                        && let [val] = targets.all_values()
-                        && self.unique_predecessors.contains(otherwise.block)
-                    {
-                        assert_ne!(location.block, otherwise.block);
-                        let range = if val.get() == 0 {
-                            WrappingRange { start: 1, end: 1 }
-                        } else {
-                            WrappingRange { start: 0, end: 0 }
-                        };
-                        self.insert_range(place, otherwise, range);
-                    }
+                // FIXME: The range for the otherwise target be extend to more types.
+                // For instance, `val` is within the range [4, 1) at the otherwise target of `matches!(val, 1 | 2 | 3)`.
+                let otherwise = Location { block: targets.otherwise(), statement_index: 0 };
+                if place.ty(self.local_decls, self.tcx).ty.is_bool()
+                    && let [val] = targets.all_values()
+                    && self.unique_predecessors.contains(otherwise.block)
+                {
+                    assert_ne!(location.block, otherwise.block);
+                    let range = if val.get() == 0 {
+                        WrappingRange { start: 1, end: 1 }
+                    } else {
+                        WrappingRange { start: 0, end: 0 }
+                    };
+                    self.insert_range(place, otherwise, range);
                 }
             }
             _ => {}
