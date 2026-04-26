@@ -126,6 +126,26 @@ macro_rules! copy_slice_and_advance {
 // the bounds for String-join are S: Borrow<str> and for Vec-join Borrow<[T]>
 // [T] and str both impl AsRef<[T]> for some T
 // => s.borrow().as_ref() and we always have slices
+//
+// # Safety notes
+//
+// `Borrow` is a safe trait, and implementations are not required
+// to be deterministic. An inconsistent `Borrow` implementation could return slices
+// of different lengths on consecutive calls (e.g. by using interior mutability).
+//
+// This implementation calls `borrow()` multiple times:
+// 1. To calculate `reserved_len`, all elements are borrowed once.
+// 2. The first element is borrowed again when copied via `extend_from_slice`.
+// 3. Subsequent elements are borrowed a second time when building the mapped iterator.
+//
+// Risks and Mitigations:
+// - If the first element GROWS on the second borrow, the length subtraction underflows.
+//   We mitigate this by doing a `checked_sub` to panic rather than allowing an underflow
+//   that fabricates a huge destination slice.
+// - If elements 2..N GROW on their second borrow, the target slice bounds set by `checked_sub`
+//   means that `split_at_mut` inside `copy_slice_and_advance!` will correctly panic.
+// - If elements SHRINK on their second borrow, the spare space is never written, and the final
+//   length set via `set_len` masks trailing uninitialized bytes.
 #[cfg(not(no_global_oom_handling))]
 fn join_generic_copy<B, T, S>(slice: &[S], sep: &[T]) -> Vec<T>
 where
@@ -161,19 +181,21 @@ where
 
     unsafe {
         let pos = result.len();
-        let target = result.spare_capacity_mut().get_unchecked_mut(..reserved_len - pos);
+        let target_len = reserved_len.checked_sub(pos).expect("inconsistent Borrow implementation");
+        let target = result.spare_capacity_mut().get_unchecked_mut(..target_len);
 
         // Convert the separator and slices to slices of MaybeUninit
-        // to simplify implementation in specialize_for_lengths
+        // to simplify implementation in specialize_for_lengths.
         let sep_uninit = core::slice::from_raw_parts(sep.as_ptr().cast(), sep.len());
         let iter_uninit = iter.map(|it| {
             let it = it.borrow().as_ref();
             core::slice::from_raw_parts(it.as_ptr().cast(), it.len())
         });
 
-        // copy separator and slices over without bounds checks
-        // generate loops with hardcoded offsets for small separators
-        // massive improvements possible (~ x2)
+        // copy separator and slices over without bounds checks.
+        // `specialize_for_lengths!` internally calls `s.borrow()`, but because it uses
+        // the bounds-checked `split_at_mut` any misbehaving implementation
+        // will not write out of bounds.
         let remain = specialize_for_lengths!(sep_uninit, target, iter_uninit; 0, 1, 2, 3, 4);
 
         // A weird borrow implementation may return different

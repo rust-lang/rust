@@ -195,6 +195,25 @@ fn test_join_issue_80335() {
 }
 
 #[test]
+#[should_panic(expected = "inconsistent Borrow implementation")]
+fn test_join_inconsistent_borrow() {
+    use std::borrow::Borrow;
+    use std::cell::Cell;
+
+    struct E(Cell<u32>);
+
+    impl Borrow<str> for E {
+        fn borrow(&self) -> &str {
+            let count = self.0.get();
+            self.0.set(count + 1);
+            if count == 0 { "" } else { "longer string" }
+        }
+    }
+
+    let _s = [E(Cell::new(0)), E(Cell::new(0))].join("");
+}
+
+#[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_unsafe_slice() {
     assert_eq!("ab", unsafe { "abc".get_unchecked(0..2) });
