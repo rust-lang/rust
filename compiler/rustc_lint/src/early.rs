@@ -13,9 +13,9 @@ use rustc_session::lint::LintPass;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
-use crate::context::{EarlyContext, LintContext, LintStore};
+use crate::context::{EarlyContext, LintContext};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
-use crate::{DecorateAttrLint, DiagAndSess};
+use crate::{DecorateAttrLint, DiagAndSess, unerased_lint_store};
 
 pub(super) mod diagnostics;
 
@@ -324,11 +324,11 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [Box<ast
 pub fn check_ast_node<'a>(
     tcx: TyCtxt<'_>,
     pre_expansion: bool,
-    lint_store: &LintStore,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
+    let lint_store = unerased_lint_store(tcx.sess);
     let context = EarlyContext::new(
         tcx.sess,
         tcx.features(),

@@ -24,9 +24,7 @@ use rustc_hir::limit::Limit;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{
-    BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
-};
+use rustc_lint::{BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -84,12 +82,7 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     krate
 }
 
-fn pre_expansion_lint<'a>(
-    tcx: TyCtxt<'_>,
-    lint_store: &LintStore,
-    check_node: impl EarlyCheckNode<'a>,
-    node_name: Symbol,
-) {
+fn pre_expansion_lint<'a>(tcx: TyCtxt<'_>, check_node: impl EarlyCheckNode<'a>, node_name: Symbol) {
     tcx.sess
         .prof
         .generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str())
@@ -97,7 +90,6 @@ fn pre_expansion_lint<'a>(
             rustc_lint::check_ast_node(
                 tcx,
                 true,
-                lint_store,
                 None,
                 rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
                 check_node,
@@ -105,10 +97,10 @@ fn pre_expansion_lint<'a>(
         });
 }
 
-// Cannot implement directly for `LintStore` due to trait coherence.
-struct LintStoreExpandImpl<'a>(&'a LintStore);
+// Can't move this into rustc_expand because it doesn't depend on rustc_lint.
+struct LintStoreExpandImpl;
 
-impl LintStoreExpand for LintStoreExpandImpl<'_> {
+impl LintStoreExpand for LintStoreExpandImpl {
     fn pre_expansion_lint(
         &self,
         tcx: TyCtxt<'_>,
@@ -117,7 +109,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(tcx, self.0, (node_id, attrs, items), name);
+        pre_expansion_lint(tcx, (node_id, attrs, items), name);
     }
 }
 
@@ -134,10 +126,9 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
-    pre_expansion_lint(tcx, lint_store, lint_check_node, crate_name);
+    pre_expansion_lint(tcx, lint_check_node, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     let num_standard_library_imports = sess.time("crate_injection", || {
@@ -199,7 +190,7 @@ fn configure_and_expand(
             proc_macro_backtrace: sess.opts.unstable_opts.proc_macro_backtrace,
         };
 
-        let lint_store = LintStoreExpandImpl(lint_store);
+        let lint_store = LintStoreExpandImpl;
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
         ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
@@ -453,11 +444,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         }
     });
 
-    let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         tcx,
         false,
-        lint_store,
         Some(lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
