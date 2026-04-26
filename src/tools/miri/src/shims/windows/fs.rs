@@ -22,8 +22,10 @@ impl FileDescription for DirHandle {
         "directory"
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
-        interp_ok(self.path.metadata())
+    fn metadata<'tcx>(
+        &self,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        interp_ok(Either::Left(self.path.metadata()))
     }
 
     fn destroy<'tcx>(
@@ -49,8 +51,10 @@ impl FileDescription for MetadataHandle {
         "metadata-only"
     }
 
-    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
-        interp_ok(Ok(self.meta.clone()))
+    fn metadata<'tcx>(
+        &self,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        interp_ok(Either::Left(Ok(self.meta.clone())))
     }
 
     fn destroy<'tcx>(
@@ -329,11 +333,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let metadata = match desc.metadata()? {
-            Ok(meta) => meta,
-            Err(e) => {
+            Either::Left(Ok(meta)) => meta,
+            Either::Left(Err(e)) => {
                 this.set_last_error(e)?;
                 return interp_ok(this.eval_windows("c", "FALSE"));
             }
+            Either::Right(_mode) =>
+                throw_unsup_format!(
+                    "`GetFileInformationByHandle` is not supported on non-file-backed handles"
+                ),
         };
 
         let size = metadata.len();
