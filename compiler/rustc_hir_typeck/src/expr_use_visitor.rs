@@ -2,7 +2,7 @@
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 //!
-//! In the compiler, this is only used for upvar inference, but there
+//! In the compiler, this is only used for upvar inference and diagnostics, but there
 //! are many uses within clippy.
 
 use std::cell::{Ref, RefCell};
@@ -1854,4 +1854,28 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             false
         }
     }
+}
+
+struct ExprPlaceDelegate;
+
+impl<'tcx> Delegate<'tcx> for ExprPlaceDelegate {
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+}
+
+/// Categorizes `expr` as a place for diagnostic suggestions.
+///
+/// This should be used for diagnostics purpose only.
+pub(crate) fn expr_place<'tcx>(
+    fcx: &FnCtxt<'_, 'tcx>,
+    expr: &hir::Expr<'_>,
+) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
+    ExprUseVisitor::new(fcx, ExprPlaceDelegate).cat_expr(expr)
 }
