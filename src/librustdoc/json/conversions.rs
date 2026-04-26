@@ -1102,6 +1102,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                 rust_logo,
                 test_attrs,
                 no_crate_inject,
+                syntax,
             } = &**d;
 
             let mut ret = Vec::new();
@@ -1185,6 +1186,12 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                 }
             }
             toggle_attr(&mut ret, "test(no_crate_inject)", no_crate_inject);
+            if let Some(syntax) = syntax {
+                ret.push(Attribute::Other(format!(
+                    r#"#[doc(syntax="{}tex_math_dollars")]"#,
+                    if syntax.tex_math_dollars { "+" } else { "-" }
+                )));
+            }
             return ret;
         }
 
