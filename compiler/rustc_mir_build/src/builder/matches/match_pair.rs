@@ -13,6 +13,11 @@ use crate::builder::matches::{
     FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
+/// Below this length, an array or slice pattern is compared element by element
+/// rather than as a single aggregate, since the per-element comparisons are
+/// unlikely to be more expensive than a `PartialEq::eq` call.
+const AGGREGATE_EQ_MIN_LEN: usize = 4;
+
 /// Checks whether every pattern in `elements` is a `PatKind::Constant` and,
 /// if so, reconstructs a single aggregate `ty::Value` that represents the whole
 /// array or slice. Returns `None` when any element is not a constant or the
@@ -22,8 +27,8 @@ fn try_reconstruct_aggregate_constant<'tcx>(
     aggregate_ty: Ty<'tcx>,
     elements: &[Pat<'tcx>],
 ) -> Option<ty::Value<'tcx>> {
-    // A single element (or empty array) is not worth an aggregate comparison.
-    if elements.len() <= 1 {
+    // Short arrays are not worth an aggregate comparison.
+    if elements.len() < AGGREGATE_EQ_MIN_LEN {
         return None;
     }
     let branches = elements
