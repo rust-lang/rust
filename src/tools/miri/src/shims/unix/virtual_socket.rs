@@ -83,6 +83,16 @@ impl FileDescription for VirtualSocket {
         }
     }
 
+    fn metadata<'tcx>(
+        &self,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        let mode_name = match self.fd_type {
+            VirtualSocketType::Socketpair => "S_IFSOCK",
+            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => "S_IFIFO",
+        };
+        interp_ok(Either::Right(mode_name))
+    }
+
     fn destroy<'tcx>(
         self,
         _self_id: FdId,
