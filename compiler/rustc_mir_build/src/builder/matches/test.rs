@@ -40,6 +40,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestableCase::Constant { value, kind: PatConstKind::String } => {
                 TestKind::StringEq { value }
             }
+            TestableCase::Constant { value, kind: PatConstKind::Aggregate } => {
+                TestKind::AggregateEq { value }
+            }
             TestableCase::Constant { value, kind: PatConstKind::Float | PatConstKind::Other } => {
                 TestKind::ScalarEq { value }
             }
@@ -137,27 +140,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::StringEq { value } => {
+            TestKind::StringEq { value } | TestKind::AggregateEq { value } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let ref_str_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, tcx.types.str_);
-                assert!(ref_str_ty.is_imm_ref_str(), "{ref_str_ty:?}");
+                let inner_ty = value.ty;
+                if matches!(test.kind, TestKind::StringEq { .. }) {
+                    assert!(
+                        inner_ty.is_str(),
+                        "unexpected value type for StringEq test: {value:?}"
+                    );
+                }
+                let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, inner_ty);
 
-                // The string constant we're testing against has type `str`, but
-                // calling `<str as PartialEq>::eq` requires `&str` operands.
-                //
-                // Because `str` and `&str` have the same valtree representation,
-                // we can "cast" to the desired type by just replacing the type.
-                assert!(value.ty.is_str(), "unexpected value type for StringEq test: {value:?}");
-                let expected_value = ty::Value { ty: ref_str_ty, valtree: value.valtree };
+                // The constant we're testing against has type `str`, `[T; N]`, or `[T]`,
+                // but calling `<T as PartialEq>::eq` requires a reference operand
+                // (`&str`, `&[T; N]`, or `&[T]`). Valtree representations are the same
+                // with or without the reference wrapper, so we can "cast" to the
+                // desired type by just replacing the type.
+                let expected_value = ty::Value { ty: ref_ty, valtree: value.valtree };
                 let expected_value_operand =
                     self.literal_operand(test.span, Const::from_ty_value(tcx, expected_value));
 
-                // Similarly, the scrutinized place has type `str`, but we need `&str`.
-                // Get a reference by doing `let actual_value_ref_place: &str = &place`.
-                let actual_value_ref_place = self.temp(ref_str_ty, test.span);
+                // Similarly, the scrutinised place has the inner type, but we need a
+                // reference. Get one by doing `let actual_value_ref_place = &place`.
+                let actual_value_ref_place = self.temp(ref_ty, test.span);
                 self.cfg.push_assign(
                     block,
                     self.source_info(test.span),
@@ -165,14 +173,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
                 );
 
-                // Compare two strings using `<str as std::cmp::PartialEq>::eq`.
-                // (Interestingly this means that exhaustiveness analysis relies, for soundness,
-                // on the `PartialEq` impl for `str` to be correct!)
-                self.string_compare(
+                // Compare the two values using `<T as std::cmp::PartialEq>::eq`.
+                // (Interestingly this means that, for `str`, exhaustiveness analysis
+                // relies for soundness on the `PartialEq` impl for `str` to be correct!)
+                self.non_scalar_compare(
                     block,
                     success_block,
                     fail_block,
                     source_info,
+                    inner_ty,
                     expected_value_operand,
                     Operand::Copy(actual_value_ref_place),
                 );
@@ -404,19 +413,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Compare two values of type `&str` using `<str as std::cmp::PartialEq>::eq`.
-    fn string_compare(
+    /// Compare two reference values using `<T as PartialEq>::eq`.
+    ///
+    /// `compared_ty` is the *inner* type (e.g. `str`, `[u8; 64]`);
+    /// `expect` and `val` must already be references to that type.
+    fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
         success_block: BasicBlock,
         fail_block: BasicBlock,
         source_info: SourceInfo,
+        compared_ty: Ty<'tcx>,
         expect: Operand<'tcx>,
         val: Operand<'tcx>,
     ) {
-        let str_ty = self.tcx.types.str_;
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, source_info.span);
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [str_ty, str_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [compared_ty, compared_ty]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
