@@ -8,6 +8,7 @@
 //!
 //! [docs]: https://doc.rust-lang.org/stable/rustdoc/#using-standalone-markdown-files
 
+use std::cell::Cell;
 use std::fmt::{self, Write as _};
 use std::fs::{File, create_dir_all};
 use std::io::prelude::*;
@@ -85,9 +86,11 @@ pub(crate) fn render_and_write(
                 content: text,
                 links: &[],
                 ids: &mut IdMap::new(),
+                contains_mathml: &Cell::new(false),
                 error_codes,
                 edition,
                 playground: &playground,
+                doc_syntax: None,
             }
             .write_into(f)
         } else {
@@ -95,6 +98,8 @@ pub(crate) fn render_and_write(
                 content: text,
                 links: &[],
                 ids: &mut IdMap::new(),
+                contains_mathml: &Cell::new(false),
+                doc_syntax: None,
                 error_codes,
                 edition,
                 playground: &playground,
