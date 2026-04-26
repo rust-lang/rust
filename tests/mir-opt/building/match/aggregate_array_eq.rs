@@ -4,7 +4,7 @@
 // Verify that matching against a constant array pattern produces a single
 // `PartialEq::eq` call rather than element-by-element comparisons.
 // In const contexts, the aggregate comparison must NOT be used because
-// `PartialEq` is not const-stable (unless `#![feature(const_cmp)]`).
+// `PartialEq` is not const-stable.
 
 #![crate_type = "lib"]
 
