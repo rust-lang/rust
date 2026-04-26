@@ -7,3 +7,5 @@ mod error;
 pub use self::borrowed_buf::{BorrowedBuf, BorrowedCursor};
 #[unstable(feature = "core_io", issue = "154046")]
 pub use self::error::ErrorKind;
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub use self::error::RawOsError;
