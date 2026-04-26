@@ -147,6 +147,10 @@ impl<T0, T1> Erasable for (&'_ T0, &'_ T1) {
     type Storage = [u8; size_of::<(&'_ (), &'_ ())>()];
 }
 
+impl<T0, T1, T2> Erasable for (&'_ T0, &'_ T1, &'_ T2) {
+    type Storage = [u8; size_of::<(&'_ (), &'_ (), &'_ ())>()];
+}
+
 macro_rules! impl_erasable_for_types_with_no_type_params {
     ($($ty:ty),+ $(,)?) => {
         $(

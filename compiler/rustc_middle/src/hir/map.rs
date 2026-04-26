@@ -7,7 +7,7 @@ use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -1134,11 +1134,8 @@ impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
-    let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.opt_hir_hash.expect("HIR hash missing while computing crate hash");
-
+    let krate = tcx.hir_crate_items(());
     let upstream_crates = upstream_crates(tcx);
-
     let resolutions = tcx.resolutions(());
 
     // We hash the final, remapped names of all local source files so we
@@ -1173,7 +1170,12 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
 
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        // hir_body_hash
+        for owner in krate.owners() {
+            if let Some(info) = tcx.lower_to_hir(owner.def_id).as_owner() {
+                info.hash_stable(&mut hcx, &mut stable_hasher);
+            }
+        }
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
@@ -1255,25 +1257,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
     }
 }
 
-fn force_delayed_owners_lowering(tcx: TyCtxt<'_>) {
-    let krate = tcx.hir_crate(());
-    for &id in &krate.delayed_ids {
-        tcx.ensure_done().lower_delayed_owner(id);
-    }
-
-    let (_, krate) = krate.delayed_resolver.steal();
-    let prof = tcx.sess.prof.clone();
-
-    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
-    spawn(move || {
-        let _timer = prof.verbose_generic_activity("drop_ast");
-        drop(krate);
-    });
-}
-
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
-    force_delayed_owners_lowering(tcx);
-
     let mut collector = ItemCollector::new(tcx, true);
 
     // A "crate collector" and "module collector" start at a

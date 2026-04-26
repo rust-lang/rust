@@ -19,6 +19,7 @@ pub use rustc_ast::{
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
+use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -1587,7 +1588,7 @@ impl<'tcx> AttributeMap<'tcx> {
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR. Used in the crate hash. Only present
     /// when incr. comp. is enabled.
-    pub opt_hash_including_bodies: Option<Fingerprint>,
+    pub opt_hash: Option<Fingerprint>,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
@@ -1620,13 +1621,13 @@ impl fmt::Debug for OwnerNodes<'_> {
                 }),
             )
             .field("bodies", &self.bodies)
-            .field("opt_hash_including_bodies", &self.opt_hash_including_bodies)
+            .field("opt_hash", &self.opt_hash)
             .finish()
     }
 }
 
 /// Full information resulting from lowering an AST node.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,
@@ -1643,8 +1644,11 @@ pub struct OwnerInfo<'hir> {
     ///
     /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
     ///          should only be accessed in `eval_always` queries.
-    #[stable_hasher(ignore)]
     pub delayed_lints: DelayedLints,
+    /// Owners generated as side-effect by lowering.
+    pub children: UnordMap<LocalDefId, MaybeOwner<'hir>>,
+    // Only present when the crate hash is needed.
+    pub opt_hash: Option<Fingerprint>,
 }
 
 impl<'tcx> OwnerInfo<'tcx> {
@@ -1658,18 +1662,18 @@ impl<'tcx> OwnerInfo<'tcx> {
 pub enum MaybeOwner<'tcx> {
     Owner(&'tcx OwnerInfo<'tcx>),
     NonOwner(HirId),
-    /// Used as a placeholder for unused LocalDefId.
-    Phantom,
 }
 
 impl<'tcx> MaybeOwner<'tcx> {
+    #[inline]
     pub fn as_owner(self) -> Option<&'tcx OwnerInfo<'tcx>> {
         match self {
             MaybeOwner::Owner(i) => Some(i),
-            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => None,
+            MaybeOwner::NonOwner(_) => None,
         }
     }
 
+    #[inline]
     pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
         self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }

@@ -69,7 +69,7 @@ pub(crate) fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> E
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> u64 {
     let owner = hir_body.id().hir_id.owner;
     tcx.hir_owner_nodes(owner)
-        .opt_hash_including_bodies
+        .opt_hash
         .expect("hash should be present when coverage instrumentation is enabled")
         .to_smaller_hash()
         .as_u64()
