@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 #![allow(incomplete_features, unused_labels)]
 #![feature(loop_match)]
 #![crate_type = "lib"]
