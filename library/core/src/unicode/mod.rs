@@ -27,8 +27,13 @@ pub mod unicode_data;
 /// New versions of Unicode are released regularly and subsequently all methods
 /// in the standard library depending on Unicode are updated. Therefore the
 /// behavior of some `char` and `str` methods and the value of this constant
-/// changes over time. This is *not* considered to be a breaking change.
+/// changes over time, within the boundaries of Unicode's [stability policies].
+/// This is *not* considered to be a breaking change.
+///
+/// [stability policies]: https://www.unicode.org/policies/stability_policy.html
 ///
 /// The version numbering scheme is explained in
-/// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
+/// [Section 3.1 (Version Numbering)] of the Unicode Standard.
+///
+/// [Section 3.1 (Version Numbering)]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G49512
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
