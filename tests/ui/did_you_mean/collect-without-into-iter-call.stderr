@@ -10,7 +10,7 @@ LL |     let other_items = items.into_iter().map(|i| i + 1);
    |                             ++++++++++++
 
 error[E0599]: no method named `collect` found for opaque type `impl IntoIterator<Item = i32>` in the current scope
-  --> $DIR/collect-without-into-iter-call.rs:8:31
+  --> $DIR/collect-without-into-iter-call.rs:9:31
    |
 LL |     let vec: Vec<i32> = items.collect();
    |                               ^^^^^^^ `impl IntoIterator<Item = i32>` is not an iterator
@@ -21,7 +21,7 @@ LL |     let vec: Vec<i32> = items.into_iter().collect();
    |                               ++++++++++++
 
 error[E0599]: no method named `collect` found for type parameter `impl IntoIterator<Item = String>` in the current scope
-  --> $DIR/collect-without-into-iter-call.rs:17:11
+  --> $DIR/collect-without-into-iter-call.rs:19:11
    |
 LL |     items.collect()
    |           ^^^^^^^ `impl IntoIterator<Item = String>` is not an iterator
@@ -31,6 +31,50 @@ help: call `.into_iter()` first
 LL |     items.into_iter().collect()
    |           ++++++++++++
 
-error: aborting due to 3 previous errors
+error[E0599]: no method named `filter` found for struct `Vec<u32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:31:23
+   |
+LL |         self.contents.filter(|v| *v % 2 == 1).count()
+   |                       ^^^^^^ `Vec<u32>` is not an iterator
+   |
+help: call `.iter()` first
+   |
+LL |         self.contents.iter().filter(|v| *v % 2 == 1).count()
+   |                       +++++++
+
+error[E0599]: no method named `for_each` found for struct `Vec<u32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:37:23
+   |
+LL |         self.contents.for_each(|v| *v += 1)
+   |                       ^^^^^^^^ `Vec<u32>` is not an iterator
+   |
+help: call `.iter_mut()` first
+   |
+LL |         self.contents.iter_mut().for_each(|v| *v += 1)
+   |                       +++++++++++
+
+error[E0599]: no method named `filter` found for reference `&Vec<u32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:44:14
+   |
+LL |     contents.filter(|v| *v % 2 == 1).count()
+   |              ^^^^^^ `&Vec<u32>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |     contents.into_iter().filter(|v| *v % 2 == 1).count()
+   |              ++++++++++++
+
+error[E0599]: no method named `filter` found for struct `Vec<u32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:50:17
+   |
+LL |     (*contents).filter(|v| *v % 2 == 1).count()
+   |                 ^^^^^^ `Vec<u32>` is not an iterator
+   |
+help: call `.iter()` first
+   |
+LL |     (*contents).iter().filter(|v| *v % 2 == 1).count()
+   |                 +++++++
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0599`.
