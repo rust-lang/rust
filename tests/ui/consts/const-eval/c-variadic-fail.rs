@@ -6,7 +6,7 @@
 #![feature(const_destruct)]
 #![feature(const_clone)]
 
-use std::ffi::VaList;
+use std::ffi::{VaList, c_char, c_void};
 use std::mem::MaybeUninit;
 
 const unsafe extern "C" fn read_n<const N: usize>(mut ap: ...) {
@@ -37,7 +37,7 @@ const unsafe extern "C" fn read_as<T: core::ffi::VaArgSafe>(mut ap: ...) -> T {
     ap.next_arg::<T>()
 }
 
-unsafe fn read_cast() {
+unsafe fn read_cast_numeric() {
     const { read_as::<i32>(1i32) };
     const { read_as::<u32>(1u32) };
 
@@ -47,20 +47,48 @@ unsafe fn read_cast() {
     const { read_as::<i64>(1i64) };
     const { read_as::<u64>(1u64) };
 
+    // A cast between signed and unsigned is OK so long as both types can represent the value.
     const { read_as::<u32>(1i32) };
-    //~^ ERROR va_arg type mismatch: requested `u32`, but next argument is `i32`
-
     const { read_as::<i32>(1u32) };
-    //~^ ERROR va_arg type mismatch: requested `i32`, but next argument is `u32`
+
+    const { read_as::<u32>(-1i32) };
+    //~^ ERROR va_arg value mismatch: value `-1` cannot be represented by type u32
+    const { read_as::<i32>(u32::MAX) };
+    //~^ ERROR va_arg value mismatch: value `4294967295` cannot be represented by type i32
 
     const { read_as::<i32>(1u64) };
-    //~^ ERROR va_arg type mismatch: requested `i32`, but next argument is `u64`
+    //~^ ERROR va_arg type mismatch: requested `i32` is incompatible with next argument of type `u64`
 
     const { read_as::<f64>(1i32) };
-    //~^ ERROR va_arg type mismatch: requested `f64`, but next argument is `i32`
+    //~^ ERROR va_arg type mismatch: requested `f64` is incompatible with next argument of type `i32`
+}
 
-    const { read_as::<*const u8>(1i32) };
-    //~^ ERROR va_arg type mismatch: requested `*const u8`, but next argument is `i32`
+unsafe fn read_cast_pointer() {
+    // A pointer mutability cast is OK.
+    const { read_as::<*const i32>(std::ptr::dangling_mut::<i32>()) };
+    const { read_as::<*mut i32>(std::ptr::dangling::<i32>()) };
+
+    // A pointer cast is OK between compatible types.
+    const { read_as::<*const i32>(std::ptr::dangling::<u32>()) };
+    const { read_as::<*const i32>(std::ptr::dangling_mut::<u32>()) };
+    const { read_as::<*mut i32>(std::ptr::dangling::<u32>()) };
+    const { read_as::<*mut i32>(std::ptr::dangling_mut::<u32>()) };
+
+    // Casting between pointers to i8/u8 and c_void is OK.
+    const { read_as::<*const c_char>(std::ptr::dangling::<c_void>()) };
+    const { read_as::<*const c_void>(std::ptr::dangling::<c_char>()) };
+    const { read_as::<*const i8>(std::ptr::dangling::<c_void>()) };
+    const { read_as::<*const c_void>(std::ptr::dangling::<i8>()) };
+    const { read_as::<*const u8>(std::ptr::dangling::<c_void>()) };
+    const { read_as::<*const c_void>(std::ptr::dangling::<u8>()) };
+
+    const { read_as::<*const u16>(std::ptr::dangling::<c_void>()) };
+    //~^ ERROR va_arg type mismatch: requested `*const u16` is incompatible with next argument of type `*const c_void`
+    const { read_as::<*const c_void>(std::ptr::dangling::<u16>()) };
+    //~^ ERROR va_arg type mismatch: requested `*const c_void` is incompatible with next argument of type `*const u16`
+
+    const { read_as::<*const u8>(1usize) };
+    //~^ ERROR requested `*const u8` is incompatible with next argument of type `usize`
 }
 
 fn use_after_free() {
@@ -138,7 +166,8 @@ fn drop_of_invalid() {
 fn main() {
     unsafe {
         read_too_many();
-        read_cast();
+        read_cast_numeric();
+        read_cast_pointer();
         manual_copy_read();
         manual_copy_drop();
         manual_copy_forget();
