@@ -1,5 +1,4 @@
 #![feature(impl_restriction, auto_traits, const_trait_impl, trait_alias)]
-#![expect(incomplete_features)]
 
 impl(crate) trait Alias = Copy; //~ ERROR trait aliases cannot be `impl`-restricted
 impl(in crate) auto trait AutoAlias = Copy; //~ ERROR trait aliases cannot be `impl`-restricted

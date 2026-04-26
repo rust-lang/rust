@@ -364,6 +364,7 @@
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
 #![feature(random)]
+#![feature(raw_os_error_ty)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]

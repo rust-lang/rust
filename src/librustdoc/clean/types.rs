@@ -8,7 +8,6 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_ast as ast;
-use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
@@ -501,11 +500,7 @@ impl Item {
     }
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
-        let deprecation_notes = self
-            .attrs
-            .other_attrs
-            .iter()
-            .filter_map(|attr| attr.deprecation_note().map(|note| note.span));
+        let deprecation_notes = find_attr!(&self.attrs.other_attrs, Deprecated { deprecation, .. } => deprecation.note.map(|note| note.span)).flatten();
 
         span_of_fragments(&self.attrs.doc_strings)
             .into_iter()

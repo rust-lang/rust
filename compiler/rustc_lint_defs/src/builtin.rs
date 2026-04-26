@@ -5639,7 +5639,12 @@ declare_lint! {
     /// LLVM periodically updates its list of intrinsics. Deprecated intrinsics are unlikely
     /// to be removed, but they may optimize less well than their new versions, so it's
     /// best to use the new version. Also, some deprecated intrinsics might have buggy
-    /// behavior
+    /// behavior.
+    ///
+    /// This `link_llvm_intrinsics` lint is intended to be used internally only, and requires the
+    /// `#![feature(link_llvm_intrinsics)]` internal feature gate. For more information, see [its chapter in
+    /// the Unstable Book](https://doc.rust-lang.org/unstable-book/language-features/link-llvm-intrinsics.html)
+    /// and [its tracking issue](https://github.com/rust-lang/rust/issues/29602).
     pub DEPRECATED_LLVM_INTRINSIC,
     Allow,
     "detects uses of deprecated LLVM intrinsics",

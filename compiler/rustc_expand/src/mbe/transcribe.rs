@@ -18,9 +18,10 @@ use rustc_span::{
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
-    CountRepetitionMisplaced, MacroVarStillRepeating, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    MveUnrecognizedVar, NoRepeatableVar, NoSyntaxVarsExprRepeat, VarNoTypo,
-    VarTypoSuggestionRepeatable, VarTypoSuggestionUnrepeatable, VarTypoSuggestionUnrepeatableLabel,
+    ConcatInvalidIdent, CountRepetitionMisplaced, InvalidIdentReason, MacroVarStillRepeating,
+    MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar, NoRepeatableVar,
+    NoSyntaxVarsExprRepeat, VarNoTypo, VarTypoSuggestionRepeatable, VarTypoSuggestionUnrepeatable,
+    VarTypoSuggestionUnrepeatableLabel,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
@@ -656,10 +657,10 @@ fn metavar_expr_concat<'tx>(
     let symbol = nfc_normalize(&concatenated);
     let concatenated_span = tscx.visited_dspan(dspan);
     if !rustc_lexer::is_ident(symbol.as_str()) {
-        return Err(dcx.struct_span_err(
-            concatenated_span,
-            "`${concat(..)}` is not generating a valid identifier",
-        ));
+        return Err(dcx.create_err(ConcatInvalidIdent {
+            span: concatenated_span,
+            reason: InvalidIdentReason::new(symbol),
+        }));
     }
     tscx.psess.symbol_gallery.insert(symbol, concatenated_span);
 

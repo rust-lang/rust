@@ -1225,7 +1225,7 @@ impl<'a> Parser<'a> {
     pub(super) fn inclusive_range_with_incorrect_end(&mut self) -> ErrorGuaranteed {
         let tok = &self.token;
         let span = self.prev_token.span;
-        // If the user typed "..==" instead of "..=", we want to give them
+        // If the user typed "..==" or "...=" instead of "..=", we want to give them
         // a specific error message telling them to use "..=".
         // If they typed "..=>", suggest they use ".. =>".
         // Otherwise, we assume that they meant to type a half open exclusive
@@ -1243,14 +1243,10 @@ impl<'a> Parser<'a> {
 
                 self.dcx().emit_err(InclusiveRangeExtraEquals { span: span_with_eq })
             }
-            token::Gt if no_space => {
-                let after_pat = span.with_hi(span.hi() - BytePos(1)).shrink_to_hi();
-                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat })
+            token::Gt if self.prev_token.kind == token::DotDotEq && no_space => {
+                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span })
             }
-            _ => self.dcx().emit_err(InclusiveRangeNoEnd {
-                span,
-                suggestion: span.with_lo(span.hi() - BytePos(1)),
-            }),
+            _ => self.dcx().emit_err(InclusiveRangeNoEnd { span }),
         }
     }
 

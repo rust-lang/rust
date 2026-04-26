@@ -156,14 +156,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .collect();
                 generic_args.push((kw::SelfUpper, this.clone()));
 
-                let args = FormatArgs {
-                    this,
-                    // Unused
-                    this_sugared: String::new(),
-                    // Unused
-                    item_context: "",
-                    generic_args,
-                };
+                let args = FormatArgs { this, generic_args, .. };
                 let CustomDiagnostic { message, label, notes, parent_label: _ } =
                     directive.eval(None, &args);
 
