@@ -71,11 +71,11 @@
 //! index of that offset is utilized as the answer to whether we're in the set
 //! or not.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
 use std::ops::Range;
 
-use ucd_parse::Codepoints;
+use ucd_parse::{Codepoint, Codepoints};
 
 mod cascading_map;
 mod case_mapping;
@@ -88,14 +88,19 @@ use fmt_helpers::CharEscape;
 use raw_emitter::{RawEmitter, emit_codepoints, emit_whitespace};
 
 static PROPERTIES: &[&str] = &[
+    // tidy-alphabetical-start
     "Alphabetic",
-    "Lowercase",
-    "Uppercase",
     "Case_Ignorable",
+    "Cf",
+    "Cn_Planes_0_3",
+    "Default_Ignorable_Code_Point",
     "Grapheme_Extend",
-    "White_Space",
-    "N",
+    "Lowercase",
     "Lt",
+    "N",
+    "Uppercase",
+    "White_Space",
+    // tidy-alphabetical-end
 ];
 
 struct UnicodeData {
@@ -138,6 +143,9 @@ fn load_data() -> UnicodeData {
         }
     }
 
+    // Unassigned characters are not listed in `UnicodeData.txt`,
+    // so get a list of all the assigned ones
+    let mut assigned_chars = BTreeSet::new();
     let [mut to_lower, mut to_upper, mut to_title] = [const { BTreeMap::new() }; 3];
     for row in ucd_parse::UnicodeDataExpander::new(
         ucd_parse::parse::<_, ucd_parse::UnicodeData>(&UNICODE_DIRECTORY).unwrap(),
@@ -147,6 +155,11 @@ fn load_data() -> UnicodeData {
         } else {
             row.general_category.as_str()
         };
+
+        if !matches!(general_category, "Cs" | "Cn") {
+            assigned_chars.insert(row.codepoint.value());
+        }
+
         if let Some(name) = PROPERTIES.iter().find(|prop| **prop == general_category) {
             properties
                 .entry(*name)
@@ -169,6 +182,25 @@ fn load_data() -> UnicodeData {
         {
             to_title.insert(row.codepoint.value(), [mapped.value(), 0, 0]);
         }
+    }
+
+    // Find all unassigned chars in the first 4 planes
+    for c in '\0'..='\u{3FFFD}' {
+        let cp = Codepoint::from_u32(c.into()).unwrap();
+        if !assigned_chars.contains(&cp.value()) {
+            properties.entry("Cn_Planes_0_3").or_insert_with(Vec::new).push(Codepoints::Single(cp));
+        }
+    }
+
+    // For now, we hardcode the assigned/unassigned status of characters
+    // U+3FFFE and above. The assertion below must be kept in sync
+    // with the `is_unassigned()` method in `library/core/char/methods.rs`.
+    for c in '\u{3FFFE}'..=char::MAX {
+        assert_eq!(
+            assigned_chars.contains(&u32::from(c)),
+            matches!(c, '\u{E0001}' | '\u{E0020}'..='\u{E007F}' | '\u{E0100}'..='\u{E01EF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}'),
+            "{c:?}",
+        );
     }
 
     for row in ucd_parse::parse::<_, ucd_parse::SpecialCaseMapping>(&UNICODE_DIRECTORY).unwrap() {
@@ -247,7 +279,7 @@ fn main() {
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
         table_file.push_str(&format!(
-            "// {:16}: {:5} bytes, {:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using {}\n",
+            "// {:28}: {:5} bytes, {:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using {}\n",
             property,
             emitter.bytes_used,
             datapoints,
@@ -260,10 +292,10 @@ fn main() {
     }
     let (conversions, sizes) = case_mapping::generate_case_mapping(&unicode_data);
     for (name, (desc, size)) in ["to_lower", "to_upper", "to_title"].iter().zip(sizes) {
-        table_file.push_str(&format!("// {:16}: {:5} bytes, {desc}\n", name, size,));
+        table_file.push_str(&format!("// {:28}: {:5} bytes, {desc}\n", name, size,));
         total_bytes += size;
     }
-    table_file.push_str(&format!("// {:16}: {:5} bytes\n", "Total", total_bytes));
+    table_file.push_str(&format!("// {:28}: {:5} bytes\n", "Total", total_bytes));
 
     // Include the range search function
     table_file.push('\n');

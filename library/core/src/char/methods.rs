@@ -5,7 +5,6 @@ use crate::panic::const_panic;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::unicode::printable::is_printable;
 use crate::unicode::{self, conversions};
 
 impl char {
@@ -93,13 +92,18 @@ impl char {
     /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
     /// `char` and `str` methods are based on.
     ///
-    /// New versions of Unicode are released regularly and subsequently all methods
-    /// in the standard library depending on Unicode are updated. Therefore the
-    /// behavior of some `char` and `str` methods and the value of this constant
-    /// changes over time. This is *not* considered to be a breaking change.
+    /// New versions of Unicode are released regularly, and subsequently all methods
+    /// in the standard library depending on Unicode are updated. Therefore, the
+    /// behavior of some `char` and `str` methods, and the value of this constant,
+    /// change over time (within the boundaries of Unicode's [stability policies]).
+    /// This is *not* considered to be a breaking change.
+    ///
+    /// [stability policies]: https://www.unicode.org/policies/stability_policy.html
     ///
     /// The version numbering scheme is explained in
-    /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
+    /// [Section 3.1 (Version Numbering)] of the Unicode Standard.
+    ///
+    /// [Section 3.1 (Version Numbering)]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G49512
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
@@ -473,18 +477,30 @@ impl char {
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         match self {
-            '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
-            '\t' => EscapeDebug::backslash(ascii::Char::SmallT),
-            '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
-            '\n' => EscapeDebug::backslash(ascii::Char::SmallN),
-            '\\' => EscapeDebug::backslash(ascii::Char::ReverseSolidus),
+            // Special escapes
             '\"' if args.escape_double_quote => EscapeDebug::backslash(ascii::Char::QuotationMark),
             '\'' if args.escape_single_quote => EscapeDebug::backslash(ascii::Char::Apostrophe),
-            _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
+            '\\' => EscapeDebug::backslash(ascii::Char::ReverseSolidus),
+            '\n' => EscapeDebug::backslash(ascii::Char::SmallN),
+            '\t' => EscapeDebug::backslash(ascii::Char::SmallT),
+            '\r' => EscapeDebug::backslash(ascii::Char::SmallR),
+            '\0' => EscapeDebug::backslash(ascii::Char::Digit0),
+
+            // ASCII fast path
+            '\x20'..='\x7E' => EscapeDebug::printable(self),
+
+            _ if self.is_control()
+                || self.is_private_use()
+                || self.is_whitespace()
+                || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || self.is_default_ignorable()
+                || self.is_format_control()
+                || self.is_unassigned() =>
+            {
                 EscapeDebug::unicode(self)
             }
-            _ if is_printable(self) => EscapeDebug::printable(self),
-            _ => EscapeDebug::unicode(self),
+
+            _ => EscapeDebug::printable(self),
         }
     }
 
@@ -753,11 +769,11 @@ impl char {
 
     /// Returns `true` if this `char` has the `Alphabetic` property.
     ///
-    /// `Alphabetic` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
-    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    /// `Alphabetic` is [described] in Chapter 4 (Character Properties) of the Unicode Standard, and
+    /// [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G32524
+    /// [specified]: https://www.unicode.org/reports/tr44/#Alphabetic
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
@@ -786,11 +802,11 @@ impl char {
     /// Returns `true` if this `char` has the `Cased` property.
     /// A character is cased if and only if it is uppercase, lowercase, or titlecase.
     ///
-    /// `Cased` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
-    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    /// `Cased` is [described] in Chapter 3 (Character Properties) of the Unicode Standard and
+    /// [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G44595
+    /// [specified]: https://www.unicode.org/reports/tr44/#Cased
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
@@ -849,11 +865,11 @@ impl char {
 
     /// Returns `true` if this `char` has the `Lowercase` property.
     ///
-    /// `Lowercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
-    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    /// `Lowercase` is [described] in Chapter 4 (Character Properties) of the Unicode Standard, and
+    /// [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G136255
+    /// [specified]: https://www.unicode.org/reports/tr44/#Lowercase
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
@@ -889,15 +905,15 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` has the general category for titlecase letters.
+    /// Returns `true` if this `char` is in the general category for titlecase letters.
     /// Conceptually, these characters consist of an uppercase portion followed by a lowercase portion.
     ///
-    /// Titlecase letters (code points with the general category of `Lt`) are described in Chapter 4
-    /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
-    /// Database][ucd] [`UnicodeData.txt`].
+    /// Titlecase letters (code points with the general category of `Lt`) are [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character
+    /// Database [`UnicodeData.txt`].
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G124722
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
     /// # Examples
@@ -925,11 +941,11 @@ impl char {
 
     /// Returns `true` if this `char` has the `Uppercase` property.
     ///
-    /// `Uppercase` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
-    /// specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    /// `Uppercase` is [described] in Chapter 4 (Character Properties) of the Unicode Standard, and
+    /// [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G136255
+    /// [specified]: https://www.unicode.org/reports/tr44/#Uppercase
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     ///
     /// # Examples
@@ -965,11 +981,85 @@ impl char {
         }
     }
 
+    /// Returns `true` if this `char` has one of the general categories for numbers.
+    ///
+    /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
+    /// characters, and `No` for other numeric characters) are [specified] in the Unicode Character
+    /// Database [`UnicodeData.txt`].
+    ///
+    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
+    /// If you want everything including characters with overlapping purposes, then you might want to use
+    /// a Unicode or language-processing library that exposes the appropriate character properties
+    /// (e.g. [`Numeric_Type`]) instead of looking at the Unicode categories.
+    ///
+    /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
+    /// `is_ascii_digit` or `is_digit` instead.
+    ///
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    /// [`Numeric_Type`]: https://www.unicode.org/reports/tr44/#Numeric_Type
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert!('٣'.is_numeric());
+    /// assert!('7'.is_numeric());
+    /// assert!('৬'.is_numeric());
+    /// assert!('¾'.is_numeric());
+    /// assert!('①'.is_numeric());
+    /// assert!(!'K'.is_numeric());
+    /// assert!(!'و'.is_numeric());
+    /// assert!(!'藏'.is_numeric());
+    /// assert!(!'三'.is_numeric());
+    /// ```
+    #[must_use]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn is_numeric(self) -> bool {
+        match self {
+            '0'..='9' => true,
+            '\0'..='\u{B1}' => false,
+            _ => unicode::N(self),
+        }
+    }
+
+    /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`].
+    ///
+    /// [`is_alphabetic()`]: Self::is_alphabetic
+    /// [`is_numeric()`]: Self::is_numeric
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert!('٣'.is_alphanumeric());
+    /// assert!('7'.is_alphanumeric());
+    /// assert!('৬'.is_alphanumeric());
+    /// assert!('¾'.is_alphanumeric());
+    /// assert!('①'.is_alphanumeric());
+    /// assert!('K'.is_alphanumeric());
+    /// assert!('و'.is_alphanumeric());
+    /// assert!('藏'.is_alphanumeric());
+    /// ```
+    #[must_use]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn is_alphanumeric(self) -> bool {
+        match self {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::Alphabetic(self) || unicode::N(self),
+        }
+    }
+
     /// Returns `true` if this `char` has the `White_Space` property.
     ///
-    /// `White_Space` is specified in the [Unicode Character Database][ucd] [`PropList.txt`].
+    /// `White_Space` is [specified] in the Unicode Character Database [`PropList.txt`].
     ///
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [specified]: https://www.unicode.org/reports/tr44/#White_Space
     /// [`PropList.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
     ///
     /// # Examples
@@ -999,44 +1089,15 @@ impl char {
         }
     }
 
-    /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`].
-    ///
-    /// [`is_alphabetic()`]: #method.is_alphabetic
-    /// [`is_numeric()`]: #method.is_numeric
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// assert!('٣'.is_alphanumeric());
-    /// assert!('7'.is_alphanumeric());
-    /// assert!('৬'.is_alphanumeric());
-    /// assert!('¾'.is_alphanumeric());
-    /// assert!('①'.is_alphanumeric());
-    /// assert!('K'.is_alphanumeric());
-    /// assert!('و'.is_alphanumeric());
-    /// assert!('藏'.is_alphanumeric());
-    /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub fn is_alphanumeric(self) -> bool {
-        match self {
-            'a'..='z' | 'A'..='Z' | '0'..='9' => true,
-            '\0'..='\u{A9}' => false,
-            _ => unicode::Alphabetic(self) || unicode::N(self),
-        }
-    }
-
     /// Returns `true` if this `char` has the general category for control codes.
     ///
-    /// Control codes (code points with the general category of `Cc`) are described in Chapter 4
-    /// (Character Properties) of the [Unicode Standard] and specified in the [Unicode Character
-    /// Database][ucd] [`UnicodeData.txt`].
+    /// Control codes (code points with the general category of `Cc`) are [described] in Chapter 23
+    /// (Special Areas and Format Characters) of the Unicode Standard, and [specified] in the Unicode Character
+    /// Database [`UnicodeData.txt`]. The full set of Unicode control codes is
+    /// `'\0'..='\x1f' | '\x7f'..='\u{9f}'`, and will never change.
     ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-23/#G20365
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
     /// # Examples
@@ -1044,8 +1105,9 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// // U+009C, STRING TERMINATOR
-    /// assert!(''.is_control());
+    /// assert!('\t'.is_control());
+    /// assert!('\n'.is_control());
+    /// assert!('\u{9C}'.is_control()); // STRING TERMINATOR
     /// assert!(!'q'.is_control());
     /// ```
     #[must_use]
@@ -1059,18 +1121,153 @@ impl char {
         matches!(self, '\0'..='\x1f' | '\x7f'..='\u{9f}')
     }
 
+    /// Returns `true` if this `char` has the general category for [private-use characters].
+    /// These characters do not have an interpretation specified by Unicode; individual programs
+    /// and users are free to assign them whatever meaning they like.
+    ///
+    /// [private-use characters]: https://www.unicode.org/faq/private_use#private_use
+    ///
+    /// Private-use characters (code points with the general category of `Co`) are [described] in Chapter 23
+    /// (Special Areas and Format Characters) of the Unicode Standard, and [specified] in the
+    /// Unicode Character Database [`UnicodeData.txt`]. The full set of private-use characters is
+    /// `'\u{E000}'..='\u{F8FF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}'`,
+    /// and will never change.
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-23/#G19184
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    #[must_use]
+    #[inline]
+    const fn is_private_use(self) -> bool {
+        // According to
+        // https://www.unicode.org/policies/stability_policy.html#Property_Value,
+        // the set of codepoints in `Co` will never change.
+        // So we can just hard-code the patterns to match against instead of using a table.
+        matches!(self, '\u{E000}'..='\u{F8FF}' | '\u{F0000}'..='\u{FFFFD}' | '\u{100000}'..='\u{10FFFD}')
+    }
+
+    /// Returns `true` if this `char` has the general category for format control characters.
+    ///
+    /// Format controls (code points with the general category of `Cf`) are [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character
+    /// Database [`UnicodeData.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore(private)
+    /// assert!('\u{AD}'.is_format_control()); // SOFT HYPHEN
+    /// assert!('\u{200B}'.is_format_control()); // ZERO WIDTH SPACE
+    /// assert!('\u{E0041}'.is_format_control()); // TAG LATIN CAPITAL LETTER A
+    /// assert!('۝'.is_format_control()); // ARABIC END OF AYAH
+    /// assert!('𓐲'.is_format_control()); // EGYPTIAN HIEROGLYPH INSERT AT TOP START
+    /// assert!(!'q'.is_format_control());
+    /// ```
+    #[must_use]
+    #[inline]
+    fn is_format_control(self) -> bool {
+        self > '\u{AC}' && unicode::Cf(self)
+    }
+
+    /// Returns `true` if this `char` has not yet been assigned a meaning by Unicode, as of
+    /// [`UNICODE_VERSION`].
+    ///
+    /// [`UNICODE_VERSION`]: Self::UNICODE_VERSION
+    ///
+    /// These characters may have a meaning assigned in the future,
+    /// except for the 66 [noncharacters] which will never be assigned a meaning.
+    ///
+    /// [noncharacters]: https://www.unicode.org/faq/private_use#noncharacters
+    ///
+    /// Many of Unicode's [stability policies] apply only to assigned characters.
+    ///
+    /// [stability policies]: https://www.unicode.org/policies/stability_policy.html
+    ///
+    /// Unassigned characters (code points with the general category of `Cn`) are [described] in Chapter 4
+    /// (Character Properties) of the Unicode Standard, and [specified] in the Unicode Character Database
+    /// by their exclusion from [`UnicodeData.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-4/#G134153
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore(private)
+    /// assert!('\u{FFFE}'.is_unassigned()); // noncharacter, will never be assigned
+    ///
+    /// //assert!('\u{7AAAA}'.is_unassigned()); // not currently assigned, but may be in the future,
+    ///                                         // so we shouldn't rely on the current status
+    ///
+    /// assert!(!'γ'.is_unassigned()); // once a character is assigned, it stays assigned forever
+    /// ```
+    #[must_use]
+    #[inline]
+    fn is_unassigned(self) -> bool {
+        match self {
+            '\0'..='\u{377}' => false,
+            '\u{378}'..='\u{3FFFD}' => unicode::Cn_planes_0_3(self),
+            // Assigned character ranges in planes 4 and above.
+            // `src/tools/unicode-table-generator/src/main.rs` asserts that this is correct
+            '\u{E0001}'
+            | '\u{E0020}'..='\u{E007F}'
+            | '\u{E0100}'..='\u{E01EF}'
+            | '\u{F0000}'..='\u{FFFFD}'
+            | '\u{100000}'..='\u{10FFFD}' => false,
+            _ => true,
+        }
+    }
+
+    /// Returns `true` if this `char` has the `Default_Ignorable_Code_Point` property.
+    /// These characters [should be displayed as invisible in fallback rendering](https://www.unicode.org/faq/unsup_char#3).
+    ///
+    /// `Default_Ignorable_Code_Point` is [described] in Chapter 5 (Implementation Guidelines) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-5/#G40120
+    /// [specified]: https://www.unicode.org/reports/tr44/#Default_Ignorable_Code_Point
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore(private)
+    /// assert!('\u{AD}'.is_default_ignorable()); // SOFT HYPHEN
+    /// assert!('\u{115F}'.is_default_ignorable()); // HANGUL CHOSEONG FILLER
+    /// assert!('\u{200B}'.is_default_ignorable()); // ZERO WIDTH SPACE
+    /// assert!('\u{E0041}'.is_default_ignorable()); // TAG LATIN CAPITAL LETTER A
+    /// assert!(!'۝'.is_default_ignorable()); // ARABIC END OF AYAH
+    /// assert!(!'𓐲'.is_default_ignorable()); // EGYPTIAN HIEROGLYPH INSERT AT TOP START
+    /// assert!(!' '.is_default_ignorable());
+    /// assert!(!'\n'.is_default_ignorable());
+    /// assert!(!'\0'.is_default_ignorable());
+    /// assert!(!'q'.is_default_ignorable());
+    #[must_use]
+    #[inline]
+    fn is_default_ignorable(self) -> bool {
+        self > '\u{AC}' && unicode::Default_Ignorable_Code_Point(self)
+    }
+
     /// Returns `true` if this `char` has the `Grapheme_Extend` property.
     ///
-    /// `Grapheme_Extend` is described in [Unicode Standard Annex #29 (Unicode Text
-    /// Segmentation)][uax29] and specified in the [Unicode Character Database][ucd]
-    /// [`DerivedCoreProperties.txt`].
+    /// `Grapheme_Extend` is [described] in Chapter 3 (Conformance) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
     ///
-    /// [uax29]: https://www.unicode.org/reports/tr29/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G41165
+    /// [specified]: https://www.unicode.org/reports/tr44/#Grapheme_Extend
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[must_use]
     #[inline]
-    pub(crate) fn is_grapheme_extended(self) -> bool {
+    fn is_grapheme_extender(self) -> bool {
         self > '\u{02FF}' && unicode::Grapheme_Extend(self)
     }
 
@@ -1078,12 +1275,12 @@ impl char {
     /// is used to implement context-dependent casing for the Greek letter sigma (uppercase Σ),
     /// which has two lowercase forms.
     ///
-    /// `Case_Ignorable` is [described][D136] in Chapter 3 (Conformance) of the Unicode Core Specification,
-    /// and specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`];
+    /// `Case_Ignorable` is [described] in Chapter 3 (Conformance) of the Unicode Core Specification,
+    /// and [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`];
     /// see those resources for more information.
     ///
-    /// [D136]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63116
-    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63116
+    /// [specified]: https://www.unicode.org/reports/tr44/#Case_Ignorable
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
     #[must_use]
     #[inline]
@@ -1093,50 +1290,6 @@ impl char {
             matches!(self, '\'' | '.' | ':' | '^' | '`')
         } else {
             unicode::Case_Ignorable(self)
-        }
-    }
-
-    /// Returns `true` if this `char` has one of the general categories for numbers.
-    ///
-    /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
-    /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
-    /// Database][ucd] [`UnicodeData.txt`].
-    ///
-    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
-    /// If you want everything including characters with overlapping purposes then you might want to use
-    /// a unicode or language-processing library that exposes the appropriate character properties instead
-    /// of looking at the unicode categories.
-    ///
-    /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
-    /// `is_ascii_digit` or `is_digit` instead.
-    ///
-    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
-    /// [ucd]: https://www.unicode.org/reports/tr44/
-    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// assert!('٣'.is_numeric());
-    /// assert!('7'.is_numeric());
-    /// assert!('৬'.is_numeric());
-    /// assert!('¾'.is_numeric());
-    /// assert!('①'.is_numeric());
-    /// assert!(!'K'.is_numeric());
-    /// assert!(!'و'.is_numeric());
-    /// assert!(!'藏'.is_numeric());
-    /// assert!(!'三'.is_numeric());
-    /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub fn is_numeric(self) -> bool {
-        match self {
-            '0'..='9' => true,
-            '\0'..='\u{B1}' => false,
-            _ => unicode::N(self),
         }
     }
 
@@ -2153,8 +2306,8 @@ impl char {
 }
 
 pub(crate) struct EscapeDebugExtArgs {
-    /// Escape Extended Grapheme codepoints?
-    pub(crate) escape_grapheme_extended: bool,
+    /// Escape Grapheme Extender codepoints?
+    pub(crate) escape_grapheme_extender: bool,
 
     /// Escape single quotes?
     pub(crate) escape_single_quote: bool,
@@ -2165,7 +2318,7 @@ pub(crate) struct EscapeDebugExtArgs {
 
 impl EscapeDebugExtArgs {
     pub(crate) const ESCAPE_ALL: Self = Self {
-        escape_grapheme_extended: true,
+        escape_grapheme_extender: true,
         escape_single_quote: true,
         escape_double_quote: true,
     };

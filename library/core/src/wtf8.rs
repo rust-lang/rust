@@ -147,7 +147,7 @@ impl fmt::Debug for Wtf8 {
             use crate::fmt::Write as _;
             for c in s.chars().flat_map(|c| {
                 c.escape_debug_ext(EscapeDebugExtArgs {
-                    escape_grapheme_extended: true,
+                    escape_grapheme_extender: true,
                     escape_single_quote: false,
                     escape_double_quote: true,
                 })

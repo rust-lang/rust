@@ -3195,7 +3195,7 @@ impl_fn_for_zst! {
     #[derive(Clone)]
     struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
         c.escape_debug_ext(EscapeDebugExtArgs {
-            escape_grapheme_extended: false,
+            escape_grapheme_extender: false,
             escape_single_quote: true,
             escape_double_quote: true
         })
