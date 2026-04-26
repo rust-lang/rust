@@ -77,19 +77,8 @@ pub(super) fn failed_to_match_macro(
     let CustomDiagnostic {
         message: custom_message, label: custom_label, notes: custom_notes, ..
     } = {
-        let macro_name = name.to_string();
         on_unmatch_args
-            .map(|directive| {
-                directive.eval(
-                    None,
-                    &FormatArgs {
-                        this: macro_name.clone(),
-                        this_sugared: macro_name,
-                        item_context: "macro invocation",
-                        generic_args: Vec::new(),
-                    },
-                )
-            })
+            .map(|directive| directive.eval(None, &FormatArgs { this: name.to_string(), .. }))
             .unwrap_or_default()
     };
 
