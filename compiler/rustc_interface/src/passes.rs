@@ -37,7 +37,7 @@ use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::{filename_for_input, invalid_output_for_target};
+use rustc_session::output::{filename_for_input, invalid_output_for_target, validate_crate_name};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
@@ -295,7 +295,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_, '_>) {
             std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "<unknown crate>".to_string());
         format!("{pkg_name} build script")
     } else {
-        ecx.resolver.tcx().local_crate_name()
+        ecx.resolver.tcx().crate_name(LOCAL_CRATE).as_str().to_string()
     };
 
     // No instability because we immediately sort the produced vector.
@@ -907,15 +907,15 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         krate.spans.inner_span,
     );
     let stable_crate_id = StableCrateId::new(
-        crate_name,
+        crate_name.normalized,
         crate_types.contains(&CrateType::Executable),
         sess.opts.cg.metadata.clone(),
         sess.cfg_version,
     );
 
-    let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
+    let outputs = util::build_output_filenames(sess, crate_name);
 
-    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id);
+    let dep_graph = setup_dep_graph(sess, crate_name.normalized, stable_crate_id);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -979,13 +979,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         |tcx| {
             let feed = tcx.create_crate_num(stable_crate_id).unwrap();
             assert_eq!(feed.key(), LOCAL_CRATE);
-            feed.crate_name(crate_name);
+            feed.crate_name(crate_name.normalized);
 
             let feed = tcx.feed_unit_query();
             feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
                 tcx.sess,
                 &pre_configured_attrs,
-                crate_name,
+                crate_name.normalized,
             )));
             feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
@@ -1286,8 +1286,53 @@ pub(crate) fn start_codegen<'tcx>(
     (codegen, crate_info, metadata)
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CrateName {
+    /// The normalized final crate name.
+    ///
+    /// Crate name precedence is as follows:
+    /// - `#![crate_name]` must match `--crate-name` if both are present.
+    /// - Both `#![crate_name]` and `--crate-name` are validated.
+    /// - If neither are present, the input comes from an on-disk file, and the file is valid
+    /// UTF-8, the normalized filename. The normalized filename is not validated.
+    /// - Otherwise, `rust_out`.
+    ///
+    /// If you don't want the crate name to be normalized, use [`TyCtxt::filestem`].
+    ///
+    /// Note that `#![cfg_attr(..., crate_name = "...")]` is a hard error.
+    /// Note that the normalization applied to input filestem is very incomplete and cannot be
+    /// relied upon to produce a valid Rust identifier.
+    ///
+    /// See [`get_crate_name`] for more info.
+    pub normalized: Symbol,
+    /// The unnormalized crate name, as suitable for an [`OutFileName`].
+    /// If no crate name was present, fall back to the filestem of the input.
+    ///
+    /// Note that no normalization is applied and the stem may be an invalid Rust identifier.
+    ///
+    /// Usually you don't want this and should use [`local_crate_name`](CrateName::normalized) instead.
+    /// See its docs for more information.
+    ///
+    /// I don't know why some existing code depends on this behavior but it does.
+    pub unnormalized: Symbol,
+}
+
+impl CrateName {
+    pub fn from_normalized(sess: &Session, name: Symbol, span: Option<Span>) -> Self {
+        validate_crate_name(sess, name, span);
+        CrateName { normalized: name, unnormalized: name }
+    }
+
+    pub fn from_unnormalized(sess: &Session, unnormalized: &str, span: Option<Span>) -> Self {
+        let normalized = Symbol::intern(&unnormalized.replace('-', "_"));
+        validate_crate_name(sess, normalized, span);
+
+        CrateName { normalized, unnormalized: Symbol::intern(unnormalized) }
+    }
+}
+
 /// Compute and validate the crate name.
-pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol {
+pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> CrateName {
     // We validate *all* occurrences of `#![crate_name]`, pick the first find and
     // if a crate name was passed on the command line via `--crate-name` we enforce
     // that they match.
@@ -1298,10 +1343,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
     let attr_crate_name =
         parse_crate_name(sess, krate_attrs, ShouldEmit::EarlyFatal { also_emit_lints: true });
 
-    let validate = |name, span| {
-        rustc_session::output::validate_crate_name(sess, name, span);
-        name
-    };
+    let validate = |name, span| CrateName::from_normalized(sess, name, span);
 
     if let Some(crate_name) = &sess.opts.crate_name {
         let crate_name = Symbol::intern(crate_name);
@@ -1327,11 +1369,11 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
         if file_stem.starts_with('-') {
             sess.dcx().emit_err(errors::CrateNameInvalid { crate_name: file_stem });
         } else {
-            return validate(Symbol::intern(&file_stem.replace('-', "_")), None);
+            return CrateName::from_unnormalized(sess, file_stem, None);
         }
     }
 
-    sym::rust_out
+    validate(sym::rust_out, None)
 }
 
 pub(crate) fn parse_crate_name(

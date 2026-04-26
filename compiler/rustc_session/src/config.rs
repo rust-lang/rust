@@ -1136,6 +1136,8 @@ pub struct OutputFilenames {
     /// Crate name. Never contains '-'.
     crate_stem: String,
     /// Typically based on `.rs` input file name. Any '-' is preserved.
+    ///
+    /// See also `rustc_interface::passes::CrateName`.
     filestem: String,
     pub single_output_file: Option<OutFileName>,
     temps_directory: Option<PathBuf>,
