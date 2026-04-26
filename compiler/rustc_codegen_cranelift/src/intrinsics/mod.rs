@@ -1529,6 +1529,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
         }
 
+        sym::return_address => {
+            let val = fx.bcx.ins().get_return_address(fx.pointer_type);
+            let val = CValue::by_val(val, ret.layout());
+            ret.write_cvalue(fx, val);
+        }
+
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
         // by converting the `InstanceKind::Intrinsic` to an `InstanceKind::Item`.
         _ => {
