@@ -129,7 +129,8 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         DefKind::Const { .. }
         | DefKind::InlineConst
         | DefKind::AssocConst { .. }
-        | DefKind::AnonConst => ItemKind::Const,
+        | DefKind::AnonConst
+        | DefKind::Promoted => ItemKind::Const,
         DefKind::Static { .. } => ItemKind::Static,
         DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
         DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),

@@ -2157,6 +2157,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::SyntheticCoroutineBody => false,
         }
     }

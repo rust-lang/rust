@@ -331,6 +331,8 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
+    /// A constant promoted from a MIR body.
+    Promoted,
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
@@ -474,6 +476,7 @@ impl DefPathData {
             | OpaqueTy
             | AnonAssocTy(..)
             | SyntheticCoroutineBody
+            | Promoted
             | NestedStatic => None,
         }
     }
@@ -494,6 +497,7 @@ impl DefPathData {
             | AnonConst
             | OpaqueTy
             | SyntheticCoroutineBody
+            | Promoted
             | NestedStatic => None,
         }
     }
@@ -516,6 +520,7 @@ impl DefPathData {
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
             NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
+            Promoted => DefPathDataName::Anon { namespace: sym::promoted },
         }
     }
 }

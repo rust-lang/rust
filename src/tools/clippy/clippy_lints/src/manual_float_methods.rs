@@ -127,6 +127,7 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::ConstParam
         | DefKind::Static { .. }
         | DefKind::Ctor(..)
+        | DefKind::Promoted
         | DefKind::AssocConst { .. } => false,
 
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure => tcx.constness(def_id) == Constness::NotConst,

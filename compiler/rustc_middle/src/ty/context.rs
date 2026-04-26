@@ -840,6 +840,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::Const { .. }
                 | DefKind::InlineConst
                 | DefKind::GlobalAsm
+                | DefKind::Promoted
         ) {
             CodegenFnAttrs::EMPTY
         } else {

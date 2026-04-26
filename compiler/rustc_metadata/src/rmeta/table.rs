@@ -183,6 +183,7 @@ fixed_size_enum! {
         ( Impl { of_trait: false }                 )
         ( Impl { of_trait: true }                  )
         ( Closure                                  )
+        ( Promoted                                 )
         ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: false } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: false } )
         ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Mut, nested: false } )
