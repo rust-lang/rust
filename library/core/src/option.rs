@@ -40,9 +40,37 @@
 //! }
 //! ```
 //!
-//
-// FIXME: Show how `Option` is used in practice, with lots of methods
-//
+//! # Practical example: nested options and [`Option::flatten`]
+//!
+//! `Option<Option<T>>` commonly arises from combining computations where each step may be missing
+//! in its own way.
+//!
+//! For example, a user might or might not have settings, and those settings might or might not
+//! include a particular value:
+//!
+//! ```
+//! #[derive(Clone, Copy, Debug, PartialEq)]
+//! struct Settings {
+//!     theme: Option<&'static str>,
+//! }
+//!
+//! fn get_user_settings(is_premium: bool) -> Option<Settings> {
+//!     if is_premium {
+//!         Some(Settings { theme: Some("dark") })
+//!     } else {
+//!         None
+//!     }
+//! }
+//!
+//! let user_is_premium = true;
+//! let settings: Option<Settings> = get_user_settings(user_is_premium);
+//!
+//! let maybe_maybe_theme: Option<Option<&'static str>> = settings.map(|s| s.theme);
+//! assert_eq!(maybe_maybe_theme, Some(Some("dark")));
+//!
+//! let theme: Option<&'static str> = maybe_maybe_theme.flatten();
+//! assert_eq!(theme, Some("dark"));
+//! ```
 //! # Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
