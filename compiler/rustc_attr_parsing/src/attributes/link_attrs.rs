@@ -17,7 +17,7 @@ use crate::session_diagnostics::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
     ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
     InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
+    LinkRequiresName, MultipleModifiers, NullOnLinkName, NullOnLinkSection, RawDylibOnlyWindows,
     WholeArchiveNeedsStatic,
 };
 
@@ -45,6 +45,19 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
         };
+
+        if name.as_str().contains('\0') {
+            // `#[link_name = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnLinkName { span: nv.value_span });
+            return None;
+        }
+        if name.is_empty() {
+            // Otherwise LLVM will just make up a name and the linker will fail
+            // to find an empty symbol name.
+            cx.emit_err(EmptyLinkName { span: nv.value_span });
+            return None;
+        }
 
         Some(LinkName { name, span: cx.attr_span })
     }
@@ -222,7 +235,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         if wasm_import_module.is_some() {
             (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
         }
-        let Some((name, name_span)) = name else {
+        let Some((name, _name_span)) = name else {
             cx.emit_err(LinkRequiresName { span: cx.attr_span });
             return None;
         };
@@ -232,12 +245,6 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
             if !matches!(kind, Some(NativeLibKind::RawDylib { .. })) {
                 cx.emit_err(ImportNameTypeRaw { span });
             }
-        }
-
-        if let Some(NativeLibKind::RawDylib { .. }) = kind
-            && name.as_str().contains('\0')
-        {
-            cx.emit_err(RawDylibNoNul { span: name_span });
         }
 
         Some(LinkEntry {
@@ -270,9 +277,13 @@ impl LinkParser {
             return false;
         };
 
+        if link_name.as_str().contains('\0') {
+            cx.emit_err(NullOnLinkName { span: nv.value_span });
+        }
         if link_name.is_empty() {
             cx.emit_err(EmptyLinkName { span: nv.value_span });
         }
+
         *name = Some((link_name, nv.value_span));
         true
     }
