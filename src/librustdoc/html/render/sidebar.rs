@@ -231,6 +231,8 @@ fn docblock_toc<'a>(
         error_codes: cx.shared.codes,
         edition: cx.shared.edition(),
         playground: &cx.shared.playground,
+        contains_mathml: &cx.contains_mathml,
+        doc_syntax: cx.tcx().doc_attribute_syntax(it.item_id.expect_def_id()),
     }
     .into_parts();
     let links: Vec<Link<'_>> = toc

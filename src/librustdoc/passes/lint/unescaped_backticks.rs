@@ -22,8 +22,12 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             .find(|link| *link.original_text == *broken_link.reference)
             .map(|link| ((*link.href).into(), (*link.new_text).into()))
     };
-    let parser = Parser::new_with_broken_link_callback(dox, main_body_opts(), Some(&mut replacer))
-        .into_offset_iter();
+    let parser = Parser::new_with_broken_link_callback(
+        dox,
+        main_body_opts(cx.tcx.doc_attribute_syntax(item.item_id.expect_def_id())),
+        Some(&mut replacer),
+    )
+    .into_offset_iter();
 
     let mut element_stack = Vec::new();
 

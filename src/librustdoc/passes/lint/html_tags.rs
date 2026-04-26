@@ -205,19 +205,23 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         }
     };
 
-    let p = Parser::new_with_broken_link_callback(dox, main_body_opts(), Some(&mut replacer))
-        .into_offset_iter()
-        .coalesce(|a, b| {
-            // for some reason, pulldown-cmark splits html blocks into separate events for each line.
-            // we undo this, in order to handle multi-line tags.
-            match (a, b) {
-                ((Event::Html(_), ra), (Event::Html(_), rb)) if ra.end == rb.start => {
-                    let merged = ra.start..rb.end;
-                    Ok((Event::Html(Cow::Borrowed(&dox[merged.clone()]).into()), merged))
-                }
-                x => Err(x),
+    let p = Parser::new_with_broken_link_callback(
+        dox,
+        main_body_opts(cx.tcx.doc_attribute_syntax(item.item_id.expect_def_id())),
+        Some(&mut replacer),
+    )
+    .into_offset_iter()
+    .coalesce(|a, b| {
+        // for some reason, pulldown-cmark splits html blocks into separate events for each line.
+        // we undo this, in order to handle multi-line tags.
+        match (a, b) {
+            ((Event::Html(_), ra), (Event::Html(_), rb)) if ra.end == rb.start => {
+                let merged = ra.start..rb.end;
+                Ok((Event::Html(Cow::Borrowed(&dox[merged.clone()]).into()), merged))
             }
-        });
+            x => Err(x),
+        }
+    });
 
     for (event, range) in p {
         match event {
@@ -828,7 +832,7 @@ fn markdown_tag_name(tag: TagEnd) -> &'static str {
     match tag {
         TagEnd::Paragraph => "paragraph",
         TagEnd::Heading(..) => "heading",
-        TagEnd::BlockQuote => "block quote `>`",
+        TagEnd::BlockQuote(..) => "block quote `>`",
         TagEnd::CodeBlock => "code block",
         TagEnd::HtmlBlock => "HTML",
         TagEnd::List(true) => "numbered list",
@@ -845,6 +849,11 @@ fn markdown_tag_name(tag: TagEnd) -> &'static str {
         TagEnd::Link => "link",
         TagEnd::Image => "image",
         TagEnd::MetadataBlock(..) => "front matter",
+        TagEnd::DefinitionList => "definition list",
+        TagEnd::DefinitionListTitle => "definition list title",
+        TagEnd::DefinitionListDefinition => "definition list definition",
+        TagEnd::Superscript => "superscript",
+        TagEnd::Subscript => "subscript",
     }
 }
 

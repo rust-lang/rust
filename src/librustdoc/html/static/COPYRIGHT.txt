@@ -61,6 +61,30 @@ included, and carry their own copyright notices and license terms:
     Licensed under the SIL Open Font License, Version 1.1.
     See NanumBarunGothic-LICENSE.txt.
 
+* Modified Noto Sans Math (ModifiedNotoSansMath-Regular.woff2)
+
+    This Font Software is licensed under the SIL Open Font License, Version 1.1.
+    This license is available with a FAQ at https://scripts.sil.org/OFL
+    See ModifiedNotoSansMath-LICENSE.txt
+
+    https://github.com/notofonts/math/
+
+    Modified for use with math-core by tmke8.
+
+    https://github.com/tmke8/math-core-fonts/tree/main/NotoSansMath
+
+* mathml.css
+
+    MIT License
+
+    Copyright 2020 Hiromu Sugiura
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.    
+
 * Rust logos (rust-logo.svg, favicon.svg, favicon-32x32.png)
 
     Copyright 2025 Rust Foundation.

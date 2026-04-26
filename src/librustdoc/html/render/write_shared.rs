@@ -13,7 +13,7 @@
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
 //!    or contains "html-non-static-files".
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Write as _};
@@ -223,6 +223,7 @@ pub(crate) fn write_not_crate_specific(
                 Ok(())
             }),
             &style_files,
+            &Cell::new(false),
         );
         try_err!(std::fs::write(&settings_file, v), &settings_file);
 
@@ -258,6 +259,7 @@ pub(crate) fn write_not_crate_specific(
                     </noscript>",
             ),
             &style_files,
+            &Cell::new(false),
         );
         try_err!(std::fs::write(&help_file, v), &help_file);
 
@@ -272,7 +274,14 @@ pub(crate) fn write_not_crate_specific(
                 resource_suffix: &opt.resource_suffix,
                 rust_logo: true,
             };
-            let v = layout::render(&layout, &page, "", scrape_examples_help(), &style_files);
+            let v = layout::render(
+                &layout,
+                &page,
+                "",
+                scrape_examples_help(),
+                &style_files,
+                &Cell::new(false),
+            );
             try_err!(std::fs::write(&scrape_examples_help_file, v), &scrape_examples_help_file);
         }
     }
@@ -545,7 +554,7 @@ impl CratesIndexPart {
             </div>\
             <ul class=\"all-items\">{DELIMITER}</ul>"
         );
-        let template = layout::render(layout, &page, "", content, style_files);
+        let template = layout::render(layout, &page, "", content, style_files, &Cell::new(false));
         SortedTemplate::from_template(&template, DELIMITER)
             .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")
     }

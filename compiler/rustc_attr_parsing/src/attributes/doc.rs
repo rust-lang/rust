@@ -1,8 +1,8 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{
-    AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
-    DocInline, HideOrShow,
+    AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocAttributeSyntax, DocCfgHideShow,
+    DocCfgHideShowValue, DocInline, HideOrShow,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, msg};
@@ -664,6 +664,33 @@ impl DocParser {
                         }
                     }
                 }
+            }
+            Some(sym::syntax) => {
+                let span = args.span().unwrap_or(path.span());
+                let tex_math_dollars = if let Some(v) = args.as_name_value()
+                    && let Some(syntax) = v.value_as_str()
+                {
+                    match syntax.as_str() {
+                        "+tex_math_dollars" => true,
+                        "-tex_math_dollars" => false,
+                        _ => {
+                            cx.emit_lint(
+                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                MalformedDoc,
+                                span,
+                            );
+                            false
+                        }
+                    }
+                } else {
+                    cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                        MalformedDoc,
+                        span,
+                    );
+                    false
+                };
+                self.attribute.syntax = Some(DocAttributeSyntax { tex_math_dollars, span });
             }
             Some(sym::spotlight) => {
                 let span = path.span();

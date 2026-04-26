@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 use std::{fmt, fs};
@@ -257,6 +257,7 @@ impl SourceCollector<'_, '_> {
                 )
             }),
             &shared.style_files,
+            &Cell::new(false),
         );
         shared.fs.write(cur, v)?;
         self.emitted_local_sources.insert(p);
