@@ -5,6 +5,7 @@ use rustc_errors::PResult;
 use rustc_span::Span;
 
 use crate::exp;
+use crate::parser::attr::InnerAttrPolicy;
 use crate::parser::{AttrWrapper, ForceCollect, Parser, Restrictions, Trailing, UsePreAttrPos};
 
 #[derive(Default)]
@@ -48,12 +49,26 @@ impl<'a> Parser<'a> {
     pub fn parse_cfg_select_branch_outer_attrs(
         &mut self,
     ) -> PResult<'a, Option<CfgSelectBranchAttrSpans>> {
-        let inner_doc_comment_span =
-            if let token::DocComment(_, AttrStyle::Inner, _) = self.token.kind {
-                Some(self.token.span)
+        // `parse_outer_attributes` recovers inner doc comments as outer ones, so collect their
+        // spans first and suppress the follow-up `cfg_select` branch diagnostic for them.
+        let mut inner_doc_comment_spans = Vec::new();
+        let mut snapshot = self.create_snapshot_for_diagnostic();
+        loop {
+            if snapshot.check(exp!(Pound)) {
+                if let Err(err) = snapshot.parse_attribute(InnerAttrPolicy::Permitted) {
+                    err.cancel();
+                    break;
+                }
+            } else if let token::DocComment(_, attr_style, _) = snapshot.token.kind {
+                if attr_style == AttrStyle::Inner {
+                    inner_doc_comment_spans.push(snapshot.token.span);
+                }
+                snapshot.bump();
             } else {
-                None
-            };
+                break;
+            }
+        }
+
         let attrs = self.parse_outer_attributes()?;
         if attrs.is_empty() {
             return Ok(None);
@@ -63,9 +78,9 @@ impl<'a> Parser<'a> {
         for attr in attrs.take_for_recovery(self.psess) {
             match attr.kind {
                 AttrKind::Normal(..) => spans.attrs.push(attr.span),
-                // `parse_outer_attributes` already emitted E0753 for this inner doc comment
+                // `parse_outer_attributes` already emitted E0753 for each inner doc comment
                 // before recovering it as an outer doc-comment attribute.
-                AttrKind::DocComment(..) if Some(attr.span) == inner_doc_comment_span => {}
+                AttrKind::DocComment(..) if inner_doc_comment_spans.contains(&attr.span) => {}
                 AttrKind::DocComment(..) => spans.doc_comments.push(attr.span),
             }
         }

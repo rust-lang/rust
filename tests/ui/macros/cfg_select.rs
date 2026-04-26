@@ -242,3 +242,12 @@ cfg_select! {
     /// line3
     _ => {}
 }
+
+cfg_select! {
+    /// outer doc comment
+    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    //! inner doc comment
+    //~^ ERROR expected outer doc comment
+    debug_assertions => {}
+    _ => {}
+}
