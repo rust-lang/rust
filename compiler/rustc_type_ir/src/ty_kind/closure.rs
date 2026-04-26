@@ -364,7 +364,7 @@ pub struct CoroutineClosureSignature<I: Interner> {
     // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
     // never actually differ. But we save them rather than recreating them
     // from scratch just for good measure.
-    /// Always safe, RustCall, non-c-variadic
+    /// Always safe, RustCall, non-c-variadic, non-splatted
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
     pub fn_sig_kind: I::FSigKind,

@@ -576,6 +576,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                             }
                         }
                     }
+                    // FIXME(splat): should splatted arguments be part of symbol mangling?
                     for &ty in sig.inputs() {
                         ty.print(p)?;
                     }

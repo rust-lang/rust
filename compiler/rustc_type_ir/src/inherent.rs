@@ -14,7 +14,8 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, UpcastFrom,
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind,
+    SplattedArgIndexError, UpcastFrom,
 };
 
 #[rust_analyzer::prefer_underscore_import]
@@ -210,8 +211,34 @@ pub trait FSigKind<I: Interner<FSigKind = Self>>: Copy + Debug + Hash + Eq {
     /// The identity function.
     fn fn_sig_kind(self) -> Self;
 
-    /// Create a new FnSigKind with the given ABI, safety, and C-style variadic flag.
-    fn new(abi: I::Abi, safety: I::Safety, c_variadic: bool) -> Self;
+    /// Create a new FnSigKind with the given ABI, safety, C-style variadic flag, and splatted
+    /// argument index.
+    ///
+    /// Returns an error if the splatted argument index is invalid (e.g. `u16::MAX`) or beyond
+    /// the bounds of the function arguments `args_len`.
+    fn new(
+        abi: I::Abi,
+        safety: I::Safety,
+        c_variadic: bool,
+        splatted: Option<u16>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError>;
+
+    /// Create a new safe FnSigKind with the `extern "Rust"` ABI, that isn't C-style variadic or splatted.
+    fn dummy() -> Self;
+
+    /// Returns a modified FnSigKind with the safety mode set to `is_safe`.
+    #[must_use = "this method does not modify the receiver"]
+    fn set_safe(self, is_safe: bool) -> Self;
+
+    /// Returns a modified FnSigKind with the splatted argument index set to `splatted`.
+    /// The number of function arguments is used for error checking.
+    #[must_use = "this method does not modify the receiver"]
+    fn set_splatted(
+        self,
+        splatted: Option<u16>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError>;
 
     /// Returns the ABI.
     fn abi(self) -> I::Abi;
@@ -221,6 +248,9 @@ pub trait FSigKind<I: Interner<FSigKind = Self>>: Copy + Debug + Hash + Eq {
 
     /// Do the function arguments end with a C-style variadic argument?
     fn c_variadic(self) -> bool;
+
+    /// Get the index of the splatted argument, if any.
+    fn splatted(self) -> Option<u16>;
 }
 
 #[rust_analyzer::prefer_underscore_import]

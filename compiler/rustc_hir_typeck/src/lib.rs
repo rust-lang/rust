@@ -613,12 +613,10 @@ fn report_unexpected_variant_res(
     .emit()
 }
 
-/// Controls whether the arguments are tupled. This is used for the call
-/// operator.
+/// Controls whether all arguments are tupled. This is used for the call operator only.
 ///
-/// Tupling means that all call-side arguments are packed into a tuple and
-/// passed as a single parameter. For example, if tupling is enabled, this
-/// function:
+/// Tupling means that all call-side arguments are packed into a tuple and passed as a single
+/// parameter. For example, if tupling is enabled, this function:
 /// ```
 /// fn f(x: (isize, isize)) {}
 /// ```
@@ -632,10 +630,14 @@ fn report_unexpected_variant_res(
 /// # fn f(x: (isize, isize)) {}
 /// f((1, 2));
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+///
+/// Note: splatted arguments are handled separately.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum TupleArgumentsFlag {
-    DontTupleArguments,
-    TupleArguments,
+    /// Arguments are typechecked unchanged.
+    NotCallOper,
+    /// This is a call operator: all caller arguments are tupled before typechecking.
+    TupleAllCallArgs,
 }
 
 fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {

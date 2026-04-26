@@ -141,7 +141,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let is_method = self.is_method(sig_id, span);
 
-                let (param_count, c_variadic) = self.param_count(sig_id);
+                let (param_count, c_variadic, splatted) = self.param_count(sig_id);
 
                 let mut generics =
                     self.uplift_delegation_generics(delegation, sig_id, item_id, is_method);
@@ -154,8 +154,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span,
                 );
 
-                let decl =
-                    self.lower_delegation_decl(sig_id, param_count, c_variadic, span, &generics);
+                let decl = self.lower_delegation_decl(
+                    sig_id,
+                    param_count,
+                    c_variadic,
+                    splatted,
+                    span,
+                    &generics,
+                );
 
                 let sig = self.lower_delegation_sig(sig_id, decl, span);
                 let ident = self.lower_ident(delegation.ident);
@@ -269,10 +275,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
-    // Function parameter count, including C variadic `...` if present.
-    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/) {
+    // Function parameter count, including C variadic `...` and `#[splat]` if present.
+    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/, Option<u16> /*splatted*/) {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
-        (sig.inputs().len() + usize::from(sig.c_variadic()), sig.c_variadic())
+        (sig.inputs().len() + usize::from(sig.c_variadic()), sig.c_variadic(), sig.splatted())
     }
 
     fn lower_delegation_decl(
@@ -280,6 +286,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig_id: DefId,
         param_count: usize,
         c_variadic: bool,
+        splatted: Option<u16>,
         span: Span,
         generics: &GenericsGenerationResults<'hir>,
     ) -> &'hir hir::FnDecl<'hir> {
@@ -314,7 +321,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             output: hir::FnRetTy::Return(output),
             fn_decl_kind: FnDeclFlags::default()
                 .set_lifetime_elision_allowed(true)
-                .set_c_variadic(c_variadic),
+                .set_c_variadic(c_variadic)
+                .set_splatted(splatted, inputs.len())
+                .unwrap(),
         })
     }
 

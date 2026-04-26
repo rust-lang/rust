@@ -3932,13 +3932,29 @@ pub struct Param<'hir> {
     pub span: Span,
 }
 
+/// Error type for splatted argument index errors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplattedArgIndexError {
+    /// The splatted argument index is invalid.
+    /// Currently the only unsupported index is `u16::MAX`, which is used to indicate that no argument
+    /// is splatted.
+    InvalidIndex { splatted_arg_index: u16 },
+
+    /// The splatted argument index is outside the bounds of the function arguments.
+    OutOfBounds { splatted_arg_index: u16, args_len: u16 },
+}
+
 /// Contains the packed non-type fields of a function declaration.
-// FIXME(splat): add the splatted argument index as a u16
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub struct FnDeclFlags {
     /// Holds the c_variadic and lifetime_elision_allowed bitflags, and 3 bits for the `ImplicitSelfKind`.
     flags: u8,
+
+    /// Which function argument is splatted into multiple arguments in callers, if any?
+    /// Splatting functions with `u16::MAX` arguments is not supported, see `FnSigKind` for
+    /// details.
+    splatted: u16,
 }
 
 impl fmt::Debug for FnDeclFlags {
@@ -3950,11 +3966,15 @@ impl fmt::Debug for FnDeclFlags {
             f.field(&"LifetimeElisionAllowed");
         } else {
             f.field(&"NoLifetimeElision");
-        };
+        }
 
         if self.c_variadic() {
             f.field(&"CVariadic");
-        };
+        }
+
+        if let Some(index) = self.splatted() {
+            f.field(&format!("Splatted({})", index));
+        }
 
         f.finish()
     }
@@ -3970,14 +3990,20 @@ impl FnDeclFlags {
     /// Bitflag for lifetime elision.
     const LIFETIME_ELISION_ALLOWED_FLAG: u8 = 1 << 4;
 
-    /// Create a new FnDeclKind with no implicit self, no lifetime elision, and no C-style variadic argument.
+    /// Marker index for "no splatted argument".
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
+    const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+
+    /// Create a new FnDeclKind with no implicit self, no lifetime elision, no C-style variadic
+    /// argument, and no splatting.
     /// To modify these flags, use the `set_*` methods, for readability.
     // FIXME: use Default instead when that trait is const stable.
     pub const fn default() -> Self {
-        Self { flags: 0 }
+        Self { flags: 0, splatted: 0 }
             .set_implicit_self(ImplicitSelfKind::None)
             .set_lifetime_elision_allowed(false)
             .set_c_variadic(false)
+            .set_no_splatted_args()
     }
 
     /// Set the implicit self kind.
@@ -4020,6 +4046,41 @@ impl FnDeclFlags {
         self
     }
 
+    /// Set the splatted argument index.
+    /// The number of function arguments is used for error checking.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_splatted(
+        mut self,
+        splatted: Option<u16>,
+        args_len: usize,
+    ) -> Result<Self, SplattedArgIndexError> {
+        if let Some(splatted_arg_index) = splatted {
+            if splatted_arg_index == Self::NO_SPLATTED_ARG_INDEX {
+                // This index value is used as a marker for "no splatting", so it is unsupported.
+                return Err(SplattedArgIndexError::InvalidIndex { splatted_arg_index });
+            } else if splatted_arg_index as usize >= args_len {
+                return Err(SplattedArgIndexError::OutOfBounds {
+                    splatted_arg_index,
+                    args_len: args_len as u16,
+                });
+            }
+
+            self.splatted = splatted_arg_index;
+        } else {
+            self.splatted = Self::NO_SPLATTED_ARG_INDEX;
+        }
+
+        Ok(self)
+    }
+
+    /// Set "no splatted arguments" for the function declaration.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_no_splatted_args(mut self) -> Self {
+        self.splatted = Self::NO_SPLATTED_ARG_INDEX;
+
+        self
+    }
+
     /// Get the implicit self kind.
     pub const fn implicit_self(self) -> ImplicitSelfKind {
         match self.flags & Self::IMPLICIT_SELF_MASK {
@@ -4040,6 +4101,11 @@ impl FnDeclFlags {
     /// Is lifetime elision allowed?
     pub const fn lifetime_elision_allowed(self) -> bool {
         self.flags & Self::LIFETIME_ELISION_ALLOWED_FLAG != 0
+    }
+
+    /// Get the splatted argument index, if any.
+    pub const fn splatted(self) -> Option<u16> {
+        if self.splatted == Self::NO_SPLATTED_ARG_INDEX { None } else { Some(self.splatted) }
     }
 }
 
@@ -4086,6 +4152,10 @@ impl<'hir> FnDecl<'hir> {
 
     pub fn lifetime_elision_allowed(&self) -> bool {
         self.fn_decl_kind.lifetime_elision_allowed()
+    }
+
+    pub fn splatted(&self) -> Option<u16> {
+        self.fn_decl_kind.splatted()
     }
 
     pub fn dummy(span: Span) -> Self {
