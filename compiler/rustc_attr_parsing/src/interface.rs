@@ -297,7 +297,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
-        let mut finalizers: Vec<&FinalizeFn<S>> = Vec::with_capacity(attrs.len());
+        let mut finalizers: Vec<FinalizeFn<S>> = Vec::with_capacity(attrs.len());
 
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
@@ -413,7 +413,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
-                        finalizers.push(&accept.finalizer);
+                        finalizers.push(accept.finalizer);
 
                         if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
                             Self::check_target(&accept.allowed_targets, target, &mut cx);
