@@ -390,6 +390,12 @@ const _: () = {
     va_arg_safe_check::<crate::ffi::c_ulonglong>();
 
     va_arg_safe_check::<crate::ffi::c_double>();
+
+    va_arg_safe_check::<*const crate::ffi::c_void>();
+    va_arg_safe_check::<*mut crate::ffi::c_void>();
+
+    va_arg_safe_check::<*const crate::ffi::c_char>();
+    va_arg_safe_check::<*mut crate::ffi::c_char>();
 };
 
 impl<'f> VaList<'f> {
