@@ -117,18 +117,15 @@ impl MirPhase {
 #[derive(StableHash, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct MirSource<'tcx> {
     pub instance: InstanceKind<'tcx>,
-
-    /// If `Some`, this is a promoted rvalue within the parent function.
-    pub promoted: Option<Promoted>,
 }
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceKind::Item(def_id), promoted: None }
+        MirSource { instance: InstanceKind::Item(def_id) }
     }
 
     pub fn from_instance(instance: InstanceKind<'tcx>) -> Self {
-        MirSource { instance, promoted: None }
+        MirSource { instance }
     }
 
     #[inline]
@@ -1712,6 +1709,6 @@ mod size_asserts {
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 56);
     static_assert_size!(Terminator<'_>, 96);
-    static_assert_size!(VarDebugInfo<'_>, 88);
+    static_assert_size!(VarDebugInfo<'_>, 80);
     // tidy-alphabetical-end
 }

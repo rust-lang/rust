@@ -1257,7 +1257,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
         // Otherwise, load the MIR.
         let _trace = enter_trace_span!("load_mir");
-        interp_ok(Some((ecx.load_mir(instance.def, None)?, instance)))
+        interp_ok(Some((ecx.load_mir(instance.def)?, instance)))
     }
 
     #[inline(always)]

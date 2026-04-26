@@ -356,7 +356,7 @@ where
         Const::Val(..) => None,
     };
 
-    if let Some(UnevaluatedConst { def, args: _, promoted: _ }) = uneval {
+    if let Some(UnevaluatedConst { def, args: _ }) = uneval {
         let is_promoted = cx.tcx.def_kind(def) == DefKind::Promoted;
 
         // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible

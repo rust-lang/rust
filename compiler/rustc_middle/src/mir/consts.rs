@@ -8,7 +8,7 @@ use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
-use crate::mir::{Promoted, pretty_print_const_value};
+use crate::mir::pretty_print_const_value;
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 
@@ -240,11 +240,7 @@ impl<'tcx> Const<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
         ty::EarlyBinder::bind(Const::Unevaluated(
-            UnevaluatedConst {
-                def: def_id,
-                args: ty::GenericArgs::identity_for_item(tcx, def_id),
-                promoted: None,
-            },
+            UnevaluatedConst { def: def_id, args: ty::GenericArgs::identity_for_item(tcx, def_id) },
             tcx.type_of(def_id).skip_binder(),
         ))
     }
@@ -462,13 +458,11 @@ impl<'tcx> Const<'tcx> {
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
     pub args: GenericArgsRef<'tcx>,
-    pub promoted: Option<Promoted>,
 }
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn shrink(self) -> ty::UnevaluatedConst<'tcx> {
-        assert_eq!(self.promoted, None);
         ty::UnevaluatedConst { def: self.def, args: self.args }
     }
 }
@@ -476,7 +470,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
     pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
-        UnevaluatedConst { def, args, promoted: Default::default() }
+        UnevaluatedConst { def, args }
     }
 
     #[inline]
@@ -497,11 +491,7 @@ impl<'tcx> Display for Const<'tcx> {
                     // Matches `GlobalId` printing.
                     let instance =
                         with_no_trimmed_paths!(tcx.def_path_str_with_args(c.def, c.args));
-                    write!(fmt, "{instance}")?;
-                    if let Some(promoted) = c.promoted {
-                        write!(fmt, "::{promoted:?}")?;
-                    }
-                    Ok(())
+                    write!(fmt, "{instance}")
                 })
             }
         }

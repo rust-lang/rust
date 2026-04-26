@@ -179,7 +179,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
                 //                             seems to be fine for now. Revisit this!
                 let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance, promoted: None };
+                let cid = GlobalId { instance };
                 let typing_env = ty::TypingEnv::fully_monomorphized();
                 tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }

@@ -397,7 +397,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // Get MIR.
-        let mir = this.load_mir(f.def, None)?;
+        let mir = this.load_mir(f.def)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
             None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),

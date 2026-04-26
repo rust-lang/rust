@@ -637,9 +637,6 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
         // see notes on #41697 elsewhere
         write!(w, "{}", tcx.def_path_str(def_id))?
     }
-    if let Some(p) = body.source.promoted {
-        write!(w, "::{p:?}")?;
-    }
 
     if is_function {
         write!(w, "(")?;
@@ -1442,12 +1439,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", const_),
                 },
                 Const::Unevaluated(uv, _) => {
-                    format!(
-                        "Unevaluated({}, {:?}, {:?})",
-                        self.tcx.def_path_str(uv.def),
-                        uv.args,
-                        uv.promoted,
-                    )
+                    format!("Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                 }
                 Const::Val(val, ty) => format!("Value({})", fmt_val(*val, *ty)),
             };

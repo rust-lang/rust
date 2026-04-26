@@ -23,7 +23,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId { instance, promoted: None };
+        let cid = GlobalId { instance };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
         self.const_eval_global_id(typing_env, cid, DUMMY_SP)
     }
@@ -39,7 +39,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId { instance, promoted: None };
+        let cid = GlobalId { instance };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
         let inputs = self.erase_and_anonymize_regions(typing_env.as_query_input(cid));
         self.eval_to_allocation_raw(inputs)
@@ -74,7 +74,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
         match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: ct.promoted };
+                let cid = GlobalId { instance };
                 self.const_eval_global_id(typing_env, cid, span)
             }
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
@@ -104,7 +104,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         let cid = match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
-            Ok(Some(instance)) => GlobalId { instance, promoted: None },
+            Ok(Some(instance)) => GlobalId { instance },
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
             Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP).into()),
@@ -160,7 +160,7 @@ impl<'tcx> TyCtxt<'tcx> {
         instance: ty::Instance<'tcx>,
         span: Span,
     ) -> EvalToConstValueResult<'tcx> {
-        self.const_eval_global_id(typing_env, GlobalId { instance, promoted: None }, span)
+        self.const_eval_global_id(typing_env, GlobalId { instance }, span)
     }
 
     /// Evaluate a constant to a `ConstValue`.

@@ -872,7 +872,6 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                 let kind = crate::ty::ConstantKind::Unevaluated(crate::ty::UnevaluatedConst {
                     def: tables.const_def(unev_const.def),
                     args: unev_const.args.stable(tables, cx),
-                    promoted: unev_const.promoted.map(|u| u.as_u32()),
                 });
                 let ty = ty.stable(tables, cx);
                 MirConst::new(kind, ty, id)

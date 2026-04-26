@@ -966,7 +966,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let args =
             ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty: ref_ty })
                 .args;
-        let uneval = UnevaluatedConst { def: self.promoted.source.def_id(), args, promoted: None };
+        let uneval = UnevaluatedConst { def: self.promoted.source.def_id(), args };
 
         feeder.mir_promoted((tcx.alloc_steal_mir(self.promoted), tcx.arena.alloc(IndexVec::new())));
 
@@ -1069,7 +1069,7 @@ fn promote_candidates<'tcx>(
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
             initial_locals,
-            IndexVec::new(),
+            body.user_type_annotations.clone(),
             0,
             vec![],
             body.span,

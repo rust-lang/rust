@@ -311,9 +311,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn load_mir(
         &self,
         instance: ty::InstanceKind<'tcx>,
-        promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
+        trace!("load mir(instance={:?})", instance);
         let body = M::load_mir(self, instance);
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
@@ -582,7 +581,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let gid = GlobalId { instance, promoted: None };
+        let gid = GlobalId { instance };
         let val = if self.tcx.is_static(gid.instance.def_id()) {
             let alloc_id = self.tcx.reserve_and_set_static_alloc(gid.instance.def_id());
 

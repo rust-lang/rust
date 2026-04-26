@@ -88,10 +88,9 @@ impl Visitable for Allocation {
 
 impl Visitable for UnevaluatedConst {
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        let UnevaluatedConst { def, args, promoted } = self;
+        let UnevaluatedConst { def, args } = self;
         def.visit(visitor)?;
-        args.visit(visitor)?;
-        promoted.visit(visitor)
+        args.visit(visitor)
     }
 }
 

@@ -62,9 +62,8 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     let (intern_kind, ret) = setup_for_eval(ecx, cid, layout)?;
 
     trace!(
-        "eval_body_using_ecx: pushing stack frame for global: {}{}",
+        "eval_body_using_ecx: pushing stack frame for global: {}",
         with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
-        cid.promoted.map_or_else(String::new, |p| format!("::{p:?}"))
     );
 
     // This can't use `init_stack_frame` since `body` is not a function,
@@ -301,7 +300,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
         which should have given a good error before ever invoking this function",
     );
     assert!(
-        !is_static || cid.promoted.is_some(),
+        !is_static,
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
 
@@ -328,7 +327,7 @@ pub fn eval_static_initializer_provider<'tcx>(
     assert!(tcx.is_static(def_id.to_def_id()));
 
     let instance = ty::Instance::mono(tcx, def_id.to_def_id());
-    let cid = rustc_middle::mir::interpret::GlobalId { instance, promoted: None };
+    let cid = rustc_middle::mir::interpret::GlobalId { instance };
     eval_in_interpreter(tcx, cid, ty::TypingEnv::fully_monomorphized())
 }
 
@@ -358,7 +357,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     // This shouldn't be used for statics, since statics are conceptually places,
     // not values -- so what we do here could break pointer identity.
-    assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
+    assert!(!tcx.is_static(key.value.instance.def_id()));
 
     if cfg!(debug_assertions) {
         match key.typing_env.typing_mode() {
@@ -409,8 +408,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
     let result = if let Some((value, ty)) = tcx.trivial_const(def) {
         eval_trivial_const_using_ecx(&mut ecx, cid, value, ty)
     } else {
-        ecx.load_mir(cid.instance.def, cid.promoted)
-            .and_then(|body| eval_body_using_ecx(&mut ecx, cid, body))
+        ecx.load_mir(cid.instance.def).and_then(|body| eval_body_using_ecx(&mut ecx, cid, body))
     };
     result.report_err().map_err(|error| report_eval_error(&ecx, cid, error))
 }

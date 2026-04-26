@@ -31,10 +31,6 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         let mir_source = mir_body.source;
 
-        // This pass runs after MIR promotion, but before promoted MIR starts to
-        // be transformed, so it should never see promoted MIR.
-        assert!(mir_source.promoted.is_none());
-
         let def_id = mir_source.def_id().expect_local();
 
         if !tcx.is_eligible_for_coverage(def_id) {
