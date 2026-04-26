@@ -119,6 +119,13 @@ impl FileDescription for Epoll {
         "epoll"
     }
 
+    fn metadata<'tcx>(
+        &self,
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
+        // On Linux, epoll is an "anonymous inode" reported as S_IFREG.
+        interp_ok(Either::Right("S_IFREG"))
+    }
+
     fn destroy<'tcx>(
         mut self,
         self_id: FdId,

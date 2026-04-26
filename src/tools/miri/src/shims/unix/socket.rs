@@ -7,7 +7,6 @@ use std::{io, iter};
 use mio::Interest;
 use mio::event::Source;
 use mio::net::{TcpListener, TcpStream};
-use rand::Rng;
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::throw_unsup_format;
@@ -168,8 +167,13 @@ impl FileDescription for Socket {
     }
 
     fn short_fd_operations(&self) -> bool {
-        // Short accesses on TCP sockets are realistic and expected to happen.
-        true
+        // Linux de-facto guarantees (or at least, applications like tokio assume [1, 2]) that
+        // when a read/write on a streaming socket comes back short, the kernel buffer is
+        // empty/full. SO we can't do short reads/writes here.
+        //
+        // [1]: https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L182
+        // [2]: https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L240
+        false
     }
 
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
@@ -652,18 +656,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
         };
 
-        // Non-deterministically decide to further reduce the length, simulating a partial send.
-        // We avoid reducing the write size to 0: the docs seem to be entirely fine with that,
-        // but the standard library is not (https://github.com/rust-lang/rust/issues/145959).
-        let length = if this.machine.short_fd_operations
-            && length >= 2
-            && this.machine.rng.get_mut().random()
-        {
-            length / 2
-        } else {
-            length
-        };
-
         let mut is_op_non_block = false;
 
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
@@ -772,21 +764,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket
             return this.set_last_error_and_return(LibcError("ENOTSOCK"), dest);
-        };
-
-        // Non-deterministically decide to further reduce the length, simulating a partial receive.
-        // We don't simulate partial receives for lengths < 2 because the man page states that a
-        // return value of zero can only be returned in some special cases:
-        // "When a stream socket peer has performed an orderly shutdown, the return value will be 0
-        // (the traditional "end-of-file" return). [...] The value 0 may also be returned if the
-        // requested number of bytes to receive from a stream socket was 0."
-        let length = if this.machine.short_fd_operations
-            && length >= 2
-            && this.machine.rng.get_mut().random()
-        {
-            length / 2 // since `length` is at least 2, the result is still at least 1
-        } else {
-            length
         };
 
         let mut should_peek = false;
@@ -1502,6 +1479,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This is a *non-blocking* write.
         let result = this.write_to_host(stream, length, buffer_ptr)?;
+        // FIXME: When the host does a short write, we should emit an epoll edge -- at least for targets for which tokio assumes no short writes:
+        // <https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L240>
         match result {
             Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::NotConnected => {
                 // On Windows hosts, `send` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
@@ -1578,6 +1557,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             length,
             buffer_ptr,
         )?;
+        // FIXME: When the host does a short read, we should emit an epoll edge -- at least for targets for which tokio assumes no short reads:
+        // <https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L182>
         match result {
             Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::NotConnected => {
                 // On Windows hosts, `recv` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
