@@ -1421,6 +1421,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
                         ecx.sess,
+                        ecx.resolver.tcx(),
                         ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,

@@ -87,6 +87,7 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
 
 fn pre_expansion_lint<'a>(
     sess: &Session,
+    tcx: TyCtxt<'_>,
     features: &Features,
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
@@ -97,7 +98,7 @@ fn pre_expansion_lint<'a>(
         || {
             rustc_lint::check_ast_node(
                 sess,
-                None,
+                Some(tcx),
                 features,
                 true,
                 lint_store,
@@ -117,6 +118,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
     fn pre_expansion_lint(
         &self,
         sess: &Session,
+        tcx: TyCtxt<'_>,
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
@@ -124,7 +126,15 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);
+        pre_expansion_lint(
+            sess,
+            tcx,
+            features,
+            self.0,
+            registered_tools,
+            (node_id, attrs, items),
+            name,
+        );
     }
 }
 
@@ -146,6 +156,7 @@ fn configure_and_expand(
     let lint_check_node = (&krate, pre_configured_attrs);
     pre_expansion_lint(
         sess,
+        tcx,
         features,
         lint_store,
         tcx.registered_tools(()),

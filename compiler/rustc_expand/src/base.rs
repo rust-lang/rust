@@ -1188,6 +1188,7 @@ pub trait LintStoreExpand {
     fn pre_expansion_lint(
         &self,
         sess: &Session,
+        tcx: TyCtxt<'_>,
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: NodeId,
