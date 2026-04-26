@@ -15,7 +15,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
-    ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
+    ATTRIBUTE_PARSERS, AcceptContext, AttributeParsers, FinalizeContext, FinalizeFn, SharedContext,
 };
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
@@ -296,6 +296,7 @@ impl<'sess> AttributeParser<'sess> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut early_parsed_state = EarlyParsedState::default();
 
+        let mut parsers = AttributeParsers::default();
         let mut finalizers: Vec<&FinalizeFn> = Vec::with_capacity(attrs.len());
 
         for attr in attrs {
@@ -411,7 +412,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_path: attr_path.clone(),
                         };
 
-                        (accept.accept_fn)(&mut cx, &args);
+                        (accept.accept_fn)(&mut parsers, &mut cx, &args);
                         finalizers.push(&accept.finalizer);
 
                         if !matches!(cx.should_emit, ShouldEmit::Nothing) {
@@ -460,10 +461,18 @@ impl<'sess> AttributeParser<'sess> {
 
         early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
         for f in &finalizers {
-            if let Some(attr) = f(&mut FinalizeContext {
-                shared: SharedContext { cx: self, target_span, target, emit_lint: &mut emit_lint },
-                all_attrs: &attr_paths,
-            }) {
+            if let Some(attr) = f(
+                &mut parsers,
+                &mut FinalizeContext {
+                    shared: SharedContext {
+                        cx: self,
+                        target_span,
+                        target,
+                        emit_lint: &mut emit_lint,
+                    },
+                    all_attrs: &attr_paths,
+                },
+            ) {
                 attributes.push(Attribute::Parsed(attr));
             }
         }
