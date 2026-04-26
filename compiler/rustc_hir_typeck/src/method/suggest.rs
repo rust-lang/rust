@@ -48,6 +48,7 @@ use tracing::{debug, info, instrument};
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
+use crate::expr_use_visitor::expr_place;
 use crate::method::probe::UnsatisfiedPredicates;
 use crate::{Expectation, FnCtxt};
 
@@ -187,6 +188,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return false,
         }
         false
+    }
+
+    // Pick the iterator method to suggest: `.into_iter()` by default, and
+    // `.iter()`/`.iter_mut()` for projections through references.
+    fn preferred_iterator_method(
+        &self,
+        source: SelfSource<'tcx>,
+        rcvr_ty: Ty<'tcx>,
+    ) -> Option<Symbol> {
+        let SelfSource::MethodCall(rcvr_expr) = source else {
+            return Some(sym::into_iter);
+        };
+
+        let rcvr_expr = rcvr_expr.peel_drop_temps().peel_blocks();
+        let Ok(place_with_id) = expr_place(self, rcvr_expr) else {
+            return None;
+        };
+
+        let mut projection_mutability = None;
+        for pointer_ty in place_with_id.place.deref_tys() {
+            match self.structurally_resolve_type(rcvr_expr.span, pointer_ty).kind() {
+                ty::Ref(.., Mutability::Not) => {
+                    projection_mutability = Some(Mutability::Not);
+                    break;
+                }
+                ty::Ref(.., Mutability::Mut) => {
+                    projection_mutability.get_or_insert(Mutability::Mut);
+                }
+                ty::RawPtr(..) => return None,
+                _ => {}
+            }
+        }
+
+        // Keep `.into_iter()` for receivers like `&Vec<_>`; only projections that
+        // dereference a reference need to switch to `iter`/`iter_mut`.
+        let Some(projection_mutability) = projection_mutability else {
+            return Some(sym::into_iter);
+        };
+
+        let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
+        // `IntoIterator` does not imply inherent `iter`/`iter_mut` methods.
+        let has_method = |method_name| {
+            self.lookup_probe_for_diagnostic(
+                Ident::with_dummy_span(method_name),
+                rcvr_ty,
+                call_expr,
+                ProbeScope::TraitsInScope,
+                None,
+            )
+            .is_ok()
+        };
+
+        match projection_mutability {
+            Mutability::Not => has_method(sym::iter).then_some(sym::iter),
+            Mutability::Mut => {
+                if has_method(sym::iter_mut) {
+                    Some(sym::iter_mut)
+                } else if has_method(sym::iter) {
+                    Some(sym::iter)
+                } else {
+                    None
+                }
+            }
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -855,10 +920,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
-            if !span.in_external_macro(self.tcx.sess.source_map()) {
+            if !span.in_external_macro(self.tcx.sess.source_map())
+                && let Some(method_name) = self.preferred_iterator_method(source, rcvr_ty)
+            {
                 err.multipart_suggestion(
-                    "call `.into_iter()` first",
-                    vec![(span.shrink_to_lo(), format!("into_iter()."))],
+                    format!("call `.{method_name}()` first"),
+                    vec![(span.shrink_to_lo(), format!("{method_name}()."))],
                     Applicability::MaybeIncorrect,
                 );
             }
