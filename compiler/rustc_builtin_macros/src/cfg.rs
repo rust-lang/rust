@@ -19,7 +19,7 @@ use rustc_span::{ErrorGuaranteed, Span, sym};
 use crate::errors;
 
 pub(crate) fn expand_cfg(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -35,7 +35,11 @@ pub(crate) fn expand_cfg(
     })
 }
 
-fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry, ErrorGuaranteed> {
+fn parse_cfg(
+    cx: &ExtCtxt<'_, '_>,
+    span: Span,
+    tts: TokenStream,
+) -> Result<CfgEntry, ErrorGuaranteed> {
     let mut parser = cx.new_parser_from_tts(tts);
     if parser.token == token::Eof {
         return Err(cx.dcx().emit_err(errors::RequiresCfgPattern { span }));

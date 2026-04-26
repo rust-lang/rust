@@ -15,7 +15,7 @@ use crate::edition_panic::use_panic_2021;
 use crate::errors;
 
 pub(crate) fn expand_assert<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     span: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -101,7 +101,7 @@ struct Assert {
 
 // if !{ ... } { ... } else { ... }
 fn expr_if_not(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     cond: Box<Expr>,
     then: Box<Expr>,
@@ -110,7 +110,7 @@ fn expr_if_not(
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, cond)), then, els)
 }
 
-fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
+fn parse_assert<'a>(cx: &ExtCtxt<'a, '_>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
     let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {

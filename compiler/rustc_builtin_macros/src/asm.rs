@@ -27,7 +27,7 @@ struct ValidatedAsmArgs {
 }
 
 fn parse_args<'a>(
-    ecx: &ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a, '_>,
     sp: Span,
     tts: TokenStream,
     asm_macro: AsmMacro,
@@ -37,7 +37,7 @@ fn parse_args<'a>(
 }
 
 fn validate_asm_args<'a>(
-    ecx: &ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a, '_>,
     asm_macro: AsmMacro,
     args: Vec<AsmArg>,
 ) -> PResult<'a, ValidatedAsmArgs> {
@@ -263,7 +263,7 @@ fn validate_asm_args<'a>(
 }
 
 fn expand_preparsed_asm(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     asm_macro: AsmMacro,
     args: ValidatedAsmArgs,
 ) -> ExpandResult<Result<ast::InlineAsm, ErrorGuaranteed>, ()> {
@@ -580,7 +580,7 @@ fn expand_preparsed_asm(
 }
 
 pub(super) fn expand_asm<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -609,7 +609,7 @@ pub(super) fn expand_asm<'cx>(
 }
 
 pub(super) fn expand_naked_asm<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -639,7 +639,7 @@ pub(super) fn expand_naked_asm<'cx>(
 }
 
 pub(super) fn expand_global_asm<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

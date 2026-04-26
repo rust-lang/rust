@@ -11,8 +11,8 @@ use crate::errors::CfgSelectNoMatches;
 /// This intermediate structure is used to emit parse errors for the branches that are not chosen.
 /// The `MacResult` instance below parses all branches, emitting any errors it encounters, but only
 /// keeps the parse result for the selected branch.
-struct CfgSelectResult<'cx, 'sess> {
-    ecx: &'cx mut ExtCtxt<'sess>,
+struct CfgSelectResult<'cx, 'sess, 'tcx> {
+    ecx: &'cx mut ExtCtxt<'sess, 'tcx>,
     site_span: Span,
     selected_tts: TokenStream,
     selected_span: Span,
@@ -20,7 +20,7 @@ struct CfgSelectResult<'cx, 'sess> {
 }
 
 fn tts_to_mac_result<'cx, 'sess>(
-    ecx: &'cx mut ExtCtxt<'sess>,
+    ecx: &'cx mut ExtCtxt<'sess, '_>,
     site_span: Span,
     tts: TokenStream,
     span: Span,
@@ -46,7 +46,7 @@ macro_rules! forward_to_parser_any_macro {
     };
 }
 
-impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
+impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess, '_> {
     forward_to_parser_any_macro!(make_expr, Box<Expr>);
     forward_to_parser_any_macro!(make_stmts, SmallVec<[ast::Stmt; 1]>);
     forward_to_parser_any_macro!(make_items, SmallVec<[Box<ast::Item>; 1]>);
@@ -61,7 +61,7 @@ impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
 }
 
 pub(super) fn expand_cfg_select<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

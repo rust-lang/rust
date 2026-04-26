@@ -36,7 +36,7 @@ use crate::errors::{
 /// macro panic_handler() {}
 /// ```
 pub(crate) fn eii(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -45,7 +45,7 @@ pub(crate) fn eii(
 }
 
 pub(crate) fn unsafe_eii(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -54,7 +54,7 @@ pub(crate) fn unsafe_eii(
 }
 
 fn eii_(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     eii_attr_span: Span,
     meta_item: &ast::MetaItem,
     orig_item: Annotatable,
@@ -177,7 +177,7 @@ fn eii_(
 /// This is either an explicitly given name, or the name of the item in the
 /// declaration of the EII.
 fn name_for_impl_macro(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     item_ident: Ident,
     meta_item: &MetaItem,
 ) -> Result<Ident, ErrorGuaranteed> {
@@ -198,7 +198,7 @@ fn name_for_impl_macro(
 
 /// Ensure that in the list of attrs, there's only a single `eii` attribute.
 fn filter_attrs_for_multiple_eii_attr(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     attrs: ThinVec<Attribute>,
     eii_attr_span: Span,
     eii_attr_path: &Path,
@@ -221,7 +221,7 @@ fn filter_attrs_for_multiple_eii_attr(
 }
 
 fn generate_default_func_impl(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     func: &ast::Fn,
     impl_unsafe: bool,
     macro_name: Ident,
@@ -284,7 +284,7 @@ fn generate_default_func_impl(
 /// extern "…" { safe fn item(); }
 /// ```
 fn generate_foreign_item(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     eii_attr_span: Span,
     item_span: Span,
     item_kind: &ItemKind,
@@ -376,7 +376,7 @@ fn generate_foreign_static(mut stat: Box<ast::StaticItem>) -> ast::ForeignItemKi
 /// macro macro_name { () => {} }
 /// ```
 fn generate_attribute_macro_to_implement(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     span: Span,
     macro_name: Ident,
     foreign_item_name: Ident,
@@ -439,7 +439,7 @@ fn generate_attribute_macro_to_implement(
 }
 
 pub(crate) fn eii_declaration(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     span: Span,
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
@@ -495,7 +495,7 @@ pub(crate) fn eii_declaration(
 
 /// all Eiis share this function as the implementation for their attribute.
 pub(crate) fn eii_shared_macro(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     span: Span,
     meta_item: &ast::MetaItem,
     mut item: Annotatable,

@@ -52,7 +52,7 @@ pub fn inject(
     krate: &mut ast::Crate,
     sess: &Session,
     features: &Features,
-    resolver: &mut dyn ResolverExpand,
+    resolver: &mut dyn ResolverExpand<'_>,
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
@@ -277,7 +277,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
-fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
+fn mk_decls(cx: &mut ExtCtxt<'_, '_>, macros: &[ProcMacro]) -> Box<ast::Item> {
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,
@@ -308,8 +308,8 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
                 ProcMacro::Derive(m) => m.span,
                 ProcMacro::Attr(m) | ProcMacro::Bang(m) => m.span,
             };
-            let local_path = |cx: &ExtCtxt<'_>, ident| cx.expr_path(cx.path(span, vec![ident]));
-            let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
+            let local_path = |cx: &ExtCtxt<'_, '_>, ident| cx.expr_path(cx.path(span, vec![ident]));
+            let proc_macro_ty_method_path = |cx: &ExtCtxt<'_, '_>, method| {
                 cx.expr_path(cx.path(
                     span.with_ctxt(harness_span.ctxt()),
                     vec![proc_macro, bridge, client, proc_macro_ty, method],

@@ -6,7 +6,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_copy(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -32,7 +32,7 @@ pub(crate) fn expand_deriving_copy(
 }
 
 pub(crate) fn expand_deriving_const_param_ty(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,

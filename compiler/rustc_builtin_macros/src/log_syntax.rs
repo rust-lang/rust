@@ -3,7 +3,7 @@ use rustc_ast_pretty::pprust;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 
 pub(crate) fn expand_log_syntax<'cx>(
-    _cx: &'cx mut ExtCtxt<'_>,
+    _cx: &'cx mut ExtCtxt<'_, '_>,
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

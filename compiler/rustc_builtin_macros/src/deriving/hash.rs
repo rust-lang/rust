@@ -8,7 +8,7 @@ use crate::deriving::generic::*;
 use crate::deriving::{path_std, pathvec_std};
 
 pub(crate) fn expand_deriving_hash(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -49,7 +49,11 @@ pub(crate) fn expand_deriving_hash(
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
+fn hash_substructure(
+    cx: &ExtCtxt<'_, '_>,
+    trait_span: Span,
+    substr: &Substructure<'_>,
+) -> BlockOrExpr {
     let [state_expr] = substr.nonselflike_args else {
         cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };

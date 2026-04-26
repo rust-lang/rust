@@ -304,7 +304,7 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
 
 // We use a `SmallVec` because the output size is always one or two `TokenTree`s.
 impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
-    for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_, '_>)
+    for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_, '_, '_>)
 {
     fn to_internal(self) -> SmallVec<[tokenstream::TokenTree; 2]> {
         use rustc_ast::token::*;
@@ -418,8 +418,8 @@ fn cancel_diags_into_string(diags: Vec<Diag<'_>>) -> String {
     msg
 }
 
-pub(crate) struct Rustc<'a, 'b> {
-    ecx: &'a mut ExtCtxt<'b>,
+pub(crate) struct Rustc<'a, 'b, 'tcx> {
+    ecx: &'a mut ExtCtxt<'b, 'tcx>,
     def_site: Span,
     call_site: Span,
     mixed_site: Span,
@@ -427,8 +427,8 @@ pub(crate) struct Rustc<'a, 'b> {
     rebased_spans: FxHashMap<usize, Span>,
 }
 
-impl<'a, 'b> Rustc<'a, 'b> {
-    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+impl<'a, 'b, 'tcx> Rustc<'a, 'b, 'tcx> {
+    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b, 'tcx>) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
@@ -445,7 +445,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
     }
 }
 
-impl server::Server for Rustc<'_, '_> {
+impl server::Server for Rustc<'_, '_, '_> {
     type TokenStream = TokenStream;
     type Span = Span;
     type Symbol = Symbol;

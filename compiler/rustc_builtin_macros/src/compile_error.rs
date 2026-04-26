@@ -7,7 +7,7 @@ use rustc_span::Span;
 use crate::util::get_single_str_from_tts;
 
 pub(crate) fn expand_compile_error<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

@@ -309,7 +309,7 @@ fn configure_and_expand(
     krate
 }
 
-fn print_macro_stats(ecx: &ExtCtxt<'_>) {
+fn print_macro_stats(ecx: &ExtCtxt<'_, '_>) {
     use std::fmt::Write;
 
     let crate_name = ecx.ecfg.crate_name.as_str();

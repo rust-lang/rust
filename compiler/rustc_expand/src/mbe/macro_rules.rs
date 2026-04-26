@@ -117,7 +117,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
 
     #[instrument(skip(cx, tts, bindings, matched_rule_bindings))]
     pub(crate) fn from_tts<'cx>(
-        cx: &'cx mut ExtCtxt<'a>,
+        cx: &'cx mut ExtCtxt<'a, '_>,
         tts: TokenStream,
         site_span: Span,
         arm_span: Span,
@@ -190,7 +190,7 @@ impl MacroRulesMacroExpander {
 
     pub fn expand_derive(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &mut ExtCtxt<'_, '_>,
         sp: Span,
         body: &TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -251,7 +251,7 @@ impl MacroRulesMacroExpander {
 impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx, 'a: 'cx>(
         &'a self,
-        cx: &'cx mut ExtCtxt<'_>,
+        cx: &'cx mut ExtCtxt<'_, '_>,
         sp: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx> {
@@ -272,7 +272,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 impl AttrProcMacro for MacroRulesMacroExpander {
     fn expand(
         &self,
-        _cx: &mut ExtCtxt<'_>,
+        _cx: &mut ExtCtxt<'_, '_>,
         _sp: Span,
         _args: TokenStream,
         _body: TokenStream,
@@ -282,7 +282,7 @@ impl AttrProcMacro for MacroRulesMacroExpander {
 
     fn expand_with_safety(
         &self,
-        cx: &mut ExtCtxt<'_>,
+        cx: &mut ExtCtxt<'_, '_>,
         safety: Safety,
         sp: Span,
         args: TokenStream,
@@ -309,7 +309,7 @@ struct DummyBang(ErrorGuaranteed);
 impl BangProcMacro for DummyBang {
     fn expand<'cx>(
         &self,
-        _: &'cx mut ExtCtxt<'_>,
+        _: &'cx mut ExtCtxt<'_, '_>,
         _: Span,
         _: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -363,7 +363,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 /// Expands the rules based macro defined by `rules` for a given input `arg`.
 #[instrument(skip(cx, transparency, arg, rules, on_unmatch_args))]
 fn expand_macro<'cx, 'a: 'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     def_span: Span,
     node_id: NodeId,
@@ -441,7 +441,7 @@ fn expand_macro<'cx, 'a: 'cx>(
 /// Expands the rules based macro defined by `rules` for a given attribute `args` and `body`.
 #[instrument(skip(cx, transparency, args, body, rules, on_unmatch_args))]
 fn expand_macro_attr(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     def_span: Span,
     node_id: NodeId,

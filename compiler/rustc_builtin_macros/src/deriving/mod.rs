@@ -38,14 +38,14 @@ pub(crate) mod partial_ord;
 pub(crate) mod generic;
 
 pub(crate) type BuiltinDeriveFn =
-    fn(&ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
+    fn(&ExtCtxt<'_, '_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
 
 pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
 impl MultiItemModifier for BuiltinDerive {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         meta_item: &MetaItem,
         item: Annotatable,
@@ -88,7 +88,7 @@ impl MultiItemModifier for BuiltinDerive {
 
 /// Constructs an expression that calls an intrinsic
 fn call_intrinsic(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     intrinsic: Symbol,
     args: ThinVec<Box<ast::Expr>>,
@@ -99,7 +99,7 @@ fn call_intrinsic(
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
-fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+fn call_unreachable(cx: &ExtCtxt<'_, '_>, span: Span) -> Box<ast::Expr> {
     let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, sym::unreachable]);
     let call = cx.expr_call_global(span, path, ThinVec::new());
@@ -114,7 +114,7 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
 }
 
 fn assert_ty_bounds(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     stmts: &mut ThinVec<ast::Stmt>,
     ty: Box<ast::Ty>,
     span: Span,

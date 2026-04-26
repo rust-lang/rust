@@ -10,7 +10,7 @@ use crate::errors;
 use crate::util::check_builtin_macro_attribute;
 
 pub(crate) fn expand(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     _span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -59,7 +59,7 @@ pub(crate) fn expand(
 // unsafe fn __rust_alloc_error_handler(size: usize, align: usize) -> ! {
 //     handler(core::alloc::Layout::from_size_align_unchecked(size, align))
 // }
-fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
+fn generate_handler(cx: &ExtCtxt<'_, '_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
     let usize = cx.path_ident(span, Ident::new(sym::usize, span));
     let ty_usize = cx.ty_path(usize);
     let size = Ident::new(sym::size, span);

@@ -28,7 +28,7 @@ use crate::util::{
 
 /// Expand `line!()` to the current line number.
 pub(crate) fn expand_line(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -43,7 +43,7 @@ pub(crate) fn expand_line(
 
 /// Expand `column!()` to the current column number.
 pub(crate) fn expand_column(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -58,7 +58,7 @@ pub(crate) fn expand_column(
 
 /// Expand `file!()` to the current filename.
 pub(crate) fn expand_file(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -77,7 +77,7 @@ pub(crate) fn expand_file(
 
 /// Expand `stringify!($input)`.
 pub(crate) fn expand_stringify(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -88,7 +88,7 @@ pub(crate) fn expand_stringify(
 
 /// Expand `module_path!()` to (a textual representation of) the current module path.
 pub(crate) fn expand_mod(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -104,7 +104,7 @@ pub(crate) fn expand_mod(
 ///
 /// This works in item and expression position. Notably, it doesn't work in pattern position.
 pub(crate) fn expand_include<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -202,7 +202,7 @@ pub(crate) fn expand_include<'cx>(
 ///
 /// This works in expression, pattern and statement position.
 pub(crate) fn expand_include_str(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -236,7 +236,7 @@ pub(crate) fn expand_include_str(
 ///
 /// This works in expression, pattern and statement position.
 pub(crate) fn expand_include_bytes(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -262,7 +262,7 @@ pub(crate) fn expand_include_bytes(
 }
 
 fn load_binary_file(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     original_path: &Path,
     macro_span: Span,
     path_span: Span,

@@ -12,7 +12,11 @@ use rustc_span::{BytePos, Span, Symbol};
 
 use crate::errors;
 
-pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
+pub(crate) fn check_builtin_macro_attribute(
+    ecx: &ExtCtxt<'_, '_>,
+    meta_item: &MetaItem,
+    name: Symbol,
+) {
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, ..Default::default() };
     validate_attr::check_builtin_meta_item(
@@ -27,7 +31,7 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
 
 /// Emit a warning if the item is annotated with the given attribute. This is used to diagnose when
 /// an attribute may have been mistakenly duplicated.
-pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: Symbol) {
+pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_, '_>, item: &Annotatable, name: Symbol) {
     let attrs: Option<&[Attribute]> = match item {
         Annotatable::Item(item) => Some(&item.attrs),
         Annotatable::AssocItem(item, _) => Some(&item.attrs),
@@ -79,7 +83,7 @@ type UnexpectedExprKind<'a> = Result<(Diag<'a>, bool /* has_suggestions */), Err
 /// added to the diagnostic to avoid emitting multiple suggestions. `Err(Err(ErrorGuaranteed))`
 /// indicates that an ast error was encountered.
 pub(crate) fn expr_to_spanned_string<'a>(
-    cx: &'a mut ExtCtxt<'_>,
+    cx: &'a mut ExtCtxt<'_, '_>,
     expr: Box<ast::Expr>,
     err_msg: &'static str,
 ) -> ExpandResult<ExprToSpannedStringResult<'a>, ()> {
@@ -131,7 +135,7 @@ pub(crate) fn expr_to_spanned_string<'a>(
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
 /// compilation on error, merely emits a non-fatal error and returns `Err`.
 pub(crate) fn expr_to_string(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     expr: Box<ast::Expr>,
     err_msg: &'static str,
 ) -> ExpandResult<Result<(Symbol, ast::StrStyle), ErrorGuaranteed>, ()> {
@@ -148,7 +152,7 @@ pub(crate) fn expr_to_string(
 /// returns even when `tts` is non-empty, macros that *need* to stop
 /// compilation should call `cx.diagnostic().abort_if_errors()`
 /// (this should be done as rarely as possible).
-pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
+pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_, '_>, span: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
         cx.dcx().emit_err(errors::TakesNoArguments { span, name });
     }
@@ -169,7 +173,7 @@ pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<Box<ast::Expr>, E
 /// Interpreting `tts` as a comma-separated sequence of expressions,
 /// expect exactly one string literal, or emit an error and return `Err`.
 pub(crate) fn get_single_str_from_tts(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     span: Span,
     tts: TokenStream,
     name: &str,
@@ -178,7 +182,7 @@ pub(crate) fn get_single_str_from_tts(
 }
 
 pub(crate) fn get_single_str_spanned_from_tts(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     span: Span,
     tts: TokenStream,
     name: &str,
@@ -202,7 +206,7 @@ pub(crate) fn get_single_str_spanned_from_tts(
 /// Interpreting `tts` as a comma-separated sequence of expressions,
 /// expect exactly one expression, or emit an error and return `Err`.
 pub(crate) fn get_single_expr_from_tts(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     span: Span,
     tts: TokenStream,
     name: &str,
@@ -227,7 +231,7 @@ pub(crate) fn get_single_expr_from_tts(
 /// Extracts comma-separated expressions from `tts`.
 /// On error, emit it, and return `Err`.
 pub(crate) fn get_exprs_from_tts(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     tts: TokenStream,
 ) -> ExpandResult<Result<Vec<Box<ast::Expr>>, ErrorGuaranteed>, ()> {
     let mut p = cx.new_parser_from_tts(tts);

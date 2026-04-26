@@ -5,7 +5,7 @@ use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpander
 use rustc_span::Span;
 
 pub(crate) fn expand<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -20,7 +20,7 @@ pub(crate) fn expand<'cx>(
 }
 
 fn parse_closure<'a>(
-    cx: &mut ExtCtxt<'a>,
+    cx: &mut ExtCtxt<'a, '_>,
     span: Span,
     stream: TokenStream,
 ) -> PResult<'a, Box<Expr>> {

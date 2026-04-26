@@ -155,7 +155,11 @@ pub fn registered_tools_ast(
     registered_tools
 }
 
-impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
+impl<'ra, 'tcx> ResolverExpand<'tcx> for Resolver<'ra, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }

@@ -35,7 +35,7 @@ impl Path {
 
     pub(crate) fn to_ty(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
@@ -44,7 +44,7 @@ impl Path {
     }
     pub(crate) fn to_path(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
@@ -86,7 +86,7 @@ pub(crate) fn self_ref() -> Ty {
 impl Ty {
     pub(crate) fn to_ty(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
@@ -108,7 +108,7 @@ impl Ty {
 
     pub(crate) fn to_path(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         span: Span,
         self_ty: Ident,
         generics: &Generics,
@@ -145,7 +145,7 @@ impl Ty {
 }
 
 fn mk_ty_param(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     name: Symbol,
     bounds: &[Path],
@@ -174,7 +174,7 @@ impl Bounds {
     }
     pub(crate) fn to_generics(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
@@ -197,7 +197,10 @@ impl Bounds {
     }
 }
 
-pub(crate) fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (Box<Expr>, ast::ExplicitSelf) {
+pub(crate) fn get_explicit_self(
+    cx: &ExtCtxt<'_, '_>,
+    span: Span,
+) -> (Box<Expr>, ast::ExplicitSelf) {
     // This constructs a fresh `self` path.
     let self_path = cx.expr_self(span);
     let self_ty = respan(span, SelfKind::Region(None, ast::Mutability::Not));

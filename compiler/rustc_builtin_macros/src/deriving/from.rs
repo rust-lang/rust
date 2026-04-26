@@ -16,7 +16,7 @@ use crate::errors;
 /// Generate an implementation of the `From` trait, provided that `item`
 /// is a struct or a tuple struct with exactly one field.
 pub(crate) fn expand_deriving_from(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &ast::MetaItem,
     annotatable: &Annotatable,

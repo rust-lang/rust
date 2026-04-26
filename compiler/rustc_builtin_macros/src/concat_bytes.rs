@@ -9,7 +9,7 @@ use crate::util::get_exprs_from_tts;
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
 fn invalid_type_err(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     token_lit: token::Lit,
     span: Span,
     is_nested: bool,
@@ -86,7 +86,7 @@ fn invalid_type_err(
 /// Otherwise, returns `None`, and either pushes the `expr`'s span to `missing_literals` or
 /// updates `guar` accordingly.
 fn handle_array_element(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     guar: &mut Option<ErrorGuaranteed>,
     missing_literals: &mut Vec<rustc_span::Span>,
     expr: &Box<rustc_ast::Expr>,
@@ -130,7 +130,7 @@ fn handle_array_element(
 }
 
 pub(crate) fn expand_concat_bytes(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {

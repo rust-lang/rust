@@ -18,7 +18,7 @@ pub(crate) struct Expander {
 impl MultiItemModifier for Expander {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,

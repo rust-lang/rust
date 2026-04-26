@@ -13,7 +13,7 @@ use crate::errors;
 use crate::util::check_builtin_macro_attribute;
 
 pub(crate) fn expand(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     _span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -65,14 +65,14 @@ pub(crate) fn expand(
     vec![orig_item, const_item]
 }
 
-struct AllocFnFactory<'a, 'b> {
+struct AllocFnFactory<'a, 'b, 'tcx> {
     span: Span,
     ty_span: Span,
     global: Ident,
-    cx: &'a ExtCtxt<'b>,
+    cx: &'a ExtCtxt<'b, 'tcx>,
 }
 
-impl AllocFnFactory<'_, '_> {
+impl AllocFnFactory<'_, '_, '_> {
     fn allocator_fn(&self, method: &AllocatorMethod) -> Stmt {
         let mut abi_args = ThinVec::new();
         let args = method.inputs.iter().map(|input| self.arg_ty(input, &mut abi_args)).collect();

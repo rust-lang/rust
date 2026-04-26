@@ -10,7 +10,7 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
 
-impl<'a> ExtCtxt<'a> {
+impl<'a, 'tcx> ExtCtxt<'a, 'tcx> {
     pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
         self.path_all(span, false, strs, vec![])
     }
