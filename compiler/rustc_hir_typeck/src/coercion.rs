@@ -2009,6 +2009,9 @@ impl<'tcx> CoerceMany<'tcx> {
             // note in this case, since it would be incorrect.
             && let Some(fn_sig) = fcx.body_fn_sig()
             && fn_sig.output().is_ty_var()
+            && fcx.ret_coercion.as_ref().is_some_and(|ret_coercion| {
+                fcx.resolve_vars_if_possible(ret_coercion.borrow().expected_ty()) == expected
+            })
         {
             err.span_note(sp, format!("return type inferred to be `{expected}` here"));
         }
