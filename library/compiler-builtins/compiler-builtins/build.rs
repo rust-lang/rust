@@ -7,6 +7,7 @@ use configure::{Config, Library, set_cfg};
 
 fn main() {
     let cfg = Config::from_env(Library::CompilerBuiltins);
+    let llvm_target = &cfg.target_triple_split;
 
     // Work around building as part of `builtins-shim`: if only `build.rs` is used, Cargo always
     // considers the build dirty because `builtins-shim/build.rs` does not exist. If only
@@ -24,21 +25,6 @@ fn main() {
 
     let cwd = env::current_dir().unwrap();
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
-
-    println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
-
-    // Emscripten's runtime includes all the builtins
-    if cfg.target_os == "emscripten" {
-        return;
-    }
-
-    // OpenBSD provides compiler_rt by default, use it instead of rebuilding it from source
-    if cfg.target_os == "openbsd" {
-        println!("cargo:rustc-link-search=native=/usr/lib");
-        println!("cargo:rustc-link-lib=compiler_rt");
-        return;
-    }
 
     // Forcibly enable memory intrinsics on wasm & SGX as we don't have a libc to
     // provide them.
@@ -59,25 +45,6 @@ fn main() {
         || cfg.target_arch.contains("bpf");
     set_cfg("mem_unaligned", mem_unaligned);
 
-    // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
-    // target triple. This is usually correct for our built-in targets but can break in presence of
-    // custom targets, which can have arbitrary names.
-    let llvm_target = cfg.target_triple.split('-').collect::<Vec<_>>();
-
-    // Build missing intrinsics from compiler-rt C source code. If we're
-    // mangling names though we assume that we're also in test mode so we don't
-    // build anything and we rely on the upstream implementation of compiler-rt
-    // functions
-    if cfg!(feature = "unmangled-names") && cfg!(feature = "c") {
-        // Don't use a C compiler for these targets:
-        //
-        // * nvptx - everything is bitcode, not compatible with mixed C/Rust
-        if !cfg.target_arch.contains("nvptx") {
-            #[cfg(feature = "c")]
-            c::compile(&llvm_target, &cfg);
-        }
-    }
-
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
     // includes the old androideabi. It is deprecated but it is available as a
     // rustc target (arm-linux-androideabi).
@@ -85,6 +52,34 @@ fn main() {
         || llvm_target[0] == "armv5te"
         || cfg.target_triple == "arm-linux-androideabi";
     set_cfg("kernel_user_helpers", kernel_user_helpers);
+
+    let mut maybe_build_c = true;
+
+    // Emscripten's runtime includes all the builtins
+    if cfg.target_os == "emscripten" {
+        maybe_build_c = false;
+    }
+
+    // OpenBSD provides compiler_rt by default, use it instead of rebuilding it from source
+    if cfg.target_os == "openbsd" {
+        println!("cargo:rustc-link-search=native=/usr/lib");
+        println!("cargo:rustc-link-lib=compiler_rt");
+        maybe_build_c = false;
+    }
+
+    // Everything is LLVM bitcode, not compatible with mixed C/Rust
+    if cfg.target_arch.contains("nvptx") {
+        maybe_build_c = false;
+    }
+
+    // Build missing intrinsics from compiler-rt C source code. If we're
+    // mangling names though we assume that we're also in test mode so we don't
+    // build anything and we rely on the upstream implementation of compiler-rt
+    // functions
+    if cfg!(feature = "unmangled-names") && cfg!(feature = "c") && maybe_build_c {
+        #[cfg(feature = "c")]
+        c::compile(&cfg);
+    }
 }
 
 /// Emit directives for features we expect to support that aren't in `Cargo.toml`.
@@ -198,7 +193,8 @@ mod c {
     }
 
     /// Compile intrinsics from the compiler-rt C source code
-    pub fn compile(llvm_target: &[&str], cfg: &Config) {
+    pub fn compile(cfg: &Config) {
+        let llvm_target = &cfg.target_triple_split;
         let mut consider_float_intrinsics = true;
         let build = &mut cc::Build::new();
 

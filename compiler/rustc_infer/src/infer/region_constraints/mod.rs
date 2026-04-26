@@ -1,7 +1,7 @@
 //! See `README.md`.
 
 use std::ops::Range;
-use std::{cmp, fmt, mem};
+use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
@@ -96,6 +96,19 @@ pub enum ConstraintKind {
     /// directly affect inference, but instead is checked after
     /// inference is complete.
     RegSubReg,
+
+    /// A region variable is equal to another.
+    VarEqVar,
+
+    /// A region variable is equal to a concrete region. This does not
+    /// directly affect inference, but instead is checked after
+    /// inference is complete.
+    VarEqReg,
+
+    /// An equality constraint where neither side is a variable. This does not
+    /// directly affect inference, but instead is checked after
+    /// inference is complete.
+    RegEqReg,
 }
 
 /// Represents a constraint that influences the inference process.
@@ -111,6 +124,30 @@ pub struct Constraint<'tcx> {
 impl Constraint<'_> {
     pub fn involves_placeholders(&self) -> bool {
         self.sub.is_placeholder() || self.sup.is_placeholder()
+    }
+
+    pub fn iter_outlives(self) -> impl Iterator<Item = Self> {
+        let Constraint { kind, sub, sup } = self;
+
+        match kind {
+            ConstraintKind::VarSubVar
+            | ConstraintKind::RegSubVar
+            | ConstraintKind::VarSubReg
+            | ConstraintKind::RegSubReg => iter::once(self).chain(None),
+
+            ConstraintKind::VarEqVar => {
+                iter::once(Constraint { kind: ConstraintKind::VarSubVar, sub, sup })
+                    .chain(Some(Constraint { kind: ConstraintKind::VarSubVar, sub: sup, sup: sub }))
+            }
+            ConstraintKind::VarEqReg => {
+                iter::once(Constraint { kind: ConstraintKind::VarSubReg, sub, sup })
+                    .chain(Some(Constraint { kind: ConstraintKind::RegSubVar, sub: sup, sup: sub }))
+            }
+            ConstraintKind::RegEqReg => {
+                iter::once(Constraint { kind: ConstraintKind::RegSubReg, sub, sup })
+                    .chain(Some(Constraint { kind: ConstraintKind::RegSubReg, sub: sup, sup: sub }))
+            }
+        }
     }
 }
 
@@ -422,39 +459,57 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         b: Region<'tcx>,
     ) {
         if a != b {
-            // Eventually, it would be nice to add direct support for
-            // equating regions.
-            self.make_subregion(origin.clone(), a, b);
-            self.make_subregion(origin, b, a);
-
-            match (a.kind(), b.kind()) {
-                (ty::ReVar(a), ty::ReVar(b)) => {
-                    debug!("make_eqregion: unifying {:?} with {:?}", a, b);
-                    if self.unification_table_mut().unify_var_var(a, b).is_ok() {
+            // FIXME: We could only emit constraints if `unify_var_{var, value}` fails when
+            // equating region vars.
+            match (a.kind(), b.kind(), a, b) {
+                (ReBound(..), _, _, _) | (_, ReBound(..), _, _) => {
+                    span_bug!(origin.span(), "cannot relate bound region: {:?} == {:?}", a, b);
+                }
+                (ReVar(a_vid), ReVar(b_vid), _, _) => {
+                    self.add_constraint(
+                        Constraint { kind: ConstraintKind::VarEqVar, sub: a, sup: b },
+                        origin,
+                    );
+                    debug!("make_eqregion: unifying {:?} with {:?}", a_vid, b_vid);
+                    if self.unification_table_mut().unify_var_var(a_vid, b_vid).is_ok() {
                         self.storage.any_unifications = true;
                     }
                 }
-                (ty::ReVar(vid), _) => {
-                    debug!("make_eqregion: unifying {:?} with {:?}", vid, b);
+                (ReVar(vid), _, var, reg) | (_, ReVar(vid), reg, var) => {
+                    if reg.is_static() {
+                        // all regions are subregions of static, so don't go bidirectional here
+                        self.add_constraint(
+                            Constraint { kind: ConstraintKind::RegSubVar, sub: reg, sup: var },
+                            origin,
+                        );
+                    } else {
+                        self.add_constraint(
+                            Constraint { kind: ConstraintKind::VarEqReg, sub: var, sup: reg },
+                            origin,
+                        );
+                    }
+                    debug!("make_eqregion: unifying {:?} with {:?}", vid, reg);
                     if self
                         .unification_table_mut()
-                        .unify_var_value(vid, RegionVariableValue::Known { value: b })
+                        .unify_var_value(vid, RegionVariableValue::Known { value: reg })
                         .is_ok()
                     {
                         self.storage.any_unifications = true;
                     };
                 }
-                (_, ty::ReVar(vid)) => {
-                    debug!("make_eqregion: unifying {:?} with {:?}", a, vid);
-                    if self
-                        .unification_table_mut()
-                        .unify_var_value(vid, RegionVariableValue::Known { value: a })
-                        .is_ok()
-                    {
-                        self.storage.any_unifications = true;
-                    };
+                (ReStatic, _, st, reg) | (_, ReStatic, reg, st) => {
+                    // all regions are subregions of static, so don't go bidirectional here
+                    self.add_constraint(
+                        Constraint { kind: ConstraintKind::RegSubReg, sub: st, sup: reg },
+                        origin,
+                    );
                 }
-                (_, _) => {}
+                _ => {
+                    self.add_constraint(
+                        Constraint { kind: ConstraintKind::RegEqReg, sub: a, sup: b },
+                        origin,
+                    );
+                }
             }
         }
     }

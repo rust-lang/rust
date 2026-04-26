@@ -11,9 +11,14 @@ error[E0565]: malformed `rustc_lint_query_instability` attribute input
    |
 LL |     #[rustc_lint_query_instability(a)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
-   |     |                             |
-   |     |                             didn't expect any arguments here
-   |     help: must be of the form: `#[rustc_lint_query_instability]`
+   |                                   |
+   |                                   didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL -     #[rustc_lint_query_instability(a)]
+LL +     #[rustc_lint_query_instability]
+   |
 
 error: aborting due to 2 previous errors
 

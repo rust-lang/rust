@@ -1,6 +1,6 @@
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Safety};
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, LocalDecl, MirSource, Operand, Place, Rvalue,
@@ -20,7 +20,7 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     debug_assert_eq!(Some(def_id), tcx.lang_items().async_drop_in_place_fn());
     let generic_body = tcx.optimized_mir(def_id);
     let args = tcx.mk_args(&[ty.into()]);
-    let mut body = EarlyBinder::bind(generic_body.clone()).instantiate(tcx, args);
+    let mut body = EarlyBinder::bind(generic_body.clone()).instantiate(tcx, args).skip_norm_wip();
 
     // Minimal shim passes except MentionedItems,
     // it causes error "mentioned_items for DefId(...async_drop_in_place...) have already been set
@@ -67,13 +67,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
     let resume_ty = Ty::new_adt(tcx, resume_adt, ty::List::empty());
 
-    let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-        [ty, resume_ty],
-        tcx.types.unit,
-        false,
-        Safety::Safe,
-        ExternAbi::Rust,
-    ));
+    let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([ty, resume_ty], tcx.types.unit));
     let sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
 
     assert!(!drop_ty.is_coroutine());
@@ -212,7 +206,8 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     // let mut _x: &mut CorLayout = &*_1.0.0;
     // Replace old _1.0 accesses into _x accesses;
     let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
-    let mut body: Body<'tcx> = EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args);
+    let mut body: Body<'tcx> =
+        EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
     body.source.instance = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
@@ -310,13 +305,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let env_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[proxy_ref.into()]));
     // sig = `fn (Pin<&mut proxy_ty>, &mut Context) -> Poll<()>`
-    let sig = tcx.mk_fn_sig(
-        [env_ty, Ty::new_task_context(tcx)],
-        ret_ty,
-        false,
-        hir::Safety::Safe,
-        ExternAbi::Rust,
-    );
+    let sig = tcx.mk_fn_sig_safe_rust_abi([env_ty, Ty::new_task_context(tcx)], ret_ty);
     // This function will be called with pinned proxy coroutine layout.
     // We need to extract `Arg0.0` to get proxy layout, and then get `.0`
     // further to receive impl coroutine (may be needed)

@@ -58,3 +58,15 @@ const fn high_msrv(a: u32) -> bool {
     a.is_power_of_two()
     //~^ manual_is_power_of_two
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_val {
+        ($val:expr) => {
+            ($val * 2 + 1)
+        };
+    }
+
+    let a = 16_u64;
+    let _ = test_val!(a).is_power_of_two();
+    //~^ manual_is_power_of_two
+}

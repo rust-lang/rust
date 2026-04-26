@@ -38,6 +38,12 @@ pub(crate) fn expand(
         return vec![orig_item];
     };
 
+    // Forbid `#[thread_local]` attributes on the item
+    if let Some(attr) = item.attrs.iter().find(|x| x.has_name(sym::thread_local)) {
+        ecx.dcx().emit_err(errors::AllocCannotThreadLocal { span: item.span, attr: attr.span });
+        return vec![orig_item];
+    }
+
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
     let f = AllocFnFactory { span, ty_span, global: ident, cx: ecx };

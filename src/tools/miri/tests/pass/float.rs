@@ -22,6 +22,10 @@ use std::hint::black_box;
 mod utils;
 use utils::check_nondet;
 
+/// Error tolerance in ULP.
+/// Miri adds 4 ULP of errors itself, and we allow for 4 additional ULP of host float error.
+const ERR_TOLERANCE: i32 = 8;
+
 /// Compare the two floats, allowing for $ulp many ULPs of error.
 ///
 /// ULP means "Units in the Last Place" or "Units of Least Precision".
@@ -33,7 +37,7 @@ use utils::check_nondet;
 /// have a large value difference, their ULP can still be 1, so they are still "approximatly equal",
 /// but the EPSILON check would have failed.
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr, $ulp:expr) => {{
+    ($a:expr, $b:expr, $ulp:expr $( , )?) => {{
         let (actual, expected) = ($a, $b);
         let allowed_ulp_diff = $ulp;
         let _force_same_type = actual == expected;
@@ -46,9 +50,10 @@ macro_rules! assert_approx_eq {
         };
     }};
 
-    ($a:expr, $b: expr) => {
-        // accept up to 8ULP (4ULP for host floats and 4ULP for miri artificial error).
-        assert_approx_eq!($a, $b, 8);
+    ($a:expr, $b: expr $( , )?) => {
+        // Accept up to 12ULP (4ULP for miri artificial error and the rest for host floats).
+        // We saw failures on an i686-linux host with a limit of 8!
+        assert_approx_eq!($a, $b, ERR_TOLERANCE);
     };
 }
 
@@ -1195,10 +1200,10 @@ fn libm() {
     assert_approx_eq!(f16_consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f32_consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f64_consts::FRAC_PI_6.sin(), 0.5);
-    // Increase error tolerance to 16ULP because of the extra operation.
-    assert_approx_eq!(f16_consts::FRAC_PI_4.sin().asin(), f16_consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f32_consts::FRAC_PI_4.sin().asin(), f32_consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f64_consts::FRAC_PI_4.sin().asin(), f64_consts::FRAC_PI_4, 16);
+    // Increase error tolerance because of the extra operation.
+    assert_approx_eq!(f16_consts::FRAC_PI_4.sin().asin(), f16_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f32_consts::FRAC_PI_4.sin().asin(), f32_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f64_consts::FRAC_PI_4.sin().asin(), f64_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
     assert_biteq(0.0f16.asin(), 0.0f16, "asin(+0) = +0");
     assert_biteq((-0.0f16).asin(), -0.0, "asin(-0) = -0");
     assert_biteq(0.0f32.asin(), 0.0f32, "asin(+0) = +0");
@@ -1238,10 +1243,10 @@ fn libm() {
     assert_approx_eq!(f16_consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f32_consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f64_consts::FRAC_PI_3.cos(), 0.5);
-    // Increase error tolerance to 16ULP because of the extra operation.
-    assert_approx_eq!(f16_consts::FRAC_PI_4.cos().acos(), f16_consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f32_consts::FRAC_PI_4.cos().acos(), f32_consts::FRAC_PI_4, 16);
-    assert_approx_eq!(f64_consts::FRAC_PI_4.cos().acos(), f64_consts::FRAC_PI_4, 16);
+    // Increase error tolerance because of the extra operation.
+    assert_approx_eq!(f16_consts::FRAC_PI_4.cos().acos(), f16_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f32_consts::FRAC_PI_4.cos().acos(), f32_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
+    assert_approx_eq!(f64_consts::FRAC_PI_4.cos().acos(), f64_consts::FRAC_PI_4, 2 * ERR_TOLERANCE);
     assert_biteq(1.0f16.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f32.acos(), 0.0, "acos(1) = 0");
     assert_biteq(1.0f64.acos(), 0.0, "acos(1) = 0");
@@ -1262,9 +1267,10 @@ fn libm() {
     assert_approx_eq!(1.0f16.tan(), 1.557408f16);
     assert_approx_eq!(1.0f32.tan(), 1.557408f32);
     assert_approx_eq!(1.0f64.tan(), 1.5574077246549023f64);
-    assert_approx_eq!(1.0_f16, 1.0_f16.tan().atan());
-    assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan());
-    assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan());
+    // Increase error tolerance because of the extra operation.
+    assert_approx_eq!(1.0_f16, 1.0_f16.tan().atan(), 2 * ERR_TOLERANCE);
+    assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan(), 2 * ERR_TOLERANCE);
+    assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan(), 2 * ERR_TOLERANCE);
     assert_approx_eq!(1.0f16.atan2(2.0f16), 0.46364761f16);
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
@@ -1315,17 +1321,21 @@ fn libm() {
     fixed_atan2_cases!(f32);
     fixed_atan2_cases!(f64);
 
+    // Imprecise operations on both sides needs higher error tolerance.
     assert_approx_eq!(
         1.0f16.tanh(),
-        (1.0 - f16_consts::E.powi(-2)) / (1.0 + f16_consts::E.powi(-2))
+        (1.0 - f16_consts::E.powi(-2)) / (1.0 + f16_consts::E.powi(-2)),
+        2 * ERR_TOLERANCE,
     );
     assert_approx_eq!(
         1.0f32.tanh(),
-        (1.0 - f32_consts::E.powi(-2)) / (1.0 + f32_consts::E.powi(-2))
+        (1.0 - f32_consts::E.powi(-2)) / (1.0 + f32_consts::E.powi(-2)),
+        2 * ERR_TOLERANCE,
     );
     assert_approx_eq!(
         1.0f64.tanh(),
-        (1.0 - f64_consts::E.powi(-2)) / (1.0 + f64_consts::E.powi(-2))
+        (1.0 - f64_consts::E.powi(-2)) / (1.0 + f64_consts::E.powi(-2)),
+        2 * ERR_TOLERANCE,
     );
     assert_eq!(f16::INFINITY.tanh(), 1.0);
     assert_eq!(f16::NEG_INFINITY.tanh(), -1.0);
@@ -1348,15 +1358,16 @@ fn libm() {
     assert_eq!(2.0f16.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f32.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f64.ln_gamma(), (0.0, 1));
-    // Gamma(-0.5) = -2*sqrt(π)
+    // Gamma(-0.5) = -2*sqrt(π), then apply `ln` on both sides.
+    // This has imprecise float ops on both sides so we double the error tolerance.
     let (val, sign) = (-0.5f16).ln_gamma();
-    assert_approx_eq!(val, (2.0 * f16_consts::PI.sqrt()).ln());
+    assert_approx_eq!(val, (2.0 * f16_consts::PI.sqrt()).ln(), 2 * ERR_TOLERANCE);
     assert_eq!(sign, -1);
     let (val, sign) = (-0.5f32).ln_gamma();
-    assert_approx_eq!(val, (2.0 * f32_consts::PI.sqrt()).ln());
+    assert_approx_eq!(val, (2.0 * f32_consts::PI.sqrt()).ln(), 2 * ERR_TOLERANCE);
     assert_eq!(sign, -1);
     let (val, sign) = (-0.5f64).ln_gamma();
-    assert_approx_eq!(val, (2.0 * f64_consts::PI.sqrt()).ln());
+    assert_approx_eq!(val, (2.0 * f64_consts::PI.sqrt()).ln(), 2 * ERR_TOLERANCE);
     assert_eq!(sign, -1);
 
     assert_approx_eq!(1.0f16.erf(), 0.84270079294971486934122063508260926f16);

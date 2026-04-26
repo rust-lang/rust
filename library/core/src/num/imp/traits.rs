@@ -204,8 +204,8 @@ impl Float for f16 {
 
     const BITS: u32 = 16;
     const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
-    const EXP_MASK: Self::Int = Self::EXP_MASK;
-    const SIG_MASK: Self::Int = Self::MAN_MASK;
+    const EXP_MASK: Self::Int = Self::EXPONENT_MASK;
+    const SIG_MASK: Self::Int = Self::MANTISSA_MASK;
 
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -22;
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 5;
@@ -238,8 +238,8 @@ impl Float for f32 {
 
     const BITS: u32 = 32;
     const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
-    const EXP_MASK: Self::Int = Self::EXP_MASK;
-    const SIG_MASK: Self::Int = Self::MAN_MASK;
+    const EXP_MASK: Self::Int = Self::EXPONENT_MASK;
+    const SIG_MASK: Self::Int = Self::MANTISSA_MASK;
 
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -17;
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 10;
@@ -271,8 +271,8 @@ impl Float for f64 {
 
     const BITS: u32 = 64;
     const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
-    const EXP_MASK: Self::Int = Self::EXP_MASK;
-    const SIG_MASK: Self::Int = Self::MAN_MASK;
+    const EXP_MASK: Self::Int = Self::EXPONENT_MASK;
+    const SIG_MASK: Self::Int = Self::MANTISSA_MASK;
 
     const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -4;
     const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 23;

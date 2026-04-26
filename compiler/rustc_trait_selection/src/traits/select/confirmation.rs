@@ -14,7 +14,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Unnormalized, Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
@@ -537,6 +539,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for (supertrait, _) in tcx
             .explicit_super_predicates_of(trait_predicate.def_id())
             .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
+            .map(Unnormalized::skip_norm_wip)
         {
             let normalized_supertrait = normalize_with_depth_to(
                 self,
@@ -578,7 +581,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    bound.instantiate(tcx, trait_predicate.trait_ref.args),
+                    bound.instantiate(tcx, trait_predicate.trait_ref.args).skip_norm_wip(),
                     &mut nested,
                 );
                 nested.push(obligation.with(tcx, normalized_bound));
@@ -1179,7 +1182,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    tail_field_ty.instantiate(tcx, args_a),
+                    tail_field_ty.instantiate(tcx, args_a).skip_norm_wip(),
                     &mut nested,
                 );
                 let target_tail = normalize_with_depth_to(
@@ -1187,7 +1190,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    tail_field_ty.instantiate(tcx, args_b),
+                    tail_field_ty.instantiate(tcx, args_b).skip_norm_wip(),
                     &mut nested,
                 );
 

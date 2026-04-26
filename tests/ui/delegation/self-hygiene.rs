@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 macro_rules! emit_self { () => { self } }
 //~^ ERROR expected value, found module `self`

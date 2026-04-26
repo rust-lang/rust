@@ -26,7 +26,7 @@
       }
   
       bb1: {
--         StorageLive(_2);
+          StorageLive(_2);
           _2 = copy _1;
 -         StorageLive(_3);
 -         _3 = copy _2;
@@ -46,7 +46,7 @@
           StorageDead(_5);
           _0 = const ();
 -         StorageDead(_3);
--         StorageDead(_2);
+          StorageDead(_2);
           StorageDead(_1);
           return;
       }

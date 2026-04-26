@@ -5,7 +5,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, Unnormalized};
 
 pub mod infer;
 pub mod traits;
@@ -23,7 +23,8 @@ pub struct TypeErrCtxt<'a, 'tcx> {
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
     pub diverging_fallback_has_occurred: bool,
 
-    pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
+    pub normalize_fn_sig:
+        Box<dyn Fn(Unnormalized<'tcx, ty::PolyFnSig<'tcx>>) -> ty::PolyFnSig<'tcx> + 'a>,
 
     pub autoderef_steps: Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, PredicateObligations<'tcx>)> + 'a>,
 }
@@ -37,7 +38,7 @@ impl<'tcx> InferCtxt<'tcx> {
             infcx: self,
             typeck_results: None,
             diverging_fallback_has_occurred: false,
-            normalize_fn_sig: Box::new(|fn_sig| fn_sig),
+            normalize_fn_sig: Box::new(|fn_sig| fn_sig.skip_normalization()),
             autoderef_steps: Box::new(|ty| {
                 debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
                 vec![(ty, PredicateObligations::new())]

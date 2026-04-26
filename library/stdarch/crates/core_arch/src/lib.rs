@@ -40,7 +40,8 @@
     const_cmp,
     const_eval_select,
     maybe_uninit_as_bytes,
-    movrs_target_feature
+    movrs_target_feature,
+    min_adt_const_params
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]
@@ -70,7 +71,11 @@
 )]
 #![cfg_attr(
     test,
-    feature(stdarch_arm_feature_detection, stdarch_powerpc_feature_detection,)
+    feature(
+        stdarch_arm_feature_detection,
+        stdarch_mips_feature_detection,
+        stdarch_powerpc_feature_detection,
+    )
 )]
 
 #[cfg(test)]

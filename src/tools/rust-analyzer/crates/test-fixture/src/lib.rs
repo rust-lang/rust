@@ -11,7 +11,7 @@ use base_db::target::TargetData;
 use base_db::{
     Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
     DependencyBuilder, Env, FileChange, FileSet, FxIndexMap, LangCrateOrigin, SourceDatabase,
-    SourceRoot, Version, VfsPath,
+    SourceRoot, Version, VfsPath, all_crates,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -227,7 +227,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     }
 
     fn test_crate(&self) -> Crate {
-        self.all_crates().iter().copied().find(|&krate| !krate.data(self).origin.is_lang()).unwrap()
+        all_crates(self).iter().copied().find(|&krate| !krate.data(self).origin.is_lang()).unwrap()
     }
 }
 

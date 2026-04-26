@@ -588,6 +588,11 @@ mod uefi_fs {
         path: crate::path::PathBuf,
     }
 
+    // SAFETY: UEFI has no regular threads, and as per <https://github.com/rust-lang/rust/issues/133604>
+    // std does not support being invoked from "irregular threads" such as interrupt handlers or other
+    // CPU cores that run outside the scope of UEFI.
+    unsafe impl Send for File {}
+
     impl File {
         pub(crate) fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
             let absolute = crate::path::absolute(path)?;

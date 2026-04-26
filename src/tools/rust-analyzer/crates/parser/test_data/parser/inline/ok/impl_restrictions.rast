@@ -1,0 +1,80 @@
+SOURCE_FILE
+  TRAIT
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    IMPL_RESTRICTION
+      IMPL_KW "impl"
+      VISIBILITY_INNER
+        L_PAREN "("
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              CRATE_KW "crate"
+        R_PAREN ")"
+    WHITESPACE " "
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  TRAIT
+    IMPL_RESTRICTION
+      IMPL_KW "impl"
+      VISIBILITY_INNER
+        L_PAREN "("
+        IN_KW "in"
+        WHITESPACE " "
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                SUPER_KW "super"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "bar"
+        R_PAREN ")"
+    WHITESPACE " "
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "Bar"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    TUPLE_TYPE
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PAREN_TYPE
+      L_PAREN "("
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "i32"
+      R_PAREN ")"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"

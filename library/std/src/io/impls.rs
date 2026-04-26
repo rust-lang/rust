@@ -4,6 +4,7 @@ mod tests;
 use crate::alloc::Allocator;
 use crate::collections::VecDeque;
 use crate::io::{self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::sync::Arc;
 use crate::{cmp, fmt, mem, str};
 
 // =============================================================================
@@ -713,5 +714,124 @@ impl<'a> io::Write for core::io::BorrowedCursor<'a> {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
+impl<R: Read + ?Sized> Read for Arc<R>
+where
+    for<'a> &'a R: Read,
+    R: crate::io::IoHandle,
+{
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (&**self).read(buf)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf(cursor)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (&**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (&**self).is_read_vectored()
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        (&**self).read_to_end(buf)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        (&**self).read_to_string(buf)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        (&**self).read_exact(buf)
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf_exact(cursor)
+    }
+}
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
+impl<W: Write + ?Sized> Write for Arc<W>
+where
+    for<'a> &'a W: Write,
+    W: crate::io::IoHandle,
+{
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&**self).write(buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&**self).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (&**self).is_write_vectored()
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        (&**self).flush()
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        (&**self).write_all(buf)
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (&**self).write_all_vectored(bufs)
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        (&**self).write_fmt(fmt)
+    }
+}
+#[stable(feature = "io_traits_arc", since = "1.73.0")]
+impl<S: Seek + ?Sized> Seek for Arc<S>
+where
+    for<'a> &'a S: Seek,
+    S: crate::io::IoHandle,
+{
+    #[inline]
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        (&**self).seek(pos)
+    }
+
+    #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        (&**self).rewind()
+    }
+
+    #[inline]
+    fn stream_len(&mut self) -> io::Result<u64> {
+        (&**self).stream_len()
+    }
+
+    #[inline]
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&**self).stream_position()
+    }
+
+    #[inline]
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (&**self).seek_relative(offset)
     }
 }

@@ -1008,3 +1008,45 @@ fn main() {
         InternalTestingFetchConfigResponse::CheckWorkspace(true),
     );
 }
+
+#[test]
+fn ratoml_virtual_workspace() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = RatomlTest::new(
+        vec![
+            r#"
+//- /p1/Cargo.toml
+[workspace]
+members = ["member"]
+"#,
+            r#"
+//- /p1/rust-analyzer.toml
+assist.emitMustUse = true
+"#,
+            r#"
+//- /p1/member/Cargo.toml
+[package]
+name = "member"
+version = "0.1.0"
+edition = "2021"
+"#,
+            r#"
+//- /p1/member/src/lib.rs
+pub fn add(left: usize, right: usize) -> usize {
+    left + right
+}
+"#,
+        ],
+        vec!["p1"],
+        None,
+    );
+
+    server.query(
+        InternalTestingFetchConfigOption::AssistEmitMustUse,
+        3,
+        InternalTestingFetchConfigResponse::AssistEmitMustUse(true),
+    );
+}

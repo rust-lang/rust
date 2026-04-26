@@ -60,6 +60,6 @@ pub fn error_string(errno: i32) -> String {
     } else if ((Error::UserRangeStart as _)..=(Error::UserRangeEnd as _)).contains(&errno) {
         format!("user-specified error {errno:08x}")
     } else {
-        decode_error_kind(errno).as_str().into()
+        format!("{}", decode_error_kind(errno))
     }
 }

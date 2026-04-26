@@ -16,10 +16,11 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, Attribute, ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
@@ -27,7 +28,7 @@ use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin}
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
@@ -55,21 +56,8 @@ use crate::{
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
-        // For the purpose of rendering suggestions, disregard attributes
-        // that originate from desugaring of any kind. For example, `x?`
-        // desugars to `#[allow(unreachable_code)] match ...`. Failing to
-        // ignore the prefix attribute in the desugaring would cause this
-        // suggestion:
-        //
-        //     let y: u32 = x?.try_into().unwrap();
-        //                    ++++++++++++++++++++
-        //
-        // to be rendered as:
-        //
-        //     let y: u32 = (x?).try_into().unwrap();
-        //                  +  +++++++++++++++++++++
         let has_attr = |id: HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(Attribute::has_span_without_desugaring_kind)
+            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,
@@ -343,7 +331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expected),
+            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expr.hir_id, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_expr_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
@@ -588,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.add_required_obligations_with_code(expr.span, def_id, args, |_, _| {
                     code.clone()
                 });
-                return tcx.type_of(def_id).instantiate(tcx, args);
+                return tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip();
             }
         }
 
@@ -1483,12 +1471,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method.sig.output(),
                     expected,
                     args,
-                    method.sig.c_variadic,
+                    method.sig.c_variadic(),
                     TupleArgumentsFlag::DontTupleArguments,
                     Some(method.def_id),
                 );
 
-                self.check_call_abi(method.sig.abi, expr.span);
+                self.check_call_abi(method.sig.abi(), expr.span);
 
                 method.sig.output()
             }
@@ -1737,7 +1725,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count_span = count.span;
         let count = self.try_structurally_resolve_const(
             count_span,
-            self.normalize(count_span, self.lower_const_arg(count, tcx.types.usize)),
+            self.normalize(
+                count_span,
+                Unnormalized::new_wip(self.lower_const_arg(count, tcx.types.usize)),
+            ),
         );
 
         if let Some(count) = count.try_to_target_usize(tcx) {
@@ -2058,12 +2049,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Adt(adt, args) if adt.is_struct() => variant
                         .fields
                         .iter()
-                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                        .map(|f| self.normalize(span, Unnormalized::new_wip(f.ty(self.tcx, args))))
                         .collect(),
                     ty::Adt(adt, args) if adt.is_enum() => variant
                         .fields
                         .iter()
-                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                        .map(|f| self.normalize(span, Unnormalized::new_wip(f.ty(self.tcx, args))))
                         .collect(),
                     _ => {
                         self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct { span });
@@ -2089,7 +2080,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .map(|f| {
                                 let fru_ty = self.normalize(
                                     expr.span,
-                                    self.field_ty(base_expr.span, f, fresh_args),
+                                    Unnormalized::new_wip(self.field_ty(
+                                        base_expr.span,
+                                        f,
+                                        fresh_args,
+                                    )),
                                 );
                                 let ident =
                                     self.tcx.adjust_ident(f.ident(self.tcx), variant.def_id);
@@ -2174,7 +2169,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::Adt(adt, args) if adt.is_struct() => variant
                             .fields
                             .iter()
-                            .map(|f| self.normalize(expr.span, f.ty(self.tcx, args)))
+                            .map(|f| {
+                                self.normalize(
+                                    expr.span,
+                                    Unnormalized::new_wip(f.ty(self.tcx, args)),
+                                )
+                            })
                             .collect(),
                         _ => {
                             self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct {
@@ -2474,7 +2474,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let fn_sig = self
                         .tcx
                         .fn_sig(item.def_id)
-                        .instantiate(self.tcx, self.fresh_args_for_item(span, item.def_id));
+                        .instantiate(self.tcx, self.fresh_args_for_item(span, item.def_id))
+                        .skip_norm_wip();
                     let ret_ty = self.tcx.instantiate_bound_regions_with_erased(fn_sig.output());
                     if !self.can_eq(self.param_env, ret_ty, adt_ty) {
                         return None;
@@ -2586,7 +2587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
-                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                     let inputs = fn_sig.inputs().skip_binder();
                     let fields = format!(
                         "({})",
@@ -2614,7 +2615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     err.span_label(variant_ident_span, format!("`{ty}` defined here"));
                     err.span_label(field.ident.span, "field does not exist");
-                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                     let inputs = fn_sig.inputs().skip_binder();
                     let fields = format!(
                         "({})",
@@ -3209,7 +3210,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         err.span_label(field.span, "this is an associated function, not a method");
                         err.note("found the following associated function; to be used as method, it must have a `self` parameter");
-                        let impl_ty = self.tcx.type_of(impl_def_id).instantiate_identity();
+                        let impl_ty =
+                            self.tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
                         err.span_note(
                             self.tcx.def_span(item.def_id),
                             format!("the candidate is defined in an impl for the type `{impl_ty}`"),
@@ -3551,6 +3553,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Register the impl's predicates. One of these predicates
             // must be unsatisfied, or else we wouldn't have gotten here
             // in the first place.
+            let unnormalized_predicates =
+                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
             ocx.register_obligations(traits::predicates_for_generics(
                 |idx, span| {
                     cause.clone().derived_cause(
@@ -3568,8 +3572,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )
                 },
+                |pred| ocx.normalize(&cause, self.param_env, pred),
                 self.param_env,
-                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args),
+                unnormalized_predicates,
             ));
 
             // Normalize the output type, which we can use later on as the
@@ -3577,11 +3582,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let element_ty = ocx.normalize(
                 &cause,
                 self.param_env,
-                Ty::new_projection_from_args(
+                Unnormalized::new(Ty::new_projection_from_args(
                     self.tcx,
                     index_trait_output_def_id,
                     impl_trait_ref.args,
-                ),
+                )),
             );
 
             let true_errors = ocx.try_evaluate_obligations();

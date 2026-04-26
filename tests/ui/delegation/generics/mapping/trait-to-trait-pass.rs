@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 #![allow(late_bound_lifetime_arguments)]
 
 //! This is one of the mapping tests, which tests mapping of delegee parent and child
@@ -14,10 +13,10 @@
 // lifetimes + types/consts in child,
 // in delegation parent with:
 // lifetimes + types OR none OR lifetimes OR types,
-// with(out) user-specified args, with different target expr
+// with(out) user-specified args, with different target expr, with impl traits
 mod test_1 {
     trait Trait<'b, 'c, 'a, T>: Sized {
-        fn foo<'d: 'd, U, const M: bool>(&self) {}
+        fn foo<'d: 'd, U, const M: bool>(&self, _f: impl FnOnce(T) -> U) {}
     }
 
     impl<'b, 'c, 'a, T> Trait<'b, 'c, 'a, T> for u8 {}
@@ -83,26 +82,26 @@ mod test_1 {
 
     pub fn check<'a: 'a>() {
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
-            ::bar1::<'static, String, true>(&123);
-        <u32 as Trait3>::bar1::<'static, String, true>(&123);
-        <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123);
-        <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123);
+            ::bar1::<'static, String, true>(&123, |x| x.to_string());
+        <u32 as Trait3>::bar1::<'static, String, true>(&123, |x| x.to_string());
+        <u32 as Trait4<'a, 'a, 'static>>::bar1::<'static, String, true>(&123, |x| x.to_string());
+        <u32 as Trait5<i32, u64, String>>::bar1::<'static, String, true>(&123, |x| x.to_string());
 
-        <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123);
-        <u32 as Trait3>::bar2(&123);
-        <u32 as Trait4<'a, 'a, 'static>>::bar2(&123);
-        <u32 as Trait5<i32, u64, String>>::bar2(&123);
+        <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar2(&123, |x| x.to_string());
+        <u32 as Trait3>::bar2(&123, |x| x.to_string());
+        <u32 as Trait4<'a, 'a, 'static>>::bar2(&123, |x| x.to_string());
+        <u32 as Trait5<i32, u64, String>>::bar2(&123, |x| x.to_string());
 
         <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>
-            ::bar3::<'static, String, true>(&123);
-        <u32 as Trait3>::bar3::<'static, String, true>(&123);
-        <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123);
-        <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123);
+            ::bar3::<'static, String, true>(&123, |x| x.to_string());
+        <u32 as Trait3>::bar3::<'static, String, true>(&123, |x| x.to_string());
+        <u32 as Trait4<'a, 'a, 'static>>::bar3::<'static, String, true>(&123, |x| x.to_string());
+        <u32 as Trait5<i32, u64, String>>::bar3::<'static, String, true>(&123, |x| x.to_string());
 
-        <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123);
-        <u32 as Trait3>::bar4(&123);
-        <u32 as Trait4<'a, 'a, 'static>>::bar4(&123);
-        <u32 as Trait5<i32, u64, String>>::bar4(&123);
+        <u32 as Trait2<'static, 'static, 'static, i32, i32, i32>>::bar4(&123, |x| x.to_string());
+        <u32 as Trait3>::bar4(&123, |x| x.to_string());
+        <u32 as Trait4<'a, 'a, 'static>>::bar4(&123, |x| x.to_string());
+        <u32 as Trait5<i32, u64, String>>::bar4(&123, |x| x.to_string());
     }
 }
 

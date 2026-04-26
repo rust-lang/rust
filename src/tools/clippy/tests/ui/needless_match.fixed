@@ -1,5 +1,5 @@
 #![warn(clippy::needless_match)]
-#![allow(clippy::manual_map)]
+#![allow(clippy::manual_map, clippy::question_mark)]
 #![allow(dead_code)]
 #![allow(unused)]
 #[derive(Clone, Copy)]

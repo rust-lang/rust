@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 
 // EMIT_MIR or_pattern.shortcut_second_or.SimplifyCfg-initial.after.mir
 fn shortcut_second_or() {

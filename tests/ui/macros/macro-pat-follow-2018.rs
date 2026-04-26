@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition:2018
+//@ reference: macro.decl.follow-set.edition2021
 
 macro_rules! pat_bar {
     ($p:pat | $p2:pat) => {{

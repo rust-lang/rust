@@ -4,7 +4,7 @@ error[E0805]: malformed `doc` attribute input
 LL | #[doc(cfg(), cfg(foo, bar))]
    | ^^^^^^^^^--^^^^^^^^^^^^^^^^^
    |          |
-   |          expected a single argument here
+   |          expected an argument here
    |
 help: if the function should be disabled, use `#[cfg(false)]`
    |
@@ -36,7 +36,7 @@ error[E0805]: malformed `doc` attribute input
 LL | #[doc(cfg())]
    | ^^^^^^^^^--^^
    |          |
-   |          expected a single argument here
+   |          expected an argument here
    |
 help: if the function should be disabled, use `#[cfg(false)]`
    |

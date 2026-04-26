@@ -1,0 +1,12 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: missing pattern for `...` argument
+  --> $DIR/c-variadic.rs:7:34
+   |
+LL | unsafe extern "C" fn foo(_: i32, ...) {}
+   |                                  ^^^
+   |
+help: name the argument, or use `_` to continue ignoring it
+   |
+LL | unsafe extern "C" fn foo(_: i32, _: ...) {}
+   |                                  ++
+

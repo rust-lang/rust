@@ -31,11 +31,11 @@ fn foo() -> i32 {
         &[("InferenceResult::for_body_", 1)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
@@ -49,6 +49,7 @@ fn foo() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );
@@ -76,7 +77,7 @@ fn foo() -> i32 {
         &[("InferenceResult::for_body_", 0)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -119,11 +120,11 @@ fn baz() -> i32 {
         &[("InferenceResult::for_body_", 3)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
@@ -137,6 +138,7 @@ fn baz() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
                 "FunctionSignature::with_source_map_",
@@ -147,6 +149,7 @@ fn baz() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
                 "FunctionSignature::with_source_map_",
@@ -157,6 +160,7 @@ fn baz() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );
@@ -189,7 +193,7 @@ fn baz() -> i32 {
         &[("InferenceResult::for_body_", 1)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -205,6 +209,7 @@ fn baz() -> i32 {
                 "Body::of_",
                 "InferenceResult::for_body_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
                 "AttrFlags::query_",
                 "FunctionSignature::with_source_map_",
                 "FunctionSignature::of_",
@@ -239,11 +244,11 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
                 "lang_items",
@@ -278,7 +283,7 @@ pub struct NewStruct {
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -314,11 +319,11 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
                 "lang_items",
@@ -354,7 +359,7 @@ pub enum SomeEnum {
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -390,11 +395,11 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
                 "lang_items",
@@ -427,7 +432,7 @@ fn bar() -> f32 {
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -467,11 +472,11 @@ $0",
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "TraitImpls::for_crate_",
                 "lang_items",
@@ -512,7 +517,7 @@ impl SomeStruct {
         &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -568,11 +573,11 @@ fn main() {
         &[("trait_solve_shim", 0)],
         expect_test::expect![[r#"
             [
-                "source_root_crates_shim",
+                "source_root_crates",
                 "crate_local_def_map",
                 "file_item_tree_query",
                 "ast_id_map",
-                "parse_shim",
+                "parse",
                 "real_span_map_shim",
                 "TraitItems::query_with_diagnostics_",
                 "Body::of_",
@@ -594,6 +599,7 @@ fn main() {
                 "GenericPredicates::query_with_diagnostics_",
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
                 "FunctionSignature::with_source_map_",
@@ -616,6 +622,7 @@ fn main() {
                 "impl_self_ty_with_diagnostics_query",
                 "AttrFlags::query_",
                 "GenericPredicates::query_with_diagnostics_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );
@@ -664,7 +671,7 @@ fn main() {
         &[("trait_solve_shim", 0)],
         expect_test::expect![[r#"
             [
-                "parse_shim",
+                "parse",
                 "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
@@ -686,6 +693,7 @@ fn main() {
                 "GenericPredicates::query_with_diagnostics_",
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::with_source_map_",
                 "GenericPredicates::query_with_diagnostics_",
@@ -703,6 +711,7 @@ fn main() {
                 "impl_self_ty_with_diagnostics_query",
                 "AttrFlags::query_",
                 "GenericPredicates::query_with_diagnostics_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );

@@ -3,9 +3,14 @@ error[E0565]: malformed `cold` attribute input
    |
 LL | #[cold = true]
    | ^^^^^^^------^
-   | |      |
-   | |      didn't expect any arguments here
-   | help: must be of the form: `#[cold]`
+   |        |
+   |        didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL - #[cold = true]
+LL + #[cold]
+   |
 
 error: aborting due to 1 previous error
 

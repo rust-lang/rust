@@ -11,7 +11,9 @@ use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
+use rustc_middle::ty::{
+    self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt, Unnormalized,
+};
 use rustc_span::{Span, sym};
 use tracing::debug;
 
@@ -410,7 +412,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let sig = sig_tys.with(*hdr);
-                let expected_sig = &(self.normalize_fn_sig)(sig);
+                let expected_sig = &(self.normalize_fn_sig)(Unnormalized::new_wip(sig));
                 let found_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
 
@@ -492,7 +494,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
                 let expected_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
-                let found_sig = &(self.normalize_fn_sig)(sig_tys.with(*hdr));
+                let found_sig = &(self.normalize_fn_sig)(Unnormalized::new_wip(sig_tys.with(*hdr)));
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
                     return;

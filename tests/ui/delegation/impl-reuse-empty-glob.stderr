@@ -1,5 +1,5 @@
 error: empty glob delegation is not supported
-  --> $DIR/impl-reuse-empty-glob.rs:9:5
+  --> $DIR/impl-reuse-empty-glob.rs:8:5
    |
 LL |     reuse impl T for S { self.0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

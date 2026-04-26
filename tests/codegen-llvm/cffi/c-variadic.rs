@@ -28,7 +28,7 @@ pub unsafe extern "C" fn c_variadic(n: i32, mut ap: ...) -> i32 {
     // CHECK: call void @llvm.va_start
     let mut sum = 0;
     for _ in 0..n {
-        sum += ap.arg::<i32>();
+        sum += ap.next_arg::<i32>();
     }
     sum
     // CHECK: call void @llvm.va_end

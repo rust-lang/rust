@@ -396,6 +396,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
                 _ => EF_PPC64_ABI_UNKNOWN,
             }
         }
+        Architecture::Sparc32Plus => elf::EF_SPARC_32PLUS,
         _ => 0,
     }
 }

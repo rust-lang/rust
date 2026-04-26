@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `it` in this scope
-  --> $DIR/macro-hygiene-help-issue-148580.rs:1:50
+  --> $DIR/macro-hygiene-help-issue-148580.rs:2:50
    |
 LL | macro_rules! print_it { {} => { println!("{:?}", it); } }
    |                                                  ^^ not found in this scope
@@ -8,7 +8,7 @@ LL |             print_it!();
    |             ----------- in this macro invocation
    |
 help: an identifier with the same name exists, but is not accessible due to macro hygiene
-  --> $DIR/macro-hygiene-help-issue-148580.rs:11:17
+  --> $DIR/macro-hygiene-help-issue-148580.rs:12:17
    |
 LL |             let it = ();
    |                 ^^

@@ -2,7 +2,7 @@ use rustc_macros::HashStable;
 use smallvec::SmallVec;
 use tracing::instrument;
 
-use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv};
+use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct
@@ -98,7 +98,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
             // we have a param_env available, we can do better.
             Self::GenericType(t) => {
                 let normalized_pred = tcx
-                    .try_normalize_erasing_regions(typing_env, t)
+                    .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(t))
                     .map_or(self, |t| t.inhabited_predicate(tcx));
                 match normalized_pred {
                     // We don't have more information than we started with, so consider inhabited.
@@ -243,7 +243,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
-                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args);
+                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args).skip_norm_wip();
                 let pred = match c.try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
@@ -251,9 +251,12 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 };
                 Some(pred)
             }
-            Self::GenericType(t) => {
-                Some(ty::EarlyBinder::bind(t).instantiate(tcx, args).inhabited_predicate(tcx))
-            }
+            Self::GenericType(t) => Some(
+                ty::EarlyBinder::bind(t)
+                    .instantiate(tcx, args)
+                    .skip_norm_wip()
+                    .inhabited_predicate(tcx),
+            ),
             Self::And(&[a, b]) => match a.instantiate_opt(tcx, args) {
                 None => b.instantiate_opt(tcx, args).map(|b| a.and(tcx, b)),
                 Some(InhabitedPredicate::False) => Some(InhabitedPredicate::False),

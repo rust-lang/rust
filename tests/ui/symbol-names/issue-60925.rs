@@ -18,7 +18,7 @@ mod foo {
     pub(crate) struct Foo<T>(T);
 
     impl Foo<crate::llvm::Foo> {
-        #[rustc_symbol_name]
+        #[rustc_dump_symbol_name]
         //[legacy]~^ ERROR symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo
         //[legacy]~| ERROR demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo
         //[legacy]~| ERROR demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)

@@ -18,7 +18,7 @@ pub struct Middle {
     pub b: f32,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type TestMiddle = Middle;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous
 
@@ -29,7 +29,7 @@ pub struct Final {
     pub foo: [Foo; 0],
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type TestFinal = Final;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous
 

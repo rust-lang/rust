@@ -3,7 +3,7 @@
 #![allow(clippy::disallowed_types)]
 
 use std::{
-    collections::{HashMap, hash_map},
+    collections::{HashMap, HashSet, hash_map},
     fs,
     path::Path,
     str::FromStr,
@@ -83,7 +83,7 @@ pub struct LintGroup {
     let lints_json = project_root().join("./target/clippy_lints.json");
     cmd!(
         sh,
-        "curl https://rust-lang.github.io/rust-clippy/stable/lints.json --output {lints_json}"
+        "curl -f https://raw.githubusercontent.com/rust-lang/rust-clippy/21fd71e3fe6eb063cfb619ecc37b1023f5283894/beta/lints.json --output {lints_json}"
     )
     .run()
     .unwrap();
@@ -348,10 +348,12 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     buf.push_str(r#"pub const DEFAULT_LINTS: &[Lint] = &["#);
     buf.push('\n');
 
+    let mut known_lints: HashSet<&String> = HashSet::with_capacity(lints.len() + lint_groups.len());
     for (name, lint) in &lints {
         push_lint_completion(buf, name, lint);
+        known_lints.insert(name);
     }
-    for (name, (group, _)) in &lint_groups {
+    for (name, (group, _)) in lint_groups.iter().filter(|(name, _)| !known_lints.contains(name)) {
         push_lint_completion(buf, name, group);
     }
     buf.push_str("];\n\n");
@@ -372,10 +374,15 @@ fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     buf.push_str(r#"pub const RUSTDOC_LINTS: &[Lint] = &["#);
     buf.push('\n');
 
+    let mut known_rustdoc_lints: HashSet<&String> =
+        HashSet::with_capacity(lints_rustdoc.len() + lint_groups_rustdoc.len());
     for (name, lint) in &lints_rustdoc {
         push_lint_completion(buf, name, lint);
+        known_rustdoc_lints.insert(name);
     }
-    for (name, (group, _)) in &lint_groups_rustdoc {
+    for (name, (group, _)) in
+        lint_groups_rustdoc.iter().filter(|(name, _)| !known_rustdoc_lints.contains(name))
+    {
         push_lint_completion(buf, name, group);
     }
     buf.push_str("];\n\n");

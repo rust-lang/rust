@@ -6,7 +6,6 @@ use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver::{self, Proxy};
-use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
@@ -339,11 +338,7 @@ pub struct Config {
     /// This is a callback to track otherwise untracked state used by the caller.
     ///
     /// You can write to `sess.env_depinfo` and `sess.file_depinfo` to track env vars and files.
-    /// To track any other state you can write to the given hasher. If the hash changes between
-    /// runs the incremental cache will be cleared.
-    ///
-    /// The hashing functionality has no known user. FIXME should this be removed?
-    pub track_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
+    pub track_state: Option<Box<dyn FnOnce(&Session) + Send>>,
 
     /// This is a callback from the driver that is called when we're registering lints;
     /// it is called during lint loading when we have the LintStore in a non-shared state.
@@ -468,9 +463,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             }
 
             if let Some(track_state) = config.track_state {
-                let mut hasher = StableHasher::new();
-                track_state(&sess, &mut hasher);
-                sess.opts.untracked_state_hash = hasher.finish()
+                track_state(&sess);
             }
 
             // Even though the session holds the lint store, we can't build the

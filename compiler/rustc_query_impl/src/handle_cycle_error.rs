@@ -43,13 +43,9 @@ pub(crate) fn fn_sig<'tcx>(
         unreachable!()
     };
 
-    ty::EarlyBinder::bind(ty::Binder::dummy(tcx.mk_fn_sig(
-        std::iter::repeat_n(err, arity),
-        err,
-        false,
-        rustc_hir::Safety::Safe,
-        rustc_abi::ExternAbi::Rust,
-    )))
+    ty::EarlyBinder::bind(ty::Binder::dummy(
+        tcx.mk_fn_sig_safe_rust_abi(std::iter::repeat_n(err, arity), err),
+    ))
 }
 
 pub(crate) fn check_representability<'tcx>(
@@ -210,7 +206,7 @@ pub(crate) fn layout_of<'tcx>(
                 ControlFlow::Continue(())
             }
         },
-        || create_cycle_error(tcx, &cycle),
+        || create_cycle_error(tcx, &cycle, false),
     );
 
     diag.emit().raise_fatal()

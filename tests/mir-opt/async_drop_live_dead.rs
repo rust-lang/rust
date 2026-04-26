@@ -1,5 +1,5 @@
 //@ edition:2024
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(async_drop)]

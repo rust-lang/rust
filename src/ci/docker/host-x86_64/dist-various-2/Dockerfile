@@ -68,6 +68,8 @@ ENV \
 
 WORKDIR /build
 COPY scripts/musl.sh /build
+COPY scripts/musl-cve-2026-6042.diff /build/
+COPY scripts/musl-cve-2026-40200.diff /build/
 RUN env \
     CC=arm-linux-gnueabi-gcc-9 CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabi-g++-9 CXXFLAGS="-march=armv7-a" \
@@ -85,9 +87,9 @@ RUN /tmp/build-fuchsia-toolchain.sh
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-30/wasi-sdk-30.0-x86_64-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-32/wasi-sdk-32.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/tmp/wasi-sdk-30.0-x86_64-linux
+ENV WASI_SDK_PATH=/tmp/wasi-sdk-32.0-x86_64-linux
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686

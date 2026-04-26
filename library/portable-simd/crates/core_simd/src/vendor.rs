@@ -32,3 +32,6 @@ mod powerpc;
 
 #[cfg(target_arch = "loongarch64")]
 mod loongarch64;
+
+#[cfg(target_arch = "hexagon")]
+mod hexagon;

@@ -35,7 +35,7 @@ const MIN_PY_REV_STR: &str = "≥3.9";
 
 /// Path to find the python executable within a virtual environment
 #[cfg(target_os = "windows")]
-const REL_PY_PATH: &[&str] = &["Scripts", "python3.exe"];
+const REL_PY_PATH: &[&str] = &["Scripts", "python.exe"];
 #[cfg(not(target_os = "windows"))]
 const REL_PY_PATH: &[&str] = &["bin", "python3"];
 

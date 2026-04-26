@@ -473,9 +473,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         let id = self.alloc_map.reserve();
         debug!("creating alloc {:?} with id {id:?}", alloc_salt.0);
-        let had_previous = self.alloc_map.to_alloc.insert(id, alloc_salt.0.clone()).is_some();
         // We just reserved, so should always be unique.
-        assert!(!had_previous);
+        self.alloc_map.to_alloc.insert_unique(id, alloc_salt.0.clone());
         dedup.insert(alloc_salt, id);
         id
     }
@@ -548,21 +547,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
-    /// call this function twice, even with the same `Allocation` will ICE the compiler.
+    /// call this function twice, even with the same `Allocation` will ICE the compiler if
+    /// debug_assertions are enabled.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
-        if let Some(old) = self.alloc_map.to_alloc.insert(id, GlobalAlloc::Memory(mem)) {
-            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
-        }
+        self.alloc_map.to_alloc.insert_unique(id, GlobalAlloc::Memory(mem))
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at a static item. Trying to
-    /// call this function twice, even with the same `DefId` will ICE the compiler.
+    /// call this function twice, even with the same `DefId` will ICE the compiler if
+    /// debug_assertions are enabled.
     pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
-        if let Some(old) =
-            self.alloc_map.to_alloc.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
-        {
-            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
-        }
+        self.alloc_map.to_alloc.insert_unique(id, GlobalAlloc::Static(def_id.to_def_id()))
     }
 }
 

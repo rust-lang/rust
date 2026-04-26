@@ -95,6 +95,7 @@ fn foo() -> u8 {
     fn remove_trailing_return_closure() {
         check_diagnostics(
             r#"
+//- minicore: fn
 fn foo() -> u8 {
     let bar = || return 2;
     bar()      //^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
@@ -103,6 +104,7 @@ fn foo() -> u8 {
         );
         check_diagnostics(
             r#"
+//- minicore: fn
 fn foo() -> u8 {
     let bar = || {
         return 2;
@@ -276,6 +278,7 @@ fn foo() -> u8 {
     fn replace_in_closure() {
         check_fix(
             r#"
+//- minicore: fn
 fn foo() -> u8 {
     let bar = || return$0 2;
     bar()
@@ -290,6 +293,7 @@ fn foo() -> u8 {
         );
         check_fix(
             r#"
+//- minicore: fn
 fn foo() -> u8 {
     let bar = || {
         return$0 2;

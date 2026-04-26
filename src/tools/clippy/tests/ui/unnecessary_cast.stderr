@@ -277,11 +277,119 @@ error: casting to the same type is unnecessary (`i64` -> `i64`)
 LL |         let _ = 5i32 as i64 as i64;
    |                 ^^^^^^^^^^^^^^^^^^ help: try: `5i32 as i64`
 
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:563:24
+   |
+LL |         id::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).view();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:567:26
+   |
+LL |         s.id::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).view();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:571:26
+   |
+LL |         wrap::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:575:28
+   |
+LL |         s.wrap::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:591:31
+   |
+LL |         let _ = receiver.take(1.0_f64.pow_like_single_impl(2) as f64).abs();
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like_single_impl(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:601:20
+   |
+LL |         let _ = id(1.0_f64.powi(2) as f64).abs();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:604:22
+   |
+LL |         let _ = wrap(1.0_f64.powi(2) as f64).inner.abs();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:607:22
+   |
+LL |         let _ = s.id(1.0_f64.powi(2) as f64).abs();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:610:24
+   |
+LL |         let _ = s.wrap(1.0_f64.powi(2) as f64).inner.abs();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:613:20
+   |
+LL |         let _ = id(1.0_f64.powi(2) as f64 * &a);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:616:22
+   |
+LL |         let _ = s.id(1.0_f64.powi(2) as f64 * &a);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:629:17
+   |
+LL |         let _ = 1.0_f64.pow_like(0.5) as f64;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like(0.5)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:632:17
+   |
+LL |         let _ = 1.0_f64.pow_like(2) as f64;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:635:17
+   |
+LL |         let _ = (1.0_f64.powi(2) as f64).abs();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.powi(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:638:17
+   |
+LL |         let _ = ((Y + 2) as f64).abs();
+   |                 ^^^^^^^^^^^^^^^^ help: try: `((Y + 2))`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:641:18
+   |
+LL |         let _ = (1.0_f64.pow_like_single_impl(2) as f64 + 1.0_f64).abs();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like_single_impl(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:644:18
+   |
+LL |         let _ = (1.0_f64.pow_like_single_impl(2) as f64 + ONE).abs();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like_single_impl(2)`
+
+error: casting to the same type is unnecessary (`f64` -> `f64`)
+  --> tests/ui/unnecessary_cast.rs:647:18
+   |
+LL |         let _ = (1.0_f64.pow_like_single_impl(2) as f64 + one).abs();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `1.0_f64.pow_like_single_impl(2)`
+
 error: casting raw pointers to the same type and constness is unnecessary (`*const *const u8` -> `*const *const u8`)
-  --> tests/ui/unnecessary_cast.rs:292:10
+  --> tests/ui/unnecessary_cast.rs:655:10
    |
 LL |         *(&NONE as *const _ as *const _ as *const *const u8 as *const *const u8)
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&NONE as *const _ as *const _ as *const *const u8)`
 
-error: aborting due to 47 previous errors
+error: aborting due to 65 previous errors
 

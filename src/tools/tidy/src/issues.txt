@@ -834,8 +834,6 @@ ui/cycle-trait/issue-12511.rs
 ui/debuginfo/issue-105386-debuginfo-ub.rs
 ui/deprecation/issue-66340-deprecated-attr-non-meta-grammar.rs
 ui/deprecation/issue-84637-deprecated-associated-function.rs
-ui/deref-patterns/issue-71676-1.rs
-ui/deref-patterns/issue-71676-2.rs
 ui/derived-errors/issue-30580.rs
 ui/derived-errors/issue-31997-1.rs
 ui/derived-errors/issue-31997.rs
@@ -844,15 +842,6 @@ ui/derives/issue-43023.rs
 ui/derives/issue-91492.rs
 ui/derives/issue-91550.rs
 ui/derives/issue-97343.rs
-ui/deriving/issue-103157.rs
-ui/deriving/issue-15689-1.rs
-ui/deriving/issue-15689-2.rs
-ui/deriving/issue-18738.rs
-ui/deriving/issue-19358.rs
-ui/deriving/issue-3935.rs
-ui/deriving/issue-58319.rs
-ui/deriving/issue-6341.rs
-ui/deriving/issue-89188-gat-hrtb.rs
 ui/did_you_mean/issue-103909.rs
 ui/did_you_mean/issue-105225-named-args.rs
 ui/did_you_mean/issue-105225.rs
@@ -1465,10 +1454,8 @@ ui/lint/issue-63364.rs
 ui/lint/issue-70819-dont-override-forbid-in-same-scope.rs
 ui/lint/issue-79744.rs
 ui/lint/issue-81218.rs
-ui/lint/issue-83477.rs
 ui/lint/issue-87274-paren-parent.rs
 ui/lint/issue-90614-accept-allow-text-direction-codepoint-in-comment-lint.rs
-ui/lint/issue-97094.rs
 ui/lint/issue-99387.rs
 ui/lint/let_underscore/issue-119696-err-on-fn.rs
 ui/lint/let_underscore/issue-119697-extra-let.rs

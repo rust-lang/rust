@@ -197,7 +197,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for tuple patterns with a wildcard
+    /// Checks for tuple and struct patterns with a wildcard
     /// pattern (`_`) is next to a rest pattern (`..`).
     ///
     /// _NOTE_: While `_, ..` means there is at least one element left, `..`
@@ -231,7 +231,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.40.0"]
     pub UNNEEDED_WILDCARD_PATTERN,
     complexity,
-    "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"
+    "tuple and struct patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"
 }
 
 declare_clippy_lint! {

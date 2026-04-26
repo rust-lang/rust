@@ -7,8 +7,8 @@ use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, UniverseIndex,
+    self, FallibleTypeFolder, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, UniverseIndex, Unnormalized,
 };
 use tracing::instrument;
 
@@ -19,12 +19,15 @@ use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
-pub fn deeply_normalize<'tcx, T, E>(at: At<'_, 'tcx>, value: T) -> Result<T, Vec<E>>
+pub fn deeply_normalize<'tcx, T, E>(
+    at: At<'_, 'tcx>,
+    value: Unnormalized<'tcx, T>,
+) -> Result<T, Vec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
-    assert!(!value.has_escaping_bound_vars());
+    assert!(!value.as_ref().skip_normalization().has_escaping_bound_vars());
     deeply_normalize_with_skipped_universes(at, value, vec![])
 }
 
@@ -36,7 +39,7 @@ where
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
 pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
     at: At<'_, 'tcx>,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<T, Vec<E>>
 where
@@ -63,13 +66,14 @@ where
 /// the underlying infcx has any stalled coroutine def ids.
 pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tcx, T, E>(
     at: At<'_, 'tcx>,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), Vec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
+    let value = value.skip_normalization();
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
     let mut folder = NormalizationFolder {
         at,
@@ -103,7 +107,7 @@ where
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
-            let term = alias_term.to_alias_term().unwrap();
+            let term = alias_term.to_alias_term(tcx).unwrap();
 
             self.at.infcx.err_ctxt().report_overflow_error(
                 OverflowCause::DeeplyNormalize(term),
@@ -267,7 +271,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
         let result: Result<_, Vec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
             deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 self.at,
-                ty,
+                Unnormalized::new_wip(ty),
                 vec![None; ty.outer_exclusive_binder().as_usize()],
             )
         });
@@ -282,7 +286,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
         let result: Result<_, Vec<ScrubbedTraitError<'tcx>>> = infcx.commit_if_ok(|_| {
             deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 self.at,
-                ct,
+                Unnormalized::new_wip(ct),
                 vec![None; ct.outer_exclusive_binder().as_usize()],
             )
         });

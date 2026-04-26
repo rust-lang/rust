@@ -17,7 +17,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
-    TypeFoldable,
+    TypeFoldable, TypingModeEqWrapper,
 };
 use tracing::instrument;
 
@@ -66,7 +66,10 @@ where
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
         },
     );
-    let query_input = ty::CanonicalQueryInput { canonical, typing_mode: delegate.typing_mode() };
+    let query_input = ty::CanonicalQueryInput {
+        canonical,
+        typing_mode: TypingModeEqWrapper(delegate.typing_mode()),
+    };
     (orig_values, query_input)
 }
 
@@ -247,17 +250,22 @@ fn unify_query_var_values<D, I>(
 
 fn register_region_constraints<D, I>(
     delegate: &D,
-    outlives: &[ty::OutlivesPredicate<I, I::GenericArg>],
+    constraints: &[ty::RegionConstraint<I>],
     span: I::Span,
 ) where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    for &ty::OutlivesPredicate(lhs, rhs) in outlives {
-        match lhs.kind() {
-            ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, span),
-            ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
-            ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
+    for &constraint in constraints {
+        match constraint {
+            ty::RegionConstraint::Outlives(ty::OutlivesPredicate(lhs, rhs)) => match lhs.kind() {
+                ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, span),
+                ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
+                ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
+            },
+            ty::RegionConstraint::Eq(ty::RegionEqPredicate(lhs, rhs)) => {
+                delegate.equate_regions(lhs, rhs, span)
+            }
         }
     }
 }

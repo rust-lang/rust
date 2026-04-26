@@ -100,7 +100,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get(($cdata, $tcx), $def_id.index)
+                    .get($cdata, $def_id.index)
                     .map(|lazy| lazy.decode(($cdata, $tcx)))
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
@@ -109,7 +109,7 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
-                let lazy = $cdata.root.tables.$name.get(($cdata, $tcx), $def_id.index);
+                let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
                 let value = if lazy.is_default() {
                     &[] as &[_]
                 } else {
@@ -127,7 +127,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get(($cdata, $tcx), $def_id.index)
+                    .get($cdata, $def_id.index)
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
@@ -152,13 +152,8 @@ macro_rules! provide_one {
                 $tcx.ensure_ok().crate_hash($def_id.krate);
             }
 
-            let cdata = rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx($tcx), |c| {
-                c.get_crate_data($def_id.krate).cdata
-            });
-            let $cdata = crate::creader::CrateMetadataRef {
-                cdata: &cdata,
-                cstore: &CStore::from_tcx($tcx),
-            };
+            let cstore = CStore::from_tcx($tcx);
+            let $cdata = cstore.get_crate_data($def_id.krate);
 
             $compute
         }
@@ -253,7 +248,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    def_kind => { cdata.def_kind(tcx, def_id.index) }
+    def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
@@ -264,7 +259,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .coerce_unsized_info
-            .get((cdata, tcx), def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
@@ -280,7 +275,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .eval_static_initializer
-            .get((cdata, tcx), def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
@@ -293,7 +288,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .deduced_param_attrs
-            .get((cdata, tcx), def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| {
                 &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
             })
@@ -306,7 +301,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .trait_impl_trait_tys
-            .get((cdata, tcx), def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
@@ -323,7 +318,7 @@ provide! { tcx, def_id, other, cdata,
     associated_item => { cdata.get_associated_item(tcx, def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, def_id.index)) }
-    is_mir_available => { cdata.is_item_mir_available(tcx, def_id.index) }
+    is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
@@ -404,14 +399,16 @@ provide! { tcx, def_id, other, cdata,
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
     exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }
-    stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect()) }
+    stable_order_of_exportable_impls => {
+        tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect())
+    }
     exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
     exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }
     default_field => { cdata.get_default_field(tcx, def_id.index) }
-    is_doc_hidden => { cdata.get_attr_flags(tcx,def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
+    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(tcx, def_id.index)) }
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(tcx, def_id.index))
@@ -455,10 +452,11 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
             // This is a secondary visible_parent_map, storing the DefId of
-            // parents that re-export the child as `_` or module parents
-            // which are `#[doc(hidden)]`. Since we prefer paths that don't
-            // do this, merge this map at the end, only if we're missing
-            // keys from the former.
+            // parents that re-export the child as `_`, module parents
+            // which are `#[doc(hidden)]`, or `use` items that are themselves
+            // `#[doc(hidden)]`. Since we prefer paths that don't do this,
+            // merge this map at the end, only if we're missing keys from
+            // the former.
             // This is a rudimentary check that does not catch all cases,
             // just the easiest.
             let mut fallback_map: Vec<(DefId, DefId)> = Default::default();
@@ -496,6 +494,18 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     }
 
                     if tcx.is_doc_hidden(parent) {
+                        fallback_map.push((def_id, parent));
+                        return;
+                    }
+
+                    // If the re-export itself is `#[doc(hidden)]`, deprioritize it.
+                    // See PR #99698 for the case where the *parent* is doc-hidden.
+                    if child
+                        .reexport_chain
+                        .first()
+                        .and_then(|r| r.id())
+                        .is_some_and(|id| tcx.is_doc_hidden(id))
+                    {
                         fallback_map.push((def_id, parent));
                         return;
                     }
@@ -582,16 +592,16 @@ impl CStore {
         let sess = tcx.sess;
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
-        let data = self.get_crate_data(id.krate);
-        if data.root.is_proc_macro_crate() {
-            LoadedMacro::ProcMacro(data.load_proc_macro(tcx, id.index))
+        let cdata = self.get_crate_data(id.krate);
+        if cdata.root.is_proc_macro_crate() {
+            LoadedMacro::ProcMacro(cdata.load_proc_macro(tcx, id.index))
         } else {
             LoadedMacro::MacroDef {
-                def: data.get_macro(tcx, id.index),
-                ident: data.item_ident(tcx, id.index),
-                attrs: data.get_item_attrs(tcx, id.index).collect(),
-                span: data.get_span(tcx, id.index),
-                edition: data.root.edition,
+                def: cdata.get_macro(tcx, id.index),
+                ident: cdata.item_ident(tcx, id.index),
+                attrs: cdata.get_item_attrs(tcx, id.index).collect(),
+                span: cdata.get_span(tcx, id.index),
+                edition: cdata.root.edition,
             }
         }
     }
@@ -600,8 +610,8 @@ impl CStore {
         self.get_crate_data(def_id.krate).get_span(tcx, def_id.index)
     }
 
-    pub fn def_kind_untracked(&self, tcx: TyCtxt<'_>, def: DefId) -> DefKind {
-        self.get_crate_data(def.krate).def_kind(tcx, def.index)
+    pub fn def_kind_untracked(&self, def: DefId) -> DefKind {
+        self.get_crate_data(def.krate).def_kind(def.index)
     }
 
     pub fn expn_that_defined_untracked(&self, tcx: TyCtxt<'_>, def_id: DefId) -> ExpnId {
@@ -633,10 +643,10 @@ impl CStore {
     }
 
     pub fn set_used_recursively(&mut self, cnum: CrateNum) {
-        let cmeta = self.get_crate_data_mut(cnum);
-        if !cmeta.used {
-            cmeta.used = true;
-            let cnum_map = mem::take(&mut cmeta.cnum_map);
+        let cdata = self.get_crate_data_mut(cnum);
+        if !cdata.used {
+            cdata.used = true;
+            let cnum_map = mem::take(&mut cdata.cnum_map);
             for &dep_cnum in cnum_map.iter() {
                 self.set_used_recursively(dep_cnum);
             }
@@ -668,11 +678,11 @@ impl CStore {
         cnum: CrateNum,
         extern_crate: ExternCrate,
     ) {
-        let cmeta = self.get_crate_data_mut(cnum);
-        if cmeta.update_extern_crate_diagnostics(extern_crate) {
+        let cdata = self.get_crate_data_mut(cnum);
+        if cdata.update_extern_crate_diagnostics(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            let cnum_map = mem::take(&mut cmeta.cnum_map);
+            let cnum_map = mem::take(&mut cdata.cnum_map);
             for &dep_cnum in cnum_map.iter() {
                 self.update_transitive_extern_crate_diagnostics(dep_cnum, extern_crate);
             }

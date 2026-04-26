@@ -58,7 +58,6 @@ use crate::{
 };
 
 pub use crate::{
-    cfg_process::check_cfg_attr_value,
     files::{AstId, ErasedAstId, FileRange, InFile, InMacroFile, InRealFile},
     prettify_macro_expansion_::prettify_macro_expansion,
 };
@@ -635,14 +634,12 @@ impl MacroCallLoc {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
-                // FIXME: handle `cfg_attr`
-                let (attr, _, _, _) = derive_attr_index.find_attr_range(db, self.krate, *ast_id);
+                let (_, attr) = derive_attr_index.find_attr_range(db, self.krate, *ast_id);
                 ast_id.with_value(attr.syntax().clone())
             }
             MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
                 if self.def.is_attribute_derive() {
-                    let (attr, _, _, _) =
-                        attr_ids.invoc_attr().find_attr_range(db, self.krate, *ast_id);
+                    let (_, attr) = attr_ids.invoc_attr().find_attr_range(db, self.krate, *ast_id);
                     ast_id.with_value(attr.syntax().clone())
                 } else {
                     ast_id.with_value(ast_id.to_node(db).syntax().clone())
@@ -770,11 +767,11 @@ impl MacroCallKind {
             }
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: should be the range of the macro name, not the whole derive
-                derive_attr_index.find_attr_range(db, krate, ast_id).2
+                derive_attr_index.find_attr_range(db, krate, ast_id).1.syntax().text_range()
             }
             // FIXME: handle `cfg_attr`
             MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
-                attr_ids.invoc_attr().find_attr_range(db, krate, ast_id).2
+                attr_ids.invoc_attr().find_attr_range(db, krate, ast_id).1.syntax().text_range()
             }
         };
 

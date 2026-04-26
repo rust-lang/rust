@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -116,17 +116,23 @@ impl LateLintPass<'_> for ManualRotate {
                 }
             };
 
-            let mut applicability = Applicability::MachineApplicable;
-            let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_paren();
-            let amount = sugg::Sugg::hir_with_applicability(cx, amount, "_", &mut applicability);
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 MANUAL_ROTATE,
                 expr.span,
                 "there is no need to manually implement bit rotation",
-                "this expression can be rewritten as",
-                format!("{expr_sugg}.{shift_function}({amount})"),
-                Applicability::MachineApplicable,
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let expr_sugg = sugg::Sugg::hir_with_context(cx, l_expr, expr.span.ctxt(), "_", &mut applicability)
+                        .maybe_paren();
+                    let amount = sugg::Sugg::hir_with_context(cx, amount, expr.span.ctxt(), "_", &mut applicability);
+                    diag.span_suggestion(
+                        expr.span,
+                        "this expression can be rewritten as",
+                        format!("{expr_sugg}.{shift_function}({amount})"),
+                        applicability,
+                    );
+                },
             );
         }
     }

@@ -339,7 +339,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
         // alternatives. If a better method is invented, it should be used
         // instead.
         let mut buf = vec![0; libc::PATH_MAX as usize];
-        let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
+        let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_mut_ptr()) };
         if n == -1 {
             cfg_select! {
                 target_os = "netbsd" => {
@@ -375,7 +375,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     #[cfg(target_os = "vxworks")]
     fn get_path(fd: c_int) -> Option<PathBuf> {
         let mut buf = vec![0; libc::PATH_MAX as usize];
-        let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
+        let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_mut_ptr()) };
         if n == -1 {
             return None;
         }

@@ -17,9 +17,10 @@ fn non_const_context() {
 const fn const_context() {
     #[cfg(any(stocknc, gatednc))]
     NonConst.func();
-    //[stocknc,gatednc]~^ ERROR: the trait bound
+    //[stocknc]~^ ERROR: cannot call
+    //[gatednc]~^^ ERROR: the trait bound
     Const.func();
-    //[stock]~^ ERROR: cannot call
+    //[stock,stocknc]~^ ERROR: cannot call
 }
 
 fn main() {}

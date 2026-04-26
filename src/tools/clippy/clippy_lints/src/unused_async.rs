@@ -211,7 +211,6 @@ fn async_fn_contains_todo_unimplemented_macro(cx: &LateContext<'_>, body: &Body<
         && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) = closure.kind
         && let body = cx.tcx.hir_body(closure.body)
         && let ExprKind::Block(block, _) = body.value.kind
-        && block.stmts.is_empty()
         && let Some(expr) = block.expr
         && let ExprKind::DropTemps(inner) = expr.kind
     {

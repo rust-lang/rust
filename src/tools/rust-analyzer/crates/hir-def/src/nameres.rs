@@ -346,7 +346,7 @@ impl ModuleOrigin {
         match self {
             &ModuleOrigin::File { definition: editioned_file_id, .. }
             | &ModuleOrigin::CrateRoot { definition: editioned_file_id } => {
-                let sf = db.parse(editioned_file_id).tree();
+                let sf = editioned_file_id.parse(db).tree();
                 InFile::new(editioned_file_id.into(), ModuleSource::SourceFile(sf))
             }
             &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(

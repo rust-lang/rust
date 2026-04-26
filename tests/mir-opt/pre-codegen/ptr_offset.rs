@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2 -Zinline-mir
 //@ ignore-std-debug-assertions (precondition checks are under cfg(debug_assertions))
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

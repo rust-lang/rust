@@ -36,23 +36,8 @@ pub(crate) struct OpaqueHiddenTypeMismatch<'tcx> {
     pub sub: TypeMismatchReason,
 }
 
-#[derive(Diagnostic)]
-#[diag("we don't support unions yet: '{$ty_name}'")]
-pub struct UnsupportedUnion {
-    pub ty_name: String,
-}
-
-// FIXME(autodiff): I should get used somewhere
-#[derive(Diagnostic)]
-#[diag("reading from a `Duplicated` const {$ty} is unsafe")]
-pub struct AutodiffUnsafeInnerConstRef<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'tcx>,
-}
-
 #[derive(Subdiagnostic)]
-pub enum TypeMismatchReason {
+pub(crate) enum TypeMismatchReason {
     #[label("this expression supplies two conflicting concrete types for the same opaque type")]
     ConflictType {
         #[primary_span]

@@ -411,7 +411,7 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
     if let Some(ident) = ident
         && ident.name == kw::SelfLower
-        && !func.implicit_self.has_implicit_self()
+        && !func.implicit_self().has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
         && !msrv.meets(cx, msrvs::EXPLICIT_SELF_TYPE_ELISION)
     {
@@ -697,7 +697,7 @@ fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
         }
     }
 
-    if fd.lifetime_elision_allowed
+    if fd.lifetime_elision_allowed()
         && let Return(ret_ty) = fd.output
         && walk_unambig_ty(&mut V, ret_ty).is_break()
     {

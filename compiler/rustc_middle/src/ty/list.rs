@@ -275,9 +275,6 @@ unsafe impl<H: DynSync, T: DynSync> DynSync for RawList<H, T> {}
 // `_extern_ty` field (which is never instantiated in practice). Therefore,
 // aligns of `ListSkeleton<H, T>` and `RawList<H, T>` must be the same.
 unsafe impl<H, T> Aligned for RawList<H, T> {
-    #[cfg(bootstrap)]
-    const ALIGN: ptr::Alignment = align_of::<ListSkeleton<H, T>>();
-    #[cfg(not(bootstrap))]
     const ALIGN: mem::Alignment = align_of::<ListSkeleton<H, T>>();
 }
 

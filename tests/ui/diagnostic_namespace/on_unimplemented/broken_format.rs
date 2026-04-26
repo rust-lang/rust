@@ -4,24 +4,24 @@
 trait ImportantTrait1 {}
 
 #[diagnostic::on_unimplemented(message = "Test {}")]
-//~^WARN positional format arguments are not allowed here
+//~^WARN positional arguments are not permitted in diagnostic attributes
 trait ImportantTrait2 {}
 
 #[diagnostic::on_unimplemented(message = "Test {1:}")]
-//~^WARN positional format arguments are not allowed here
-//~|WARN invalid format specifier [malformed_diagnostic_format_literals]
+//~^WARN indexed format arguments are not permitted in diagnostic attributes
+//~|WARN format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 trait ImportantTrait3 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
-//~^WARN invalid format specifier
+//~^WARN format specifiers are not permitted in diagnostic attributes
 trait ImportantTrait4 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-//~^WARN invalid format specifier [malformed_diagnostic_format_literals]
+//~^WARN format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 trait ImportantTrait5 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:}")]
-//~^WARN invalid format specifier [malformed_diagnostic_format_literals]
+//~^WARN format specifiers are not permitted in diagnostic attributes [malformed_diagnostic_format_literals]
 trait ImportantTrait6 {}
 
 

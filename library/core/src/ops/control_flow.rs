@@ -134,7 +134,8 @@ impl<B, C> const ops::FromResidual<ControlFlow<B, convert::Infallible>> for Cont
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<B, C> ops::Residual<C> for ControlFlow<B, convert::Infallible> {
+#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
+impl<B, C> const ops::Residual<C> for ControlFlow<B, convert::Infallible> {
     type TryType = ControlFlow<B, C>;
 }
 
@@ -261,8 +262,8 @@ impl<B, C> ControlFlow<B, C> {
     /// assert_eq!(res, Ok(&5));
     /// ```
     #[inline]
-    #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "control_flow_ok", since = "1.96.0")]
+    #[rustc_const_stable(feature = "control_flow_ok", since = "1.96.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn break_ok(self) -> Result<B, C> {
         match self {
@@ -373,8 +374,8 @@ impl<B, C> ControlFlow<B, C> {
     /// assert_eq!(res, Err("too big value detected"));
     /// ```
     #[inline]
-    #[stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "control_flow_ok", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "control_flow_ok", since = "1.96.0")]
+    #[rustc_const_stable(feature = "control_flow_ok", since = "1.96.0")]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn continue_ok(self) -> Result<C, B> {
         match self {

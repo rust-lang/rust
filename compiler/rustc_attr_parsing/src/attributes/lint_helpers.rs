@@ -3,7 +3,6 @@ use super::prelude::*;
 pub(crate) struct RustcAsPtrParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcAsPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_as_ptr];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -17,7 +16,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcAsPtrParser {
 pub(crate) struct RustcPubTransparentParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
         Allow(Target::Enum),
@@ -29,7 +27,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
 pub(crate) struct RustcPassByValueParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPassByValueParser {
     const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
         Allow(Target::Enum),
@@ -41,7 +38,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassByValueParser {
 pub(crate) struct RustcShouldNotBeCalledOnConstItemsParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcShouldNotBeCalledOnConstItemsParser {
     const PATH: &[Symbol] = &[sym::rustc_should_not_be_called_on_const_items];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),

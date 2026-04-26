@@ -1,3 +1,4 @@
+//@ reference: names.namespaces.sub-namespaces.intro
 #![crate_type = "lib"]
 
 macro_rules! sample { () => {} }

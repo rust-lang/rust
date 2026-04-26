@@ -1,5 +1,6 @@
 //@ aux-build:m1.rs
 //@ aux-build:m2.rs
+//@ reference: items.extern-crate.as
 
 
 extern crate m1;

@@ -557,6 +557,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         upper_bound: isize,
     },
     ExpectedAtLeastOneArgument,
+    ExpectedArgument,
     ExpectedSingleArgument,
     ExpectedList,
     ExpectedListOrNoArgs,
@@ -567,6 +568,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedNonEmptyStringLiteral,
     ExpectedNotLiteral,
     ExpectedNameValue(Option<Symbol>),
+    MissingNameValue(Symbol),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument {
         possibilities: &'a [Symbol],
@@ -575,10 +577,6 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         list: bool,
     },
     ExpectedIdentifier,
-    ExpectedNameValueAsLastArgument {
-        span: Span,
-        name_value_key: Symbol,
-    },
 }
 
 /// A description of a thing that can be parsed using an attribute parser.
@@ -777,6 +775,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 diag.span_label(self.span, "expected a single argument here");
                 diag.code(E0805);
             }
+            AttributeParseErrorReason::ExpectedArgument => {
+                diag.span_label(self.span, "expected an argument here");
+                diag.code(E0805);
+            }
             AttributeParseErrorReason::ExpectedAtLeastOneArgument => {
                 diag.span_label(self.span, "expected at least 1 argument here");
             }
@@ -822,6 +824,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                     format!("expected this to be of the form `{name} = \"...\"`"),
                 );
             }
+            AttributeParseErrorReason::MissingNameValue(name) => {
+                diag.span_label(self.span, format!("missing argument `{name} = \"...\"`"));
+            }
             AttributeParseErrorReason::ExpectedSpecificArgument {
                 possibilities,
                 strings,
@@ -838,12 +843,6 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
-            }
-            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key } => {
-                diag.span_label(
-                    *span,
-                    format!("expected {name_value_key} = \"...\" to be the last argument"),
-                );
             }
         }
 
@@ -1140,12 +1139,20 @@ pub(crate) struct UnstableAttrForAlreadyStableFeature {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$full_lint_name}`", code = E0710)]
-pub(crate) struct UnknownToolInScopedLint {
+#[diag("invalid Mach-O section specifier")]
+pub(crate) struct InvalidMachoSection {
     #[primary_span]
-    pub span: Option<Span>,
-    pub tool_name: Symbol,
-    pub full_lint_name: Symbol,
-    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
-    pub is_nightly_build: bool,
+    #[label("not a valid Mach-O section specifier")]
+    pub name_span: Span,
+    #[subdiagnostic]
+    pub reason: InvalidMachoSectionReason,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidMachoSectionReason {
+    #[note("a Mach-O section specifier requires a segment and a section, separated by a comma")]
+    #[help("an example of a valid Mach-O section specifier is `__TEXT,__cstring`")]
+    MissingSection,
+    #[note("section name `{$section}` is longer than 16 bytes")]
+    SectionTooLong { section: String },
 }

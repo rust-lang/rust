@@ -21,6 +21,7 @@ serde_json.workspace = true
 smallvec.workspace = true
 tracing = { workspace = true, features = ["attributes"] }
 triomphe.workspace = true
+la-arena.workspace = true
 
 ra-ap-rustc_type_ir.workspace = true
 

@@ -14,8 +14,8 @@ use crate::mir::alloc::AllocId;
 use crate::mir::mono::{Instance, MonoItem, StaticDef};
 use crate::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use crate::ty::{
-    Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind,
-    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
+    Abi, AdtDef, Asyncness, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind,
+    Constness, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
     GenericArgKind, GenericArgs, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span,
     TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
@@ -308,11 +308,13 @@ impl RustcInternal for FnSig {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
+        let fn_sig_kind = rustc_ty::FnSigKind::default()
+            .set_abi(self.abi.internal(tables, tcx))
+            .set_safe(self.safety == Safety::Safe)
+            .set_c_variadic(self.c_variadic);
         tcx.lift(rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
-            c_variadic: self.c_variadic,
-            safety: self.safety.internal(tables, tcx),
-            abi: self.abi.internal(tables, tcx),
+            fn_sig_kind,
         })
         .unwrap()
     }
@@ -632,6 +634,36 @@ impl RustcInternal for Safety {
         match self {
             Safety::Unsafe => rustc_hir::Safety::Unsafe,
             Safety::Safe => rustc_hir::Safety::Safe,
+        }
+    }
+}
+
+impl RustcInternal for Constness {
+    type T<'tcx> = rustc_hir::Constness;
+
+    fn internal<'tcx>(
+        &self,
+        _tables: &mut Tables<'_, BridgeTys>,
+        _tcx: impl InternalCx<'tcx>,
+    ) -> Self::T<'tcx> {
+        match self {
+            Constness::Const => rustc_hir::Constness::Const,
+            Constness::NotConst => rustc_hir::Constness::NotConst,
+        }
+    }
+}
+
+impl RustcInternal for Asyncness {
+    type T<'tcx> = rustc_ty::Asyncness;
+
+    fn internal<'tcx>(
+        &self,
+        _tables: &mut Tables<'_, BridgeTys>,
+        _tcx: impl InternalCx<'tcx>,
+    ) -> Self::T<'tcx> {
+        match self {
+            Asyncness::Async => rustc_ty::Asyncness::Yes,
+            Asyncness::NotAsync => rustc_ty::Asyncness::No,
         }
     }
 }

@@ -83,7 +83,7 @@ impl<'a> DescriptionCtx<'a> {
     }
 }
 
-pub enum PrefixKind {
+pub(crate) enum PrefixKind {
     Empty,
     RefValidFor,
     ContentValidFor,
@@ -99,7 +99,7 @@ pub enum PrefixKind {
     DataValidFor,
 }
 
-pub enum SuffixKind {
+pub(crate) enum SuffixKind {
     Empty,
     Continues,
     ReqByBinding,
@@ -139,14 +139,14 @@ impl IntoDiagArg for SuffixKind {
     }
 }
 
-pub struct RegionExplanation<'a> {
+pub(crate) struct RegionExplanation<'a> {
     desc: DescriptionCtx<'a>,
     prefix: PrefixKind,
     suffix: SuffixKind,
 }
 
 impl RegionExplanation<'_> {
-    pub fn new<'tcx>(
+    pub(crate) fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
         generic_param_scope: LocalDefId,
         region: ty::Region<'tcx>,

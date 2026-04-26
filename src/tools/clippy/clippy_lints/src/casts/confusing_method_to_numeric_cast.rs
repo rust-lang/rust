@@ -38,7 +38,7 @@ fn get_const_name_and_ty_name(
             return None;
         }
     } else if let Some(impl_id) = cx.tcx.impl_of_assoc(method_def_id)
-        && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity())
+        && let Some(ty_name) = get_primitive_ty_name(cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip())
         && matches!(
             method_name,
             sym::min | sym::max | sym::minimum | sym::maximum | sym::min_value | sym::max_value

@@ -8,11 +8,11 @@ use std::{iter, ops::Not};
 use either::Either;
 use hir::{DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, Semantics};
 use ide_db::{
-    FileRange, FxIndexSet, MiniCore, Ranker, RootDatabase,
+    FileRange, FxIndexSet, Ranker, RootDatabase,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
-    ra_fixture::UpmapFromRaFixture,
+    ra_fixture::{RaFixtureConfig, UpmapFromRaFixture},
 };
 use itertools::{Itertools, multizip};
 use macros::UpmapFromRaFixture;
@@ -44,7 +44,7 @@ pub struct HoverConfig<'a> {
     pub max_enum_variants_count: Option<usize>,
     pub max_subst_ty_len: SubstTyLen,
     pub show_drop_glue: bool,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -221,7 +221,7 @@ fn hover_offset(
 
     if let Some(literal) = ast::String::cast(original_token.clone())
         && let Some((analysis, fixture_analysis)) =
-            Analysis::from_ra_fixture(sema, literal.clone(), &literal, config.minicore)
+            Analysis::from_ra_fixture(sema, literal.clone(), &literal, &config.ra_fixture)
     {
         let (virtual_file_id, virtual_offset) = fixture_analysis.map_offset_down(offset)?;
         return analysis
@@ -422,7 +422,7 @@ fn hover_ranged(
         Either::Left(ast::Expr::Literal(literal)) => {
             if let Some(literal) = ast::String::cast(literal.token())
                 && let Some((analysis, fixture_analysis)) =
-                    Analysis::from_ra_fixture(sema, literal.clone(), &literal, config.minicore)
+                    Analysis::from_ra_fixture(sema, literal.clone(), &literal, &config.ra_fixture)
             {
                 let (virtual_file_id, virtual_range) = fixture_analysis.map_range_down(range)?;
                 return analysis

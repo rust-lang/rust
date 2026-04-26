@@ -1521,20 +1521,24 @@ pub(crate) struct RedundantImportVisibility {
 #[diag("unknown diagnostic attribute")]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]
-    pub typo: Option<UnknownDiagnosticAttributeTypoSugg>,
+    pub help: Option<UnknownDiagnosticAttributeHelp>,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    "an attribute with a similar name exists",
-    style = "verbose",
-    code = "{typo_name}",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
-    #[primary_span]
-    pub span: Span,
-    pub typo_name: Symbol,
+pub(crate) enum UnknownDiagnosticAttributeHelp {
+    #[suggestion(
+        "an attribute with a similar name exists",
+        style = "verbose",
+        code = "{typo_name}",
+        applicability = "machine-applicable"
+    )]
+    Typo {
+        #[primary_span]
+        span: Span,
+        typo_name: Symbol,
+    },
+    #[help("add `#![feature({$feature})]` to the crate attributes to enable")]
+    UseFeature { feature: Symbol },
 }
 
 // FIXME: Make this properly translatable.

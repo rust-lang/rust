@@ -17,7 +17,7 @@ use either::Either;
 use hir::{
     DefWithBody, EditionedFileId, ExpressionStoreOwner, InFile, InRealFile, MacroKind, Semantics,
 };
-use ide_db::{FxHashMap, FxHashSet, MiniCore, Ranker, RootDatabase, SymbolKind};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, ra_fixture::RaFixtureConfig};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -65,7 +65,7 @@ pub struct HighlightConfig<'a> {
     pub macro_bang: bool,
     /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 // Feature: Semantic Syntax Highlighting

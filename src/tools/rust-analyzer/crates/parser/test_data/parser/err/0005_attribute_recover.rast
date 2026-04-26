@@ -3,7 +3,7 @@ SOURCE_FILE
     ATTR
       POUND "#"
       L_BRACK "["
-      META
+      TOKEN_TREE_META
         PATH
           PATH_SEGMENT
             NAME_REF
@@ -37,7 +37,7 @@ SOURCE_FILE
   ATTR
     POUND "#"
     L_BRACK "["
-    META
+    TOKEN_TREE_META
       PATH
         PATH_SEGMENT
           NAME_REF

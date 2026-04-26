@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{ExprUseNode, expr_use_ctxt, is_expr_temporary_value, std_or_core};
+use clippy_utils::{ExprUseNode, get_expr_use_site, is_expr_temporary_value, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -22,13 +22,12 @@ pub(super) fn check<'tcx>(
 
     if matches!(cast_from.kind(), ty::Ref(..))
         && let ty::RawPtr(_, to_mutbl) = cast_to.kind()
-        && let use_cx = expr_use_ctxt(cx, expr)
         && let Some(std_or_core) = std_or_core(cx)
     {
         if let ExprKind::AddrOf(_, _, addr_inner) = cast_expr.kind
             && is_expr_temporary_value(cx, addr_inner)
             && matches!(
-                use_cx.use_node(cx),
+                get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx),
                 ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_)
             )
         {

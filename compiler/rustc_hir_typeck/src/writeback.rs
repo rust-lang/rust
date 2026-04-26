@@ -21,9 +21,9 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    fold_regions,
+    Unnormalized, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -623,6 +623,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hidden_ty
                     .ty
                     .instantiate_identity()
+                    .skip_norm_wip()
                     .visit_with(&mut HasRecursiveOpaque {
                         def_id,
                         seen: Default::default(),
@@ -932,7 +933,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn handle_term<T>(
         &mut self,
         value: T,
-        outer_exclusive_binder: impl FnOnce(T) -> ty::DebruijnIndex,
+        outer_exclusive_binder: impl FnOnce(&T) -> ty::DebruijnIndex,
         new_err: impl Fn(TyCtxt<'tcx>, ErrorGuaranteed) -> T,
     ) -> T
     where
@@ -945,9 +946,11 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             let body_id = tcx.hir_body_owner_def_id(self.body.id());
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
-            let universes = vec![None; outer_exclusive_binder(value).as_usize()];
+            let universes = vec![None; outer_exclusive_binder(&value).as_usize()];
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
-                at, value, universes,
+                at,
+                Unnormalized::new_wip(value),
+                universes,
             ) {
                 Ok((value, goals)) => {
                     self.nested_goals.extend(goals);
@@ -1035,7 +1038,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerlyNormalizeConsts<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        self.tcx.try_normalize_erasing_regions(self.typing_env, ct).unwrap_or(ct)
+        self.tcx
+            .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(ct))
+            .unwrap_or(ct)
     }
 }
 
@@ -1060,7 +1065,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
             if self.seen.insert(def_id)
                 && let Some(hidden_ty) = self.opaques.get(&def_id)
             {
-                hidden_ty.ty.instantiate(self.tcx, args).visit_with(self)?;
+                hidden_ty.ty.instantiate(self.tcx, args).skip_norm_wip().visit_with(self)?;
             }
         }
 

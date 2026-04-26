@@ -1,6 +1,6 @@
 mod collapsible_match;
 mod infallible_destructuring_match;
-mod manual_filter;
+pub(crate) mod manual_filter;
 mod manual_map;
 mod manual_ok_err;
 mod manual_unwrap_or;

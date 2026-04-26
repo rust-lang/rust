@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: SimplifyLocals-before-const-prop
 
 fn map(x: Option<Box<()>>) -> Option<Box<()>> {

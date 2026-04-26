@@ -95,7 +95,7 @@ pub(crate) fn render_union_literal(
     );
 
     item.set_documentation(ctx.docs(un))
-        .set_deprecated(ctx.is_deprecated(un))
+        .set_deprecated(ctx.is_deprecated(un, None /* unions can't be assoc items */))
         .detail(detail)
         .set_relevance(ctx.completion_relevance());
 

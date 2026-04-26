@@ -15,7 +15,7 @@ SOURCE_FILE
         POUND "#"
         BANG "!"
         L_BRACK "["
-        META
+        PATH_META
           PATH
             PATH_SEGMENT
               NAME_REF

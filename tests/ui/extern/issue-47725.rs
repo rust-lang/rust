@@ -1,3 +1,4 @@
+//@ reference: items.extern.attributes.link_name.allowed-positions
 #![warn(unused_attributes)] //~ NOTE lint level is defined here
 
 #[link_name = "foo"]

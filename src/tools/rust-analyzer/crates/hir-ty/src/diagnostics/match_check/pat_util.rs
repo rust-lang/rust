@@ -38,6 +38,12 @@ pub(crate) trait EnumerateAndAdjustIterator {
 }
 
 impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
+    /// When there is a list of items with a gap of an unknown length inside, and another list
+    /// of item it should be zipped against, this operates on the list with the gap and returns,
+    /// for each item, the index it should match in the other list.
+    ///
+    /// When compiling Rust, such situation often occurs for tuple structs/tuples with a rest pattern
+    /// that should be matched against the fields.
     fn enumerate_and_adjust(
         self,
         expected_len: usize,

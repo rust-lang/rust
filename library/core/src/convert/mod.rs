@@ -11,7 +11,7 @@
 //! - The [`TryFrom`] and [`TryInto`] traits behave like [`From`] and [`Into`],
 //!   but should be implemented when the conversion can fail.
 //!
-//! The traits in this module are often used as trait bounds for generic functions such that to
+//! The traits in this module are often used as trait bounds for generic functions such that
 //! arguments of multiple types are supported. See the documentation of each trait for examples.
 //!
 //! As a library author, you should always prefer implementing [`From<T>`][`From`] or
@@ -577,6 +577,7 @@ pub const trait Into<T>: Sized {
 /// [`from`]: From::from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[rustc_diagnostic_item = "From"]
+#[lang = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
     all(Self = "&str", T = "alloc::string::String"),

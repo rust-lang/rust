@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             && header.abi == ExternAbi::Rust
             && impl_item.ident.name == sym::to_string
             && let decl = signature.decl
-            && decl.implicit_self.has_implicit_self()
+            && decl.implicit_self().has_implicit_self()
             && decl.inputs.len() == 1
             && impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
             && !impl_item.span.from_expansion()

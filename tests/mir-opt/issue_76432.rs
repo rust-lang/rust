@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Check that we do not insert StorageDead at each target if StorageDead was never seen
 

@@ -1,12 +1,15 @@
 use clippy_utils::as_some_expr;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::source::snippet_with_context;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::contains_unsafe_block;
-
+use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::{SyntaxContext, sym};
+use rustc_span::{Span, SyntaxContext, sym};
 
 use super::MANUAL_FILTER;
 use super::manual_utils::{SomeExpr, check_with};
@@ -21,8 +24,8 @@ fn get_cond_expr<'tcx>(
     expr: &'tcx Expr<'_>,
     ctxt: SyntaxContext,
 ) -> Option<SomeExpr<'tcx>> {
-    if let Some(block_expr) = peels_blocks_incl_unsafe_opt(expr)
-        && let ExprKind::If(cond, then_expr, Some(else_expr)) = block_expr.kind
+    let block_expr = peels_blocks_incl_unsafe(expr);
+    if let ExprKind::If(cond, then_expr, Some(else_expr)) = block_expr.kind
         && let PatKind::Binding(_, target, ..) = pat.kind
         && (is_some_expr(cx, target, ctxt, then_expr) && is_none_expr(cx, else_expr)
             || is_none_expr(cx, then_expr) && is_some_expr(cx, target, ctxt, else_expr))
@@ -86,6 +89,66 @@ fn add_ampersand_if_copy(body_str: String, has_copy_trait: bool) -> String {
         with_ampersand
     } else {
         body_str
+    }
+}
+
+/// Checks for the following pattern:
+/// `opt.and_then(|x| if /* predicate on x */ { Some(x) } else { None })`
+/// and suggests replacing with:
+/// `opt.filter(|&x| /* predicate on x */ )`
+pub(crate) fn check_and_then_method<'tcx>(
+    cx: &LateContext<'tcx>,
+    scrutinee: &'tcx Expr<'_>,
+    arg: &'tcx Expr<'_>,
+    call_span: Span,
+    expr: &'tcx Expr<'_>,
+) {
+    let ty = cx.typeck_results().expr_ty(scrutinee);
+    if ty.is_diag_item(cx, sym::Option)
+        && let ExprKind::Closure(closure) = arg.kind
+        && let body = cx.tcx.hir_body(closure.body)
+        && let Some(fn_arg_span) = closure.fn_arg_span
+        && let [param] = body.params
+        && let expr_span_ctxt = expr.span.ctxt()
+        && let Some(some_expr) = get_cond_expr(cx, param.pat, body.value, expr_span_ctxt)
+    {
+        span_lint_and_then(
+            cx,
+            MANUAL_FILTER,
+            call_span,
+            "manual implementation of `Option::filter`",
+            |diag| {
+                let mut applicability = Applicability::MachineApplicable;
+
+                let mut cond_snip =
+                    Sugg::hir_with_context(cx, some_expr.expr, expr_span_ctxt, "..", &mut applicability);
+                if some_expr.needs_unsafe_block {
+                    cond_snip = cond_snip.unsafeify();
+                }
+                if some_expr.needs_negated {
+                    cond_snip = !cond_snip;
+                }
+
+                let (prefix_snip, _) = snippet_with_context(
+                    cx,
+                    closure.fn_decl_span.until(fn_arg_span),
+                    expr_span_ctxt,
+                    "..",
+                    &mut applicability,
+                );
+                let (param_snip, _) =
+                    snippet_with_context(cx, param.pat.span, expr_span_ctxt, "..", &mut applicability);
+                diag.span_suggestion(
+                    call_span,
+                    "try",
+                    format!(
+                        "filter({prefix_snip}|{}{param_snip}| {cond_snip})",
+                        if is_copy(cx, ty) { "&" } else { "" }
+                    ),
+                    applicability,
+                );
+            },
+        );
     }
 }
 

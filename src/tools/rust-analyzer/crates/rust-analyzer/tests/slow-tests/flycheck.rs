@@ -110,3 +110,46 @@ fn main() {}
         diagnostics.diagnostics,
     );
 }
+
+#[test]
+#[ignore = "this test tends to stuck, FIXME: investigate that"]
+fn test_flycheck_diagnostics_with_override_command_cleared_after_fix() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    // Start with a program that is lint clean.
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/main.rs
+fn main() {}
+"#,
+    )
+    .with_config(serde_json::json!({
+        "checkOnSave": true,
+        "check": {
+        "overrideCommand": ["rustc", "--error-format=json", "$saved_file"]
+        }
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    // Introduce an unused variable.
+    server.write_file_and_save("src/main.rs", "fn main() {\n    let x = 1;\n}\n".to_owned());
+
+    let diags = server.wait_for_diagnostics();
+    assert!(
+        diags.diagnostics.iter().any(|d| d.message.contains("unused variable")),
+        "expected unused variable diagnostic, got: {:?}",
+        diags.diagnostics,
+    );
+
+    // Fix it and verify that diagnostics are cleared.
+    server.write_file_and_save("src/main.rs", "fn main() {\n    let _x = 1;\n}\n".to_owned());
+    server.wait_for_diagnostics_cleared();
+}

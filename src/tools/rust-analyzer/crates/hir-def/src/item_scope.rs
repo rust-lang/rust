@@ -680,20 +680,19 @@ impl ItemScope {
                     changed = true;
                 }
                 Entry::Occupied(mut entry)
-                    if !matches!(import, Some(ImportOrExternCrate::Glob(..))) =>
+                    if !matches!(import, Some(ImportOrExternCrate::Glob(..)))
+                        && glob_imports.values.remove(&lookup) =>
                 {
-                    if glob_imports.values.remove(&lookup) {
-                        cov_mark::hit!(import_shadowed);
+                    cov_mark::hit!(import_shadowed);
 
-                        let import = import.and_then(ImportOrExternCrate::import_or_glob);
-                        let prev = std::mem::replace(&mut fld.import, import);
-                        if let Some(import) = import {
-                            self.use_imports_values
-                                .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
-                        }
-                        entry.insert(fld);
-                        changed = true;
+                    let import = import.and_then(ImportOrExternCrate::import_or_glob);
+                    let prev = std::mem::replace(&mut fld.import, import);
+                    if let Some(import) = import {
+                        self.use_imports_values
+                            .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
                     }
+                    entry.insert(fld);
+                    changed = true;
                 }
                 _ => {}
             }
@@ -720,20 +719,19 @@ impl ItemScope {
                     changed = true;
                 }
                 Entry::Occupied(mut entry)
-                    if !matches!(import, Some(ImportOrExternCrate::Glob(..))) =>
+                    if !matches!(import, Some(ImportOrExternCrate::Glob(..)))
+                        && glob_imports.macros.remove(&lookup) =>
                 {
-                    if glob_imports.macros.remove(&lookup) {
-                        cov_mark::hit!(import_shadowed);
-                        let prev = std::mem::replace(&mut fld.import, import);
-                        if let Some(import) = import {
-                            self.use_imports_macros.insert(
-                                import,
-                                prev.map_or_else(|| ImportOrDef::Def(fld.def.into()), Into::into),
-                            );
-                        }
-                        entry.insert(fld);
-                        changed = true;
+                    cov_mark::hit!(import_shadowed);
+                    let prev = std::mem::replace(&mut fld.import, import);
+                    if let Some(import) = import {
+                        self.use_imports_macros.insert(
+                            import,
+                            prev.map_or_else(|| ImportOrDef::Def(fld.def.into()), Into::into),
+                        );
                     }
+                    entry.insert(fld);
+                    changed = true;
                 }
                 _ => {}
             }

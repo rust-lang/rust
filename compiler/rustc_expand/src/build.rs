@@ -715,6 +715,7 @@ impl<'a> ExtCtxt<'a> {
                     mutability,
                     expr: Some(expr),
                     define_opaque: None,
+                    eii_impls: Default::default(),
                 }
                 .into(),
             ),

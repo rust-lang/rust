@@ -1,7 +1,7 @@
 // This is a regression test for one of the problems in #128887; it checks that the
 // strategy in #129714 avoids trait solver overflows in this specific case.
 
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -Zinline-mir
 
 pub trait Foo {

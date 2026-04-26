@@ -2,7 +2,7 @@ use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
+use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, PResult, msg};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
@@ -19,6 +19,7 @@ use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
+use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{
     AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
@@ -43,13 +44,9 @@ pub fn parse_cfg<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
 ) -> Option<CfgEntry> {
-    let ArgParser::List(list) = args else {
-        let attr_span = cx.attr_span;
-        cx.adcx().expected_list(attr_span, args);
-        return None;
-    };
+    let list = cx.expect_list(args, cx.attr_span)?;
 
-    let Some(single) = list.single() else {
+    let Some(single) = list.as_single() else {
         let target = cx.target;
         let mut adcx = cx.adcx();
         if list.is_empty() {
@@ -78,7 +75,7 @@ pub fn parse_cfg<S: Stage>(
             }
         }
 
-        adcx.expected_single_argument(list.span);
+        adcx.expected_single_argument(list.span, list.len());
         return None;
     };
     parse_cfg_entry(cx, single).ok()
@@ -92,8 +89,8 @@ pub fn parse_cfg_entry<S: Stage>(
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
             ArgParser::List(list) => match meta.path().word_sym() {
                 Some(sym::not) => {
-                    let Some(single) = list.single() else {
-                        return Err(cx.adcx().expected_single_argument(list.span));
+                    let Some(single) = list.as_single() else {
+                        return Err(cx.adcx().expected_single_argument(list.span, list.len()));
                     };
                     CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
                 }
@@ -135,7 +132,7 @@ fn parse_cfg_entry_version<S: Stage>(
     meta_span: Span,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
-    let Some(version) = list.single() else {
+    let Some(version) = list.as_single() else {
         return Err(
             cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
         );
@@ -324,12 +321,13 @@ pub fn parse_cfg_attr(
     cfg_attr: &Attribute,
     sess: &Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
 ) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
     match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
-                parse_cfg_attr_internal(p, sess, features, cfg_attr)
+                parse_cfg_attr_internal(p, sess, features, lint_node_id, cfg_attr)
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
@@ -390,6 +388,7 @@ fn parse_cfg_attr_internal<'a>(
     parser: &mut Parser<'a>,
     sess: &'a Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
     attribute: &Attribute,
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
@@ -408,9 +407,10 @@ fn parse_cfg_attr_internal<'a>(
         attribute.style,
         AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
         Some(attribute.get_normal_item().unsafety),
+        AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
-        CRATE_NODE_ID,
+        lint_node_id,
         Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },

@@ -1,0 +1,63 @@
+error[E0658]: `impl Trait` in associated types is unstable
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:9:22
+   |
+LL |     type AssocType = impl Send;
+   |                      ^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0601]: `main` function not found in crate `next_solver_opaque_inherent_fn_ptr_issue_155204`
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:17:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:4:20
+   |
+LL | pub struct Windows<T> {}
+   |                    ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:7:6
+   |
+LL | impl<T> Windows<fn(&())> {
+   |      ^ unconstrained type parameter
+
+error[E0282]: type annotations needed
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:12:22
+   |
+LL |     fn ret(&self) -> Self::AssocType {
+   |                      ^^^^^^^^^^^^^^^ cannot infer type
+
+error: unconstrained opaque type
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:9:22
+   |
+LL |     type AssocType = impl Send;
+   |                      ^^^^^^^^^
+   |
+   = note: `AssocType` must be used in combination with a concrete type within the same impl
+
+error[E0308]: mismatched types
+  --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:14:9
+   |
+LL |     fn ret(&self) -> Self::AssocType {
+   |                      --------------- expected `Windows<for<'a> fn(&'a ())>::AssocType` because of return type
+LL |
+LL |         ()
+   |         ^^ types differ
+   |
+   = note: expected associated type `Windows<for<'a> fn(&'a ())>::AssocType`
+                    found unit type `()`
+   = help: consider constraining the associated type `Windows<for<'a> fn(&'a ())>::AssocType` to `()` or calling a method that returns `Windows<for<'a> fn(&'a ())>::AssocType`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0207, E0282, E0308, E0392, E0601, E0658.
+For more information about an error, try `rustc --explain E0207`.

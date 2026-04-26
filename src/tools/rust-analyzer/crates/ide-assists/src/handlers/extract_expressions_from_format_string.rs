@@ -8,7 +8,7 @@ use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::WHITESPACE,
     SyntaxToken, T,
-    ast::{self, TokenTree, syntax_factory::SyntaxFactory},
+    ast::{self, TokenTree},
 };
 
 // Assist: extract_expressions_from_format_string
@@ -57,7 +57,8 @@ pub(crate) fn extract_expressions_from_format_string(
         "Extract format expressions",
         tt.syntax().text_range(),
         |edit| {
-            let make = SyntaxFactory::without_mappings();
+            let editor = edit.make_editor(tt.syntax());
+            let make = editor.make();
             // Extract existing arguments in macro
             let mut raw_tokens = tt.token_trees_and_tokens().skip(1).collect_vec();
             let format_string_index = format_str_index(&raw_tokens, &fmt_string);
@@ -110,7 +111,7 @@ pub(crate) fn extract_expressions_from_format_string(
                     Arg::Expr(s) => {
                         // insert arg
                         let expr = ast::Expr::parse(&s, ctx.edition()).syntax_node();
-                        let mut expr_tt = utils::tt_from_syntax(expr, &make);
+                        let mut expr_tt = utils::tt_from_syntax(expr, make);
                         new_tt_bits.append(&mut expr_tt);
                     }
                     Arg::Placeholder => {
@@ -131,7 +132,6 @@ pub(crate) fn extract_expressions_from_format_string(
 
             // Insert new args
             let new_tt = make.token_tree(tt_delimiter, new_tt_bits);
-            let mut editor = edit.make_editor(tt.syntax());
             editor.replace(tt.syntax(), new_tt.syntax());
 
             if let Some(cap) = ctx.config.snippet_cap {
@@ -158,7 +158,6 @@ pub(crate) fn extract_expressions_from_format_string(
                     editor.add_annotation(literal, annotation);
                 }
             }
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );

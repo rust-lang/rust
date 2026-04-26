@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
     Edition, NodeOrToken, SyntaxNode, SyntaxToken, T,
-    ast::{self, AstNode, make},
+    ast::{self, AstNode, syntax_factory::SyntaxFactory},
     match_ast,
     syntax_editor::{Position, SyntaxEditor},
 };
@@ -24,6 +24,8 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
+    let make = editor.make();
     let macro_calls = if ctx.has_empty_selection() {
         vec![ctx.find_node_at_offset::<ast::MacroExpr>()?]
     } else {
@@ -39,18 +41,19 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
             .collect()
     };
 
-    let replacements =
-        macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
+    let replacements = macro_calls
+        .into_iter()
+        .filter_map(|macro_expr| compute_dbg_replacement(macro_expr, make))
+        .collect::<Vec<_>>();
     let target = replacements
         .iter()
         .flat_map(|(node_or_token, _)| node_or_token.iter())
         .map(|t| t.text_range())
         .reduce(|acc, range| acc.cover(range))?;
     acc.add(AssistId::quick_fix("remove_dbg"), "Remove dbg!()", target, |builder| {
-        let mut editor = builder.make_editor(ctx.source_file().syntax());
         for (range, expr) in replacements {
             if let Some(expr) = expr {
-                editor.insert(Position::before(range[0].clone()), expr.syntax().clone_for_update());
+                editor.insert(Position::before(range[0].clone()), expr.syntax());
             }
             for node_or_token in range {
                 editor.delete(node_or_token);
@@ -68,6 +71,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 /// Returns `Some(_, None)` when the macro call should just be removed.
 fn compute_dbg_replacement(
     macro_expr: ast::MacroExpr,
+    make: &SyntaxFactory,
 ) -> Option<(Vec<NodeOrToken<SyntaxNode, SyntaxToken>>, Option<ast::Expr>)> {
     let macro_call = macro_expr.macro_call()?;
     let tt = macro_call.token_tree()?;
@@ -110,7 +114,7 @@ fn compute_dbg_replacement(
                         }
                         (replace, None)
                     },
-                    _ => (vec![macro_call.syntax().clone().into()], Some(make::ext::expr_unit())),
+                    _ => (vec![macro_call.syntax().clone().into()], Some(make.expr_unit())),
                 }
             }
         }
@@ -162,14 +166,14 @@ fn compute_dbg_replacement(
                 },
                 None => false,
             };
-            let expr = replace_nested_dbgs(expr.clone());
-            let expr = if wrap { make::expr_paren(expr).into() } else { expr.clone_subtree() };
+            let expr = replace_nested_dbgs(expr.clone(), make);
+            let expr = if wrap { make.expr_paren(expr).into() } else { expr };
             (vec![macro_call.syntax().clone().into()], Some(expr))
         }
         // dbg!(expr0, expr1, ...)
         exprs => {
-            let exprs = exprs.iter().cloned().map(replace_nested_dbgs);
-            let expr = make::expr_tuple(exprs);
+            let exprs = exprs.iter().cloned().map(|expr| replace_nested_dbgs(expr, make));
+            let expr = make.expr_tuple(exprs);
             (vec![macro_call.syntax().clone().into()], Some(expr.into()))
         }
     })
@@ -189,12 +193,12 @@ fn pure_expr(expr: &ast::Expr) -> bool {
     }
 }
 
-fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
+fn replace_nested_dbgs(expanded: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
     if let ast::Expr::MacroExpr(mac) = &expanded {
         // Special-case when `expanded` itself is `dbg!()` since we cannot replace the whole tree
         // with `ted`. It should be fairly rare as it means the user wrote `dbg!(dbg!(..))` but you
         // never know how code ends up being!
-        let replaced = if let Some((_, expr_opt)) = compute_dbg_replacement(mac.clone()) {
+        let replaced = if let Some((_, expr_opt)) = compute_dbg_replacement(mac.clone(), make) {
             match expr_opt {
                 Some(expr) => expr,
                 None => {
@@ -209,20 +213,19 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         return replaced;
     }
 
-    let expanded = expanded.clone_subtree();
-    let mut editor = SyntaxEditor::new(expanded.syntax().clone());
+    let (editor, expanded) = SyntaxEditor::with_ast_node(&expanded);
     // We need to collect to avoid mutation during traversal.
     let macro_exprs: Vec<_> =
         expanded.syntax().descendants().filter_map(ast::MacroExpr::cast).collect();
 
     for mac in macro_exprs {
-        let expr_opt = match compute_dbg_replacement(mac.clone()) {
+        let expr_opt = match compute_dbg_replacement(mac.clone(), make) {
             Some((_, expr)) => expr,
             None => continue,
         };
 
         if let Some(expr) = expr_opt {
-            editor.replace(mac.syntax(), expr.syntax().clone_for_update());
+            editor.replace(mac.syntax(), expr.syntax());
         } else {
             editor.delete(mac.syntax());
         }

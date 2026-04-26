@@ -596,7 +596,7 @@ impl<'a> Parser<'a> {
     /// Parses a raw pointer with a C-style typo
     fn parse_ty_c_style_pointer(&mut self) -> PResult<'a, TyKind> {
         let kw_span = self.token.span;
-        let mutbl = self.parse_const_or_mut();
+        let mutbl = self.parse_mut_or_const();
 
         if let Some(mutbl) = mutbl
             && self.eat(exp!(Star))
@@ -630,7 +630,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a raw pointer type: `*[const | mut] $type`.
     fn parse_ty_ptr(&mut self) -> PResult<'a, TyKind> {
-        let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
+        let mutbl = self.parse_mut_or_const().unwrap_or_else(|| {
             let span = self.prev_token.span;
             self.dcx().emit_err(ExpectedMutOrConstInRawPointerType {
                 span,
@@ -774,14 +774,16 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses `pin` and `mut` annotations on references, patterns, or borrow modifiers.
+    /// Parse nothing, mutability or `pin` followed by "explicit" mutability.
     ///
-    /// It must be either `pin const`, `pin mut`, `mut`, or nothing (immutable).
+    /// ```ebnf
+    /// PinAndMut = "pin" MutOrConst | "mut"
+    /// ```
     pub(crate) fn parse_pin_and_mut(&mut self) -> (Pinnedness, Mutability) {
         if self.token.is_ident_named(sym::pin) && self.look_ahead(1, Token::is_mutability) {
             self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
             assert!(self.eat_keyword(exp!(Pin)));
-            let mutbl = self.parse_const_or_mut().unwrap();
+            let mutbl = self.parse_mut_or_const().unwrap();
             (Pinnedness::Pinned, mutbl)
         } else {
             (Pinnedness::Not, self.parse_mutability())

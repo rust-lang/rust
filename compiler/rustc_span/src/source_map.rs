@@ -743,7 +743,7 @@ impl SourceMap {
             let n = s[..start]
                 .char_indices()
                 .rfind(|&(_, c)| !f(c))
-                .map_or(start, |(i, _)| start - i - 1);
+                .map_or(start, |(i, c)| start - i - c.len_utf8());
             Ok(span.with_lo(span.lo() - BytePos(n as u32)))
         })
     }

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 
 // Checks that we do not have any branches in the MIR for the two tested functions.

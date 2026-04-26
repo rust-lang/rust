@@ -392,8 +392,10 @@ impl<'tcx> MiniGraph<'tcx> {
             {
                 match undo_entry {
                     &AddConstraint(i) => {
-                        let c = region_constraints.data().constraints[i].0;
-                        each_edge(c.sub, c.sup);
+                        region_constraints.data().constraints[i]
+                            .0
+                            .iter_outlives()
+                            .for_each(|c| each_edge(c.sub, c.sup));
                     }
                     &AddVerify(i) => span_bug!(
                         region_constraints.data().verifys[i].origin.span(),
@@ -403,7 +405,12 @@ impl<'tcx> MiniGraph<'tcx> {
                 }
             }
         } else {
-            region_constraints.data().constraints.iter().for_each(|(c, _)| each_edge(c.sub, c.sup))
+            region_constraints
+                .data()
+                .constraints
+                .iter()
+                .flat_map(|(c, _)| c.iter_outlives())
+                .for_each(|c| each_edge(c.sub, c.sup))
         }
     }
 

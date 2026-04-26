@@ -4,7 +4,7 @@ use itertools::Itertools;
 use syntax::{
     SyntaxKind::WHITESPACE,
     T,
-    ast::{self, AstNode, HasName, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, HasName},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -12,8 +12,8 @@ use crate::{
     AssistConfig, AssistId,
     assist_context::{AssistContext, Assists},
     utils::{
-        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl_with_factory,
-        filter_assoc_items, gen_trait_fn_body, generate_trait_impl,
+        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
+        gen_trait_fn_body, generate_trait_impl, generate_trait_impl_with_item,
     },
 };
 
@@ -64,9 +64,10 @@ pub(crate) fn replace_derive_with_manual_impl(
         .filter_map(|attr| attr.path())
         .collect::<Vec<_>>();
 
-    let adt = value.parent().and_then(ast::Adt::cast)?;
-    let attr = ast::Attr::cast(value)?;
-    let args = attr.token_tree()?;
+    let attr = ast::Meta::cast(value)?.parent_attr()?;
+    let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+    let ast::Meta::TokenTreeMeta(meta) = attr.meta()? else { return None };
+    let args = meta.token_tree()?;
 
     let current_module = ctx.sema.scope(adt.syntax())?.module();
     let current_crate = current_module.krate(ctx.db());
@@ -127,10 +128,12 @@ fn add_assist(
     let label = format!("Convert to manual `impl {replace_trait_path} for {annotated_name}`");
 
     acc.add(AssistId::refactor("replace_derive_with_manual_impl"), label, target, |builder| {
-        let make = SyntaxFactory::without_mappings();
+        let editor = builder.make_editor(attr.syntax());
+        let make = editor.make();
         let insert_after = Position::after(adt.syntax());
         let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
         let impl_def = impl_def_from_trait(
+            &editor,
             &ctx.sema,
             ctx.config,
             adt,
@@ -139,9 +142,7 @@ fn add_assist(
             replace_trait_path,
             impl_is_unsafe,
         );
-
-        let mut editor = builder.make_editor(attr.syntax());
-        update_attribute(&mut editor, old_derives, old_tree, old_trait_path, attr);
+        update_attribute(&editor, old_derives, old_tree, old_trait_path, attr);
 
         let trait_path = make.ty_path(replace_trait_path.clone()).into();
 
@@ -151,7 +152,7 @@ fn add_assist(
                 impl_def.assoc_item_list().and_then(|list| list.assoc_items().next()),
             )
         } else {
-            (generate_trait_impl(&make, impl_is_unsafe, adt, trait_path), None)
+            (generate_trait_impl(make, impl_is_unsafe, adt, trait_path), None)
         };
 
         if let Some(cap) = ctx.config.snippet_cap {
@@ -182,6 +183,7 @@ fn add_assist(
 }
 
 fn impl_def_from_trait(
+    editor: &SyntaxEditor,
     sema: &hir::Semantics<'_, ide_db::RootDatabase>,
     config: &AssistConfig,
     adt: &ast::Adt,
@@ -190,6 +192,7 @@ fn impl_def_from_trait(
     trait_path: &ast::Path,
     impl_is_unsafe: bool,
 ) -> Option<ast::Impl> {
+    let make = editor.make();
     let trait_ = trait_?;
     let target_scope = sema.scope(annotated_name.syntax())?;
 
@@ -206,12 +209,11 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let make = SyntaxFactory::without_mappings();
-    let trait_ty = make.ty_path(trait_path.clone()).into();
-    let impl_def = generate_trait_impl(&make, impl_is_unsafe, adt, trait_ty);
+    let trait_ty: ast::Type = make.ty_path(trait_path.clone()).into();
+    let impl_def = generate_trait_impl(make, impl_is_unsafe, adt, trait_ty.clone());
 
-    let assoc_items = add_trait_assoc_items_to_impl_with_factory(
-        &make,
+    let assoc_items = add_trait_assoc_items_to_impl(
+        make,
         sema,
         config,
         &trait_items,
@@ -219,14 +221,12 @@ fn impl_def_from_trait(
         &impl_def,
         &target_scope,
     );
-    let assoc_item_list = if let Some((first, other)) =
-        assoc_items.split_first().map(|(first, other)| (first.clone_subtree(), other))
-    {
-        let first_item = if let ast::AssocItem::Fn(ref func) = first
-            && let Some(body) = gen_trait_fn_body(func, trait_path, adt, None)
+    let assoc_item_list = if let Some((first, other)) = assoc_items.split_first() {
+        let first_item = if let ast::AssocItem::Fn(func) = first
+            && let Some(body) = gen_trait_fn_body(make, func, trait_path, adt, None)
             && let Some(func_body) = func.body()
         {
-            let mut editor = SyntaxEditor::new(first.syntax().clone());
+            let (editor, _) = SyntaxEditor::new(first.syntax().clone());
             editor.replace(func_body.syntax(), body.syntax());
             ast::AssocItem::cast(editor.finish().new_root().clone())
         } else {
@@ -239,21 +239,17 @@ fn impl_def_from_trait(
         make.assoc_item_list_empty()
     };
 
-    let impl_def = impl_def.clone_subtree();
-    let mut editor = SyntaxEditor::new(impl_def.syntax().clone());
-    editor.replace(impl_def.assoc_item_list()?.syntax(), assoc_item_list.syntax());
-    let impl_def = ast::Impl::cast(editor.finish().new_root().clone())?;
-    Some(impl_def)
+    Some(generate_trait_impl_with_item(make, impl_is_unsafe, adt, trait_ty, assoc_item_list))
 }
 
 fn update_attribute(
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     old_derives: &[ast::Path],
     old_tree: &ast::TokenTree,
     old_trait_path: &ast::Path,
     attr: &ast::Attr,
 ) {
-    let make = SyntaxFactory::without_mappings();
+    let make = editor.make();
     let new_derives = old_derives
         .iter()
         .filter(|t| t.to_string() != old_trait_path.to_string())

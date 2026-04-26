@@ -19,7 +19,7 @@ use rustc_hir::{
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
         let ty = match &lt.kind {
             rustc_hir::PatExprKind::Lit { lit, negated } => {
-                let ty = self.check_expr_lit(lit, Expectation::NoExpectation);
+                let ty = self.check_expr_lit(lit, lt.hir_id, Expectation::NoExpectation);
                 if *negated {
                     self.register_bound(
                         ty,
@@ -2704,7 +2704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.require_lang_item(hir::LangItem::DerefTarget, span),
             [source_ty],
         );
-        let target_ty = self.normalize(span, target_ty);
+        let target_ty = self.normalize(span, Unnormalized::new_wip(target_ty));
         self.try_structurally_resolve_type(span, target_ty)
     }
 

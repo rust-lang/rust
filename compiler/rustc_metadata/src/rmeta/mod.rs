@@ -36,6 +36,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
@@ -44,7 +45,6 @@ use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
-use crate::creader::CrateMetadataRef;
 use crate::eii::EiiMapEncodedKeyValue;
 
 mod decoder;
@@ -286,6 +286,7 @@ pub(crate) struct CrateRoot {
 
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,
+    denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,
 
     compiler_builtins: bool,
     needs_allocator: bool,
@@ -315,13 +316,9 @@ impl From<DefId> for RawDefId {
 
 impl RawDefId {
     /// This exists so that `provide_one!` is happy
-    fn decode(self, meta: (CrateMetadataRef<'_>, TyCtxt<'_>)) -> DefId {
-        self.decode_from_cdata(meta.0)
-    }
-
-    fn decode_from_cdata(self, cdata: CrateMetadataRef<'_>) -> DefId {
+    fn decode(self, meta: (&CrateMetadata, TyCtxt<'_>)) -> DefId {
         let krate = CrateNum::from_u32(self.krate);
-        let krate = cdata.map_encoded_cnum_to_current(krate);
+        let krate = meta.0.map_encoded_cnum_to_current(krate);
         DefId { krate, index: DefIndex::from_u32(self.index) }
     }
 }

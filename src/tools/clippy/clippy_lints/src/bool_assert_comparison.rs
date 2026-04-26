@@ -4,6 +4,7 @@ use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::sym;
 use clippy_utils::ty::{implements_trait, is_copy};
+use rustc_middle::ty::Unnormalized;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Lit};
@@ -64,7 +65,7 @@ fn is_impl_not_trait_with_bool_out<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -
         })
         .is_some_and(|assoc_item| {
             let proj = Ty::new_projection(cx.tcx, assoc_item.def_id, cx.tcx.mk_args_trait(ty, []));
-            let nty = cx.tcx.normalize_erasing_regions(cx.typing_env(), proj);
+            let nty = cx.tcx.normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(proj));
 
             nty.is_bool()
         })

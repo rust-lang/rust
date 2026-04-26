@@ -7,7 +7,7 @@ trait Test {
     //~^ ERROR cannot be used on required trait methods [unused_attributes]
     //~| WARN previously accepted
     fn method1(&self);
-    #[link_section = ".text"]
+    #[link_section = "__TEXT,__text"]
     //~^ ERROR cannot be used on required trait methods [unused_attributes]
     //~| WARN previously accepted
     fn method2(&self);

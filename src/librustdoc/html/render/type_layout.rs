@@ -32,7 +32,7 @@ pub(crate) fn document_type_layout(cx: &Context<'_>, ty_def_id: DefId) -> impl f
 
         let tcx = cx.tcx();
         let typing_env = ty::TypingEnv::post_analysis(tcx, ty_def_id);
-        let ty = tcx.type_of(ty_def_id).instantiate_identity();
+        let ty = tcx.type_of(ty_def_id).instantiate_identity().skip_norm_wip();
         let type_layout = tcx.layout_of(typing_env.as_query_input(ty));
 
         let variants = if let Ok(type_layout) = type_layout

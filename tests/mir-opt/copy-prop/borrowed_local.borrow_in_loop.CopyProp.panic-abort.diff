@@ -43,12 +43,12 @@
       }
   
       bb1: {
--         StorageLive(_6);
+          StorageLive(_6);
           StorageLive(_7);
           _7 = copy (*_2);
           _6 = Not(move _7);
           StorageDead(_7);
--         StorageLive(_8);
+          StorageLive(_8);
           StorageLive(_9);
           _9 = copy (*_2);
           _8 = Not(move _9);
@@ -80,8 +80,8 @@
 -         StorageDead(_14);
           _0 = const ();
           StorageDead(_13);
--         StorageDead(_8);
--         StorageDead(_6);
+          StorageDead(_8);
+          StorageDead(_6);
 -         StorageDead(_4);
           StorageDead(_2);
           StorageDead(_1);
@@ -93,8 +93,8 @@
 -         StorageDead(_14);
 -         _5 = const ();
           StorageDead(_13);
--         StorageDead(_8);
--         StorageDead(_6);
+          StorageDead(_8);
+          StorageDead(_6);
           goto -> bb1;
       }
   }

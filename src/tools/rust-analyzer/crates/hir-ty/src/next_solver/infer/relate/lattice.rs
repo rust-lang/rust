@@ -165,8 +165,8 @@ impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
             }
 
             (
-                TyKind::Alias(rustc_type_ir::Opaque, AliasTy { def_id: a_def_id, .. }),
-                TyKind::Alias(rustc_type_ir::Opaque, AliasTy { def_id: b_def_id, .. }),
+                TyKind::Alias(AliasTy { kind: rustc_type_ir::Opaque { def_id: a_def_id }, .. }),
+                TyKind::Alias(AliasTy { kind: rustc_type_ir::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id => super_combine_tys(infcx, self, a, b),
 
             _ => super_combine_tys(infcx, self, a, b),

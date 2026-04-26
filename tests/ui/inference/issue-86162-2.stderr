@@ -12,10 +12,10 @@ note: required by a bound in `Foo::bar`
    |
 LL |     fn bar(x: impl Clone) {}
    |                    ^^^^^ required by this bound in `Foo::bar`
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `T`
    |
-LL |     Foo::bar(gen::<T>()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
-   |                 +++++
+LL |     Foo::bar(gen::</* Type */>()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
+   |                 ++++++++++++++
 
 error: aborting due to 1 previous error
 

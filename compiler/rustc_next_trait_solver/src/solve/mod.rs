@@ -218,7 +218,7 @@ where
                 return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
             ty::ConstKind::Unevaluated(uv) => {
-                self.cx().type_of(uv.def.into()).instantiate(self.cx(), uv.args)
+                self.cx().type_of(uv.def.into()).instantiate(self.cx(), uv.args).skip_norm_wip()
             }
             ty::ConstKind::Expr(_) => unimplemented!(
                 "`feature(generic_const_exprs)` is not supported in the new trait solver"
@@ -344,7 +344,7 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolution> {
-        if let Some(_) = term.to_alias_term() {
+        if let Some(_) = term.to_alias_term(self.cx()) {
             let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(
                 self.cx(),

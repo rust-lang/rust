@@ -140,6 +140,7 @@ pub struct Config {
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
+    pub quiet: bool,
     pub incremental: bool,
     pub dump_bootstrap_shims: bool,
     /// Arguments appearing after `--` to be forwarded to tools,
@@ -369,6 +370,7 @@ impl Config {
         let Flags {
             cmd: flags_cmd,
             verbose: flags_verbose,
+            quiet: flags_quiet,
             incremental: flags_incremental,
             config: flags_config,
             build_dir: flags_build_dir,
@@ -1182,6 +1184,12 @@ impl Config {
             exit!(1);
         }
 
+        if matches!(flags_cmd, Subcommand::Fix) {
+            eprintln!(
+                "WARNING: `x fix` is provided on a best-effort basis and does not support all `cargo fix` options correctly."
+            );
+        }
+
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
         if flags_stage.is_none() && ci_env.is_running_in_ci() {
@@ -1433,6 +1441,7 @@ impl Config {
             print_step_timings: build_print_step_timings.unwrap_or(false),
             profiler: build_profiler.unwrap_or(false),
             python: build_python.map(PathBuf::from),
+            quiet: flags_quiet,
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
@@ -2193,6 +2202,42 @@ pub fn check_stage0_version(
     }
 }
 
+fn print_rustc_modifications(
+    dwn_ctx: &DownloadContext<'_>,
+    if_unchanged: bool,
+    mut modifications: Vec<PathBuf>,
+) -> Option<()> {
+    if !dwn_ctx.exec_ctx.is_verbose() {
+        modifications.retain(|path| !path.starts_with("compiler"));
+    }
+    if modifications.is_empty() {
+        // only compiler changes; still force a rebuild but don't say why.
+        eprintln!(
+            "skipping rustc download with `download-rustc = 'if-unchanged'` due to local changes"
+        );
+        return None;
+    }
+
+    eprintln!(
+        "NOTE: detected {} modifications that could affect a build of rustc",
+        modifications.len()
+    );
+    for file in modifications.iter().take(10) {
+        eprintln!("- {}", file.display());
+    }
+    if modifications.len() > 10 {
+        eprintln!("- ... and {} more", modifications.len() - 10);
+    }
+
+    if if_unchanged {
+        eprintln!("skipping rustc download due to `download-rustc = 'if-unchanged'`");
+        None
+    } else {
+        eprintln!("downloading unconditionally due to `download-rustc = true`");
+        Some(())
+    }
+}
+
 pub fn download_ci_rustc_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     rust_info: &channel::GitInfo,
@@ -2247,24 +2292,7 @@ pub fn download_ci_rustc_commit<'a>(
                     return None;
                 }
 
-                eprintln!(
-                    "NOTE: detected {} modifications that could affect a build of rustc",
-                    modifications.len()
-                );
-                for file in modifications.iter().take(10) {
-                    eprintln!("- {}", file.display());
-                }
-                if modifications.len() > 10 {
-                    eprintln!("- ... and {} more", modifications.len() - 10);
-                }
-
-                if if_unchanged {
-                    eprintln!("skipping rustc download due to `download-rustc = 'if-unchanged'`");
-                    return None;
-                } else {
-                    eprintln!("downloading unconditionally due to `download-rustc = true`");
-                }
-
+                print_rustc_modifications(dwn_ctx, if_unchanged, modifications)?;
                 upstream
             }
             PathFreshness::MissingUpstream => {
@@ -2420,17 +2448,7 @@ pub(crate) fn update_submodule<'a>(
         return;
     }
 
-    // Submodule updating actually happens during in the dry run mode. We need to make sure that
-    // all the git commands below are actually executed, because some follow-up code
-    // in bootstrap might depend on the submodules being checked out. Furthermore, not all
-    // the command executions below work with an empty output (produced during dry run).
-    // Therefore, all commands below are marked with `run_in_dry_run()`, so that they also run in
-    // dry run mode.
-    let submodule_git = || {
-        let mut cmd = helpers::git(Some(&absolute_path));
-        cmd.run_in_dry_run();
-        cmd
-    };
+    let submodule_git = || helpers::git(Some(&absolute_path));
 
     // Determine commit checked out in submodule.
     let checked_out_hash =
@@ -2438,7 +2456,7 @@ pub(crate) fn update_submodule<'a>(
     let checked_out_hash = checked_out_hash.trim_end();
     // Determine commit that the submodule *should* have.
     let recorded = helpers::git(Some(dwn_ctx.src))
-        .run_in_dry_run()
+        .run_in_dry_run() // otherwise parsing `actual_hash` fails
         .args(["ls-tree", "HEAD"])
         .arg(relative_path)
         .run_capture_stdout(dwn_ctx.exec_ctx)
@@ -2454,11 +2472,12 @@ pub(crate) fn update_submodule<'a>(
         return;
     }
 
-    println!("Updating submodule {relative_path}");
+    if !dwn_ctx.exec_ctx.dry_run() {
+        println!("Updating submodule {relative_path}");
+    };
 
     helpers::git(Some(dwn_ctx.src))
         .allow_failure()
-        .run_in_dry_run()
         .args(["submodule", "-q", "sync"])
         .arg(relative_path)
         .run(dwn_ctx.exec_ctx);
@@ -2469,12 +2488,10 @@ pub(crate) fn update_submodule<'a>(
         // even though that has no relation to the upstream for the submodule.
         let current_branch = helpers::git(Some(dwn_ctx.src))
             .allow_failure()
-            .run_in_dry_run()
             .args(["symbolic-ref", "--short", "HEAD"])
             .run_capture(dwn_ctx.exec_ctx);
 
         let mut git = helpers::git(Some(dwn_ctx.src)).allow_failure();
-        git.run_in_dry_run();
         if current_branch.is_success() {
             // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
             // This syntax isn't accepted by `branch.{branch}`. Strip it.

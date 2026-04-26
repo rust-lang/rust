@@ -4,7 +4,6 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate};
-use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -173,7 +172,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                         && let output = typeck.expr_ty(body.value)
                         && let ty::Tuple(tys) = *subs.type_at(1).kind()
                     {
-                        cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, ExternAbi::Rust)
+                        cx.tcx.mk_fn_sig_safe_rust_abi(tys, output)
                     } else {
                         return;
                     }
@@ -318,7 +317,7 @@ fn check_inputs(
 }
 
 fn check_sig<'tcx>(closure_sig: FnSig<'tcx>, call_sig: FnSig<'tcx>) -> bool {
-    call_sig.safety.is_safe() && !has_late_bound_to_non_late_bound_regions(closure_sig, call_sig)
+    call_sig.safety().is_safe() && !has_late_bound_to_non_late_bound_regions(closure_sig, call_sig)
 }
 
 /// This walks through both signatures and checks for any time a late-bound region is expected by an

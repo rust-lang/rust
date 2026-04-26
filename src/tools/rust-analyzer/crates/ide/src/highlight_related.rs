@@ -2083,6 +2083,7 @@ fn test() {
     fn return_in_macros() {
         check(
             r#"
+//- minicore: fn
 macro_rules! N {
     ($i:ident, $x:expr, $blk:expr) => {
         for $i in 0..$x {

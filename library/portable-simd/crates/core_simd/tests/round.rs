@@ -42,6 +42,14 @@ macro_rules! float_rounding_test {
                     )
                 }
 
+                fn round_ties_even<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::round_ties_even,
+                        &Scalar::round_ties_even,
+                        &|_| true,
+                    )
+                }
+
                 fn fract<const LANES: usize>() {
                     test_helpers::test_unary_elementwise_flush_subnormals(
                         &Vector::<LANES>::fract,

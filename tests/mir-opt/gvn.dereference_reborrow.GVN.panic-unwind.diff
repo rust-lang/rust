@@ -20,16 +20,14 @@
       bb0: {
           StorageLive(_2);
           _2 = &(*_1);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = copy (*_2);
           StorageLive(_4);
 -         _4 = copy (*_2);
 +         _4 = copy _3;
           _0 = const ();
           StorageDead(_4);
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           StorageDead(_2);
           return;
       }

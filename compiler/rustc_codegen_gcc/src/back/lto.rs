@@ -144,9 +144,12 @@ fn fat_lto(
     for module in modules {
         match module {
             FatLtoInput::InMemory(m) => in_memory.push(m),
-            FatLtoInput::Serialized { name, buffer } => {
+            FatLtoInput::Serialized { name, bitcode_path } => {
                 info!("pushing serialized module {:?}", name);
-                serialized_modules.push((buffer, CString::new(name).unwrap()));
+                serialized_modules.push((
+                    SerializedModule::from_file(&bitcode_path),
+                    CString::new(name).unwrap(),
+                ));
             }
         }
     }

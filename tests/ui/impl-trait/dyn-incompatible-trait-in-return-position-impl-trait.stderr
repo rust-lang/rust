@@ -2,8 +2,11 @@ error[E0308]: mismatched types
   --> $DIR/dyn-incompatible-trait-in-return-position-impl-trait.rs:36:5
    |
 LL | fn can() -> impl DynIncompatible {
-   |             -------------------- expected `A` because of return type
-...
+   |             -------------------- expected a single type implementing `DynIncompatible` because of return type
+LL |     if true {
+LL |         return A;
+   |                - return type resolved to be `A`
+LL |     }
 LL |     B
    |     ^ expected `A`, found `B`
 
@@ -11,8 +14,11 @@ error[E0308]: mismatched types
   --> $DIR/dyn-incompatible-trait-in-return-position-impl-trait.rs:43:5
    |
 LL | fn cat() -> impl DynCompatible {
-   |             ------------------ expected `A` because of return type
-...
+   |             ------------------ expected a single type implementing `DynCompatible` because of return type
+LL |     if true {
+LL |         return A;
+   |                - return type resolved to be `A`
+LL |     }
 LL |     B
    |     ^ expected `A`, found `B`
 

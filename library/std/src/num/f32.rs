@@ -907,6 +907,7 @@ impl f32 {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f32, f32) {
         (self.sin(), self.cos())
     }

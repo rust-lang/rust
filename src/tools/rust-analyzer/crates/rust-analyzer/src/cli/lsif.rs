@@ -8,7 +8,7 @@ use ide::{
     RootDatabase, StaticIndex, StaticIndexedFile, TokenId, TokenStaticData,
     VendoredLibrariesConfig,
 };
-use ide_db::{LineIndexDatabase, line_index::WideEncoding};
+use ide_db::{line_index, line_index::WideEncoding};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
 use lsp_types::lsif;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
@@ -120,9 +120,9 @@ impl LsifManager<'_, '_> {
         }
         let file_id = id.file_id;
         let doc_id = self.get_file_id(file_id);
-        let line_index = self.db.line_index(file_id);
+        let line_index = line_index(self.db, file_id);
         let line_index = LineIndex {
-            index: line_index,
+            index: line_index.clone(),
             encoding: PositionEncoding::Wide(WideEncoding::Utf16),
             endings: LineEndings::Unix,
         };
@@ -241,9 +241,9 @@ impl LsifManager<'_, '_> {
         let StaticIndexedFile { file_id, tokens, folds, .. } = file;
         let doc_id = self.get_file_id(file_id);
         let text = self.analysis.file_text(file_id).unwrap();
-        let line_index = self.db.line_index(file_id);
+        let line_index = line_index(self.db, file_id);
         let line_index = LineIndex {
-            index: line_index,
+            index: line_index.clone(),
             encoding: PositionEncoding::Wide(WideEncoding::Utf16),
             endings: LineEndings::Unix,
         };

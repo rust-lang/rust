@@ -10,7 +10,7 @@ SOURCE_FILE
         ATTR
           POUND "#"
           L_BRACK "["
-          META
+          PATH_META
             PATH
               PATH_SEGMENT
                 NAME_REF
@@ -20,7 +20,7 @@ SOURCE_FILE
         ATTR
           POUND "#"
           L_BRACK "["
-          META
+          PATH_META
             PATH
               PATH_SEGMENT
                 NAME_REF
@@ -55,7 +55,7 @@ SOURCE_FILE
         ATTR
           POUND "#"
           L_BRACK "["
-          META
+          PATH_META
             PATH
               PATH_SEGMENT
                 NAME_REF
@@ -116,7 +116,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -158,7 +158,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -181,7 +181,7 @@ SOURCE_FILE
               POUND "#"
               WHITESPACE " "
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -228,7 +228,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -255,7 +255,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -282,7 +282,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -316,7 +316,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -352,7 +352,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -389,7 +389,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -422,7 +422,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF
@@ -456,7 +456,7 @@ SOURCE_FILE
             ATTR
               POUND "#"
               L_BRACK "["
-              META
+              PATH_META
                 PATH
                   PATH_SEGMENT
                     NAME_REF

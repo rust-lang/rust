@@ -198,7 +198,7 @@ trait FileIdToSyntax: Copy {
 
 impl FileIdToSyntax for EditionedFileId {
     fn file_syntax(self, db: &dyn db::ExpandDatabase) -> SyntaxNode {
-        db.parse(self).syntax_node()
+        self.parse(db).syntax_node()
     }
 }
 impl FileIdToSyntax for MacroCallId {
@@ -333,8 +333,8 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
         )?;
 
         let kind = self.kind();
-        let value = db
-            .parse(editioned_file_id)
+        let value = editioned_file_id
+            .parse(db)
             .syntax_node()
             .covering_element(range)
             .ancestors()
@@ -521,7 +521,7 @@ impl<N: AstNode> InFile<N> {
         )?;
 
         // FIXME: This heuristic is brittle and with the right macro may select completely unrelated nodes?
-        let anc = db.parse(editioned_file_id).syntax_node().covering_element(range);
+        let anc = editioned_file_id.parse(db).syntax_node().covering_element(range);
         let value = anc.ancestors().find_map(N::cast)?;
         Some(InRealFile::new(editioned_file_id, value))
     }

@@ -2,9 +2,8 @@
 //! gate, but the fact that not adding the feature gate will cause the
 //! diagnostic to not emit the custom diagnostic message
 //!
-#[diagnostic::on_move(
-    message = "Foo"
-)]
+#[diagnostic::on_move(message = "Foo")]
+//~^ WARN unknown diagnostic attribute
 #[derive(Debug)]
 struct Foo;
 

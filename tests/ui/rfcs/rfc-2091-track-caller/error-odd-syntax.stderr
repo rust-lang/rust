@@ -3,9 +3,14 @@ error[E0565]: malformed `track_caller` attribute input
    |
 LL | #[track_caller(1)]
    | ^^^^^^^^^^^^^^---^
-   | |             |
-   | |             didn't expect any arguments here
-   | help: must be of the form: `#[track_caller]`
+   |               |
+   |               didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL - #[track_caller(1)]
+LL + #[track_caller]
+   |
 
 error: aborting due to 1 previous error
 

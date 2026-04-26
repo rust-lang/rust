@@ -14,6 +14,7 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_from_proc_macro, is_in_test, sym, trait_ref_of_method};
 use itertools::Itertools;
+use rustc_middle::ty::Unnormalized;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
@@ -689,7 +690,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         }
         let depth = depth + 1;
         let typing_env = cx.typing_env();
-        let ty = tcx.normalize_erasing_regions(typing_env, ty);
+        let ty = tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty));
         match ty.kind() {
             ty::RawPtr(..) | ty::FnPtr(..) | ty::FnDef(..) => true,
             ty::Ref(_, t, _) | ty::Slice(t) | ty::Array(t, _) => self.has_pointer_debug(*t, depth),
@@ -724,7 +725,13 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 };
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
-                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
+                        self.has_pointer_debug(
+                            tcx.normalize_erasing_regions(
+                                typing_env,
+                                Unnormalized::new_wip(f.ty(tcx, args))
+                            ),
+                            depth,
+                        )
                     });
                 self.has_pointer_format.insert(ty, pointer_debug);
                 pointer_debug

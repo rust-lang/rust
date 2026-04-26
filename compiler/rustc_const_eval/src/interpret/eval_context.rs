@@ -1,5 +1,3 @@
-use std::debug_assert_matches;
-
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_hir::def_id::DefId;
@@ -11,9 +9,10 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
+    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, TypingMode,
+    Variance,
 };
-use rustc_middle::{mir, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
@@ -243,7 +242,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // opaque types. This is needed for trivial things like `size_of`, but also for using associated
         // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
         // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
-        debug_assert_matches!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
+        if cfg!(debug_assertions) {
+            match typing_env.typing_mode() {
+                TypingMode::PostAnalysis => {}
+                TypingMode::Coherence
+                | TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
+                | TypingMode::PostBorrowckAnalysis { .. } => {
+                    bug!("Const eval should always happens in PostAnalysis mode.");
+                }
+            }
+        }
+
         InterpCx {
             machine,
             tcx: tcx.at(root_span),

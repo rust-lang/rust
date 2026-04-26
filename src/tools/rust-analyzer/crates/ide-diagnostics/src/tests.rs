@@ -4,9 +4,10 @@ mod overly_long_real_world_cases;
 
 use hir::setup_tracing;
 use ide_db::{
-    LineIndexDatabase, RootDatabase,
+    RootDatabase,
     assists::{AssistResolveStrategy, ExprFillDefaultMode},
     base_db::SourceDatabase,
+    line_index,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
@@ -242,7 +243,7 @@ pub(crate) fn check_diagnostics_with_config(
         .into_group_map();
     for file_id in files {
         let file_id = file_id.file_id(&db);
-        let line_index = db.line_index(file_id);
+        let line_index = line_index(&db, file_id);
 
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
         let mut expected = extract_annotations(db.file_text(file_id).text(&db));

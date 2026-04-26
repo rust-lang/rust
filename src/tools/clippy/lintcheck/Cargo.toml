@@ -11,7 +11,7 @@ publish = false
 default-run = "lintcheck"
 
 [dependencies]
-cargo_metadata = "0.15.3"
+cargo_metadata = "0.23"
 clap = { version = "4.4", features = ["derive", "env"] }
 crossbeam-channel = "0.5.6"
 diff = "0.1.13"

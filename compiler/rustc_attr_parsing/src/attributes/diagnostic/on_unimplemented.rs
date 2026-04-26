@@ -1,9 +1,10 @@
+use rustc_errors::Diagnostic;
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
+use crate::errors::DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(Default)]
 pub(crate) struct OnUnimplementedParser {
@@ -21,33 +22,16 @@ impl OnUnimplementedParser {
         let span = cx.attr_span;
         self.span = Some(span);
 
-        // If target is not a trait, returning early will make `finalize` emit a
-        // `AttributeKind::OnUnimplemented {span, directive: None }`, to prevent it being
-        // accidentally used on non-trait items like trait aliases.
         if !matches!(cx.target, Target::Trait) {
-            // Lint later emitted in check_attr
+            cx.emit_dyn_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                move |dcx, level| DiagnosticOnUnimplementedOnlyForTraits.into_diag(dcx, level),
+                span,
+            );
             return;
         }
 
-        let items = match args {
-            ArgParser::List(items) if items.len() != 0 => items,
-            ArgParser::NoArgs | ArgParser::List(_) => {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MissingOptionsForOnUnimplemented,
-                    span,
-                );
-                return;
-            }
-            ArgParser::NameValue(_) => {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalformedOnUnimplementedAttr { span },
-                    span,
-                );
-                return;
-            }
-        };
+        let Some(items) = parse_list(cx, args, mode) else { return };
 
         if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
             merge_directives(cx, &mut self.directive, (span, directive));

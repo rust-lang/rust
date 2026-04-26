@@ -14,8 +14,6 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
-
         const PREFIX: &str = "MONO_ITEM ";
         const CGU_MARKER: &str = "@@";
 

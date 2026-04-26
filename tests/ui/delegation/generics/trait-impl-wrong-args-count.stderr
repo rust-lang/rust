@@ -1,5 +1,5 @@
 error[E0107]: function takes at most 2 generic arguments but 3 generic arguments were supplied
-  --> $DIR/trait-impl-wrong-args-count.rs:25:25
+  --> $DIR/trait-impl-wrong-args-count.rs:24:25
    |
 LL |         reuse to_reuse::bar;
    |                         ^^^
@@ -8,31 +8,31 @@ LL |         reuse to_reuse::bar;
    |                         help: remove the unnecessary generic argument
    |
 note: function defined here, with at most 2 generic parameters: `A`, `B`
-  --> $DIR/trait-impl-wrong-args-count.rs:7:16
+  --> $DIR/trait-impl-wrong-args-count.rs:6:16
    |
 LL |         pub fn bar<'a: 'a, 'b: 'b, A, B>(x: &super::XX) {}
    |                ^^^                 -  -
 
 error[E0107]: function takes 0 generic arguments but 3 generic arguments were supplied
-  --> $DIR/trait-impl-wrong-args-count.rs:28:25
+  --> $DIR/trait-impl-wrong-args-count.rs:27:25
    |
 LL |         reuse to_reuse::bar1;
    |                         ^^^^ expected 0 generic arguments
    |
 note: function defined here, with 0 generic parameters
-  --> $DIR/trait-impl-wrong-args-count.rs:8:16
+  --> $DIR/trait-impl-wrong-args-count.rs:7:16
    |
 LL |         pub fn bar1(x: &super::XX) {}
    |                ^^^^
 
 error[E0284]: type annotations needed
-  --> $DIR/trait-impl-wrong-args-count.rs:31:25
+  --> $DIR/trait-impl-wrong-args-count.rs:30:25
    |
 LL |         reuse to_reuse::bar2;
    |                         ^^^^ cannot infer the value of the const parameter `X` declared on the function `bar2`
    |
 note: required by a const generic parameter in `bar2`
-  --> $DIR/trait-impl-wrong-args-count.rs:9:39
+  --> $DIR/trait-impl-wrong-args-count.rs:8:39
    |
 LL |         pub fn bar2<A, B, C, D, E, F, const X: usize, const Y: bool>(x: &super::XX) {}
    |                                       ^^^^^^^^^^^^^^ required by this const generic parameter in `bar2`
@@ -42,13 +42,13 @@ LL |         reuse to_reuse::bar2::<A, B, C, D, E, F, X, Y>;
    |                             ++++++++++++++++++++++++++
 
 error[E0284]: type annotations needed
-  --> $DIR/trait-impl-wrong-args-count.rs:31:25
+  --> $DIR/trait-impl-wrong-args-count.rs:30:25
    |
 LL |         reuse to_reuse::bar2;
    |                         ^^^^ cannot infer the value of the const parameter `Y` declared on the function `bar2`
    |
 note: required by a const generic parameter in `bar2`
-  --> $DIR/trait-impl-wrong-args-count.rs:9:55
+  --> $DIR/trait-impl-wrong-args-count.rs:8:55
    |
 LL |         pub fn bar2<A, B, C, D, E, F, const X: usize, const Y: bool>(x: &super::XX) {}
    |                                                       ^^^^^^^^^^^^^ required by this const generic parameter in `bar2`
@@ -58,13 +58,13 @@ LL |         reuse to_reuse::bar2::<A, B, C, D, E, F, X, Y>;
    |                             ++++++++++++++++++++++++++
 
 error[E0107]: missing generics for trait `test_2::Trait1`
-  --> $DIR/trait-impl-wrong-args-count.rs:61:21
+  --> $DIR/trait-impl-wrong-args-count.rs:60:21
    |
 LL |         reuse <X as Trait1>::bar;
    |                     ^^^^^^ expected 2 generic arguments
    |
 note: trait defined here, with 2 generic parameters: `A`, `B`
-  --> $DIR/trait-impl-wrong-args-count.rs:52:11
+  --> $DIR/trait-impl-wrong-args-count.rs:51:11
    |
 LL |     trait Trait1<A, B> {
    |           ^^^^^^ -  -
@@ -74,13 +74,13 @@ LL |         reuse <X as Trait1<A, B>>::bar;
    |                           ++++++
 
 error[E0107]: missing generics for trait `test_2::Trait1`
-  --> $DIR/trait-impl-wrong-args-count.rs:68:21
+  --> $DIR/trait-impl-wrong-args-count.rs:67:21
    |
 LL |         reuse <X as Trait1>::bar::<'static, u32, u32, 1> as bar3;
    |                     ^^^^^^ expected 2 generic arguments
    |
 note: trait defined here, with 2 generic parameters: `A`, `B`
-  --> $DIR/trait-impl-wrong-args-count.rs:52:11
+  --> $DIR/trait-impl-wrong-args-count.rs:51:11
    |
 LL |     trait Trait1<A, B> {
    |           ^^^^^^ -  -
@@ -90,13 +90,13 @@ LL |         reuse <X as Trait1<A, B>>::bar::<'static, u32, u32, 1> as bar3;
    |                           ++++++
 
 error[E0107]: missing generics for trait `test_2::Trait1`
-  --> $DIR/trait-impl-wrong-args-count.rs:71:21
+  --> $DIR/trait-impl-wrong-args-count.rs:70:21
    |
 LL |         reuse <X as Trait1>::bar as bar4;
    |                     ^^^^^^ expected 2 generic arguments
    |
 note: trait defined here, with 2 generic parameters: `A`, `B`
-  --> $DIR/trait-impl-wrong-args-count.rs:52:11
+  --> $DIR/trait-impl-wrong-args-count.rs:51:11
    |
 LL |     trait Trait1<A, B> {
    |           ^^^^^^ -  -
@@ -106,37 +106,37 @@ LL |         reuse <X as Trait1<A, B>>::bar as bar4;
    |                           ++++++
 
 error[E0107]: associated function takes 0 generic arguments but 3 generic arguments were supplied
-  --> $DIR/trait-impl-wrong-args-count.rs:96:40
+  --> $DIR/trait-impl-wrong-args-count.rs:95:40
    |
 LL |         reuse <X as Trait1::<(), ()>>::bar;
    |                                        ^^^ expected 0 generic arguments
    |
 note: associated function defined here, with 0 generic parameters
-  --> $DIR/trait-impl-wrong-args-count.rs:87:12
+  --> $DIR/trait-impl-wrong-args-count.rs:86:12
    |
 LL |         fn bar() {}
    |            ^^^
 
 error[E0107]: associated function takes 0 generic arguments but 3 generic arguments were supplied
-  --> $DIR/trait-impl-wrong-args-count.rs:99:40
+  --> $DIR/trait-impl-wrong-args-count.rs:98:40
    |
 LL |         reuse <X as Trait1::<(), ()>>::bar as bar1;
    |                                        ^^^ expected 0 generic arguments
    |
 note: associated function defined here, with 0 generic parameters
-  --> $DIR/trait-impl-wrong-args-count.rs:87:12
+  --> $DIR/trait-impl-wrong-args-count.rs:86:12
    |
 LL |         fn bar() {}
    |            ^^^
 
 error[E0282]: type annotations needed
-  --> $DIR/trait-impl-wrong-args-count.rs:102:40
+  --> $DIR/trait-impl-wrong-args-count.rs:101:40
    |
 LL |         reuse <X as Trait1::<(), ()>>::foo as bar2;
    |                                        ^^^ cannot infer type of the type parameter `X` declared on the associated function `foo`
 
 error[E0107]: associated function takes at most 2 generic arguments but 3 generic arguments were supplied
-  --> $DIR/trait-impl-wrong-args-count.rs:105:40
+  --> $DIR/trait-impl-wrong-args-count.rs:104:40
    |
 LL |         reuse <X as Trait1::<(), ()>>::foo as bar3;
    |                                        ^^^
@@ -145,7 +145,7 @@ LL |         reuse <X as Trait1::<(), ()>>::foo as bar3;
    |                                        help: remove the unnecessary generic argument
    |
 note: associated function defined here, with at most 2 generic parameters: `X`, `Y`
-  --> $DIR/trait-impl-wrong-args-count.rs:88:12
+  --> $DIR/trait-impl-wrong-args-count.rs:87:12
    |
 LL |         fn foo<X, Y>() {}
    |            ^^^ -  -

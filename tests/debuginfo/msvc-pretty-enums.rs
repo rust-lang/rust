@@ -275,7 +275,6 @@ enum NicheLayoutWithFields3 {
 #[repr(transparent)]
 struct Wrapping128(u128);
 
-// #[rustc_layout(debug)]
 enum Wrapping128Niche {
     X(Wrapping128),
     Y,

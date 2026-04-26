@@ -8,53 +8,43 @@ LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
    |
    = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: positional format arguments are not allowed here
+warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:6:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {}")]
-   |                                                 ^
+   |                                                 ^ remove this format argument
    |
-   = help: only named format arguments with the name of one of the generic types are allowed in this context
+   = help: you can print empty braces by escaping them
 
-warning: invalid format specifier
+warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:10:50
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
-   |                                                  ^
-   |
-   = help: no format specifier are supported in this position
+   |                                                  ^ remove this format specifier
 
-warning: positional format arguments are not allowed here
+warning: indexed format arguments are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:10:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
-   |                                                 ^
-   |
-   = help: only named format arguments with the name of one of the generic types are allowed in this context
+   |                                                 ^ remove this format argument
 
-warning: invalid format specifier
+warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:15:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
-   |                                                     ^^^^
-   |
-   = help: no format specifier are supported in this position
+   |                                                     ^^^^ remove this format specifier
 
-warning: invalid format specifier
+warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:19:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                                     ^^
-   |
-   = help: no format specifier are supported in this position
+   |                                                     ^^ remove this format specifier
 
-warning: invalid format specifier
+warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/broken_format.rs:23:53
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:}")]
-   |                                                     ^
-   |
-   = help: no format specifier are supported in this position
+   |                                                     ^ remove this format specifier
 
 error[E0277]: {{Test } thing
   --> $DIR/broken_format.rs:36:13

@@ -8,9 +8,7 @@ use non_const_impl::X;
 const _: () = {
     let x = X;
     x == x;
-    //~^ ERROR: their message
-    //~| NOTE: their label
-    //~| NOTE: trait `PartialEq` is implemented but not `const`
-    //~| NOTE: their note
-    //~| NOTE: their other note
+    //~^ ERROR: cannot call non-const operator in constants
+    //~| NOTE: impl defined here, but it is not `const`
+    //~| NOTE: limited to constant functions
 };

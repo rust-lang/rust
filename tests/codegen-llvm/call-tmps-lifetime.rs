@@ -11,19 +11,12 @@ extern crate minicore;
 use minicore::*;
 
 // Const operand. Regression test for #98156.
+// Temporary allocas are not required when passing as byval arguments.
 //
 // CHECK-LABEL: define void @const_indirect(
 // CHECK-NEXT: start:
-// CHECK-NEXT: [[B:%.*]] = alloca
-// CHECK-NEXT: [[A:%.*]] = alloca
-// CHECK-NEXT: call void @llvm.lifetime.start.p0({{(i64 4096, )?}}ptr [[A]])
-// CHECK-NEXT: call void @llvm.memcpy.p0.p0.i32(ptr align 4 [[A]], ptr align 4 {{.*}}, i32 4096, i1 false)
-// CHECK-NEXT: call void %h(ptr {{.*}} [[A]])
-// CHECK-NEXT: call void @llvm.lifetime.end.p0({{(i64 4096, )?}}ptr [[A]])
-// CHECK-NEXT: call void @llvm.lifetime.start.p0({{(i64 4096, )?}}ptr [[B]])
-// CHECK-NEXT: call void @llvm.memcpy.p0.p0.i32(ptr align 4 [[B]], ptr align 4 {{.*}}, i32 4096, i1 false)
-// CHECK-NEXT: call void %h(ptr {{.*}} [[B]])
-// CHECK-NEXT: call void @llvm.lifetime.end.p0({{(i64 4096, )?}}ptr [[B]])
+// CHECK-NEXT: call void %h(ptr {{.*}}byval([4096 x i8]){{.*}} [[C:@anon.*]])
+// CHECK-NEXT: call void %h(ptr {{.*}}byval([4096 x i8]){{.*}} [[C]])
 #[no_mangle]
 pub fn const_indirect(h: extern "C" fn([u32; 1024])) {
     const C: [u32; 1024] = [0; 1024];

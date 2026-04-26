@@ -3,14 +3,14 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    PATH_META
     R_BRACK "]"
   WHITESPACE "\n"
   ATTR
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    KEY_VALUE_META
       PATH
         PATH_SEGMENT
           NAME_REF
@@ -24,7 +24,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    PATH_META
       PATH
         PATH
           PATH_SEGMENT
@@ -37,7 +37,7 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    KEY_VALUE_META
       PATH
         PATH
           PATH_SEGMENT
@@ -52,18 +52,20 @@ SOURCE_FILE
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    UNSAFE_META
       UNSAFE_KW "unsafe"
+      PATH_META
     R_BRACK "]"
   WHITESPACE "\n"
   ATTR
     POUND "#"
     BANG "!"
     L_BRACK "["
-    META
+    UNSAFE_META
       UNSAFE_KW "unsafe"
       WHITESPACE " "
-      EQ "="
+      KEY_VALUE_META
+        EQ "="
     R_BRACK "]"
   WHITESPACE "\n"
 error 3: expected identifier, `self`, `super`, `crate`, or `Self`
@@ -77,7 +79,7 @@ error 41: expected L_PAREN
 error 41: expected identifier, `self`, `super`, `crate`, or `Self`
 error 41: expected R_PAREN
 error 52: expected L_PAREN
-error 52: expected identifier, `self`, `super`, `crate`, or `Self`
+error 53: expected identifier, `self`, `super`, `crate`, or `Self`
 error 54: expected expression
 error 54: expected expression
 error 54: expected R_PAREN

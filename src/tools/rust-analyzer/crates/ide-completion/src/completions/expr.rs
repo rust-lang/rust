@@ -317,7 +317,12 @@ pub(crate) fn complete_expr_path(
                 }
                 // synthetic names currently leak out as we lack synthetic hygiene, so filter them
                 // out here
-                ScopeDef::Local(_) => {
+                ScopeDef::Local(_) =>
+                {
+                    #[expect(
+                        clippy::collapsible_match,
+                        reason = "this changes meaning, causing the next arm to be selected"
+                    )]
                     if !name.as_str().starts_with('<') {
                         acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
                     }
@@ -451,7 +456,11 @@ pub(crate) fn complete_expr_path(
     }
 }
 
-pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) {
+pub(crate) fn complete_expr(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
+) {
     let _p = tracing::info_span!("complete_expr").entered();
 
     if !ctx.config.enable_term_search {
@@ -459,6 +468,10 @@ pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) 
     }
 
     if !ctx.qualifier_ctx.none() {
+        return;
+    }
+
+    if !matches!(qualified, Qualified::No) {
         return;
     }
 

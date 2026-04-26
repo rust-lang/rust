@@ -7,13 +7,13 @@
 
 use std::pat::pattern_type;
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type NonNull<T> = pattern_type!(*const T is !null); //~ ERROR layout_of
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type Test = Option<NonNull<()>>; //~ ERROR layout_of
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type Wide = pattern_type!(*const [u8] is !null); //~ ERROR layout_of
 
 const _: () = assert!(size_of::<NonNull<()>>() == size_of::<Option<NonNull<()>>>());

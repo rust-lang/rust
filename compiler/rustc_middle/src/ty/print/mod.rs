@@ -48,15 +48,17 @@ pub trait Printer<'tcx>: Sized {
         let impl_trait_ref = tcx.impl_opt_trait_ref(impl_def_id);
         let (self_ty, impl_trait_ref) = if tcx.generics_of(impl_def_id).count() <= args.len() {
             (
-                self_ty.instantiate(tcx, args),
-                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(tcx, args)),
+                self_ty.instantiate(tcx, args).skip_norm_wip(),
+                impl_trait_ref
+                    .map(|impl_trait_ref| impl_trait_ref.instantiate(tcx, args).skip_norm_wip()),
             )
         } else {
             // We are probably printing a nested item inside of an impl.
             // Use the identity substitutions for the impl.
             (
-                self_ty.instantiate_identity(),
-                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+                self_ty.instantiate_identity().skip_norm_wip(),
+                impl_trait_ref
+                    .map(|impl_trait_ref| impl_trait_ref.instantiate_identity().skip_norm_wip()),
             )
         };
 

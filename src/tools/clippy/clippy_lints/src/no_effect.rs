@@ -156,6 +156,7 @@ impl NoEffect {
                                     .tcx
                                     .fn_sig(item.owner_id)
                                     .instantiate_identity()
+                                    .skip_norm_wip()
                                     .output()
                                     .skip_binder();
 

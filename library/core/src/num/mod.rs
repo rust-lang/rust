@@ -986,7 +986,8 @@ impl u8 {
         matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'F') | matches!(*self, b'a'..=b'f')
     }
 
-    /// Checks if the value is an ASCII punctuation character:
+    /// Checks if the value is an ASCII punctuation or symbol character
+    /// (i.e. not alphanumeric, whitespace, or control):
     ///
     /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
     /// - U+003A ..= U+0040 `: ; < = > ? @`, or
@@ -1027,7 +1028,8 @@ impl u8 {
             | matches!(*self, b'{'..=b'~')
     }
 
-    /// Checks if the value is an ASCII graphic character:
+    /// Checks if the value is an ASCII graphic character
+    /// (i.e. not whitespace or control):
     /// U+0021 '!' ..= U+007E '~'.
     ///
     /// # Examples
@@ -1064,6 +1066,9 @@ impl u8 {
     /// Checks if the value is an ASCII whitespace character:
     /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
     /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
+    ///
+    /// **Warning:** Because the list above excludes U+000B VERTICAL TAB,
+    /// `b.is_ascii_whitespace()` is **not** equivalent to `char::from(b).is_whitespace()`.
     ///
     /// Rust uses the WhatWG Infra Standard's [definition of ASCII
     /// whitespace][infra-aw]. There are several other definitions in

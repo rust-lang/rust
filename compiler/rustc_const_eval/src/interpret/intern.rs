@@ -16,8 +16,8 @@
 use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_hir as hir;
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
+use rustc_hir::{self as hir};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{
     AllocBytes, ConstAllocation, CtfeProvenance, InterpResult, Provenance,
@@ -105,7 +105,7 @@ fn intern_shallow<'tcx, M: CompileTimeMachine<'tcx>>(
     ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
-    disambiguator: Option<&mut DisambiguatorState>,
+    disambiguator: Option<&mut PerParentDisambiguatorState>,
 ) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, InternError> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
@@ -144,11 +144,11 @@ fn intern_as_new_static<'tcx>(
     static_id: LocalDefId,
     alloc_id: AllocId,
     alloc: ConstAllocation<'tcx>,
-    disambiguator: &mut DisambiguatorState,
+    disambiguator: &mut PerParentDisambiguatorState,
 ) {
-    // `intern_const_alloc_recursive` is called once per static and it contains the `DisambiguatorState`.
+    // `intern_const_alloc_recursive` is called once per static and it contains the `PerParentDisambiguatorState`.
     //  The `<static_id>::{{nested}}` path is thus unique to `intern_const_alloc_recursive` and the
-    // `DisambiguatorState` ensures the generated path is unique for this call as we generate
+    // `PerParentDisambiguatorState` ensures the generated path is unique for this call as we generate
     // `<static_id>::{{nested#n}}` where `n` is the `n`th `intern_as_new_static` call.
     let feed = tcx.create_def(
         static_id,
@@ -205,7 +205,9 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
 ) -> Result<(), InternError> {
-    let mut disambiguator = DisambiguatorState::new();
+    let mut disambiguator =
+        ecx.machine.static_def_id().map(|id| PerParentDisambiguatorState::new(id));
+    let mut disambiguator = disambiguator.as_mut();
 
     // We are interning recursively, and for mutability we are distinguishing the "root" allocation
     // that we are starting in, and all other allocations that we are encountering recursively.
@@ -244,13 +246,15 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
     // This gives us the initial set of nested allocations, which will then all be processed
     // recursively in the loop below.
     let mut todo: Vec<_> = if is_static {
+        assert!(disambiguator.is_some());
         // Do not steal the root allocation, we need it later to create the return value of `eval_static_initializer`.
         // But still change its mutability to match the requested one.
         let (kind, alloc) = ecx.memory.alloc_map.get_mut(&base_alloc_id).unwrap();
         prepare_alloc(*ecx.tcx, *kind, alloc, base_mutability)?;
         alloc.provenance().ptrs().iter().map(|&(_, prov)| prov).collect()
     } else {
-        intern_shallow(ecx, base_alloc_id, base_mutability, Some(&mut disambiguator))?.collect()
+        assert!(disambiguator.is_none());
+        intern_shallow(ecx, base_alloc_id, base_mutability, None)?.collect()
     };
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
@@ -332,7 +336,7 @@ pub fn intern_const_alloc_recursive<'tcx, M: CompileTimeMachine<'tcx>>(
         // okay with losing some potential for immutability here. This can anyway only affect
         // `static mut`.
         just_interned.insert(alloc_id);
-        let next = intern_shallow(ecx, alloc_id, inner_mutability, Some(&mut disambiguator))?;
+        let next = intern_shallow(ecx, alloc_id, inner_mutability, disambiguator.as_deref_mut())?;
         todo.extend(next);
     }
     if found_bad_mutable_ptr {

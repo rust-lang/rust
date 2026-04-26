@@ -55,8 +55,8 @@ mod foo {
     # ![doc = "123..."]
     # ![attr2]
     # ![attr3]
-    #[cfg_attr(true , cfg(false ))] fn foo() {}
-    #[cfg(true )] fn bar() {}
+    #[cfg_attr (true , cfg (false ))] fn foo() {}
+    #[cfg (true )] fn bar() {}
 }"##]],
     );
 }

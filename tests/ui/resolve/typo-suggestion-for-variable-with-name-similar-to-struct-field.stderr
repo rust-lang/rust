@@ -34,7 +34,10 @@ error[E0425]: cannot find value `config` in this scope
 LL |         println!("{config}");
    |                    ^^^^^^
    |
-   = help: you might have meant to use the available field in a format string: `"{}", self.config`
+help: you might have meant to use the available field
+   |
+LL |         println!("{self.config}");
+   |                    +++++
 help: a local variable with a similar name exists
    |
 LL -         println!("{config}");

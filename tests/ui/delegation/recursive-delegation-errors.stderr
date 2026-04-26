@@ -1,101 +1,101 @@
 error: failed to resolve delegation callee
-  --> $DIR/recursive-delegation-errors.rs:6:11
+  --> $DIR/recursive-delegation-errors.rs:4:11
    |
 LL |     reuse foo;
    |           ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:12:11
+  --> $DIR/recursive-delegation-errors.rs:10:11
    |
 LL |     reuse foo as bar;
    |           ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:14:11
+  --> $DIR/recursive-delegation-errors.rs:12:11
    |
 LL |     reuse bar as foo;
    |           ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:19:11
+  --> $DIR/recursive-delegation-errors.rs:17:11
    |
 LL |     reuse foo as foo1;
    |           ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:21:11
+  --> $DIR/recursive-delegation-errors.rs:19:11
    |
 LL |     reuse foo1 as foo2;
    |           ^^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:23:11
+  --> $DIR/recursive-delegation-errors.rs:21:11
    |
 LL |     reuse foo2 as foo3;
    |           ^^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:25:11
+  --> $DIR/recursive-delegation-errors.rs:23:11
    |
 LL |     reuse foo3 as foo4;
    |           ^^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:27:11
+  --> $DIR/recursive-delegation-errors.rs:25:11
    |
 LL |     reuse foo4 as foo5;
    |           ^^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:29:11
+  --> $DIR/recursive-delegation-errors.rs:27:11
    |
 LL |     reuse foo5 as foo;
    |           ^^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:35:22
+  --> $DIR/recursive-delegation-errors.rs:33:22
    |
 LL |         reuse Trait::foo as bar;
    |                      ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:38:22
+  --> $DIR/recursive-delegation-errors.rs:36:22
    |
 LL |         reuse Trait::bar as foo;
    |                      ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:45:30
+  --> $DIR/recursive-delegation-errors.rs:43:30
    |
 LL |     reuse super::fifth_mod::{bar as foo, foo as bar};
    |                              ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:45:42
+  --> $DIR/recursive-delegation-errors.rs:43:42
    |
 LL |     reuse super::fifth_mod::{bar as foo, foo as bar};
    |                                          ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:50:27
+  --> $DIR/recursive-delegation-errors.rs:48:27
    |
 LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    |                           ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:50:39
+  --> $DIR/recursive-delegation-errors.rs:48:39
    |
 LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    |                                       ^^^
 
 error: encountered a cycle during delegation signature resolution
-  --> $DIR/recursive-delegation-errors.rs:50:51
+  --> $DIR/recursive-delegation-errors.rs:48:51
    |
 LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    |                                                   ^^^
 
 error[E0283]: type annotations needed
-  --> $DIR/recursive-delegation-errors.rs:35:22
+  --> $DIR/recursive-delegation-errors.rs:33:22
    |
 LL |         reuse Trait::foo as bar;
    |                      ^^^ cannot infer type
@@ -103,7 +103,7 @@ LL |         reuse Trait::foo as bar;
    = note: the type must implement `fourth_mod::Trait`
 
 error[E0283]: type annotations needed
-  --> $DIR/recursive-delegation-errors.rs:38:22
+  --> $DIR/recursive-delegation-errors.rs:36:22
    |
 LL |         reuse Trait::bar as foo;
    |                      ^^^ cannot infer type
@@ -111,7 +111,7 @@ LL |         reuse Trait::bar as foo;
    = note: the type must implement `fourth_mod::Trait`
 
 error[E0283]: type annotations needed
-  --> $DIR/recursive-delegation-errors.rs:50:27
+  --> $DIR/recursive-delegation-errors.rs:48:27
    |
 LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    |                           ^^^ cannot infer type
@@ -119,7 +119,7 @@ LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    = note: the type must implement `GlobReuse`
 
 error[E0283]: type annotations needed
-  --> $DIR/recursive-delegation-errors.rs:50:39
+  --> $DIR/recursive-delegation-errors.rs:48:39
    |
 LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    |                                       ^^^ cannot infer type
@@ -127,7 +127,7 @@ LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    = note: the type must implement `GlobReuse`
 
 error[E0283]: type annotations needed
-  --> $DIR/recursive-delegation-errors.rs:50:51
+  --> $DIR/recursive-delegation-errors.rs:48:51
    |
 LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    |                                                   ^^^ cannot infer type
@@ -135,7 +135,7 @@ LL |         reuse GlobReuse::{foo as bar, bar as goo, goo as foo};
    = note: the type must implement `GlobReuse`
 
 warning: function cannot return without recursing
-  --> $DIR/recursive-delegation-errors.rs:6:11
+  --> $DIR/recursive-delegation-errors.rs:4:11
    |
 LL |     reuse foo;
    |           ^^^

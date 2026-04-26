@@ -3,7 +3,6 @@
 //@ aux-crate:recursive_delegation_aux=recursive-delegation-aux.rs
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 #![allow(warnings)]
 
 mod first_mod {

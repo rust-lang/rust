@@ -1,16 +1,15 @@
 use std::mem;
 
 use super::prelude::*;
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate, SingleAttributeParser};
+use crate::attributes::{NoArgsAttributeParser, SingleAttributeParser};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 
 pub(crate) struct RustcSkipDuringMethodDispatchParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser {
     const PATH: &[Symbol] = &[sym::rustc_skip_during_method_dispatch];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &["array, boxed_slice"]);
@@ -18,11 +17,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let mut array = false;
         let mut boxed_slice = false;
-        let Some(args) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let args = cx.expect_list(args, cx.attr_span)?;
         if args.is_empty() {
             cx.adcx().expected_at_least_one_argument(args.span);
             return None;
@@ -60,7 +55,6 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
 pub(crate) struct RustcParenSugarParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcParenSugarParser {
     const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcParenSugar;
 }
@@ -70,7 +64,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcParenSugarParser {
 pub(crate) struct MarkerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
     const PATH: &[Symbol] = &[sym::marker];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
         Warn(Target::Field),
@@ -83,7 +76,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
 pub(crate) struct RustcDenyExplicitImplParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDenyExplicitImplParser {
     const PATH: &[Symbol] = &[sym::rustc_deny_explicit_impl];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDenyExplicitImpl;
 }
@@ -91,7 +83,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDenyExplicitImplParser {
 pub(crate) struct RustcDynIncompatibleTraitParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDynIncompatibleTraitParser {
     const PATH: &[Symbol] = &[sym::rustc_dyn_incompatible_trait];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcDynIncompatibleTrait;
 }
@@ -101,7 +92,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDynIncompatibleTraitParser {
 pub(crate) struct RustcSpecializationTraitParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcSpecializationTraitParser {
     const PATH: &[Symbol] = &[sym::rustc_specialization_trait];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcSpecializationTrait;
 }
@@ -109,7 +99,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcSpecializationTraitParser {
 pub(crate) struct RustcUnsafeSpecializationMarkerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcUnsafeSpecializationMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_unsafe_specialization_marker];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcUnsafeSpecializationMarker;
 }
@@ -119,7 +108,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcUnsafeSpecializationMarkerParse
 pub(crate) struct RustcCoinductiveParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcCoinductiveParser {
     const PATH: &[Symbol] = &[sym::rustc_coinductive];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoinductive;
 }
@@ -127,7 +115,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCoinductiveParser {
 pub(crate) struct RustcAllowIncoherentImplParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcAllowIncoherentImplParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_incoherent_impl];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Method(MethodKind::Inherent))]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcAllowIncoherentImpl;
@@ -136,16 +123,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcAllowIncoherentImplParser {
 pub(crate) struct FundamentalParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const PATH: &[Symbol] = &[sym::fundamental];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Struct), Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
-}
-
-pub(crate) struct PointeeParser;
-impl<S: Stage> NoArgsAttributeParser<S> for PointeeParser {
-    const PATH: &[Symbol] = &[sym::pointee];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Pointee;
 }

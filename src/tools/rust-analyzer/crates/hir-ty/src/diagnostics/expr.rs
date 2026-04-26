@@ -146,7 +146,7 @@ impl<'db> ExprValidator<'db> {
                 Expr::If { .. } => {
                     self.check_for_unnecessary_else(id, expr);
                 }
-                Expr::Block { .. } | Expr::Async { .. } | Expr::Unsafe { .. } => {
+                Expr::Block { .. } | Expr::Unsafe { .. } => {
                     self.validate_block(expr);
                 }
                 _ => {}
@@ -238,8 +238,7 @@ impl<'db> ExprValidator<'db> {
             if (pat_ty == scrut_ty
                 || scrut_ty
                     .as_reference()
-                    .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
-                    .unwrap_or(false))
+                    .is_none_or(|(match_expr_ty, ..)| match_expr_ty == pat_ty))
                 && types_of_subpatterns_do_match(arm.pat, self.body, self.infer)
             {
                 // If we had a NotUsefulMatchArm diagnostic, we could
@@ -325,10 +324,7 @@ impl<'db> ExprValidator<'db> {
     }
 
     fn validate_block(&mut self, expr: &Expr) {
-        let (Expr::Block { statements, .. }
-        | Expr::Async { statements, .. }
-        | Expr::Unsafe { statements, .. }) = expr
-        else {
+        let (Expr::Block { statements, .. } | Expr::Unsafe { statements, .. }) = expr else {
             return;
         };
         let pattern_arena = Arena::new();

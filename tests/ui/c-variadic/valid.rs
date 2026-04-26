@@ -4,16 +4,16 @@
 
 // In rust (and C23 and above) `...` can be the only argument.
 unsafe extern "C" fn only_dot_dot_dot(mut ap: ...) -> i32 {
-    unsafe { ap.arg() }
+    unsafe { ap.next_arg() }
 }
 
 unsafe extern "C-unwind" fn abi_c_unwind(mut ap: ...) -> i32 {
-    unsafe { ap.arg() }
+    unsafe { ap.next_arg() }
 }
 
 #[allow(improper_ctypes_definitions)]
 unsafe extern "C" fn mix_int_float(mut ap: ...) -> (i64, f64, *const i32, f64) {
-    (ap.arg(), ap.arg(), ap.arg(), ap.arg())
+    (ap.next_arg(), ap.next_arg(), ap.next_arg(), ap.next_arg())
 }
 
 fn main() {

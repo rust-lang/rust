@@ -157,7 +157,7 @@ pub enum Change {
 }
 
 /// Kind of [file change](ChangedFile).
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChangeKind {
     /// The file was (re-)created
     Create,

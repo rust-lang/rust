@@ -5642,27 +5642,16 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [i8, int8x8x3_t, int8x8_t]
-      - [i16, int16x4x3_t, int16x4_t]
-      - [i32, int32x2x3_t, int32x2_t]
-      - [i8, int8x16x3_t, int8x16_t]
-      - [i16, int16x8x3_t, int16x8_t]
-      - [i32, int32x4x3_t, int32x4_t]
-      - [f32, float32x2x3_t, float32x2_t]
-      - [f32, float32x4x3_t, float32x4_t]
+      - [i8, int8x8x3_t, "8"]
+      - [i16, int16x4x3_t, "4"]
+      - [i32, int32x2x3_t, "2"]
+      - [i8, int8x16x3_t, "16"]
+      - [i16, int16x8x3_t, "8"]
+      - [i32, int32x4x3_t, "4"]
+      - [f32, float32x2x3_t, "2"]
+      - [f32, float32x4x3_t, "4"]
     compose:
-      - LLVMLink:
-          name: 'vst3.{neon_type[1]}'
-          arguments:
-            - 'a: {type[2]}'
-            - 'b: {type[2]}'
-            - 'c: {type[2]}'
-            - 'ptr: *mut i8'
-          links:
-            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0'
-              arch: aarch64,arm64ec
-      - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
-
+      - FnCall: ["crate::core_arch::macros::interleaving_store!", [{ Type: "{type[0]}" }, "{type[2]}", "3", a, b], [], true]
 
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"

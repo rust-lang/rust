@@ -19,7 +19,7 @@ const trait Foo {}
 impl Foo for () {}
 
 struct Conditional<T: Foo>(T);
-impl<T> const Drop for Conditional<T> where T: [const] Foo {
+impl<T> const Drop for Conditional<T> where T: [const] Foo + [const] Destruct {
     fn drop(&mut self) {}
 }
 

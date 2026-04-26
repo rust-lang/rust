@@ -18,6 +18,7 @@ extern crate minicore;
 // hwasan:       @__hwasan_tls
 // hwasan:       call void @llvm.hwasan.check.memaccess.shortgranules
 // hwasan:       declare void @__hwasan_init()
+// hwasan:       attributes #0 {{.*"target-features"=".*\+tagged-globals.*"}}
 
 // The `__hwasan_tls` symbol is unconditionally declared by LLVM's `HWAddressSanitizer` pass.
 // However, in kernel mode KHWASAN does not actually use it (because shadow mapping is fixed
@@ -33,6 +34,7 @@ extern crate minicore;
 //
 // khwasan-NOT:   @__hwasan_init
 // khwasan:       call void @llvm.hwasan.check.memaccess.shortgranules
+// khwasan-NOT:   attributes #0 {{.*"target-features"=".*\+tagged-globals.*"}}
 #[no_mangle]
 pub fn test(b: &mut u8) -> u8 {
     *b

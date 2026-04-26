@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait {
     fn description(&self) -> &str {}

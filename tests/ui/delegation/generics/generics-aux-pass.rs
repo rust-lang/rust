@@ -2,7 +2,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 reuse generics::foo as bar;
 reuse generics::Trait::foo as trait_foo;

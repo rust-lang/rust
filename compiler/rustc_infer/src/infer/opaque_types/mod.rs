@@ -6,7 +6,7 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, OpaqueTypeKey, ProvisionalHiddenType, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt,
+    TypeVisitableExt, Unnormalized,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};
@@ -89,7 +89,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 if def_id.is_local() =>
             {
                 let def_id = def_id.expect_local();
-                if let ty::TypingMode::Coherence = self.typing_mode() {
+                if self.typing_mode().is_coherence() {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -264,7 +264,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 let actual = prev.unwrap_or_else(|| {
                     let actual = tcx
                         .type_of_opaque_hir_typeck(opaque_type_key.def_id)
-                        .instantiate(self.tcx, opaque_type_key.args);
+                        .instantiate(self.tcx, opaque_type_key.args)
+                        .skip_norm_wip();
                     let actual = ty::fold_regions(tcx, actual, |re, _dbi| match re.kind() {
                         ty::ReErased => self.next_region_var(RegionVariableOrigin::Misc(span)),
                         _ => re,
@@ -352,7 +353,9 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
-        for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
+        for (predicate, _) in
+            item_bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
+        {
             let predicate = replace_opaques_in(predicate, goals);
 
             // Require that the predicate holds for the concrete type.
@@ -363,7 +366,9 @@ impl<'tcx> InferCtxt<'tcx> {
         // If this opaque is being defined and it's conditionally const,
         if self.tcx.is_conditionally_const(def_id) {
             let item_bounds = tcx.explicit_implied_const_bounds(def_id);
-            for (predicate, _) in item_bounds.iter_instantiated_copied(tcx, args) {
+            for (predicate, _) in
+                item_bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
+            {
                 let predicate = replace_opaques_in(
                     predicate.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe),
                     goals,

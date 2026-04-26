@@ -17,7 +17,7 @@ use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
@@ -458,7 +458,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         type_names::push_generic_args(
             tcx,
-            tcx.normalize_erasing_regions(self.typing_env(), args),
+            tcx.normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(args)),
             &mut name,
         );
 
@@ -595,7 +595,10 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 iter::zip(args, names)
                     .filter_map(|(kind, name)| {
                         kind.as_type().map(|ty| {
-                            let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
+                            let actual_type = cx.tcx.normalize_erasing_regions(
+                                cx.typing_env(),
+                                Unnormalized::new_wip(ty),
+                            );
                             let actual_type_metadata = type_di_node(cx, actual_type);
                             Some(cx.create_template_type_parameter(
                                 name.as_str(),

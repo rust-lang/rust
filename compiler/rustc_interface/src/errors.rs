@@ -25,7 +25,7 @@ pub(crate) struct CrateNameInvalid<'a> {
 
 #[derive(Diagnostic)]
 #[diag("Ferris cannot be used as an identifier")]
-pub struct FerrisIdentifier {
+pub(crate) struct FerrisIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
     #[suggestion(
@@ -39,7 +39,7 @@ pub struct FerrisIdentifier {
 
 #[derive(Diagnostic)]
 #[diag("identifiers cannot contain emoji: `{$ident}`")]
-pub struct EmojiIdentifier {
+pub(crate) struct EmojiIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
     pub ident: Symbol,
@@ -47,22 +47,22 @@ pub struct EmojiIdentifier {
 
 #[derive(Diagnostic)]
 #[diag("cannot mix `bin` crate type with others")]
-pub struct MixedBinCrate;
+pub(crate) struct MixedBinCrate;
 
 #[derive(Diagnostic)]
 #[diag("cannot mix `proc-macro` crate type with others")]
-pub struct MixedProcMacroCrate;
+pub(crate) struct MixedProcMacroCrate;
 
 #[derive(Diagnostic)]
 #[diag("error writing dependencies to `{$path}`: {$error}")]
-pub struct ErrorWritingDependencies<'a> {
+pub(crate) struct ErrorWritingDependencies<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag("the input file \"{$path}\" would be overwritten by the generated executable")]
-pub struct InputFileWouldBeOverWritten<'a> {
+pub(crate) struct InputFileWouldBeOverWritten<'a> {
     pub path: &'a Path,
 }
 
@@ -70,22 +70,22 @@ pub struct InputFileWouldBeOverWritten<'a> {
 #[diag(
     "the generated executable for the input file \"{$input_path}\" conflicts with the existing directory \"{$dir_path}\""
 )]
-pub struct GeneratedFileConflictsWithDirectory<'a> {
+pub(crate) struct GeneratedFileConflictsWithDirectory<'a> {
     pub input_path: &'a Path,
     pub dir_path: &'a Path,
 }
 
 #[derive(Diagnostic)]
 #[diag("failed to find or create the directory specified by `--temps-dir`")]
-pub struct TempsDirError;
+pub(crate) struct TempsDirError;
 
 #[derive(Diagnostic)]
 #[diag("failed to find or create the directory specified by `--out-dir`")]
-pub struct OutDirError;
+pub(crate) struct OutDirError;
 
 #[derive(Diagnostic)]
 #[diag("failed to write file {$path}: {$error}\"")]
-pub struct FailedWritingFile<'a> {
+pub(crate) struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
@@ -94,25 +94,25 @@ pub struct FailedWritingFile<'a> {
 #[diag(
     "building proc macro crate with `panic=abort` or `panic=immediate-abort` may crash the compiler should the proc-macro panic"
 )]
-pub struct ProcMacroCratePanicAbort;
+pub(crate) struct ProcMacroCratePanicAbort;
 
 #[derive(Diagnostic)]
 #[diag(
     "due to multiple output types requested, the explicitly specified output file name will be adapted for each output type"
 )]
-pub struct MultipleOutputTypesAdaption;
+pub(crate) struct MultipleOutputTypesAdaption;
 
 #[derive(Diagnostic)]
 #[diag("ignoring -C extra-filename flag due to -o flag")]
-pub struct IgnoringExtraFilename;
+pub(crate) struct IgnoringExtraFilename;
 
 #[derive(Diagnostic)]
 #[diag("ignoring --out-dir flag due to -o flag")]
-pub struct IgnoringOutDir;
+pub(crate) struct IgnoringOutDir;
 
 #[derive(Diagnostic)]
 #[diag("can't use option `-o` or `--emit` to write multiple output types to stdout")]
-pub struct MultipleOutputTypesToStdout;
+pub(crate) struct MultipleOutputTypesToStdout;
 
 #[derive(Diagnostic)]
 #[diag(

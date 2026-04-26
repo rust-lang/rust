@@ -4,7 +4,7 @@
 
 fn read_too_many() {
     unsafe extern "C" fn variadic(mut ap: ...) {
-        ap.arg::<i32>();
+        ap.next_arg::<i32>();
     }
 
     unsafe { variadic() };

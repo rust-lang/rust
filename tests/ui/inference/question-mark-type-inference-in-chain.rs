@@ -9,7 +9,9 @@ type Result<T, E = AnotherError> = core::result::Result<T, E>;
 pub struct Error;
 
 impl From<AnotherError> for Error {
-    fn from(_: AnotherError) -> Self { Error }
+    fn from(_: AnotherError) -> Self {
+        Error
+    }
 }
 
 impl std::error::Error for Error {}
@@ -70,12 +72,12 @@ pub fn error4(lines: &[&str]) -> Result<Vec<Version>> {
         //~^ NOTE: the method call chain might not have had the expected associated types
         //~| NOTE: `Iterator::Item` changed to `Result<Version, Error>` here
         .collect::<Result<Vec<Version>>>()?;
-        //~^ ERROR: a value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from an iterator over elements of type `std::result::Result<Version, Error>`
-        //~| NOTE: value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from `std::iter::Iterator<Item=std::result::Result<Version, Error>>`
-        //~| NOTE: required by a bound introduced by this call
-        //~| HELP: the trait
-        //~| HELP: for that trait implementation, expected `AnotherError`, found `Error`
-        //~| NOTE: required by a bound in `collect`
+    //~^ ERROR: a value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from an iterator over elements of type `std::result::Result<Version, Error>`
+    //~| NOTE: value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from `std::iter::Iterator<Item=std::result::Result<Version, Error>>`
+    //~| NOTE: required by a bound introduced by this call
+    //~| HELP: the trait
+    //~| HELP: for that trait implementation, expected `AnotherError`, found `Error`
+    //~| NOTE: required by a bound in `collect`
     tags.sort();
 
     Ok(tags)

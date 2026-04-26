@@ -1322,6 +1322,18 @@ pub fn meta_path(path: ast::Path) -> ast::Meta {
     ast_from_text(&format!("#[{path}]"))
 }
 
+pub fn cfg_attr_meta(
+    predicate: ast::CfgPredicate,
+    inner: impl IntoIterator<Item = ast::Meta>,
+) -> ast::CfgAttrMeta {
+    let inner = inner.into_iter().join(", ");
+    ast_from_text(&format!("#![cfg_attr({predicate}, {inner})]"))
+}
+
+pub fn cfg_flag(flag: &str) -> ast::CfgPredicate {
+    ast_from_text(&format!("#![cfg({flag})]"))
+}
+
 pub fn token_tree(
     delimiter: SyntaxKind,
     tt: impl IntoIterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>>,

@@ -866,7 +866,7 @@ impl<'a> Parser<'a> {
             // `raw [ const | mut ]`.
             let found_raw = self.eat_keyword(exp!(Raw));
             assert!(found_raw);
-            let mutability = self.parse_const_or_mut().unwrap();
+            let mutability = self.parse_mut_or_const().unwrap();
             (ast::BorrowKind::Raw, mutability)
         } else {
             match self.parse_pin_and_mut() {
@@ -3464,11 +3464,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_metavar_guard(&mut self) -> Option<Box<Guard>> {
-        self.eat_metavar_seq_with_matcher(
-            |mv_kind| matches!(mv_kind, MetaVarKind::Guard),
-            |this| this.parse_match_arm_guard(),
-        )
-        .flatten()
+        self.eat_metavar_seq(MetaVarKind::Guard, |this| {
+            this.expect_match_arm_guard(ForceCollect::Yes)
+        })
     }
 
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Guard>>> {

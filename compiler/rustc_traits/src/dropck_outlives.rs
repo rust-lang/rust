@@ -54,7 +54,7 @@ pub(crate) fn adt_dtorck_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &DropckCo
 
     let mut result = DropckConstraint::empty();
     for field in def.all_fields() {
-        let fty = tcx.type_of(field.did).instantiate_identity();
+        let fty = tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
         dtorck_constraint_for_ty_inner(tcx, typing_env, span, 0, fty, &mut result);
     }
     result.outlives.extend(tcx.destructor_constraints(def));

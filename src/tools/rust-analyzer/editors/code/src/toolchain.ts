@@ -100,7 +100,7 @@ export class Cargo {
             );
         } catch (err) {
             log.error(`Cargo invocation has failed: ${err}`);
-            throw new Error(`Cargo invocation has failed: ${err}`);
+            throw new Error(`Cargo invocation has failed: ${err}`, { cause: err });
         }
 
         return spec.filter?.(artifacts) ?? artifacts;

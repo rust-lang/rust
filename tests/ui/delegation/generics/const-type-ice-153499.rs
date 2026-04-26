@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait<'a, T, const F: fn(&CStr) -> usize> {
     //~^ ERROR: cannot find type `CStr` in this scope

@@ -71,14 +71,12 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         "Reorder record fields",
         target,
         |builder| {
-            let mut editor = builder.make_editor(&parent_node);
+            let editor = builder.make_editor(&parent_node);
 
             match fields {
-                Either::Left((sorted, field_list)) => {
-                    replace(&mut editor, field_list.fields(), sorted)
-                }
+                Either::Left((sorted, field_list)) => replace(&editor, field_list.fields(), sorted),
                 Either::Right((sorted, field_list)) => {
-                    replace(&mut editor, field_list.fields(), sorted)
+                    replace(&editor, field_list.fields(), sorted)
                 }
             }
 
@@ -88,7 +86,7 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 }
 
 fn replace<T: AstNode + PartialEq>(
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     fields: impl Iterator<Item = T>,
     sorted_fields: impl IntoIterator<Item = T>,
 ) {

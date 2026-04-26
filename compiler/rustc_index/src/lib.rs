@@ -4,11 +4,6 @@
 #![cfg_attr(feature = "nightly", feature(extend_one, step_trait))]
 // tidy-alphabetical-end
 
-// FIXME(#125687): new_range_api recently stabilized
-// Remove this when it hits stable. cfg(bootstrap)
-#![allow(stable_features)]
-#![cfg_attr(feature = "nightly", feature(new_range_api))]
-
 pub mod bit_set;
 #[cfg(feature = "nightly")]
 pub mod interval;

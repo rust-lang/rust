@@ -1,5 +1,6 @@
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, Flags, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    Unnormalized,
 };
 
 use crate::infer::outlives::test_type_match;
@@ -61,6 +62,7 @@ where
                 let outlives_bounds: Vec<_> = tcx
                     .item_bounds(kind.def_id())
                     .iter_instantiated(tcx, args)
+                    .map(Unnormalized::skip_norm_wip)
                     .chain(param_env.caller_bounds())
                     .filter_map(|clause| {
                         let outlives = clause.as_type_outlives_clause()?;
@@ -93,7 +95,7 @@ where
                 } else {
                     // Skip lifetime parameters that are not captured, since they do
                     // not need to be live.
-                    let variances = tcx.opt_alias_variances(kind, kind.def_id());
+                    let variances = tcx.opt_alias_variances(kind);
 
                     for (idx, s) in args.iter().enumerate() {
                         if variances.map(|variances| variances[idx]) != Some(ty::Bivariant) {

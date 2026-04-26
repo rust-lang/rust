@@ -4,7 +4,6 @@ use std::borrow::Cow;
 use std::collections::hash_set;
 use std::path::PathBuf;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -31,7 +30,7 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{
     self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast,
+    TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::CrateNum;
@@ -39,9 +38,7 @@ use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use super::suggestions::get_explanation_based_on_obligation;
-use super::{
-    ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
-};
+use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_dyn_incompatibility;
@@ -452,50 +449,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.suggest_dereferencing_index(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
-                        let impl_candidates = self.find_similar_impl_candidates(leaf_trait_predicate);
-                        suggested = if let &[cand] = &impl_candidates[..] {
-                            let cand = cand.trait_ref;
-                            if let (ty::FnPtr(..), ty::FnDef(..)) =
-                                (cand.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind())
-                            {
-                                // Wrap method receivers and `&`-references in parens
-                                let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
-                                    vec![
-                                        (span.shrink_to_lo(), format!("(")),
-                                        (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
-                                    ]
-                                } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) {
-                                    let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-                                    expr_finder.visit_expr(body.value);
-                                    if let Some(expr) = expr_finder.result &&
-                                        let hir::ExprKind::AddrOf(_, _, expr) = expr.kind {
-                                        vec![
-                                            (expr.span.shrink_to_lo(), format!("(")),
-                                            (expr.span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
-                                        ]
-                                    } else {
-                                        vec![(span.shrink_to_hi(), format!(" as {}", cand.self_ty()))]
-                                    }
-                                } else {
-                                    vec![(span.shrink_to_hi(), format!(" as {}", cand.self_ty()))]
-                                };
-                                let trait_ = self.tcx.short_string(cand.print_trait_sugared(), err.long_ty_path());
-                                let ty = self.tcx.short_string(cand.self_ty(), err.long_ty_path());
-                                err.multipart_suggestion(
-                                    format!(
-                                        "the trait `{trait_}` is implemented for fn pointer \
-                                         `{ty}`, try casting using `as`",
-                                    ),
-                                    suggestion,
-                                    Applicability::MaybeIncorrect,
-                                );
-                                true
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        } || suggested;
+                        suggested |= self.suggest_cast_to_fn_pointer(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                            main_trait_predicate,
+                            span,
+                        );
                         suggested |=
                             self.suggest_remove_reference(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_semicolon_removal(
@@ -874,7 +834,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         if let Ok(Some(ImplSource::UserDefined(impl_data))) =
-            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+            self.enter_forall(trait_ref, |trait_ref_for_select| {
+                SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
+            })
         {
             let impl_did = impl_data.impl_def_id;
             let trait_did = trait_ref.def_id();
@@ -1574,8 +1536,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let unnormalized_term = data.projection_term.to_term(self.tcx);
                     // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
                     // to deeply normalize this type.
-                    let normalized_term =
-                        ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
+                    let normalized_term = ocx.normalize(
+                        &obligation.cause,
+                        obligation.param_env,
+                        Unnormalized::new_wip(unnormalized_term),
+                    );
 
                     // constrain inference variables a bit more to nested obligations from normalize so
                     // we can have more helpful errors.
@@ -1607,7 +1572,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let Ok(normalized_term) = ocx.structurally_normalize_term(
                                 &ObligationCause::dummy(),
                                 obligation.param_env,
-                                alias_term.to_term(self.tcx),
+                                Unnormalized::new_wip(alias_term.to_term(self.tcx)),
                             ) else {
                                 return None;
                             };
@@ -1624,8 +1589,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         };
 
-                    if let Some(lhs) = lhs.to_alias_term()
-                        && let ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst = lhs.kind(self.tcx)
+                    if let Some(lhs) = lhs.to_alias_term(self.tcx)
+                        && let ty::AliasTermKind::ProjectionTy { .. }
+                        | ty::AliasTermKind::ProjectionConst { .. } = lhs.kind(self.tcx)
                         && let Some((better_type_err, expected_term)) =
                             derive_better_type_error(lhs, rhs)
                     {
@@ -1633,8 +1599,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             Some((lhs, self.resolve_vars_if_possible(expected_term), rhs)),
                             better_type_err,
                         )
-                    } else if let Some(rhs) = rhs.to_alias_term()
-                        && let ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst = rhs.kind(self.tcx)
+                    } else if let Some(rhs) = rhs.to_alias_term(self.tcx)
+                        && let ty::AliasTermKind::ProjectionTy { .. }
+                        | ty::AliasTermKind::ProjectionConst { .. } = rhs.kind(self.tcx)
                         && let Some((better_type_err, expected_term)) =
                             derive_better_type_error(rhs, lhs)
                     {
@@ -1779,7 +1746,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let self_ty = projection_term.self_ty();
 
         with_forced_trimmed_paths! {
-            if self.tcx.is_lang_item(projection_term.def_id, LangItem::FnOnceOutput) {
+            if self.tcx.is_lang_item(projection_term.def_id(), LangItem::FnOnceOutput) {
                 let (span, closure_span) = if let ty::Closure(def_id, _) = *self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
                     if let Some(local_def_id) = def_id.as_local()
@@ -2006,6 +1973,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn report_similar_impl_candidates(
         &self,
         impl_candidates: &[ImplCandidate<'tcx>],
+        obligation: &PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         body_def_id: LocalDefId,
         err: &mut Diag<'_>,
@@ -2024,7 +1992,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .filter_map(|(header, def_id)| {
                     (header.polarity == ty::ImplPolarity::Positive
                         || self.tcx.is_automatically_derived(def_id))
-                    .then(|| (header.trait_ref.instantiate_identity(), def_id))
+                    .then(|| (header.trait_ref.instantiate_identity().skip_norm_wip(), def_id))
                 })
                 .filter(|(trait_ref, _)| {
                     let self_ty = trait_ref.self_ty();
@@ -2070,6 +2038,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         if let [single] = &impl_candidates {
+            let self_ty = trait_pred.skip_binder().self_ty();
+            if !self_ty.has_escaping_bound_vars() {
+                let self_ty = self.tcx.instantiate_bound_regions_with_erased(trait_pred.self_ty());
+                if let ty::Ref(_, inner_ty, _) = self_ty.kind()
+                    && self.can_eq(param_env, single.trait_ref.self_ty(), *inner_ty)
+                    && !self.where_clause_expr_matches_failed_self_ty(obligation, self_ty)
+                {
+                    // Avoid pointing at a nearby impl like `String: Borrow<str>` when the
+                    // failing obligation comes from something nested inside an enclosing call
+                    // expression such as `foo(&[String::from("a")])`.
+                    return true;
+                }
+            }
+
             // If we have a single implementation, try to unify it with the trait ref
             // that failed. This should uncover a better hint for what *is* implemented.
             if self.probe(|_| {
@@ -2093,7 +2075,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     self.tcx,
                                     ObligationCause::dummy(),
                                     param_env,
-                                    clause,
+                                    clause.skip_norm_wip(),
                                 )
                             }),
                     );
@@ -2430,7 +2412,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .tcx
                     .try_normalize_erasing_regions(
                         ty::TypingEnv::non_body_analysis(self.tcx, cand.impl_def_id),
-                        cand.trait_ref,
+                        Unnormalized::new_wip(cand.trait_ref),
                     )
                     .unwrap_or(cand.trait_ref);
                 cand
@@ -2489,6 +2471,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let impl_candidates = self.find_similar_impl_candidates(trait_pred);
             self.report_similar_impl_candidates(
                 &impl_candidates,
+                obligation,
                 trait_pred,
                 body_def_id,
                 err,
@@ -2751,8 +2734,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let cleaned_pred =
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
-            let InferOk { value: cleaned_pred, .. } =
-                self.infcx.at(&ObligationCause::dummy(), param_env).normalize(cleaned_pred);
+            let InferOk { value: cleaned_pred, .. } = self
+                .infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .normalize(Unnormalized::new_wip(cleaned_pred));
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
@@ -2783,6 +2768,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.predicate,
                 obligation.param_env,
                 obligation.cause.code(),
+            );
+            self.suggest_borrow_for_unsized_closure_return(
+                obligation.cause.body_id,
+                err,
+                obligation.predicate,
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
@@ -2855,7 +2845,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Ok(assume) = ocx.structurally_normalize_const(
             &obligation.cause,
             obligation.param_env,
-            trait_ref.args.const_at(2),
+            Unnormalized::new_wip(trait_ref.args.const_at(2)),
         ) else {
             return (obligation.clone(), trait_predicate);
         };
@@ -2908,7 +2898,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let Ok(assume) = ocx.structurally_normalize_const(
                 &obligation.cause,
                 obligation.param_env,
-                trait_pred.trait_ref.args.const_at(2),
+                Unnormalized::new_wip(trait_pred.trait_ref.args.const_at(2)),
             ) else {
                 self.dcx().span_delayed_bug(
                     span,
@@ -3163,6 +3153,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
                 &impl_candidates,
+                obligation,
                 trait_predicate,
                 body_def_id,
                 err,
@@ -3240,23 +3231,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let given_ty = Ty::new_fn_ptr(
             self.tcx,
-            params.rebind(self.tcx.mk_fn_sig(
-                given,
-                self.tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            )),
+            params.rebind(self.tcx.mk_fn_sig_safe_rust_abi(given, self.tcx.types.unit)),
         );
         let expected_ty = Ty::new_fn_ptr(
             self.tcx,
-            trait_pred.rebind(self.tcx.mk_fn_sig(
-                expected,
-                self.tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            )),
+            trait_pred.rebind(self.tcx.mk_fn_sig_safe_rust_abi(expected, self.tcx.types.unit)),
         );
 
         if !self.same_type_modulo_infer(given_ty, expected_ty) {
@@ -3701,7 +3680,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = self.tcx.def_span(uv.def);
 
-                    let const_ty = self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args);
+                    let const_ty =
+                        self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args).skip_norm_wip();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {

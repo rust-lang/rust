@@ -5,7 +5,9 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, lang_items};
-use rustc_middle::ty::{AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{
+    AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv, Unnormalized,
+};
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, sym};
 use tracing::debug;
 
@@ -102,7 +104,7 @@ pub fn call_kind<'tcx>(
             tcx.get_diagnostic_item(sym::deref_target).expect("deref method but no deref target");
         let deref_target_ty = tcx.normalize_erasing_regions(
             typing_env,
-            Ty::new_projection(tcx, deref_target_def_id, method_args),
+            Unnormalized::new(Ty::new_projection(tcx, deref_target_def_id, method_args)),
         );
         let deref_target_span = if let Ok(Some(instance)) =
             Instance::try_resolve(tcx, typing_env, method_did, method_args)

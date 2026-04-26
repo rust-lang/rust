@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusualNames {
         for (param, ty) in body
             .params
             .iter()
-            .zip(cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder().inputs())
+            .zip(cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().skip_binder().inputs())
         {
             check_pat_name_for_ty(cx, param.pat, *ty, "parameter");
         }

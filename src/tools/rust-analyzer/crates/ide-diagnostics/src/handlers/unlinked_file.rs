@@ -4,11 +4,9 @@ use std::iter;
 
 use hir::crate_def_map;
 use hir::{InFile, ModuleSource};
-use ide_db::base_db::RootQueryDb;
 use ide_db::text_edit::TextEdit;
-use ide_db::{
-    FileId, FileRange, LineIndexDatabase, base_db::SourceDatabase, source_change::SourceChange,
-};
+use ide_db::{FileId, FileRange, base_db::SourceDatabase, source_change::SourceChange};
+use ide_db::{base_db, line_index};
 use paths::Utf8Component;
 use syntax::{
     AstNode, TextRange,
@@ -26,7 +24,7 @@ pub(crate) fn unlinked_file(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
-    let mut range = TextRange::up_to(ctx.sema.db.line_index(file_id).len());
+    let mut range = TextRange::up_to(line_index(ctx.sema.db, file_id).len());
     let fixes = fixes(ctx, file_id, range);
     // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
     // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523
@@ -101,8 +99,8 @@ fn fixes(
     };
 
     // check crate roots, i.e. main.rs, lib.rs, ...
-    let relevant_crates = db.relevant_crates(file_id);
-    'crates: for &krate in &*relevant_crates {
+    let relevant_crates = base_db::relevant_crates(db, file_id);
+    'crates: for &krate in relevant_crates {
         // FIXME: This shouldnt need to access the crate def map directly
         let crate_def_map = crate_def_map(ctx.sema.db, krate);
 
@@ -157,7 +155,7 @@ fn fixes(
             paths.into_iter().find_map(|path| source_root.file_for_path(&path))
         })?;
     stack.pop();
-    let relevant_crates = db.relevant_crates(parent_id);
+    let relevant_crates = base_db::relevant_crates(db, parent_id);
     'crates: for &krate in relevant_crates.iter() {
         let crate_def_map = crate_def_map(ctx.sema.db, krate);
         let Some((_, module)) = crate_def_map.modules().find(|(_, module)| {

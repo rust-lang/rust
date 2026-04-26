@@ -5,17 +5,17 @@
 #include "rust/cxx.h"
 
 // GenMC generated headers:
-#include "config.h"
+#include "genmc/config.h"
 
 // Miri `genmc-sys/src_cpp` headers:
 #include "ResultHandling.hpp"
 
 // GenMC headers:
-#include "ExecutionGraph/EventLabel.hpp"
-#include "Support/MemOrdering.hpp"
-#include "Support/RMWOps.hpp"
-#include "Verification/Config.hpp"
-#include "Verification/GenMCDriver.hpp"
+#include "genmc/Execution/EventLabel.hpp"
+#include "genmc/Support/MemOrdering.hpp"
+#include "genmc/Support/RMWOps.hpp"
+#include "genmc/Verification/Config.hpp"
+#include "genmc/Verification/GenMCDriver.hpp"
 
 // C++ headers:
 #include <cstdint>
@@ -36,6 +36,7 @@ struct StoreResult;
 struct ReadModifyWriteResult;
 struct CompareExchangeResult;
 struct MutexLockResult;
+struct MallocResult;
 
 // GenMC uses `int` for its thread IDs.
 using ThreadId = int;
@@ -86,13 +87,15 @@ struct MiriGenmcShim : private GenMCDriver {
 
     /**** Memory access handling ****/
 
-    [[nodiscard]] LoadResult handle_load(
+    [[nodiscard]] LoadResult handle_atomic_load(
         ThreadId thread_id,
         uint64_t address,
         uint64_t size,
         MemOrdering ord,
         GenmcScalar old_val
     );
+    [[nodiscard]] LoadResult
+    handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint64_t size);
     [[nodiscard]] ReadModifyWriteResult handle_read_modify_write(
         ThreadId thread_id,
         uint64_t address,
@@ -113,7 +116,7 @@ struct MiriGenmcShim : private GenMCDriver {
         MemOrdering fail_load_ordering,
         bool can_fail_spuriously
     );
-    [[nodiscard]] StoreResult handle_store(
+    [[nodiscard]] StoreResult handle_atomic_store(
         ThreadId thread_id,
         uint64_t address,
         uint64_t size,
@@ -121,12 +124,14 @@ struct MiriGenmcShim : private GenMCDriver {
         GenmcScalar old_val,
         MemOrdering ord
     );
+    [[nodiscard]] StoreResult
+    handle_non_atomic_store(ThreadId thread_id, uint64_t address, uint64_t size);
 
     void handle_fence(ThreadId thread_id, MemOrdering ord);
 
     /**** Memory (de)allocation ****/
 
-    auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> uint64_t;
+    auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> MallocResult;
 
     /** Returns null on success, or an error string if an error occurs. */
     auto handle_free(ThreadId thread_id, uint64_t address) -> std::unique_ptr<std::string>;
@@ -203,33 +208,15 @@ struct MiriGenmcShim : private GenMCDriver {
     auto get_estimation_results() const -> EstimationResult;
 
   private:
-    /** Increment the event index in the given thread by 1 and return the new event. */
-    [[nodiscard]] inline auto inc_pos(ThreadId tid) -> Event {
+    /** Returns the current event for a given thread. */
+    inline auto curr_pos(ThreadId tid) -> Event {
         ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
-        return ++threads_action_[tid].event;
+        return threads_action_[tid].event;
     }
-    /** Decrement the event index in the given thread by 1 and return the new event. */
-    inline auto dec_pos(ThreadId tid) -> Event {
+    /** Increment the event index in the given thread by `count`. */
+    inline void inc_pos(ThreadId tid, unsigned int count) {
         ERROR_ON(tid >= threads_action_.size(), "ThreadId out of bounds");
-        return --threads_action_[tid].event;
-    }
-
-    /**
-     * Helper function for loads that need to reset the event counter when no value is returned.
-     * Same syntax as `GenMCDriver::handleLoad`, but this takes a thread id instead of an Event.
-     * Automatically calls `inc_pos` and `dec_pos` where needed for the given thread.
-     */
-    template <EventLabel::EventLabelKind k, typename... Ts>
-    auto handle_load_reset_if_none(ThreadId tid, std::optional<SVal> old_val, Ts&&... params)
-        -> HandleResult<SVal> {
-        const auto pos = inc_pos(tid);
-        const auto ret =
-            GenMCDriver::handleLoad<k>(nullptr, pos, old_val, std::forward<Ts>(params)...);
-        // If we didn't get a value, we have to reset the index of the current thread.
-        if (!std::holds_alternative<SVal>(ret)) {
-            dec_pos(tid);
-        }
-        return ret;
+        threads_action_[tid].event.index += count;
     }
 
     /**
@@ -293,40 +280,55 @@ inline std::optional<SVal> try_to_sval(GenmcScalar scalar) {
 namespace LoadResultExt {
 inline LoadResult no_value() {
     return LoadResult {
+        .invalid = false,
         .error = std::unique_ptr<std::string>(nullptr),
-        .has_value = false,
         .read_value = GenmcScalarExt::uninit(),
     };
 }
 
 inline LoadResult from_value(SVal read_value) {
-    return LoadResult { .error = std::unique_ptr<std::string>(nullptr),
-                        .has_value = true,
+    return LoadResult { .invalid = false,
+                        .error = std::unique_ptr<std::string>(nullptr),
                         .read_value = GenmcScalarExt::from_sval(read_value) };
 }
 
 inline LoadResult from_error(std::unique_ptr<std::string> error) {
-    return LoadResult { .error = std::move(error),
-                        .has_value = false,
+    return LoadResult { .invalid = false,
+                        .error = std::move(error),
                         .read_value = GenmcScalarExt::uninit() };
 }
+
+inline LoadResult from_invalid() {
+    return LoadResult { .invalid = true, .error = nullptr, .read_value = GenmcScalarExt::uninit() };
+}
+
 } // namespace LoadResultExt
 
 namespace StoreResultExt {
 inline StoreResult ok(bool is_coherence_order_maximal_write) {
-    return StoreResult { /* error: */ std::unique_ptr<std::string>(nullptr),
-                         is_coherence_order_maximal_write };
+    return StoreResult { .invalid = false,
+                         .error = std::unique_ptr<std::string>(nullptr),
+                         .is_coherence_order_maximal_write = is_coherence_order_maximal_write };
 }
 
 inline StoreResult from_error(std::unique_ptr<std::string> error) {
-    return StoreResult { .error = std::move(error), .is_coherence_order_maximal_write = false };
+    return StoreResult { .invalid = false,
+                         .error = std::move(error),
+                         .is_coherence_order_maximal_write = false };
+}
+
+inline StoreResult from_invalid() {
+    return StoreResult { .invalid = true,
+                         .error = nullptr,
+                         .is_coherence_order_maximal_write = false };
 }
 } // namespace StoreResultExt
 
 namespace ReadModifyWriteResultExt {
 inline ReadModifyWriteResult
 ok(SVal old_value, SVal new_value, bool is_coherence_order_maximal_write) {
-    return ReadModifyWriteResult { .error = std::unique_ptr<std::string>(nullptr),
+    return ReadModifyWriteResult { .invalid = false,
+                                   .error = std::unique_ptr<std::string>(nullptr),
                                    .old_value = GenmcScalarExt::from_sval(old_value),
                                    .new_value = GenmcScalarExt::from_sval(new_value),
                                    .is_coherence_order_maximal_write =
@@ -334,7 +336,16 @@ ok(SVal old_value, SVal new_value, bool is_coherence_order_maximal_write) {
 }
 
 inline ReadModifyWriteResult from_error(std::unique_ptr<std::string> error) {
-    return ReadModifyWriteResult { .error = std::move(error),
+    return ReadModifyWriteResult { .invalid = false,
+                                   .error = std::move(error),
+                                   .old_value = GenmcScalarExt::uninit(),
+                                   .new_value = GenmcScalarExt::uninit(),
+                                   .is_coherence_order_maximal_write = false };
+}
+
+inline ReadModifyWriteResult from_invalid() {
+    return ReadModifyWriteResult { .invalid = true,
+                                   .error = nullptr,
                                    .old_value = GenmcScalarExt::uninit(),
                                    .new_value = GenmcScalarExt::uninit(),
                                    .is_coherence_order_maximal_write = false };
@@ -343,7 +354,8 @@ inline ReadModifyWriteResult from_error(std::unique_ptr<std::string> error) {
 
 namespace CompareExchangeResultExt {
 inline CompareExchangeResult success(SVal old_value, bool is_coherence_order_maximal_write) {
-    return CompareExchangeResult { .error = nullptr,
+    return CompareExchangeResult { .invalid = false,
+                                   .error = nullptr,
                                    .old_value = GenmcScalarExt::from_sval(old_value),
                                    .is_success = true,
                                    .is_coherence_order_maximal_write =
@@ -351,14 +363,24 @@ inline CompareExchangeResult success(SVal old_value, bool is_coherence_order_max
 }
 
 inline CompareExchangeResult failure(SVal old_value) {
-    return CompareExchangeResult { .error = nullptr,
+    return CompareExchangeResult { .invalid = false,
+                                   .error = nullptr,
                                    .old_value = GenmcScalarExt::from_sval(old_value),
                                    .is_success = false,
                                    .is_coherence_order_maximal_write = false };
 }
 
 inline CompareExchangeResult from_error(std::unique_ptr<std::string> error) {
-    return CompareExchangeResult { .error = std::move(error),
+    return CompareExchangeResult { .invalid = false,
+                                   .error = std::move(error),
+                                   .old_value = GenmcScalarExt::uninit(),
+                                   .is_success = false,
+                                   .is_coherence_order_maximal_write = false };
+}
+
+inline CompareExchangeResult from_invalid() {
+    return CompareExchangeResult { .invalid = true,
+                                   .error = nullptr,
                                    .old_value = GenmcScalarExt::uninit(),
                                    .is_success = false,
                                    .is_coherence_order_maximal_write = false };
@@ -367,20 +389,42 @@ inline CompareExchangeResult from_error(std::unique_ptr<std::string> error) {
 
 namespace MutexLockResultExt {
 inline MutexLockResult ok(bool is_lock_acquired) {
-    return MutexLockResult { /* error: */ nullptr, /* is_reset: */ false, is_lock_acquired };
+    return MutexLockResult { .invalid = false,
+                             .error = nullptr,
+                             .is_reset = false,
+                             .is_lock_acquired = is_lock_acquired };
 }
 
 inline MutexLockResult reset() {
-    return MutexLockResult { /* error: */ nullptr,
-                             /* is_reset: */ true,
-                             /* is_lock_acquired: */ false };
+    return MutexLockResult { .invalid = false,
+                             .error = nullptr,
+                             .is_reset = true,
+                             .is_lock_acquired = false };
 }
 
 inline MutexLockResult from_error(std::unique_ptr<std::string> error) {
-    return MutexLockResult { /* error: */ std::move(error),
-                             /* is_reset: */ false,
-                             /* is_lock_acquired: */ false };
+    return MutexLockResult { .invalid = false,
+                             .error = std::move(error),
+                             .is_reset = false,
+                             .is_lock_acquired = false };
+}
+
+inline MutexLockResult from_invalid() {
+    return MutexLockResult { .invalid = true,
+                             .error = nullptr,
+                             .is_reset = false,
+                             .is_lock_acquired = false };
 }
 } // namespace MutexLockResultExt
+
+namespace MallocResultExt {
+inline MallocResult ok(SVal addr) {
+    return MallocResult { .error = nullptr, .address = addr.get() };
+}
+
+inline MallocResult from_error(std::unique_ptr<std::string> error) {
+    return MallocResult { .error = std::move(error), .address = 0UL };
+}
+} // namespace MallocResultExt
 
 #endif /* GENMC_MIRI_INTERFACE_HPP */

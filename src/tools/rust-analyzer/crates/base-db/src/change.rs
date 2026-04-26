@@ -9,7 +9,8 @@ use triomphe::Arc;
 use vfs::FileId;
 
 use crate::{
-    CrateGraphBuilder, CratesIdMap, LibraryRoots, LocalRoots, RootQueryDb, SourceRoot, SourceRootId,
+    CrateGraphBuilder, CratesIdMap, LibraryRoots, LocalRoots, SourceDatabase, SourceRoot,
+    SourceRootId,
 };
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
@@ -49,7 +50,7 @@ impl FileChange {
         self.crate_graph = Some(graph);
     }
 
-    pub fn apply(self, db: &mut dyn RootQueryDb) -> Option<CratesIdMap> {
+    pub fn apply(self, db: &mut dyn SourceDatabase) -> Option<CratesIdMap> {
         let _p = tracing::info_span!("FileChange::apply").entered();
         if let Some(roots) = self.roots {
             let mut local_roots = FxHashSet::default();

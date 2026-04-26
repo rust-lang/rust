@@ -173,6 +173,12 @@ pub(crate) enum ExpectedReturnTypeLabel<'tcx> {
         span: Span,
         expected: Ty<'tcx>,
     },
+    #[label("expected a single type implementing `{$trait_name}` because of return type")]
+    ImplTrait {
+        #[primary_span]
+        span: Span,
+        trait_name: String,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -1383,4 +1389,16 @@ pub(crate) struct ProjectOnNonPinProjectType {
         applicability = "machine-applicable"
     )]
     pub sugg_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied")]
+pub(crate) struct FloatLiteralF32Fallback {
+    pub literal: String,
+    #[suggestion(
+        "explicitly specify the type as `f32`",
+        code = "{literal}_f32",
+        applicability = "machine-applicable"
+    )]
+    pub span: Option<Span>,
 }

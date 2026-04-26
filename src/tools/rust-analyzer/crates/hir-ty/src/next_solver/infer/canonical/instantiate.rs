@@ -69,7 +69,7 @@ impl<'db, V> CanonicalExt<'db, V> for Canonical<'db, V> {
     where
         T: TypeFoldable<DbInterner<'db>>,
     {
-        assert_eq!(self.variables.len(), var_values.len());
+        assert_eq!(self.var_kinds.len(), var_values.len());
         let value = projection_fn(&self.value);
         instantiate_value(tcx, var_values, value)
     }
@@ -90,15 +90,15 @@ where
         value
     } else {
         let delegate = FnMutDelegate {
-            regions: &mut |br: BoundRegion| match var_values[br.var].kind() {
+            regions: &mut |br: BoundRegion<'db>| match var_values[br.var].kind() {
                 GenericArgKind::Lifetime(l) => l,
                 r => panic!("{br:?} is a region but value is {r:?}"),
             },
-            types: &mut |bound_ty: BoundTy| match var_values[bound_ty.var].kind() {
+            types: &mut |bound_ty: BoundTy<'db>| match var_values[bound_ty.var].kind() {
                 GenericArgKind::Type(ty) => ty,
                 r => panic!("{bound_ty:?} is a type but value is {r:?}"),
             },
-            consts: &mut |bound_ct: BoundConst| match var_values[bound_ct.var].kind() {
+            consts: &mut |bound_ct: BoundConst<'db>| match var_values[bound_ct.var].kind() {
                 GenericArgKind::Const(ct) => ct,
                 c => panic!("{bound_ct:?} is a const but value is {c:?}"),
             },
@@ -356,7 +356,7 @@ impl<'db> InferCtxt<'db> {
         // result, then we can type the corresponding value from the
         // input. See the example above.
         let mut opt_values: IndexVec<BoundVar, Option<GenericArg<'db>>> =
-            IndexVec::from_elem_n(None, query_response.variables.len());
+            IndexVec::from_elem_n(None, query_response.var_kinds.len());
 
         for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
         {
@@ -368,7 +368,7 @@ impl<'db> InferCtxt<'db> {
                     // more involved. They are also a lot rarer than region variables.
                     if let TyKind::Bound(index_kind, b) = result_value.kind()
                         && !matches!(
-                            query_response.variables.as_slice()[b.var.as_usize()],
+                            query_response.var_kinds.as_slice()[b.var.as_usize()],
                             CanonicalVarKind::Ty { .. }
                         )
                     {
@@ -398,7 +398,7 @@ impl<'db> InferCtxt<'db> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let interner = self.interner;
-        let variables = query_response.variables;
+        let variables = query_response.var_kinds;
         let var_values =
             CanonicalVarValues::instantiate(interner, variables, |var_values, kind| {
                 if kind.universe() != UniverseIndex::ROOT {

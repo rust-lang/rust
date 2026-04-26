@@ -29,13 +29,25 @@ error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool_methods.rs:20:13
    |
 LL |     let _ = !(a.is_some() && !c);
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `a.is_none() || c`
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = !(a.is_some() && !c);
+LL +     let _ = a.is_none() || c;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool_methods.rs:22:13
    |
 LL |     let _ = !(a.is_some() || !c);
-   |             ^^^^^^^^^^^^^^^^^^^^ help: try: `a.is_none() && c`
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = !(a.is_some() || !c);
+LL +     let _ = a.is_none() && c;
+   |
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool_methods.rs:24:26

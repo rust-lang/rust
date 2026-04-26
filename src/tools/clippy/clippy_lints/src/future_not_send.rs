@@ -9,6 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{
     self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    Unnormalized,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -80,8 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let preds = cx.tcx.explicit_item_self_bounds(def_id)
             // If is a Future
-            && preds
-                .iter_instantiated_copied(cx.tcx, args)
+            && preds.iter_instantiated_copied(cx.tcx, args).map(Unnormalized::skip_norm_wip)
                 .filter_map(|(p, _)| p.as_trait_clause())
                 .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
         {

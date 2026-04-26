@@ -1,0 +1,19 @@
+error[E0107]: function takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/unelided-lifetime-ice-154178.rs:8:11
+   |
+LL |     reuse foo::<1>;
+   |           ^^^ expected 1 lifetime argument
+   |
+note: function defined here, with 1 lifetime parameter: `'b`
+  --> $DIR/unelided-lifetime-ice-154178.rs:5:4
+   |
+LL | fn foo<'b: 'b, const N: usize>() {}
+   |    ^^^ --
+help: add missing lifetime argument
+   |
+LL |     reuse foo::<'b, 1>;
+   |                 +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

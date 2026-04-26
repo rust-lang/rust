@@ -21,6 +21,7 @@ rustc-literal-escaper.workspace = true
 smol_str.workspace = true
 triomphe.workspace = true
 tracing.workspace = true
+smallvec.workspace = true
 
 parser.workspace = true
 stdx.workspace = true

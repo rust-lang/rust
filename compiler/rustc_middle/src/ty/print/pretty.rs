@@ -17,7 +17,7 @@ use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
-use rustc_type_ir::{FieldInfo, Upcast as _, elaborate};
+use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
 // `pretty` is a separate module only for organization.
@@ -746,11 +746,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 if with_reduced_queries() {
                     self.print_def_path(def_id, args)?;
                 } else {
-                    let mut sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
+                    let mut sig =
+                        self.tcx().fn_sig(def_id).instantiate(self.tcx(), args).skip_norm_wip();
                     if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
                         write!(self, "#[target_features] ")?;
                         sig = sig.map_bound(|mut sig| {
-                            sig.safety = hir::Safety::Safe;
+                            sig.fn_sig_kind = sig.fn_sig_kind.set_safe(true);
                             sig
                         });
                     }
@@ -845,8 +846,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     DefKind::TyAlias | DefKind::AssocTy => {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
-                        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: d }, .. }) =
-                            *self.tcx().type_of(parent).instantiate_identity().kind()
+                        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: d }, .. }) = *self
+                            .tcx()
+                            .type_of(parent)
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .kind()
                         {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
@@ -1085,7 +1090,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut has_negative_sized_bound = false;
         let mut has_meta_sized_bound = false;
 
-        for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
+        for (predicate, _) in
+            bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_norm_wip)
+        {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
@@ -1339,7 +1346,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         &mut self,
         alias_ty: ty::AliasTerm<'tcx>,
     ) -> Result<(), PrintError> {
-        let def_key = self.tcx().def_key(alias_ty.def_id);
+        let def_key = self.tcx().def_key(alias_ty.def_id());
         self.print_path_with_generic_args(
             |p| {
                 p.print_path_with_simple(
@@ -2172,7 +2179,6 @@ fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
 
         DefPathData::ValueNs(..)
         | DefPathData::AnonConst
-        | DefPathData::LateAnonConst
         | DefPathData::Closure
         | DefPathData::Ctor => Namespace::ValueNS,
 
@@ -3131,14 +3137,14 @@ define_print! {
     (self, p):
 
     ty::FnSig<'tcx> {
-        write!(p, "{}", self.safety.prefix_str())?;
+        write!(p, "{}", self.safety().prefix_str())?;
 
-        if self.abi != ExternAbi::Rust {
-            write!(p, "extern {} ", self.abi)?;
+        if self.abi() != ExternAbi::Rust {
+            write!(p, "extern {} ", self.abi())?;
         }
 
         write!(p, "fn")?;
-        p.pretty_print_fn_sig(self.inputs(), self.c_variadic, self.output())?;
+        p.pretty_print_fn_sig(self.inputs(), self.c_variadic(), self.output())?;
     }
 
     ty::TraitRef<'tcx> {
@@ -3152,22 +3158,22 @@ define_print! {
 
     ty::AliasTerm<'tcx> {
         match self.kind(p.tcx()) {
-            ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => p.pretty_print_inherent_projection(*self)?,
-            ty::AliasTermKind::ProjectionTy => {
+            ty::AliasTermKind::InherentTy {..} | ty::AliasTermKind::InherentConst {..} => p.pretty_print_inherent_projection(*self)?,
+            ty::AliasTermKind::ProjectionTy { def_id } => {
                 if !(p.should_print_verbose() || with_reduced_queries())
-                    && p.tcx().is_impl_trait_in_trait(self.def_id)
+                    && p.tcx().is_impl_trait_in_trait(def_id)
                 {
-                    p.pretty_print_rpitit(self.def_id, self.args)?;
+                    p.pretty_print_rpitit(def_id, self.args)?;
                 } else {
-                    p.print_def_path(self.def_id, self.args)?;
+                    p.print_def_path(def_id, self.args)?;
                 }
             }
-            ty::AliasTermKind::FreeTy
-            | ty::AliasTermKind::FreeConst
-            | ty::AliasTermKind::OpaqueTy
-            | ty::AliasTermKind::UnevaluatedConst
-            | ty::AliasTermKind::ProjectionConst => {
-                p.print_def_path(self.def_id, self.args)?;
+            ty::AliasTermKind::FreeTy { def_id }
+            | ty::AliasTermKind::FreeConst { def_id }
+            | ty::AliasTermKind::OpaqueTy { def_id }
+            | ty::AliasTermKind::UnevaluatedConst { def_id }
+            | ty::AliasTermKind::ProjectionConst { def_id } => {
+                p.print_def_path(def_id, self.args)?;
             }
         }
     }

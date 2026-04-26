@@ -13,12 +13,12 @@ use std::{
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    attrs::{Attr, AttrId, AttrInput, Meta, collect_item_tree_attrs},
+    attrs::{Attr, AttrId, AttrInput, collect_item_tree_attrs},
     mod_path::ModPath,
     name::Name,
 };
 use intern::{Interned, Symbol, sym};
-use syntax::{AstNode, T, ast};
+use syntax::{AstNode, ast};
 use syntax_bridge::DocCommentDesugarMode;
 use tt::token_to_literal;
 
@@ -51,58 +51,62 @@ impl AttrsOrCfg {
         S: syntax_bridge::SpanMapper + Copy,
     {
         let mut attrs = Vec::new();
-        let result =
-            collect_item_tree_attrs::<Infallible>(owner, cfg_options, |meta, container, _, _| {
-                // NOTE: We cannot early return from this function, *every* attribute must be pushed, otherwise we'll mess the `AttrId`
-                // tracking.
-                let (span, path_range, input) = match meta {
-                    Meta::NamedKeyValue { path_range, name: _, value } => {
-                        let span = span_map.span_for(path_range);
-                        let input = value.map(|value| {
-                            Box::new(AttrInput::Literal(token_to_literal(
-                                value.text(),
-                                span_map.span_for(value.text_range()),
-                            )))
-                        });
-                        (span, path_range, input)
-                    }
-                    Meta::TokenTree { path, tt } => {
-                        let span = span_map.span_for(path.range);
-                        let tt = syntax_bridge::syntax_node_to_token_tree(
-                            tt.syntax(),
-                            span_map,
-                            span,
-                            DocCommentDesugarMode::ProcMacro,
-                        );
-                        let input = Some(Box::new(AttrInput::TokenTree(tt)));
-                        (span, path.range, input)
-                    }
-                    Meta::Path { path } => {
-                        let span = span_map.span_for(path.range);
-                        (span, path.range, None)
-                    }
-                };
+        let result = collect_item_tree_attrs::<Infallible>(owner, cfg_options, |meta, _| {
+            // NOTE: We cannot early return from this function, *every* attribute must be pushed, otherwise we'll mess the `AttrId`
+            // tracking.
+            let path = meta.path();
+            let path_range = path
+                .as_ref()
+                .map(|path| path.syntax().text_range())
+                .unwrap_or_else(|| meta.syntax().text_range());
+            let (span, input) = match &meta {
+                ast::Meta::KeyValueMeta(meta) => {
+                    let span = span_map.span_for(path_range);
+                    let input = meta.expr().and_then(|value| {
+                        if let ast::Expr::Literal(value) = value {
+                            Some(Box::new(AttrInput::Literal(token_to_literal(
+                                value.token().text(),
+                                span_map.span_for(value.syntax().text_range()),
+                            ))))
+                        } else {
+                            None
+                        }
+                    });
+                    (span, input)
+                }
+                ast::Meta::TokenTreeMeta(meta) => {
+                    let span = span_map.span_for(path_range);
+                    let tt = syntax_bridge::syntax_node_to_token_tree(
+                        &meta
+                            .token_tree()
+                            .map(|it| it.syntax().clone())
+                            .unwrap_or_else(|| meta.syntax().clone()),
+                        span_map,
+                        span,
+                        DocCommentDesugarMode::ProcMacro,
+                    );
+                    let input = Some(Box::new(AttrInput::TokenTree(tt)));
+                    (span, input)
+                }
+                ast::Meta::PathMeta(_) => {
+                    let span = span_map.span_for(path_range);
+                    (span, None)
+                }
+                ast::Meta::CfgMeta(_) | ast::Meta::CfgAttrMeta(_) | ast::Meta::UnsafeMeta(_) => {
+                    unreachable!(
+                        "`cfg`, `cfg_attr` and `unsafe(...)` are handled in `collect_item_tree_attrs()`"
+                    )
+                }
+            };
 
-                let path = container.token_at_offset(path_range.start()).right_biased().and_then(
-                    |first_path_token| {
-                        let is_abs = matches!(first_path_token.kind(), T![:] | T![::]);
-                        let segments =
-                            std::iter::successors(Some(first_path_token), |it| it.next_token())
-                                .take_while(|it| it.text_range().end() <= path_range.end())
-                                .filter(|it| it.kind().is_any_identifier());
-                        ModPath::from_tokens(
-                            db,
-                            &mut |range| span_map.span_for(range).ctx,
-                            is_abs,
-                            segments,
-                        )
-                    },
-                );
-                let path = path.unwrap_or_else(|| Name::missing().into());
-
-                attrs.push(Attr { path: Interned::new(path), input, ctxt: span.ctx });
-                ControlFlow::Continue(())
+            let path = path.and_then(|path| {
+                ModPath::from_src(db, path, &mut |range| span_map.span_for(range).ctx)
             });
+            let path = path.unwrap_or_else(|| Name::missing().into());
+
+            attrs.push(Attr { path: Interned::new(path), input, ctxt: span.ctx });
+            ControlFlow::Continue(())
+        });
         let attrs = AttrsOwned(attrs.into_boxed_slice());
         match result {
             Some(Either::Right(cfg)) => AttrsOrCfg::CfgDisabled(Box::new((cfg, attrs))),

@@ -8,12 +8,12 @@ use parser::T;
 use smallvec::SmallVec;
 use syntax::{
     AstNode, PreorderWithTokens, SyntaxElement, SyntaxNode, SyntaxToken, WalkEvent,
-    ast::{self, HasAttrs, TokenTreeChildren},
+    ast::{self, HasAttrs},
 };
 use syntax_bridge::DocCommentDesugarMode;
 
 use crate::{
-    attrs::{AttrId, Meta, expand_cfg_attr, is_item_tree_filtered_attr},
+    attrs::{AstPathExt, AttrId, expand_cfg_attr, is_item_tree_filtered_attr},
     db::ExpandDatabase,
     fixup::{self, SyntaxFixupUndoInfo},
     span_map::SpanMapRef,
@@ -24,7 +24,7 @@ struct ItemIsCfgedOut;
 
 #[derive(Debug)]
 struct ExpandedAttrToProcess {
-    range: TextRange,
+    attr: ast::Meta,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,42 +143,29 @@ fn macro_input_callback(
                     });
 
                     attrs_idx = 0;
-                    let strip_current_item = expand_cfg_attr(
-                        node_attrs,
-                        &cfg_options,
-                        |attr, _container, range, top_attr| {
+                    let strip_current_item =
+                        expand_cfg_attr(node_attrs, &cfg_options, |attr, top_attr| {
                             // Find the attr.
                             while attrs[attrs_idx].range != top_attr.syntax().text_range() {
                                 attrs_idx += 1;
                             }
 
                             let mut strip_current_attr = false;
-                            match attr {
-                                Meta::NamedKeyValue { name, .. } => {
-                                    if name
-                                        .is_none_or(|name| !is_item_tree_filtered_attr(name.text()))
-                                    {
-                                        strip_current_attr = should_strip_attr();
-                                    }
-                                }
-                                Meta::TokenTree { path, tt } => {
-                                    if path.is1("cfg") {
-                                        let cfg_expr = CfgExpr::parse_from_ast(
-                                            &mut TokenTreeChildren::new(&tt).peekable(),
-                                        );
+                            match &attr {
+                                ast::Meta::CfgMeta(attr) => {
+                                    if let Some(cfg_predicate) = attr.cfg_predicate() {
+                                        let cfg_expr = CfgExpr::parse_from_ast(cfg_predicate);
                                         if cfg_options().check(&cfg_expr) == Some(false) {
                                             return ControlFlow::Break(ItemIsCfgedOut);
                                         }
                                         strip_current_attr = true;
-                                    } else if path.segments.len() != 1
-                                        || !is_item_tree_filtered_attr(path.segments[0].text())
-                                    {
-                                        strip_current_attr = should_strip_attr();
                                     }
                                 }
-                                Meta::Path { path } => {
-                                    if path.segments.len() != 1
-                                        || !is_item_tree_filtered_attr(path.segments[0].text())
+                                _ => {
+                                    if attr
+                                        .path()
+                                        .as_one_segment()
+                                        .is_none_or(|name| !is_item_tree_filtered_attr(&name))
                                     {
                                         strip_current_attr = should_strip_attr();
                                     }
@@ -188,12 +175,11 @@ fn macro_input_callback(
                             if !strip_current_attr {
                                 attrs[attrs_idx]
                                     .expanded_attrs
-                                    .push(ExpandedAttrToProcess { range });
+                                    .push(ExpandedAttrToProcess { attr });
                             }
 
                             ControlFlow::Continue(())
-                        },
-                    );
+                        });
                     attrs_idx = 0;
 
                     if strip_current_item.is_some() {
@@ -248,7 +234,7 @@ fn macro_input_callback(
                 };
                 match ast_attr.next_expanded_attr {
                     NextExpandedAttrState::NotStarted => {
-                        if token_range.start() >= expanded_attr.range.start() {
+                        if token_range.start() >= expanded_attr.attr.syntax().text_range().start() {
                             // We started the next attribute.
                             let mut insert_tokens = Vec::with_capacity(3);
                             insert_tokens.push(tt::Leaf::Punct(tt::Punct {
@@ -278,7 +264,7 @@ fn macro_input_callback(
                         }
                     }
                     NextExpandedAttrState::InTheMiddle => {
-                        if token_range.start() >= expanded_attr.range.end() {
+                        if token_range.start() >= expanded_attr.attr.syntax().text_range().end() {
                             // Finished the current attribute.
                             let insert_tokens = vec![tt::Leaf::Punct(tt::Punct {
                                 char: ']',
@@ -328,13 +314,4 @@ pub(crate) fn attr_macro_input_to_token_tree(
         ),
         fixups.undo_info,
     )
-}
-
-pub fn check_cfg_attr_value(
-    db: &dyn ExpandDatabase,
-    attr: &ast::TokenTree,
-    krate: Crate,
-) -> Option<bool> {
-    let cfg_expr = CfgExpr::parse_from_ast(&mut TokenTreeChildren::new(attr).peekable());
-    krate.cfg_options(db).check(&cfg_expr)
 }

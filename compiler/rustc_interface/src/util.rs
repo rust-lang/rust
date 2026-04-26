@@ -184,7 +184,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
 
     use rustc_data_structures::defer;
     use rustc_middle::ty::tls;
-    use rustc_query_impl::break_query_cycles;
+    use rustc_query_impl::break_query_cycle;
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
@@ -260,7 +260,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                         )
                                     },
                                 );
-                                break_query_cycles(job_map, &registry);
+                                break_query_cycle(job_map, &registry);
                             })
                         })
                     });

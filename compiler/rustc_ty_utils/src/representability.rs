@@ -24,7 +24,10 @@ fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             }
         }
         DefKind::Field => {
-            check_representability_ty(tcx, tcx.type_of(def_id).instantiate_identity());
+            check_representability_ty(
+                tcx,
+                tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
+            );
         }
         def_kind => bug!("unexpected {def_kind:?}"),
     }
@@ -91,7 +94,7 @@ fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<u32> {
         for field in variant.fields.iter() {
             params_in_repr_ty(
                 tcx,
-                tcx.type_of(field.did).instantiate_identity(),
+                tcx.type_of(field.did).instantiate_identity().skip_norm_wip(),
                 &mut params_in_repr,
             );
         }

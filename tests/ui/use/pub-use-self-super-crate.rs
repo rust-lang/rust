@@ -8,7 +8,7 @@ mod foo {
         pub use self::super as parent2;
         //~^ ERROR `super` is only public within the crate, and cannot be re-exported outside
         pub use super::{self as parent3};
-        //~^ ERROR `super` is only public within the crate, and cannot be re-exported outside
+        //~^ ERROR `self` is only public within the crate, and cannot be re-exported outside
         pub use self::{super as parent4};
         //~^ ERROR `super` is only public within the crate, and cannot be re-exported outside
 

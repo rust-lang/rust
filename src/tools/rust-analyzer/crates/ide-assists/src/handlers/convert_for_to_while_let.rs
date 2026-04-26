@@ -2,7 +2,7 @@ use hir::{Name, sym};
 use ide_db::{famous_defs::FamousDefs, syntax_helpers::suggest_name};
 use syntax::{
     AstNode,
-    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel},
     syntax_editor::Position,
 };
 
@@ -48,8 +48,8 @@ pub(crate) fn convert_for_loop_to_while_let(
         "Replace this for loop with `while let`",
         for_loop.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(for_loop.syntax());
+            let editor = builder.make_editor(for_loop.syntax());
+            let make = editor.make();
 
             let (iterable, method) = if impls_core_iter(&ctx.sema, &iterable) {
                 (iterable, None)
@@ -81,16 +81,11 @@ pub(crate) fn convert_for_loop_to_while_let(
             let indent = IndentLevel::from_node(for_loop.syntax());
 
             if let Some(label) = for_loop.label() {
-                let label = label.syntax().clone_for_update();
+                let label = label.syntax();
                 editor.insert(Position::before(for_loop.syntax()), make.whitespace(" "));
                 editor.insert(Position::before(for_loop.syntax()), label);
             }
-            crate::utils::insert_attributes(
-                for_loop.syntax(),
-                &mut editor,
-                for_loop.attrs().map(|it| it.clone_for_update()),
-                &make,
-            );
+            crate::utils::insert_attributes(for_loop.syntax(), &editor, for_loop.attrs());
 
             editor.insert(
                 Position::before(for_loop.syntax()),
@@ -110,7 +105,6 @@ pub(crate) fn convert_for_loop_to_while_let(
 
             editor.replace(for_loop.syntax(), while_loop.syntax());
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

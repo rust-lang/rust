@@ -99,7 +99,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Sort items by trait definition",
         target,
         |builder| {
-            let mut editor = builder.make_editor(&parent_node);
+            let editor = builder.make_editor(&parent_node);
 
             assoc_items
                 .into_iter()

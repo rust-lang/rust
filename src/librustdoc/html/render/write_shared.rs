@@ -118,8 +118,9 @@ pub(crate) fn write_shared(
                 let mut md_opts = opt.clone();
                 md_opts.output = cx.dst.clone();
                 md_opts.external_html = cx.shared.layout.external_html.clone();
+                let file = try_err!(cx.sess().source_map().load_file(&index_page), &index_page);
                 try_err!(
-                    crate::markdown::render_and_write(index_page, md_opts, cx.shared.edition()),
+                    crate::markdown::render_and_write(file, md_opts, cx.shared.edition()),
                     &index_page
                 );
             }
@@ -152,7 +153,7 @@ pub(crate) fn write_not_crate_specific(
     include_sources: bool,
 ) -> Result<(), Error> {
     write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
-    write_static_files(dst, opt, style_files, css_file_extension, resource_suffix)?;
+    write_resources(dst, opt, style_files, css_file_extension, resource_suffix)?;
     Ok(())
 }
 
@@ -182,43 +183,45 @@ fn write_rendered_cross_crate_info(
 
 /// Writes the static files, the style files, and the css extensions.
 /// Have to be careful about these, because they write to the root out dir.
-fn write_static_files(
+fn write_resources(
     dst: &Path,
     opt: &RenderOptions,
     style_files: &[StylePath],
     css_file_extension: Option<&Path>,
     resource_suffix: &str,
 ) -> Result<(), Error> {
-    let static_dir = dst.join("static.files");
-    try_err!(fs::create_dir_all(&static_dir), &static_dir);
+    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
+        // Handle added third-party themes
+        for entry in style_files {
+            let theme = entry.basename()?;
+            let extension =
+                try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
 
-    // Handle added third-party themes
-    for entry in style_files {
-        let theme = entry.basename()?;
-        let extension =
-            try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
+            // Skip the official themes. They are written below as part of STATIC_FILES_LIST.
+            if matches!(theme.as_str(), "light" | "dark" | "ayu") {
+                continue;
+            }
 
-        // Skip the official themes. They are written below as part of STATIC_FILES_LIST.
-        if matches!(theme.as_str(), "light" | "dark" | "ayu") {
-            continue;
+            let bytes = try_err!(fs::read(&entry.path), &entry.path);
+            let filename = format!("{theme}{resource_suffix}.{extension}");
+            let dst_filename = dst.join(filename);
+            try_err!(fs::write(&dst_filename, bytes), &dst_filename);
         }
 
-        let bytes = try_err!(fs::read(&entry.path), &entry.path);
-        let filename = format!("{theme}{resource_suffix}.{extension}");
-        let dst_filename = dst.join(filename);
-        try_err!(fs::write(&dst_filename, bytes), &dst_filename);
-    }
-
-    // When the user adds their own CSS files with --extend-css, we write that as an
-    // invocation-specific file (that is, with a resource suffix).
-    if let Some(css) = css_file_extension {
-        let buffer = try_err!(fs::read_to_string(css), css);
-        let path = static_files::suffix_path("theme.css", resource_suffix);
-        let dst_path = dst.join(path);
-        try_err!(fs::write(&dst_path, buffer), &dst_path);
+        // When the user adds their own CSS files with --extend-css, we write that as an
+        // invocation-specific file (that is, with a resource suffix).
+        if let Some(css) = css_file_extension {
+            let buffer = try_err!(fs::read_to_string(css), css);
+            let path = static_files::suffix_path("theme.css", resource_suffix);
+            let dst_path = dst.join(path);
+            try_err!(fs::write(&dst_path, buffer), &dst_path);
+        }
     }
 
     if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlStaticFiles) {
+        let static_dir = dst.join("static.files");
+        try_err!(fs::create_dir_all(&static_dir), &static_dir);
+
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
             let contents: &[u8] =

@@ -992,7 +992,11 @@ fn find_fallback_pattern_typo<'tcx>(
                 };
                 if let Some(value_ns) = path.res.value_ns
                     && let Res::Def(DefKind::Const { .. }, id) = value_ns
-                    && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
+                    && infcx.can_eq(
+                        param_env,
+                        ty,
+                        cx.tcx.type_of(id).instantiate_identity().skip_norm_wip(),
+                    )
                 {
                     if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
                         // The original const is accessible, suggest using it directly.
@@ -1009,7 +1013,11 @@ fn find_fallback_pattern_typo<'tcx>(
                 }
             }
             if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
-                && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
+                && infcx.can_eq(
+                    param_env,
+                    ty,
+                    cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
+                )
             {
                 // Look for local consts.
                 let item_name = cx.tcx.item_name(item.owner_id);

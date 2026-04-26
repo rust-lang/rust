@@ -13,7 +13,7 @@ use rustc_hir::{
 };
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
@@ -24,8 +24,8 @@ use tracing::instrument;
 use super::errors::{InvalidAbi, InvalidAbiSuggestion, TupleStructWithDefault, UnionWithDefault};
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
-    AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
+    AstOwner, FnDeclKind, GenericArgsMode, ImplTraitContext, ImplTraitPosition, LoweringContext,
+    ParamMode, RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
 
 /// Wraps either IndexVec (during `hir_crate`), which acts like a primary
@@ -48,9 +48,9 @@ impl<'hir> Owners<'_, 'hir> {
     }
 }
 
-pub(super) struct ItemLowerer<'a, 'hir, R> {
+pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'a mut R,
+    pub(super) resolver: &'a ResolverAstLowering<'hir>,
     pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
     pub(super) owners: Owners<'a, 'hir>,
 }
@@ -74,11 +74,11 @@ fn add_ty_alias_where_clause(
         if before.0 || !after.0 { before } else { after };
 }
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
+impl<'hir> ItemLowerer<'_, 'hir> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'_, 'hir, R>) -> hir::OwnerNode<'hir>,
+        f: impl for<'a> FnOnce(&mut LoweringContext<'a, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
         let mut lctx = LoweringContext::new(self.tcx, self.resolver);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
@@ -122,7 +122,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
     }
 }
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(
         &mut self,
         items: &[Box<Item>],
@@ -213,8 +213,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         i: &ItemKind,
     ) -> Vec<hir::Attribute> {
         match i {
-            ItemKind::Fn(box Fn { eii_impls, .. }) if eii_impls.is_empty() => Vec::new(),
-            ItemKind::Fn(box Fn { eii_impls, .. }) => {
+            ItemKind::Fn(box Fn { eii_impls, .. })
+            | ItemKind::Static(box StaticItem { eii_impls, .. })
+                if eii_impls.is_empty() =>
+            {
+                Vec::new()
+            }
+            ItemKind::Fn(box Fn { eii_impls, .. })
+            | ItemKind::Static(box StaticItem { eii_impls, .. }) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpls(
                     eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
@@ -226,7 +232,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             ItemKind::ExternCrate(..)
             | ItemKind::Use(..)
-            | ItemKind::Static(..)
             | ItemKind::Const(..)
             | ItemKind::ConstBlock(..)
             | ItemKind::Mod(..)
@@ -302,6 +307,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 mutability: m,
                 expr: e,
                 define_opaque,
+                eii_impls: _,
             }) => {
                 let ident = self.lower_ident(*ident);
                 let ty = self
@@ -537,17 +543,17 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 })
             }
             ItemKind::Trait(box Trait {
+                impl_restriction,
                 constness,
                 is_auto,
                 safety,
-                // FIXME(impl_restrictions): lower to HIR
-                impl_restriction: _,
                 ident,
                 generics,
                 bounds,
                 items,
             }) => {
                 let constness = self.lower_constness(*constness);
+                let impl_restriction = self.lower_impl_restriction(impl_restriction);
                 let ident = self.lower_ident(*ident);
                 let (generics, (safety, items, bounds)) = self.lower_generics(
                     generics,
@@ -566,7 +572,16 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         (safety, items, bounds)
                     },
                 );
-                hir::ItemKind::Trait(constness, *is_auto, safety, ident, generics, bounds, items)
+                hir::ItemKind::Trait(
+                    impl_restriction,
+                    constness,
+                    *is_auto,
+                    safety,
+                    ident,
+                    generics,
+                    bounds,
+                    items,
+                )
             }
             ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
                 let constness = self.lower_constness(*constness);
@@ -620,7 +635,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     }
 
     fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> Option<DefId> {
-        let res = self.resolver.get_partial_res(id)?;
+        let res = self.get_partial_res(id)?;
         let Some(did) = res.expect_full_res().opt_def_id() else {
             self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
             return None;
@@ -817,6 +832,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 expr: _,
                 safety,
                 define_opaque,
+                eii_impls: _,
             }) => {
                 let ty = self
                     .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
@@ -1320,7 +1336,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 ImplItemImplKind::Trait {
                     defaultness,
                     trait_item_def_id: self
-                        .resolver
                         .get_partial_res(i.id)
                         .and_then(|r| r.expect_full_res().opt_def_id())
                         .ok_or_else(|| {
@@ -1516,7 +1531,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(crate) fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir, R>) -> hir::Expr<'hir>,
+        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
@@ -1653,7 +1668,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             parameters.push(new_parameter);
         }
 
-        let mkbody = |this: &mut LoweringContext<'_, 'hir, R>| {
+        let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
 
@@ -1831,6 +1846,38 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         }
     }
 
+    pub(super) fn lower_impl_restriction(
+        &mut self,
+        r: &ImplRestriction,
+    ) -> &'hir hir::ImplRestriction<'hir> {
+        let kind = match &r.kind {
+            RestrictionKind::Unrestricted => hir::RestrictionKind::Unrestricted,
+            RestrictionKind::Restricted { path, id, shorthand: _ } => {
+                let res = self.get_partial_res(*id);
+                if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
+                    hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
+                        res: did,
+                        segments: self.arena.alloc_from_iter(path.segments.iter().map(|segment| {
+                            self.lower_path_segment(
+                                path.span,
+                                segment,
+                                ParamMode::Explicit,
+                                GenericArgsMode::Err,
+                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                None,
+                            )
+                        })),
+                        span: self.lower_span(path.span),
+                    }))
+                } else {
+                    self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                    hir::RestrictionKind::Unrestricted
+                }
+            }
+        };
+        self.arena.alloc(hir::ImplRestriction { kind, span: self.lower_span(r.span) })
+    }
+
     /// Return the pair of the lowered `generics` as `hir::Generics` and the evaluation of `f` with
     /// the carried impl trait definitions and bounds.
     #[instrument(level = "debug", skip(self, f))]
@@ -1872,7 +1919,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
         // Introduce extra lifetimes if late resolution tells us to.
         let extra_lifetimes = self.resolver.extra_lifetime_params(parent_node_id);
-        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+        params.extend(extra_lifetimes.into_iter().filter_map(|&(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(
                 ident,
                 node_id,
@@ -1914,7 +1961,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             return;
         };
         let define_opaque = define_opaque.iter().filter_map(|(id, path)| {
-            let res = self.resolver.get_partial_res(*id);
+            let res = self.get_partial_res(*id);
             let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) else {
                 self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                 return None;

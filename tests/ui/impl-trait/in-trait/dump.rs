@@ -1,7 +1,7 @@
 //@ compile-flags: -Zverbose-internals
 
 #![feature(rustc_attrs)]
-#![rustc_hidden_type_of_opaques]
+#![rustc_dump_hidden_type_of_opaques]
 
 trait Foo {
     fn hello(&self) -> impl Sized;

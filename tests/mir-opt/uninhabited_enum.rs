@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //
 // check that we mark blocks with `!` locals as unreachable.
 // (and currently don't do the same for other uninhabited types)

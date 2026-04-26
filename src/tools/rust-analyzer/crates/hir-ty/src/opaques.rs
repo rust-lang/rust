@@ -55,10 +55,10 @@ pub(crate) fn opaque_types_defined_by(
             .for_each(extend_with_taits);
     };
     let extend_with_atpit_from_container = |container| match container {
-        ItemContainerId::ImplId(impl_id) => {
-            if ImplSignature::of(db, impl_id).target_trait.is_some() {
-                extend_with_atpit_from_assoc_items(&impl_id.impl_items(db).items);
-            }
+        ItemContainerId::ImplId(impl_id)
+            if ImplSignature::of(db, impl_id).target_trait.is_some() =>
+        {
+            extend_with_atpit_from_assoc_items(&impl_id.impl_items(db).items);
         }
         ItemContainerId::TraitId(trait_id) => {
             extend_with_atpit_from_assoc_items(&trait_id.trait_items(db).items);
@@ -196,10 +196,10 @@ fn tait_defining_bodies(
             .collect()
     };
     match loc.container {
-        ItemContainerId::ImplId(impl_id) => {
-            if ImplSignature::of(db, impl_id).target_trait.is_some() {
-                return from_assoc_items(&impl_id.impl_items(db).items);
-            }
+        ItemContainerId::ImplId(impl_id)
+            if ImplSignature::of(db, impl_id).target_trait.is_some() =>
+        {
+            return from_assoc_items(&impl_id.impl_items(db).items);
         }
         ItemContainerId::TraitId(trait_id) => {
             return from_assoc_items(&trait_id.trait_items(db).items);

@@ -221,6 +221,7 @@ language_item_table! {
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
     UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
 
+    VaArgSafe,               sym::va_arg_safe,         va_arg_safe,                Target::Trait,          GenericRequirement::None;
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
@@ -443,6 +444,9 @@ language_item_table! {
     FieldBase,               sym::field_base,              field_base,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst,     GenericRequirement::Exact(0);
+
+    // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
+    From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
 }
 
 /// The requirement imposed on the generics of a lang item

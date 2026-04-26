@@ -4,7 +4,7 @@
 #![feature(rustc_attrs)]
 
 #[repr(u16)]
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 enum UnsignedAroundZero {
     //~^ ERROR: layout_of
     A = 65535,
@@ -13,7 +13,7 @@ enum UnsignedAroundZero {
 }
 
 #[repr(i16)]
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 enum SignedAroundZero {
     //~^ ERROR: layout_of
     A = -1,

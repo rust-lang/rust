@@ -85,8 +85,7 @@ use std::mem;
 
 use interpret::ErrorHandled;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{Attribute, HirId};
+use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
@@ -94,6 +93,7 @@ use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
+use rustc_session::lint::Level;
 use rustc_span::{DUMMY_SP, Span, Spanned};
 use tracing::{debug, instrument};
 
@@ -1298,12 +1298,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 break;
             }
 
-            if self
-                .tcx
-                .hir_attrs(id)
-                .iter()
-                .any(|attr| matches!(attr, Attribute::Parsed(AttributeKind::LintAttributes { .. })))
-            {
+            if self.tcx.hir_attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
                 // This is a rare case. It's for a node path that doesn't reach the root due to an
                 // intervening lint level attribute. This result doesn't get cached.
                 return id;

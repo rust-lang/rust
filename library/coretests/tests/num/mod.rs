@@ -374,6 +374,43 @@ fn test_f32f64() {
     assert!(nan.is_nan());
 }
 
+/// Conversions where $source can be represented as bool.
+macro_rules! test_impl_try_from_integer_to_bool {
+    ($fn_name:ident, $source:ty) => {
+        #[test]
+        fn $fn_name() {
+            let max: $source = <$source>::MAX;
+            let min: $source = <$source>::MIN;
+            let zero: $source = 0;
+            let one: $source = 1;
+            let two: $source = 2;
+            assert_eq!(bool::try_from(max).unwrap_err().kind(), &IntErrorKind::PosOverflow);
+            if min != 0 {
+                assert_eq!(bool::try_from(min).unwrap_err().kind(), &IntErrorKind::NegOverflow);
+                assert_eq!(
+                    bool::try_from(zero - 1).unwrap_err().kind(),
+                    &IntErrorKind::NegOverflow
+                );
+            }
+            assert_eq!(bool::try_from(zero).unwrap(), false);
+            assert_eq!(bool::try_from(one).unwrap(), true);
+            assert_eq!(bool::try_from(two).unwrap_err().kind(), &IntErrorKind::PosOverflow);
+        }
+    };
+}
+
+test_impl_try_from_integer_to_bool! { test_try_u8bool, u8 }
+test_impl_try_from_integer_to_bool! { test_try_u16bool, u16 }
+test_impl_try_from_integer_to_bool! { test_try_u32bool, u32 }
+test_impl_try_from_integer_to_bool! { test_try_u64bool, u64 }
+test_impl_try_from_integer_to_bool! { test_try_u128bool, u128 }
+
+test_impl_try_from_integer_to_bool! { test_try_i8bool, i8 }
+test_impl_try_from_integer_to_bool! { test_try_i16bool, i16 }
+test_impl_try_from_integer_to_bool! { test_try_i32bool, i32 }
+test_impl_try_from_integer_to_bool! { test_try_i64bool, i64 }
+test_impl_try_from_integer_to_bool! { test_try_i128bool, i128 }
+
 /// Conversions where the full width of $source can be represented as $target
 macro_rules! test_impl_try_from_always_ok {
     ($fn_name:ident, $source:ty, $target: ty) => {
@@ -497,9 +534,15 @@ macro_rules! test_impl_try_from_signed_to_unsigned_upper_ok {
             let zero: $source = 0;
             let neg_one: $source = -1;
             assert_eq!(<$target as TryFrom<$source>>::try_from(max).unwrap(), max as $target);
-            assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
+            assert_eq!(
+                <$target as TryFrom<$source>>::try_from(min).unwrap_err().kind(),
+                &IntErrorKind::NegOverflow
+            );
             assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(), zero as $target);
-            assert!(<$target as TryFrom<$source>>::try_from(neg_one).is_err());
+            assert_eq!(
+                <$target as TryFrom<$source>>::try_from(neg_one).unwrap_err().kind(),
+                &IntErrorKind::NegOverflow
+            );
         }
     };
 }
@@ -560,7 +603,10 @@ macro_rules! test_impl_try_from_unsigned_to_signed_upper_err {
             let max = <$source>::MAX;
             let min = <$source>::MIN;
             let zero: $source = 0;
-            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
+            assert_eq!(
+                <$target as TryFrom<$source>>::try_from(max).unwrap_err().kind(),
+                &IntErrorKind::PosOverflow
+            );
             assert_eq!(<$target as TryFrom<$source>>::try_from(min).unwrap(), min as $target);
             assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(), zero as $target);
         }
@@ -623,9 +669,15 @@ macro_rules! test_impl_try_from_same_sign_err {
             let zero: $source = 0;
             let t_max = <$target>::MAX;
             let t_min = <$target>::MIN;
-            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
+            assert_eq!(
+                <$target as TryFrom<$source>>::try_from(max).unwrap_err().kind(),
+                &IntErrorKind::PosOverflow
+            );
             if min != 0 {
-                assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
+                assert_eq!(
+                    <$target as TryFrom<$source>>::try_from(min).unwrap_err().kind(),
+                    &IntErrorKind::NegOverflow
+                );
             }
             assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(), zero as $target);
             assert_eq!(
@@ -712,8 +764,14 @@ macro_rules! test_impl_try_from_signed_to_unsigned_err {
             let zero: $source = 0;
             let t_max = <$target>::MAX;
             let t_min = <$target>::MIN;
-            assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
-            assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
+            assert_eq!(
+                <$target as TryFrom<$source>>::try_from(max).unwrap_err().kind(),
+                &IntErrorKind::PosOverflow
+            );
+            assert_eq!(
+                <$target as TryFrom<$source>>::try_from(min).unwrap_err().kind(),
+                &IntErrorKind::NegOverflow
+            );
             assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(), zero as $target);
             assert_eq!(
                 <$target as TryFrom<$source>>::try_from(t_max as $source).unwrap(),

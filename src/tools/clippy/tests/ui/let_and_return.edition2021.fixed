@@ -279,4 +279,27 @@ fn has_comment() -> Vec<usize> {
     v
 }
 
+fn wrongly_unmangled_macros() -> i32 {
+    let x = 1;
+    macro_rules! plus_one {
+        ($e:expr) => {
+            $e + 1
+        };
+    }
+
+    
+    plus_one!(x)
+    //~^ let_and_return
+}
+
+fn issue16820() -> Option<i32> {
+    let value = Some(42);
+
+    let v @ None = value else {
+        panic!("uh oh!");
+    };
+
+    v
+}
+
 fn main() {}

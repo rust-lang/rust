@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
@@ -32,6 +33,7 @@ pub(super) fn failed_to_match_macro(
     args: FailedMacro<'_>,
     body: &TokenStream,
     rules: &[MacroRule],
+    on_unmatch_args: Option<&Directive>,
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
     let def_head_span = if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
@@ -72,9 +74,30 @@ pub(super) fn failed_to_match_macro(
     };
 
     let span = token.span.substitute_dummy(sp);
+    let CustomDiagnostic {
+        message: custom_message, label: custom_label, notes: custom_notes, ..
+    } = {
+        let macro_name = name.to_string();
+        on_unmatch_args
+            .map(|directive| {
+                directive.eval(
+                    None,
+                    &FormatArgs {
+                        this: macro_name.clone(),
+                        this_sugared: macro_name,
+                        item_context: "macro invocation",
+                        generic_args: Vec::new(),
+                    },
+                )
+            })
+            .unwrap_or_default()
+    };
 
-    let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
-    err.span_label(span, label);
+    let mut err = match custom_message {
+        Some(message) => psess.dcx().struct_span_err(span, message),
+        None => psess.dcx().struct_span_err(span, parse_failure_msg(&token, None)),
+    };
+    err.span_label(span, custom_label.unwrap_or_else(|| label.to_string()));
     if !def_head_span.is_dummy() {
         err.span_label(def_head_span, "when calling this macro");
     }
@@ -85,6 +108,9 @@ pub(super) fn failed_to_match_macro(
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
     } else {
         err.note(format!("while trying to match {remaining_matcher}"));
+    }
+    for note in custom_notes {
+        err.note(note);
     }
 
     if let MatcherLoc::Token { token: expected_token } = &remaining_matcher
@@ -288,27 +314,24 @@ pub(super) fn emit_frag_parse_err(
         _ => annotate_err_with_kind(&mut e, kind, site_span),
     };
 
-    let mut bindings_rules = vec![];
-    for rule in bindings {
-        let MacroRule::Func { lhs, .. } = rule else { continue };
-        for param in lhs {
-            let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
-            bindings_rules.push(*bind);
-        }
-    }
-
-    let mut matched_rule_bindings_rules = vec![];
-    for param in matched_rule_bindings {
-        let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
-        matched_rule_bindings_rules.push(*bind);
-    }
-
-    let matched_rule_bindings_names: Vec<_> =
-        matched_rule_bindings_rules.iter().map(|bind| bind.name).collect();
-    let bindings_name: Vec<_> = bindings_rules.iter().map(|bind| bind.name).collect();
     if parser.token.kind == token::Dollar {
         parser.bump();
         if let token::Ident(name, _) = parser.token.kind {
+            let mut bindings_names = vec![];
+            for rule in bindings {
+                let MacroRule::Func { lhs, .. } = rule else { continue };
+                for param in lhs {
+                    let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
+                    bindings_names.push(bind.name);
+                }
+            }
+
+            let mut matched_rule_bindings_names = vec![];
+            for param in matched_rule_bindings {
+                let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
+                matched_rule_bindings_names.push(bind.name);
+            }
+
             if let Some(matched_name) = rustc_span::edit_distance::find_best_match_for_name(
                 &matched_rule_bindings_names[..],
                 name,
@@ -316,24 +339,22 @@ pub(super) fn emit_frag_parse_err(
             ) {
                 e.span_suggestion_verbose(
                     parser.token.span,
-                    "there is a macro metavariable with similar name",
-                    format!("{matched_name}"),
+                    "there is a macro metavariable with a similar name",
+                    matched_name,
                     Applicability::MaybeIncorrect,
                 );
-            } else if bindings_name.contains(&name) {
+            } else if bindings_names.contains(&name) {
                 e.span_label(
                     parser.token.span,
-                    format!(
-                        "there is an macro metavariable with this name in another macro matcher"
-                    ),
+                    "there is an macro metavariable with this name in another macro matcher",
                 );
             } else if let Some(matched_name) =
-                rustc_span::edit_distance::find_best_match_for_name(&bindings_name[..], name, None)
+                rustc_span::edit_distance::find_best_match_for_name(&bindings_names[..], name, None)
             {
                 e.span_suggestion_verbose(
                     parser.token.span,
                     "there is a macro metavariable with a similar name in another macro matcher",
-                    format!("{matched_name}"),
+                    matched_name,
                     Applicability::MaybeIncorrect,
                 );
             } else {
@@ -343,7 +364,7 @@ pub(super) fn emit_frag_parse_err(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                e.span_label(parser.token.span, format!("macro metavariable not found"));
+                e.span_label(parser.token.span, "macro metavariable not found");
                 if !matched_rule_bindings_names.is_empty() {
                     e.note(format!("available metavariable names are: {msg}"));
                 }

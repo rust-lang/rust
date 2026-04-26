@@ -10,7 +10,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
     self, PolyTraitPredicate, PredicatePolarity, SizedTraitKind, TraitPredicate, TraitRef, Ty,
-    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
 pub use rustc_next_trait_solver::placeholder::BoundVarReplacer;
 use rustc_span::Span;
@@ -52,6 +52,7 @@ pub fn expand_trait_aliases<'tcx>(
                     queue.extend(
                         tcx.explicit_super_predicates_of(trait_pred.def_id())
                             .iter_identity_copied()
+                            .map(Unnormalized::skip_norm_wip)
                             .map(|(super_clause, span)| {
                                 let mut spans = spans.clone();
                                 spans.push(span);

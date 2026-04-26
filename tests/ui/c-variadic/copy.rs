@@ -13,12 +13,12 @@ fn main() {
 unsafe extern "C" fn variadic(mut ap1: ...) {
     let mut ap2 = ap1.clone();
 
-    assert_eq!(ap1.arg::<i32>(), 1);
-    assert_eq!(ap2.arg::<i32>(), 1);
+    assert_eq!(ap1.next_arg::<i32>(), 1);
+    assert_eq!(ap2.next_arg::<i32>(), 1);
 
-    assert_eq!(ap2.arg::<i32>(), 2);
-    assert_eq!(ap1.arg::<i32>(), 2);
+    assert_eq!(ap2.next_arg::<i32>(), 2);
+    assert_eq!(ap1.next_arg::<i32>(), 2);
 
     drop(ap1);
-    assert_eq!(ap2.arg::<i32>(), 3);
+    assert_eq!(ap2.next_arg::<i32>(), 3);
 }

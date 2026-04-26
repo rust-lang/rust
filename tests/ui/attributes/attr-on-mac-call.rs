@@ -27,7 +27,7 @@ fn main() {
     #[link_name = "x"]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
-    #[link_section = "x"]
+    #[link_section = "__TEXT,__text"]
     //~^ WARN attribute cannot be used on macro calls
     //~| WARN previously accepted
     #[link_ordinal(42)]

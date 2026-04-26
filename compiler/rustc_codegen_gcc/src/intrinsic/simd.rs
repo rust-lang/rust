@@ -16,7 +16,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::builder::Builder;
@@ -539,7 +539,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    bx.tcx.normalize_erasing_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        Unnormalized::new_wip(ty),
+                    )
                 });
                 require!(
                     metadata.is_unit(),
@@ -553,7 +556,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    bx.tcx.normalize_erasing_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        Unnormalized::new_wip(ty),
+                    )
                 });
                 require!(
                     metadata.is_unit(),

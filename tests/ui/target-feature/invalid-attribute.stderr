@@ -27,27 +27,42 @@ error[E0539]: malformed `target_feature` attribute input
    |
 LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^---------^
-   | |                |
-   | |                expected this to be a list
-   | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+   |                  |
+   |                  expected this to be a list
+   |
+help: must be of the form
+   |
+LL - #[target_feature = "+sse2"]
+LL + #[target_feature(enable = "feat1, feat2")]
+   |
 
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/invalid-attribute.rs:29:1
    |
 LL | #[target_feature(bar)]
    | ^^^^^^^^^^^^^^^^^---^^
-   | |                |
-   | |                expected this to be of the form `enable = "..."`
-   | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+   |                  |
+   |                  expected this to be of the form `enable = "..."`
+   |
+help: must be of the form
+   |
+LL - #[target_feature(bar)]
+LL + #[target_feature(enable = "feat1, feat2")]
+   |
 
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/invalid-attribute.rs:32:1
    |
 LL | #[target_feature(disable = "baz")]
    | ^^^^^^^^^^^^^^^^^-------^^^^^^^^^^
-   | |                |
-   | |                expected this to be of the form `enable = "..."`
-   | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+   |                  |
+   |                  expected this to be of the form `enable = "..."`
+   |
+help: must be of the form
+   |
+LL - #[target_feature(disable = "baz")]
+LL + #[target_feature(enable = "feat1, feat2")]
+   |
 
 error: `#[target_feature]` attribute cannot be used on modules
   --> $DIR/invalid-attribute.rs:37:1
@@ -161,7 +176,7 @@ error: the feature named `foo` is not valid for this target
 LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
    |
-   = help: valid names are: `fma`, `xop`, `adx`, `aes`, and `avx` and 74 more
+   = help: valid names are: `fma`, `xop`, `adx`, `aes`, and `avx` and 75 more
 
 error[E0046]: not all trait items implemented, missing: `foo`
   --> $DIR/invalid-attribute.rs:81:1
@@ -213,7 +228,7 @@ error: the feature named `sse5` is not valid for this target
 LL | #[target_feature(enable = "sse5")]
    |                  ^^^^^^^^^^^^^^^ `sse5` is not valid for this target
    |
-   = help: valid names are: `sse`, `sse2`, `sse3`, `sse4a`, and `ssse3` and 74 more
+   = help: valid names are: `sse`, `sse2`, `sse3`, `sse4a`, and `ssse3` and 75 more
 
 error: the feature named `avx512` is not valid for this target
   --> $DIR/invalid-attribute.rs:127:18
@@ -221,7 +236,7 @@ error: the feature named `avx512` is not valid for this target
 LL | #[target_feature(enable = "avx512")]
    |                  ^^^^^^^^^^^^^^^^^ `avx512` is not valid for this target
    |
-   = help: valid names are: `avx512f`, `avx2`, `avx512bw`, `avx512cd`, and `avx512dq` and 74 more
+   = help: valid names are: `avx512f`, `avx2`, `avx512bw`, `avx512cd`, and `avx512dq` and 75 more
 
 error: aborting due to 26 previous errors
 

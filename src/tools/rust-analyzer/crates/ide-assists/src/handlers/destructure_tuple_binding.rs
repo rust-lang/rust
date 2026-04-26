@@ -89,22 +89,17 @@ fn destructure_tuple_edit_impl(
     data: &TupleData,
     in_sub_pattern: bool,
 ) {
-    let mut syntax_editor = edit.make_editor(data.ident_pat.syntax());
-    let syntax_factory = SyntaxFactory::with_mappings();
+    let editor = edit.make_editor(data.ident_pat.syntax());
+    let make = editor.make();
 
-    let assignment_edit =
-        edit_tuple_assignment(ctx, edit, &mut syntax_editor, &syntax_factory, data, in_sub_pattern);
-    let current_file_usages_edit = edit_tuple_usages(data, ctx, &syntax_factory, in_sub_pattern);
+    let assignment_edit = edit_tuple_assignment(ctx, edit, &editor, data, in_sub_pattern);
+    let current_file_usages_edit = edit_tuple_usages(data, ctx, make, in_sub_pattern);
 
-    assignment_edit.apply(&mut syntax_editor, &syntax_factory);
+    assignment_edit.apply(&editor);
     if let Some(usages_edit) = current_file_usages_edit {
-        usages_edit
-            .into_iter()
-            .for_each(|usage_edit| usage_edit.apply(ctx, edit, &mut syntax_editor))
+        usages_edit.into_iter().for_each(|usage_edit| usage_edit.apply(ctx, edit, &editor))
     }
-
-    syntax_editor.add_mappings(syntax_factory.finish_with_mappings());
-    edit.add_file_edits(ctx.vfs_file_id(), syntax_editor);
+    edit.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleData> {
@@ -175,11 +170,11 @@ struct TupleData {
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
-    editor: &mut SyntaxEditor,
-    make: &SyntaxFactory,
+    editor: &SyntaxEditor,
     data: &TupleData,
     in_sub_pattern: bool,
 ) -> AssignmentEdit {
+    let make = editor.make();
     let tuple_pat = {
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
@@ -223,22 +218,17 @@ struct AssignmentEdit {
 }
 
 impl AssignmentEdit {
-    fn apply(self, syntax_editor: &mut SyntaxEditor, syntax_mapping: &SyntaxFactory) {
+    fn apply(self, editor: &SyntaxEditor) {
+        let make = editor.make();
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
-            self.ident_pat.set_pat_with_editor(
-                Some(self.tuple_pat.into()),
-                syntax_editor,
-                syntax_mapping,
-            )
+            self.ident_pat.set_pat(Some(self.tuple_pat.into()), editor);
         } else if self.is_shorthand_field {
-            syntax_editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
-            syntax_editor
-                .insert(Position::after(self.ident_pat.syntax()), syntax_mapping.whitespace(" "));
-            syntax_editor
-                .insert(Position::after(self.ident_pat.syntax()), syntax_mapping.token(T![:]));
+            editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
+            editor.insert(Position::after(self.ident_pat.syntax()), make.whitespace(" "));
+            editor.insert(Position::after(self.ident_pat.syntax()), make.token(T![:]));
         } else {
-            syntax_editor.replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
+            editor.replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
         }
     }
 }
@@ -317,7 +307,7 @@ impl EditTupleUsage {
         self,
         ctx: &AssistContext<'_>,
         edit: &mut SourceChangeBuilder,
-        syntax_editor: &mut SyntaxEditor,
+        syntax_editor: &SyntaxEditor,
     ) {
         match self {
             EditTupleUsage::NoIndex(range) => {
@@ -907,6 +897,7 @@ fn main() {
         check_assist(
             assist,
             r#"
+//- minicore: fn
 fn main() {
     let f = |$0t| t.0 + t.1;
     let v = f((1,2));
@@ -1111,6 +1102,7 @@ fn main() {
         check_assist(
             assist,
             r#"
+//- minicore: fn
 fn main() {
     let $0t = (1,2);
     let v = t.1;

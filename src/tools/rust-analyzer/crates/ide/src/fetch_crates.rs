@@ -1,6 +1,6 @@
 use ide_db::{
     FileId, FxIndexSet, RootDatabase,
-    base_db::{CrateOrigin, RootQueryDb},
+    base_db::{CrateOrigin, all_crates},
 };
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -20,7 +20,7 @@ pub struct CrateInfo {
 //
 // ![Show Dependency Tree](https://user-images.githubusercontent.com/5748995/229394139-2625beab-f4c9-484b-84ed-ad5dee0b1e1a.png)
 pub(crate) fn fetch_crates(db: &RootDatabase) -> FxIndexSet<CrateInfo> {
-    db.all_crates()
+    all_crates(db)
         .iter()
         .copied()
         .map(|crate_id| (crate_id.data(db), crate_id.extra_data(db)))

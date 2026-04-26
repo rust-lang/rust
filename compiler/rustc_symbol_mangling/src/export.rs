@@ -91,7 +91,8 @@ impl<'tcx> AbiHashStable<'tcx> for Ty<'tcx> {
                     variant.name.abi_hash(tcx, hasher);
                     for field in &variant.fields {
                         field.name.abi_hash(tcx, hasher);
-                        let field_ty = tcx.type_of(field.did).instantiate_identity();
+                        let field_ty =
+                            tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
                         field_ty.abi_hash(tcx, hasher);
                     }
                 }
@@ -134,7 +135,7 @@ impl<'tcx> AbiHashStable<'tcx> for ty::FnSig<'tcx> {
         for ty in self.inputs_and_output {
             ty.abi_hash(tcx, hasher);
         }
-        self.safety.is_safe().abi_hash(tcx, hasher);
+        self.safety().is_safe().abi_hash(tcx, hasher);
     }
 }
 
@@ -161,7 +162,7 @@ pub(crate) fn compute_hash_of_export_fn<'tcx>(
     debug_assert_matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
 
     let args = instance.args;
-    let sig_ty = tcx.fn_sig(def_id).instantiate(tcx, args);
+    let sig_ty = tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip();
     let sig_ty = tcx.instantiate_bound_regions_with_erased(sig_ty);
 
     let hash = {

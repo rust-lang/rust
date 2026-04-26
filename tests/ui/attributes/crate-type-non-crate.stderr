@@ -2,25 +2,39 @@ error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:5:1
    |
 LL | #[crate_type]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "crate type"]`
+   | ^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL | #[crate_type = "crate type"]
+   |              ++++++++++++++
 
 error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:7:1
    |
 LL | #[crate_type(lib)]
-   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "crate type"]`
+   | ^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL - #[crate_type(lib)]
+LL + #[crate_type = "crate type"]
+   |
 
 error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:8:1
    |
 LL | #[crate_type("lib")]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "crate type"]`
+   | ^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL - #[crate_type("lib")]
+LL + #[crate_type = "crate type"]
+   |
 
 error: attribute value must be a literal
   --> $DIR/crate-type-non-crate.rs:9:16
@@ -32,17 +46,27 @@ error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:12:1
    |
 LL | #[crate_type(foo)]
-   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "crate type"]`
+   | ^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL - #[crate_type(foo)]
+LL + #[crate_type = "crate type"]
+   |
 
 error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:13:1
    |
 LL | #[crate_type("foo")]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "crate type"]`
+   | ^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL - #[crate_type("foo")]
+LL + #[crate_type = "crate type"]
+   |
 
 error: attribute value must be a literal
   --> $DIR/crate-type-non-crate.rs:14:16
@@ -54,20 +78,29 @@ error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:17:1
    |
 LL | #[crate_type(1)]
-   | ^^^^^^^^^^^^^^^^ help: must be of the form: `#[crate_type = "crate type"]`
+   | ^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL - #[crate_type(1)]
+LL + #[crate_type = "crate type"]
+   |
 
 error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:18:1
    |
 LL | #[crate_type = 1]
    | ^^^^^^^^^^^^^^^-^
-   | |              |
-   | |              expected a string literal here
-   | help: must be of the form: `#[crate_type = "crate type"]`
+   |                |
+   |                expected a string literal here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/linkage.html>
+help: must be of the form
+   |
+LL - #[crate_type = 1]
+LL + #[crate_type = "crate type"]
+   |
 
 error: aborting due to 9 previous errors
 

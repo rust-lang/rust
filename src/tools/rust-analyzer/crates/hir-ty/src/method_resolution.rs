@@ -219,7 +219,6 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 /// between multiple candidates. We otherwise treat them as ordinary inference
 /// variable to avoid rejecting otherwise correct code.
 #[derive(Debug)]
-#[expect(dead_code)]
 pub(super) enum TreatNotYetDefinedOpaques {
     AsInfer,
     AsRigid,
@@ -324,7 +323,7 @@ impl<'db> InferenceTable<'db> {
         // any late-bound regions appearing in its bounds.
         let bounds = GenericPredicates::query_all(self.db, method_item.into());
         let bounds = clauses_as_obligations(
-            bounds.iter_instantiated_copied(interner, args.as_slice()),
+            bounds.iter_instantiated(interner, args.as_slice()),
             ObligationCause::new(),
             self.param_env,
         );

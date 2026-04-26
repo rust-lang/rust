@@ -21,7 +21,7 @@ trait A {
     const B: usize;
 }
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 struct S([u8; <u8 as A>::B]) //~ ERROR: the type `[u8; <u8 as A>::B]` has an unknown layout
 where
     u8: A;

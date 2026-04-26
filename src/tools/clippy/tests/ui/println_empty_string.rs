@@ -43,3 +43,28 @@ fn issue_16167() {
         //~^ println_empty_string
     }
 }
+
+#[rustfmt::skip]
+fn issue_16843() {
+    println!{""};
+    //~^ println_empty_string
+
+    println![""];
+    //~^ println_empty_string
+
+    eprintln!{""};
+    //~^ println_empty_string
+
+    eprintln![""];
+    //~^ println_empty_string
+
+    match "a" {
+        _ => println!{""},
+        //~^ println_empty_string
+    }
+
+    match "a" {
+        _ => println![""],
+        //~^ println_empty_string
+    }
+}

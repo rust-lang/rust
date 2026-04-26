@@ -1,7 +1,5 @@
 //! Fulfill loop for next-solver.
 
-mod errors;
-
 use std::ops::ControlFlow;
 
 use rustc_hash::FxHashSet;

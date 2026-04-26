@@ -3,9 +3,14 @@ error[E0565]: malformed `non_exhaustive` attribute input
    |
 LL | #[non_exhaustive(anything)]
    | ^^^^^^^^^^^^^^^^----------^
-   | |               |
-   | |               didn't expect any arguments here
-   | help: must be of the form: `#[non_exhaustive]`
+   |                 |
+   |                 didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL - #[non_exhaustive(anything)]
+LL + #[non_exhaustive]
+   |
 
 error: `#[non_exhaustive]` attribute cannot be used on traits
   --> $DIR/invalid-attribute.rs:5:1

@@ -20,9 +20,9 @@ LL | pub struct Quantity<S, const D: Dimension>(S);
    |                                 ^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
-LL + #![feature(adt_const_params)]
+LL + #![feature(min_adt_const_params)]
    |
 
 error[E0107]: trait takes at most 1 generic argument but 2 generic arguments were supplied
@@ -38,9 +38,9 @@ LL | impl<const D: Dimension, LHS, RHS> Add<LHS, D> for Quantity<LHS, { Dimensio
    |               ^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
-LL + #![feature(adt_const_params)]
+LL + #![feature(min_adt_const_params)]
    |
 
 error: `Dimension` is forbidden as the type of a const generic parameter
@@ -50,9 +50,9 @@ LL | pub fn add<const U: Dimension>(x: Quantity<f32, U>) -> Quantity<f32, U> {
    |                     ^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
-LL + #![feature(adt_const_params)]
+LL + #![feature(min_adt_const_params)]
    |
 
 error: aborting due to 5 previous errors

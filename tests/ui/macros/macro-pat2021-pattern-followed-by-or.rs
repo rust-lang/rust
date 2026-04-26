@@ -1,4 +1,6 @@
 //@ edition:2021
+//@ reference: macro.decl.follow-set.token-pat
+//@ reference: macro.decl.follow-set.edition2021
 
 #![allow(unused_macros)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } //~ ERROR `$x:pat` is followed by `|`, which is not allowed for `pat` fragments

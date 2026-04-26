@@ -7,23 +7,23 @@ struct S(i32);
 
 impl S {
     unsafe extern "C" fn associated_function(mut ap: ...) -> i32 {
-        unsafe { ap.arg() }
+        unsafe { ap.next_arg() }
     }
 
     unsafe extern "C" fn method_owned(self, mut ap: ...) -> i32 {
-        self.0 + unsafe { ap.arg::<i32>() }
+        self.0 + unsafe { ap.next_arg::<i32>() }
     }
 
     unsafe extern "C" fn method_ref(&self, mut ap: ...) -> i32 {
-        self.0 + unsafe { ap.arg::<i32>() }
+        self.0 + unsafe { ap.next_arg::<i32>() }
     }
 
     unsafe extern "C" fn method_mut(&mut self, mut ap: ...) -> i32 {
-        self.0 + unsafe { ap.arg::<i32>() }
+        self.0 + unsafe { ap.next_arg::<i32>() }
     }
 
     unsafe extern "C" fn fat_pointer(self: Box<Self>, mut ap: ...) -> i32 {
-        self.0 + unsafe { ap.arg::<i32>() }
+        self.0 + unsafe { ap.next_arg::<i32>() }
     }
 }
 

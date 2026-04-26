@@ -48,8 +48,6 @@ mod query;
 mod statement;
 mod syntax;
 mod terminator;
-
-pub mod loops;
 pub mod traversal;
 pub mod visit;
 
@@ -417,10 +415,10 @@ impl<'tcx> Body<'tcx> {
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         match self.phase {
             // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
-            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env: tcx.param_env(self.source.def_id()),
-            },
+            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
+                tcx.param_env(self.source.def_id()),
+                ty::TypingMode::non_body_analysis(),
+            ),
             MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
         }
     }

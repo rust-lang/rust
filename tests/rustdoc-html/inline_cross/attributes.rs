@@ -9,7 +9,7 @@
 pub use attributes::no_mangle;
 
 //@ has 'user/fn.link_section.html' '//pre[@class="rust item-decl"]' \
-//                                  '#[unsafe(link_section = ".here")]'
+//                                  '#[unsafe(link_section = "__TEXT,__here")]'
 pub use attributes::link_section;
 
 //@ has 'user/fn.export_name.html' '//pre[@class="rust item-decl"]' \

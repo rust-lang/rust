@@ -1,5 +1,5 @@
 error[E0324]: item `CONST` is an associated method, which doesn't match its trait `Trait`
-  --> $DIR/impl-reuse-non-reuse-items.rs:23:5
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
 LL |         const CONST: u8;
    |         ---------------- item in trait
@@ -8,7 +8,7 @@ LL |     reuse impl Trait for S { &self.0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0324]: item `Type` is an associated method, which doesn't match its trait `Trait`
-  --> $DIR/impl-reuse-non-reuse-items.rs:23:5
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
 LL |         type Type;
    |         ---------- item in trait
@@ -17,7 +17,7 @@ LL |     reuse impl Trait for S { &self.0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0201]: duplicate definitions with name `method`:
-  --> $DIR/impl-reuse-non-reuse-items.rs:23:5
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
 LL |         fn method(&self);
    |         ----------------- item in trait
@@ -29,19 +29,19 @@ LL |     reuse impl Trait for S { &self.0 }
    |     previous definition here
 
 error[E0423]: expected function, found associated constant `Trait::CONST`
-  --> $DIR/impl-reuse-non-reuse-items.rs:23:16
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:16
    |
 LL |     reuse impl Trait for S { &self.0 }
    |                ^^^^^ not a function
 
 error[E0423]: expected function, found associated type `Trait::Type`
-  --> $DIR/impl-reuse-non-reuse-items.rs:23:16
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:16
    |
 LL |     reuse impl Trait for S { &self.0 }
    |                ^^^^^ not a function
 
 error[E0046]: not all trait items implemented, missing: `CONST`, `Type`, `method`
-  --> $DIR/impl-reuse-non-reuse-items.rs:23:5
+  --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
 LL |         const CONST: u8;
    |         --------------- `CONST` from trait

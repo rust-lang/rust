@@ -9,7 +9,7 @@ extern "C" {
 }
 
 pub unsafe extern "C" fn bar(_: i32, mut ap: ...) -> usize {
-    ap.arg::<usize>()
+    ap.next_arg::<usize>()
 }
 
 fn main() {}

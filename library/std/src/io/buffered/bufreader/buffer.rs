@@ -21,11 +21,11 @@ pub struct Buffer {
     // Each call to `fill_buf` sets `filled` to indicate how many bytes at the start of `buf` are
     // initialized with bytes from a read.
     filled: usize,
-    // This is the max number of bytes returned across all `fill_buf` calls. We track this so that we
-    // can accurately tell `read_buf` how many bytes of buf are initialized, to bypass as much of its
-    // defensive initialization as possible. Note that while this often the same as `filled`, it
-    // doesn't need to be. Calls to `fill_buf` are not required to actually fill the buffer, and
-    // omitting this is a huge perf regression for `Read` impls that do not.
+    // Whether `buf` has been fully initialized. We track this so that we can accurately tell
+    // `read_buf` how many bytes of buf are initialized, to bypass as much of its defensive
+    // initialization as possible. Note that while this often the same as `filled`, it doesn't need
+    // to be. Calls to `fill_buf` are not required to actually fill the buffer, and omitting this
+    // is a huge perf regression for `Read` impls that do not.
     initialized: bool,
 }
 
@@ -112,6 +112,9 @@ impl Buffer {
         let mut buf = BorrowedBuf::from(&mut self.buf[self.filled..]);
 
         if self.initialized {
+            // SAFETY: `self.initialized` is only set after `self.buf` was
+            // fully initialized, and once `self.buf` is fully initialized
+            // no part will become uninitialized.
             unsafe { buf.set_init() };
         }
 
@@ -138,9 +141,11 @@ impl Buffer {
             debug_assert!(self.pos == self.filled);
 
             let mut buf = BorrowedBuf::from(&mut *self.buf);
-            // SAFETY: `self.filled` bytes will always have been initialized.
 
             if self.initialized {
+                // SAFETY: `self.initialized` is only set after `self.buf` was
+                // fully initialized, and once `self.buf` is fully initialized
+                // no part will become uninitialized.
                 unsafe { buf.set_init() };
             }
 

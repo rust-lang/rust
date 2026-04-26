@@ -1,7 +1,7 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant, FullInt, integer_const, is_zero_integer_const};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{ExprUseNode, clip, expr_use_ctxt, peel_hir_expr_refs, unsext};
+use clippy_utils::{ExprUseNode, clip, get_expr_use_site, peel_hir_expr_refs, unsext};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, Path, QPath};
@@ -250,7 +250,7 @@ fn span_ineffective_operation(
 }
 
 fn is_expr_used_with_type_annotation<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    match expr_use_ctxt(cx, expr).use_node(cx) {
+    match get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx) {
         ExprUseNode::LetStmt(letstmt) => letstmt.ty.is_some(),
         ExprUseNode::Return(_) => true,
         _ => false,
@@ -283,7 +283,7 @@ fn is_assoc_fn_without_type_instance<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'
                 ..
             },
         )) = func.kind
-        && let output_ty = cx.tcx.fn_sig(*def_id).instantiate_identity().skip_binder().output()
+        && let output_ty = cx.tcx.fn_sig(*def_id).instantiate_identity().skip_norm_wip().skip_binder().output()
         && let ty::Param(ty::ParamTy {
             name: kw::SelfUpper, ..
         }) = output_ty.kind()

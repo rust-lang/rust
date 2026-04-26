@@ -6,7 +6,7 @@ use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
 use crate::{intrinsics, mem};
 
 /// By-value [`Range`] iterator.
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 #[derive(Debug, Clone)]
 pub struct RangeIter<A>(legacy::Range<A>);
 
@@ -64,7 +64,7 @@ unsafe_range_trusted_random_access_impl! {
     u64 i64
 }
 
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 impl<A: Step> Iterator for RangeIter<A> {
     type Item = A;
 
@@ -132,7 +132,7 @@ impl<A: Step> Iterator for RangeIter<A> {
     }
 }
 
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 impl<A: Step> DoubleEndedIterator for RangeIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -153,10 +153,10 @@ impl<A: Step> DoubleEndedIterator for RangeIter<A> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: TrustedStep> TrustedLen for RangeIter<A> {}
 
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 impl<A: Step> FusedIterator for RangeIter<A> {}
 
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 impl<A: Step> IntoIterator for Range<A> {
     type Item = A;
     type IntoIter = RangeIter<A>;
@@ -299,7 +299,7 @@ impl<A: Step> IntoIterator for RangeInclusive<A> {
 //   since e.g. `(0..=u64::MAX).len()` would be `u64::MAX + 1`.
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "new_range_api", since = "1.96.0")]
         impl ExactSizeIterator for RangeIter<$t> { }
     )*)
 }
@@ -322,7 +322,7 @@ range_incl_exact_iter_impl! {
 }
 
 /// By-value [`RangeFrom`] iterator.
-#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
 #[derive(Debug, Clone)]
 pub struct RangeFromIter<A> {
     start: A,
@@ -361,7 +361,7 @@ impl<A: Step> RangeFromIter<A> {
     }
 }
 
-#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
 impl<A: Step> Iterator for RangeFromIter<A> {
     type Item = A;
 
@@ -432,10 +432,10 @@ impl<A: Step> Iterator for RangeFromIter<A> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: TrustedStep> TrustedLen for RangeFromIter<A> {}
 
-#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
 impl<A: Step> FusedIterator for RangeFromIter<A> {}
 
-#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
 impl<A: Step> IntoIterator for RangeFrom<A> {
     type Item = A;
     type IntoIter = RangeFromIter<A>;

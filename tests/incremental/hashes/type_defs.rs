@@ -10,10 +10,10 @@
 // results in a change of the ICH for the enum's metadata, and that it stays
 // the same between rev2 and rev3.
 
-//@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: cfail1 cfail2 cfail3
+//@ revisions: bpass1 bpass2 bpass3
 //@ compile-flags: -Z query-dep-graph -O
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -21,34 +21,34 @@
 
 
 // Change type (primitive) -----------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangePrimitiveType = i32;
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangePrimitiveType = i64;
 
 
 
 // Change mutability -----------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangeMutability = &'static i32;
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangeMutability = &'static mut i32;
 
 
 
 // Change mutability -----------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangeLifetime<'a> = (&'static i32, &'a i32);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangeLifetime<'a> = (&'a i32, &'a i32);
 
 
@@ -57,23 +57,23 @@ type ChangeLifetime<'a> = (&'a i32, &'a i32);
 struct Struct1;
 struct Struct2;
 
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangeTypeStruct = Struct1;
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangeTypeStruct = Struct2;
 
 
 
 // Change type (tuple) ---------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangeTypeTuple = (u32, u64);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangeTypeTuple = (u32, i64);
 
 
@@ -88,102 +88,102 @@ enum Enum2 {
     Var2,
 }
 
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangeTypeEnum = Enum1;
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangeTypeEnum = Enum2;
 
 
 
 // Add tuple field -------------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddTupleField = (i32, i64);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddTupleField = (i32, i64, i16);
 
 
 
 // Change nested tuple field ---------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type ChangeNestedTupleField = (i32, (i64, i16));
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type ChangeNestedTupleField = (i32, (i64, i8));
 
 
 
 // Add type param --------------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddTypeParam<T1> = (T1, T1);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddTypeParam<T1, T2> = (T1, T2);
 
 
 
 // Add type param bound --------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddTypeParamBound<T1> = (T1, u32);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddTypeParamBound<T1: Clone> = (T1, u32);
 
 
 
 // Add type param bound in where clause ----------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddTypeParamBoundWhereClause<T1> where T1: Clone = (T1, u32);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddTypeParamBoundWhereClause<T1> where T1: Clone+Copy = (T1, u32);
 
 
 
 // Add lifetime param ----------------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddLifetimeParam<'a> = (&'a u32, &'a u32);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddLifetimeParam<'a, 'b> = (&'a u32, &'b u32);
 
 
 
 // Add lifetime param bound ----------------------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddLifetimeParamBound<'a, 'b> = (&'a u32, &'b u32);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddLifetimeParamBound<'a, 'b: 'a> = (&'a u32, &'b u32);
 
 
 
 // Add lifetime param bound in where clause ------------------------------------
-#[cfg(cfail1)]
+#[cfg(bpass1)]
 type AddLifetimeParamBoundWhereClause<'a, 'b, 'c>
 where 'b: 'a
     = (&'a u32, &'b u32, &'c u32);
 
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="cfail3")]
+#[cfg(not(bpass1))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
 type AddLifetimeParamBoundWhereClause<'a, 'b, 'c>
 where 'b: 'a,
       'c: 'a
@@ -196,13 +196,13 @@ trait ReferencedTrait1 {}
 trait ReferencedTrait2 {}
 
 mod change_trait_bound_indirectly {
-    #[cfg(cfail1)]
+    #[cfg(bpass1)]
     use super::ReferencedTrait1 as Trait;
-    #[cfg(not(cfail1))]
+    #[cfg(not(bpass1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+    #[rustc_clean(cfg="bpass3")]
     type ChangeTraitBoundIndirectly<T: Trait> = (T, u32);
 }
 
@@ -210,12 +210,12 @@ mod change_trait_bound_indirectly {
 
 // Change Trait Bound Indirectly In Where Clause -------------------------------
 mod change_trait_bound_indirectly_in_where_clause {
-    #[cfg(cfail1)]
+    #[cfg(bpass1)]
     use super::ReferencedTrait1 as Trait;
-    #[cfg(not(cfail1))]
+    #[cfg(not(bpass1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+    #[rustc_clean(cfg="bpass3")]
     type ChangeTraitBoundIndirectly<T> where T : Trait = (T, u32);
 }

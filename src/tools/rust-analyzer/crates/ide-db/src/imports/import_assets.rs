@@ -8,8 +8,10 @@ use hir::{
     SemanticsScope, Trait, Type,
 };
 use itertools::Itertools;
+use parser::SyntaxKind;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
+use stdx::never;
 use syntax::{
     AstNode, SyntaxNode,
     ast::{self, HasName, make},
@@ -61,6 +63,105 @@ pub struct TraitImportCandidate<'db> {
     pub assoc_item_name: NameToImport,
 }
 
+#[derive(Debug)]
+struct PathDefinitionKinds {
+    modules: bool,
+    bang_macros: bool,
+    // FIXME: Distinguish between attr and derive macros.
+    attr_macros: bool,
+    value_namespace: bool,
+    type_namespace: bool,
+    /// Unions, record structs and record enum variants. Note that unions and structs
+    /// can also be enabled by `type_namespace` (either works).
+    records: bool,
+    /// Tuple structs and tuple enum variants. Both are also controlled by `value_namespace`
+    /// (either works). Structs are also covered by `type_namespace`.
+    tuple_structs: bool,
+    /// Structs, enum variants and consts.
+    structs_and_consts: bool,
+}
+
+impl PathDefinitionKinds {
+    const ALL_DISABLED: Self = Self {
+        modules: false,
+        bang_macros: false,
+        attr_macros: false,
+        value_namespace: false,
+        type_namespace: false,
+        records: false,
+        tuple_structs: false,
+        structs_and_consts: false,
+    };
+    const ALL_ENABLED: Self = Self {
+        modules: true,
+        bang_macros: true,
+        attr_macros: true,
+        value_namespace: true,
+        type_namespace: true,
+        records: true,
+        tuple_structs: true,
+        structs_and_consts: true,
+    };
+    // While a path pattern only allows unit structs/enum variants, parentheses/braces may be written later.
+    const PATH_PAT_KINDS: PathDefinitionKinds =
+        Self { structs_and_consts: true, bang_macros: true, ..Self::ALL_DISABLED };
+
+    fn deduce_from_path(path: &ast::Path, exact: bool) -> Self {
+        let Some(parent) = path.syntax().parent() else {
+            return Self::ALL_ENABLED;
+        };
+        let mut result = match parent.kind() {
+            // When there are following segments, it can be a type (with a method) or a module.
+            // Technically, a type can only have up to 2 segments following (an associated type
+            // then a method), but most paths are shorter than 3 segments anyway, and we'll also
+            // validate that the following segment resolve.
+            SyntaxKind::PATH => Self { modules: true, type_namespace: true, ..Self::ALL_DISABLED },
+            SyntaxKind::MACRO_CALL => Self { bang_macros: true, ..Self::ALL_DISABLED },
+            SyntaxKind::PATH_META | SyntaxKind::KEY_VALUE_META | SyntaxKind::TOKEN_TREE_META => {
+                Self { attr_macros: true, ..Self::ALL_DISABLED }
+            }
+            SyntaxKind::USE_TREE => {
+                if ast::UseTree::cast(parent).unwrap().use_tree_list().is_some() {
+                    Self { modules: true, ..Self::ALL_DISABLED }
+                } else {
+                    Self::ALL_ENABLED
+                }
+            }
+            SyntaxKind::VISIBILITY => Self { modules: true, ..Self::ALL_DISABLED },
+            SyntaxKind::ASM_SYM => Self { value_namespace: true, ..Self::ALL_DISABLED },
+            // `bang_macros = true` because you can still type the `!`.
+            // `type_namespace = true` because you can type `::method()`.
+            SyntaxKind::PATH_EXPR => Self {
+                value_namespace: true,
+                bang_macros: true,
+                type_namespace: true,
+                ..Self::ALL_DISABLED
+            },
+            SyntaxKind::PATH_PAT => Self::PATH_PAT_KINDS,
+            SyntaxKind::TUPLE_STRUCT_PAT => {
+                Self { tuple_structs: true, bang_macros: true, ..Self::ALL_DISABLED }
+            }
+            SyntaxKind::RECORD_EXPR | SyntaxKind::RECORD_PAT => {
+                Self { records: true, bang_macros: true, ..Self::ALL_DISABLED }
+            }
+            SyntaxKind::PATH_TYPE => {
+                Self { type_namespace: true, bang_macros: true, ..Self::ALL_DISABLED }
+            }
+            SyntaxKind::ERROR => Self::ALL_ENABLED,
+            _ => {
+                never!("this match should cover all possible parents of paths\nparent={parent:#?}");
+                Self::ALL_ENABLED
+            }
+        };
+        if !exact {
+            // When the path is not required to be exact, there could be additional segments to be filled.
+            result.modules = true;
+            result.type_namespace = true;
+        }
+        result
+    }
+}
+
 /// Path import for a given name, qualified or not.
 #[derive(Debug)]
 pub struct PathImportCandidate {
@@ -70,6 +171,8 @@ pub struct PathImportCandidate {
     pub name: NameToImport,
     /// Potentially more segments that should resolve in the candidate.
     pub after: Vec<Name>,
+    /// The kind of definitions that we can include.
+    definition_kinds: PathDefinitionKinds,
 }
 
 /// A name that will be used during item lookups.
@@ -168,13 +271,14 @@ impl<'db> ImportAssets<'db> {
 
     pub fn for_fuzzy_path(
         module_with_candidate: Module,
+        path: Option<&ast::Path>,
         qualifier: Option<ast::Path>,
         fuzzy_name: String,
         sema: &Semantics<'db, RootDatabase>,
         candidate_node: SyntaxNode,
     ) -> Option<Self> {
         Some(Self {
-            import_candidate: ImportCandidate::for_fuzzy_path(qualifier, fuzzy_name, sema)?,
+            import_candidate: ImportCandidate::for_fuzzy_path(path, qualifier, fuzzy_name, sema)?,
             module_with_candidate,
             candidate_node,
         })
@@ -394,6 +498,9 @@ fn path_applicable_imports(
                 // see also an ignored test under FIXME comment in the qualify_path.rs module
                 AssocSearchMode::Exclude,
             )
+            .filter(|(item, _)| {
+                filter_by_definition_kind(db, *item, &path_candidate.definition_kinds)
+            })
             .filter_map(|(item, do_not_complete)| {
                 if !scope_filter(item) {
                     return None;
@@ -440,6 +547,46 @@ fn path_applicable_imports(
     filter_candidates_by_after_path(db, scope, path_candidate, &mut result);
 
     result
+}
+
+fn filter_by_definition_kind(
+    db: &RootDatabase,
+    item: ItemInNs,
+    allowed: &PathDefinitionKinds,
+) -> bool {
+    let item = item.into_module_def();
+    let struct_per_kind = |struct_kind| {
+        allowed.structs_and_consts
+            || match struct_kind {
+                hir::StructKind::Record => allowed.records,
+                hir::StructKind::Tuple => allowed.value_namespace || allowed.tuple_structs,
+                hir::StructKind::Unit => allowed.value_namespace,
+            }
+    };
+    match item {
+        ModuleDef::Module(_) => allowed.modules,
+        ModuleDef::Function(_) => allowed.value_namespace,
+        ModuleDef::Adt(hir::Adt::Struct(item)) => {
+            allowed.type_namespace || struct_per_kind(item.kind(db))
+        }
+        ModuleDef::Adt(hir::Adt::Enum(_)) => allowed.type_namespace,
+        ModuleDef::Adt(hir::Adt::Union(_)) => {
+            allowed.type_namespace || allowed.records || allowed.structs_and_consts
+        }
+        ModuleDef::EnumVariant(item) => struct_per_kind(item.kind(db)),
+        ModuleDef::Const(_) => allowed.value_namespace || allowed.structs_and_consts,
+        ModuleDef::Static(_) => allowed.value_namespace,
+        ModuleDef::Trait(_) => allowed.type_namespace,
+        ModuleDef::TypeAlias(_) => allowed.type_namespace,
+        ModuleDef::BuiltinType(_) => allowed.type_namespace,
+        ModuleDef::Macro(item) => {
+            if item.is_fn_like(db) {
+                allowed.bang_macros
+            } else {
+                allowed.attr_macros
+            }
+        }
+    }
 }
 
 fn filter_candidates_by_after_path(
@@ -835,6 +982,7 @@ impl<'db> ImportCandidate<'db> {
             .collect::<Option<_>>()?;
         path_import_candidate(
             sema,
+            Some(path),
             path.qualifier(),
             NameToImport::exact_case_sensitive(path.segment()?.name_ref()?.to_string()),
             after,
@@ -853,25 +1001,31 @@ impl<'db> ImportCandidate<'db> {
             qualifier: vec![],
             name: NameToImport::exact_case_sensitive(name.to_string()),
             after: vec![],
+            definition_kinds: PathDefinitionKinds::PATH_PAT_KINDS,
         }))
     }
 
     fn for_fuzzy_path(
+        path: Option<&ast::Path>,
         qualifier: Option<ast::Path>,
         fuzzy_name: String,
         sema: &Semantics<'db, RootDatabase>,
     ) -> Option<Self> {
         // Assume a fuzzy match does not want the segments after. Because... I guess why not?
-        path_import_candidate(sema, qualifier, NameToImport::fuzzy(fuzzy_name), Vec::new())
+        path_import_candidate(sema, path, qualifier, NameToImport::fuzzy(fuzzy_name), Vec::new())
     }
 }
 
 fn path_import_candidate<'db>(
     sema: &Semantics<'db, RootDatabase>,
+    path: Option<&ast::Path>,
     qualifier: Option<ast::Path>,
     name: NameToImport,
     after: Vec<Name>,
 ) -> Option<ImportCandidate<'db>> {
+    let definition_kinds = path.map_or(PathDefinitionKinds::ALL_ENABLED, |path| {
+        PathDefinitionKinds::deduce_from_path(path, matches!(name, NameToImport::Exact(..)))
+    });
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
             Some(PathResolution::Def(ModuleDef::BuiltinType(_))) | None => {
@@ -880,7 +1034,12 @@ fn path_import_candidate<'db>(
                         .segments()
                         .map(|seg| seg.name_ref().map(|name| Name::new_root(&name.text())))
                         .collect::<Option<Vec<_>>>()?;
-                    ImportCandidate::Path(PathImportCandidate { qualifier, name, after })
+                    ImportCandidate::Path(PathImportCandidate {
+                        qualifier,
+                        name,
+                        after,
+                        definition_kinds,
+                    })
                 } else {
                     return None;
                 }
@@ -904,7 +1063,12 @@ fn path_import_candidate<'db>(
             }
             Some(_) => return None,
         },
-        None => ImportCandidate::Path(PathImportCandidate { qualifier: vec![], name, after }),
+        None => ImportCandidate::Path(PathImportCandidate {
+            qualifier: vec![],
+            name,
+            after,
+            definition_kinds,
+        }),
     })
 }
 

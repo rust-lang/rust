@@ -1,11 +1,11 @@
 error: expected trait, found struct `S`
-  --> $DIR/glob-bad-path.rs:9:11
+  --> $DIR/glob-bad-path.rs:8:11
    |
 LL |     reuse S::*;
    |           ^ not a trait
 
 error[E0433]: cannot find module or crate `unresolved` in this scope
-  --> $DIR/glob-bad-path.rs:8:11
+  --> $DIR/glob-bad-path.rs:7:11
    |
 LL |     reuse unresolved::*;
    |           ^^^^^^^^^^ use of unresolved module or unlinked crate `unresolved`

@@ -34,7 +34,6 @@ fn get<S: Stage>(
 pub(crate) struct DeprecatedParser;
 impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Mod),

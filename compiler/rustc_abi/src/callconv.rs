@@ -35,6 +35,7 @@ impl HomogeneousAggregate {
     /// Try to combine two `HomogeneousAggregate`s, e.g. from two fields in
     /// the same `struct`. Only succeeds if only one of them has any data,
     /// or both units are identical.
+    #[cfg(feature = "nightly")]
     fn merge(self, other: HomogeneousAggregate) -> Result<HomogeneousAggregate, Heterogeneous> {
         match (self, other) {
             (x, HomogeneousAggregate::NoData) | (HomogeneousAggregate::NoData, x) => Ok(x),
@@ -75,10 +76,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 
-            BackendRepr::SimdVector { .. } => {
+            BackendRepr::SimdVector { element, count: _ } => {
                 assert!(!self.is_zst());
+
                 Ok(HomogeneousAggregate::Homogeneous(Reg {
-                    kind: RegKind::Vector,
+                    kind: RegKind::Vector { hint_vector_elem: element.primitive() },
                     size: self.size,
                 }))
             }

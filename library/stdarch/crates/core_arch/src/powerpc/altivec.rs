@@ -4700,10 +4700,10 @@ mod tests {
         { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
             #[simd_test(enable = "altivec")]
             fn $name() {
-                let a: s_t_l!($ty) = $ty::new($($a),+).into();
-                let b: s_t_l!($ty) = $ty::new($($b),+).into();
+                let a: s_t_l!($ty) = $ty::from_array([$($a),+]).into();
+                let b: s_t_l!($ty) = $ty::from_array([$($b),+]).into();
 
-                let d = $ty_out::new($($d),+);
+                let d = $ty_out::from_array([$($d),+]);
                 let r = $ty_out::from(unsafe { $fn(a, b) });
                 assert_eq!(d, r);
             }
@@ -4711,8 +4711,8 @@ mod tests {
          { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], $d:expr } => {
             #[simd_test(enable = "altivec")]
             fn $name() {
-                let a: s_t_l!($ty) = $ty::new($($a),+).into();
-                let b: s_t_l!($ty) = $ty::new($($b),+).into();
+                let a: s_t_l!($ty) = $ty::from_array([$($a),+]).into();
+                let b: s_t_l!($ty) = $ty::from_array([$($b),+]).into();
 
                 let r = $ty_out::from(unsafe { $fn(a, b) });
                 assert_eq!($d, r);
@@ -4728,7 +4728,7 @@ mod tests {
 
                 let d = vector_float::from(f32x4::new($($d),+));
                 let r = m32x4::from(unsafe { vec_cmple(vec_abs(vec_sub($fn(a), d)), vec_splats(f32::EPSILON)) });
-                let e = m32x4::new(true, true, true, true);
+                let e = m32x4::splat(true);
                 assert_eq!(e, r);
             }
         };
@@ -6212,10 +6212,10 @@ mod tests {
          [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "altivec")]
             fn $name() {
-                let a = $longtype::from($shorttype::new($($a),+));
-                let b = $longtype::from($shorttype::new($($b),+));
-                let c = vector_unsigned_char::from(u8x16::new($($c),+));
-                let d = $shorttype::new($($d),+);
+                let a = $longtype::from($shorttype::from_array([$($a),+]));
+                let b = $longtype::from($shorttype::from_array([$($b),+]));
+                let c = vector_unsigned_char::from(u8x16::from_array([$($c),+]));
+                let d = $shorttype::from_array([$($d),+]);
 
                 let r = $shorttype::from(unsafe { vec_perm(a, b, c) });
                 assert_eq!(d, r);
@@ -6664,7 +6664,7 @@ mod tests {
         let check = |a, b| {
             let r =
                 m32x4::from(unsafe { vec_cmple(vec_abs(vec_sub(a, b)), vec_splats(f32::EPSILON)) });
-            let e = m32x4::new(true, true, true, true);
+            let e = m32x4::splat(true);
             assert_eq!(e, r);
         };
 
@@ -6720,7 +6720,7 @@ mod tests {
             let r =
                 m32x4::from(unsafe { vec_cmple(vec_abs(vec_sub(a, b)), vec_splats(f32::EPSILON)) });
             println!("{:?} {:?}", a, b);
-            let e = m32x4::new(true, true, true, true);
+            let e = m32x4::splat(true);
             assert_eq!(e, r);
         };
 

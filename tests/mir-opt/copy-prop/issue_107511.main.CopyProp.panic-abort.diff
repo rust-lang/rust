@@ -86,7 +86,7 @@
       }
   
       bb6: {
--         StorageLive(_16);
+          StorageLive(_16);
           _16 = copy ((_11 as Some).0: usize);
           StorageLive(_17);
 -         StorageLive(_18);
@@ -116,7 +116,7 @@
           StorageDead(_17);
 -         StorageDead(_18);
 -         _10 = const ();
--         StorageDead(_16);
+          StorageDead(_16);
           StorageDead(_13);
           StorageDead(_11);
 -         StorageDead(_10);

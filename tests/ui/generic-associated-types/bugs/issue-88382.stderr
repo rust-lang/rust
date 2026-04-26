@@ -15,10 +15,10 @@ note: required by a bound in `test`
    |
 LL | fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}
    |                ^^^^^^^^ required by this bound in `test`
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `I`
    |
-LL |     do_something(SomeImplementation(), test::<I>);
-   |                                            +++++
+LL |     do_something(SomeImplementation(), test::</* Type */>);
+   |                                            ++++++++++++++
 
 error: aborting due to 1 previous error
 

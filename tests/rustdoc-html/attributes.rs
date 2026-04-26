@@ -1,4 +1,5 @@
 //@ edition: 2024
+//@ only-linux
 #![crate_name = "foo"]
 
 //@ has foo/fn.f.html '//*[@class="code-attribute"]' '#[unsafe(no_mangle)]'

@@ -55,18 +55,6 @@ impl<'tcx> Const<'tcx> {
         *a
     }
 
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline]
-    pub fn flags(self) -> TypeFlags {
-        self.0.flags
-    }
-
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline]
-    pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
-        self.0.outer_exclusive_binder
-    }
-
     #[inline]
     pub fn new(tcx: TyCtxt<'tcx>, kind: ty::ConstKind<'tcx>) -> Const<'tcx> {
         tcx.mk_ct_from_kind(kind)

@@ -7,9 +7,8 @@ use rustc_session::config::FmtDebug;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 
 use super::LoweringContext;
-use crate::ResolverAstLoweringExt;
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {
         // Never call the const constructor of `fmt::Arguments` if the
         // format_args!() had any arguments _before_ flattening/inlining.
@@ -231,7 +230,7 @@ enum ArgumentType {
 ///     <core::fmt::Argument>::new_…(arg)
 /// ```
 fn make_argument<'hir>(
-    ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
+    ctx: &mut LoweringContext<'_, 'hir>,
     sp: Span,
     arg: &'hir hir::Expr<'hir>,
     ty: ArgumentType,
@@ -278,7 +277,7 @@ fn make_count(
 }
 
 fn expand_format_args<'hir>(
-    ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
+    ctx: &mut LoweringContext<'_, 'hir>,
     macsp: Span,
     fmt: &FormatArgs,
     allow_const: bool,

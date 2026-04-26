@@ -252,11 +252,9 @@
           StorageDead(_30);
           StorageLive(_36);
           StorageLive(_38);
-          StorageLive(_39);
-          StorageLive(_42);
-          StorageLive(_43);
           _36 = copy _29 as &[u8] (Transmute);
           _38 = copy _28 as &[u8] (Transmute);
+          StorageLive(_39);
           _39 = PtrMetadata(copy _36);
           StorageLive(_40);
           StorageLive(_41);
@@ -316,11 +314,9 @@
           StorageDead(_50);
           StorageLive(_56);
           StorageLive(_58);
-          StorageLive(_59);
-          StorageLive(_62);
-          StorageLive(_63);
           _56 = copy _49 as &[u8] (Transmute);
           _58 = copy _48 as &[u8] (Transmute);
+          StorageLive(_59);
           _59 = PtrMetadata(copy _56);
           StorageLive(_60);
           StorageLive(_61);
@@ -426,10 +422,12 @@
   
       bb23: {
           StorageDead(_41);
+          StorageLive(_42);
           StorageLive(_44);
           _44 = &raw const (*_36);
           _42 = copy _44 as *const u8 (PtrToPtr);
           StorageDead(_44);
+          StorageLive(_43);
           StorageLive(_45);
           _45 = &raw const (*_38);
           _43 = copy _45 as *const u8 (PtrToPtr);
@@ -447,8 +445,6 @@
   
       bb25: {
           StorageDead(_40);
-          StorageDead(_43);
-          StorageDead(_42);
           StorageDead(_39);
           StorageDead(_38);
           StorageDead(_36);
@@ -461,15 +457,19 @@
       bb26: {
           _7 = Eq(move _46, const 0_i32);
           StorageDead(_46);
+          StorageDead(_43);
+          StorageDead(_42);
           goto -> bb25;
       }
   
       bb27: {
           StorageDead(_61);
+          StorageLive(_62);
           StorageLive(_64);
           _64 = &raw const (*_56);
           _62 = copy _64 as *const u8 (PtrToPtr);
           StorageDead(_64);
+          StorageLive(_63);
           StorageLive(_65);
           _65 = &raw const (*_58);
           _63 = copy _65 as *const u8 (PtrToPtr);
@@ -487,8 +487,6 @@
   
       bb29: {
           StorageDead(_60);
-          StorageDead(_63);
-          StorageDead(_62);
           StorageDead(_59);
           StorageDead(_58);
           StorageDead(_56);
@@ -501,6 +499,8 @@
       bb30: {
           _14 = Eq(move _66, const 0_i32);
           StorageDead(_66);
+          StorageDead(_63);
+          StorageDead(_62);
           goto -> bb29;
 +     }
 + 
@@ -524,8 +524,6 @@
 + 
 +     bb35: {
 +         StorageDead(_60);
-+         StorageDead(_63);
-+         StorageDead(_62);
 +         StorageDead(_59);
 +         StorageDead(_58);
 +         StorageDead(_56);
@@ -537,8 +535,6 @@
 + 
 +     bb36: {
 +         StorageDead(_40);
-+         StorageDead(_43);
-+         StorageDead(_42);
 +         StorageDead(_39);
 +         StorageDead(_38);
 +         StorageDead(_36);

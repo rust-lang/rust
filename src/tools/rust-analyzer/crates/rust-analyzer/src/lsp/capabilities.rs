@@ -335,6 +335,20 @@ impl ClientCapabilities {
             .unwrap_or_default()
     }
 
+    pub fn folding_range_collapsed_text(&self) -> bool {
+        (|| -> _ {
+            self.0
+                .text_document
+                .as_ref()?
+                .folding_range
+                .as_ref()?
+                .folding_range
+                .as_ref()?
+                .collapsed_text
+        })()
+        .unwrap_or_default()
+    }
+
     pub fn hierarchical_symbols(&self) -> bool {
         (|| -> _ {
             self.0

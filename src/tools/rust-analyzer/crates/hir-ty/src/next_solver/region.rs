@@ -1,12 +1,12 @@
 //! Things related to regions.
 
 use hir_def::LifetimeParamId;
-use intern::{Interned, InternedRef, Symbol, impl_internable};
+use intern::{Interned, InternedRef, impl_internable};
 use macros::GenericTypeVisitable;
 use rustc_type_ir::{
-    BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, GenericTypeVisitable, INNERMOST, RegionVid,
-    TypeFlags, TypeFoldable, TypeVisitable,
-    inherent::{IntoKind, PlaceholderLike, SliceLike},
+    BoundVarIndexKind, DebruijnIndex, Flags, GenericTypeVisitable, INNERMOST, RegionVid, TypeFlags,
+    TypeFoldable, TypeVisitable,
+    inherent::{IntoKind, SliceLike},
     relate::Relate,
 };
 
@@ -15,10 +15,7 @@ use crate::next_solver::{
     interned_slice,
 };
 
-use super::{
-    SolverDefId,
-    interner::{BoundVarKind, DbInterner, Placeholder},
-};
+use super::{SolverDefId, interner::DbInterner};
 
 pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
 
@@ -57,7 +54,7 @@ impl<'db> Region<'db> {
         Region::new(interner, RegionKind::ReEarlyParam(early_bound_region))
     }
 
-    pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderRegion) -> Self {
+    pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderRegion<'db>) -> Self {
         Region::new(interner, RegionKind::RePlaceholder(placeholder))
     }
 
@@ -72,7 +69,7 @@ impl<'db> Region<'db> {
     pub fn new_bound(
         interner: DbInterner<'db>,
         index: DebruijnIndex,
-        bound: BoundRegion,
+        bound: BoundRegion<'db>,
     ) -> Region<'db> {
         Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(index), bound))
     }
@@ -147,7 +144,7 @@ impl<'db> Region<'db> {
     }
 }
 
-pub type PlaceholderRegion = Placeholder<BoundRegion>;
+pub type PlaceholderRegion<'db> = rustc_type_ir::PlaceholderRegion<DbInterner<'db>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct EarlyParamRegion {
@@ -156,7 +153,7 @@ pub struct EarlyParamRegion {
     pub index: u32,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, GenericTypeVisitable)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
 ///
@@ -165,50 +162,19 @@ pub struct EarlyParamRegion {
 /// between others we use the `DefId` of the parameter. For this reason the `bound_region` field
 /// should basically always be `BoundRegionKind::Named` as otherwise there is no way of telling
 /// different parameters apart.
-pub struct LateParamRegion {
+pub struct LateParamRegion<'db> {
     pub scope: SolverDefId,
-    pub bound_region: BoundRegionKind,
+    pub bound_region: BoundRegionKind<'db>,
 }
 
-impl std::fmt::Debug for LateParamRegion {
+impl std::fmt::Debug for LateParamRegion<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "ReLateParam({:?}, {:?})", self.scope, self.bound_region)
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum BoundRegionKind {
-    /// An anonymous region parameter for a given fn (&T)
-    Anon,
-
-    /// Named region parameters for functions (a in &'a T)
-    ///
-    /// The `DefId` is needed to distinguish free regions in
-    /// the event of shadowing.
-    Named(SolverDefId),
-
-    /// Anonymous region for the implicit env pointer parameter
-    /// to a closure
-    ClosureEnv,
-}
-
-impl std::fmt::Debug for BoundRegionKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            BoundRegionKind::Anon => write!(f, "BrAnon"),
-            BoundRegionKind::Named(did) => {
-                write!(f, "BrNamed({did:?})")
-            }
-            BoundRegionKind::ClosureEnv => write!(f, "BrEnv"),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct BoundRegion {
-    pub var: BoundVar,
-    pub kind: BoundRegionKind,
-}
+pub type BoundRegion<'db> = rustc_type_ir::BoundRegion<DbInterner<'db>>;
+pub type BoundRegionKind<'db> = rustc_type_ir::BoundRegionKind<DbInterner<'db>>;
 
 impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
     fn index(self) -> u32 {
@@ -220,45 +186,6 @@ impl std::fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#{}", self.index)
         // write!(f, "{}/#{}", self.name, self.index)
-    }
-}
-
-impl<'db> rustc_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundRegion {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: BoundVarKind) {
-        assert_eq!(self.kind, var.expect_region())
-    }
-}
-
-impl core::fmt::Debug for BoundRegion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.kind {
-            BoundRegionKind::Anon => write!(f, "{:?}", self.var),
-            BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
-            BoundRegionKind::Named(def) => {
-                write!(f, "{:?}.Named({:?})", self.var, def)
-            }
-        }
-    }
-}
-
-impl BoundRegionKind {
-    pub fn is_named(&self) -> bool {
-        matches!(self, BoundRegionKind::Named(_))
-    }
-
-    pub fn get_name(&self) -> Option<Symbol> {
-        None
-    }
-
-    pub fn get_id(&self) -> Option<SolverDefId> {
-        match self {
-            BoundRegionKind::Named(id) => Some(*id),
-            _ => None,
-        }
     }
 }
 
@@ -323,15 +250,15 @@ impl<'db> Flags for Region<'db> {
 impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
     fn new_bound(
         interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
-        var: BoundRegion,
+        debruijn: DebruijnIndex,
+        var: BoundRegion<'db>,
     ) -> Self {
         Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), var))
     }
 
     fn new_anon_bound(
         interner: DbInterner<'db>,
-        debruijn: rustc_type_ir::DebruijnIndex,
+        debruijn: DebruijnIndex,
         var: rustc_type_ir::BoundVar,
     ) -> Self {
         Region::new(
@@ -357,35 +284,8 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
         interner.default_types().regions.statik
     }
 
-    fn new_placeholder(
-        interner: DbInterner<'db>,
-        var: <DbInterner<'db> as rustc_type_ir::Interner>::PlaceholderRegion,
-    ) -> Self {
+    fn new_placeholder(interner: DbInterner<'db>, var: PlaceholderRegion<'db>) -> Self {
         Region::new(interner, RegionKind::RePlaceholder(var))
-    }
-}
-
-impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderRegion {
-    type Bound = BoundRegion;
-
-    fn universe(self) -> rustc_type_ir::UniverseIndex {
-        self.universe
-    }
-
-    fn var(self) -> rustc_type_ir::BoundVar {
-        self.bound.var
-    }
-
-    fn with_updated_universe(self, ui: rustc_type_ir::UniverseIndex) -> Self {
-        Placeholder { universe: ui, bound: self.bound }
-    }
-
-    fn new(ui: rustc_type_ir::UniverseIndex, bound: Self::Bound) -> Self {
-        Placeholder { universe: ui, bound }
-    }
-
-    fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::Anon } }
     }
 }
 

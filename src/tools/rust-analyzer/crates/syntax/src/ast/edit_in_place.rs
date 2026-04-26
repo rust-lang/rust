@@ -9,220 +9,11 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
     algo::{self, neighbor},
-    ast::{self, HasGenericParams, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
-    syntax_editor::{Position, SyntaxEditor},
+    ast::{self, edit::IndentLevel, make},
     ted,
 };
 
 use super::{GenericParam, HasName};
-
-pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
-    fn get_or_create_where_clause(&self) -> ast::WhereClause;
-}
-
-impl GenericParamsOwnerEdit for ast::Fn {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(fn_token) = self.fn_token() {
-                    ted::Position::after(fn_token)
-                } else if let Some(param_list) = self.param_list() {
-                    ted::Position::before(param_list.syntax)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = if let Some(ty) = self.ret_type() {
-                ted::Position::after(ty.syntax())
-            } else if let Some(param_list) = self.param_list() {
-                ted::Position::after(param_list.syntax())
-            } else {
-                ted::Position::last_child_of(self.syntax())
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Impl {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = match self.impl_token() {
-                    Some(imp_token) => ted::Position::after(imp_token),
-                    None => ted::Position::last_child_of(self.syntax()),
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match self.assoc_item_list() {
-                Some(items) => ted::Position::before(items.syntax()),
-                None => ted::Position::last_child_of(self.syntax()),
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Trait {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(trait_token) = self.trait_token() {
-                    ted::Position::after(trait_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match (self.assoc_item_list(), self.semicolon_token()) {
-                (Some(items), _) => ted::Position::before(items.syntax()),
-                (_, Some(tok)) => ted::Position::before(tok),
-                (None, None) => ted::Position::last_child_of(self.syntax()),
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::TypeAlias {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(trait_token) = self.type_token() {
-                    ted::Position::after(trait_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match self.eq_token() {
-                Some(tok) => ted::Position::before(tok),
-                None => match self.semicolon_token() {
-                    Some(tok) => ted::Position::before(tok),
-                    None => ted::Position::last_child_of(self.syntax()),
-                },
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Struct {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(struct_token) = self.struct_token() {
-                    ted::Position::after(struct_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let tfl = self.field_list().and_then(|fl| match fl {
-                ast::FieldList::RecordFieldList(_) => None,
-                ast::FieldList::TupleFieldList(it) => Some(it),
-            });
-            let position = if let Some(tfl) = tfl {
-                ted::Position::after(tfl.syntax())
-            } else if let Some(gpl) = self.generic_param_list() {
-                ted::Position::after(gpl.syntax())
-            } else if let Some(name) = self.name() {
-                ted::Position::after(name.syntax())
-            } else {
-                ted::Position::last_child_of(self.syntax())
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Enum {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(enum_token) = self.enum_token() {
-                    ted::Position::after(enum_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = if let Some(gpl) = self.generic_param_list() {
-                ted::Position::after(gpl.syntax())
-            } else if let Some(name) = self.name() {
-                ted::Position::after(name.syntax())
-            } else {
-                ted::Position::last_child_of(self.syntax())
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-fn create_where_clause(position: ted::Position) {
-    let where_clause = make::where_clause(empty()).clone_for_update();
-    ted::insert(position, where_clause.syntax());
-}
-
-fn create_generic_param_list(position: ted::Position) -> ast::GenericParamList {
-    let gpl = make::generic_param_list(empty()).clone_for_update();
-    ted::insert_raw(position, gpl.syntax());
-    gpl
-}
 
 pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
@@ -723,10 +514,11 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     let indent = IndentLevel::from_node(node);
 
     match l.next_sibling_or_token() {
-        Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
-            if ws.next_sibling_or_token()?.into_token()? == r {
-                ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
-            }
+        Some(ws)
+            if ws.kind() == SyntaxKind::WHITESPACE
+                && ws.next_sibling_or_token()?.into_token()? == r =>
+        {
+            ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
         }
         Some(ws) if ws.kind() == T!['}'] => {
             ted::insert(ted::Position::after(l), make::tokens::whitespace(&format!("\n{indent}")));
@@ -735,128 +527,6 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     }
     Some(())
 }
-
-impl ast::IdentPat {
-    pub fn set_pat(&self, pat: Option<ast::Pat>) {
-        match pat {
-            None => {
-                if let Some(at_token) = self.at_token() {
-                    // Remove `@ Pat`
-                    let start = at_token.clone().into();
-                    let end = self
-                        .pat()
-                        .map(|it| it.syntax().clone().into())
-                        .unwrap_or_else(|| at_token.into());
-
-                    ted::remove_all(start..=end);
-
-                    // Remove any trailing ws
-                    if let Some(last) =
-                        self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
-                    {
-                        last.detach();
-                    }
-                }
-            }
-            Some(pat) => {
-                if let Some(old_pat) = self.pat() {
-                    // Replace existing pattern
-                    ted::replace(old_pat.syntax(), pat.syntax())
-                } else if let Some(at_token) = self.at_token() {
-                    // Have an `@` token but not a pattern yet
-                    ted::insert(ted::Position::after(at_token), pat.syntax());
-                } else {
-                    // Don't have an `@`, should have a name
-                    let name = self.name().unwrap();
-
-                    ted::insert_all(
-                        ted::Position::after(name.syntax()),
-                        vec![
-                            make::token(T![@]).into(),
-                            make::tokens::single_space().into(),
-                            pat.syntax().clone().into(),
-                        ],
-                    )
-                }
-            }
-        }
-    }
-
-    pub fn set_pat_with_editor(
-        &self,
-        pat: Option<ast::Pat>,
-        syntax_editor: &mut SyntaxEditor,
-        syntax_factory: &SyntaxFactory,
-    ) {
-        match pat {
-            None => {
-                if let Some(at_token) = self.at_token() {
-                    // Remove `@ Pat`
-                    let start = at_token.clone().into();
-                    let end = self
-                        .pat()
-                        .map(|it| it.syntax().clone().into())
-                        .unwrap_or_else(|| at_token.into());
-                    syntax_editor.delete_all(start..=end);
-
-                    // Remove any trailing ws
-                    if let Some(last) =
-                        self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
-                    {
-                        last.detach();
-                    }
-                }
-            }
-            Some(pat) => {
-                if let Some(old_pat) = self.pat() {
-                    // Replace existing pattern
-                    syntax_editor.replace(old_pat.syntax(), pat.syntax())
-                } else if let Some(at_token) = self.at_token() {
-                    // Have an `@` token but not a pattern yet
-                    syntax_editor.insert(Position::after(at_token), pat.syntax());
-                } else {
-                    // Don't have an `@`, should have a name
-                    let name = self.name().unwrap();
-
-                    syntax_editor.insert_all(
-                        Position::after(name.syntax()),
-                        vec![
-                            syntax_factory.whitespace(" ").into(),
-                            syntax_factory.token(T![@]).into(),
-                            syntax_factory.whitespace(" ").into(),
-                            pat.syntax().clone().into(),
-                        ],
-                    )
-                }
-            }
-        }
-    }
-}
-
-pub trait HasVisibilityEdit: ast::HasVisibility {
-    fn set_visibility(&self, visibility: Option<ast::Visibility>) {
-        if let Some(visibility) = visibility {
-            match self.visibility() {
-                Some(current_visibility) => {
-                    ted::replace(current_visibility.syntax(), visibility.syntax())
-                }
-                None => {
-                    let vis_before = self
-                        .syntax()
-                        .children_with_tokens()
-                        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
-                        .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
-
-                    ted::insert(ted::Position::before(vis_before), visibility.syntax());
-                }
-            }
-        } else if let Some(visibility) = self.visibility() {
-            ted::remove(visibility.syntax());
-        }
-    }
-}
-
-impl<T: ast::HasVisibility> HasVisibilityEdit for T {}
 
 pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
@@ -879,8 +549,6 @@ impl<N: AstNode + Clone> Indent for N {}
 
 #[cfg(test)]
 mod tests {
-    use std::fmt;
-
     use parser::Edition;
 
     use crate::SourceFile;
@@ -890,33 +558,6 @@ mod tests {
     fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
         let parse = SourceFile::parse(text, Edition::CURRENT);
         parse.tree().syntax().descendants().find_map(N::cast).unwrap().clone_for_update()
-    }
-
-    #[test]
-    fn test_create_generic_param_list() {
-        fn check_create_gpl<N: GenericParamsOwnerEdit + fmt::Display>(before: &str, after: &str) {
-            let gpl_owner = ast_mut_from_text::<N>(before);
-            gpl_owner.get_or_create_generic_param_list();
-            assert_eq!(gpl_owner.to_string(), after);
-        }
-
-        check_create_gpl::<ast::Fn>("fn foo", "fn foo<>");
-        check_create_gpl::<ast::Fn>("fn foo() {}", "fn foo<>() {}");
-
-        check_create_gpl::<ast::Impl>("impl", "impl<>");
-        check_create_gpl::<ast::Impl>("impl Struct {}", "impl<> Struct {}");
-        check_create_gpl::<ast::Impl>("impl Trait for Struct {}", "impl<> Trait for Struct {}");
-
-        check_create_gpl::<ast::Trait>("trait Trait<>", "trait Trait<>");
-        check_create_gpl::<ast::Trait>("trait Trait<> {}", "trait Trait<> {}");
-
-        check_create_gpl::<ast::Struct>("struct A", "struct A<>");
-        check_create_gpl::<ast::Struct>("struct A;", "struct A<>;");
-        check_create_gpl::<ast::Struct>("struct A();", "struct A<>();");
-        check_create_gpl::<ast::Struct>("struct A {}", "struct A<> {}");
-
-        check_create_gpl::<ast::Enum>("enum E", "enum E<>");
-        check_create_gpl::<ast::Enum>("enum E {", "enum E<> {");
     }
 
     #[test]
@@ -935,33 +576,5 @@ mod tests {
             ;
         }",
         );
-    }
-
-    #[test]
-    fn test_ident_pat_set_pat() {
-        #[track_caller]
-        fn check(before: &str, expected: &str, pat: Option<ast::Pat>) {
-            let pat = pat.map(|it| it.clone_for_update());
-
-            let ident_pat = ast_mut_from_text::<ast::IdentPat>(&format!("fn f() {{ {before} }}"));
-            ident_pat.set_pat(pat);
-
-            let after = ast_mut_from_text::<ast::IdentPat>(&format!("fn f() {{ {expected} }}"));
-            assert_eq!(ident_pat.to_string(), after.to_string());
-        }
-
-        // replacing
-        check("let a @ _;", "let a @ ();", Some(make::tuple_pat([]).into()));
-
-        // note: no trailing semicolon is added for the below tests since it
-        // seems to be picked up by the ident pat during error recovery?
-
-        // adding
-        check("let a ", "let a @ ()", Some(make::tuple_pat([]).into()));
-        check("let a @ ", "let a @ ()", Some(make::tuple_pat([]).into()));
-
-        // removing
-        check("let a @ ()", "let a", None);
-        check("let a @ ", "let a", None);
     }
 }

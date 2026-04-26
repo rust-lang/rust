@@ -8,7 +8,6 @@ pub struct MiroptTestFile {
 }
 
 pub struct MiroptTest {
-    pub run_filecheck: bool,
     pub suffix: String,
     pub files: Vec<MiroptTestFile>,
     /// Vec of passes under test to be dumped
@@ -57,13 +56,15 @@ pub fn files_for_miropt_test(
     let test_crate = testfile.file_stem().unwrap().to_str().unwrap().replace('-', "_");
 
     let suffix = output_file_suffix(testfile, bit_width, panic_strategy);
-    let mut run_filecheck = true;
     let mut passes = Vec::new();
 
     for l in test_file_contents.lines() {
+        // FIXME(Zalathar): Remove this `skip-filecheck` migration error in 2027,
+        // or perhaps earlier if it seems no longer useful.
         if l.starts_with("// skip-filecheck") {
-            run_filecheck = false;
-            continue;
+            panic!(
+                "error: `// skip-filecheck` is no longer supported, use `//@ skip-filecheck` instead."
+            );
         }
         if l.starts_with("// EMIT_MIR ") {
             let test_name = l.trim_start_matches("// EMIT_MIR ").trim();
@@ -128,10 +129,7 @@ pub fn files_for_miropt_test(
 
             out.push(MiroptTestFile { expected_file, from_file, to_file });
         }
-        if !run_filecheck && l.trim_start().starts_with("// CHECK") {
-            panic!("error: test contains filecheck directive but is marked `skip-filecheck`");
-        }
     }
 
-    MiroptTest { run_filecheck, suffix, files: out, passes }
+    MiroptTest { suffix, files: out, passes }
 }

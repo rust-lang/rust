@@ -185,10 +185,10 @@ pub mod foo {
 
         type D3 = foobar::self; //~ ERROR `self` in paths can only be used in start position
         pub use foobar::qux::self; //~ ERROR `self` imports are only allowed within a { } list
-        //[e2015]~^ ERROR unresolved import `foobar`
+        //[e2015]~^ ERROR cannot find module or crate `foobar` in the crate root
         pub use foobar::self as _self3; //~ ERROR `self` imports are only allowed within a { } list
         //[e2015]~^ ERROR unresolved import `foobar`
-        pub use foobar::baz::{self}; //[e2015]~ ERROR unresolved import `foobar`
+        pub use foobar::baz::{self}; //[e2015]~ ERROR cannot find module or crate `foobar` in the crate root
         pub use foobar::{self as _nested_self3}; //[e2015]~ ERROR unresolved import `foobar`
 
         type D4 = crate::self; //~ ERROR `self` in paths can only be used in start position

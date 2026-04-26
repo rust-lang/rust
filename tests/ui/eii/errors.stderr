@@ -52,47 +52,41 @@ error: `#[eii_declaration(...)]` expects a list of one or two elements
 LL | #[eii_declaration = "unsafe"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[foo]` is only valid on functions
+error: `#[foo]` is only valid on functions and statics
   --> $DIR/errors.rs:28:1
    |
 LL | #[foo]
    | ^^^^^^
 
-error: `#[foo]` is only valid on functions
+error: `#[foo]` is only valid on functions and statics
   --> $DIR/errors.rs:30:1
    |
 LL | #[foo]
    | ^^^^^^
 
-error: `#[foo]` is only valid on functions
-  --> $DIR/errors.rs:32:1
-   |
-LL | #[foo]
-   | ^^^^^^
-
 error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
-  --> $DIR/errors.rs:35:1
+  --> $DIR/errors.rs:33:1
    |
 LL | #[foo()]
    | ^^^^^^^^
 
 error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
-  --> $DIR/errors.rs:37:1
+  --> $DIR/errors.rs:35:1
    |
 LL | #[foo(default, bar)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
-  --> $DIR/errors.rs:39:1
+  --> $DIR/errors.rs:37:1
    |
 LL | #[foo("default")]
    | ^^^^^^^^^^^^^^^^^
 
 error: `#[foo]` expected no arguments or a single argument: `#[foo(default)]`
-  --> $DIR/errors.rs:41:1
+  --> $DIR/errors.rs:39:1
    |
 LL | #[foo = "default"]
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 

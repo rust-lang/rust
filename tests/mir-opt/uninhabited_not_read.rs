@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 
 //@ edition: 2021
 // In ed 2021 and below, we fallback `!` to `()`.

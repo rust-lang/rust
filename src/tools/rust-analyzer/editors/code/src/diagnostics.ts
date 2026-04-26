@@ -1,4 +1,4 @@
-import * as anser from "anser";
+import anser from "anser";
 import * as vscode from "vscode";
 import {
     type ProviderResult,

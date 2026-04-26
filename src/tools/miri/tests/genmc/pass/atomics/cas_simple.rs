@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test the basic functionality of compare_exchange.
 
 #![no_main]

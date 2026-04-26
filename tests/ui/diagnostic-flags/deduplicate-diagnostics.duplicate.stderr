@@ -1,3 +1,9 @@
+error[E0452]: malformed lint attribute input
+  --> $DIR/deduplicate-diagnostics.rs:10:8
+   |
+LL | #[deny("literal")]
+   |        ^^^^^^^^^ bad attribute argument
+
 error: cannot find derive macro `Unresolved` in this scope
   --> $DIR/deduplicate-diagnostics.rs:6:10
    |
@@ -12,27 +18,22 @@ LL | #[derive(Unresolved)]
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0539]: malformed `deny` attribute input
-  --> $DIR/deduplicate-diagnostics.rs:10:1
+error[E0452]: malformed lint attribute input
+  --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
-   | ^^^^^^^---------^^
-   |        |
-   |        expected a valid identifier here
+   |        ^^^^^^^^^ bad attribute argument
    |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL - #[deny("literal")]
-LL + #[deny(lint1)]
-   |
-LL - #[deny("literal")]
-LL + #[deny(lint1, lint2, ...)]
-   |
-LL - #[deny("literal")]
-LL + #[deny(lint1, lint2, lint3, reason = "...")]
-   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 3 previous errors
+error[E0452]: malformed lint attribute input
+  --> $DIR/deduplicate-diagnostics.rs:10:8
+   |
+LL | #[deny("literal")]
+   |        ^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-For more information about this error, try `rustc --explain E0539`.
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0452`.

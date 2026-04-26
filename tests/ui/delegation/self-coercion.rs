@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait : Sized {
     fn by_value(self) -> i32 { 1 }

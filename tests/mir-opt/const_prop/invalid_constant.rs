@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: GVN
 //@ compile-flags: -Zmir-enable-passes=+RemoveZsts -Zdump-mir-exclude-alloc-bytes
 // Verify that we can pretty print invalid constants.

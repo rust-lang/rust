@@ -16,11 +16,11 @@ use rustc_type_ir::{
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::{
-    Binder, Canonical, CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, GenericArg,
-    Placeholder, Region, Ty, TyKind,
+    Binder, Canonical, CanonicalVarKind, CanonicalVarKinds, Const, ConstKind, DbInterner,
+    GenericArg, PlaceholderConst, PlaceholderRegion, Region, Ty, TyKind,
 };
+use crate::next_solver::{PlaceholderType, infer::InferCtxt};
 
 /// When we canonicalize a value to form a query, we wind up replacing
 /// various parts of it with canonical variables. This struct stores
@@ -498,7 +498,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
     {
         let base = Canonical {
             max_universe: UniverseIndex::ROOT,
-            variables: CanonicalVars::empty(tcx),
+            var_kinds: CanonicalVarKinds::empty(tcx),
             value: (),
         };
         Canonicalizer::canonicalize_with_base(
@@ -539,7 +539,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
             tcx,
             canonicalize_mode: canonicalize_region_mode,
             needs_canonical_flags,
-            variables: SmallVec::from_slice(base.variables.as_slice()),
+            variables: SmallVec::from_slice(base.var_kinds.as_slice()),
             query_state,
             indices: FxHashMap::default(),
             sub_root_lookup_table: Default::default(),
@@ -562,7 +562,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
         debug_assert!(!out_value.has_infer() && !out_value.has_placeholders());
 
         let canonical_variables =
-            CanonicalVars::new_from_slice(&canonicalizer.universe_canonicalized_variables());
+            CanonicalVarKinds::new_from_slice(&canonicalizer.universe_canonicalized_variables());
 
         let max_universe = canonical_variables
             .iter()
@@ -570,7 +570,7 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
             .max()
             .unwrap_or(UniverseIndex::ROOT);
 
-        Canonical { max_universe, variables: canonical_variables, value: (base.value, out_value) }
+        Canonical { max_universe, var_kinds: canonical_variables, value: (base.value, out_value) }
     }
 
     /// Creates a canonical variable replacing `kind` from the input,
@@ -670,22 +670,22 @@ impl<'cx, 'db> Canonicalizer<'cx, 'db> {
                 CanonicalVarKind::Region(u) => CanonicalVarKind::Region(reverse_universe_map[&u]),
                 CanonicalVarKind::Const(u) => CanonicalVarKind::Const(reverse_universe_map[&u]),
                 CanonicalVarKind::PlaceholderTy(placeholder) => {
-                    CanonicalVarKind::PlaceholderTy(Placeholder {
-                        universe: reverse_universe_map[&placeholder.universe],
-                        ..placeholder
-                    })
+                    CanonicalVarKind::PlaceholderTy(PlaceholderType::new(
+                        reverse_universe_map[&placeholder.universe],
+                        placeholder.bound,
+                    ))
                 }
                 CanonicalVarKind::PlaceholderRegion(placeholder) => {
-                    CanonicalVarKind::PlaceholderRegion(Placeholder {
-                        universe: reverse_universe_map[&placeholder.universe],
-                        ..placeholder
-                    })
+                    CanonicalVarKind::PlaceholderRegion(PlaceholderRegion::new(
+                        reverse_universe_map[&placeholder.universe],
+                        placeholder.bound,
+                    ))
                 }
                 CanonicalVarKind::PlaceholderConst(placeholder) => {
-                    CanonicalVarKind::PlaceholderConst(Placeholder {
-                        universe: reverse_universe_map[&placeholder.universe],
-                        ..placeholder
-                    })
+                    CanonicalVarKind::PlaceholderConst(PlaceholderConst::new(
+                        reverse_universe_map[&placeholder.universe],
+                        placeholder.bound,
+                    ))
                 }
             })
             .collect()

@@ -1595,7 +1595,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_bounds = GenericPredicates::query_all(self.db(), impl_def_id.into());
                     let impl_bounds = clauses_as_obligations(
-                        impl_bounds.iter_instantiated_copied(self.interner(), impl_args.as_slice()),
+                        impl_bounds.iter_instantiated(self.interner(), impl_args.as_slice()),
                         ObligationCause::new(),
                         self.param_env(),
                     );

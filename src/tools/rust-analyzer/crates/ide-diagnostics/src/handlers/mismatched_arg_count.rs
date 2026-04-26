@@ -357,6 +357,7 @@ fn f() {
     fn arg_count_lambda() {
         check_diagnostics(
             r#"
+//- minicore: fn
 fn main() {
     let f = |()| ();
     f();

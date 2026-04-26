@@ -109,7 +109,7 @@ fn specializes_query(
     // only be referenced via projection predicates.
     ocx.register_obligations(clauses_as_obligations(
         GenericPredicates::query_all(db, parent_impl_def_id.into())
-            .iter_instantiated_copied(interner, parent_args.as_slice()),
+            .iter_instantiated(interner, parent_args.as_slice()),
         cause.clone(),
         param_env,
     ));

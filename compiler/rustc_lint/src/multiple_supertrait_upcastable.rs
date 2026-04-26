@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_middle::ty::Unnormalized;
 use rustc_session::{declare_lint, declare_lint_pass};
 
 use crate::{LateContext, LateLintPass, LintContext};
@@ -39,13 +40,14 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
         let def_id = item.owner_id.to_def_id();
         // NOTE(nbdd0121): use `dyn_compatibility_violations` instead of `is_dyn_compatible` because
         // the latter will report `where_clause_object_safety` lint.
-        if let hir::ItemKind::Trait(_, _, _, ident, ..) = item.kind
+        if let hir::ItemKind::Trait(_, _, _, _, ident, ..) = item.kind
             && cx.tcx.is_dyn_compatible(def_id)
         {
             let direct_super_traits_iter = cx
                 .tcx
                 .explicit_super_predicates_of(def_id)
                 .iter_identity_copied()
+                .map(Unnormalized::skip_norm_wip)
                 .filter_map(|(pred, _)| pred.as_trait_clause())
                 .filter(|pred| !cx.tcx.is_lang_item(pred.def_id(), hir::LangItem::MetaSized))
                 .filter(|pred| !cx.tcx.is_default_trait(pred.def_id()));

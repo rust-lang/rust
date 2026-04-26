@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait {
     fn bar(&self, x: i32) -> i32 { x }

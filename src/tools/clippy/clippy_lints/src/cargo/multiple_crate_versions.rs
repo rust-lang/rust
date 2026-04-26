@@ -32,7 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata, allowed_duplicate
     {
         for (name, group) in &packages
             .iter()
-            .filter(|p| !allowed_duplicate_crates.contains(&p.name))
+            .filter(|p| !allowed_duplicate_crates.contains(p.name.as_str()))
             .group_by(|p| &p.name)
         {
             let group: Vec<&Package> = group.collect();

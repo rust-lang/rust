@@ -117,7 +117,7 @@ impl CoreLatch {
     /// latch code.
     #[inline]
     unsafe fn set(this: *const Self) -> bool {
-        let old_state = unsafe { (*this).state.swap(SET, Ordering::AcqRel) };
+        let old_state = unsafe { (*this).state.swap(SET, Ordering::SeqCst) };
         old_state == SLEEPING
     }
 
@@ -220,7 +220,7 @@ pub(super) struct LockLatch {
 
 impl LockLatch {
     #[inline]
-    pub(super) fn new() -> LockLatch {
+    pub(super) const fn new() -> LockLatch {
         LockLatch { m: Mutex::new(false), v: Condvar::new() }
     }
 

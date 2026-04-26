@@ -1,12 +1,14 @@
 use ide_db::assists::GroupLabel;
-use itertools::Itertools;
 use stdx::to_lower_snake_case;
-use syntax::ast::HasVisibility;
-use syntax::ast::{self, AstNode, HasName};
+use syntax::{
+    AstNode, Edition,
+    ast::{self, HasName, HasVisibility, edit::AstNodeEdit},
+    syntax_editor::Position,
+};
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{add_method_to_adt, find_struct_impl, is_selected},
+    utils::{find_struct_impl, generate_impl_with_item, is_selected},
 };
 
 // Assist: generate_enum_is_method
@@ -64,25 +66,61 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>
         target,
         |builder| {
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
-            let method = methods
-                .iter()
-                .map(|Method { pattern_suffix, fn_name, variant_name }| {
-                    format!(
-                        "    \
-    /// Returns `true` if the {enum_lowercase_name} is [`{variant_name}`].
-    ///
-    /// [`{variant_name}`]: {enum_name}::{variant_name}
-    #[must_use]
-    {vis}fn {fn_name}(&self) -> bool {{
-        matches!(self, Self::{variant_name}{pattern_suffix})
-    }}",
-                    )
-                })
-                .join("\n\n");
 
-            add_method_to_adt(builder, &parent_enum, impl_def, &method);
+            let fn_items: Vec<ast::AssocItem> = methods
+                .iter()
+                .map(|method| build_fn_item(method, &enum_lowercase_name, &enum_name, &vis))
+                .collect();
+
+            if let Some(impl_def) = &impl_def {
+                let editor = builder.make_editor(impl_def.syntax());
+                impl_def.assoc_item_list().unwrap().add_items(&editor, fn_items);
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
+                return;
+            }
+
+            let editor = builder.make_editor(parent_enum.syntax());
+            let make = editor.make();
+            let indent = parent_enum.indent_level();
+            let assoc_list = make.assoc_item_list(fn_items);
+            let new_impl = generate_impl_with_item(make, &parent_enum, Some(assoc_list));
+            editor.insert_all(
+                Position::after(parent_enum.syntax()),
+                vec![
+                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    new_impl.syntax().clone().into(),
+                ],
+            );
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
+}
+
+fn build_fn_item(
+    method: &Method,
+    enum_lowercase_name: &str,
+    enum_name: &ast::Name,
+    vis: &str,
+) -> ast::AssocItem {
+    let Method { pattern_suffix, fn_name, variant_name } = method;
+    let fn_text = format!(
+        "/// Returns `true` if the {enum_lowercase_name} is [`{variant_name}`].
+///
+/// [`{variant_name}`]: {enum_name}::{variant_name}
+#[must_use]
+{vis}fn {fn_name}(&self) -> bool {{
+    matches!(self, Self::{variant_name}{pattern_suffix})
+}}"
+    );
+    let wrapped = format!("impl X {{ {fn_text} }}");
+    let parse = syntax::SourceFile::parse(&wrapped, Edition::CURRENT);
+    let fn_ = parse
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Fn::cast)
+        .expect("fn text must produce a valid fn node");
+    ast::AssocItem::Fn(fn_.indent(1.into()))
 }
 
 struct Method {

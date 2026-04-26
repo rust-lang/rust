@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // We should be able to spawn and join standard library threads in GenMC mode.
 // Since these threads do nothing, we should only explore 1 program execution.
 

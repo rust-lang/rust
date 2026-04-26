@@ -1,5 +1,4 @@
 //@revisions: single multiple
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@error-in-other-file: resource exhaustion
 
 // Ensure that we emit a proper error if GenMC fails to fulfill an allocation.

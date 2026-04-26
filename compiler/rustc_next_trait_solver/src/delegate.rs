@@ -45,9 +45,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         term: <Self::Interner as Interner>::Term,
     ) -> Option<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>>;
 
-    fn make_deduplicated_outlives_constraints(
-        &self,
-    ) -> Vec<ty::OutlivesPredicate<Self::Interner, <Self::Interner as Interner>::GenericArg>>;
+    fn make_deduplicated_region_constraints(&self) -> Vec<ty::RegionConstraint<Self::Interner>>;
 
     fn instantiate_canonical<V>(
         &self,

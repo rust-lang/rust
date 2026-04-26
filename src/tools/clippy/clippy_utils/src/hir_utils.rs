@@ -257,9 +257,9 @@ impl HirEqInterExpr<'_, '_, '_> {
                 (FnRetTy::Return(l_ty), FnRetTy::Return(r_ty)) => self.eq_ty(l_ty, r_ty),
                 _ => false,
             })
-            && left.c_variadic == right.c_variadic
-            && left.implicit_self == right.implicit_self
-            && left.lifetime_elision_allowed == right.lifetime_elision_allowed
+            && left.c_variadic() == right.c_variadic()
+            && left.implicit_self() == right.implicit_self()
+            && left.lifetime_elision_allowed() == right.lifetime_elision_allowed()
     }
 
     fn eq_generics(&mut self, left: &Generics<'_>, right: &Generics<'_>) -> bool {
@@ -1571,7 +1571,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                         self.hash_ty(ty);
                     },
                 }
-                fn_ptr.decl.c_variadic.hash(&mut self.s);
+                fn_ptr.decl.c_variadic().hash(&mut self.s);
             },
             TyKind::Tup(ty_list) => {
                 for ty in *ty_list {

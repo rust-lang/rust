@@ -10,8 +10,8 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self, BoundVar, Flags, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypingModeEqWrapper,
 };
 use smallvec::SmallVec;
 use tracing::debug;
@@ -72,7 +72,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
         )
         .unchecked_map(|(param_env, value)| param_env.and(value));
-        CanonicalQueryInput { canonical, typing_mode: self.typing_mode() }
+        CanonicalQueryInput { canonical, typing_mode: TypingModeEqWrapper(self.typing_mode()) }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a

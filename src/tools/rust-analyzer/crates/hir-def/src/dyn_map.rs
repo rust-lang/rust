@@ -68,7 +68,7 @@ pub mod keys {
     pub const MACRO_CALL: Key<ast::MacroCall, MacroCallId> = Key::new();
     pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
     pub const DERIVE_MACRO_CALL: Key<
-        ast::Attr,
+        ast::Meta,
         (
             AttrId,
             /* derive() */ MacroCallId,

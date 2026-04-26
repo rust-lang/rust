@@ -314,14 +314,14 @@ pub(crate) struct InteriorMutableBorrowEscaping {
     "this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
     If your compilation actually takes a long time, you can safely allow the lint"
 )]
-pub struct LongRunning {
+pub(crate) struct LongRunning {
     #[help("the constant being evaluated")]
     pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag("constant evaluation is taking a long time")]
-pub struct LongRunningWarn {
+pub(crate) struct LongRunningWarn {
     #[primary_span]
     #[label("the const evaluator is currently interpreting this expression")]
     pub span: Span,
@@ -339,7 +339,7 @@ pub(crate) struct NonConstImplNote {
 }
 
 #[derive(Clone)]
-pub struct FrameNote {
+pub(crate) struct FrameNote {
     pub span: Span,
     pub times: i32,
     pub where_: &'static str,
@@ -377,7 +377,7 @@ impl Subdiagnostic for FrameNote {
 
 #[derive(Subdiagnostic)]
 #[note(r#"the raw bytes of the constant (size: {$size}, align: {$align}) {"{"}{$bytes}{"}"}"#)]
-pub struct RawBytesNote {
+pub(crate) struct RawBytesNote {
     pub size: u64,
     pub align: u64,
     pub bytes: String,
@@ -393,7 +393,7 @@ pub struct RawBytesNote {
 }s"#
 )]
 #[note("`{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es")]
-pub struct NonConstMatchEq<'tcx> {
+pub(crate) struct NonConstMatchEq<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -408,7 +408,7 @@ pub struct NonConstMatchEq<'tcx> {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstForLoopIntoIter<'tcx> {
+pub(crate) struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -423,7 +423,7 @@ pub struct NonConstForLoopIntoIter<'tcx> {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstQuestionBranch<'tcx> {
+pub(crate) struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -438,7 +438,7 @@ pub struct NonConstQuestionBranch<'tcx> {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstQuestionFromResidual<'tcx> {
+pub(crate) struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -453,7 +453,7 @@ pub struct NonConstQuestionFromResidual<'tcx> {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstTryBlockFromOutput<'tcx> {
+pub(crate) struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -468,7 +468,7 @@ pub struct NonConstTryBlockFromOutput<'tcx> {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstAwait<'tcx> {
+pub(crate) struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -483,7 +483,7 @@ pub struct NonConstAwait<'tcx> {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstClosure {
+pub(crate) struct NonConstClosure {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -499,14 +499,14 @@ pub struct NonConstClosure {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstCVariadicCall {
+pub(crate) struct NonConstCVariadicCall {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
 }
 
 #[derive(Subdiagnostic)]
-pub enum NonConstClosureNote {
+pub(crate) enum NonConstClosureNote {
     #[note("function defined here, but it is not `const`")]
     FnDef {
         #[primary_span]
@@ -534,7 +534,7 @@ pub enum NonConstClosureNote {
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion("consider dereferencing here", applicability = "machine-applicable")]
-pub struct ConsiderDereferencing {
+pub(crate) struct ConsiderDereferencing {
     pub deref: String,
     #[suggestion_part(code = "{deref}")]
     pub span: Span,
@@ -549,7 +549,7 @@ pub struct ConsiderDereferencing {
     [const_fn] constant function
     *[other] {""}
 }s"#, code = E0015)]
-pub struct NonConstOperator {
+pub(crate) struct NonConstOperator {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -566,7 +566,7 @@ pub struct NonConstOperator {
     *[other] {""}
 }s"#, code = E0015)]
 #[note("attempting to deref into `{$target_ty}`")]
-pub struct NonConstDerefCoercion<'tcx> {
+pub(crate) struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -579,7 +579,7 @@ pub struct NonConstDerefCoercion<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag("destructor of `{$dropped_ty}` cannot be evaluated at compile-time", code = E0493)]
-pub struct LiveDrop<'tcx> {
+pub(crate) struct LiveDrop<'tcx> {
     #[primary_span]
     #[label(
         r#"the destructor for this type cannot be evaluated in {$kind ->

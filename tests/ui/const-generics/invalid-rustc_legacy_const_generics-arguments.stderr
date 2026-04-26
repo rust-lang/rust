@@ -3,27 +3,42 @@ error[E0539]: malformed `rustc_legacy_const_generics` attribute input
    |
 LL | #[rustc_legacy_const_generics(a)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
-   | |                             |
-   | |                             expected an integer literal here
-   | help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   |                               |
+   |                               expected an integer literal here
+   |
+help: must be of the form
+   |
+LL - #[rustc_legacy_const_generics(a)]
+LL + #[rustc_legacy_const_generics(N)]
+   |
 
 error[E0539]: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:15:1
    |
 LL | #[rustc_legacy_const_generics(1, a, 2, b)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^^^^^^^
-   | |                                |
-   | |                                expected an integer literal here
-   | help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   |                                  |
+   |                                  expected an integer literal here
+   |
+help: must be of the form
+   |
+LL - #[rustc_legacy_const_generics(1, a, 2, b)]
+LL + #[rustc_legacy_const_generics(N)]
+   |
 
 error[E0539]: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:15:1
    |
 LL | #[rustc_legacy_const_generics(1, a, 2, b)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
-   | |                                      |
-   | |                                      expected an integer literal here
-   | help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   |                                        |
+   |                                        expected an integer literal here
+   |
+help: must be of the form
+   |
+LL - #[rustc_legacy_const_generics(1, a, 2, b)]
+LL + #[rustc_legacy_const_generics(N)]
+   |
 
 error: `#[rustc_legacy_const_generics]` attribute cannot be used on structs
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:20:1
@@ -46,9 +61,14 @@ error[E0539]: malformed `rustc_legacy_const_generics` attribute input
    |
 LL | #[rustc_legacy_const_generics(0usize)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^
-   | |                             |
-   | |                             expected an integer literal here
-   | help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   |                               |
+   |                               expected an integer literal here
+   |
+help: must be of the form
+   |
+LL - #[rustc_legacy_const_generics(0usize)]
+LL + #[rustc_legacy_const_generics(N)]
+   |
 
 error: `#[rustc_legacy_const_generics]` attribute cannot be used on foreign functions
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:29:5
@@ -70,19 +90,26 @@ error[E0539]: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:41:1
    |
 LL | #[rustc_legacy_const_generics]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected this to be a list
-   | help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL | #[rustc_legacy_const_generics(N)]
+   |                              +++
 
 error[E0539]: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:44:1
    |
 LL | #[rustc_legacy_const_generics = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
-   | |                             |
-   | |                             expected this to be a list
-   | help: must be of the form: `#[rustc_legacy_const_generics(N)]`
+   |                               |
+   |                               expected this to be a list
+   |
+help: must be of the form
+   |
+LL - #[rustc_legacy_const_generics = 1]
+LL + #[rustc_legacy_const_generics(N)]
+   |
 
 error: #[rustc_legacy_const_generics] must have one index for each generic parameter
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:3:1

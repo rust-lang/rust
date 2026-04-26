@@ -1,8 +1,5 @@
 use std::marker::PointeeSized;
-#[cfg(not(bootstrap))]
 use std::mem::Alignment;
-#[cfg(bootstrap)]
-use std::ptr::Alignment;
 
 /// Returns the ABI-required minimum alignment of a type in bytes.
 ///

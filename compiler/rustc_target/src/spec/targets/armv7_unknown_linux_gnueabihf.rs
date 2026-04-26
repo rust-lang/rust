@@ -1,4 +1,6 @@
-use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Arch, CfgAbi, FloatAbi, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+};
 
 // This target is for glibc Linux on ARMv7 without NEON or
 // thumb-mode. See the thumbv7neon variant for enabling both.
@@ -23,6 +25,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
+            supported_sanitizers: SanitizerSet::ADDRESS,
             ..base::linux_gnu::opts()
         },
     }

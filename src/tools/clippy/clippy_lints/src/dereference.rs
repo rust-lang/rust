@@ -4,8 +4,9 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manually_drop, peel_and_count_ty_refs};
 use clippy_utils::{
-    DefinedTy, ExprUseNode, expr_use_ctxt, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
+    DefinedTy, ExprUseNode, get_expr_use_site, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
 };
+use rustc_middle::ty::Unnormalized;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -19,7 +20,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, SyntaxContext};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -276,15 +277,15 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
-                let use_cx = expr_use_ctxt(cx, expr);
-                let adjusted_ty = use_cx.adjustments.last().map_or(expr_ty, |a| a.target);
+                let use_site = get_expr_use_site(cx.tcx, typeck, SyntaxContext::root(), expr);
+                let adjusted_ty = use_site.adjustments.last().map_or(expr_ty, |a| a.target);
 
                 match kind {
-                    RefOp::Deref if use_cx.same_ctxt => {
-                        let use_node = use_cx.use_node(cx);
+                    RefOp::Deref if use_site.same_ctxt => {
+                        let use_node = use_site.use_node(cx);
                         let sub_ty = typeck.expr_ty(sub_expr);
                         if let ExprUseNode::FieldAccess(name) = use_node
-                            && !use_cx.moved_before_use
+                            && !use_site.moved_before_use
                             && !ty_contains_field(sub_ty, name.name)
                         {
                             self.state = Some((
@@ -331,9 +332,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             },
                         ));
                     },
-                    RefOp::AddrOf(mutability) if use_cx.same_ctxt => {
+                    RefOp::AddrOf(mutability) if use_site.same_ctxt => {
                         // Find the number of times the borrow is auto-derefed.
-                        let mut iter = use_cx.adjustments.iter();
+                        let mut iter = use_site.adjustments.iter();
                         let mut deref_count = 0usize;
                         let next_adjust = loop {
                             match iter.next() {
@@ -350,13 +351,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             }
                         };
 
-                        let use_node = use_cx.use_node(cx);
+                        let use_node = use_site.use_node(cx);
                         let stability = use_node.defined_ty(cx).map_or(TyCoercionStability::None, |ty| {
                             TyCoercionStability::for_defined_ty(cx, ty, use_node.is_return())
                         });
                         let can_auto_borrow = match use_node {
                             ExprUseNode::FieldAccess(_)
-                                if !use_cx.moved_before_use && matches!(sub_expr.kind, ExprKind::Field(..)) =>
+                                if !use_site.moved_before_use && matches!(sub_expr.kind, ExprKind::Field(..)) =>
                             {
                                 // `DerefMut` will not be automatically applied to `ManuallyDrop<_>`
                                 // field expressions when the base type is a union and the parent
@@ -364,10 +365,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 //
                                 // e.g. `&mut x.y.z` where `x` is a union, and accessing `z` requires a
                                 // deref through `ManuallyDrop<_>` will not compile.
-                                !adjust_derefs_manually_drop(use_cx.adjustments, expr_ty)
+                                !adjust_derefs_manually_drop(use_site.adjustments, expr_ty)
                             },
-                            ExprUseNode::Callee | ExprUseNode::FieldAccess(_) if !use_cx.moved_before_use => true,
-                            ExprUseNode::MethodArg(hir_id, _, 0) if !use_cx.moved_before_use => {
+                            ExprUseNode::Callee | ExprUseNode::FieldAccess(_) if !use_site.moved_before_use => true,
+                            ExprUseNode::MethodArg(hir_id, _, 0) if !use_site.moved_before_use => {
                                 // Check for calls to trait methods where the trait is implemented
                                 // on a reference.
                                 // Two cases need to be handled:
@@ -381,7 +382,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let args =
                                         typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
                                     && let impl_ty =
-                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder().inputs()[0]
+                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_norm_wip().skip_binder().inputs()[0]
                                             .is_ref()
                                         {
                                             // Trait methods taking `&self`
@@ -455,7 +456,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     msg,
                                     stability,
                                     for_field_access: if let ExprUseNode::FieldAccess(name) = use_node
-                                        && !use_cx.moved_before_use
+                                        && !use_site.moved_before_use
                                     {
                                         Some(name.name)
                                     } else {
@@ -876,7 +877,7 @@ impl TyCoercionStability {
 
         if let Some(def_id) = def_site_def_id {
             let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
-            ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         }
         loop {
             break match *ty.kind() {

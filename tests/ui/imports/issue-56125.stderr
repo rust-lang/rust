@@ -54,24 +54,7 @@ LL |     use issue_56125::non_last_segment::non_last_segment::*;
    = help: consider adding an explicit import of `issue_56125` to disambiguate
    = help: or use `self::issue_56125` to refer to this module unambiguously
 
-error[E0659]: `issue_56125` is ambiguous
-  --> $DIR/issue-56125.rs:18:9
-   |
-LL |     use issue_56125::*;
-   |         ^^^^^^^^^^^ ambiguous name
-   |
-   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
-   = note: `issue_56125` could refer to a crate passed with `--extern`
-   = help: use `::issue_56125` to refer to this crate unambiguously
-note: `issue_56125` could also refer to the module imported here
-  --> $DIR/issue-56125.rs:18:9
-   |
-LL |     use issue_56125::*;
-   |         ^^^^^^^^^^^^^^
-   = help: consider adding an explicit import of `issue_56125` to disambiguate
-   = help: or use `self::issue_56125` to refer to this module unambiguously
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0432, E0659.
 For more information about an error, try `rustc --explain E0432`.

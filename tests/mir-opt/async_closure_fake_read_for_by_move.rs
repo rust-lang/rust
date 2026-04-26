@@ -1,5 +1,5 @@
 //@ edition:2021
-// skip-filecheck
+//@ skip-filecheck
 
 enum Foo {
     Bar,

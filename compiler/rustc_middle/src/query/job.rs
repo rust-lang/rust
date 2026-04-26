@@ -36,10 +36,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     pub fn latch(&mut self) -> QueryLatch<'tcx> {
-        if self.latch.is_none() {
-            self.latch = Some(QueryLatch::new());
-        }
-        self.latch.as_ref().unwrap().clone()
+        self.latch.get_or_insert_with(QueryLatch::new).clone()
     }
 
     /// Signals to waiters that the query is complete.

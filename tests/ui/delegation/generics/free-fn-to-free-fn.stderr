@@ -1,5 +1,5 @@
 error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/free-fn-to-free-fn.rs:19:5
+  --> $DIR/free-fn-to-free-fn.rs:18:5
    |
 LL |     late::<'static>(&0u8);
    |     ^^^^----------- help: remove the unnecessary generics
@@ -7,13 +7,13 @@ LL |     late::<'static>(&0u8);
    |     expected 0 lifetime arguments
    |
 note: function defined here, with 0 lifetime parameters
-  --> $DIR/free-fn-to-free-fn.rs:15:17
+  --> $DIR/free-fn-to-free-fn.rs:14:17
    |
 LL | reuse to_reuse::late;
    |                 ^^^^
 
 error[E0277]: the trait bound `S: Clone` is not satisfied
-  --> $DIR/free-fn-to-free-fn.rs:23:12
+  --> $DIR/free-fn-to-free-fn.rs:22:12
    |
 LL |     bounds(S);
    |     ------ ^ the trait `Clone` is not implemented for `S`
@@ -21,7 +21,7 @@ LL |     bounds(S);
    |     required by a bound introduced by this call
    |
 note: required by a bound in `bounds`
-  --> $DIR/free-fn-to-free-fn.rs:11:22
+  --> $DIR/free-fn-to-free-fn.rs:10:22
    |
 LL |     pub fn bounds<T: Clone>(_: T) {}
    |                      ^^^^^ required by this bound in `bounds`

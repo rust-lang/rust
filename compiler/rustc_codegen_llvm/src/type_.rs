@@ -77,11 +77,29 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMAddFunction(self.llmod(), name.as_ptr(), ty) }
     }
 
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        unsafe { llvm::LLVMGetReturnType(ty) }
+    }
+
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
             let mut args = Vec::with_capacity(n_args);
             llvm::LLVMGetParamTypes(ty, args.as_mut_ptr());
+            args.set_len(n_args);
+            args
+        }
+    }
+
+    pub(crate) fn func_is_variadic(&self, ty: &'ll Type) -> bool {
+        unsafe { llvm::LLVMIsFunctionVarArg(ty).is_true() }
+    }
+
+    pub(crate) fn struct_element_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
+        unsafe {
+            let n_args = llvm::LLVMCountStructElementTypes(ty) as usize;
+            let mut args = Vec::with_capacity(n_args);
+            llvm::LLVMGetStructElementTypes(ty, args.as_mut_ptr());
             args.set_len(n_args);
             args
         }
@@ -164,6 +182,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
                 packed.to_llvm_bool(),
             )
         }
+    }
+
+    pub(crate) fn type_bf16(&self) -> &'ll Type {
+        unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
     }
 }
 

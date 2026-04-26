@@ -66,8 +66,11 @@ LL | fn takes_future(_fut: impl Future<Output = ()>) {}
    |                            ^^^^^^^^^^^^^^^^^^^ required by this bound in `takes_future`
 help: use parentheses to call this closure
    |
-LL |     }(/* i32 */));
-   |      +++++++++++
+LL ~     takes_future((async |x: i32| {
+LL |
+LL |         println!("{x}");
+LL ~     })(/* i32 */));
+   |
 
 error: aborting due to 3 previous errors
 

@@ -27,7 +27,7 @@ pub(super) fn ra_fixture(
         sema,
         literal.clone(),
         expanded,
-        config.minicore,
+        &config.ra_fixture,
         &mut |range| {
             hl.add(HlRange {
                 range,
@@ -56,7 +56,7 @@ pub(super) fn ra_fixture(
                     macro_bang: config.macro_bang,
                     // What if there is a fixture inside a fixture? It's fixtures all the way down.
                     // (In fact, we have a fixture inside a fixture in our test suite!)
-                    minicore: config.minicore,
+                    ra_fixture: config.ra_fixture,
                 },
                 tmp_file_id,
             )
@@ -186,7 +186,7 @@ pub(super) fn doc_comment(
                 specialize_operator: config.operator,
                 inject_doc_comment: config.inject_doc_comment,
                 macro_bang: config.macro_bang,
-                minicore: config.minicore,
+                ra_fixture: config.ra_fixture,
             },
             tmp_file_id,
             None,

@@ -399,8 +399,9 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 ty::BoundConstness::Const
             }
         };
-        let const_conditions =
-            ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, const_conditions);
+        let const_conditions = const_conditions.into_iter().map(|(c, s)| {
+            (ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, c), s)
+        });
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, span)| {
             Obligation::new(
                 tcx,

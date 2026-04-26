@@ -2,7 +2,7 @@ use either::Either;
 use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
     AstNode,
-    ast::{self, HasGenericParams, HasName, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, HasGenericParams, HasName, edit::IndentLevel},
     syntax_editor,
 };
 
@@ -55,9 +55,8 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
             style.label(),
             func_node.syntax().text_range(),
             |builder| {
-                let mut edit = builder.make_editor(func);
-                let make = SyntaxFactory::without_mappings();
-
+                let editor = builder.make_editor(func);
+                let make = editor.make();
                 let alias_name = format!("{}Fn", stdx::to_camel_case(&name.to_string()));
 
                 let mut fn_params_vec = Vec::new();
@@ -104,7 +103,7 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
                 );
 
                 let indent = IndentLevel::from_node(insertion_node);
-                edit.insert_all(
+                editor.insert_all(
                     syntax_editor::Position::before(insertion_node),
                     vec![
                         ty_alias.syntax().clone().into(),
@@ -115,10 +114,10 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
                 if let Some(cap) = ctx.config.snippet_cap
                     && let Some(name) = ty_alias.name()
                 {
-                    edit.add_annotation(name.syntax(), builder.make_placeholder_snippet(cap));
+                    editor.add_annotation(name.syntax(), builder.make_placeholder_snippet(cap));
                 }
 
-                builder.add_file_edits(ctx.vfs_file_id(), edit);
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );
     }

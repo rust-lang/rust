@@ -582,8 +582,8 @@ impl TcpStream {
     /// to be retried, an error with kind [`io::ErrorKind::WouldBlock`] is
     /// returned.
     ///
-    /// On Unix platforms, calling this method corresponds to calling `fcntl`
-    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// On most Unix platforms, calling this method corresponds to calling `ioctl`
+    /// `FIONBIO`. On Windows, calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
@@ -988,8 +988,8 @@ impl TcpListener {
     /// IO operation could not be completed and needs to be retried, an error
     /// with kind [`io::ErrorKind::WouldBlock`] is returned.
     ///
-    /// On Unix platforms, calling this method corresponds to calling `fcntl`
-    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// On most Unix platforms, calling this method corresponds to calling `ioctl`
+    /// `FIONBIO`. On Windows, calling this method corresponds to calling
     /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples

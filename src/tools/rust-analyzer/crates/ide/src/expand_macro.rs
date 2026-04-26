@@ -54,8 +54,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         let InFile { file_id, value: tokens } =
             hir::InMacroFile::new(macro_file, descended).upmap_once(db);
         let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
-        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+        let attr = token.parent_ancestors().find_map(ast::Meta::cast)?;
         let expansions = sema.expand_derive_macro(&attr)?;
+        let ast::Meta::TokenTreeMeta(attr) = attr else { return None };
         let idx = attr
             .token_tree()?
             .token_trees_and_tokens()
@@ -235,7 +236,7 @@ fn _format(
     file_id: FileId,
     expansion: &str,
 ) -> Option<String> {
-    use ide_db::base_db::RootQueryDb;
+    use ide_db::base_db::relevant_crates;
 
     // hack until we get hygiene working (same character amount to preserve formatting as much as possible)
     const DOLLAR_CRATE_REPLACE: &str = "__r_a_";
@@ -250,7 +251,7 @@ fn _format(
     };
     let expansion = format!("{prefix}{expansion}{suffix}");
 
-    let &crate_id = db.relevant_crates(file_id).iter().next()?;
+    let &crate_id = relevant_crates(db, file_id).iter().next()?;
     let edition = crate_id.data(db).edition;
 
     #[allow(clippy::disallowed_methods)]

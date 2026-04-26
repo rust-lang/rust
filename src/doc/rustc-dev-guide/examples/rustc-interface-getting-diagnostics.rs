@@ -78,7 +78,7 @@ fn main() {
         make_codegen_backend: None,
         expanded_args: Vec::new(),
         ice_file: None,
-        hash_untracked_state: None,
+        track_state: None,
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
     };
     rustc_interface::run_compiler(config, |compiler| {

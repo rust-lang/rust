@@ -56,7 +56,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         Err(e) => ty::Const::new_error(self.tcx, e),
                         Ok(Some(bac)) => {
                             let args = self.tcx.erase_and_anonymize_regions(uv.args);
-                            let bac = bac.instantiate(self.tcx, args);
+                            let bac = bac.instantiate(self.tcx, args).skip_norm_wip();
                             return bac.fold_with(self);
                         }
                         Ok(None) => c,

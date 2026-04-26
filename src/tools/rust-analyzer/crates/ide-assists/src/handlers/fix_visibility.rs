@@ -78,7 +78,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     };
 
     acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |builder| {
-        let mut editor = builder.make_editor(vis_owner.syntax());
+        let editor = builder.make_editor(vis_owner.syntax());
 
         if let Some(current_visibility) = vis_owner.visibility() {
             editor.replace(current_visibility.syntax(), missing_visibility.syntax());

@@ -70,7 +70,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
                 let source = ctx.sema.parse(file_id);
-                let mut editor = builder.make_editor(source.syntax());
+                let editor = builder.make_editor(source.syntax());
 
                 let (path_types, path_type_uses) =
                     split_refs_and_uses(builder, refs, |path_type| {
@@ -101,7 +101,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                 inline_refs_for_file(file_id, refs);
             }
             if !definition_deleted {
-                let mut editor = builder.make_editor(ast_alias.syntax());
+                let editor = builder.make_editor(ast_alias.syntax());
                 editor.delete(ast_alias.syntax());
                 builder.add_file_edits(ctx.vfs_file_id(), editor)
             }
@@ -156,7 +156,7 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         "Inline type alias",
         alias_instance.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(alias_instance.syntax());
+            let editor = builder.make_editor(alias_instance.syntax());
             let replace = replacement.replace_generic(&concrete_type);
             editor.replace(alias_instance.syntax(), replace);
             builder.add_file_edits(ctx.vfs_file_id(), editor);
@@ -170,7 +170,7 @@ impl Replacement {
             Replacement::Generic { lifetime_map, const_and_type_map } => {
                 create_replacement(lifetime_map, const_and_type_map, concrete_type)
             }
-            Replacement::Plain => concrete_type.syntax().clone_subtree().clone_for_update(),
+            Replacement::Plain => concrete_type.syntax().clone(),
         }
     }
 }
@@ -312,9 +312,8 @@ fn create_replacement(
     const_and_type_map: &ConstAndTypeMap,
     concrete_type: &ast::Type,
 ) -> SyntaxNode {
-    let updated_concrete_type = concrete_type.syntax().clone_subtree();
-    let mut editor = SyntaxEditor::new(updated_concrete_type.clone());
-
+    let (editor, updated_concrete_type) = SyntaxEditor::new(concrete_type.syntax().clone());
+    let make = editor.make();
     let mut replacements: Vec<(SyntaxNode, SyntaxNode)> = Vec::new();
     let mut removals: Vec<NodeOrToken<SyntaxNode, _>> = Vec::new();
 
@@ -361,7 +360,7 @@ fn create_replacement(
                     continue;
                 }
 
-                replacements.push((syntax.clone(), new_lifetime.syntax().clone_for_update()));
+                replacements.push((syntax.clone(), new_lifetime.syntax().clone()));
             }
         } else if let Some(name_ref) = ast::NameRef::cast(syntax.clone()) {
             let Some(replacement_syntax) = const_and_type_map.0.get(&name_ref.to_string()) else {
@@ -369,7 +368,6 @@ fn create_replacement(
             };
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
-                let make = SyntaxFactory::without_mappings();
                 make.wildcard_pat().syntax().clone()
             } else {
                 replacement_syntax.clone()
@@ -449,15 +447,12 @@ impl ConstOrTypeGeneric {
     }
 
     fn replacement_value(&self) -> Option<SyntaxNode> {
-        Some(
-            match self {
-                ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
-                ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
-                ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
-                ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
-            }
-            .clone_for_update(),
-        )
+        Some(match self {
+            ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
+            ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
+        })
     }
 }
 

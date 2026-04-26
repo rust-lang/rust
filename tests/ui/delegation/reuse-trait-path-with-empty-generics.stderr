@@ -1,5 +1,5 @@
 error[E0423]: expected function, found trait `Trait`
-  --> $DIR/reuse-trait-path-with-empty-generics.rs:10:11
+  --> $DIR/reuse-trait-path-with-empty-generics.rs:9:11
    |
 LL |     reuse Trait::<> as bar4;
    |           ^^^^^^^^^ not a function

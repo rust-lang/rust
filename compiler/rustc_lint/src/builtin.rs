@@ -33,7 +33,9 @@ use rustc_middle::bug;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+use rustc_middle::ty::{
+    self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
+};
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
 use rustc_session::lint::fcw;
@@ -312,10 +314,7 @@ impl EarlyLintPass for UnsafeCode {
                     AttributeParser::parse_limited(
                         cx.builder.sess(),
                         &it.attrs,
-                        sym::allow_internal_unsafe,
-                        it.span,
-                        DUMMY_NODE_ID,
-                        Some(cx.builder.features()),
+                        &[sym::allow_internal_unsafe],
                     )
                 {
                     self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
@@ -467,7 +466,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             // If the method is an impl for an item with docs_hidden, don't doc.
             AssocContainer::InherentImpl => {
                 let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id());
-                let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
+                let impl_ty = cx.tcx.type_of(parent).instantiate_identity().skip_norm_wip();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
                     ty::Foreign(def_id) => Some(*def_id),
@@ -576,7 +575,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // and recommending Copy might be a bad idea.
         for field in def.all_fields() {
             let did = field.did;
-            if cx.tcx.type_of(did).instantiate_identity().is_raw_ptr() {
+            if cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().is_raw_ptr() {
                 return;
             }
         }
@@ -706,7 +705,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
 
         let has_impl = cx
             .tcx
-            .non_blanket_impls_for_ty(debug, cx.tcx.type_of(item.owner_id).instantiate_identity())
+            .non_blanket_impls_for_ty(
+                debug,
+                cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
+            )
             .next()
             .is_some();
         if !has_impl {
@@ -1379,7 +1381,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
 
         // FIXME(generic_const_exprs): Revisit this before stabilization.
         // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
-        let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+        let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
         if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
             && cx.tcx.features().generic_const_exprs()
         {
@@ -1901,10 +1903,9 @@ impl KeywordIdents {
             return;
         }
 
-        cx.sess().psess.buffer_lint(
+        cx.emit_span_lint(
             lint,
             ident.span,
-            CRATE_NODE_ID,
             BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span, prefix },
         );
     }
@@ -2527,7 +2528,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             ty: Ty<'tcx>,
             init: InitKind,
         ) -> Option<InitError> {
-            let ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty);
+            let ty = cx
+                .tcx
+                .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
+                .unwrap_or(ty);
 
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.

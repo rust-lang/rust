@@ -949,7 +949,8 @@ impl AsciiChar {
         self.to_u8().is_ascii_hexdigit()
     }
 
-    /// Checks if the value is a punctuation character:
+    /// Checks if the value is a punctuation or symbol character
+    /// (i.e. not alphanumeric, whitespace, or control):
     ///
     /// - 0x21 ..= 0x2F `! " # $ % & ' ( ) * + , - . /`, or
     /// - 0x3A ..= 0x40 `: ; < = > ? @`, or
@@ -989,7 +990,8 @@ impl AsciiChar {
         self.to_u8().is_ascii_punctuation()
     }
 
-    /// Checks if the value is a graphic character:
+    /// Checks if the value is a graphic character
+    /// (i.e. not whitespace or control):
     /// 0x21 '!' ..= 0x7E '~'.
     ///
     /// # Examples

@@ -1,45 +1,13 @@
-//! A visiting traversal mechanism for complex data structures that contain type
-//! information.
+//! Special visiting used by rust-analyzer only.
 //!
-//! This is a read-only traversal of the data structure.
+//! It is different from `TypeVisitable` in two ways:
 //!
-//! This traversal has limited flexibility. Only a small number of "types of
-//! interest" within the complex data structures can receive custom
-//! visitation. These are the ones containing the most important type-related
-//! information, such as `Ty`, `Predicate`, `Region`, and `Const`.
-//!
-//! There are three traits involved in each traversal.
-//! - `GenericTypeVisitable`. This is implemented once for many types, including:
-//!   - Types of interest, for which the methods delegate to the visitor.
-//!   - All other types, including generic containers like `Vec` and `Option`.
-//!     It defines a "skeleton" of how they should be visited.
-//! - `TypeSuperVisitable`. This is implemented only for recursive types of
-//!   interest, and defines the visiting "skeleton" for these types. (This
-//!   excludes `Region` because it is non-recursive, i.e. it never contains
-//!   other types of interest.)
-//! - `CustomizableTypeVisitor`. This is implemented for each visitor. This defines how
-//!   types of interest are visited.
-//!
-//! This means each visit is a mixture of (a) generic visiting operations, and (b)
-//! custom visit operations that are specific to the visitor.
-//! - The `GenericTypeVisitable` impls handle most of the traversal, and call into
-//!   `CustomizableTypeVisitor` when they encounter a type of interest.
-//! - A `CustomizableTypeVisitor` may call into another `GenericTypeVisitable` impl, because some of
-//!   the types of interest are recursive and can contain other types of interest.
-//! - A `CustomizableTypeVisitor` may also call into a `TypeSuperVisitable` impl, because each
-//!   visitor might provide custom handling only for some types of interest, or
-//!   only for some variants of each type of interest, and then use default
-//!   traversal for the remaining cases.
-//!
-//! For example, if you have `struct S(Ty, U)` where `S: GenericTypeVisitable` and `U:
-//! GenericTypeVisitable`, and an instance `s = S(ty, u)`, it would be visited like so:
-//! ```text
-//! s.generic_visit_with(visitor) calls
-//! - ty.generic_visit_with(visitor) calls
-//!   - visitor.visit_ty(ty) may call
-//!     - ty.super_generic_visit_with(visitor)
-//! - u.generic_visit_with(visitor)
-//! ```
+//!  - The visitor is a generic of the trait and not the method, allowing types to attach
+//!    special behavior to visitors (as long as they know it; we don't use this capability
+//!    in rustc crates, but rust-analyzer needs it).
+//!  - It **must visit** every field. This is why we don't have an attribute like `#[type_visitable(ignore)]`
+//!    for this visit. The reason for this is soundness: rust-analyzer uses this visit to
+//!    garbage collect types, so a missing field can mean a use after free
 
 use std::sync::Arc;
 
@@ -53,16 +21,6 @@ use thin_vec::ThinVec;
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
 pub trait GenericTypeVisitable<V> {
-    /// The entry point for visiting. To visit a value `t` with a visitor `v`
-    /// call: `t.generic_visit_with(v)`.
-    ///
-    /// For most types, this just traverses the value, calling `generic_visit_with` on
-    /// each field/element.
-    ///
-    /// For types of interest (such as `Ty`), the implementation of this method
-    /// that calls a visitor method specifically for that type (such as
-    /// `V::visit_ty`). This is where control transfers from `GenericTypeVisitable` to
-    /// `CustomizableTypeVisitor`.
     fn generic_visit_with(&self, visitor: &mut V);
 }
 
@@ -214,6 +172,10 @@ macro_rules! trivial_impls {
             }
         )*
     };
+}
+
+impl<T: ?Sized, V> GenericTypeVisitable<V> for std::marker::PhantomData<T> {
+    fn generic_visit_with(&self, _visitor: &mut V) {}
 }
 
 trivial_impls!(

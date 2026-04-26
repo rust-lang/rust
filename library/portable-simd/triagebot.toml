@@ -1,0 +1,44 @@
+## See <https://forge.rust-lang.org/triagebot/index.html> for documentation
+## of these features.
+
+# Allow users to use labels commands.
+# Documentation at: https://forge.rust-lang.org/triagebot/labeling.html
+[relabel]
+allow-unauthenticated = [
+    "A-*",
+    "C-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "ISA-*",
+    "O-*",
+]
+
+# Allow users to assign 'r?` someone to an issue or PR.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-assignment.html
+[assign]
+warn_non_default_branch = true
+
+# Warns when a PR contains merge commits
+# Documentation at: https://forge.rust-lang.org/triagebot/no-merge.html
+[no-merges]
+exclude_titles = ["Sync from"]
+
+# Canonicalize issue numbers to avoid closing the wrong issue
+# when commits are included in upstream sync, as well as warning links in commits.
+# Documentation at: https://forge.rust-lang.org/triagebot/issue-links.html
+[issue-links]
+check-commits = "uncanonicalized"
+
+# Enable issue transfers within the org
+# Documentation at: https://forge.rust-lang.org/triagebot/transfer.html
+[transfer]
+
+# Enable comments linking to triagebot range-diff when a PR is rebased
+# onto a different base commit
+# Documentation at: https://forge.rust-lang.org/triagebot/range-diff.html
+[range-diff]
+
+# Add link to the review body to review changes since posting it.
+# Documentation at: https://forge.rust-lang.org/triagebot/review-changes-since.html
+[review-changes-since]

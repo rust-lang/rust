@@ -105,7 +105,10 @@ impl<'a> Parser<'a> {
                 token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
             },
-            NonterminalKind::Guard => token.is_keyword(kw::If),
+            NonterminalKind::Guard => match token.kind {
+                token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Guard)) => true,
+                _ => token.is_keyword(kw::If),
+            },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
                 token.kind.close_delim().is_none()
             }

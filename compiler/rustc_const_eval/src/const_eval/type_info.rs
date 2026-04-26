@@ -419,7 +419,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         sig: &FnSigTys<TyCtxt<'tcx>>,
         fn_header: &FnHeader<TyCtxt<'tcx>>,
     ) -> InterpResult<'tcx> {
-        let FnHeader { safety, c_variadic, abi } = fn_header;
+        let FnHeader { fn_sig_kind } = fn_header;
 
         for (field_idx, field) in
             place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
@@ -428,9 +428,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
             match field.name {
                 sym::unsafety => {
-                    self.write_scalar(Scalar::from_bool(safety.is_unsafe()), &field_place)?;
+                    self.write_scalar(Scalar::from_bool(!fn_sig_kind.is_safe()), &field_place)?;
                 }
-                sym::abi => match abi {
+                sym::abi => match fn_sig_kind.abi() {
                     ExternAbi::C { .. } => {
                         let (rust_variant, _rust_place) =
                             self.downcast(&field_place, sym::ExternC)?;
@@ -463,7 +463,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     self.write_type_id(output, &field_place)?;
                 }
                 sym::variadic => {
-                    self.write_scalar(Scalar::from_bool(*c_variadic), &field_place)?;
+                    self.write_scalar(Scalar::from_bool(fn_sig_kind.c_variadic()), &field_place)?;
                 }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }

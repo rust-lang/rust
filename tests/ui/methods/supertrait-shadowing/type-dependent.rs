@@ -1,5 +1,4 @@
 //@ run-pass
-//@ check-run-results
 
 // Makes sure we can shadow with type-dependent method syntax.
 
@@ -7,23 +6,23 @@
 #![allow(dead_code)]
 
 trait A {
-    fn hello() {
-        println!("A");
+    fn hello() -> &'static str {
+        "A"
     }
 }
 impl<T> A for T {}
 
 trait B: A {
-    fn hello() {
-        println!("B");
+    fn hello() -> &'static str {
+        "B"
     }
 }
 impl<T> B for T {}
 
-fn foo<T>() {
-    T::hello();
+fn foo<T>() -> &'static str {
+    T::hello()
 }
 
 fn main() {
-    foo::<()>();
+    assert_eq!(foo::<()>(), "B");
 }

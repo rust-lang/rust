@@ -163,6 +163,8 @@ use rustc_middle::ty::TraitRef;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
+use crate::matches::manual_filter;
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))`
@@ -5054,15 +5056,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
             let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir_expect_item(parent);
-            let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+            let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
             let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
 
-            let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
+            let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity().skip_norm_wip();
             let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             should_implement_trait::check_impl_item(cx, impl_item, self_ty, implements_trait, first_arg_ty_opt, sig);
 
-            if sig.decl.implicit_self.has_implicit_self()
+            if sig.decl.implicit_self().has_implicit_self()
                 && !(self.avoid_breaking_exported_api
                     && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
                 && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir_body(id)).next()
@@ -5089,12 +5091,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
 
         if let TraitItemKind::Fn(ref sig, _) = item.kind {
-            if sig.decl.implicit_self.has_implicit_self()
+            if sig.decl.implicit_self().has_implicit_self()
                 && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
                 && let Some(&first_arg_ty) = cx
                     .tcx
                     .fn_sig(item.owner_id)
                     .instantiate_identity()
+                    .skip_norm_wip()
                     .inputs()
                     .skip_binder()
                     .first()
@@ -5154,6 +5157,8 @@ impl Methods {
                             return_and_then::check(cx, expr, recv, arg);
                         }
                     }
+
+                    manual_filter::check_and_then_method(cx, recv, arg, call_span, expr);
                 },
                 (sym::any, [arg]) => {
                     needless_character_iteration::check(cx, expr, recv, arg, false);

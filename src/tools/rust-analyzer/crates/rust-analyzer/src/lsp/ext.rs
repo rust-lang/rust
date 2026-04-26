@@ -858,6 +858,7 @@ pub struct InlayHintResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionImport {
     pub full_import_path: String,
+    pub as_underscore: bool,
 }
 
 #[derive(Debug, Deserialize, Default)]

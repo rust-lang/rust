@@ -9,6 +9,7 @@
     transparent_unions,
     auto_traits,
     freeze_impls,
+    pattern_types,
     thread_local
 )]
 #![no_core]
@@ -580,9 +581,16 @@ pub struct Global;
 impl Allocator for Global {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonNull<T: PointeeSized>(pub *const T);
+pub struct NonNull<T: PointeeSized>(pub pattern_type!(*const T is !null));
+
+#[rustc_builtin_macro(pattern_type)]
+#[macro_export]
+macro_rules! pattern_type {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
 
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}

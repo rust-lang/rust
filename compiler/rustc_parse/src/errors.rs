@@ -1305,6 +1305,14 @@ pub(crate) struct ExpectedStatementAfterOuterAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag("attribute without where predicates")]
+pub(crate) struct AttrWithoutWherePredicates {
+    #[primary_span]
+    #[label("attributes are only permitted when preceding predicates")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("found a documentation comment that doesn't document anything", code = E0585)]
 #[help("doc comments must come before what they document, if a comment was intended use `//`")]
 pub(crate) struct DocCommentDoesNotDocumentAnything {

@@ -64,10 +64,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb0: {
         StorageLive(_12);
-        StorageLive(_3);
-        StorageLive(_8);
         StorageLive(_11);
+        StorageLive(_3);
         _3 = PtrMetadata(copy _1);
+        StorageLive(_8);
         StorageLive(_5);
         StorageLive(_4);
         _4 = &raw const (*_1);
@@ -102,9 +102,9 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb3: {
         _12 = std::slice::Iter::<'_, T> { ptr: copy _8, end_or_len: copy _11, _marker: const ZeroSized: PhantomData<&T> };
-        StorageDead(_11);
         StorageDead(_8);
         StorageDead(_3);
+        StorageDead(_11);
         _13 = Enumerate::<std::slice::Iter<'_, T>> { iter: copy _12, count: const 0_usize };
         StorageDead(_12);
         StorageLive(_14);
@@ -113,6 +113,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
+        StorageLive(_16);
+        StorageLive(_15);
         _15 = &mut _14;
         _16 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _15) -> [return: bb5, unwind: bb11];
     }
@@ -123,6 +125,8 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb6: {
+        StorageDead(_15);
+        StorageDead(_16);
         StorageDead(_14);
         drop(_2) -> [return: bb7, unwind continue];
     }
@@ -132,7 +136,9 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb8: {
+        StorageLive(_18);
         _18 = copy (((_16 as Some).0: (usize, &T)).0: usize);
+        StorageLive(_19);
         _19 = copy (((_16 as Some).0: (usize, &T)).1: &T);
         StorageLive(_20);
         _20 = &_2;
@@ -144,6 +150,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb9: {
         StorageDead(_21);
         StorageDead(_20);
+        StorageDead(_19);
+        StorageDead(_18);
+        StorageDead(_15);
+        StorageDead(_16);
         goto -> bb4;
     }
 

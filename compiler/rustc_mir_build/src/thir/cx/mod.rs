@@ -184,20 +184,21 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 // Make sure that inferred closure args have no type span
                 .and_then(|ty| if param.pat.span != ty.span { Some(ty.span) } else { None });
 
-            let self_kind = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
-                Some(fn_decl.implicit_self)
+            let self_kind = if index == 0 && fn_decl.implicit_self().has_implicit_self() {
+                Some(fn_decl.implicit_self())
             } else {
                 None
             };
 
             // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
             // (as it's created inside the body itself, not passed in from outside).
-            let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
+            let ty = if fn_decl.c_variadic() && index == fn_decl.inputs.len() {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, param.span);
 
                 self.tcx
                     .type_of(va_list_did)
                     .instantiate(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+                    .skip_norm_wip()
             } else {
                 fn_sig.inputs()[index]
             };

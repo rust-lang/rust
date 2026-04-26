@@ -10,7 +10,7 @@
 // `SliceInfo<[SliceInfoElem; 0], Din, Dout>`, where that returns
 // `Result<Self, ShapeError>` ~= `Result<AlignedZST, TypeWithNiche>`.
 // This is a close enough approximation:
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type AlignedResult = Result<[u32; 0], bool>; //~ ERROR: layout_of
 // The bug gave that size 1 with align 4, but the size should also be 4.
 // It was also using the bool niche for the enum tag, which is fine, but
@@ -18,7 +18,7 @@ type AlignedResult = Result<[u32; 0], bool>; //~ ERROR: layout_of
 
 // Here's another case with multiple ZST alignments, where we should
 // get the maximal alignment and matching size.
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 enum MultipleAlignments { //~ ERROR: layout_of
     Align2([u16; 0]),
     Align4([u32; 0]),
@@ -34,13 +34,13 @@ enum MultipleAlignments { //~ ERROR: layout_of
 #[repr(packed)]
 struct Packed<T>(T);
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZero<u16>>>; //~ ERROR: layout_of
 // Should get tag_encoding: Direct, size == align == 4.
 
 #[repr(u16)]
 enum U16IsZero { _Zero = 0 }
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type NicheWinsOverTagged = Result<[u32; 0], Packed<U16IsZero>>; //~ ERROR: layout_of
 // Should get tag_encoding: Niche, size == align == 4.

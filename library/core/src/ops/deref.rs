@@ -293,6 +293,7 @@ impl<T: ?Sized> const DerefMut for &mut T {
 /// unchanged.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 #[lang = "deref_pure"]
+#[rustc_dyn_incompatible_trait]
 pub unsafe trait DerefPure: PointeeSized {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]

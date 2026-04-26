@@ -21,8 +21,9 @@ use crate::{
     db::{HirDatabase, InternedOpaqueTyId},
     lower::{GenericPredicates, associated_ty_item_bounds},
     next_solver::{
-        Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv, ParamTy,
-        SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt, mk_param,
+        AliasTy, Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv,
+        ParamTy, SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt,
+        mk_param,
     },
     traits::next_trait_solve_in_ctxt,
 };
@@ -141,7 +142,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
     // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
-    elaborate::elaborate(interner, predicates.iter_identity_copied()).any(|pred| {
+    elaborate::elaborate(interner, predicates.iter_identity()).any(|pred| {
         match pred.kind().skip_binder() {
             ClauseKind::Trait(trait_pred) => {
                 if sized == trait_pred.def_id().0
@@ -164,7 +165,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
     GenericPredicates::query_explicit(db, trait_.into())
-        .iter_identity_copied()
+        .iter_identity()
         .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
 }
 
@@ -239,30 +240,30 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
             match ty.kind() {
                 rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
                 rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
-                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => {
-                    match self.allow_self_projection {
-                        AllowSelfProjection::Yes => {
-                            let trait_ = proj.trait_def_id(interner);
-                            let trait_ = match trait_ {
-                                SolverDefId::TraitId(id) => id,
-                                _ => unreachable!(),
-                            };
-                            if self.super_traits.is_none() {
-                                self.super_traits = Some(
-                                    elaborate::supertrait_def_ids(interner, self.trait_.into())
-                                        .map(|super_trait| super_trait.0)
-                                        .collect(),
-                                )
-                            }
-                            if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
-                                ControlFlow::Continue(())
-                            } else {
-                                ty.super_visit_with(self)
-                            }
+                rustc_type_ir::TyKind::Alias(
+                    proj @ AliasTy { kind: AliasTyKind::Projection { .. }, .. },
+                ) => match self.allow_self_projection {
+                    AllowSelfProjection::Yes => {
+                        let trait_ = proj.trait_def_id(interner);
+                        let trait_ = match trait_ {
+                            SolverDefId::TraitId(id) => id,
+                            _ => unreachable!(),
+                        };
+                        if self.super_traits.is_none() {
+                            self.super_traits = Some(
+                                elaborate::supertrait_def_ids(interner, self.trait_.into())
+                                    .map(|super_trait| super_trait.0)
+                                    .collect(),
+                            )
                         }
-                        AllowSelfProjection::No => ty.super_visit_with(self),
+                        if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ty.super_visit_with(self)
+                        }
                     }
-                }
+                    AllowSelfProjection::No => ty.super_visit_with(self),
+                },
                 _ => ty.super_visit_with(self),
             }
         }
@@ -360,8 +361,8 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = GenericPredicates::query_own(db, func.into());
-    for pred in predicates.iter_identity_copied() {
+    let predicates = GenericPredicates::query_own_explicit(db, func.into());
+    for pred in predicates.iter_identity() {
         let pred = pred.kind().skip_binder();
 
         if matches!(pred, ClauseKind::TypeOutlives(_)) {
@@ -459,7 +460,7 @@ fn receiver_is_dispatchable<'db>(
             clauses: Clauses::new_from_iter(
                 interner,
                 generic_predicates
-                    .iter_identity_copied()
+                    .iter_identity()
                     .chain([unsize_predicate.upcast(interner), trait_predicate.upcast(interner)])
                     .chain(meta_sized_predicate),
             ),
@@ -503,8 +504,12 @@ fn contains_illegal_impl_trait_in_trait<'db>(
             &mut self,
             ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
         ) -> Self::Result {
-            if let rustc_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
-                let id = match op.def_id {
+            if let rustc_type_ir::TyKind::Alias(AliasTy {
+                kind: AliasTyKind::Opaque { def_id },
+                ..
+            }) = ty.kind()
+            {
+                let id = match def_id {
                     SolverDefId::InternedOpaqueTyId(id) => id,
                     _ => unreachable!(),
                 };

@@ -258,7 +258,7 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
     }
 }
 
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::Range<usize> {
     type Output = str;
@@ -555,7 +555,7 @@ unsafe impl const SliceIndex<str> for ops::RangeFrom<usize> {
     }
 }
 
-#[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;
@@ -777,7 +777,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// Panics if `last` does not point to the ending byte offset of a character
 /// (`last + 1` is either a starting byte offset as defined by
 /// `is_char_boundary`, or equal to `len`), or if `last >= len`.
-#[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_to_inclusive_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 unsafe impl const SliceIndex<str> for range::RangeToInclusive<usize> {
     type Output = str;

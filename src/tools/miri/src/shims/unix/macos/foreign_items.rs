@@ -80,12 +80,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.realpath(path, resolved_path)?;
                 this.write_scalar(result, dest)?;
             }
-            "ioctl" => {
-                let ([fd_num, cmd], varargs) =
-                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.ioctl(fd_num, cmd, varargs)?;
-                this.write_scalar(result, dest)?;
-            }
 
             // Environment related shims
             "_NSGetEnviron" => {
@@ -340,31 +334,5 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         interp_ok(EmulateItemResult::NeedsReturn)
-    }
-
-    fn ioctl(
-        &mut self,
-        fd_num: &OpTy<'tcx>,
-        cmd: &OpTy<'tcx>,
-        _varargs: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-
-        let fioclex = this.eval_libc_u64("FIOCLEX");
-
-        let fd_num = this.read_scalar(fd_num)?.to_i32()?;
-        let cmd = this.read_scalar(cmd)?.to_u64()?;
-
-        if cmd == fioclex {
-            // Since we don't support `exec`, this is a NOP. However, we want to
-            // return EBADF if the FD is invalid.
-            if this.machine.fds.is_fd_num(fd_num) {
-                interp_ok(Scalar::from_i32(0))
-            } else {
-                this.set_last_error_and_return_i32(LibcError("EBADF"))
-            }
-        } else {
-            throw_unsup_format!("ioctl: unsupported command {cmd:#x}");
-        }
     }
 }

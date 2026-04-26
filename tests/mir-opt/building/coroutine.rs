@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ edition:2024
 //@ compile-flags: -Zmir-opt-level=0 -C panic=abort
 

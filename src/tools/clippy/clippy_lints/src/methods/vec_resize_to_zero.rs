@@ -22,6 +22,7 @@ pub(super) fn check<'tcx>(
             .tcx
             .type_of(impl_id)
             .instantiate_identity()
+            .skip_norm_wip()
             .is_diag_item(cx, sym::Vec)
         && let ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),

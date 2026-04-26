@@ -339,6 +339,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -347,6 +348,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => eq_id(*li, *ri) && lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_deref(), re.as_deref()),
         (
@@ -446,30 +448,30 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (
             Trait(box ast::Trait {
+                impl_restriction: liprt,
                 constness: lc,
                 is_auto: la,
                 safety: lu,
-                impl_restriction: liprt,
                 ident: li,
                 generics: lg,
                 bounds: lb,
                 items: lis,
             }),
             Trait(box ast::Trait {
+                impl_restriction: riprt,
                 constness: rc,
                 is_auto: ra,
                 safety: ru,
-                impl_restriction: riprt,
                 ident: ri,
                 generics: rg,
                 bounds: rb,
                 items: ris,
             }),
         ) => {
-            matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
+            eq_impl_restriction(liprt, riprt)
+                && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
                 && la == ra
                 && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
-                && eq_impl_restriction(liprt, riprt)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)
@@ -540,6 +542,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -548,6 +551,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => eq_id(*li, *ri) && eq_ty(lt, rt) && lm == rm && eq_expr_opt(le.as_deref(), re.as_deref()) && ls == rs,
         (

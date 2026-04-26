@@ -552,10 +552,6 @@ HWAddressSanitizer is supported on the following targets:
 * `aarch64-linux-android`
 * `aarch64-unknown-linux-gnu`
 
-HWAddressSanitizer requires `tagged-globals` target feature to instrument
-globals. To enable this target feature compile with `-C
-target-feature=+tagged-globals`
-
 See the [Clang HWAddressSanitizer documentation][clang-hwasan] for more details.
 
 ## Example
@@ -570,9 +566,8 @@ fn main() {
 ```
 
 ```shell
-$ rustc main.rs -Zsanitizer=hwaddress -C target-feature=+tagged-globals -C
-linker=aarch64-linux-gnu-gcc -C link-arg=-fuse-ld=lld --target
-aarch64-unknown-linux-gnu
+$ rustc main.rs -Zsanitizer=hwaddress -Clinker=aarch64-linux-gnu-gcc
+-Clink-arg=-fuse-ld=lld --target aarch64-unknown-linux-gnu
 ```
 
 ```shell

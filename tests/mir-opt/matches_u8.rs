@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: MatchBranchSimplification
 
 // EMIT_MIR matches_u8.exhaustive_match.MatchBranchSimplification.diff

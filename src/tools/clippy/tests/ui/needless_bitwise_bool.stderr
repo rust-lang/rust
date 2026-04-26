@@ -13,5 +13,11 @@ error: use of bitwise operator instead of lazy operator between booleans
 LL |     if y & (0 < 1) {
    |        ^^^^^^^^^^^ help: try: `y && (0 < 1)`
 
-error: aborting due to 2 previous errors
+error: use of bitwise operator instead of lazy operator between booleans
+  --> tests/ui/needless_bitwise_bool.rs:51:8
+   |
+LL |     if inverse!(y) & inverse!(x) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `inverse!(y) && inverse!(x)`
+
+error: aborting due to 3 previous errors
 

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
+use rustc_ast::util::parser::AssocOp;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -134,12 +135,19 @@ impl IntPlusOne {
             |diag| {
                 let mut app = Applicability::MachineApplicable;
                 let ctxt = expr.span.ctxt();
-                let new_lhs = sugg::Sugg::ast(cx, new_lhs, "_", ctxt, &mut app);
+                let mut new_lhs = sugg::Sugg::ast(cx, new_lhs, "_", ctxt, &mut app);
                 let new_rhs = sugg::Sugg::ast(cx, new_rhs, "_", ctxt, &mut app);
                 let new_binop = match le_or_ge {
                     LeOrGe::Ge => BinOpKind::Gt,
                     LeOrGe::Le => BinOpKind::Lt,
                 };
+                // When the replacement operator is `<`, an `as` cast on the LHS
+                // must be parenthesized. Otherwise, the parser interprets the `<`
+                // as the start of generic arguments on the cast type
+                // (e.g., `x as usize < y` is parsed as `x as usize<y>`).
+                if matches!(new_lhs, sugg::Sugg::BinOp(AssocOp::Cast, ..)) && new_binop == BinOpKind::Lt {
+                    new_lhs = new_lhs.maybe_paren();
+                }
                 let rec = sugg::make_binop(new_binop, &new_lhs, &new_rhs);
                 diag.span_suggestion(expr.span, "change it to", rec, app);
             },

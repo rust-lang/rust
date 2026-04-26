@@ -51,12 +51,13 @@ SOURCE_FILE@0..118
       TYPE_ALIAS@56..81
         VISIBILITY@56..66
           PUB_KW@56..59 "pub"
-          L_PAREN@59..60 "("
-          PATH@60..65
-            PATH_SEGMENT@60..65
-              NAME_REF@60..65
-                CRATE_KW@60..65 "crate"
-          R_PAREN@65..66 ")"
+          VISIBILITY_INNER@59..66
+            L_PAREN@59..60 "("
+            PATH@60..65
+              PATH_SEGMENT@60..65
+                NAME_REF@60..65
+                  CRATE_KW@60..65 "crate"
+            R_PAREN@65..66 ")"
         WHITESPACE@66..67 " "
         TYPE_KW@67..71 "type"
         WHITESPACE@71..72 " "
@@ -73,12 +74,13 @@ SOURCE_FILE@0..118
       CONST@86..115
         VISIBILITY@86..96
           PUB_KW@86..89 "pub"
-          L_PAREN@89..90 "("
-          PATH@90..95
-            PATH_SEGMENT@90..95
-              NAME_REF@90..95
-                CRATE_KW@90..95 "crate"
-          R_PAREN@95..96 ")"
+          VISIBILITY_INNER@89..96
+            L_PAREN@89..90 "("
+            PATH@90..95
+              PATH_SEGMENT@90..95
+                NAME_REF@90..95
+                  CRATE_KW@90..95 "crate"
+            R_PAREN@95..96 ")"
         WHITESPACE@96..97 " "
         CONST_KW@97..102 "const"
         WHITESPACE@102..103 " "

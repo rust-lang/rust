@@ -15,7 +15,7 @@ unsafe extern "unadjusted" {
 }
 
 /// Generates the cache operation instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn cacop<const IMM5: i32, const IMM_S12: i32>(b: i32) {
     static_assert_uimm_bits!(IMM5, 5);
@@ -24,7 +24,7 @@ pub unsafe fn cacop<const IMM5: i32, const IMM_S12: i32>(b: i32) {
 }
 
 /// Reads the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrrd<const IMM14: i32>() -> i32 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -32,7 +32,7 @@ pub unsafe fn csrrd<const IMM14: i32>() -> i32 {
 }
 
 /// Writes the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrwr<const IMM14: i32>(a: i32) -> i32 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -40,7 +40,7 @@ pub unsafe fn csrwr<const IMM14: i32>(a: i32) -> i32 {
 }
 
 /// Exchanges the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrxchg<const IMM14: i32>(a: i32, b: i32) -> i32 {
     static_assert_uimm_bits!(IMM14, 14);

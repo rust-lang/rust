@@ -11,7 +11,7 @@ fn ignores_arguments() {
 
 fn echo() {
     unsafe extern "C" fn variadic(mut ap: ...) -> i32 {
-        ap.arg()
+        ap.next_arg()
     }
 
     assert_eq!(unsafe { variadic(1) }, 1);
@@ -20,7 +20,7 @@ fn echo() {
 
 fn forward_by_val() {
     unsafe fn helper(mut ap: VaList) -> i32 {
-        ap.arg()
+        ap.next_arg()
     }
 
     unsafe extern "C" fn variadic(ap: ...) -> i32 {
@@ -33,7 +33,7 @@ fn forward_by_val() {
 
 fn forward_by_ref() {
     unsafe fn helper(ap: &mut VaList) -> i32 {
-        ap.arg()
+        ap.next_arg()
     }
 
     unsafe extern "C" fn variadic(mut ap: ...) -> i32 {
@@ -47,7 +47,7 @@ fn forward_by_ref() {
 #[allow(improper_ctypes_definitions)]
 fn nested() {
     unsafe fn helper(mut ap1: VaList, mut ap2: VaList) -> (i32, i32) {
-        (ap1.arg(), ap2.arg())
+        (ap1.next_arg(), ap2.next_arg())
     }
 
     unsafe extern "C" fn variadic2(ap1: VaList, ap2: ...) -> (i32, i32) {
@@ -83,13 +83,13 @@ fn various_types() {
             }
         }
 
-        continue_if!(ap.arg::<c_double>().floor() == 3.14f64.floor());
-        continue_if!(ap.arg::<c_long>() == 12);
-        continue_if!(ap.arg::<c_int>() == 'a' as c_int);
-        continue_if!(ap.arg::<c_double>().floor() == 6.18f64.floor());
-        continue_if!(compare_c_str(ap.arg::<*const c_char>(), "Hello"));
-        continue_if!(ap.arg::<c_int>() == 42);
-        continue_if!(compare_c_str(ap.arg::<*const c_char>(), "World"));
+        continue_if!(ap.next_arg::<c_double>().floor() == 3.14f64.floor());
+        continue_if!(ap.next_arg::<c_long>() == 12);
+        continue_if!(ap.next_arg::<c_int>() == 'a' as c_int);
+        continue_if!(ap.next_arg::<c_double>().floor() == 6.18f64.floor());
+        continue_if!(compare_c_str(ap.next_arg::<*const c_char>(), "Hello"));
+        continue_if!(ap.next_arg::<c_int>() == 42);
+        continue_if!(compare_c_str(ap.next_arg::<*const c_char>(), "World"));
     }
 
     unsafe {

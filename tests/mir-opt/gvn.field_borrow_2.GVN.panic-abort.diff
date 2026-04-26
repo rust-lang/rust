@@ -32,16 +32,14 @@
           _3 = copy ((*_2).0: &u8);
           StorageLive(_4);
           _4 = copy (*_1);
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           _5 = copy ((*_4).0: &u8);
           StorageLive(_6);
 -         _6 = copy ((*_4).0: &u8);
 +         _6 = copy _5;
           _0 = const ();
           StorageDead(_6);
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);
           StorageDead(_2);

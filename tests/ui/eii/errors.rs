@@ -25,11 +25,9 @@ unsafe extern "Rust" {
     safe fn bar(x: u64) -> u64;
 }
 
-#[foo] //~ ERROR `#[foo]` is only valid on functions
-static X: u64 = 4;
-#[foo] //~ ERROR `#[foo]` is only valid on functions
+#[foo] //~ ERROR `#[foo]` is only valid on functions and statics
 const Y: u64 = 4;
-#[foo] //~ ERROR `#[foo]` is only valid on functions
+#[foo] //~ ERROR `#[foo]` is only valid on functions and statics
 macro bar() {}
 
 #[foo()]

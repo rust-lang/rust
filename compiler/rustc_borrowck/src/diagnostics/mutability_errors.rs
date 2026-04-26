@@ -493,7 +493,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         for (_, node) in self.infcx.tcx.hir_parent_iter(upvar_hir_id) {
                             if let Some(fn_decl) = node.fn_decl() {
                                 if !matches!(
-                                    fn_decl.implicit_self,
+                                    fn_decl.implicit_self(),
                                     hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
                                 ) {
                                     err.span_suggestion_verbose(
@@ -810,7 +810,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
                     && let hir::TyKind::Ref(_, mut_ty) = ty.kind
                     && let hir::Mutability::Not = mut_ty.mutbl
-                    && sig.decl.implicit_self.has_implicit_self()
+                    && sig.decl.implicit_self().has_implicit_self()
                 {
                     Some(ty.span)
                 } else {
@@ -1147,7 +1147,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     arg_pos
                         .and_then(|pos| {
                             sig.decl.inputs.get(
-                                pos + if sig.decl.implicit_self.has_implicit_self() {
+                                pos + if sig.decl.implicit_self().has_implicit_self() {
                                     1
                                 } else {
                                     0
@@ -1410,9 +1410,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             (span, " mut".to_owned(), true)
         // If there is already a binding, we modify it to be `mut`.
         } else if binding_exists {
-            // Shrink the span to just after the `&` in `&variable`.
-            let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
-            (span, "mut ".to_owned(), true)
+            // Replace the sigil with the mutable version. We may be dealing
+            // with parser recovery here and cannot assume the user actually
+            // typed `&` or `*const`, so we compute the prefix from the snippet.
+            let Ok(src) = self.infcx.tcx.sess.source_map().span_to_snippet(span) else {
+                return;
+            };
+            let (prefix_len, replacement) = if local_decl.ty.is_ref() {
+                (src.chars().next().map_or(0, char::len_utf8), "&mut ")
+            } else {
+                (src.find("const").map_or(1, |i| i + "const".len()), "*mut ")
+            };
+            let ws_len = src[prefix_len..].len() - src[prefix_len..].trim_start().len();
+            let span = span.with_hi(span.lo() + BytePos((prefix_len + ws_len) as u32));
+            (span, replacement.to_owned(), true)
         } else {
             // Otherwise, suggest that the user annotates the binding; We provide the
             // type of the local.

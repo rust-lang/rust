@@ -4,7 +4,7 @@
 #![allow(incomplete_features, internal_features, improper_ctypes)]
 #![feature(abi_unadjusted, core_intrinsics, link_llvm_intrinsics, rustc_attrs)]
 
-use std::intrinsics::simd::scalable::sve_cast;
+use std::intrinsics::simd::simd_cast;
 
 #[derive(Copy, Clone)]
 #[rustc_scalable_vector(16)]
@@ -61,5 +61,5 @@ pub unsafe fn svld1sh_gather_s64offset_s64(
             offsets: svint64_t,
         ) -> nxv2i16;
     }
-    sve_cast(_svld1sh_gather_s64offset_s64(pg.sve_into(), base, offsets))
+    simd_cast(_svld1sh_gather_s64offset_s64(pg.sve_into(), base, offsets))
 }

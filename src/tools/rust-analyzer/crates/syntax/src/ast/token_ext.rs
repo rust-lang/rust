@@ -32,11 +32,7 @@ impl ast::Comment {
     }
 
     pub fn prefix(&self) -> &'static str {
-        let &(prefix, _kind) = CommentKind::BY_PREFIX
-            .iter()
-            .find(|&(prefix, kind)| self.kind() == *kind && self.text().starts_with(prefix))
-            .unwrap();
-        prefix
+        self.kind().prefix()
     }
 
     /// Returns the textual content of a doc comment node as a single string with prefix and suffix

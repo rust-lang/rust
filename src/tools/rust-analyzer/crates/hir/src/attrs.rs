@@ -38,7 +38,11 @@ pub enum AttrsOwner {
     Field(FieldId),
     LifetimeParam(LifetimeParamId),
     TypeOrConstParam(TypeOrConstParamId),
-    /// Things that do not have attributes. Used for builtin derives.
+    /// Things that do not have attributes.
+    ///
+    /// Used for:
+    /// - builtin derives
+    /// - builtin types (as those do not have attributes)
     Dummy,
 }
 
@@ -83,6 +87,19 @@ impl AttrsWithOwner {
     #[inline]
     pub fn is_unstable(&self) -> bool {
         self.attrs.contains(AttrFlags::IS_UNSTABLE)
+    }
+
+    /// Currently, it could be that `is_unstable() == true` but `unstable_feature == None`
+    /// (due to unstable features not being retrieved for fields etc.).
+    #[inline]
+    pub fn unstable_feature(&self, db: &dyn HirDatabase) -> Option<Symbol> {
+        match self.owner {
+            AttrsOwner::AttrDef(owner) => self.attrs.unstable_feature(db, owner),
+            AttrsOwner::Field(_)
+            | AttrsOwner::LifetimeParam(_)
+            | AttrsOwner::TypeOrConstParam(_)
+            | AttrsOwner::Dummy => None,
+        }
     }
 
     #[inline]

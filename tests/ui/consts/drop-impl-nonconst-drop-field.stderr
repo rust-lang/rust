@@ -1,0 +1,27 @@
+error[E0367]: `NotConstDrop` does not implement `[const] Destruct`
+  --> $DIR/drop-impl-nonconst-drop-field.rs:12:18
+   |
+LL | struct ConstDrop(NotConstDrop);
+   |                  ^^^^^^^^^^^^
+   |
+note: required for this `Drop` impl
+  --> $DIR/drop-impl-nonconst-drop-field.rs:15:1
+   |
+LL | impl const Drop for ConstDrop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0367]: `T` does not implement `[const] Destruct`
+  --> $DIR/drop-impl-nonconst-drop-field.rs:19:22
+   |
+LL | struct ConstDrop2<T>(T);
+   |                      ^
+   |
+note: required for this `Drop` impl
+  --> $DIR/drop-impl-nonconst-drop-field.rs:22:1
+   |
+LL | impl<T> const Drop for ConstDrop2<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0367`.

@@ -1,5 +1,10 @@
 #![warn(clippy::manual_filter)]
-#![allow(unused_variables, dead_code, clippy::useless_vec)]
+#![allow(
+    unused_variables,
+    clippy::question_mark,
+    clippy::useless_vec,
+    clippy::nonminimal_bool
+)]
 
 fn main() {
     match Some(0) {
@@ -292,4 +297,25 @@ fn main() {
 
 fn maybe_some() -> Option<u32> {
     Some(0)
+}
+
+fn issue14440(opt: Option<i32>) {
+    opt.and_then(|x| if x == 0 { None } else { Some(x) });
+    //~^ manual_filter
+
+    let y = 1i32;
+    opt.and_then(move |x| if x == y { Some(x) } else { None });
+    //~^ manual_filter
+
+    let opt1 = Some("123".to_string());
+    opt1.and_then(|s| if s.len() > 2 { Some(s) } else { None });
+    //~^ manual_filter
+
+    unsafe fn f(x: u32) -> bool {
+        true
+    }
+    opt.and_then(|x| if unsafe { f(x as u32) } { Some(x) } else { None });
+    //~^ manual_filter
+    opt.and_then(|x| unsafe { if f(x as u32) { Some(x) } else { None } });
+    //~^ manual_filter
 }

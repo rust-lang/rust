@@ -15,10 +15,12 @@ impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
         if let Some(FailMode::Build) = self.props.fail_mode {
             // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
-            let pm = Some(PassMode::Check);
-            let proc_res =
-                self.compile_test_general(WillExecute::No, Emit::Metadata, pm, Vec::new());
-            self.check_if_test_should_compile(self.props.fail_mode, pm, &proc_res);
+            let proc_res = self.compile_test(WillExecute::No, Emit::Metadata);
+            self.check_if_test_should_compile(
+                self.props.fail_mode,
+                Some(PassMode::Check),
+                &proc_res,
+            );
         }
 
         let pm = self.pass_mode();

@@ -22,7 +22,7 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryRegionConstraints, QueryResponse,
 };
-use crate::infer::region_constraints::RegionConstraintData;
+use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries, SubregionOrigin,
     TypeOutlivesConstraint,
@@ -188,9 +188,16 @@ impl<'tcx> InferCtxt<'tcx> {
         let InferOk { value: result_args, obligations } =
             self.query_response_instantiation(cause, param_env, original_values, query_response)?;
 
-        for (predicate, _category) in &query_response.value.region_constraints.outlives {
-            let predicate = instantiate_value(self.tcx, &result_args, *predicate);
-            self.register_outlives_constraint(predicate, cause);
+        for (constraint, _category) in &query_response.value.region_constraints.constraints {
+            let constraint = instantiate_value(self.tcx, &result_args, *constraint);
+            match constraint {
+                ty::RegionConstraint::Outlives(predicate) => {
+                    self.register_outlives_constraint(predicate, cause);
+                }
+                ty::RegionConstraint::Eq(predicate) => {
+                    self.register_region_eq_constraint(predicate, cause);
+                }
+            }
         }
 
         for assumption in &query_response.value.region_constraints.assumptions {
@@ -277,14 +284,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 (GenericArgKind::Lifetime(v_o), GenericArgKind::Lifetime(v_r)) => {
-                    // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
-                        output_query_region_constraints
-                            .outlives
-                            .push((ty::OutlivesPredicate(v_o.into(), v_r), constraint_category));
-                        output_query_region_constraints
-                            .outlives
-                            .push((ty::OutlivesPredicate(v_r.into(), v_o), constraint_category));
+                        output_query_region_constraints.constraints.push((
+                            ty::RegionEqPredicate(v_o.into(), v_r).into(),
+                            constraint_category,
+                        ));
                     }
                 }
 
@@ -311,13 +315,12 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         // ...also include the other query region constraints from the query.
-        output_query_region_constraints.outlives.extend(
-            query_response.value.region_constraints.outlives.iter().filter_map(|&r_c| {
+        output_query_region_constraints.constraints.extend(
+            query_response.value.region_constraints.constraints.iter().filter_map(|&r_c| {
                 let r_c = instantiate_value(self.tcx, &result_args, r_c);
 
-                // Screen out `'a: 'a` cases.
-                let ty::OutlivesPredicate(k1, r2) = r_c.0;
-                if k1 != r2.into() { Some(r_c) } else { None }
+                // Screen out `'a: 'a` or `'a == 'a` cases.
+                if r_c.0.is_trivial() { None } else { Some(r_c) }
             }),
         );
 
@@ -611,20 +614,30 @@ pub fn make_query_region_constraints<'tcx>(
 
     debug!(?constraints);
 
-    let outlives: Vec<_> = constraints
+    let constraints: Vec<_> = constraints
         .iter()
-        .map(|(c, origin)| {
-            // Swap regions because we are going from sub (<=) to outlives (>=).
-            let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub);
-            (constraint, origin.to_constraint_category())
+        .map(|(c, origin)| match c.kind {
+            ConstraintKind::VarSubVar
+            | ConstraintKind::RegSubVar
+            | ConstraintKind::VarSubReg
+            | ConstraintKind::RegSubReg => {
+                // Swap regions because we are going from sub (<=) to outlives (>=).
+                let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub).into();
+                (constraint, origin.to_constraint_category())
+            }
+
+            ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                let constraint = ty::RegionEqPredicate(c.sup, c.sub).into();
+                (constraint, origin.to_constraint_category())
+            }
         })
         .chain(outlives_obligations.into_iter().map(|obl| {
             (
-                ty::OutlivesPredicate(obl.sup_type.into(), obl.sub_region),
+                ty::OutlivesPredicate(obl.sup_type.into(), obl.sub_region).into(),
                 obl.origin.to_constraint_category(),
             )
         }))
         .collect();
 
-    QueryRegionConstraints { outlives, assumptions }
+    QueryRegionConstraints { constraints, assumptions }
 }

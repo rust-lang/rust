@@ -173,7 +173,8 @@ impl Project<'_> {
                 chalk_filter: std::env::var("CHALK_DEBUG").ok(),
                 profile_filter: std::env::var("RA_PROFILE").ok(),
                 json_profile_filter: std::env::var("RA_PROFILE_JSON").ok(),
-            };
+            }
+            .init();
         });
 
         let FixtureWithProjectMeta {

@@ -1,6 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
+use rustc_middle::ty::Unnormalized;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
@@ -92,9 +93,10 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             return;
         };
 
-        let args = cx
-            .tcx
-            .normalize_erasing_regions(cx.typing_env(), cx.typeck_results().node_args(expr.hir_id));
+        let args = cx.tcx.normalize_erasing_regions(
+            cx.typing_env(),
+            Unnormalized::new_wip(cx.typeck_results().node_args(expr.hir_id)),
+        );
         // Resolve the trait method instance.
         let Ok(Some(i)) = ty::Instance::try_resolve(cx.tcx, cx.typing_env(), did, args) else {
             return;

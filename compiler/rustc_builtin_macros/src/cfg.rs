@@ -6,7 +6,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, token};
 use rustc_attr_parsing::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use rustc_attr_parsing::{
-    self as attr, AttributeParser, CFG_TEMPLATE, ParsedDescription, ShouldEmit, parse_cfg_entry,
+    self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, ParsedDescription, ShouldEmit,
+    parse_cfg_entry,
 };
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_hir::attrs::CfgEntry;
@@ -53,6 +54,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         AttrStyle::Inner,
         AttrPath { segments: vec![sym::cfg].into_boxed_slice(), span },
         None,
+        AttributeSafety::Normal,
         ParsedDescription::Macro,
         span,
         cx.current_expansion.lint_node_id,

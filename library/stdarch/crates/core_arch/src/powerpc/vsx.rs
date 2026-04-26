@@ -238,14 +238,14 @@ mod tests {
         {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vsx")]
             fn $name() {
-                let a = $longtype::from($shorttype::new($($a),+, $($b),+));
-                let b = $longtype::from($shorttype::new($($c),+, $($d),+));
+                let a = $longtype::from($shorttype::from_array([$($a),+, $($b),+]));
+                let b = $longtype::from($shorttype::from_array([$($c),+, $($d),+]));
 
                 unsafe {
-                    assert_eq!($shorttype::new($($a),+, $($c),+), $shorttype::from(vec_xxpermdi::<_, 0>(a, b)));
-                    assert_eq!($shorttype::new($($b),+, $($c),+), $shorttype::from(vec_xxpermdi::<_, 1>(a, b)));
-                    assert_eq!($shorttype::new($($a),+, $($d),+), $shorttype::from(vec_xxpermdi::<_, 2>(a, b)));
-                    assert_eq!($shorttype::new($($b),+, $($d),+), $shorttype::from(vec_xxpermdi::<_, 3>(a, b)));
+                    assert_eq!($shorttype::from_array([$($a),+, $($c),+]), $shorttype::from(vec_xxpermdi::<_, 0>(a, b)));
+                    assert_eq!($shorttype::from_array([$($b),+, $($c),+]), $shorttype::from(vec_xxpermdi::<_, 1>(a, b)));
+                    assert_eq!($shorttype::from_array([$($a),+, $($d),+]), $shorttype::from(vec_xxpermdi::<_, 2>(a, b)));
+                    assert_eq!($shorttype::from_array([$($b),+, $($d),+]), $shorttype::from(vec_xxpermdi::<_, 3>(a, b)));
                 }
             }
         }

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 #![feature(try_trait_v2)]
 
 //@ compile-flags: -Zunsound-mir-opts

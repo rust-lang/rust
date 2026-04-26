@@ -1381,7 +1381,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 panic!("extern_statics cannot contain wildcards")
             };
             let info = ecx.get_alloc_info(alloc_id);
-            let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
+            let def_ty = ecx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             let extern_decl_layout =
                 ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
             if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {

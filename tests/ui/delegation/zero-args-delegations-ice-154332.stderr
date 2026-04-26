@@ -1,5 +1,5 @@
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/zero-args-delegations-ice-154332.rs:7:11
+  --> $DIR/zero-args-delegations-ice-154332.rs:6:11
    |
 LL |       reuse a as b {
    |  ___________^______-
@@ -11,7 +11,7 @@ LL | |     }
    | |_____- unexpected argument of type `()`
    |
 note: function defined here
-  --> $DIR/zero-args-delegations-ice-154332.rs:5:8
+  --> $DIR/zero-args-delegations-ice-154332.rs:4:8
    |
 LL |     fn a() {}
    |        ^
@@ -22,13 +22,13 @@ LL +     reuse {
    |
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/zero-args-delegations-ice-154332.rs:26:21
+  --> $DIR/zero-args-delegations-ice-154332.rs:25:21
    |
 LL |     reuse to_reuse::zero_args { self }
    |                     ^^^^^^^^^   ---- unexpected argument
    |
 note: function defined here
-  --> $DIR/zero-args-delegations-ice-154332.rs:21:16
+  --> $DIR/zero-args-delegations-ice-154332.rs:20:16
    |
 LL |         pub fn zero_args() -> i32 {
    |                ^^^^^^^^^

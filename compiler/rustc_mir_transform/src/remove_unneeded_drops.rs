@@ -4,13 +4,7 @@
 //! useful because (unlike MIR building) it runs after type checking, so it can make use of
 //! `TypingMode::PostAnalysis` to provide more precise type information, especially about opaque
 //! types.
-//!
-//! When we're optimizing, we also remove calls to `drop_in_place<T>` when `T` isn't `needs_drop`,
-//! as those are essentially equivalent to `Drop` terminators. While the compiler doesn't insert
-//! them automatically, preferring the built-in instead, they're common in generic code (such as
-//! `Vec::truncate`) so removing them from things like inlined `Vec<u8>` is helpful.
 
-use rustc_hir::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, trace};
@@ -27,19 +21,8 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
         let mut should_simplify = false;
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator_mut();
-            let (ty, target) = match terminator.kind {
-                TerminatorKind::Drop { place, target, .. } => {
-                    (place.ty(&body.local_decls, tcx).ty, target)
-                }
-                TerminatorKind::Call { ref func, target: Some(target), .. }
-                    if tcx.sess.mir_opt_level() > 0
-                        && let Some((def_id, generics)) = func.const_fn_def()
-                        && tcx.is_lang_item(def_id, LangItem::DropInPlace) =>
-                {
-                    (generics.type_at(0), target)
-                }
-                _ => continue,
-            };
+            let TerminatorKind::Drop { place, target, .. } = terminator.kind else { continue };
+            let ty = place.ty(&body.local_decls, tcx).ty;
 
             if ty.needs_drop(tcx, typing_env) {
                 continue;

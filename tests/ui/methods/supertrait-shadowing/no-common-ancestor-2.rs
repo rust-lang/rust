@@ -1,22 +1,22 @@
 #![feature(supertrait_item_shadowing)]
 
 trait A {
-    fn hello(&self) {
-        println!("A");
+    fn hello(&self) -> &'static str {
+        "A"
     }
 }
 impl<T> A for T {}
 
 trait B {
-    fn hello(&self) {
-        println!("B");
+    fn hello(&self) -> &'static str {
+        "B"
     }
 }
 impl<T> B for T {}
 
 trait C: A + B {
-    fn hello(&self) {
-        println!("C");
+    fn hello(&self) -> &'static str {
+        "C"
     }
 }
 impl<T> C for T {}
@@ -25,8 +25,8 @@ impl<T> C for T {}
 // we have no obvious lower bound.
 
 trait D: B {
-    fn hello(&self) {
-        println!("D");
+    fn hello(&self) -> &'static str {
+        "D"
     }
 }
 impl<T> D for T {}

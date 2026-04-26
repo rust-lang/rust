@@ -1,11 +1,11 @@
-error: `#[diagnostic::on_const]` can only be applied to trait impls
-  --> $DIR/misplaced_attr.rs:4:1
+error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
+  --> $DIR/misplaced_attr.rs:8:1
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | pub struct Foo;
-   | -------------- not a trait impl
+LL | impl const PartialEq for Foo {
+   | ---------------------------- this is a const trait implementation
    |
 note: the lint level is defined here
   --> $DIR/misplaced_attr.rs:2:9
@@ -13,32 +13,38 @@ note: the lint level is defined here
 LL | #![deny(misplaced_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[diagnostic::on_const]` can only be applied to non-const trait impls
-  --> $DIR/misplaced_attr.rs:8:1
+error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
+  --> $DIR/misplaced_attr.rs:4:1
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | impl const PartialEq for Foo {
-   | ---------------------------- this is a const trait impl
+LL | pub struct Foo;
+   | --------------- not a trait implementation
 
-error: `#[diagnostic::on_const]` can only be applied to trait impls
+error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
   --> $DIR/misplaced_attr.rs:16:1
    |
-LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL | impl Foo {
-   | -------- not a trait impl
+LL | / impl Foo {
+LL | |     fn eq(&self, _other: &Foo) -> bool {
+LL | |         true
+LL | |     }
+LL | | }
+   | |_- not a trait implementation
 
-error: `#[diagnostic::on_const]` can only be applied to trait impls
+error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
   --> $DIR/misplaced_attr.rs:25:5
    |
-LL |     #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       #[diagnostic::on_const(message = "tadaa", note = "boing")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
-LL |     fn partial_cmp(&self, other: &Foo) -> Option<std::cmp::Ordering> {
-   |     ---------------------------------------------------------------- not a trait impl
+LL | /     fn partial_cmp(&self, other: &Foo) -> Option<std::cmp::Ordering> {
+LL | |         None
+LL | |     }
+   | |_____- not a trait implementation
 
 error: aborting due to 4 previous errors
 

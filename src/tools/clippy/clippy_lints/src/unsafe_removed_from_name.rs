@@ -40,6 +40,9 @@ impl EarlyLintPass for UnsafeNameRemoval {
 fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
     match use_tree.kind {
         UseTreeKind::Simple(Some(new_name)) => {
+            if new_name.as_str() == "_" {
+                return;
+            }
             let old_name = use_tree
                 .prefix
                 .segments

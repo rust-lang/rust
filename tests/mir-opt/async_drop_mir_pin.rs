@@ -1,6 +1,6 @@
 //@edition: 2024
 //@ test-mir-pass: MentionedItems
-// skip-filecheck
+//@ skip-filecheck
 #![feature(async_drop)]
 #![allow(incomplete_features)]
 use std::future::AsyncDrop;

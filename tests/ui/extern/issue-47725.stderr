@@ -1,13 +1,17 @@
 error[E0539]: malformed `link_name` attribute input
-  --> $DIR/issue-47725.rs:19:1
+  --> $DIR/issue-47725.rs:20:1
    |
 LL | #[link_name]
-   | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
+   | ^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute>
+help: must be of the form
+   |
+LL | #[link_name = "name"]
+   |             ++++++++
 
 warning: `#[link_name]` attribute cannot be used on structs
-  --> $DIR/issue-47725.rs:3:1
+  --> $DIR/issue-47725.rs:4:1
    |
 LL | #[link_name = "foo"]
    | ^^^^^^^^^^^^^^^^^^^^
@@ -15,13 +19,13 @@ LL | #[link_name = "foo"]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 note: the lint level is defined here
-  --> $DIR/issue-47725.rs:1:9
+  --> $DIR/issue-47725.rs:2:9
    |
 LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
-  --> $DIR/issue-47725.rs:10:1
+  --> $DIR/issue-47725.rs:11:1
    |
 LL | #[link_name = "foobar"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +34,7 @@ LL | #[link_name = "foobar"]
    = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
-  --> $DIR/issue-47725.rs:19:1
+  --> $DIR/issue-47725.rs:20:1
    |
 LL | #[link_name]
    | ^^^^^^^^^^^^

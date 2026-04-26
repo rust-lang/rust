@@ -46,8 +46,8 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
         "Replace let with if let",
         target,
         |builder| {
-            let mut editor = builder.make_editor(let_stmt.syntax());
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(let_stmt.syntax());
+            let make = editor.make();
             let ty = ctx.sema.type_of_expr(&init);
             let pat = if let_stmt.let_else().is_some() {
                 // Do not add the wrapper type that implements `Try`,
@@ -79,7 +79,6 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
             let if_stmt = make.expr_stmt(if_expr.into());
 
             editor.replace(let_stmt.syntax(), if_stmt.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -88,6 +87,11 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
 fn let_expr_needs_paren(expr: &ast::Expr) -> bool {
     let make = SyntaxFactory::without_mappings();
     let fake_expr_let = make.expr_let(make.tuple_pat(None).into(), make.expr_unit());
+    let fake_if = make.expr_if(fake_expr_let.into(), make.expr_empty_block(), None);
+    let Some(ast::Expr::LetExpr(fake_expr_let)) = fake_if.condition() else {
+        stdx::never!();
+        return false;
+    };
     let Some(fake_expr) = fake_expr_let.expr() else {
         stdx::never!();
         return false;
@@ -176,6 +180,24 @@ fn main() {
             r"
 fn main() {
     if let x = (true || false) {
+    }
+}
+            ",
+        )
+    }
+
+    #[test]
+    fn replace_let_record_expr() {
+        check_assist(
+            replace_let_with_if_let,
+            r"
+fn main() {
+    $0let x = Foo { x };
+}
+            ",
+            r"
+fn main() {
+    if let x = (Foo { x }) {
     }
 }
             ",

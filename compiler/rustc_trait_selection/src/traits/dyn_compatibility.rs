@@ -13,8 +13,8 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
-    elaborate,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast, elaborate,
 };
 use rustc_span::{DUMMY_SP, Span};
 use smallvec::SmallVec;
@@ -200,7 +200,11 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .filter(|item| item.is_type())
         // Ignore GATs with `Self: Sized`
         .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-        .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
+        .flat_map(|item| {
+            tcx.explicit_item_bounds(item.def_id)
+                .iter_identity_copied()
+                .map(Unnormalized::skip_norm_wip)
+        })
         .filter_map(|(clause, sp)| {
             // Item bounds *can* have self projections, since they never get
             // their self type erased.
@@ -258,6 +262,7 @@ fn super_predicates_have_non_lifetime_binders(
 ) -> SmallVec<[Span; 1]> {
     tcx.explicit_super_predicates_of(trait_def_id)
         .iter_identity_copied()
+        .map(Unnormalized::skip_norm_wip)
         .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
         .collect()
 }
@@ -271,6 +276,7 @@ fn super_predicates_are_unconditionally_const(
 ) -> SmallVec<[Span; 1]> {
     tcx.explicit_super_predicates_of(trait_def_id)
         .iter_identity_copied()
+        .map(Unnormalized::skip_norm_wip)
         .filter_map(|(pred, span)| {
             if let ty::ClauseKind::HostEffect(_) = pred.kind().skip_binder() {
                 Some(span)
@@ -291,8 +297,13 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     };
 
     // Search for a predicate like `Self: Sized` amongst the trait bounds.
-    let predicates = tcx.predicates_of(def_id);
-    let predicates = predicates.instantiate_identity(tcx).predicates;
+    let predicates: Vec<_> = tcx
+        .predicates_of(def_id)
+        .instantiate_identity(tcx)
+        .predicates
+        .into_iter()
+        .map(Unnormalized::skip_norm_wip)
+        .collect();
     elaborate(tcx, predicates).any(|pred| match pred.kind().skip_binder() {
         ty::ClauseKind::Trait(ref trait_pred) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
@@ -341,7 +352,9 @@ pub fn dyn_compatibility_violations_for_assoc_item(
                     errors.push(AssocConstViolation::NonType);
                 }
 
-                let ty = ty::Binder::dummy(tcx.type_of(item.def_id).instantiate_identity());
+                let ty = ty::Binder::dummy(
+                    tcx.type_of(item.def_id).instantiate_identity().skip_norm_wip(),
+                );
                 if contains_illegal_self_type_reference(
                     tcx,
                     trait_def_id,
@@ -403,7 +416,7 @@ fn virtual_call_violations_for_method<'tcx>(
     trait_def_id: DefId,
     method: ty::AssocItem,
 ) -> Vec<MethodViolation> {
-    let sig = tcx.fn_sig(method.def_id).instantiate_identity();
+    let sig = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip();
 
     // The method's first parameter must be named `self`
     if !method.is_method() {
@@ -465,7 +478,7 @@ fn virtual_call_violations_for_method<'tcx>(
     if let Some(error) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
         errors.push(error);
     }
-    if sig.skip_binder().c_variadic {
+    if sig.skip_binder().c_variadic() {
         errors.push(MethodViolation::CVariadic);
     }
 
@@ -569,7 +582,7 @@ fn receiver_for_self_ty<'tcx>(
         if param.index == 0 { self_ty.into() } else { tcx.mk_param_from_def(param) }
     });
 
-    let result = EarlyBinder::bind(receiver_ty).instantiate(tcx, args);
+    let result = EarlyBinder::bind(receiver_ty).instantiate(tcx, args).skip_norm_wip();
     debug!(
         "receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
         receiver_ty, self_ty, method_def_id, result
@@ -668,7 +681,13 @@ fn receiver_is_dispatchable<'tcx>(
         //    are not constructing a param-env for "inside" of the body of the defaulted
         //    method, so we don't really care about projecting to a specific RPIT type,
         //    and because RPITITs are not dyn compatible (yet).
-        let mut predicates = tcx.predicates_of(method.def_id).instantiate_identity(tcx).predicates;
+        let mut predicates: Vec<_> = tcx
+            .predicates_of(method.def_id)
+            .instantiate_identity(tcx)
+            .predicates
+            .into_iter()
+            .map(Unnormalized::skip_norm_wip)
+            .collect();
 
         // Self: Unsize<U>
         let unsize_predicate =

@@ -1,6 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{Crate, RootQueryDb};
+use base_db::{Crate, SourceDatabase};
 use mbe::MatchedArmIndex;
 use span::{AstIdMap, Edition, Span, SyntaxContext};
 use syntax::{AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T, ast};
@@ -11,7 +11,6 @@ use crate::{
     AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, FileRange, HirFileId,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
-    attrs::Meta,
     builtin::pseudo_derive_attr_expansion,
     cfg_process::attr_macro_input_to_token_tree,
     declarative::DeclarativeMacroExpander,
@@ -48,7 +47,7 @@ pub enum TokenExpander {
 }
 
 #[query_group::query_group]
-pub trait ExpandDatabase: RootQueryDb {
+pub trait ExpandDatabase: SourceDatabase {
     /// The proc macros. Do not use this! Use `proc_macros_for_crate()` instead.
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
@@ -239,8 +238,15 @@ pub fn expand_speculative(
         MacroCallKind::Attr { censored_attr_ids: attr_ids, .. } => {
             if loc.def.is_attribute_derive() {
                 // for pseudo-derive expansion we actually pass the attribute itself only
-                ast::Attr::cast(speculative_args.clone()).and_then(|attr| attr.token_tree()).map(
-                    |token_tree| {
+                ast::Attr::cast(speculative_args.clone())
+                    .and_then(|attr| {
+                        if let ast::Meta::TokenTreeMeta(meta) = attr.meta()? {
+                            meta.token_tree()
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|token_tree| {
                         let mut tree = syntax_node_to_token_tree(
                             token_tree.syntax(),
                             span_map,
@@ -250,26 +256,26 @@ pub fn expand_speculative(
                         tree.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
                         tree.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
                         tree
-                    },
-                )
+                    })
             } else {
                 // Attributes may have an input token tree, build the subtree and map for this as well
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
-                let (_, _, _, meta) =
+                let (_, meta) =
                     attr_ids.invoc_attr().find_attr_range_with_source(db, loc.krate, &item);
-                match meta {
-                    Meta::TokenTree { tt, .. } => {
-                        let mut attr_arg = syntax_bridge::syntax_node_to_token_tree(
-                            tt.syntax(),
-                            span_map,
-                            span,
-                            DocCommentDesugarMode::ProcMacro,
-                        );
-                        attr_arg.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
-                        Some(attr_arg)
-                    }
-                    _ => None,
+                if let ast::Meta::TokenTreeMeta(meta) = meta
+                    && let Some(tt) = meta.token_tree()
+                {
+                    let mut attr_arg = syntax_bridge::syntax_node_to_token_tree(
+                        tt.syntax(),
+                        span_map,
+                        span,
+                        DocCommentDesugarMode::ProcMacro,
+                    );
+                    attr_arg.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+                    Some(attr_arg)
+                } else {
+                    None
                 }
             }
         }
@@ -343,7 +349,7 @@ fn ast_id_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> AstIdMap {
 /// file or a macro expansion.
 fn parse_or_expand(db: &dyn ExpandDatabase, file_id: HirFileId) -> SyntaxNode {
     match file_id {
-        HirFileId::FileId(file_id) => db.parse(file_id).syntax_node(),
+        HirFileId::FileId(file_id) => file_id.parse(db).syntax_node(),
         HirFileId::MacroFile(macro_file) => {
             db.parse_macro_expansion(macro_file).value.0.syntax_node()
         }
@@ -389,7 +395,7 @@ pub(crate) fn parse_with_map(
 ) -> (Parse<SyntaxNode>, SpanMap) {
     match file_id {
         HirFileId::FileId(file_id) => {
-            (db.parse(file_id).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
+            (file_id.parse(db).to_syntax(), SpanMap::RealSpanMap(db.real_span_map(file_id)))
         }
         HirFileId::MacroFile(macro_file) => {
             let (parse, map) = db.parse_macro_expansion(macro_file).value;
@@ -501,11 +507,11 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
         }
         MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
-            let range = attr_ids
-                .invoc_attr()
-                .find_attr_range_with_source(db, loc.krate, &node)
-                .3
-                .path_range();
+            let (_, attr) = attr_ids.invoc_attr().find_attr_range_with_source(db, loc.krate, &node);
+            let range = attr
+                .path()
+                .map(|path| path.syntax().text_range())
+                .unwrap_or_else(|| attr.syntax().text_range());
             let span = map.span_for_range(range);
 
             let is_derive = matches!(loc.def.kind, MacroDefKind::BuiltInAttr(_, expander) if expander.is_derive());

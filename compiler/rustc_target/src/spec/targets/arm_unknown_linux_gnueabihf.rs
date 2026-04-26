@@ -1,4 +1,6 @@
-use crate::spec::{Arch, CfgAbi, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Arch, CfgAbi, FloatAbi, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -24,6 +26,7 @@ pub(crate) fn target() -> Target {
             // linker error, so set it to `true` here.
             // FIXME(#146996): Remove this override once #146996 has been fixed.
             default_uwtable: false,
+            supported_sanitizers: SanitizerSet::ADDRESS,
             ..base::linux_gnu::opts()
         },
     }

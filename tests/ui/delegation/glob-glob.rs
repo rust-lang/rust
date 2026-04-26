@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod inner {
     pub trait TraitFoo {

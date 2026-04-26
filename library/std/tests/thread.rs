@@ -85,7 +85,6 @@ fn thread_local_hygeiene() {
         target_env = "sgx",
         target_os = "solid_asp3",
         target_os = "teeos",
-        target_os = "wasi"
     ),
     should_panic
 )]

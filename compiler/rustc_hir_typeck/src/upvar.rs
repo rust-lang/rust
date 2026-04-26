@@ -44,7 +44,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{
     self, BorrowKind, ClosureSizeProfileData, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults,
-    UpvarArgs, UpvarCapture,
+    Unnormalized, UpvarArgs, UpvarCapture,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -438,13 +438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                 self.tcx,
                 ty::Binder::bind_with_vars(
-                    self.tcx.mk_fn_sig(
-                        [],
-                        tupled_upvars_ty_for_borrow,
-                        false,
-                        hir::Safety::Safe,
-                        rustc_abi::ExternAbi::Rust,
-                    ),
+                    self.tcx.mk_fn_sig_safe_rust_abi([], tupled_upvars_ty_for_borrow),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
                         ty::BoundRegionKind::ClosureEnv,
                     )]),
@@ -964,15 +958,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         capture_clause: hir::CaptureBy,
         span: Span,
     ) {
-        struct MigrationLint<'a, 'b, 'tcx> {
+        struct MigrationLint<'a, 'tcx> {
             closure_def_id: LocalDefId,
-            this: &'a FnCtxt<'b, 'tcx>,
+            this: &'a FnCtxt<'a, 'tcx>,
             body_id: hir::BodyId,
             need_migrations: Vec<NeededMigration>,
             migration_message: String,
         }
 
-        impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for MigrationLint<'b, 'c, 'tcx> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for MigrationLint<'b, 'tcx> {
             fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
                 let Self { closure_def_id, this, body_id, need_migrations, migration_message } =
                     self;
@@ -1188,7 +1182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let at = self.at(&cause, self.param_env);
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 at,
-                place.clone(),
+                Unnormalized::new_wip(place.clone()),
                 vec![],
             ) {
                 Ok((normalized, goals)) => {
@@ -1214,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // For the old solver we can rely on `normalize` to eagerly normalize aliases.
-            self.normalize(span, place)
+            self.normalize(span, Unnormalized::new_wip(place))
         }
     }
 
@@ -2090,8 +2084,8 @@ fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     tcx.sess.source_map().end_point(owner_span)
 }
 
-struct InferBorrowKind<'fcx, 'a, 'tcx> {
-    fcx: &'fcx FnCtxt<'a, 'tcx>,
+struct InferBorrowKind<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
     // The def-id of the closure whose kind and upvar accesses are being inferred.
     closure_def_id: LocalDefId,
 
@@ -2125,7 +2119,7 @@ struct InferBorrowKind<'fcx, 'a, 'tcx> {
     fake_reads: Vec<(Place<'tcx>, FakeReadCause, HirId)>,
 }
 
-impl<'fcx, 'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'fcx, 'a, 'tcx> {
+impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn fake_read(
         &mut self,

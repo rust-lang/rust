@@ -51,11 +51,10 @@ pub(crate) fn complete_cargo_env_vars(
     original: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
-    let is_in_env_expansion = ctx
-        .sema
-        .hir_file_for(&expanded.syntax().parent()?)
-        .macro_file()
-        .is_some_and(|it| it.is_env_or_option_env(ctx.sema.db));
+    let descends = ctx.sema.descend_into_macros_exact_with_file(original.syntax().clone());
+    let macro_file = descends.first()?.file_id.macro_file();
+
+    let is_in_env_expansion = macro_file.is_some_and(|it| it.is_env_or_option_env(ctx.sema.db));
     if !is_in_env_expansion {
         let call = macro_call_for_string_token(expanded)?;
         let makro = ctx.sema.resolve_macro_call(&call)?;
@@ -111,6 +110,47 @@ fn main() {
             r#"
 fn main() {
     let foo = option_env!("CARGO_BIN_NAME");
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn complete_in_expanded_env_macro() {
+        check_edit(
+            "CARGO_BIN_NAME",
+            r#"
+//- minicore: env
+macro_rules! bar {
+    ($($arg:tt)*) => { $($arg)* }
+}
+
+fn main() {
+    let foo = bar!(env!("CA$0"));
+}
+        "#,
+            r#"
+macro_rules! bar {
+    ($($arg:tt)*) => { $($arg)* }
+}
+
+fn main() {
+    let foo = bar!(env!("CARGO_BIN_NAME"));
+}
+        "#,
+        );
+
+        check_edit(
+            "CARGO_BIN_NAME",
+            r#"
+//- minicore: env, fmt
+fn main() {
+    let foo = format_args!("{}", env!("CA$0"));
+}
+        "#,
+            r#"
+fn main() {
+    let foo = format_args!("{}", env!("CARGO_BIN_NAME"));
 }
         "#,
         );

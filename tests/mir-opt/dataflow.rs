@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // Test graphviz dataflow output
 //@ compile-flags: -Z dump-mir=main -Z dump-mir-dataflow
 

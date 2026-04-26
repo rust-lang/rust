@@ -7,7 +7,7 @@ use ide::{
     RootDatabase, StaticIndex, StaticIndexedFile, SymbolInformationKind, TextRange, TokenId,
     TokenStaticData, VendoredLibrariesConfig,
 };
-use ide_db::LineIndexDatabase;
+use ide_db::line_index;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types::{self as scip_types, SymbolInformation};
@@ -348,7 +348,7 @@ fn get_relative_filepath(
 
 fn get_line_index(db: &RootDatabase, file_id: FileId) -> LineIndex {
     LineIndex {
-        index: db.line_index(file_id),
+        index: line_index(db, file_id).clone(),
         encoding: PositionEncoding::Utf8,
         endings: LineEndings::Unix,
     }

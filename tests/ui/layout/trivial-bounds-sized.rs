@@ -36,7 +36,7 @@ where
 }
 
 // This forces layout computation via the `variant_size_differences` lint.
-// FIXME: This could be made more robust, possibly with a variant of `rustc_layout`
+// FIXME: This could be made more robust, possibly with a variant of `rustc_dump_layout`
 // that doesn't error.
 enum Check
 where

@@ -1,0 +1,21 @@
+// MIR for `prefix_to_cast` after PreCodegen
+
+fn prefix_to_cast(_1: f32) -> i32 {
+    debug x => _1;
+    let mut _0: i32;
+    scope 1 (inlined transmute_prefix::<f32, i32>) {
+        scope 2 {
+        }
+        scope 3 {
+            scope 4 (inlined transmute_neo::<ManuallyDrop<i32>, i32>) {
+            }
+        }
+        scope 5 (inlined transmute_neo::<f32, ManuallyDrop<f32>>) {
+        }
+    }
+
+    bb0: {
+        _0 = copy _1 as i32 (Transmute);
+        return;
+    }
+}

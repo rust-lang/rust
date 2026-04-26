@@ -1,6 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ConstItemRhs, ImplItemImplKind, ItemKind};
 use rustc_middle::query::Providers;
@@ -129,7 +129,7 @@ struct RPITVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     synthetics: Vec<LocalDefId>,
     data: DefPathData,
-    disambiguator: &'a mut DisambiguatorState,
+    disambiguator: &'a mut PerParentDisambiguatorState,
 }
 
 impl<'tcx> Visitor<'tcx> for RPITVisitor<'_, 'tcx> {
@@ -149,7 +149,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
     def_id: LocalDefId,
 ) -> DefIdMap<Vec<DefId>> {
     let item = tcx.hir_expect_item(def_id);
-    let disambiguator = &mut DisambiguatorState::new();
+    let disambiguator = &mut PerParentDisambiguatorState::new(def_id);
     match item.kind {
         ItemKind::Trait(.., trait_item_refs) => trait_item_refs
             .iter()
@@ -221,7 +221,7 @@ fn associated_type_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
     data: DefPathData,
-    disambiguator: &mut DisambiguatorState,
+    disambiguator: &mut PerParentDisambiguatorState,
 ) -> LocalDefId {
     let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
     | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
@@ -283,7 +283,7 @@ fn associated_type_for_impl_trait_in_impl(
     tcx: TyCtxt<'_>,
     trait_assoc_def_id: DefId,
     impl_fn: &hir::ImplItem<'_>,
-    disambiguator: &mut DisambiguatorState,
+    disambiguator: &mut PerParentDisambiguatorState,
 ) -> LocalDefId {
     let impl_local_def_id = tcx.local_parent(impl_fn.owner_id.def_id);
 

@@ -16,4 +16,18 @@ fn main() {
 
     let _ = x > y; // should be ok
     let _ = y < x; // should be ok
+
+    // When the suggestion replaces `<=`/`>=` with `<`, an `as` cast on
+    // the LHS must be parenthesized to avoid parser ambiguity
+    // (e.g., `x as usize < y` is parsed as `x as usize<y>`).
+    let z = 0usize;
+    let _ = x as usize + 1 <= z; //~ int_plus_one
+    let _ = z >= x as usize + 1; //~ int_plus_one
+    // No parentheses needed when the replacement operator is `>`.
+    let _ = x as usize - 1 >= z; //~ int_plus_one
+    let _ = z <= x as usize - 1; //~ int_plus_one
+
+    // Nested and parenthesized casts on the LHS.
+    let _ = ((x as usize) as u8) + 1 <= 5u8; //~ int_plus_one
+    let _ = (x as usize) + 1 <= z; //~ int_plus_one
 }

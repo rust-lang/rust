@@ -131,6 +131,7 @@
 #![feature(deprecated_suggestion)]
 #![feature(derive_const)]
 #![feature(diagnostic_on_const)]
+#![feature(diagnostic_on_unmatch_args)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
@@ -305,7 +306,7 @@ pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
-#[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
+#[unstable(feature = "core_io", issue = "154046")]
 pub mod io;
 pub mod iter;
 pub mod net;
@@ -316,6 +317,8 @@ pub mod panicking;
 #[unstable(feature = "pattern_type_macro", issue = "123646")]
 pub mod pat;
 pub mod pin;
+#[unstable(feature = "abort_immediate", issue = "154601")]
+pub mod process;
 #[unstable(feature = "random", issue = "130703")]
 pub mod random;
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]

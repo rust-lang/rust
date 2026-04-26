@@ -1,12 +1,10 @@
-use crate::attrs::is_lint_level;
-
 use super::{Attribute, UNNECESSARY_CLIPPY_CFG};
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::SpanRangeExt;
 use itertools::Itertools;
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext};
+use rustc_lint::{EarlyContext, Level};
 use rustc_span::sym;
 
 pub(super) fn check(
@@ -15,10 +13,9 @@ pub(super) fn check(
     behind_cfg_attr: &rustc_ast::MetaItem,
     attr: &Attribute,
 ) {
-    // FIXME use proper attr parsing here
     if cfg_attr.has_name(sym::clippy)
         && let Some(ident) = behind_cfg_attr.ident()
-        && is_lint_level(ident.name)
+        && Level::from_symbol(ident.name, || Some(attr.id)).is_some()
         && let Some(items) = behind_cfg_attr.meta_item_list()
     {
         let nb_items = items.len();

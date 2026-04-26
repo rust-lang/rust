@@ -1975,8 +1975,8 @@ trait Sub: Super + Super {
 fn f() -> impl Sub<$0
             "#,
             expect![[r#"
-                trait Sub<SuperTy = …, SubTy = …>
-                          ^^^^^^^^^^^  ---------
+                trait Sub<SubTy = …, SuperTy = …>
+                          ^^^^^^^^^  -----------
             "#]],
         );
     }

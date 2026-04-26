@@ -17,7 +17,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase,
-    base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, RootQueryDb},
+    base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, toolchain_channel},
     defs::{Definition, NameClass, NameRefClass},
     documentation::{Documentation, HasDocs},
     helpers::pick_best_token,
@@ -552,7 +552,7 @@ fn get_doc_base_urls(
         .and_then(|it| Url::parse(&it).ok());
     let krate = def.krate(db);
     let channel = krate
-        .and_then(|krate| db.toolchain_channel(krate.into()))
+        .and_then(|krate| toolchain_channel(db, krate.into()))
         .unwrap_or(ReleaseChannel::Nightly)
         .as_str();
 

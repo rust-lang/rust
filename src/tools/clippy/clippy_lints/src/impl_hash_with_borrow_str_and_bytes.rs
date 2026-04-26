@@ -79,7 +79,7 @@ impl LateLintPass<'_> for ImplHashWithBorrowStrBytes {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Impl(imp) = item.kind
             && let Some(of_trait) = imp.of_trait
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && let Some(hash_id) = cx.tcx.get_diagnostic_item(sym::Hash)
             && Res::Def(DefKind::Trait, hash_id) == of_trait.trait_ref.path.res
             && let Some(borrow_id) = cx.tcx.get_diagnostic_item(sym::Borrow)

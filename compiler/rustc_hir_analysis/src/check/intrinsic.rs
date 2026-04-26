@@ -1,6 +1,5 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
-use rustc_abi::ExternAbi;
 use rustc_errors::DiagMessage;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -131,6 +130,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::forget
         | sym::frem_algebraic
         | sym::fsub_algebraic
+        | sym::gpu_launch_sized_workgroup_mem
         | sym::is_val_statically_known
         | sym::log2f16
         | sym::log2f32
@@ -278,7 +278,7 @@ pub(crate) fn check_intrinsic_type(
                 kind: ty::BoundRegionKind::ClosureEnv,
             },
         );
-        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
+        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]).skip_norm_wip();
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
@@ -298,6 +298,7 @@ pub(crate) fn check_intrinsic_type(
         sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
+        sym::gpu_launch_sized_workgroup_mem => (1, 0, vec![], Ty::new_mut_ptr(tcx, param(0))),
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             (1, 0, vec![], tcx.types.unit)
         }
@@ -636,20 +637,10 @@ pub(crate) fn check_intrinsic_type(
 
         sym::catch_unwind => {
             let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
-            let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                [mut_u8],
-                tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            ));
-            let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                [mut_u8, mut_u8],
-                tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            ));
+            let try_fn_ty =
+                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8], tcx.types.unit));
+            let catch_fn_ty =
+                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8, mut_u8], tcx.types.unit));
             (
                 0,
                 0,
@@ -817,7 +808,7 @@ pub(crate) fn check_intrinsic_type(
             return;
         }
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
+    let sig = tcx.mk_fn_sig_rust_abi(inputs, output, safety);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

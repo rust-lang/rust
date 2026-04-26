@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | ItemKind::Macro(ident, ..)
             | ItemKind::Static(_, ident, ..)
             | ItemKind::Struct(ident, ..)
-            | ItemKind::Trait(_, _, _, ident, ..)
+            | ItemKind::Trait(_, _, _, _, ident, ..)
             | ItemKind::TraitAlias(_, ident, ..)
             | ItemKind::TyAlias(ident, ..)
             | ItemKind::Union(ident, ..) => ident.span,

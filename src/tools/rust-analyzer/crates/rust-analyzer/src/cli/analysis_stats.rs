@@ -23,11 +23,12 @@ use hir_def::{
 use hir_ty::InferenceResult;
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
-    InlayHintsConfig, LineCol, RootDatabase,
+    InlayHintsConfig, LineCol, RaFixtureConfig, RootDatabase,
 };
 use ide_db::{
-    EditionedFileId, LineIndexDatabase, MiniCore, SnippetCap,
+    EditionedFileId, SnippetCap,
     base_db::{SourceDatabase, salsa::Database},
+    line_index,
 };
 use itertools::Itertools;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
@@ -1367,6 +1368,7 @@ impl flags::AnalysisStats {
                 &InlayHintsConfig {
                     render_colons: false,
                     type_hints: true,
+                    type_hints_placement: ide::TypeHintsPlacement::Inline,
                     sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
@@ -1397,7 +1399,7 @@ impl flags::AnalysisStats {
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: true,
-                    minicore: MiniCore::default(),
+                    ra_fixture: RaFixtureConfig::default(),
                 },
                 analysis.editioned_file_id_to_vfs(file_id),
                 None,
@@ -1416,7 +1418,7 @@ impl flags::AnalysisStats {
             annotate_enum_variant_references: false,
             location: ide::AnnotationLocation::AboveName,
             filter_adjacent_derive_implementations: false,
-            minicore: MiniCore::default(),
+            ra_fixture: RaFixtureConfig::default(),
         };
         for &file_id in file_ids {
             let msg = format!("annotations: {}", vfs.file_path(file_id.file_id(db)));
@@ -1486,7 +1488,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id.file_id(db));
-    let line_index = db.line_index(original_range.file_id.file_id(db));
+    let line_index = line_index(db, original_range.file_id.file_id(db));
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1502,7 +1504,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id.file_id(db));
-    let line_index = db.line_index(original_range.file_id.file_id(db));
+    let line_index = line_index(db, original_range.file_id.file_id(db));
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1521,7 +1523,7 @@ fn expr_syntax_range<'a>(
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id.file_id(db));
-        let line_index = db.line_index(original_range.file_id.file_id(db));
+        let line_index = line_index(db, original_range.file_id.file_id(db));
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1542,7 +1544,7 @@ fn pat_syntax_range<'a>(
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id.file_id(db));
-        let line_index = db.line_index(original_range.file_id.file_id(db));
+        let line_index = line_index(db, original_range.file_id.file_id(db));
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));

@@ -59,7 +59,7 @@ fn check_raw_ptr<'tcx>(
                     },
                     hir::ExprKind::MethodCall(_, recv, args, _) => {
                         let def_id = typeck.type_dependent_def_id(e.hir_id).unwrap();
-                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().safety.is_unsafe() {
+                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().safety().is_unsafe() {
                             check_arg(cx, &raw_ptrs, recv);
                             for arg in args {
                                 check_arg(cx, &raw_ptrs, arg);

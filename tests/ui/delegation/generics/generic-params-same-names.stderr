@@ -1,5 +1,5 @@
 error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
-  --> $DIR/generic-params-same-names.rs:5:12
+  --> $DIR/generic-params-same-names.rs:4:12
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |             -- first declared here
@@ -7,7 +7,7 @@ LL |     fn foo<'a, 'b, 'c, A, B, C, const N: usize>(&self) {
    |            ^^ lifetime `'a` already in scope
 
 error[E0496]: lifetime name `'b` shadows a lifetime name that is already in scope
-  --> $DIR/generic-params-same-names.rs:5:16
+  --> $DIR/generic-params-same-names.rs:4:16
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |                 -- first declared here
@@ -15,7 +15,7 @@ LL |     fn foo<'a, 'b, 'c, A, B, C, const N: usize>(&self) {
    |                ^^ lifetime `'b` already in scope
 
 error[E0496]: lifetime name `'c` shadows a lifetime name that is already in scope
-  --> $DIR/generic-params-same-names.rs:5:20
+  --> $DIR/generic-params-same-names.rs:4:20
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |                     -- first declared here
@@ -23,7 +23,7 @@ LL |     fn foo<'a, 'b, 'c, A, B, C, const N: usize>(&self) {
    |                    ^^ lifetime `'c` already in scope
 
 error[E0403]: the name `A` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/generic-params-same-names.rs:5:24
+  --> $DIR/generic-params-same-names.rs:4:24
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |                         - first use of `A`
@@ -31,7 +31,7 @@ LL |     fn foo<'a, 'b, 'c, A, B, C, const N: usize>(&self) {
    |                        ^ already used
 
 error[E0403]: the name `B` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/generic-params-same-names.rs:5:27
+  --> $DIR/generic-params-same-names.rs:4:27
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |                            - first use of `B`
@@ -39,7 +39,7 @@ LL |     fn foo<'a, 'b, 'c, A, B, C, const N: usize>(&self) {
    |                           ^ already used
 
 error[E0403]: the name `C` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/generic-params-same-names.rs:5:30
+  --> $DIR/generic-params-same-names.rs:4:30
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |                               - first use of `C`
@@ -47,7 +47,7 @@ LL |     fn foo<'a, 'b, 'c, A, B, C, const N: usize>(&self) {
    |                              ^ already used
 
 error[E0403]: the name `N` is already used for a generic parameter in this item's generic parameters
-  --> $DIR/generic-params-same-names.rs:5:39
+  --> $DIR/generic-params-same-names.rs:4:39
    |
 LL | trait Trait<'a, 'b, 'c, A, B, C, const N: usize> {
    |                                        - first use of `N`

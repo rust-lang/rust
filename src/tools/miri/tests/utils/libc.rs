@@ -1,7 +1,19 @@
 //! Utils that need libc.
 #![allow(dead_code)]
 
-use std::{fmt, io};
+use std::{fmt, io, time};
+
+pub enum Retry {
+    NoRetry,
+    RetryAfter(time::Duration),
+}
+pub use Retry::*;
+
+/// Return the last OS error.
+pub fn errno() -> i32 {
+    // libc has no portable way to do this so we use std.
+    io::Error::last_os_error().raw_os_error().unwrap()
+}
 
 /// Handles the usual libc function that returns `-1` to indicate an error.
 #[track_caller]
@@ -19,16 +31,25 @@ pub fn errno_check<T: From<i8> + Ord + fmt::Debug>(ret: T) {
     assert_eq!(errno_result(ret).unwrap(), 0i8.into(), "wrong successful result");
 }
 
-pub unsafe fn read_all(
-    fd: libc::c_int,
+/// Invoke the `read` function until `buf` is full. `retry` contols the behavior on EAGAIN.
+pub unsafe fn read_all_generic(
     buf: *mut libc::c_void,
     count: libc::size_t,
+    retry: Retry,
+    read: impl Fn(*mut libc::c_void, libc::size_t) -> libc::ssize_t,
 ) -> libc::ssize_t {
     assert!(count > 0);
     let mut read_so_far = 0;
     while read_so_far < count {
-        let res = libc::read(fd, buf.add(read_so_far), count - read_so_far);
+        let res = read(buf.add(read_so_far), count - read_so_far);
         if res < 0 {
+            if let RetryAfter(duration) = retry {
+                if errno() == libc::EAGAIN {
+                    // Emulate blocking behavior by sleeping a bit and then trying again.
+                    std::thread::sleep(duration);
+                    continue;
+                }
+            }
             return res;
         }
         if res == 0 {
@@ -38,6 +59,15 @@ pub unsafe fn read_all(
         read_so_far += res as libc::size_t;
     }
     return read_so_far as libc::ssize_t;
+}
+
+/// Read from `fd` until `buf` is full. Abort on first error.
+pub unsafe fn read_all(
+    fd: libc::c_int,
+    buf: *mut libc::c_void,
+    count: libc::size_t,
+) -> libc::ssize_t {
+    read_all_generic(buf, count, NoRetry, |buf, count| libc::read(fd, buf, count))
 }
 
 /// Try to fill the given slice by reading from `fd`. Panic if that many bytes could not be read.
@@ -75,22 +105,40 @@ pub fn read_until_eof_into_slice(
     Ok(buf.split_at_mut(res as usize))
 }
 
-pub unsafe fn write_all(
-    fd: libc::c_int,
+/// Invoke the `write` function until `buf` is full. `retry` controls the behavior on EAGAIN.
+pub unsafe fn write_all_generic(
     buf: *const libc::c_void,
     count: libc::size_t,
+    retry: Retry,
+    write: impl Fn(*const libc::c_void, libc::size_t) -> libc::ssize_t,
 ) -> libc::ssize_t {
     assert!(count > 0);
     let mut written_so_far = 0;
     while written_so_far < count {
-        let res = libc::write(fd, buf.add(written_so_far), count - written_so_far);
+        let res = write(buf.add(written_so_far), count - written_so_far);
         if res < 0 {
+            if let RetryAfter(duration) = retry {
+                if errno() == libc::EAGAIN {
+                    // Emulate blocking behavior by sleeping a bit and then trying again.
+                    std::thread::sleep(duration);
+                    continue;
+                }
+            }
             return res;
         }
         // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
         written_so_far += res as libc::size_t;
     }
     return written_so_far as libc::ssize_t;
+}
+
+/// Write to `fd` until `buf` is fully written. Abort on first error.
+pub unsafe fn write_all(
+    fd: libc::c_int,
+    buf: *const libc::c_void,
+    count: libc::size_t,
+) -> libc::ssize_t {
+    write_all_generic(buf, count, NoRetry, |buf, count| libc::write(fd, buf, count))
 }
 
 /// Write the entire `buf` to `fd`. Panic if not all bytes could be written.
@@ -159,9 +207,7 @@ pub mod epoll {
 }
 
 pub mod net {
-    use std::io;
-
-    use super::{errno_check, errno_result};
+    use super::*;
 
     /// IPv4 localhost address bytes
     pub const IPV4_LOCALHOST: [u8; 4] = [127, 0, 0, 1];
@@ -211,11 +257,8 @@ pub mod net {
 
     /// Create an IPv4 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv4(
-        options: libc::c_int,
-    ) -> io::Result<(libc::c_int, libc::sockaddr_in)> {
-        let sockfd =
-            unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM | options, 0))? };
+    pub fn make_listener_ipv4() -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0))? };
         // Turn address into socket address with a random free port.
         let addr = sock_addr_ipv4(IPV4_LOCALHOST, 0);
         unsafe {
@@ -239,11 +282,8 @@ pub mod net {
 
     /// Create an IPv6 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv6(
-        options: libc::c_int,
-    ) -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
-        let sockfd =
-            unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM | options, 0))? };
+    pub fn make_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0))? };
         // Turn address into socket address with a random free port.
         let addr = sock_addr_ipv6(IPV6_LOCALHOST, 0);
         unsafe {
@@ -276,25 +316,27 @@ pub mod net {
     }
 
     /// Connect the socket to the specified IPv4 address.
-    pub fn connect_ipv4(sockfd: libc::c_int, addr: libc::sockaddr_in) {
+    pub fn connect_ipv4(sockfd: libc::c_int, addr: libc::sockaddr_in) -> io::Result<()> {
         unsafe {
-            errno_check(libc::connect(
+            errno_result(libc::connect(
                 sockfd,
                 (&addr as *const libc::sockaddr_in).cast(),
                 size_of::<libc::sockaddr_in>() as libc::socklen_t,
-            ));
+            ))?;
         }
+        Ok(())
     }
 
     /// Connect the socket to the specified IPv6 address.
-    pub fn connect_ipv6(sockfd: libc::c_int, addr: libc::sockaddr_in6) {
+    pub fn connect_ipv6(sockfd: libc::c_int, addr: libc::sockaddr_in6) -> io::Result<()> {
         unsafe {
-            errno_check(libc::connect(
+            errno_result(libc::connect(
                 sockfd,
                 (&addr as *const libc::sockaddr_in6).cast(),
                 size_of::<libc::sockaddr_in6>() as libc::socklen_t,
-            ));
+            ))?;
         }
+        Ok(())
     }
 
     /// Set a socket option. It's the caller's responsibility to ensure that `T` is
@@ -383,46 +425,5 @@ pub mod net {
         };
 
         Ok((value, address))
-    }
-
-    pub unsafe fn recv_all(
-        fd: libc::c_int,
-        buf: *mut libc::c_void,
-        count: libc::size_t,
-        flags: libc::c_int,
-    ) -> libc::ssize_t {
-        assert!(count > 0);
-        let mut read_so_far = 0;
-        while read_so_far < count {
-            let res = libc::recv(fd, buf.add(read_so_far), count - read_so_far, flags);
-            if res < 0 {
-                return res;
-            }
-            if res == 0 {
-                // EOF
-                break;
-            }
-            read_so_far += res as libc::size_t;
-        }
-        return read_so_far as libc::ssize_t;
-    }
-
-    pub unsafe fn send_all(
-        fd: libc::c_int,
-        buf: *const libc::c_void,
-        count: libc::size_t,
-        flags: libc::c_int,
-    ) -> libc::ssize_t {
-        assert!(count > 0);
-        let mut written_so_far = 0;
-        while written_so_far < count {
-            let res = libc::send(fd, buf.add(written_so_far), count - written_so_far, flags);
-            if res < 0 {
-                return res;
-            }
-            // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
-            written_so_far += res as libc::size_t;
-        }
-        return written_so_far as libc::ssize_t;
     }
 }

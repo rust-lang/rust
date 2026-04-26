@@ -82,7 +82,7 @@ fn closure_to_fn_to_integer() {
 
 fn fn_to_raw_ptr() {
     let _ = foo as *const ();
-    //~^ fn_to_numeric_cast_any
+    let _ = foo as *mut ();
 }
 
 fn cast_fn_to_self() {

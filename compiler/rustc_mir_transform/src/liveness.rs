@@ -202,7 +202,7 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
         .hir_body_owners()
         .filter(|&def_id| {
             matches!(tcx.def_kind(def_id), DefKind::Const { .. })
-                && tcx.type_of(def_id).instantiate_identity() == ty
+                && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
                 && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
         })
         .collect::<Vec<_>>();

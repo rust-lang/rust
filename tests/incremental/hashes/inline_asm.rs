@@ -5,14 +5,14 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-//@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ revisions: bpass1 bpass2 bpass3 bpass4 bpass5 bpass6
 //@ compile-flags: -Z query-dep-graph -O
 //@ needs-asm-support
-//@ [cfail1]compile-flags: -Zincremental-ignore-spans
-//@ [cfail2]compile-flags: -Zincremental-ignore-spans
-//@ [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ [bpass1]compile-flags: -Zincremental-ignore-spans
+//@ [bpass2]compile-flags: -Zincremental-ignore-spans
+//@ [bpass3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -21,7 +21,7 @@
 use std::arch::asm;
 
 // Change template
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_template(_a: i32) -> i32 {
     let c: i32;
@@ -33,11 +33,11 @@ pub fn change_template(_a: i32) -> i32 {
     c
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_template(_a: i32) -> i32 {
     let c: i32;
@@ -52,7 +52,7 @@ pub fn change_template(_a: i32) -> i32 {
 
 
 // Change output
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_output(a: i32) -> i32 {
     let mut _out1: i32 = 0;
@@ -66,11 +66,11 @@ pub fn change_output(a: i32) -> i32 {
     _out1
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_output(a: i32) -> i32 {
     let mut _out1: i32 = 0;
@@ -87,7 +87,7 @@ pub fn change_output(a: i32) -> i32 {
 
 
 // Change input
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input(_a: i32, _b: i32) -> i32 {
     let _out;
@@ -100,11 +100,11 @@ pub fn change_input(_a: i32, _b: i32) -> i32 {
     _out
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input(_a: i32, _b: i32) -> i32 {
     let _out;
@@ -120,7 +120,7 @@ pub fn change_input(_a: i32, _b: i32) -> i32 {
 
 
 // Change input constraint
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
     let _out;
@@ -133,11 +133,11 @@ pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
     _out
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
     let _out;
@@ -152,7 +152,7 @@ pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 
 
 // Change clobber
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_clobber(_a: i32) -> i32 {
     let _out;
@@ -166,11 +166,11 @@ pub fn change_clobber(_a: i32) -> i32 {
     _out
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_clobber(_a: i32) -> i32 {
     let _out;
@@ -187,7 +187,7 @@ pub fn change_clobber(_a: i32) -> i32 {
 
 
 // Change options
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_options(_a: i32) -> i32 {
     let _out;
@@ -201,11 +201,11 @@ pub fn change_options(_a: i32) -> i32 {
     _out
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes, optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn change_options(_a: i32) -> i32 {
     let _out;

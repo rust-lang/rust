@@ -2,7 +2,6 @@ use syntax::{
     AstNode, Direction, NodeOrToken, SyntaxKind, SyntaxToken, T,
     algo::non_trivia_sibling,
     ast::{self, syntax_factory::SyntaxFactory},
-    syntax_editor::SyntaxMapping,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -42,14 +41,13 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let target = comma.text_range();
     acc.add(AssistId::refactor_rewrite("flip_comma"), "Flip comma", target, |builder| {
         let parent = comma.parent().unwrap();
-        let mut editor = builder.make_editor(&parent);
+        let editor = builder.make_editor(&parent);
 
         if let Some(parent) = ast::TokenTree::cast(parent) {
             // An attribute. It often contains a path followed by a
             // token tree (e.g. `align(2)`), so we have to be smarter.
-            let (new_tree, mapping) = flip_tree(parent.clone(), comma);
+            let new_tree = flip_tree(parent.clone(), comma, editor.make());
             editor.replace(parent.syntax(), new_tree.syntax());
-            editor.add_mappings(mapping);
         } else {
             editor.replace(prev.clone(), next.clone());
             editor.replace(next.clone(), prev.clone());
@@ -59,7 +57,7 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     })
 }
 
-fn flip_tree(tree: ast::TokenTree, comma: SyntaxToken) -> (ast::TokenTree, SyntaxMapping) {
+fn flip_tree(tree: ast::TokenTree, comma: SyntaxToken, make: &SyntaxFactory) -> ast::TokenTree {
     let mut tree_iter = tree.token_trees_and_tokens();
     let before: Vec<_> =
         tree_iter.by_ref().take_while(|it| it.as_token() != Some(&comma)).collect();
@@ -100,10 +98,7 @@ fn flip_tree(tree: ast::TokenTree, comma: SyntaxToken) -> (ast::TokenTree, Synta
         &after[next_end..after.len() - 1],
     ]
     .concat();
-
-    let make = SyntaxFactory::with_mappings();
-    let new_token_tree = make.token_tree(tree.left_delimiter_token().unwrap().kind(), result);
-    (new_token_tree, make.finish_with_mappings())
+    make.token_tree(tree.left_delimiter_token().unwrap().kind(), result)
 }
 
 #[cfg(test)]

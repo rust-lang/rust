@@ -212,6 +212,12 @@ fn run_tests(
         flag.push(native_lib.into_os_string());
         config.program.args.push(flag);
     }
+    // For GenMC tests, add the relevant flags.
+    if path.starts_with("tests/genmc/") {
+        config.program.args.push("-Zmiri-genmc".into());
+        // FIXME(genmc): remove this when GenMC and SB can be used together.
+        config.program.args.push("-Zmiri-disable-stacked-borrows".into());
+    }
 
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(

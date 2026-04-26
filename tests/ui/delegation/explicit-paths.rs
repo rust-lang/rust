@@ -1,6 +1,5 @@
 //@ edition:2015
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait {
     fn foo1(&self, x: i32) -> i32 { x }

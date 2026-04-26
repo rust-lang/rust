@@ -20,6 +20,8 @@ pub(crate) const unsafe fn simd_imin<T: Copy>(a: T, b: T) -> T {
 pub(crate) unsafe trait SimdElement:
     Copy + const PartialEq + crate::fmt::Debug
 {
+    // SAFETY: all bits patterns of types implementing this trait must be valid
+    const ZERO: Self = unsafe { crate::mem::zeroed() };
 }
 
 unsafe impl SimdElement for u8 {}
@@ -42,8 +44,7 @@ pub(crate) struct Simd<T: SimdElement, const N: usize>([T; N]);
 
 impl<T: SimdElement, const N: usize> Simd<T, N> {
     /// A value of this type where all elements are zeroed out.
-    // SAFETY: `T` implements `SimdElement`, so it is zeroable.
-    pub(crate) const ZERO: Self = unsafe { crate::mem::zeroed() };
+    pub(crate) const ZERO: Self = Self::splat(T::ZERO);
 
     #[inline(always)]
     pub(crate) const fn from_array(elements: [T; N]) -> Self {
@@ -100,6 +101,103 @@ impl<T: SimdElement, const N: usize> crate::fmt::Debug for Simd<T, N> {
     }
 }
 
+impl<T: SimdElement> Simd<T, 1> {
+    #[inline]
+    pub(crate) const fn new(x0: T) -> Self {
+        Self([x0])
+    }
+}
+
+impl<T: SimdElement> Simd<T, 2> {
+    #[inline]
+    pub(crate) const fn new(x0: T, x1: T) -> Self {
+        Self([x0, x1])
+    }
+}
+
+impl<T: SimdElement> Simd<T, 4> {
+    #[inline]
+    pub(crate) const fn new(x0: T, x1: T, x2: T, x3: T) -> Self {
+        Self([x0, x1, x2, x3])
+    }
+}
+
+impl<T: SimdElement> Simd<T, 8> {
+    #[inline]
+    pub(crate) const fn new(x0: T, x1: T, x2: T, x3: T, x4: T, x5: T, x6: T, x7: T) -> Self {
+        Self([x0, x1, x2, x3, x4, x5, x6, x7])
+    }
+}
+
+impl<T: SimdElement> Simd<T, 16> {
+    #[inline]
+    pub(crate) const fn new(
+        x0: T,
+        x1: T,
+        x2: T,
+        x3: T,
+        x4: T,
+        x5: T,
+        x6: T,
+        x7: T,
+        x8: T,
+        x9: T,
+        x10: T,
+        x11: T,
+        x12: T,
+        x13: T,
+        x14: T,
+        x15: T,
+    ) -> Self {
+        Self([
+            x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15,
+        ])
+    }
+}
+
+impl<T: SimdElement> Simd<T, 32> {
+    #[inline]
+    pub(crate) const fn new(
+        x0: T,
+        x1: T,
+        x2: T,
+        x3: T,
+        x4: T,
+        x5: T,
+        x6: T,
+        x7: T,
+        x8: T,
+        x9: T,
+        x10: T,
+        x11: T,
+        x12: T,
+        x13: T,
+        x14: T,
+        x15: T,
+        x16: T,
+        x17: T,
+        x18: T,
+        x19: T,
+        x20: T,
+        x21: T,
+        x22: T,
+        x23: T,
+        x24: T,
+        x25: T,
+        x26: T,
+        x27: T,
+        x28: T,
+        x29: T,
+        x30: T,
+        x31: T,
+    ) -> Self {
+        Self([
+            x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18,
+            x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30, x31,
+        ])
+    }
+}
+
 impl<const N: usize> Simd<f16, N> {
     #[inline]
     pub(crate) const fn to_bits(self) -> Simd<u16, N> {
@@ -142,19 +240,6 @@ impl<const N: usize> Simd<f64, N> {
     }
 }
 
-macro_rules! simd_ty {
-    ($id:ident [$elem_type:ty ; $len:literal]: $($param_name:ident),*) => {
-        pub(crate) type $id = Simd<$elem_type, $len>;
-
-        impl $id {
-            #[inline(always)]
-            pub(crate) const fn new($($param_name: $elem_type),*) -> Self {
-                Self([$($param_name),*])
-            }
-        }
-    }
-}
-
 #[repr(simd)]
 #[derive(Copy)]
 pub(crate) struct SimdM<T: SimdElement, const N: usize>([T; N]);
@@ -163,7 +248,6 @@ impl<T: SimdElement, const N: usize> SimdM<T, N> {
     #[inline(always)]
     const fn bool_to_internal(x: bool) -> T {
         // SAFETY: `T` implements `SimdElement`, so all bit patterns are valid.
-        let zeros = const { unsafe { crate::mem::zeroed::<T>() } };
         let ones = const {
             // Ideally, this would be `transmute([0xFFu8; size_of::<T>()])`, but
             // `size_of::<T>()` is not allowed to use a generic parameter there.
@@ -175,13 +259,24 @@ impl<T: SimdElement, const N: usize> SimdM<T, N> {
             }
             unsafe { r.assume_init() }
         };
-        [zeros, ones][x as usize]
+        [T::ZERO, ones][x as usize]
+    }
+
+    #[inline]
+    pub(crate) const fn from_array(elements: [bool; N]) -> Self {
+        let mut internal = [T::ZERO; N];
+        let mut i = 0;
+        while i < N {
+            internal[i] = Self::bool_to_internal(elements[i]);
+            i += 1;
+        }
+        Self(internal)
     }
 
     #[inline]
     #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn splat(value: bool) -> Self {
-        unsafe { crate::intrinsics::simd::simd_splat(value) }
+        unsafe { crate::intrinsics::simd::simd_splat(Self::bool_to_internal(value)) }
     }
 
     #[inline]
@@ -218,897 +313,98 @@ impl<T: SimdElement, const N: usize> crate::fmt::Debug for SimdM<T, N> {
     }
 }
 
-macro_rules! simd_m_ty {
-    ($id:ident [$elem_type:ident ; $len:literal]: $($param_name:ident),*) => {
-        pub(crate) type $id  = SimdM<$elem_type, $len>;
-
-        impl $id {
-            #[inline(always)]
-            pub(crate) const fn new($($param_name: bool),*) -> Self {
-                Self([$(Self::bool_to_internal($param_name)),*])
-            }
-        }
-    }
-}
-
 // 16-bit wide types:
 
-simd_ty!(u8x2[u8;2]: x0, x1);
-simd_ty!(i8x2[i8;2]: x0, x1);
+pub(crate) type u8x2 = Simd<u8, 2>;
+pub(crate) type i8x2 = Simd<i8, 2>;
 
 // 32-bit wide types:
 
-simd_ty!(u8x4[u8;4]: x0, x1, x2, x3);
-simd_ty!(u16x2[u16;2]: x0, x1);
+pub(crate) type u8x4 = Simd<u8, 4>;
+pub(crate) type u16x2 = Simd<u16, 2>;
 
-simd_ty!(i8x4[i8;4]: x0, x1, x2, x3);
-simd_ty!(i16x2[i16;2]: x0, x1);
+pub(crate) type i8x4 = Simd<i8, 4>;
+pub(crate) type i16x2 = Simd<i16, 2>;
 
 // 64-bit wide types:
 
-simd_ty!(
-    u8x8[u8;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(u16x4[u16;4]: x0, x1, x2, x3);
-simd_ty!(u32x2[u32;2]: x0, x1);
-simd_ty!(u64x1[u64;1]: x1);
+pub(crate) type u8x8 = Simd<u8, 8>;
+pub(crate) type u16x4 = Simd<u16, 4>;
+pub(crate) type u32x2 = Simd<u32, 2>;
+pub(crate) type u64x1 = Simd<u64, 1>;
 
-simd_ty!(
-    i8x8[i8;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(i16x4[i16;4]: x0, x1, x2, x3);
-simd_ty!(i32x2[i32;2]: x0, x1);
-simd_ty!(i64x1[i64;1]: x1);
+pub(crate) type i8x8 = Simd<i8, 8>;
+pub(crate) type i16x4 = Simd<i16, 4>;
+pub(crate) type i32x2 = Simd<i32, 2>;
+pub(crate) type i64x1 = Simd<i64, 1>;
 
-simd_ty!(f32x2[f32;2]: x0, x1);
-simd_ty!(f64x1[f64;1]: x1);
+pub(crate) type f16x4 = Simd<f16, 4>;
+pub(crate) type f32x2 = Simd<f32, 2>;
+pub(crate) type f64x1 = Simd<f64, 1>;
 
 // 128-bit wide types:
 
-simd_ty!(
-    u8x16[u8;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_ty!(
-    u16x8[u16;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(u32x4[u32;4]: x0, x1, x2, x3);
-simd_ty!(u64x2[u64;2]: x0, x1);
+pub(crate) type u8x16 = Simd<u8, 16>;
+pub(crate) type u16x8 = Simd<u16, 8>;
+pub(crate) type u32x4 = Simd<u32, 4>;
+pub(crate) type u64x2 = Simd<u64, 2>;
 
-simd_ty!(
-    i8x16[i8;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_ty!(
-    i16x8[i16;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(i32x4[i32;4]: x0, x1, x2, x3);
-simd_ty!(i64x2[i64;2]: x0, x1);
+pub(crate) type i8x16 = Simd<i8, 16>;
+pub(crate) type i16x8 = Simd<i16, 8>;
+pub(crate) type i32x4 = Simd<i32, 4>;
+pub(crate) type i64x2 = Simd<i64, 2>;
 
-simd_ty!(f16x4[f16;4]: x0, x1, x2, x3);
+pub(crate) type f16x8 = Simd<f16, 8>;
+pub(crate) type f32x4 = Simd<f32, 4>;
+pub(crate) type f64x2 = Simd<f64, 2>;
 
-simd_ty!(
-    f16x8[f16;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(f32x4[f32;4]: x0, x1, x2, x3);
-simd_ty!(f64x2[f64;2]: x0, x1);
-
-simd_m_ty!(
-    m8x16[i8;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_m_ty!(
-    m16x8[i16;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_m_ty!(m32x4[i32;4]: x0, x1, x2, x3);
-simd_m_ty!(m64x2[i64;2]: x0, x1);
+pub(crate) type m8x16 = SimdM<i8, 16>;
+pub(crate) type m16x8 = SimdM<i16, 8>;
+pub(crate) type m32x4 = SimdM<i32, 4>;
+pub(crate) type m64x2 = SimdM<i64, 2>;
 
 // 256-bit wide types:
 
-simd_ty!(
-    u8x32[u8;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-simd_ty!(
-    u16x16[u16;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_ty!(
-    u32x8[u32;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(u64x4[u64;4]: x0, x1, x2, x3);
+pub(crate) type u8x32 = Simd<u8, 32>;
+pub(crate) type u16x16 = Simd<u16, 16>;
+pub(crate) type u32x8 = Simd<u32, 8>;
+pub(crate) type u64x4 = Simd<u64, 4>;
 
-simd_ty!(
-    i8x32[i8;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-simd_ty!(
-    i16x16[i16;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_ty!(
-    i32x8[i32;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(i64x4[i64;4]: x0, x1, x2, x3);
+pub(crate) type i8x32 = Simd<i8, 32>;
+pub(crate) type i16x16 = Simd<i16, 16>;
+pub(crate) type i32x8 = Simd<i32, 8>;
+pub(crate) type i64x4 = Simd<i64, 4>;
 
-simd_ty!(
-    f16x16[f16;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_ty!(
-    f32x8[f32;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_ty!(f64x4[f64;4]: x0, x1, x2, x3);
+pub(crate) type f16x16 = Simd<f16, 16>;
+pub(crate) type f32x8 = Simd<f32, 8>;
+pub(crate) type f64x4 = Simd<f64, 4>;
 
-simd_m_ty!(
-    m8x32[i8;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-simd_m_ty!(
-    m16x16[i16;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_m_ty!(
-    m32x8[i32;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
+pub(crate) type m8x32 = SimdM<i8, 32>;
+pub(crate) type m16x16 = SimdM<i16, 16>;
+pub(crate) type m32x8 = SimdM<i32, 8>;
 
 // 512-bit wide types:
 
-simd_ty!(
-    i8x64[i8;64]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31,
-    x32,
-    x33,
-    x34,
-    x35,
-    x36,
-    x37,
-    x38,
-    x39,
-    x40,
-    x41,
-    x42,
-    x43,
-    x44,
-    x45,
-    x46,
-    x47,
-    x48,
-    x49,
-    x50,
-    x51,
-    x52,
-    x53,
-    x54,
-    x55,
-    x56,
-    x57,
-    x58,
-    x59,
-    x60,
-    x61,
-    x62,
-    x63
-);
+pub(crate) type u8x64 = Simd<u8, 64>;
+pub(crate) type u16x32 = Simd<u16, 32>;
+pub(crate) type u32x16 = Simd<u32, 16>;
+pub(crate) type u64x8 = Simd<u64, 8>;
 
-simd_ty!(
-    u8x64[u8;64]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31,
-    x32,
-    x33,
-    x34,
-    x35,
-    x36,
-    x37,
-    x38,
-    x39,
-    x40,
-    x41,
-    x42,
-    x43,
-    x44,
-    x45,
-    x46,
-    x47,
-    x48,
-    x49,
-    x50,
-    x51,
-    x52,
-    x53,
-    x54,
-    x55,
-    x56,
-    x57,
-    x58,
-    x59,
-    x60,
-    x61,
-    x62,
-    x63
-);
+pub(crate) type i8x64 = Simd<i8, 64>;
+pub(crate) type i16x32 = Simd<i16, 32>;
+pub(crate) type i32x16 = Simd<i32, 16>;
+pub(crate) type i64x8 = Simd<i64, 8>;
 
-simd_ty!(
-    i16x32[i16;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-
-simd_ty!(
-    u16x32[u16;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-
-simd_ty!(
-    i32x16[i32;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-
-simd_ty!(
-    u32x16[u32;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-
-simd_ty!(
-    f16x32[f16;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-simd_ty!(
-    f32x16[f32;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-
-simd_ty!(
-    i64x8[i64;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-
-simd_ty!(
-    u64x8[u64;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-
-simd_ty!(
-    f64x8[f64;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
+pub(crate) type f16x32 = Simd<f16, 32>;
+pub(crate) type f32x16 = Simd<f32, 16>;
+pub(crate) type f64x8 = Simd<f64, 8>;
 
 // 1024-bit wide types:
-simd_ty!(
-    u16x64[u16;64]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31,
-    x32,
-    x33,
-    x34,
-    x35,
-    x36,
-    x37,
-    x38,
-    x39,
-    x40,
-    x41,
-    x42,
-    x43,
-    x44,
-    x45,
-    x46,
-    x47,
-    x48,
-    x49,
-    x50,
-    x51,
-    x52,
-    x53,
-    x54,
-    x55,
-    x56,
-    x57,
-    x58,
-    x59,
-    x60,
-    x61,
-    x62,
-    x63
-);
-simd_ty!(
-    i32x32[i32;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-simd_ty!(
-    u32x32[u32;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
+
+pub(crate) type u16x64 = Simd<u16, 64>;
+pub(crate) type u32x32 = Simd<u32, 32>;
+
+pub(crate) type i32x32 = Simd<i32, 32>;
 
 /// Used to continue `Debug`ging SIMD types as `MySimd(1, 2, 3, 4)`, as they
 /// were before moving to array-based simd.

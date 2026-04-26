@@ -5,7 +5,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_middle::bug;
 use rustc_middle::mir::{Body, ConstraintCategory};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::solve::NoSolution;
@@ -189,7 +189,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        self.normalize_with_category(value, location, ConstraintCategory::Boring)
+        self.normalize_with_category(
+            Unnormalized::new_wip(value),
+            location,
+            ConstraintCategory::Boring,
+        )
     }
 
     pub(super) fn deeply_normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
@@ -207,13 +211,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize_with_category<T>(
         &mut self,
-        value: T,
+        value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
         category: ConstraintCategory<'tcx>,
     ) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
+        let value = value.skip_normalization();
         let param_env = self.infcx.param_env;
         let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
             location.to_locations(),
@@ -246,11 +251,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 CustomTypeOp::new(
                     |ocx| {
                         let structurally_normalize = |ty| {
-                            ocx.structurally_normalize_ty(
-                                &cause,
-                                param_env,
-                                ty,
-                            )
+                            ocx.structurally_normalize_ty(&cause, param_env, Unnormalized::new_wip(ty))
                             .unwrap_or_else(|_| bug!("struct tail should have been computable, since we computed it in HIR"))
                         };
 
@@ -295,7 +296,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 body.source.def_id().expect_local(),
                             ),
                             param_env,
-                            ty,
+                            Unnormalized::new_wip(ty),
                         )
                         .map_err(|_| NoSolution)
                     },
@@ -364,7 +365,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // obligation for the unnormalized user_ty here. This is
                     // where the "incorrectly skips the WF checks we normally do"
                     // happens
-                    let user_ty = ocx.normalize(&cause, param_env, user_ty);
+                    let user_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(user_ty));
                     ocx.eq(&cause, param_env, user_ty, mir_ty)?;
                     Ok(())
                 },

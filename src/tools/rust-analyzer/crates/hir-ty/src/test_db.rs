@@ -3,8 +3,8 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, SourceDatabase, SourceRoot,
+    SourceRootId, SourceRootInput, all_crates, relevant_crates, set_all_crates_with_durability,
 };
 
 use hir_def::{ModuleId, db::DefDatabase, nameres::crate_def_map};
@@ -45,7 +45,7 @@ impl Default for TestDB {
         };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
-        this.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&this);
@@ -142,7 +142,7 @@ impl panic::RefUnwindSafe for TestDB {}
 impl TestDB {
     pub(crate) fn module_for_file_opt(&self, file_id: impl Into<FileId>) -> Option<ModuleId> {
         let file_id = file_id.into();
-        for &krate in self.relevant_crates(file_id).iter() {
+        for &krate in relevant_crates(self, file_id).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (module_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
@@ -161,7 +161,7 @@ impl TestDB {
         &self,
     ) -> FxHashMap<EditionedFileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
-        for &krate in self.all_crates().iter() {
+        for &krate in all_crates(self).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (module_id, _) in crate_def_map.modules() {
                 let file_id = crate_def_map[module_id].origin.file_id();

@@ -1009,8 +1009,9 @@ fn closure_ty(
     display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     let c = original.as_closure()?;
-    let mut captures_rendered = c.captured_items(sema.db)
-        .into_iter()
+    let captures = c.captured_items(sema.db);
+    let mut captures_rendered = captures
+        .iter()
         .map(|it| {
             let borrow_kind = match it.kind() {
                 CaptureKind::SharedRef => "immutable borrow",
@@ -1018,7 +1019,7 @@ fn closure_ty(
                 CaptureKind::MutableRef => "mutable borrow",
                 CaptureKind::Move => "move",
             };
-            format!("* `{}` by {}", it.display_place(sema.db), borrow_kind)
+            format!("* `{}` by {}", it.display_place_source_code(sema.db, display_target.edition), borrow_kind)
         })
         .join("\n");
     if captures_rendered.trim().is_empty() {
@@ -1031,8 +1032,8 @@ fn closure_ty(
         }
     };
     walk_and_push_ty(sema.db, original, &mut push_new_def);
-    c.capture_types(sema.db).into_iter().for_each(|ty| {
-        walk_and_push_ty(sema.db, &ty, &mut push_new_def);
+    captures.iter().for_each(|capture| {
+        walk_and_push_ty(sema.db, &capture.ty(sema.db), &mut push_new_def);
     });
 
     let adjusted = if let Some(adjusted_ty) = adjusted {

@@ -44,6 +44,9 @@ impl SimdCast for u64 {}
 unsafe impl Sealed for usize {}
 impl SimdCast for usize {}
 // Safety: primitive number types can be cast to other primitive number types
+unsafe impl Sealed for f16 {}
+impl SimdCast for f16 {}
+// Safety: primitive number types can be cast to other primitive number types
 unsafe impl Sealed for f32 {}
 impl SimdCast for f32 {}
 // Safety: primitive number types can be cast to other primitive number types

@@ -21,6 +21,26 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_hir::Constness {
+    type T = crate::ty::Constness;
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
+        match self {
+            rustc_hir::Constness::Const => crate::ty::Constness::Const,
+            rustc_hir::Constness::NotConst => crate::ty::Constness::NotConst,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::Asyncness {
+    type T = crate::ty::Asyncness;
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
+        match self {
+            rustc_middle::ty::Asyncness::Yes => crate::ty::Asyncness::Async,
+            rustc_middle::ty::Asyncness::No => crate::ty::Asyncness::NotAsync,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {

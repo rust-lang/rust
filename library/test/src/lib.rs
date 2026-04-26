@@ -49,7 +49,7 @@ pub mod test {
     pub use crate::time::{TestExecTime, TestTimeOptions};
     pub use crate::types::{
         DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
-        TestDescAndFn, TestId, TestName, TestType,
+        TestDescAndFn, TestId, TestList, TestListOrder, TestName, TestType,
     };
     pub use crate::{assert_test_result, filter_tests, run_test, test_main, test_main_static};
 }
@@ -104,6 +104,16 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
 pub fn test_main_with_exit_callback<F: FnOnce()>(
     args: &[String],
     tests: Vec<TestDescAndFn>,
+    options: Option<Options>,
+    exit_callback: F,
+) {
+    let tests = TestList::new(tests, TestListOrder::Unsorted);
+    test_main_inner(args, tests, options, exit_callback)
+}
+
+fn test_main_inner<F: FnOnce()>(
+    args: &[String],
+    tests: TestList,
     options: Option<Options>,
     exit_callback: F,
 ) {
@@ -180,7 +190,9 @@ pub fn test_main_with_exit_callback<F: FnOnce()>(
 pub fn test_main_static(tests: &[&TestDescAndFn]) {
     let args = env::args().collect::<Vec<_>>();
     let owned_tests: Vec<_> = tests.iter().map(make_owned_test).collect();
-    test_main(&args, owned_tests, None)
+    // Tests are sorted by name at compile time by mk_tests_slice.
+    let tests = TestList::new(owned_tests, TestListOrder::Sorted);
+    test_main_inner(&args, tests, None, || {})
 }
 
 /// A variant optimized for invocation with a static test vector.
@@ -229,7 +241,9 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
 
     let args = env::args().collect::<Vec<_>>();
     let owned_tests: Vec<_> = tests.iter().map(make_owned_test).collect();
-    test_main(&args, owned_tests, Some(Options::new().panic_abort(true)))
+    // Tests are sorted by name at compile time by mk_tests_slice.
+    let tests = TestList::new(owned_tests, TestListOrder::Sorted);
+    test_main_inner(&args, tests, Some(Options::new().panic_abort(true)), || {})
 }
 
 /// Clones static values for putting into a dynamic vector, which test_main()
@@ -298,7 +312,7 @@ impl FilteredTests {
 
 pub fn run_tests<F>(
     opts: &TestOpts,
-    tests: Vec<TestDescAndFn>,
+    tests: TestList,
     mut notify_about_test_event: F,
 ) -> io::Result<()>
 where
@@ -334,7 +348,7 @@ where
         timeout: Instant,
     }
 
-    let tests_len = tests.len();
+    let tests_len = tests.tests.len();
 
     let mut filtered = FilteredTests { tests: Vec::new(), benches: Vec::new(), next_id: 0 };
 
@@ -512,25 +526,48 @@ where
     Ok(())
 }
 
-pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
+pub fn filter_tests(opts: &TestOpts, tests: TestList) -> Vec<TestDescAndFn> {
+    let TestList { tests, order } = tests;
     let mut filtered = tests;
-    let matches_filter = |test: &TestDescAndFn, filter: &str| {
-        let test_name = test.desc.name.as_slice();
 
-        match opts.filter_exact {
-            true => test_name == filter,
-            false => test_name.contains(filter),
-        }
-    };
-
-    // Remove tests that don't match the test filter
+    // Remove tests that don't match the test filter.
     if !opts.filters.is_empty() {
-        filtered.retain(|test| opts.filters.iter().any(|filter| matches_filter(test, filter)));
+        if opts.filter_exact && order == TestListOrder::Sorted {
+            // Let's say that `f` is the number of filters and `n` is the number
+            // of tests.
+            //
+            // The test array is sorted by name (guaranteed by the caller via
+            // TestListOrder::Sorted), so use binary search for O(f log n)
+            // exact-match lookups instead of an O(n) linear scan.
+            //
+            // This is important for Miri, where the interpreted execution makes
+            // the linear scan very expensive.
+            filtered = filter_exact_match(filtered, &opts.filters);
+        } else {
+            filtered.retain(|test| {
+                let test_name = test.desc.name.as_slice();
+                opts.filters.iter().any(|filter| {
+                    if opts.filter_exact {
+                        test_name == filter.as_str()
+                    } else {
+                        test_name.contains(filter.as_str())
+                    }
+                })
+            });
+        }
     }
 
     // Skip tests that match any of the skip filters
+    //
+    // After exact positive filtering above, the filtered set is small, so a
+    // linear scan is acceptable even under Miri.
     if !opts.skip.is_empty() {
-        filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
+        filtered.retain(|test| {
+            let name = test.desc.name.as_slice();
+            !opts.skip.iter().any(|sf| {
+                if opts.filter_exact { name == sf.as_str() } else { name.contains(sf.as_str()) }
+            })
+        });
     }
 
     // Excludes #[should_panic] tests
@@ -551,6 +588,30 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     }
 
     filtered
+}
+
+/// Extract tests whose names exactly match one of the given `filters`, using
+/// binary search on the (assumed sorted) test list.
+fn filter_exact_match(mut tests: Vec<TestDescAndFn>, filters: &[String]) -> Vec<TestDescAndFn> {
+    // Binary search for each filter in the sorted test list.
+    let mut indexes: Vec<usize> = filters
+        .iter()
+        .filter_map(|f| tests.binary_search_by(|t| t.desc.name.as_slice().cmp(f.as_str())).ok())
+        .collect();
+    indexes.sort_unstable();
+    indexes.dedup();
+
+    // Extract matching tests. Process indexes in descending order so that
+    // swap_remove (which replaces the removed element with the last) does not
+    // invalidate indexes we haven't visited yet.
+    let mut result = Vec::with_capacity(indexes.len());
+    for &idx in indexes.iter().rev() {
+        result.push(tests.swap_remove(idx));
+    }
+    // Reverse to restore the original sorted order, since we extracted the
+    // matching tests in descending index order.
+    result.reverse();
+    result
 }
 
 pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {

@@ -1,5 +1,5 @@
 warning: trait `Trait` is never used
-  --> $DIR/target-expr-pass.rs:17:7
+  --> $DIR/target-expr-pass.rs:16:7
    |
 LL | trait Trait {
    |       ^^^^^
@@ -7,13 +7,13 @@ LL | trait Trait {
    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: struct `F` is never constructed
-  --> $DIR/target-expr-pass.rs:21:8
+  --> $DIR/target-expr-pass.rs:20:8
    |
 LL | struct F;
    |        ^
 
 warning: struct `S` is never constructed
-  --> $DIR/target-expr-pass.rs:24:8
+  --> $DIR/target-expr-pass.rs:23:8
    |
 LL | struct S(F);
    |        ^

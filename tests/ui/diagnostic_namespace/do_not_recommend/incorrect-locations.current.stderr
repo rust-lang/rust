@@ -3,6 +3,9 @@ warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implement
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | const CONST: () = ();
+   | --------------------- not a trait implementation
    |
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
@@ -11,48 +14,72 @@ warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implement
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | static STATIC: () = ();
+   | ----------------------- not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:15:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Type = ();
+   | --------------- not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:19:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Enum {}
+   | ------------ not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:23:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Enum {}
+   | ------------ not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:27:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern "C" {}
+   | ------------- not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:31:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn fun() {}
+   | ----------- not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:35:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Struct {}
+   | ---------------- not a trait implementation
 
 warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
   --> $DIR/incorrect-locations.rs:39:1
    |
 LL | #[diagnostic::do_not_recommend]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait Trait {}
+   | -------------- not a trait implementation
 
 warning: 9 warnings emitted
 

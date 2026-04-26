@@ -1,0 +1,31 @@
+error[E0271]: type mismatch resolving `<i32 as With>::F == fn(&str) {f}`
+  --> $DIR/lazy-nested-obligations-2.rs:20:21
+   |
+LL |     let _: V<i32> = V(f);
+   |                     ^^^^ type mismatch resolving `<i32 as With>::F == fn(&str) {f}`
+   |
+note: expected this to be `for<'a> fn(&'a str) {f}`
+  --> $DIR/lazy-nested-obligations-2.rs:14:14
+   |
+LL |     type F = fn(&str);
+   |              ^^^^^^^^
+   = note: expected fn item `for<'a> fn(&'a _) {f}`
+           found fn pointer `for<'a> fn(&'a _)`
+
+error[E0271]: type mismatch resolving `<i32 as With>::F == fn(&str) {f}`
+  --> $DIR/lazy-nested-obligations-2.rs:27:22
+   |
+LL |     let _: E3<i32> = E3::Var(f);
+   |                      ^^^^^^^^^^ type mismatch resolving `<i32 as With>::F == fn(&str) {f}`
+   |
+note: expected this to be `for<'a> fn(&'a str) {f}`
+  --> $DIR/lazy-nested-obligations-2.rs:14:14
+   |
+LL |     type F = fn(&str);
+   |              ^^^^^^^^
+   = note: expected fn item `for<'a> fn(&'a _) {f}`
+           found fn pointer `for<'a> fn(&'a _)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

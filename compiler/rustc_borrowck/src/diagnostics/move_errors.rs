@@ -14,7 +14,9 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 use crate::MirBorrowckCtxt;
-use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
+use crate::diagnostics::{
+    BorrowedContentSource, CapturedMessageOpt, CloneSuggestion, DescribePlaceOpt, UseSpans,
+};
 use crate::prefixes::PrefixSet;
 
 #[derive(Debug)]
@@ -269,14 +271,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .span_delayed_bug(span, "Type may implement copy, but there is no other error.");
             return;
         }
+
+        let mut has_clone_suggestion = CloneSuggestion::NotEmitted;
         let mut err = match kind {
-            &IllegalMoveOriginKind::BorrowedContent { target_place } => self
-                .report_cannot_move_from_borrowed_content(
+            &IllegalMoveOriginKind::BorrowedContent { target_place } => {
+                let (diag, clone_sugg) = self.report_cannot_move_from_borrowed_content(
                     original_path,
                     target_place,
                     span,
                     use_spans,
-                ),
+                );
+                has_clone_suggestion = clone_sugg;
+                diag
+            }
             &IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
                 self.cannot_move_out_of_interior_of_drop(span, ty)
             }
@@ -285,7 +292,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         };
 
-        self.add_move_hints(error, &mut err, span);
+        self.add_move_hints(error, &mut err, span, has_clone_suggestion);
         self.buffer_error(err);
     }
 
@@ -426,7 +433,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> Diag<'infcx> {
+    ) -> (Diag<'infcx>, CloneSuggestion) {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -447,8 +454,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let decl = &self.body.local_decls[local];
             let local_name = self.local_name(local).map(|sym| format!("`{sym}`"));
             if decl.is_ref_for_guard() {
-                return self
-                    .cannot_move_out_of(
+                return (
+                    self.cannot_move_out_of(
                         span,
                         &format!(
                             "{} in pattern guard",
@@ -458,9 +465,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     .with_note(
                         "variables bound in patterns cannot be moved from \
                          until after the end of the pattern guard",
-                    );
+                    ),
+                    CloneSuggestion::NotEmitted,
+                );
             } else if decl.is_ref_to_static() {
-                return self.report_cannot_move_from_static(move_place, span);
+                return (
+                    self.report_cannot_move_from_static(move_place, span),
+                    CloneSuggestion::NotEmitted,
+                );
             }
         }
 
@@ -539,10 +551,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             has_suggest_reborrow: false,
             maybe_reinitialized_locations_is_empty: true,
         };
-        if let Some(use_spans) = use_spans {
-            self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt);
-        }
-        err
+        let suggested_cloning = if let Some(use_spans) = use_spans {
+            self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt)
+        } else {
+            CloneSuggestion::NotEmitted
+        };
+        (err, suggested_cloning)
     }
 
     fn report_closure_move_error(
@@ -640,8 +654,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`
         // or `AsyncFn[Mut]`.
         for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
+            let pred = pred.skip_norm_wip();
             let dominated_by_fn_trait = self
-                .closure_clause_kind(*pred, def_id, asyncness)
+                .closure_clause_kind(pred, def_id, asyncness)
                 .is_some_and(|kind| matches!(kind, ty::ClosureKind::Fn | ty::ClosureKind::FnMut));
             if dominated_by_fn_trait {
                 // Found `<TyOfCapturingClosure as FnMut>` or
@@ -675,10 +690,52 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
+    /// Suggest cloning via UFCS when a move occurs through a custom `Deref` impl.
+    ///
+    /// A simple `.clone()` on a type like `MyBox<Vec<i32>>` would clone the wrapper,
+    /// not the inner `Vec<i32>`. Instead, we suggest `<Vec<i32> as Clone>::clone(&val)`.
+    fn suggest_cloning_through_overloaded_deref(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> CloneSuggestion {
+        let tcx = self.infcx.tcx;
+        let Some(clone_trait) = tcx.lang_items().clone_trait() else {
+            return CloneSuggestion::NotEmitted;
+        };
+        let Some(errors) =
+            self.infcx.type_implements_trait_shallow(clone_trait, ty, self.infcx.param_env)
+        else {
+            return CloneSuggestion::NotEmitted;
+        };
+
+        if !errors.is_empty() {
+            return CloneSuggestion::NotEmitted;
+        }
+        let sugg = vec![
+            (span.shrink_to_lo(), format!("<{ty} as Clone>::clone(&")),
+            (span.shrink_to_hi(), ")".to_string()),
+        ];
+        err.multipart_suggestion(
+            "you can `clone` the value and consume it, but this might not be \
+             your desired behavior",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+        CloneSuggestion::Emitted
+    }
+
+    fn add_move_hints(
+        &self,
+        error: GroupedMoveError<'tcx>,
+        err: &mut Diag<'_>,
+        span: Span,
+        has_clone_suggestion: CloneSuggestion,
+    ) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                self.add_borrow_suggestions(err, span);
+                self.add_borrow_suggestions(err, span, !binds_to.is_empty());
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
@@ -718,14 +775,43 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     None => "value".to_string(),
                 };
 
-                if let Some(expr) = self.find_expr(use_span) {
-                    self.suggest_cloning(
-                        err,
-                        original_path.as_ref(),
-                        place_ty,
-                        expr,
-                        Some(use_spans),
-                    );
+                if has_clone_suggestion == CloneSuggestion::NotEmitted {
+                    // Check if the move is directly through a custom Deref impl
+                    // (e.g. `*my_box` where MyBox implements Deref).
+                    // A simple `.clone()` would clone the wrapper type rather than
+                    // the inner value, so we need a UFCS suggestion instead.
+                    //
+                    // However, if there are further projections after the deref
+                    // (e.g. `(*rc).field`), the value accessed is already the inner
+                    // type and a simple `.clone()` works correctly.
+                    let needs_ufcs = original_path.projection.last()
+                        == Some(&ProjectionElem::Deref)
+                        && original_path.iter_projections().any(|(place, elem)| {
+                            matches!(elem, ProjectionElem::Deref)
+                                && matches!(
+                                    self.borrowed_content_source(place),
+                                    BorrowedContentSource::OverloadedDeref(_)
+                                        | BorrowedContentSource::OverloadedIndex(_)
+                                )
+                        });
+
+                    let emitted_ufcs = if needs_ufcs {
+                        self.suggest_cloning_through_overloaded_deref(err, place_ty, use_span)
+                    } else {
+                        CloneSuggestion::NotEmitted
+                    };
+
+                    if emitted_ufcs == CloneSuggestion::NotEmitted {
+                        if let Some(expr) = self.find_expr(use_span) {
+                            self.suggest_cloning(
+                                err,
+                                original_path.as_ref(),
+                                place_ty,
+                                expr,
+                                Some(use_spans),
+                            );
+                        }
+                    }
                 }
 
                 if let Some(upvar_field) = self
@@ -787,28 +873,66 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn add_borrow_suggestions(&self, err: &mut Diag<'_>, span: Span) {
+    fn add_borrow_suggestions(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        is_destructuring_pattern_move: bool,
+    ) {
         match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             Ok(snippet) if snippet.starts_with('*') => {
                 let sp = span.with_lo(span.lo() + BytePos(1));
                 let inner = self.find_expr(sp);
                 let mut is_raw_ptr = false;
+                let mut is_ref = false;
+                let mut is_destructuring_assignment = false;
+                let mut is_nested_deref = false;
                 if let Some(inner) = inner {
+                    is_nested_deref =
+                        matches!(inner.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _));
                     let typck_result = self.infcx.tcx.typeck(self.mir_def_id());
                     if let Some(inner_type) = typck_result.node_type_opt(inner.hir_id) {
                         if matches!(inner_type.kind(), ty::RawPtr(..)) {
                             is_raw_ptr = true;
+                        } else if matches!(inner_type.kind(), ty::Ref(..)) {
+                            is_ref = true;
                         }
                     }
+                    is_destructuring_assignment =
+                        self.infcx.tcx.hir_parent_iter(inner.hir_id).any(|(_, node)| {
+                            matches!(
+                                node,
+                                hir::Node::LetStmt(&hir::LetStmt {
+                                    source: hir::LocalSource::AssignDesugar,
+                                    ..
+                                })
+                            )
+                        });
                 }
                 // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
                 // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
-                if !is_raw_ptr {
+                if is_raw_ptr {
+                    return;
+                }
+
+                if !is_destructuring_pattern_move || is_ref {
                     err.span_suggestion_verbose(
                         span.with_hi(span.lo() + BytePos(1)),
                         "consider removing the dereference here",
                         String::new(),
                         Applicability::MaybeIncorrect,
+                    );
+                } else if !is_destructuring_assignment && !is_nested_deref {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        "consider borrowing here",
+                        '&',
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_help(
+                        span,
+                        "destructuring assignment cannot borrow from this expression; consider using a `let` binding instead",
                     );
                 }
             }

@@ -1,4 +1,4 @@
-import * as anser from "anser";
+import anser from "anser";
 import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import * as ra from "../src/lsp_ext";

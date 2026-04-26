@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // This test check for correct handling of atomic read-modify-write operations for all integer sizes.
 // Atomic max and min should return the previous value, and store the result in the atomic.
 // Atomic addition and subtraction should have wrapping semantics.

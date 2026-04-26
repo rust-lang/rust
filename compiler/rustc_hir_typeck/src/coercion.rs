@@ -54,7 +54,7 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
@@ -944,7 +944,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         match b.kind() {
-            ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety.is_unsafe() => {
+            ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety().is_unsafe() => {
                 let a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
                 let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
                 self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)
@@ -960,13 +960,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
-                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety))?;
+                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety()))?;
 
                 let InferOk { value: a_sig, mut obligations } =
-                    self.at(&self.cause, self.param_env).normalize(a_sig);
+                    self.at(&self.cause, self.param_env).normalize(Unnormalized::new_wip(a_sig));
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
-                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety));
+                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));
                 let InferOk { value, obligations: o2 } =
                     self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)?;
 
@@ -985,9 +985,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, hdr) => {
-                let safety = hdr.safety;
+                let safety = hdr.safety();
                 let terr = TypeError::Sorts(ty::error::ExpectedFound::new(a, b));
-                let closure_sig = self.sig_for_closure_coercion(a, Some(hdr.safety), terr)?;
+                let closure_sig = self.sig_for_closure_coercion(a, Some(hdr.safety()), terr)?;
                 let pointer_ty = Ty::new_fn_ptr(self.tcx, closure_sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
 
@@ -1104,7 +1104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
-                    ocx.structurally_normalize_ty(&cause, self.param_env, ty)
+                    ocx.structurally_normalize_ty(&cause, self.param_env, Unnormalized::new_wip(ty))
                 } else {
                     Ok(ty)
                 }
@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             // The signature must match.
-            let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
+            let (a_sig, b_sig) = self.normalize(new.span, Unnormalized::new_wip((a_sig, b_sig)));
             let sig = self
                 .at(cause, self.param_env)
                 .lub(a_sig, b_sig)
@@ -1852,28 +1852,34 @@ impl<'tcx> CoerceMany<'tcx> {
             fcx.probe(|_| {
                 let ocx = ObligationCtxt::new(fcx);
                 ocx.register_obligations(
-                    fcx.tcx.item_self_bounds(rpit_def_id).iter_identity().filter_map(|clause| {
-                        let predicate = clause
-                            .kind()
-                            .map_bound(|clause| match clause {
-                                ty::ClauseKind::Trait(trait_pred) => Some(ty::ClauseKind::Trait(
-                                    trait_pred.with_replaced_self_ty(fcx.tcx, ty),
-                                )),
-                                ty::ClauseKind::Projection(proj_pred) => {
-                                    Some(ty::ClauseKind::Projection(
-                                        proj_pred.with_replaced_self_ty(fcx.tcx, ty),
-                                    ))
-                                }
-                                _ => None,
-                            })
-                            .transpose()?;
-                        Some(Obligation::new(
-                            fcx.tcx,
-                            ObligationCause::dummy(),
-                            fcx.param_env,
-                            predicate,
-                        ))
-                    }),
+                    fcx.tcx
+                        .item_self_bounds(rpit_def_id)
+                        .iter_identity()
+                        .map(Unnormalized::skip_norm_wip)
+                        .filter_map(|clause| {
+                            let predicate = clause
+                                .kind()
+                                .map_bound(|clause| match clause {
+                                    ty::ClauseKind::Trait(trait_pred) => {
+                                        Some(ty::ClauseKind::Trait(
+                                            trait_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                        ))
+                                    }
+                                    ty::ClauseKind::Projection(proj_pred) => {
+                                        Some(ty::ClauseKind::Projection(
+                                            proj_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                        ))
+                                    }
+                                    _ => None,
+                                })
+                                .transpose()?;
+                            Some(Obligation::new(
+                                fcx.tcx,
+                                ObligationCause::dummy(),
+                                fcx.param_env,
+                                predicate,
+                            ))
+                        }),
                 );
                 ocx.try_evaluate_obligations().is_empty()
             })

@@ -70,5 +70,53 @@ LL |         _ => eprintln!(""     ,), // tab and space between "" and comma
    |                        |
    |                        help: remove the empty string
 
-error: aborting due to 8 previous errors
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string.rs:49:5
+   |
+LL |     println!{""};
+   |     ^^^^^^^^^--^
+   |              |
+   |              help: remove the empty string
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string.rs:52:5
+   |
+LL |     println![""];
+   |     ^^^^^^^^^--^
+   |              |
+   |              help: remove the empty string
+
+error: empty string literal in `eprintln!`
+  --> tests/ui/println_empty_string.rs:55:5
+   |
+LL |     eprintln!{""};
+   |     ^^^^^^^^^^--^
+   |               |
+   |               help: remove the empty string
+
+error: empty string literal in `eprintln!`
+  --> tests/ui/println_empty_string.rs:58:5
+   |
+LL |     eprintln![""];
+   |     ^^^^^^^^^^--^
+   |               |
+   |               help: remove the empty string
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string.rs:62:14
+   |
+LL |         _ => println!{""},
+   |              ^^^^^^^^^--^
+   |                       |
+   |                       help: remove the empty string
+
+error: empty string literal in `println!`
+  --> tests/ui/println_empty_string.rs:67:14
+   |
+LL |         _ => println![""],
+   |              ^^^^^^^^^--^
+   |                       |
+   |                       help: remove the empty string
+
+error: aborting due to 14 previous errors
 

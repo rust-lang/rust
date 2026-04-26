@@ -28,10 +28,11 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                     Some(str_value)
                 }
                 ArgParser::List(list) => {
-                    let help = list.single().and_then(|item| item.meta_item()).and_then(|item| {
-                        item.args().no_args().ok()?;
-                        Some(item.path().to_string())
-                    });
+                    let help =
+                        list.as_single().and_then(|item| item.meta_item()).and_then(|item| {
+                            item.args().no_args().ok()?;
+                            Some(item.path().to_string())
+                        });
                     cx.adcx().warn_ill_formed_attribute_input_with_help(
                         ILL_FORMED_ATTRIBUTE_INPUT,
                         help,
@@ -71,10 +72,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
                     Some(str_value)
                 }
                 ArgParser::List(list) => {
-                    let Some(single) = list.single() else {
-                        cx.adcx().expected_single_argument(list.span);
-                        return None;
-                    };
+                    let single = cx.expect_single(list)?;
                     let Some(single) = single.meta_item() else {
                         cx.adcx().expected_name_value(single.span(), Some(sym::expected));
                         return None;
@@ -102,7 +100,6 @@ pub(crate) struct ReexportTestHarnessMainParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -129,7 +126,6 @@ pub(crate) struct RustcAbiParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::TyAlias),
@@ -142,17 +138,13 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
     ]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(args) = args.list() else {
+        let Some(args) = args.as_list() else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_specific_argument_and_list(attr_span, &[sym::assert_eq, sym::debug]);
             return None;
         };
 
-        let Some(arg) = args.single() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_single_argument(attr_span);
-            return None;
-        };
+        let arg = cx.expect_single(args)?;
 
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::assert_eq, sym::debug]);
@@ -179,7 +171,6 @@ pub(crate) struct RustcDelayedBugFromInsideQueryParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser {
     const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
 }
@@ -188,7 +179,6 @@ pub(crate) struct RustcEvaluateWhereClausesParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
     const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -203,21 +193,11 @@ pub(crate) struct TestRunnerParser;
 
 impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
-
-        let Some(single) = list.single() else {
-            cx.adcx().expected_single_argument(list.span);
-            return None;
-        };
+        let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
         let Some(meta) = single.meta_item() else {
             cx.adcx().expected_not_literal(single.span());
@@ -232,7 +212,6 @@ pub(crate) struct RustcTestMarkerParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Const),
         Allow(Target::Fn),

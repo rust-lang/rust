@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
+use rustc_middle::ty::Unnormalized;
 use rustc_ast::BindingMode;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
@@ -153,8 +154,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         }
         let ty = self
             .cx
-            .tcx
-            .try_normalize_erasing_regions(self.cx.typing_env(), ty)
+            .tcx.try_normalize_erasing_regions(self.cx.typing_env(), Unnormalized::new_wip(ty))
             .unwrap_or(ty);
         match self.type_cache.entry(ty) {
             Entry::Occupied(e) => return *e.get(),

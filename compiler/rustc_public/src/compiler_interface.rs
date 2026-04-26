@@ -17,11 +17,11 @@ use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::{MachineInfo, MachineSize};
 use crate::ty::{
-    AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, CoroutineDef, Discr, FieldDef, FnDef,
-    ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates,
-    Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst, PolyFnSig, RigidTy, Span,
-    TraitDecl, TraitDef, TraitRef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx,
-    VtblEntry,
+    AdtDef, AdtKind, Allocation, Asyncness, ClosureDef, ClosureKind, Constness, CoroutineDef,
+    Discr, FieldDef, FnDef, ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef,
+    GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, IntrinsicDef, LineInfo, MirConst,
+    PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst, TyConstId, TyKind,
+    UintTy, VariantDef, VariantIdx, VtblEntry,
 };
 use crate::unstable::{RustcInternal, Stable, new_item_kind};
 use crate::{
@@ -386,6 +386,22 @@ impl<'tcx> CompilerInterface<'tcx> {
         let def_id = def.0.internal(&mut *tables, cx.tcx);
         let args_ref = args.internal(&mut *tables, cx.tcx);
         cx.fn_sig(def_id, args_ref).stable(&mut *tables, cx)
+    }
+
+    /// Retrieve the constness for the given function definition.
+    pub(crate) fn constness(&self, def: FnDef) -> Constness {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
+        cx.constness(def_id).stable(&mut *tables, cx)
+    }
+
+    /// Retrieve the asyncness for the given function definition.
+    pub(crate) fn asyncness(&self, def: FnDef) -> Asyncness {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx.tcx);
+        cx.asyncness(def_id).stable(&mut *tables, cx)
     }
 
     /// Retrieve the intrinsic definition if the item corresponds one.

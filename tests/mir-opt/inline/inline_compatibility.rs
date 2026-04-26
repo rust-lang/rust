@@ -70,7 +70,7 @@ unsafe extern "C" fn sum(n: u32, mut vs: ...) -> u32 {
     let mut s = 0;
     let mut i = 0;
     while i != n {
-        s += vs.arg::<u32>();
+        s += vs.next_arg::<u32>();
         i += 1;
     }
     s

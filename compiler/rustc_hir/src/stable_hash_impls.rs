@@ -7,7 +7,6 @@ use crate::hir::{
     AttributeMap, BodyId, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
 use crate::hir_id::ItemLocalId;
-use crate::lints::DelayedLints;
 
 impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for BodyId {
     type KeyType = (DefPathHash, ItemLocalId);
@@ -71,13 +70,6 @@ impl<'tcx, Hcx: HashStableContext> HashStable<Hcx> for OwnerNodes<'tcx> {
         // `hash_stable` results.
         let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _ } = *self;
         opt_hash_including_bodies.unwrap().hash_stable(hcx, hasher);
-    }
-}
-
-impl<Hcx: HashStableContext> HashStable<Hcx> for DelayedLints {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let DelayedLints { opt_hash, .. } = *self;
-        opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }
 

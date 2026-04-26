@@ -56,9 +56,6 @@ pub unsafe trait Tag: Copy {
 /// (this is based on `T`'s alignment).
 pub const fn bits_for<T: ?Sized + Aligned>() -> u32 {
     let alignment = crate::aligned::align_of::<T>();
-    #[cfg(bootstrap)]
-    let alignment = alignment.as_nonzero();
-    #[cfg(not(bootstrap))]
     let alignment = alignment.as_nonzero_usize();
     alignment.trailing_zeros()
 }

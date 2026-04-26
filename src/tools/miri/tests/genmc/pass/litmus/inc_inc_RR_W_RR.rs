@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 #![no_main]
 
 #[path = "../../../utils/genmc.rs"]

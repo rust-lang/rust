@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-verbose
+//@compile-flags: -Zmiri-genmc-verbose
 //@normalize-stderr-test: "Verification took .*s" -> "Verification took [TIME]s"
 
 // Test that we can detect a deadlock involving `std::sync::Mutex` in GenMC mode.

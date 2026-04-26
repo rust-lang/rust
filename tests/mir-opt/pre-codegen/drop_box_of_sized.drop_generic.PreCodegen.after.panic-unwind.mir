@@ -68,6 +68,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
 
     bb0: {
         StorageLive(_4);
+        StorageLive(_2);
         _2 = copy (((*_1).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
         _3 = const <T as std::mem::SizedTypeProperties>::ALIGN as std::mem::Alignment (Transmute);
         switchInt(const <T as std::mem::SizedTypeProperties>::SIZE) -> [0: bb3, otherwise: bb1];
@@ -83,6 +84,7 @@ fn drop_generic(_1: *mut Box<T>) -> () {
     }
 
     bb3: {
+        StorageDead(_2);
         StorageDead(_4);
         return;
     }

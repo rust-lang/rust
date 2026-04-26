@@ -1,4 +1,6 @@
 use std::ffi::CString;
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
@@ -49,6 +51,19 @@ pub enum SerializedModule<M: ModuleBufferMethods> {
 }
 
 impl<M: ModuleBufferMethods> SerializedModule<M> {
+    pub fn from_file(bc_path: &Path) -> Self {
+        let file = fs::File::open(&bc_path).unwrap_or_else(|e| {
+            panic!("failed to open LTO bitcode file `{}`: {}", bc_path.display(), e)
+        });
+
+        let mmap = unsafe {
+            Mmap::map(file).unwrap_or_else(|e| {
+                panic!("failed to mmap LTO bitcode file `{}`: {}", bc_path.display(), e)
+            })
+        };
+        SerializedModule::FromUncompressedFile(mmap)
+    }
+
     pub fn data(&self) -> &[u8] {
         match *self {
             SerializedModule::Local(ref m) => m.data(),

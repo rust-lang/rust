@@ -14,7 +14,10 @@ error[E0425]: cannot find value `x` in this scope
 LL |         let _ = format!("{x}");
    |                           ^
    |
-   = help: you might have meant to use the available field in a format string: `"{}", self.x`
+help: you might have meant to use the available field
+   |
+LL |         let _ = format!("{self.x}");
+   |                           +++++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/sugg-field-in-format-string-issue-141136.rs:8:27
@@ -22,7 +25,10 @@ error[E0425]: cannot find value `x` in this scope
 LL |         let _ = format!("{x }");
    |                           ^^
    |
-   = help: you might have meant to use the available field in a format string: `"{}", self.x`
+help: you might have meant to use the available field
+   |
+LL |         let _ = format!("{self.x }");
+   |                           +++++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/sugg-field-in-format-string-issue-141136.rs:10:31
@@ -41,8 +47,22 @@ error[E0425]: cannot find value `x` in this scope
 LL |         println!("{x}");
    |                    ^
    |
-   = help: you might have meant to use the available field in a format string: `"{}", self.x`
+help: you might have meant to use the available field
+   |
+LL |         println!("{self.x}");
+   |                    +++++
 
-error: aborting due to 5 previous errors
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/sugg-field-in-format-string-issue-141136.rs:12:18
+   |
+LL |         let _ = {x};
+   |                  ^
+   |
+help: you might have meant to use the available field
+   |
+LL |         let _ = {self.x};
+   |                  +++++
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

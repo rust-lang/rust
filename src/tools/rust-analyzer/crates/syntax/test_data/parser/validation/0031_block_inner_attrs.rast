@@ -29,7 +29,7 @@ SOURCE_FILE@0..350
                 POUND@39..40 "#"
                 BANG@40..41 "!"
                 L_BRACK@41..42 "["
-                META@42..82
+                TOKEN_TREE_META@42..82
                   PATH@42..45
                     PATH_SEGMENT@42..45
                       NAME_REF@42..45
@@ -60,7 +60,7 @@ SOURCE_FILE@0..350
                   POUND@152..153 "#"
                   BANG@153..154 "!"
                   L_BRACK@154..155 "["
-                  META@155..170
+                  TOKEN_TREE_META@155..170
                     PATH@155..158
                       PATH_SEGMENT@155..158
                         NAME_REF@155..158
@@ -75,7 +75,7 @@ SOURCE_FILE@0..350
                   POUND@180..181 "#"
                   BANG@181..182 "!"
                   L_BRACK@182..183 "["
-                  META@183..211
+                  TOKEN_TREE_META@183..211
                     PATH@183..186
                       PATH_SEGMENT@183..186
                         NAME_REF@183..186
@@ -104,7 +104,7 @@ SOURCE_FILE@0..350
                 POUND@283..284 "#"
                 BANG@284..285 "!"
                 L_BRACK@285..286 "["
-                META@286..301
+                TOKEN_TREE_META@286..301
                   PATH@286..289
                     PATH_SEGMENT@286..289
                       NAME_REF@286..289

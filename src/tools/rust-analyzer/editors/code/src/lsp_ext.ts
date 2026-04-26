@@ -300,14 +300,14 @@ export type SsrParams = {
 };
 
 export type RecursiveMemoryLayoutNode = {
-    item_name: string;
+    itemName: string;
     typename: string;
     size: number;
     alignment: number;
     offset: number;
-    parent_idx: number;
-    children_start: number;
-    children_len: number;
+    parentIdx: number;
+    childrenStart: number;
+    childrenLen: number;
 };
 export type RecursiveMemoryLayout = {
     nodes: RecursiveMemoryLayoutNode[];

@@ -29,10 +29,15 @@ error: this boolean expression can be simplified
   --> tests/ui/blocks_in_conditions.rs:48:8
    |
 LL |     if true && x == 3 { 6 } else { 10 }
-   |        ^^^^^^^^^^^^^^ help: try: `x == 3`
+   |        ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
+help: try
+   |
+LL -     if true && x == 3 { 6 } else { 10 }
+LL +     if x == 3 { 6 } else { 10 }
+   |
 
 error: aborting due to 3 previous errors
 

@@ -28,7 +28,7 @@ use std::{env, str};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenErrors, CompiledModules};
+use rustc_codegen_ssa::{CodegenError, CompiledModules};
 use rustc_data_structures::profiling::{
     TimePassesFormat, get_resident_set_size, print_time_passes_entry,
 };
@@ -567,23 +567,21 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 }
                 Err(err) => {
                     match err {
-                        CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
-                        CodegenErrors::EmptyVersionNumber => {
-                            dcx.emit_fatal(RLinkEmptyVersionNumber)
-                        }
-                        CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => {
+                        CodegenError::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
+                        CodegenError::EmptyVersionNumber => dcx.emit_fatal(RLinkEmptyVersionNumber),
+                        CodegenError::EncodingVersionMismatch { version_array, rlink_version } => {
                             dcx.emit_fatal(RLinkEncodingVersionMismatch {
                                 version_array,
                                 rlink_version,
                             })
                         }
-                        CodegenErrors::RustcVersionMismatch { rustc_version } => {
+                        CodegenError::RustcVersionMismatch { rustc_version } => {
                             dcx.emit_fatal(RLinkRustcVersionMismatch {
                                 rustc_version,
                                 current_version: sess.cfg_version,
                             })
                         }
-                        CodegenErrors::CorruptFile => {
+                        CodegenError::CorruptFile => {
                             dcx.emit_fatal(RlinkCorruptFile { file });
                         }
                     };
@@ -714,8 +712,7 @@ fn print_crate_info(
                 let crate_name = passes::get_crate_name(sess, attrs);
                 let lint_store = crate::unerased_lint_store(sess);
                 let features = rustc_expand::config::features(sess, attrs, crate_name);
-                let registered_tools =
-                    rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess, &features);
+                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess);
                 let lint_levels = rustc_lint::LintLevelsBuilder::crate_root(
                     sess,
                     &features,

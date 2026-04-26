@@ -5,7 +5,9 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
+use rustc_middle::ty::{
+    self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
+};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
@@ -119,7 +121,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         } else {
                             self.fcx.tcx.normalize_erasing_regions(
                                 self.fcx.typing_env(self.fcx.param_env),
-                                len,
+                                Unnormalized::new_wip(len),
                             )
                         };
                         let Some(len) = len.try_to_target_usize(self.tcx()) else {

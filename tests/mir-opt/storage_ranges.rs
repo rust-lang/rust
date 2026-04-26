@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR storage_ranges.main.nll.0.mir
 
 fn main() {

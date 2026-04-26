@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait<'a, 'b, 'c, A = usize, B = u32, C = String, const N: usize = 123> {
     fn foo<T = usize>(&self) {

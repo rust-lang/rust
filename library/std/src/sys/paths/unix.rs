@@ -207,7 +207,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             cvt(libc::sysctl(
                 mib.as_ptr(),
                 mib.len() as libc::c_uint,
-                path.as_ptr() as *mut libc::c_void,
+                path.as_mut_ptr() as *mut libc::c_void,
                 &mut path_len,
                 ptr::null(),
                 0,

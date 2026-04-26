@@ -106,6 +106,7 @@
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
+#![feature(const_index)]
 #![feature(const_option_ops)]
 #![feature(const_try)]
 #![feature(copied_into_inner)]

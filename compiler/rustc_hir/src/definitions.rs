@@ -7,11 +7,12 @@
 use std::fmt::{self, Write};
 use std::hash::Hash;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{BlobDecodable, Decodable, Encodable};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
+use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -97,22 +98,28 @@ impl DefPathTable {
     }
 }
 
-#[derive(Debug)]
-pub struct DisambiguatorState {
-    next: UnordMap<(LocalDefId, DefPathData), u32>,
+#[derive(Debug, Default, Clone)]
+pub struct PerParentDisambiguatorState {
+    #[cfg(debug_assertions)]
+    parent: Option<LocalDefId>,
+    next: FxHashMap<DefPathData, u32>,
 }
 
-impl DisambiguatorState {
-    pub const fn new() -> Self {
-        Self { next: Default::default() }
+impl PerParentDisambiguatorState {
+    #[inline(always)]
+    pub fn new(_parent: LocalDefId) -> PerParentDisambiguatorState {
+        PerParentDisambiguatorState {
+            #[cfg(debug_assertions)]
+            parent: Some(_parent),
+            next: Default::default(),
+        }
     }
+}
 
-    /// Creates a `DisambiguatorState` where the next allocated `(LocalDefId, DefPathData)` pair
-    /// will have `index` as the disambiguator.
-    pub fn with(def_id: LocalDefId, data: DefPathData, index: u32) -> Self {
-        let mut this = Self::new();
-        this.next.insert((def_id, data), index);
-        this
+#[extension(pub trait PerParentDisambiguatorsMap)]
+impl LocalDefIdMap<PerParentDisambiguatorState> {
+    fn get_or_create(&mut self, parent: LocalDefId) -> &mut PerParentDisambiguatorState {
+        self.entry(parent).or_insert_with(|| PerParentDisambiguatorState::new(parent))
     }
 }
 
@@ -302,10 +309,6 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
-    /// A constant expression created during AST->HIR lowering..
-    LateAnonConst,
-    /// A fresh anonymous lifetime created by desugaring elided lifetimes.
-    DesugaredAnonymousLifetime,
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
@@ -389,7 +392,7 @@ impl Definitions {
         &mut self,
         parent: LocalDefId,
         data: DefPathData,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut PerParentDisambiguatorState,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
@@ -403,7 +406,14 @@ impl Definitions {
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                parent,
+                disambiguator.parent.expect("must be set"),
+                "provided parent and parent in disambiguator must be the same"
+            );
+
+            let next_disamb = disambiguator.next.entry(data).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -458,8 +468,6 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
             | OpaqueLifetime(name) => Some(name),
 
-            DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
-
             Impl
             | ForeignMod
             | CrateRoot
@@ -468,7 +476,6 @@ impl DefPathData {
             | Closure
             | Ctor
             | AnonConst
-            | LateAnonConst
             | OpaqueTy
             | AnonAssocTy(..)
             | SyntheticCoroutineBody
@@ -482,8 +489,6 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
             | OpaqueLifetime(name) => Some(name),
 
-            DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
-
             Impl
             | ForeignMod
             | CrateRoot
@@ -492,7 +497,6 @@ impl DefPathData {
             | Closure
             | Ctor
             | AnonConst
-            | LateAnonConst
             | OpaqueTy
             | SyntheticCoroutineBody
             | NestedStatic => None,
@@ -512,8 +516,7 @@ impl DefPathData {
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
             Closure => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
-            AnonConst | LateAnonConst => DefPathDataName::Anon { namespace: sym::constant },
-            DesugaredAnonymousLifetime => DefPathDataName::Named(kw::UnderscoreLifetime),
+            AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },

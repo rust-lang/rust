@@ -60,9 +60,9 @@ fn case_ignorable() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
-fn cased() {
-    test_boolean_property(test_data::CASED, unicode_data::cased::lookup);
-    test_boolean_property(test_data::CASED, char::is_cased);
+fn lt() {
+    test_boolean_property(test_data::LT, unicode_data::lt::lookup);
+    test_boolean_property(test_data::LT, char::is_titlecase);
 }
 
 #[test]

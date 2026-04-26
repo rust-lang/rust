@@ -284,6 +284,369 @@ mod fixable {
         let _ = 5i32 as i64 as i64;
         //~^ unnecessary_cast
     }
+
+    mod issue_16449_support {
+        use std::marker::PhantomData;
+        use std::ops::{Add, Mul};
+
+        pub trait PowLike<Rhs> {
+            type Output;
+            fn pow_like(self, rhs: Rhs) -> Self::Output;
+        }
+
+        impl PowLike<f64> for f64 {
+            type Output = f64;
+            fn pow_like(self, rhs: f64) -> f64 {
+                self.powf(rhs)
+            }
+        }
+
+        impl PowLike<i32> for f64 {
+            type Output = f64;
+            fn pow_like(self, _: i32) -> f64 {
+                self
+            }
+        }
+
+        impl PowLike<u32> for f64 {
+            type Output = f32;
+            fn pow_like(self, _: u32) -> f32 {
+                self as f32
+            }
+        }
+
+        pub struct Mat<T>(pub PhantomData<T>);
+
+        pub fn mat<T>(_: &[[T; 1]; 1]) -> Mat<T> {
+            Mat(PhantomData)
+        }
+
+        pub struct Out<T>(pub PhantomData<T>);
+
+        impl Out<f64> {
+            pub fn view(self) {}
+        }
+
+        impl Out<f32> {
+            pub fn view(self) {}
+        }
+
+        impl Mul<&Mat<f64>> for f64 {
+            type Output = Out<f64>;
+
+            fn mul(self, _: &Mat<f64>) -> Self::Output {
+                Out(PhantomData)
+            }
+        }
+
+        impl Mul<&Mat<f32>> for f32 {
+            type Output = Out<f32>;
+
+            fn mul(self, _: &Mat<f32>) -> Self::Output {
+                Out(PhantomData)
+            }
+        }
+
+        pub fn id<T>(x: T) -> T {
+            x
+        }
+
+        pub fn id_with<T, U>(x: T, _: U) -> T {
+            x
+        }
+
+        pub struct Wrap<T> {
+            pub inner: T,
+        }
+
+        pub fn wrap<T>(inner: T) -> Wrap<T> {
+            Wrap { inner }
+        }
+
+        pub struct MethodWrap;
+
+        impl MethodWrap {
+            pub fn id<T>(&self, x: T) -> T {
+                x
+            }
+
+            pub fn id_with<T, U>(&self, x: T, _: U) -> T {
+                x
+            }
+
+            pub fn wrap<T>(&self, inner: T) -> Wrap<T> {
+                Wrap { inner }
+            }
+        }
+
+        pub struct X;
+
+        impl Add<i32> for X {
+            type Output = f64;
+            fn add(self, _: i32) -> f64 {
+                1.0
+            }
+        }
+
+        impl Add<u32> for X {
+            type Output = f32;
+            fn add(self, _: u32) -> f32 {
+                1.0
+            }
+        }
+
+        pub struct Y;
+
+        impl Add<i32> for Y {
+            type Output = f64;
+            fn add(self, _: i32) -> f64 {
+                1.0
+            }
+        }
+
+        pub trait PowLikeSingleImpl<Rhs> {
+            type Output;
+            fn pow_like_single_impl(self, rhs: Rhs) -> Self::Output;
+        }
+
+        impl PowLikeSingleImpl<i32> for f64 {
+            type Output = f64;
+
+            fn pow_like_single_impl(self, _: i32) -> f64 {
+                self
+            }
+        }
+    }
+
+    // Issue #16449: removing the cast still affects inference / impl selection,
+    // so these must not lint.
+
+    // Minimal reproduction of the original issue.
+    fn issue_16449_minimal_original_reproduction() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (1.0_f64.pow_like(2) as f64 * &a).view();
+    }
+
+    // Wrappers that preserve the inference sensitive path.
+    fn issue_16449_struct_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        Wrap {
+            inner: 1.0_f64.pow_like(2) as f64 * &a,
+        }
+        .inner
+        .view();
+    }
+
+    fn issue_16449_free_identity_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        id(1.0_f64.pow_like(2) as f64 * &a).view();
+    }
+
+    fn issue_16449_method_identity_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+        s.id(1.0_f64.pow_like(2) as f64 * &a).view();
+    }
+
+    fn issue_16449_free_wrap_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        wrap(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+    }
+
+    fn issue_16449_method_wrap_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+        s.wrap(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+    }
+
+    fn issue_16449_block_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        ({ 1.0_f64.pow_like(2) as f64 * &a }).view();
+    }
+
+    #[allow(clippy::if_same_then_else)]
+    fn issue_16449_if_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (if true {
+            1.0_f64.pow_like(2) as f64 * &a
+        } else {
+            1.0_f64.pow_like(2) as f64 * &a
+        })
+        .view();
+    }
+
+    fn issue_16449_match_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (match 0 {
+            0 => 1.0_f64.pow_like(2) as f64 * &a,
+            _ => 1.0_f64.pow_like(2) as f64 * &a,
+        })
+        .view();
+    }
+
+    #[allow(clippy::let_and_return)]
+    fn issue_16449_let_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        ({
+            let x = 1.0_f64.pow_like(2) as f64 * &a;
+            x
+        })
+        .view();
+    }
+
+    #[allow(clippy::never_loop)]
+    fn issue_16449_loop_wrapper() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        (loop {
+            break 1.0_f64.pow_like(2) as f64 * &a;
+        })
+        .view();
+    }
+
+    #[allow(clippy::double_parens)]
+    fn issue_16449_operator_reproduction() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        ((X + 2) as f64 * &a).view();
+    }
+
+    // Placeholder generic arguments still leave inference active,
+    // so these must not lint.
+    fn issue_16449_placeholder_generics_do_not_lint() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+
+        // placeholder call
+        id::<_>(1.0_f64.pow_like(2) as f64 * &a).view();
+        // placeholder method call
+        s.id::<_>(1.0_f64.pow_like(2) as f64 * &a).view();
+        // mixed placeholder call
+        id_with::<_, u8>(1.0_f64.pow_like(2) as f64 * &a, 0).view();
+        // mixed placeholder method call
+        s.id_with::<_, u8>(1.0_f64.pow_like(2) as f64 * &a, 0).view();
+    }
+
+    // These look similar, but inference no longer depends on the cast, so they should lint.
+
+    fn issue_16449_explicit_generics_still_lint() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+
+        // explicit call
+        id::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).view();
+        //~^ unnecessary_cast
+
+        // explicit method call
+        s.id::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).view();
+        //~^ unnecessary_cast
+
+        // explicit free wrap
+        wrap::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+        //~^ unnecessary_cast
+
+        // explicit method wrap
+        s.wrap::<Out<f64>>(1.0_f64.pow_like(2) as f64 * &a).inner.view();
+        //~^ unnecessary_cast
+    }
+
+    // A nonprimitive method receiver alone should not suppress the lint.
+    fn issue_16449_nonprimitive_receiver_should_still_lint() {
+        use self::issue_16449_support::PowLikeSingleImpl;
+        struct Receiver;
+
+        impl Receiver {
+            fn take(&self, x: f64) -> f64 {
+                x
+            }
+        }
+
+        let receiver = Receiver;
+        let _ = receiver.take(1.0_f64.pow_like_single_impl(2) as f64).abs();
+        //~^ unnecessary_cast
+    }
+
+    fn issue_16449_wrapper_still_lints() {
+        use self::issue_16449_support::*;
+
+        let a = mat(&[[1.0]]);
+        let s = MethodWrap;
+
+        let _ = id(1.0_f64.powi(2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = wrap(1.0_f64.powi(2) as f64).inner.abs();
+        //~^ unnecessary_cast
+
+        let _ = s.id(1.0_f64.powi(2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = s.wrap(1.0_f64.powi(2) as f64).inner.abs();
+        //~^ unnecessary_cast
+
+        let _ = id(1.0_f64.powi(2) as f64 * &a);
+        //~^ unnecessary_cast
+
+        let _ = s.id(1.0_f64.powi(2) as f64 * &a);
+        //~^ unnecessary_cast
+    }
+
+    // To guarantee that good suggestions given before continue
+    // to be given even after the fix.
+    #[allow(clippy::double_parens)]
+    fn issue_16449_still_lints() {
+        use self::issue_16449_support::*;
+
+        const ONE: f64 = 1.0;
+        let one = 1.0_f64;
+
+        let _ = 1.0_f64.pow_like(0.5) as f64;
+        //~^ unnecessary_cast
+
+        let _ = 1.0_f64.pow_like(2) as f64;
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.powi(2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = ((Y + 2) as f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.pow_like_single_impl(2) as f64 + 1.0_f64).abs();
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.pow_like_single_impl(2) as f64 + ONE).abs();
+        //~^ unnecessary_cast
+
+        let _ = (1.0_f64.pow_like_single_impl(2) as f64 + one).abs();
+        //~^ unnecessary_cast
+    }
 }
 
 fn issue16475() -> *const u8 {

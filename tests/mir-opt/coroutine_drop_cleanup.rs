@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

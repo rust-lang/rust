@@ -232,14 +232,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(uint_bit_width)]
-        ///
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".bit_width(), 0);")]
         #[doc = concat!("assert_eq!(0b111_", stringify!($SelfT), ".bit_width(), 3);")]
         #[doc = concat!("assert_eq!(0b1110_", stringify!($SelfT), ".bit_width(), 4);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.bit_width(), ", stringify!($BITS), ");")]
         /// ```
-        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -253,14 +252,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(isolate_most_least_significant_one)]
-        ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
         /// assert_eq!(n.isolate_highest_one(), 0b_01000000);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_highest_one(), 0);")]
         /// ```
-        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -274,14 +272,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(isolate_most_least_significant_one)]
-        ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
         /// assert_eq!(n.isolate_lowest_one(), 0b_00000100);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_lowest_one(), 0);")]
         /// ```
-        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -295,14 +292,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".highest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".highest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".highest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".highest_one(), Some(4));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -319,14 +315,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".lowest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".lowest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -356,6 +351,98 @@ macro_rules! uint_impl {
         #[inline(always)]
         pub const fn cast_signed(self) -> $SignedT {
             self as $SignedT
+        }
+
+        /// Saturating conversion of `self` to a signed integer of the same size.
+        ///
+        /// The signed integer's maximum value is returned if `self` is larger
+        /// than the maximum positive value representable by the signed integer.
+        ///
+        /// For other kinds of signed integer casts, see
+        /// [`cast_signed`](Self::cast_signed),
+        /// [`checked_cast_signed`](Self::checked_cast_signed),
+        /// or [`strict_cast_signed`](Self::strict_cast_signed).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.saturating_cast_signed(), ", stringify!($SignedT), "::MAX);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".saturating_cast_signed(), 64", stringify!($SignedT), ");")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn saturating_cast_signed(self) -> $SignedT {
+            // Clamp to the signed integer max size, which is ActualT::MAX >> 1.
+            if self <= <$SignedT>::MAX.cast_unsigned() {
+                self.cast_signed()
+            } else {
+                <$SignedT>::MAX
+            }
+        }
+
+        /// Checked conversion of `self` to a signed integer of the same size,
+        /// returning `None` if `self` is larger than the signed integer's
+        /// maximum value.
+        ///
+        /// For other kinds of signed integer casts, see
+        /// [`cast_signed`](Self::cast_signed),
+        /// [`saturating_cast_signed`](Self::saturating_cast_signed),
+        /// or [`strict_cast_signed`](Self::strict_cast_signed).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.checked_cast_signed(), None);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_cast_signed(), Some(64", stringify!($SignedT), "));")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn checked_cast_signed(self) -> Option<$SignedT> {
+            if self <= <$SignedT>::MAX.cast_unsigned() {
+                Some(self.cast_signed())
+            } else {
+                None
+            }
+        }
+
+        /// Strict conversion of `self` to a signed integer of the same size,
+        /// which panics if `self` is larger than the signed integer's maximum
+        /// value.
+        ///
+        /// For other kinds of signed integer casts, see
+        /// [`cast_signed`](Self::cast_signed),
+        /// [`checked_cast_signed`](Self::checked_cast_signed),
+        /// or [`saturating_cast_signed`](Self::saturating_cast_signed).
+        ///
+        /// # Examples
+        ///
+        /// ```should_panic
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_cast_signed();")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn strict_cast_signed(self) -> $SignedT {
+            match self.checked_cast_signed() {
+                Some(n) => n,
+                None => imp::overflow_panic::cast_integer(),
+            }
         }
 
         /// Shifts the bits to the left by a specified amount, `n`,
@@ -871,7 +958,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`,")]
+        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX`,")]
         /// i.e. when [`checked_add`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
@@ -1050,7 +1137,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when
-        #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`,")]
+        #[doc = concat!("`self - rhs < ", stringify!($SelfT), "::MIN`,")]
         /// i.e. when [`checked_sub`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
@@ -1259,7 +1346,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`,")]
+        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX`,")]
         /// i.e. when [`checked_mul`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
@@ -3595,7 +3682,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            let result = imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+            let result = imp::int_sqrt::$ActualT(self as $ActualT) as Self;
 
             // Inform the optimizer what the range of outputs is. If testing
             // `core` crashes with no panic message and a `num::int_sqrt::u*`
@@ -3606,10 +3693,29 @@ macro_rules! uint_impl {
             // function, which means that increasing the input will never
             // cause the output to decrease. Thus, since the input for unsigned
             // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
-            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
+            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]` and bounding the
+            // input by `[1, <$ActualT>::MAX]` bounds sqrt(n) by
+            // `[sqrt(1), sqrt(<$ActualT>::MAX)]`.
             unsafe {
                 const MAX_RESULT: $SelfT = imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
-                crate::hint::assert_unchecked(result <= MAX_RESULT);
+                crate::hint::assert_unchecked(result <= MAX_RESULT)
+            }
+
+            if self >= 1 {
+                // SAFETY: The above statements about monotonicity also apply here.
+                // Since the input in this branch is bounded by `[1, <$ActualT>::MAX]`,
+                // sqrt(n) is bounded by `[sqrt(1), sqrt(<$ActualT>::MAX)]`, and
+                // `sqrt(1) == 1`.
+                unsafe { crate::hint::assert_unchecked(result >= 1) }
+            }
+
+            // SAFETY: the isqrt implementation returns the square root and rounds down,
+            // meaning `result * result <= self`. This implies `result <= self`.
+            // The compiler needs both to optimize for both.
+            // `result * result <= self` implies the multiplication will not overflow.
+            unsafe {
+                crate::hint::assert_unchecked(result.unchecked_mul(result) <= self);
+                crate::hint::assert_unchecked(result <= self);
             }
 
             result
@@ -4120,7 +4226,7 @@ macro_rules! uint_impl {
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
         #[inline]
         pub const fn truncate<Target>(self) -> Target
             where Self: [const] traits::TruncateTarget<Target>
@@ -4140,7 +4246,7 @@ macro_rules! uint_impl {
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
         #[inline]
         pub const fn saturating_truncate<Target>(self) -> Target
             where Self: [const] traits::TruncateTarget<Target>
@@ -4160,7 +4266,7 @@ macro_rules! uint_impl {
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
         #[inline]
         pub const fn checked_truncate<Target>(self) -> Option<Target>
             where Self: [const] traits::TruncateTarget<Target>
@@ -4178,7 +4284,7 @@ macro_rules! uint_impl {
         /// ```
         #[must_use = "this returns the extended value and does not modify the original"]
         #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_truncate_extend", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
         #[inline]
         pub const fn extend<Target>(self) -> Target
             where Self: [const] traits::ExtendTarget<Target>

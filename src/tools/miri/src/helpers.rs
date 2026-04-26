@@ -6,14 +6,13 @@ use std::{cmp, iter};
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
-use rustc_hir::Safety;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::{self, FnSigKind, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -408,9 +407,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sig = this.tcx.mk_fn_sig(
             args.iter().map(|a| a.layout.ty),
             dest.layout.ty,
-            /*c_variadic*/ false,
-            Safety::Safe,
-            caller_abi,
+            FnSigKind::default().set_abi(caller_abi).set_safe(true),
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 

@@ -240,8 +240,16 @@ fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<Syntax
 }
 
 fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
-    let path_without_in_token = vis.in_token().is_none()
-        && vis.path().and_then(|p| p.as_single_name_ref()).and_then(|n| n.ident_token()).is_some();
+    let path_without_in_token = if let Some(inner) = vis.visibility_inner() {
+        inner.in_token().is_none()
+            && inner
+                .path()
+                .and_then(|p| p.as_single_name_ref())
+                .and_then(|n| n.ident_token())
+                .is_some()
+    } else {
+        false
+    };
     if path_without_in_token {
         errors.push(SyntaxError::new("incorrect visibility restriction", vis.syntax.text_range()));
     }

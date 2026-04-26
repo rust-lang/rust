@@ -1,3 +1,5 @@
+//@ reference: const-eval.const-expr.path-static
+//@ reference: items.extern.static.safety
 extern "C" {
     static error_message_count: u32;
 }

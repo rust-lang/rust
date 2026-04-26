@@ -36,12 +36,19 @@ fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     }
 }
 
-fn check_compare<'a>(cx: &LateContext<'a>, bit_op: &Expr<'a>, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
+fn check_compare<'a>(cx: &LateContext<'a>, bit_op: &Expr<'a>, cmp_op: BinOpKind, mut cmp_value: u128, span: Span) {
     if let ExprKind::Binary(op, left, right) = &bit_op.kind {
         if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr || is_from_proc_macro(cx, bit_op) {
             return;
         }
         if let Some(mask) = fetch_int_literal(cx, right).or_else(|| fetch_int_literal(cx, left)) {
+            let ty = cx.typeck_results().expr_ty(bit_op);
+            if !ty.is_ptr_sized_integral()
+                && let bits = ty.primitive_size(cx.tcx)
+            {
+                // Strip high bits that don't fit into the result type as they won't be used in the comparison
+                cmp_value &= bits.unsigned_int_max();
+            }
             check_bit_mask(cx, op.node, cmp_op, mask, cmp_value, span);
         }
     }

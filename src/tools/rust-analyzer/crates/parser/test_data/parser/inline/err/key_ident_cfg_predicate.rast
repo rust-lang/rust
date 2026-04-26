@@ -1,0 +1,19 @@
+SOURCE_FILE
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    CFG_META
+      CFG_KW "cfg"
+      L_PAREN "("
+      CFG_ATOM
+        IDENT "key"
+        WHITESPACE " "
+        EQ "="
+        WHITESPACE " "
+        ERROR
+          IDENT "value"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+error 13: expected a string literal

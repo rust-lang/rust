@@ -603,3 +603,21 @@ pub(crate) struct TrailingMacro {
     pub is_trailing: bool,
     pub name: Ident,
 }
+
+#[derive(Diagnostic)]
+#[diag("unused attribute `{$attr_name}`")]
+pub(crate) struct UnusedBuiltinAttribute {
+    #[note(
+        "the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`"
+    )]
+    pub invoc_span: Span,
+    pub attr_name: Symbol,
+    pub macro_name: String,
+    #[suggestion(
+        "remove the attribute",
+        code = "",
+        applicability = "machine-applicable",
+        style = "tool-only"
+    )]
+    pub attr_span: Span,
+}

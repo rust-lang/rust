@@ -12,8 +12,8 @@ use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, AliasTy, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
-    elaborate,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -87,10 +87,26 @@ where
             let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
+
+            let trait_ref = assumption.kind().map_bound(|clause| match clause {
+                ty::ClauseKind::Trait(pred) => pred.trait_ref,
+                ty::ClauseKind::Projection(proj) => proj.projection_term.trait_ref(cx),
+
+                ty::ClauseKind::RegionOutlives(..)
+                | ty::ClauseKind::TypeOutlives(..)
+                | ty::ClauseKind::ConstArgHasType(..)
+                | ty::ClauseKind::WellFormed(..)
+                | ty::ClauseKind::ConstEvaluatable(..)
+                | ty::ClauseKind::HostEffect(..)
+                | ty::ClauseKind::UnstableFeature(..) => {
+                    unreachable!("expected trait or projection predicate as an assumption")
+                }
+            });
+
             match structural_traits::predicates_for_object_candidate(
                 ecx,
                 goal.param_env,
-                goal.predicate.trait_ref(cx),
+                trait_ref,
                 bounds,
             ) {
                 Ok(requirements) => {
@@ -426,7 +442,7 @@ where
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);
 
-        if let TypingMode::Coherence = self.typing_mode()
+        if self.typing_mode().is_coherence()
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
         {
             candidates.push(candidate);
@@ -450,15 +466,20 @@ where
                 // as we may want to weaken inference guidance in the future and don't want
                 // to worry about causing major performance regressions when doing so.
                 // See trait-system-refactor-initiative#226 for some ideas here.
-                if TypingMode::Coherence == self.typing_mode()
-                    || !candidates.iter().any(|c| {
+                let assemble_impls = match self.typing_mode() {
+                    TypingMode::Coherence => true,
+                    TypingMode::Analysis { .. }
+                    | TypingMode::Borrowck { .. }
+                    | TypingMode::PostBorrowckAnalysis { .. }
+                    | TypingMode::PostAnalysis => !candidates.iter().any(|c| {
                         matches!(
                             c.source,
                             CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
                                 | CandidateSource::AliasBound(_)
                         ) && has_no_inference_or_external_constraints(c.result)
-                    })
-                {
+                    }),
+                };
+                if assemble_impls {
                     self.assemble_impl_candidates(goal, &mut candidates);
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
@@ -750,6 +771,7 @@ where
                     .cx()
                     .item_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
+                    .map(Unnormalized::skip_norm_wip)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
@@ -765,6 +787,7 @@ where
                     .cx()
                     .item_non_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
+                    .map(Unnormalized::skip_norm_wip)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
@@ -1045,6 +1068,7 @@ where
                 .cx()
                 .item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated(self.cx(), alias_ty.args)
+                .map(Unnormalized::skip_norm_wip)
             {
                 let assumption =
                     item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });

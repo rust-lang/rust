@@ -307,6 +307,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.flock(fd, op)?;
                 this.write_scalar(result, dest)?;
             }
+            "ioctl" => {
+                let ([fd, op], varargs) =
+                    this.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.ioctl(fd, op, varargs)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // File and file system access
             "open" => {
@@ -658,8 +664,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     abi,
                     args,
                 )?;
-                let result = this.getpeername(socket, address, address_len)?;
-                this.write_scalar(result, dest)?;
+                this.getpeername(socket, address, address_len, dest)?;
             }
 
             // Time

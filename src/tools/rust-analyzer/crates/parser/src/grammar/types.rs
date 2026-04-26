@@ -59,6 +59,9 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         }
         _ if paths::is_path_start(p) => path_or_macro_type(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
+        T!['{'] => {
+            p.err_recover("expected type, found `{`", TYPE_RECOVERY_SET);
+        }
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
         }

@@ -3,7 +3,7 @@
 
 use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind};
+use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{Env, HasTargetSpec, Os};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
@@ -51,7 +51,7 @@ where
 
         if arg.layout.is_single_vector_element(cx, size) {
             // pass non-transparent wrappers around a vector as `PassMode::Cast`
-            arg.cast_to(Reg { kind: RegKind::Vector, size });
+            arg.cast_to(Reg::opaque_vector(size));
             return;
         }
     }

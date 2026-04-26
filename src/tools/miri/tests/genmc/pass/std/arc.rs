@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@revisions: check_count try_upgrade
 
 // Check that various operations on `std::sync::Arc` are handled properly in GenMC mode.

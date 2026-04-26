@@ -3786,10 +3786,10 @@ pub struct TraitAlias {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Trait {
+    pub impl_restriction: ImplRestriction,
     pub constness: Const,
     pub safety: Safety,
     pub is_auto: IsAuto,
-    pub impl_restriction: ImplRestriction,
     pub ident: Ident,
     pub generics: Generics,
     #[visitable(extra = BoundKind::SuperTraits)]
@@ -3902,11 +3902,16 @@ pub struct Delegation {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum DelegationSuffixes {
+    List(ThinVec<(Ident, Option<Ident>)>),
+    Glob(Span),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct DelegationMac {
     pub qself: Option<Box<QSelf>>,
     pub prefix: Path,
-    // Some for list delegation, and None for glob delegation.
-    pub suffixes: Option<ThinVec<(Ident, Option<Ident>)>>,
+    pub suffixes: DelegationSuffixes,
     pub body: Option<Box<Block>>,
 }
 
@@ -3918,6 +3923,13 @@ pub struct StaticItem {
     pub mutability: Mutability,
     pub expr: Option<Box<Expr>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
+
+    /// This static is an implementation of an externally implementable item (EII).
+    /// This means, there was an EII declared somewhere and this static is the
+    /// implementation that should be used for the declaration.
+    ///
+    /// For statics, there may be at most one `EiiImpl`, but this is a `ThinVec` to make usages of this field nicer.
+    pub eii_impls: ThinVec<EiiImpl>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

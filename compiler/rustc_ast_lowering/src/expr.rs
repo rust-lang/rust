@@ -8,7 +8,6 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::DefPathData;
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
@@ -29,7 +28,7 @@ use super::{
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, TryBlockScope};
 
-struct WillCreateDefIdsVisitor {}
+pub(super) struct WillCreateDefIdsVisitor;
 
 impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
     type Result = ControlFlow<Span>;
@@ -52,7 +51,7 @@ impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
     }
 }
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[Box<Expr>]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
@@ -472,25 +471,19 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(
-                    node_id,
-                    None,
-                    DefKind::AnonConst,
-                    DefPathData::LateAnonConst,
-                    f.span,
-                );
-                let mut visitor = WillCreateDefIdsVisitor {};
-                let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
-                    Box::new(Expr {
-                        id: self.next_node_id(),
-                        kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
-                        span: f.span,
-                        attrs: [].into(),
-                        tokens: None,
-                    })
-                } else {
-                    arg
-                };
+                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                let const_value =
+                    if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
+                        Box::new(Expr {
+                            id: self.next_node_id(),
+                            kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
+                            span: f.span,
+                            attrs: [].into(),
+                            tokens: None,
+                        })
+                    } else {
+                        arg
+                    };
 
                 let anon_const = AnonConst {
                     id: node_id,
@@ -762,9 +755,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs,
             output,
-            c_variadic: false,
-            implicit_self: hir::ImplicitSelfKind::None,
-            lifetime_elision_allowed: false,
+            fn_decl_kind: hir::FnDeclFlags::default(),
         });
 
         let body = self.lower_body(move |this| {
@@ -1244,10 +1235,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
-        fn is_ordinary<'hir>(
-            lower_ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
-            lhs: &Expr,
-        ) -> bool {
+        fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
             match &lhs.kind {
                 ExprKind::Array(..)
                 | ExprKind::Struct(..)
@@ -1302,7 +1290,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
-            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+            if let Some(partial_res) = self.get_partial_res(expr.id) {
                 if let Some(res) = partial_res.full_res()
                     && !res.expected_in_tuple_struct_pat()
                 {
@@ -1324,7 +1312,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
-            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+            if let Some(partial_res) = self.get_partial_res(expr.id) {
                 if let Some(res) = partial_res.full_res()
                     && !res.expected_in_unit_struct_pat()
                 {

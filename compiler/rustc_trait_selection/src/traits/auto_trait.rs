@@ -453,7 +453,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut vid_map = FxIndexMap::<RegionTarget<'cx>, RegionDeps<'cx>>::default();
         let mut finished_map = FxIndexMap::default();
 
-        for (c, _) in &regions.constraints {
+        for c in regions.constraints.iter().flat_map(|(c, _)| c.iter_outlives()) {
             match c.kind {
                 ConstraintKind::VarSubVar => {
                     let sub_vid = c.sub.as_var();
@@ -488,6 +488,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     let deps2 = vid_map.entry(RegionTarget::Region(c.sup)).or_default();
                     deps2.smaller.insert(RegionTarget::Region(c.sub));
+                }
+
+                ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                    unreachable!()
                 }
             }
         }

@@ -680,9 +680,9 @@ where
         expect![[r#"
             43..47 'self': &'? Self
             168..172 'self': &'? F
-            205..227 '{     ...     }': <F as AsyncFnMut<()>>::CallRefFuture<'<erased>>
+            205..227 '{     ...     }': <F as AsyncFnMut<()>>::CallRefFuture<'?>
             215..219 'self': &'? F
-            215..221 'self()': <F as AsyncFnMut<()>>::CallRefFuture<'<erased>>
+            215..221 'self()': <F as AsyncFnMut<()>>::CallRefFuture<'?>
         "#]],
     );
 }

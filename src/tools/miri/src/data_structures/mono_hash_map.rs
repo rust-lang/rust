@@ -96,10 +96,7 @@ impl<K: Hash + Eq, V> AllocMap<K, V> for MonoHashMap<K, V> {
 
     /// Read-only lookup (avoid read-acquiring the RefCell).
     fn get(&self, k: K) -> Option<&V> {
-        let val: *const V = match self.0.borrow().get(&k) {
-            Some(v) => &**v,
-            None => return None,
-        };
+        let val: *const V = &**self.0.borrow().get(&k)?;
         // This is safe because `val` points into a `Box`, that we know will not move and
         // will also not be dropped as long as the shared reference `self` is live.
         unsafe { Some(&*val) }

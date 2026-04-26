@@ -8,8 +8,9 @@ use hir_def::{
     HasModule, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
-        ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
-        Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread, generics::GenericParams,
+        ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ClosureKind, ExprId, ExprOrPatId,
+        LabelId, Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        generics::GenericParams,
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -17,10 +18,11 @@ use hir_def::{
     signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
 };
 use hir_expand::name::Name;
+use itertools::{EitherOrBoth, Itertools};
 use la_arena::ArenaMap;
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
+use rustc_type_ir::inherent::{AdtDef, Const as _, GenericArgs as _, IntoKind, Ty as _};
 use span::{Edition, FileId};
 use syntax::TextRange;
 use triomphe::Arc;
@@ -32,8 +34,11 @@ use crate::{
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
     generics::generics,
     infer::{
-        CaptureKind, CapturedItem, TypeMismatch, cast::CastTy,
-        closure::analysis::HirPlaceProjection,
+        CaptureSourceStack, CapturedPlace, TypeMismatch, UpvarCapture,
+        cast::CastTy,
+        closure::analysis::expr_use_visitor::{
+            Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+        },
     },
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
@@ -51,7 +56,6 @@ use crate::{
         abi::Safety,
         infer::{DbInternerInferExt, InferCtxt},
     },
-    traits::FnTrait,
 };
 
 use super::OperandKind;
@@ -303,6 +307,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             locals,
             start_block,
             binding_locals,
+            upvar_locals: FxHashMap::default(),
             param_locals: vec![],
             owner,
             closures: vec![],
@@ -439,7 +444,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         else {
             return Ok(None);
         };
-        let bk = BorrowKind::from_rustc(m);
+        let bk = BorrowKind::from_rustc_mutability(m);
         self.push_assignment(current, place, Rvalue::Ref(bk, p), expr_id.into());
         Ok(Some(current))
     }
@@ -956,7 +961,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Await { .. } => not_supported!("await"),
             Expr::Yeet { .. } => not_supported!("yeet"),
-            Expr::Async { .. } => not_supported!("async block"),
             &Expr::Const(_) => {
                 // let subst = self.placeholder_subst();
                 // self.lower_const(
@@ -996,7 +1000,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let Some((p, current)) = self.lower_expr_as_place(current, *expr, true)? else {
                     return Ok(None);
                 };
-                let bk = BorrowKind::from_hir(*mutability);
+                let bk = BorrowKind::from_hir_mutability(*mutability);
                 self.push_assignment(current, place, Rvalue::Ref(bk, p), expr_id.into());
                 Ok(Some(current))
             }
@@ -1245,55 +1249,64 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 );
                 Ok(Some(current))
             }
-            Expr::Closure { .. } => {
+            Expr::Closure { closure_kind: ClosureKind::Closure, .. } => {
                 let ty = self.expr_ty_without_adjust(expr_id);
                 let TyKind::Closure(id, _) = ty.kind() else {
                     not_supported!("closure with non closure type");
                 };
                 self.result.closures.push(id.0);
-                let (captures, _) = self.infer.closure_info(id.0);
-                let mut operands = vec![];
-                for capture in captures.iter() {
-                    let p = Place {
-                        local: self.binding_local(capture.place.local)?,
-                        projection: self.result.projection_store.intern(
-                            capture
-                                .place
-                                .projections
-                                .clone()
-                                .into_iter()
-                                .map(|it| match it {
-                                    HirPlaceProjection::Deref => ProjectionElem::Deref,
-                                    HirPlaceProjection::Field(field_id) => {
-                                        ProjectionElem::Field(Either::Left(field_id))
-                                    }
-                                    HirPlaceProjection::TupleField(idx) => {
-                                        ProjectionElem::Field(Either::Right(TupleFieldId {
-                                            tuple: TupleId(!0), // Dummy as it's unused
-                                            index: idx,
-                                        }))
-                                    }
-                                })
-                                .collect(),
-                        ),
+                let closure_data = &self.infer.closures_data[&id.0.loc(self.db).1];
+
+                let span = |sources: &[CaptureSourceStack]| match sources
+                    .first()
+                    .map(|it| it.final_source())
+                {
+                    Some(ExprOrPatId::ExprId(it)) => it.into(),
+                    Some(ExprOrPatId::PatId(it)) => it.into(),
+                    None => MirSpan::Unknown,
+                };
+                let convert_place = |this: &mut Self, place: &HirPlace| {
+                    let (HirPlaceBase::Local(local) | HirPlaceBase::Upvar { var_id: local, .. }) =
+                        place.base
+                    else {
+                        not_supported!("non-local capture");
                     };
-                    match &capture.kind {
-                        CaptureKind::ByRef(bk) => {
-                            let tmp_ty = capture.ty.get().instantiate_identity();
+                    Ok(Place {
+                        local: this.binding_local(local)?,
+                        projection: this
+                            .result
+                            .projection_store
+                            .intern(convert_closure_capture_projections(self.db, place).collect()),
+                    })
+                };
+
+                for (place, _, sources) in &closure_data.fake_reads {
+                    let p = convert_place(self, place)?;
+                    self.push_fake_read(current, p, span(sources));
+                }
+
+                let captures = closure_data.min_captures.values().flatten();
+                let mut operands = vec![];
+                for capture in captures {
+                    let p = convert_place(self, &capture.place)?;
+                    match capture.info.capture_kind {
+                        UpvarCapture::ByRef(bk) => {
+                            let tmp_ty = capture.captured_ty(self.db);
                             // FIXME: Handle more than one span.
-                            let capture_spans = capture.spans();
-                            let tmp: Place = self.temp(tmp_ty, current, capture_spans[0])?.into();
+                            let capture_span = span(&capture.info.sources);
+                            let tmp: Place = self.temp(tmp_ty, current, capture_span)?.into();
                             self.push_assignment(
                                 current,
                                 tmp,
-                                Rvalue::Ref(*bk, p),
-                                capture_spans[0],
+                                Rvalue::Ref(BorrowKind::from_hir(bk), p),
+                                capture_span,
                             );
                             operands.push(Operand { kind: OperandKind::Move(tmp), span: None });
                         }
-                        CaptureKind::ByValue => {
+                        UpvarCapture::ByValue => {
                             operands.push(Operand { kind: OperandKind::Move(p), span: None })
                         }
+                        UpvarCapture::ByUse => not_supported!("capture by use"),
                     }
                 }
                 self.push_assignment(
@@ -1304,6 +1317,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 );
                 Ok(Some(current))
             }
+            Expr::Closure { closure_kind, .. } => not_supported!("{closure_kind:?} closure"),
             Expr::Tuple { exprs } => {
                 let Some(values) = exprs
                     .iter()
@@ -1492,8 +1506,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             hir_def::hir::Literal::Uint(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
             hir_def::hir::Literal::Float(f, _) => match size()? {
                 16 => Box::new(f.to_f128().to_bits().to_le_bytes()),
-                8 => Box::new(f.to_f64().to_le_bytes()),
-                4 => Box::new(f.to_f32().to_le_bytes()),
+                8 => Box::new(f.to_f64().to_bits().to_le_bytes()),
+                4 => Box::new(f.to_f32().to_bits().to_le_bytes()),
                 2 => Box::new(u16::try_from(f.to_f16().to_bits()).unwrap().to_le_bytes()),
                 _ => {
                     return Err(MirLowerError::TypeError(
@@ -1527,31 +1541,14 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         subst: GenericArgs<'db>,
         const_id: GeneralConstId,
     ) -> Result<'db, Operand> {
-        let konst = if !subst.is_empty() {
-            // We can't evaluate constant with substitution now, as generics are not monomorphized in lowering.
-            Const::new_unevaluated(
-                self.interner(),
-                UnevaluatedConst { def: const_id.into(), args: subst },
-            )
-        } else {
-            match const_id {
-                id @ GeneralConstId::ConstId(const_id) => {
-                    self.db.const_eval(const_id, subst, None).map_err(|e| {
-                        let name = id.name(self.db);
-                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
-                    })?
-                }
-                GeneralConstId::StaticId(static_id) => {
-                    self.db.const_eval_static(static_id).map_err(|e| {
-                        let name = const_id.name(self.db);
-                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
-                    })?
-                }
-                GeneralConstId::AnonConstId(_) => {
-                    return Err(MirLowerError::IncompleteExpr);
-                }
-            }
-        };
+        if matches!(const_id, GeneralConstId::AnonConstId(_)) {
+            // FIXME:
+            not_supported!("anon consts are not supported yet in const eval");
+        }
+        let konst = Const::new_unevaluated(
+            self.interner(),
+            UnevaluatedConst { def: const_id.into(), args: subst },
+        );
         let ty = self
             .db
             .value_ty(match const_id {
@@ -2084,6 +2081,44 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     }
 }
 
+fn convert_closure_capture_projections(
+    db: &dyn HirDatabase,
+    place: &HirPlace,
+) -> impl Iterator<Item = PlaceElem> {
+    place.projections.iter().enumerate().map(|(i, proj)| match proj.kind {
+        HirProjectionKind::Deref => ProjectionElem::Deref,
+        HirProjectionKind::Field { field_idx, variant_idx } => {
+            let ty = place.ty_before_projection(i);
+            match ty.kind() {
+                TyKind::Tuple(_) => {
+                    ProjectionElem::Field(Either::Right(TupleFieldId {
+                        tuple: TupleId(!0), // Dummy as it's unused
+                        index: field_idx,
+                    }))
+                }
+                TyKind::Adt(adt_def, _) => {
+                    let local_field_id = LocalFieldId::from_raw(RawIdx::from_u32(field_idx));
+                    let field = match adt_def.def_id().0 {
+                        AdtId::StructId(id) => {
+                            FieldId { parent: id.into(), local_id: local_field_id }
+                        }
+                        AdtId::UnionId(id) => {
+                            FieldId { parent: id.into(), local_id: local_field_id }
+                        }
+                        AdtId::EnumId(id) => {
+                            let variant = id.enum_variants(db).variants[variant_idx as usize].0;
+                            FieldId { parent: variant.into(), local_id: local_field_id }
+                        }
+                    };
+                    ProjectionElem::Field(Either::Left(field))
+                }
+                _ => panic!("unexpected type"),
+            }
+        }
+        _ => panic!("unexpected projection"),
+    })
+}
+
 fn cast_kind<'db>(
     db: &'db dyn HirDatabase,
     source_ty: Ty<'db>,
@@ -2110,7 +2145,7 @@ pub fn mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
     closure: InternedClosureId,
 ) -> Result<'db, Arc<MirBody>> {
-    let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
+    let InternedClosure(owner, expr) = closure.loc(db);
     let body_owner =
         owner.as_def_with_body().expect("MIR lowering should only happen for body-owned closures");
     let body = Body::of(db, body_owner);
@@ -2121,20 +2156,22 @@ pub fn mir_body_for_closure_query<'db>(
     let crate::next_solver::TyKind::Closure(_, substs) = infer.expr_ty(expr).kind() else {
         implementation_error!("closure expression is not closure");
     };
-    let (captures, kind) = infer.closure_info(closure);
+    let kind = substs.as_closure().kind();
+    let captures = infer.closures_data[&expr].min_captures.values().flatten();
     let mut ctx = MirLowerCtx::new(db, body_owner, &body.store, infer);
+
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer.expr_ty(*root).store() });
     let closure_local = ctx.result.locals.alloc(Local {
         ty: match kind {
-            FnTrait::FnOnce | FnTrait::AsyncFnOnce => infer.expr_ty(expr),
-            FnTrait::FnMut | FnTrait::AsyncFnMut => Ty::new_ref(
+            rustc_type_ir::ClosureKind::FnOnce => infer.expr_ty(expr),
+            rustc_type_ir::ClosureKind::FnMut => Ty::new_ref(
                 ctx.interner(),
                 Region::error(ctx.interner()),
                 infer.expr_ty(expr),
                 Mutability::Mut,
             ),
-            FnTrait::Fn | FnTrait::AsyncFn => Ty::new_ref(
+            rustc_type_ir::ClosureKind::Fn => Ty::new_ref(
                 ctx.interner(),
                 Region::error(ctx.interner()),
                 infer.expr_ty(expr),
@@ -2144,6 +2181,7 @@ pub fn mir_body_for_closure_query<'db>(
         .store(),
     });
     ctx.result.param_locals.push(closure_local);
+
     let sig = ctx.interner().signature_unclosure(substs.as_closure().sig(), Safety::Safe);
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, body_owner, expr);
     let current = ctx.lower_params_and_bindings(
@@ -2151,60 +2189,101 @@ pub fn mir_body_for_closure_query<'db>(
         None,
         |_| true,
     )?;
+
+    // Push local for every upvar in the closure. rustc doesn't do that, but we have to so we have locals
+    // to associate with upvars for borrowck.
+    let is_by_ref_closure = match kind {
+        rustc_type_ir::ClosureKind::Fn | rustc_type_ir::ClosureKind::FnMut => true,
+        rustc_type_ir::ClosureKind::FnOnce => false,
+    };
+    let mut upvar_map: FxHashMap<LocalId, Vec<(&CapturedPlace, LocalId)>> = FxHashMap::default();
+    for (capture_idx, capture) in captures.enumerate() {
+        let capture_local = ctx.result.locals.alloc(Local { ty: capture.captured_ty(db).store() });
+        ctx.push_storage_live_for_local(capture_local, current, MirSpan::Unknown)?;
+        let mut projections = Vec::with_capacity(usize::from(is_by_ref_closure) + 1);
+        if is_by_ref_closure {
+            projections.push(ProjectionElem::Deref);
+        }
+        projections.push(ProjectionElem::ClosureField(capture_idx));
+        let capture_param_place = Place {
+            local: closure_local,
+            projection: ctx.result.projection_store.intern(projections.into_boxed_slice()),
+        };
+        let capture_local_place = Place {
+            local: capture_local,
+            projection: ctx.result.projection_store.intern(Box::new([])),
+        };
+        let capture_local_rvalue =
+            Rvalue::Use(Operand { kind: OperandKind::Move(capture_param_place), span: None });
+        ctx.push_assignment(current, capture_local_place, capture_local_rvalue, MirSpan::Unknown);
+
+        let local = capture.captured_local();
+        let local = ctx.binding_local(local)?;
+        upvar_map.entry(local).or_default().push((capture, capture_local));
+
+        ctx.result
+            .upvar_locals
+            .entry(capture.captured_local())
+            .or_default()
+            .push((capture_local, capture.place.clone()));
+    }
+
     ctx.resolver.reset_to_guard(resolver_guard);
     if let Some(current) = ctx.lower_expr_to_place(*root, return_slot().into(), current)? {
         let current = ctx.pop_drop_scope_assert_finished(current, root.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, (*root).into());
     }
-    let mut upvar_map: FxHashMap<LocalId, Vec<(&CapturedItem, usize)>> = FxHashMap::default();
-    for (i, capture) in captures.iter().enumerate() {
-        let local = ctx.binding_local(capture.place.local)?;
-        upvar_map.entry(local).or_default().push((capture, i));
-    }
+
     let mut err = None;
-    let closure_local = ctx.result.locals.iter().nth(1).unwrap().0;
-    let closure_projection = match kind {
-        FnTrait::FnOnce | FnTrait::AsyncFnOnce => vec![],
-        FnTrait::FnMut | FnTrait::Fn | FnTrait::AsyncFnMut | FnTrait::AsyncFn => {
-            vec![ProjectionElem::Deref]
-        }
-    };
-    ctx.result.walk_places(|p, store| {
-        if let Some(it) = upvar_map.get(&p.local) {
-            let r = it.iter().find(|it| {
-                if p.projection.lookup(store).len() < it.0.place.projections.len() {
-                    return false;
-                }
-                for (it, y) in p.projection.lookup(store).iter().zip(it.0.place.projections.iter())
-                {
-                    match (it, y) {
-                        (ProjectionElem::Deref, HirPlaceProjection::Deref) => (),
-                        (ProjectionElem::Field(Either::Left(it)), HirPlaceProjection::Field(y))
-                            if it == y => {}
-                        (
-                            ProjectionElem::Field(Either::Right(it)),
-                            HirPlaceProjection::TupleField(y),
-                        ) if it.index == *y => (),
-                        _ => return false,
+    ctx.result.walk_places(|mir_place, store| {
+        let mir_projections = mir_place.projection.lookup(store);
+        if let Some(hir_places) = upvar_map.get(&mir_place.local) {
+            let projections = hir_places.iter().find_map(|hir_place| {
+                let iter = mir_projections
+                    .iter()
+                    .cloned()
+                    .zip_longest(convert_closure_capture_projections(db, &hir_place.0.place))
+                    .enumerate();
+
+                for (idx, item) in iter {
+                    match item {
+                        EitherOrBoth::Both(mir, hir) => {
+                            if mir != hir {
+                                // Not this place.
+                                return None;
+                            }
+                        }
+                        EitherOrBoth::Right(_) => {
+                            // FIXME: This can happen in fake reads. I believe this is a bug. So we change the fake read's meaning.
+                            // never!(
+                            //     "mir upvar place shorter than hir upvar place; this should not happen, \
+                            //         capture analysis should have picked the shorter place"
+                            // );
+                            // return None;
+                            return Some((mir_projections.len(), hir_place));
+                        }
+                        // This place, but truncated.
+                        EitherOrBoth::Left(_) => return Some((idx, hir_place)),
                     }
                 }
-                true
+                // Exactly this place.
+                Some((hir_place.0.place.projections.len(), hir_place))
             });
-            match r {
-                Some(it) => {
-                    p.local = closure_local;
-                    let mut next_projs = closure_projection.clone();
-                    next_projs.push(PlaceElem::ClosureField(it.1));
-                    let prev_projs = p.projection;
-                    if it.0.kind != CaptureKind::ByValue {
-                        next_projs.push(ProjectionElem::Deref);
-                    }
-                    next_projs.extend(
-                        prev_projs.lookup(store).iter().skip(it.0.place.projections.len()).cloned(),
+            match projections {
+                Some((skip_projections_up_to, (hir_place, upvar_local))) => {
+                    mir_place.local = *upvar_local;
+                    let mut result_projections = Vec::with_capacity(
+                        usize::from(hir_place.is_by_ref())
+                            + (mir_projections.len() - skip_projections_up_to),
                     );
-                    p.projection = store.intern(next_projs.into());
+                    if hir_place.is_by_ref() {
+                        result_projections.push(ProjectionElem::Deref);
+                    }
+                    result_projections
+                        .extend(mir_projections[skip_projections_up_to..].iter().cloned());
+                    mir_place.projection = store.intern(result_projections.into());
                 }
-                None => err = Some(*p),
+                None => err = Some(*mir_place),
             }
         }
     });

@@ -5,17 +5,20 @@ use rustc_hir::attrs::*;
 use rustc_session::Session;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition::Edition2024;
 use rustc_span::kw;
 use rustc_target::spec::{Arch, BinaryFormat};
 
 use super::prelude::*;
 use super::util::parse_single_integer;
+use crate::attributes::AttributeSafety;
 use crate::attributes::cfg::parse_cfg_entry;
 use crate::session_diagnostics::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
     ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
-    LinkFrameworkApple, LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers,
-    NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows, WholeArchiveNeedsStatic,
+    InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
+    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
+    WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -388,12 +391,7 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::cfg);
             return true;
         }
-        let Some(link_cfg) = item.args().list() else {
-            cx.adcx().expected_list(item.span(), item.args());
-            return true;
-        };
-        let Some(link_cfg) = link_cfg.single() else {
-            cx.adcx().expected_single_argument(item.span());
+        let Some(link_cfg) = cx.expect_single_element_list(item.args(), item.span()) else {
             return true;
         };
         if !features.link_cfg() {
@@ -465,9 +463,33 @@ impl LinkParser {
 
 pub(crate) struct LinkSectionParser;
 
+fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReason> {
+    let mut parts = name.as_str().split(',').map(|s| s.trim());
+
+    // The segment can be empty.
+    let _segment = parts.next();
+
+    // But the section is required.
+    let section = match parts.next() {
+        None | Some("") => return Err(InvalidMachoSectionReason::MissingSection),
+        Some(section) => section,
+    };
+
+    if section.len() > 16 {
+        return Err(InvalidMachoSectionReason::SectionTooLong { section: section.to_string() });
+    }
+
+    // LLVM also checks the other components of the section specifier, but that logic is hard to
+    // keep in sync. We skip it here for now, assuming that if you got that far you'll be able
+    // to interpret the LLVM errors.
+
+    Ok(())
+}
+
 impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Static),
         Allow(Target::Fn),
@@ -497,6 +519,18 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
             return None;
         }
 
+        // We (currently) only validate macho section specifiers.
+        match cx.sess.target.binary_format {
+            BinaryFormat::MachO => match check_link_section_macho(name) {
+                Ok(()) => {}
+                Err(reason) => {
+                    cx.emit_err(InvalidMachoSection { name_span: nv.value_span, reason });
+                    return None;
+                }
+            },
+            BinaryFormat::Coff | BinaryFormat::Elf | BinaryFormat::Wasm | BinaryFormat::Xcoff => {}
+        }
+
         Some(LinkSection { name, span: cx.attr_span })
     }
 }
@@ -504,7 +538,6 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
 pub(crate) struct ExportStableParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
@@ -512,7 +545,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
 pub(crate) struct FfiConstParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
     const PATH: &[Symbol] = &[sym::ffi_const];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
 }
@@ -520,7 +553,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
 pub(crate) struct FfiPureParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const PATH: &[Symbol] = &[sym::ffi_pure];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
@@ -528,7 +561,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
 pub(crate) struct RustcStdInternalSymbolParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -542,7 +574,6 @@ pub(crate) struct LinkOrdinalParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
@@ -583,7 +614,6 @@ pub(crate) struct LinkageParser;
 impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
 
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -666,7 +696,6 @@ pub(crate) struct NeedsAllocatorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NeedsAllocatorParser {
     const PATH: &[Symbol] = &[sym::needs_allocator];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
 }
@@ -675,7 +704,6 @@ pub(crate) struct CompilerBuiltinsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for CompilerBuiltinsParser {
     const PATH: &[Symbol] = &[sym::compiler_builtins];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

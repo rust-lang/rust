@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod to_reuse {
     pub fn consts<const N: i32>() -> i32 {

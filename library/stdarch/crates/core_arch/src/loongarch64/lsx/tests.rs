@@ -5,6 +5,7 @@ use crate::{
     core_arch::{loongarch64::*, simd::*},
     mem::transmute,
 };
+use std::hint::black_box;
 use stdarch_test::simd_test;
 
 #[simd_test(enable = "lsx")]
@@ -17,7 +18,10 @@ unsafe fn test_lsx_vsll_b() {
     );
     let r = i64x2::new(70990221811840, -3257029622096690968);
 
-    assert_eq!(r, transmute(lsx_vsll_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsll_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -26,7 +30,10 @@ unsafe fn test_lsx_vsll_h() {
     let b = i16x8::new(-10317, -20778, -9962, -8975, 25298, 12929, -13803, -18669);
     let r = i64x2::new(-5063658964307128392, -3539825456407336052);
 
-    assert_eq!(r, transmute(lsx_vsll_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsll_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -35,7 +42,10 @@ unsafe fn test_lsx_vsll_w() {
     let b = i32x4::new(82237029, -819106294, -96895338, -456101700);
     let r = i64x2::new(-7163824029380778240, 2305843009528266752);
 
-    assert_eq!(r, transmute(lsx_vsll_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsll_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -44,7 +54,10 @@ unsafe fn test_lsx_vsll_d() {
     let b = i64x2::new(8592669249977019309, -1379694176202045825);
     let r = i64x2::new(1790743801833193472, 0);
 
-    assert_eq!(r, transmute(lsx_vsll_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsll_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -54,7 +67,7 @@ unsafe fn test_lsx_vslli_b() {
     );
     let r = i64x2::new(-2780807324588213414, -3708578564830607166);
 
-    assert_eq!(r, transmute(lsx_vslli_b::<0>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslli_b::<0>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -62,7 +75,7 @@ unsafe fn test_lsx_vslli_h() {
     let a = i16x8::new(18469, -14840, 23655, -3474, 7467, 2798, -15418, 26847);
     let r = i64x2::new(-7241759886206301888, 4017476402818337472);
 
-    assert_eq!(r, transmute(lsx_vslli_h::<6>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslli_h::<6>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -70,7 +83,7 @@ unsafe fn test_lsx_vslli_w() {
     let a = i32x4::new(20701902, -1777432355, 6349179, 1747667894);
     let r = i64x2::new(4189319625752393728, -5967594959501136896);
 
-    assert_eq!(r, transmute(lsx_vslli_w::<10>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslli_w::<10>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -78,7 +91,7 @@ unsafe fn test_lsx_vslli_d() {
     let a = i64x2::new(-5896889635782282086, -8807609320972692839);
     let r = i64x2::new(-4233027607937510592, -5142337165482896608);
 
-    assert_eq!(r, transmute(lsx_vslli_d::<5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslli_d::<5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -91,7 +104,10 @@ unsafe fn test_lsx_vsra_b() {
     );
     let r = i64x2::new(-1080315035391229440, 720022881735668484);
 
-    assert_eq!(r, transmute(lsx_vsra_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsra_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -100,7 +116,10 @@ unsafe fn test_lsx_vsra_h() {
     let b = i16x8::new(14017, 3796, 23987, -27244, -13363, 21333, -10262, 23633);
     let r = i64x2::new(164116464290576704, -1935703552267190275);
 
-    assert_eq!(r, transmute(lsx_vsra_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsra_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -109,7 +128,10 @@ unsafe fn test_lsx_vsra_w() {
     let b = i32x4::new(-670772992, 2044335288, -1224858031, 520588790);
     let r = i64x2::new(-210763200496, 1619202657181);
 
-    assert_eq!(r, transmute(lsx_vsra_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsra_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -118,7 +140,10 @@ unsafe fn test_lsx_vsra_d() {
     let b = i64x2::new(4251079558060308329, 4657697142994416829);
     let r = i64x2::new(-623956, 3);
 
-    assert_eq!(r, transmute(lsx_vsra_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsra_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -128,7 +153,7 @@ unsafe fn test_lsx_vsrai_b() {
     );
     let r = i64x2::new(-2018743940785760257, -2093355901512246518);
 
-    assert_eq!(r, transmute(lsx_vsrai_b::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrai_b::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -136,7 +161,7 @@ unsafe fn test_lsx_vsrai_h() {
     let a = i16x8::new(-22502, -7299, 19084, -21578, -28082, 20851, 23456, 15524);
     let r = i64x2::new(-1688828385492998, 844446405361657);
 
-    assert_eq!(r, transmute(lsx_vsrai_h::<12>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrai_h::<12>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -144,7 +169,7 @@ unsafe fn test_lsx_vsrai_w() {
     let a = i32x4::new(743537539, 1831641900, -1639033567, -984629971);
     let r = i64x2::new(30008936499988, -16131897170029);
 
-    assert_eq!(r, transmute(lsx_vsrai_w::<18>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrai_w::<18>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -152,7 +177,7 @@ unsafe fn test_lsx_vsrai_d() {
     let a = i64x2::new(-8375997486414293750, 1714581574012370587);
     let r = i64x2::new(-476121, 97462);
 
-    assert_eq!(r, transmute(lsx_vsrai_d::<44>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrai_d::<44>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -165,7 +190,13 @@ unsafe fn test_lsx_vsrar_b() {
     );
     let r = i64x2::new(139917463134404866, 143840305941130491);
 
-    assert_eq!(r, transmute(lsx_vsrar_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrar_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -174,7 +205,13 @@ unsafe fn test_lsx_vsrar_h() {
     let b = i16x8::new(-26450, 2176, 31587, 2222, 13726, 30172, 1067, -14273);
     let r = i64x2::new(-287115463426050, 42950131714);
 
-    assert_eq!(r, transmute(lsx_vsrar_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrar_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -183,7 +220,13 @@ unsafe fn test_lsx_vsrar_w() {
     let b = i32x4::new(-1532076758, 940127488, 1781366421, 1497262222);
     let r = i64x2::new(7179867468326627830, 560544771735247);
 
-    assert_eq!(r, transmute(lsx_vsrar_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrar_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -192,7 +235,13 @@ unsafe fn test_lsx_vsrar_d() {
     let b = i64x2::new(3571440266112779495, -725943254065719378);
     let r = i64x2::new(-890187, -17811);
 
-    assert_eq!(r, transmute(lsx_vsrar_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrar_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -202,7 +251,7 @@ unsafe fn test_lsx_vsrari_b() {
     );
     let r = i64x2::new(867219992078845182, -503291487652282122);
 
-    assert_eq!(r, transmute(lsx_vsrari_b::<3>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrari_b::<3>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -210,7 +259,7 @@ unsafe fn test_lsx_vsrari_h() {
     let a = i16x8::new(29939, -1699, 12357, 30805, -30883, 31936, 15701, -11818);
     let r = i64x2::new(4222154715365391, -1688815499411471);
 
-    assert_eq!(r, transmute(lsx_vsrari_h::<11>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrari_h::<11>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -218,7 +267,7 @@ unsafe fn test_lsx_vsrari_w() {
     let a = i32x4::new(588196178, -1058764534, 1325397591, 1169671026);
     let r = i64x2::new(-4294967295, 4294967297);
 
-    assert_eq!(r, transmute(lsx_vsrari_w::<30>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrari_w::<30>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -226,7 +275,7 @@ unsafe fn test_lsx_vsrari_d() {
     let a = i64x2::new(-2795326946470057100, 6746045132217841338);
     let r = i64x2::new(-174707934154378569, 421627820763615084);
 
-    assert_eq!(r, transmute(lsx_vsrari_d::<4>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrari_d::<4>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -239,7 +288,10 @@ unsafe fn test_lsx_vsrl_b() {
     );
     let r = i64x2::new(1300161376517358116, 72917012339034650);
 
-    assert_eq!(r, transmute(lsx_vsrl_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrl_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -248,7 +300,10 @@ unsafe fn test_lsx_vsrl_h() {
     let b = i16x8::new(16605, -13577, -26644, -17739, 11000, -29283, -15971, 20169);
     let r = i64x2::new(468374382728249347, 20829178341621860);
 
-    assert_eq!(r, transmute(lsx_vsrl_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrl_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -257,7 +312,10 @@ unsafe fn test_lsx_vsrl_w() {
     let b = i32x4::new(1777885221, -1725401090, 1849724045, -1051851102);
     let r = i64x2::new(12953227061, 1599606693325790121);
 
-    assert_eq!(r, transmute(lsx_vsrl_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrl_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -266,7 +324,10 @@ unsafe fn test_lsx_vsrl_d() {
     let b = i64x2::new(-7903128394835365398, 7601347629202818185);
     let r = i64x2::new(649044, 1572171616025062);
 
-    assert_eq!(r, transmute(lsx_vsrl_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrl_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -276,7 +337,7 @@ unsafe fn test_lsx_vsrli_b() {
     );
     let r = i64x2::new(1952909805632365845, 3971107439766933248);
 
-    assert_eq!(r, transmute(lsx_vsrli_b::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrli_b::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -284,7 +345,7 @@ unsafe fn test_lsx_vsrli_h() {
     let a = i16x8::new(29545, 354, 27695, 20915, -32766, -24491, 10641, 20310);
     let r = i64x2::new(11259230996660281, 10977609996304448);
 
-    assert_eq!(r, transmute(lsx_vsrli_h::<9>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrli_h::<9>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -292,7 +353,7 @@ unsafe fn test_lsx_vsrli_w() {
     let a = i32x4::new(627703601, 922874410, -234412645, -1216101872);
     let r = i64x2::new(3870813506329215, 12913695352717769);
 
-    assert_eq!(r, transmute(lsx_vsrli_w::<10>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrli_w::<10>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -300,7 +361,7 @@ unsafe fn test_lsx_vsrli_d() {
     let a = i64x2::new(1407685950714554203, -6076144426076800688);
     let r = i64x2::new(9, 85);
 
-    assert_eq!(r, transmute(lsx_vsrli_d::<57>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrli_d::<57>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -313,7 +374,13 @@ unsafe fn test_lsx_vsrlr_b() {
     );
     let r = i64x2::new(3317746744565237249, 144420860932066826);
 
-    assert_eq!(r, transmute(lsx_vsrlr_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlr_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -322,7 +389,13 @@ unsafe fn test_lsx_vsrlr_h() {
     let b = i16x8::new(19500, -26403, -1282, 12290, -18989, 25105, -24347, 6707);
     let r = i64x2::new(1991716935204929539, 311033695131730530);
 
-    assert_eq!(r, transmute(lsx_vsrlr_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlr_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -331,7 +404,13 @@ unsafe fn test_lsx_vsrlr_w() {
     let b = i32x4::new(1830015593, -1452673200, 962662328, -252736055);
     let r = i64x2::new(7864089021084, 20473000998469780);
 
-    assert_eq!(r, transmute(lsx_vsrlr_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlr_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -340,7 +419,13 @@ unsafe fn test_lsx_vsrlr_d() {
     let b = i64x2::new(-1543621369665313706, 8544381131364512650);
     let r = i64x2::new(1428972826343, 4256393046182047);
 
-    assert_eq!(r, transmute(lsx_vsrlr_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlr_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -350,7 +435,7 @@ unsafe fn test_lsx_vsrlri_b() {
     );
     let r = i64x2::new(93866580842851436, 1896906350202744602);
 
-    assert_eq!(r, transmute(lsx_vsrlri_b::<1>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrlri_b::<1>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -358,7 +443,7 @@ unsafe fn test_lsx_vsrlri_h() {
     let a = i16x8::new(-18045, 1968, 22966, 3692, 2010, -17108, 3373, -30706);
     let r = i64x2::new(1039304252363684227, -8642956144778934310);
 
-    assert_eq!(r, transmute(lsx_vsrlri_h::<0>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrlri_h::<0>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -366,7 +451,7 @@ unsafe fn test_lsx_vsrlri_w() {
     let a = i32x4::new(1306456564, -1401620667, -839707416, -1634862919);
     let r = i64x2::new(1553353645217275455, 1428132662790218397);
 
-    assert_eq!(r, transmute(lsx_vsrlri_w::<3>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrlri_w::<3>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -374,7 +459,7 @@ unsafe fn test_lsx_vsrlri_d() {
     let a = i64x2::new(-3683179565838693027, 6160461828074490983);
     let r = i64x2::new(205, 85);
 
-    assert_eq!(r, transmute(lsx_vsrlri_d::<56>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsrlri_d::<56>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -387,7 +472,13 @@ unsafe fn test_lsx_vbitclr_b() {
     );
     let r = i64x2::new(-7325372782311046420, -5316383129963115396);
 
-    assert_eq!(r, transmute(lsx_vbitclr_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitclr_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -396,7 +487,13 @@ unsafe fn test_lsx_vbitclr_h() {
     let b = u16x8::new(26587, 57597, 34751, 38678, 23919, 45729, 62569, 5978);
     let r = i64x2::new(-5495443997997256700, -3317648531059028099);
 
-    assert_eq!(r, transmute(lsx_vbitclr_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitclr_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -405,7 +502,13 @@ unsafe fn test_lsx_vbitclr_w() {
     let b = u32x4::new(1968231094, 2827365864, 4097273355, 4016923215);
     let r = i64x2::new(-7626667807832507452, 546969093373761021);
 
-    assert_eq!(r, transmute(lsx_vbitclr_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitclr_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -414,7 +517,13 @@ unsafe fn test_lsx_vbitclr_d() {
     let b = u64x2::new(5723204188033770667, 2981956604140378920);
     let r = i64x2::new(-1242851545812588193, -5509634528458855560);
 
-    assert_eq!(r, transmute(lsx_vbitclr_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitclr_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -424,7 +533,7 @@ unsafe fn test_lsx_vbitclri_b() {
     );
     let r = i64x2::new(7503621968728299154, -6865556469255070542);
 
-    assert_eq!(r, transmute(lsx_vbitclri_b::<0>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitclri_b::<0>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -432,7 +541,7 @@ unsafe fn test_lsx_vbitclri_h() {
     let a = u16x8::new(17366, 58985, 22108, 45942, 27326, 19605, 9632, 32322);
     let r = i64x2::new(-5515130134779575338, 8809640793386347198);
 
-    assert_eq!(r, transmute(lsx_vbitclri_h::<10>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitclri_h::<10>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -440,7 +549,7 @@ unsafe fn test_lsx_vbitclri_w() {
     let a = u32x4::new(718858183, 3771164920, 1842485081, 896350597);
     let r = i64x2::new(-2249714073768237625, 3849796501707560281);
 
-    assert_eq!(r, transmute(lsx_vbitclri_w::<9>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitclri_w::<9>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -448,7 +557,7 @@ unsafe fn test_lsx_vbitclri_d() {
     let a = u64x2::new(10838658690401820648, 3833745076866321369);
     let r = i64x2::new(-7608085933063544856, 3833744527110507481);
 
-    assert_eq!(r, transmute(lsx_vbitclri_d::<39>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitclri_d::<39>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -461,7 +570,13 @@ unsafe fn test_lsx_vbitset_b() {
     );
     let r = i64x2::new(-7941579666116909337, -8620998056061183460);
 
-    assert_eq!(r, transmute(lsx_vbitset_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitset_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -470,7 +585,13 @@ unsafe fn test_lsx_vbitset_h() {
     let b = u16x8::new(64512, 23847, 57770, 47705, 8024, 31966, 14493, 50266);
     let r = i64x2::new(8218739538452480967, 9190693790629616954);
 
-    assert_eq!(r, transmute(lsx_vbitset_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitset_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -479,7 +600,13 @@ unsafe fn test_lsx_vbitset_w() {
     let b = u32x4::new(3259082048, 1303228302, 1429001720, 209615081);
     let r = i64x2::new(5472281065241838073, -4235320193476931022);
 
-    assert_eq!(r, transmute(lsx_vbitset_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitset_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -488,7 +615,13 @@ unsafe fn test_lsx_vbitset_d() {
     let b = u64x2::new(12687331714071910183, 1753585392879336372);
     let r = i64x2::new(8117422612773760492, 5031452210401715131);
 
-    assert_eq!(r, transmute(lsx_vbitset_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitset_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -498,7 +631,7 @@ unsafe fn test_lsx_vbitseti_b() {
     );
     let r = i64x2::new(6185254145054243811, 5860546440891134157);
 
-    assert_eq!(r, transmute(lsx_vbitseti_b::<6>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitseti_b::<6>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -506,7 +639,7 @@ unsafe fn test_lsx_vbitseti_h() {
     let a = u16x8::new(15222, 59961, 52253, 2908, 61562, 41309, 63627, 4191);
     let r = i64x2::new(819316619673811830, 1179934905985921146);
 
-    assert_eq!(r, transmute(lsx_vbitseti_h::<1>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitseti_h::<1>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -514,7 +647,7 @@ unsafe fn test_lsx_vbitseti_w() {
     let a = u32x4::new(3788412756, 1863556832, 1913138259, 1199998627);
     let r = i64x2::new(8012922850722617172, 5162962059379878995);
 
-    assert_eq!(r, transmute(lsx_vbitseti_w::<21>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitseti_w::<21>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -522,7 +655,7 @@ unsafe fn test_lsx_vbitseti_d() {
     let a = u64x2::new(10744510173660993785, 16946223211744108759);
     let r = i64x2::new(-7702233900048557831, -1500520861831225129);
 
-    assert_eq!(r, transmute(lsx_vbitseti_d::<27>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitseti_d::<27>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -535,7 +668,13 @@ unsafe fn test_lsx_vbitrev_b() {
     );
     let r = i64x2::new(7553563628828981794, -3550669970358088907);
 
-    assert_eq!(r, transmute(lsx_vbitrev_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitrev_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -544,7 +683,13 @@ unsafe fn test_lsx_vbitrev_h() {
     let b = u16x8::new(21347, 23131, 57157, 13786, 34463, 33445, 23964, 48087);
     let r = i64x2::new(-2253077037977362312, -1686202867067838120);
 
-    assert_eq!(r, transmute(lsx_vbitrev_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitrev_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -553,7 +698,13 @@ unsafe fn test_lsx_vbitrev_w() {
     let b = u32x4::new(3330530584, 4153020036, 822570638, 2652744506);
     let r = i64x2::new(4583672484591007782, 3195058299616182309);
 
-    assert_eq!(r, transmute(lsx_vbitrev_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitrev_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -562,7 +713,13 @@ unsafe fn test_lsx_vbitrev_d() {
     let b = u64x2::new(10942298949673565895, 12884740754463765660);
     let r = i64x2::new(-2430080033105247697, -384636561250515393);
 
-    assert_eq!(r, transmute(lsx_vbitrev_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vbitrev_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -572,7 +729,7 @@ unsafe fn test_lsx_vbitrevi_b() {
     );
     let r = i64x2::new(8727320563398842300, 7658903196653594166);
 
-    assert_eq!(r, transmute(lsx_vbitrevi_b::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitrevi_b::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -580,7 +737,7 @@ unsafe fn test_lsx_vbitrevi_h() {
     let a = u16x8::new(15083, 24599, 61212, 12408, 48399, 59833, 45416, 58826);
     let r = i64x2::new(8104420064785562347, -6500117680329458417);
 
-    assert_eq!(r, transmute(lsx_vbitrevi_h::<14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitrevi_h::<14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -588,7 +745,7 @@ unsafe fn test_lsx_vbitrevi_w() {
     let a = u32x4::new(1200613355, 1418062686, 3847355950, 3312937419);
     let r = i64x2::new(6099540060505368555, -4226793400815190482);
 
-    assert_eq!(r, transmute(lsx_vbitrevi_w::<21>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitrevi_w::<21>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -596,7 +753,7 @@ unsafe fn test_lsx_vbitrevi_d() {
     let a = u64x2::new(295858379748270823, 1326723086853575042);
     let r = i64x2::new(295858379748254439, 1326723086853591426);
 
-    assert_eq!(r, transmute(lsx_vbitrevi_d::<14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbitrevi_d::<14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -609,7 +766,10 @@ unsafe fn test_lsx_vadd_b() {
     );
     let r = i64x2::new(5228548393274527852, 1107461330348121713);
 
-    assert_eq!(r, transmute(lsx_vadd_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadd_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -618,7 +778,10 @@ unsafe fn test_lsx_vadd_h() {
     let b = i16x8::new(-25040, 15453, -28080, -31322, -24429, -12453, -18073, 27019);
     let r = i64x2::new(1938006946753467667, 3264410328302682781);
 
-    assert_eq!(r, transmute(lsx_vadd_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadd_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -627,7 +790,10 @@ unsafe fn test_lsx_vadd_w() {
     let b = i32x4::new(-1169804484, 389773725, -731843701, -1825112934);
     let r = i64x2::new(-2841313158179161935, -1386205072290870384);
 
-    assert_eq!(r, transmute(lsx_vadd_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadd_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -636,7 +802,10 @@ unsafe fn test_lsx_vadd_d() {
     let b = i64x2::new(7093939531558864473, 4047047970310912233);
     let r = i64x2::new(-204689461315224217, -5456447511965942904);
 
-    assert_eq!(r, transmute(lsx_vadd_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadd_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -646,7 +815,7 @@ unsafe fn test_lsx_vaddi_bu() {
     );
     let r = i64x2::new(-7790681010872578420, 298548864442153210);
 
-    assert_eq!(r, transmute(lsx_vaddi_bu::<10>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vaddi_bu::<10>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -654,7 +823,7 @@ unsafe fn test_lsx_vaddi_hu() {
     let a = i16x8::new(-16986, -28417, 11657, 16608, -30167, 18602, 8897, -854);
     let r = i64x2::new(4681541984598867390, -233585914045887935);
 
-    assert_eq!(r, transmute(lsx_vaddi_hu::<24>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vaddi_hu::<24>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -662,7 +831,7 @@ unsafe fn test_lsx_vaddi_wu() {
     let a = i32x4::new(1142343549, 56714754, -180143297, 408668191);
     let r = i64x2::new(243588023362963327, 1755216527965240129);
 
-    assert_eq!(r, transmute(lsx_vaddi_wu::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vaddi_wu::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -670,7 +839,7 @@ unsafe fn test_lsx_vaddi_du() {
     let a = i64x2::new(4516502893749962130, 9158051921593642947);
     let r = i64x2::new(4516502893749962139, 9158051921593642956);
 
-    assert_eq!(r, transmute(lsx_vaddi_du::<9>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vaddi_du::<9>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -683,7 +852,10 @@ unsafe fn test_lsx_vsub_b() {
     );
     let r = i64x2::new(-4051929421319416371, 8737463450488952169);
 
-    assert_eq!(r, transmute(lsx_vsub_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsub_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -692,7 +864,10 @@ unsafe fn test_lsx_vsub_h() {
     let b = i16x8::new(15368, 16207, 9677, 21447, -29583, -22036, 1845, 15671);
     let r = i64x2::new(-913983189443969573, 2742472381424198215);
 
-    assert_eq!(r, transmute(lsx_vsub_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsub_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -701,7 +876,10 @@ unsafe fn test_lsx_vsub_w() {
     let b = i32x4::new(617176389, -1376778690, 1463940361, 620446698);
     let r = i64x2::new(-7247543435452521192, -8067077040042720878);
 
-    assert_eq!(r, transmute(lsx_vsub_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsub_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -710,7 +888,10 @@ unsafe fn test_lsx_vsub_d() {
     let b = i64x2::new(1314101702815749241, 7673634401554993450);
     let r = i64x2::new(5925090640479842026, 5645651807574135757);
 
-    assert_eq!(r, transmute(lsx_vsub_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsub_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -720,7 +901,7 @@ unsafe fn test_lsx_vsubi_bu() {
     );
     let r = i64x2::new(-8192169673836457574, 4758493248402185941);
 
-    assert_eq!(r, transmute(lsx_vsubi_bu::<19>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsubi_bu::<19>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -728,7 +909,7 @@ unsafe fn test_lsx_vsubi_hu() {
     let a = i16x8::new(13272, -26858, -235, 16054, 29698, 1377, 4604, -3878);
     let r = i64x2::new(4514576075959186376, -1096043853912116238);
 
-    assert_eq!(r, transmute(lsx_vsubi_hu::<16>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsubi_hu::<16>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -736,7 +917,7 @@ unsafe fn test_lsx_vsubi_wu() {
     let a = i32x4::new(1277091145, -2076591216, -1523555105, -945754023);
     let r = i64x2::new(-8918891362898748088, -4061982600368986914);
 
-    assert_eq!(r, transmute(lsx_vsubi_wu::<1>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsubi_wu::<1>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -744,7 +925,7 @@ unsafe fn test_lsx_vsubi_du() {
     let a = i64x2::new(-8248876128472283209, -2119651236628000925);
     let r = i64x2::new(-8248876128472283234, -2119651236628000950);
 
-    assert_eq!(r, transmute(lsx_vsubi_du::<25>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsubi_du::<25>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -757,7 +938,10 @@ unsafe fn test_lsx_vmax_b() {
     );
     let r = i64x2::new(1260734548147228113, 7591133008682590587);
 
-    assert_eq!(r, transmute(lsx_vmax_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -766,7 +950,10 @@ unsafe fn test_lsx_vmax_h() {
     let b = i16x8::new(25637, -11569, -23103, 6983, -17125, 5183, -709, 5986);
     let r = i64x2::new(1965654441534120997, 1684966995419662474);
 
-    assert_eq!(r, transmute(lsx_vmax_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -775,7 +962,10 @@ unsafe fn test_lsx_vmax_w() {
     let b = i32x4::new(643859790, -389733899, -1309288060, 1934346522);
     let r = i64x2::new(-1673894349703707314, 8307955054730158361);
 
-    assert_eq!(r, transmute(lsx_vmax_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -784,7 +974,10 @@ unsafe fn test_lsx_vmax_d() {
     let b = i64x2::new(-6137495199657896371, 2160025776787809810);
     let r = i64x2::new(-990960773872867733, 6406870358170165030);
 
-    assert_eq!(r, transmute(lsx_vmax_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -794,7 +987,7 @@ unsafe fn test_lsx_vmaxi_b() {
     );
     let r = i64x2::new(5908253215318699518, 1728939149412407162);
 
-    assert_eq!(r, transmute(lsx_vmaxi_b::<-2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_b::<-2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -802,7 +995,7 @@ unsafe fn test_lsx_vmaxi_h() {
     let a = i16x8::new(-14059, 19536, 15816, 28251, 23079, -10486, -11781, 25565);
     let r = i64x2::new(7952017497535807498, 7195907822558272039);
 
-    assert_eq!(r, transmute(lsx_vmaxi_h::<10>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_h::<10>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -810,7 +1003,7 @@ unsafe fn test_lsx_vmaxi_w() {
     let a = i32x4::new(-1136628686, -168033999, -2082324641, -1789957469);
     let r = i64x2::new(55834574861, 55834574861);
 
-    assert_eq!(r, transmute(lsx_vmaxi_w::<13>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_w::<13>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -818,7 +1011,7 @@ unsafe fn test_lsx_vmaxi_d() {
     let a = i64x2::new(-490958606840895025, -602287987736508723);
     let r = i64x2::new(-5, -5);
 
-    assert_eq!(r, transmute(lsx_vmaxi_d::<-5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_d::<-5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -831,7 +1024,13 @@ unsafe fn test_lsx_vmax_bu() {
     );
     let r = i64x2::new(-5712542810735052010, 4588590651995571688);
 
-    assert_eq!(r, transmute(lsx_vmax_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -840,7 +1039,13 @@ unsafe fn test_lsx_vmax_hu() {
     let b = u16x8::new(61508, 27224, 11696, 15294, 30725, 4809, 55995, 24012);
     let r = i64x2::new(6366821095949791300, 6759017637785204741);
 
-    assert_eq!(r, transmute(lsx_vmax_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -849,7 +1054,13 @@ unsafe fn test_lsx_vmax_wu() {
     let b = u32x4::new(2856502284, 546582019, 3814541188, 2370198139);
     let r = i64x2::new(2347551899043152908, -8266820577849948284);
 
-    assert_eq!(r, transmute(lsx_vmax_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -858,7 +1069,13 @@ unsafe fn test_lsx_vmax_du() {
     let b = u64x2::new(15559502733477870114, 3537017767853389449);
     let r = i64x2::new(-1341110034690820781, -6520089917898609068);
 
-    assert_eq!(r, transmute(lsx_vmax_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmax_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -868,7 +1085,7 @@ unsafe fn test_lsx_vmaxi_bu() {
     );
     let r = i64x2::new(-1045930669804428840, -8076220938123067729);
 
-    assert_eq!(r, transmute(lsx_vmaxi_bu::<27>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_bu::<27>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -876,7 +1093,7 @@ unsafe fn test_lsx_vmaxi_hu() {
     let a = u16x8::new(56394, 18974, 59, 64239, 15178, 38205, 20044, 21066);
     let r = i64x2::new(-365072790147113910, 5929637950214978378);
 
-    assert_eq!(r, transmute(lsx_vmaxi_hu::<23>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_hu::<23>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -884,7 +1101,7 @@ unsafe fn test_lsx_vmaxi_wu() {
     let a = u32x4::new(2234002286, 3837532269, 3218694441, 2956128392);
     let r = i64x2::new(-1964668478775874706, -5750269304073789143);
 
-    assert_eq!(r, transmute(lsx_vmaxi_wu::<15>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_wu::<15>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -892,7 +1109,7 @@ unsafe fn test_lsx_vmaxi_du() {
     let a = u64x2::new(3145066433415682744, 697260191203805367);
     let r = i64x2::new(3145066433415682744, 697260191203805367);
 
-    assert_eq!(r, transmute(lsx_vmaxi_du::<15>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmaxi_du::<15>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -905,7 +1122,10 @@ unsafe fn test_lsx_vmin_b() {
     );
     let r = i64x2::new(1870285769536668398, -8941449826914199819);
 
-    assert_eq!(r, transmute(lsx_vmin_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -914,7 +1134,10 @@ unsafe fn test_lsx_vmin_h() {
     let b = i16x8::new(-5519, 15267, -28304, -5842, 32145, 6582, -9646, -24918);
     let r = i64x2::new(-1644216902720689551, -7013553423522578637);
 
-    assert_eq!(r, transmute(lsx_vmin_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -923,7 +1146,10 @@ unsafe fn test_lsx_vmin_w() {
     let b = i32x4::new(-425011290, -2104111279, 175390640, 571448257);
     let r = i64x2::new(-9037089126579775578, 2454351575346593712);
 
-    assert_eq!(r, transmute(lsx_vmin_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -932,7 +1158,10 @@ unsafe fn test_lsx_vmin_d() {
     let b = i64x2::new(7269804448576860985, -2384075780126369706);
     let r = i64x2::new(5262417572890363865, -2384075780126369706);
 
-    assert_eq!(r, transmute(lsx_vmin_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -942,7 +1171,7 @@ unsafe fn test_lsx_vmini_b() {
     );
     let r = i64x2::new(-1187557278141451540, -940475489144045070);
 
-    assert_eq!(r, transmute(lsx_vmini_b::<-14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_b::<-14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -950,7 +1179,7 @@ unsafe fn test_lsx_vmini_h() {
     let a = i16x8::new(26119, -26421, -26720, 11534, 11181, -13024, -9525, -1565);
     let r = i64x2::new(-677708916064259, -440267769697468419);
 
-    assert_eq!(r, transmute(lsx_vmini_h::<-3>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_h::<-3>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -958,7 +1187,7 @@ unsafe fn test_lsx_vmini_w() {
     let a = i32x4::new(1937226480, -56354461, -210581139, 118641668);
     let r = i64x2::new(-242040566978707451, 25559222637);
 
-    assert_eq!(r, transmute(lsx_vmini_w::<5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_w::<5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -966,7 +1195,7 @@ unsafe fn test_lsx_vmini_d() {
     let a = i64x2::new(-6839357499730806877, 2982085289136510651);
     let r = i64x2::new(-6839357499730806877, 11);
 
-    assert_eq!(r, transmute(lsx_vmini_d::<11>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_d::<11>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -979,7 +1208,13 @@ unsafe fn test_lsx_vmin_bu() {
     );
     let r = i64x2::new(3617816997909406996, 4784078933357220137);
 
-    assert_eq!(r, transmute(lsx_vmin_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -988,7 +1223,13 @@ unsafe fn test_lsx_vmin_hu() {
     let b = u16x8::new(30424, 14541, 7654, 46014, 42452, 14971, 14903, 13871);
     let r = i64x2::new(-5494921620712753448, 3904403410832303572);
 
-    assert_eq!(r, transmute(lsx_vmin_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -997,7 +1238,13 @@ unsafe fn test_lsx_vmin_wu() {
     let b = u32x4::new(1456829356, 2264966310, 1587887390, 645429404);
     let r = i64x2::new(-8718787844260924500, 2772098183187911585);
 
-    assert_eq!(r, transmute(lsx_vmin_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1006,7 +1253,13 @@ unsafe fn test_lsx_vmin_du() {
     let b = u64x2::new(15079551366517035256, 13891052596545854864);
     let r = i64x2::new(6641707046382446478, 5750385968612732680);
 
-    assert_eq!(r, transmute(lsx_vmin_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmin_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1016,7 +1269,7 @@ unsafe fn test_lsx_vmini_bu() {
     );
     let r = i64x2::new(361700864190383365, 361700864190317829);
 
-    assert_eq!(r, transmute(lsx_vmini_bu::<5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_bu::<5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1024,7 +1277,7 @@ unsafe fn test_lsx_vmini_hu() {
     let a = u16x8::new(51791, 41830, 16737, 31634, 36341, 58491, 48701, 8690);
     let r = i64x2::new(5066626891382802, 5066626891382802);
 
-    assert_eq!(r, transmute(lsx_vmini_hu::<18>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_hu::<18>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1032,7 +1285,7 @@ unsafe fn test_lsx_vmini_wu() {
     let a = u32x4::new(1158888991, 2639721369, 556001789, 2902942998);
     let r = i64x2::new(77309411346, 77309411346);
 
-    assert_eq!(r, transmute(lsx_vmini_wu::<18>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_wu::<18>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1040,7 +1293,7 @@ unsafe fn test_lsx_vmini_du() {
     let a = u64x2::new(17903595768445663391, 13119300660970895532);
     let r = i64x2::new(13, 13);
 
-    assert_eq!(r, transmute(lsx_vmini_du::<13>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmini_du::<13>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1053,7 +1306,10 @@ unsafe fn test_lsx_vseq_b() {
     );
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseq_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vseq_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1062,7 +1318,10 @@ unsafe fn test_lsx_vseq_h() {
     let b = i16x8::new(-7387, -24074, 15709, -4629, 30465, -9504, -21403, -30287);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseq_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vseq_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1071,7 +1330,10 @@ unsafe fn test_lsx_vseq_w() {
     let b = i32x4::new(-493722413, -522973881, -1254416384, -884207273);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseq_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vseq_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1080,7 +1342,10 @@ unsafe fn test_lsx_vseq_d() {
     let b = i64x2::new(3023654898382436999, 1783520577741396523);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseq_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vseq_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1090,7 +1355,7 @@ unsafe fn test_lsx_vseqi_b() {
     );
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseqi_b::<12>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vseqi_b::<12>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1098,7 +1363,7 @@ unsafe fn test_lsx_vseqi_h() {
     let a = i16x8::new(-3205, 25452, 20774, 22065, -8424, 16590, -15971, -14154);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseqi_h::<-1>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vseqi_h::<-1>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1106,7 +1371,7 @@ unsafe fn test_lsx_vseqi_w() {
     let a = i32x4::new(199798215, -798304779, -1812193878, -1830438161);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseqi_w::<11>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vseqi_w::<11>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1114,7 +1379,7 @@ unsafe fn test_lsx_vseqi_d() {
     let a = i64x2::new(-7376858177879278972, 1947027764115386661);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vseqi_d::<3>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vseqi_d::<3>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1124,7 +1389,7 @@ unsafe fn test_lsx_vslti_b() {
     );
     let r = i64x2::new(-1099511627776, 1095216660480);
 
-    assert_eq!(r, transmute(lsx_vslti_b::<-4>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_b::<-4>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1137,7 +1402,10 @@ unsafe fn test_lsx_vslt_b() {
     );
     let r = i64x2::new(-72056494526365441, -280375465148416);
 
-    assert_eq!(r, transmute(lsx_vslt_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1146,7 +1414,10 @@ unsafe fn test_lsx_vslt_h() {
     let b = i16x8::new(-10624, 12762, 31216, 13253, 2299, -12591, -8652, -22348);
     let r = i64x2::new(-4294967296, 65535);
 
-    assert_eq!(r, transmute(lsx_vslt_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1155,7 +1426,10 @@ unsafe fn test_lsx_vslt_w() {
     let b = i32x4::new(-1849021639, -756143028, 54274044, 646446450);
     let r = i64x2::new(-4294967296, -1);
 
-    assert_eq!(r, transmute(lsx_vslt_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1164,7 +1438,10 @@ unsafe fn test_lsx_vslt_d() {
     let b = i64x2::new(1481173131774551907, 270656941607020532);
     let r = i64x2::new(-1, 0);
 
-    assert_eq!(r, transmute(lsx_vslt_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1172,7 +1449,7 @@ unsafe fn test_lsx_vslti_h() {
     let a = i16x8::new(-8902, 5527, 17224, -27356, 4424, 28839, 29975, 18805);
     let r = i64x2::new(-281474976645121, 0);
 
-    assert_eq!(r, transmute(lsx_vslti_h::<14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_h::<14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1180,7 +1457,7 @@ unsafe fn test_lsx_vslti_w() {
     let a = i32x4::new(995282502, -1964668207, -996118772, 1812234755);
     let r = i64x2::new(-4294967296, 4294967295);
 
-    assert_eq!(r, transmute(lsx_vslti_w::<14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_w::<14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1188,7 +1465,7 @@ unsafe fn test_lsx_vslti_d() {
     let a = i64x2::new(1441753618400573134, 3878439049744730841);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslti_d::<14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_d::<14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1201,7 +1478,13 @@ unsafe fn test_lsx_vslt_bu() {
     );
     let r = i64x2::new(-281474959998721, -72057589742960896);
 
-    assert_eq!(r, transmute(lsx_vslt_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1210,7 +1493,13 @@ unsafe fn test_lsx_vslt_hu() {
     let b = u16x8::new(513, 13075, 20319, 44422, 12609, 18638, 20227, 21354);
     let r = i64x2::new(281474976645120, -281474976645121);
 
-    assert_eq!(r, transmute(lsx_vslt_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1219,7 +1508,13 @@ unsafe fn test_lsx_vslt_wu() {
     let b = u32x4::new(1402243125, 1129899238, 2591537060, 4152171743);
     let r = i64x2::new(4294967295, -1);
 
-    assert_eq!(r, transmute(lsx_vslt_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1228,7 +1523,13 @@ unsafe fn test_lsx_vslt_du() {
     let b = u64x2::new(835355141719377733, 10472626544222695938);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslt_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vslt_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1238,7 +1539,7 @@ unsafe fn test_lsx_vslti_bu() {
     );
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslti_bu::<7>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_bu::<7>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1246,7 +1547,7 @@ unsafe fn test_lsx_vslti_hu() {
     let a = u16x8::new(60550, 12178, 30950, 44771, 25514, 35987, 55940, 21614);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslti_hu::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_hu::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1254,7 +1555,7 @@ unsafe fn test_lsx_vslti_wu() {
     let a = u32x4::new(912580668, 18660032, 3405726641, 4033549497);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslti_wu::<8>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_wu::<8>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1262,7 +1563,7 @@ unsafe fn test_lsx_vslti_du() {
     let a = u64x2::new(17196150830761730262, 5893061291971214149);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslti_du::<14>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslti_du::<14>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1275,7 +1576,10 @@ unsafe fn test_lsx_vsle_b() {
     );
     let r = i64x2::new(281470681808895, 280375465148415);
 
-    assert_eq!(r, transmute(lsx_vsle_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1284,7 +1588,10 @@ unsafe fn test_lsx_vsle_h() {
     let b = i16x8::new(-30602, -9535, 10944, 3343, -1093, 6600, -19453, -4561);
     let r = i64x2::new(281470681743360, -281470681808896);
 
-    assert_eq!(r, transmute(lsx_vsle_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1293,7 +1600,10 @@ unsafe fn test_lsx_vsle_w() {
     let b = i32x4::new(-1810853975, 2021418524, 215198844, 1124361386);
     let r = i64x2::new(-4294967296, -4294967296);
 
-    assert_eq!(r, transmute(lsx_vsle_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1302,7 +1612,10 @@ unsafe fn test_lsx_vsle_d() {
     let b = i64x2::new(71694374951002423, -4307912969104303925);
     let r = i64x2::new(-1, 0);
 
-    assert_eq!(r, transmute(lsx_vsle_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1312,7 +1625,7 @@ unsafe fn test_lsx_vslei_b() {
     );
     let r = i64x2::new(72056494526365440, 280375465082880);
 
-    assert_eq!(r, transmute(lsx_vslei_b::<3>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_b::<3>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1320,7 +1633,7 @@ unsafe fn test_lsx_vslei_h() {
     let a = i16x8::new(31276, -16628, -30006, -20587, 2104, -30062, 18261, -6449);
     let r = i64x2::new(-65536, -281470681808896);
 
-    assert_eq!(r, transmute(lsx_vslei_h::<-3>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_h::<-3>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1328,7 +1641,7 @@ unsafe fn test_lsx_vslei_w() {
     let a = i32x4::new(-1890390435, 1289536678, 1490122113, 2120063492);
     let r = i64x2::new(4294967295, 0);
 
-    assert_eq!(r, transmute(lsx_vslei_w::<-16>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_w::<-16>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1336,7 +1649,7 @@ unsafe fn test_lsx_vslei_d() {
     let a = i64x2::new(-123539898448811963, 8007480165241051883);
     let r = i64x2::new(-1, 0);
 
-    assert_eq!(r, transmute(lsx_vslei_d::<8>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_d::<8>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1349,7 +1662,13 @@ unsafe fn test_lsx_vsle_bu() {
     );
     let r = i64x2::new(1095216660480, 72057594021150720);
 
-    assert_eq!(r, transmute(lsx_vsle_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1358,7 +1677,13 @@ unsafe fn test_lsx_vsle_hu() {
     let b = u16x8::new(50529, 35111, 24746, 62465, 21587, 30574, 11054, 11653);
     let r = i64x2::new(-4294967296, 281474976710655);
 
-    assert_eq!(r, transmute(lsx_vsle_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1367,7 +1692,13 @@ unsafe fn test_lsx_vsle_wu() {
     let b = u32x4::new(1321018603, 1091195011, 3525236625, 4061062671);
     let r = i64x2::new(0, -1);
 
-    assert_eq!(r, transmute(lsx_vsle_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1376,7 +1707,13 @@ unsafe fn test_lsx_vsle_du() {
     let b = u64x2::new(16044633718831874991, 3531311371811276914);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vsle_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsle_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1386,7 +1723,7 @@ unsafe fn test_lsx_vslei_bu() {
     );
     let r = i64x2::new(71776119061217280, 280375465082880);
 
-    assert_eq!(r, transmute(lsx_vslei_bu::<18>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_bu::<18>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1394,7 +1731,7 @@ unsafe fn test_lsx_vslei_hu() {
     let a = u16x8::new(1430, 10053, 35528, 28458, 2394, 22098, 40236, 20853);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslei_hu::<10>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_hu::<10>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1402,7 +1739,7 @@ unsafe fn test_lsx_vslei_wu() {
     let a = u32x4::new(3289026584, 3653636092, 2919866047, 2895662832);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslei_wu::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_wu::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1410,7 +1747,7 @@ unsafe fn test_lsx_vslei_du() {
     let a = u64x2::new(17462377852989253439, 17741928456729041079);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vslei_du::<12>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vslei_du::<12>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1420,7 +1757,7 @@ unsafe fn test_lsx_vsat_b() {
     );
     let r = i64x2::new(-2964542792447819074, 3186937137643144200);
 
-    assert_eq!(r, transmute(lsx_vsat_b::<7>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_b::<7>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1428,7 +1765,7 @@ unsafe fn test_lsx_vsat_h() {
     let a = i16x8::new(-22234, -8008, -23350, 13768, 26313, -27447, -3569, 6025);
     let r = i64x2::new(576451960371214336, 576451960371152895);
 
-    assert_eq!(r, transmute(lsx_vsat_h::<11>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_h::<11>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1436,7 +1773,7 @@ unsafe fn test_lsx_vsat_w() {
     let a = i32x4::new(-84179653, 874415975, 1823119516, 1667850968);
     let r = i64x2::new(137438953440, 133143986207);
 
-    assert_eq!(r, transmute(lsx_vsat_w::<5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_w::<5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1444,7 +1781,7 @@ unsafe fn test_lsx_vsat_d() {
     let a = i64x2::new(6859869867233872152, 2514172105675226457);
     let r = i64x2::new(262143, 262143);
 
-    assert_eq!(r, transmute(lsx_vsat_d::<18>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_d::<18>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1454,7 +1791,7 @@ unsafe fn test_lsx_vsat_bu() {
     );
     let r = i64x2::new(2125538672170008439, 6577605268441825038);
 
-    assert_eq!(r, transmute(lsx_vsat_bu::<6>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_bu::<6>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1462,7 +1799,7 @@ unsafe fn test_lsx_vsat_hu() {
     let a = u16x8::new(36681, 34219, 6160, 8687, 4544, 20195, 35034, 916);
     let r = i64x2::new(287953294993589247, 257835472485549055);
 
-    assert_eq!(r, transmute(lsx_vsat_hu::<9>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_hu::<9>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1470,7 +1807,7 @@ unsafe fn test_lsx_vsat_wu() {
     let a = u32x4::new(1758000759, 4138051566, 2705324001, 3927640324);
     let r = i64x2::new(70364449226751, 70364449226751);
 
-    assert_eq!(r, transmute(lsx_vsat_wu::<13>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_wu::<13>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1478,7 +1815,7 @@ unsafe fn test_lsx_vsat_du() {
     let a = u64x2::new(1953136817312581670, 2606878300382729363);
     let r = i64x2::new(9007199254740991, 9007199254740991);
 
-    assert_eq!(r, transmute(lsx_vsat_du::<52>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsat_du::<52>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -1491,7 +1828,13 @@ unsafe fn test_lsx_vadda_b() {
     );
     let r = i64x2::new(8248499858970022011, 8535863472581999270);
 
-    assert_eq!(r, transmute(lsx_vadda_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadda_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1500,7 +1843,13 @@ unsafe fn test_lsx_vadda_h() {
     let b = i16x8::new(-21543, 21720, 14529, -19143, -28953, 13450, 8037, 29413);
     let r = i64x2::new(-8646732423142600033, 8924050915627474398);
 
-    assert_eq!(r, transmute(lsx_vadda_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadda_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1509,7 +1858,13 @@ unsafe fn test_lsx_vadda_w() {
     let b = i32x4::new(287041349, 249467792, 312776520, 1314435078);
     let r = i64x2::new(8345875378983299469, 6092442344252138029);
 
-    assert_eq!(r, transmute(lsx_vadda_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadda_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1518,7 +1873,13 @@ unsafe fn test_lsx_vadda_d() {
     let b = i64x2::new(-4324432602362661920, 6402427893748093984);
     let r = i64x2::new(6071741662385212188, -5328622052402301597);
 
-    assert_eq!(r, transmute(lsx_vadda_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadda_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1531,7 +1892,13 @@ unsafe fn test_lsx_vsadd_b() {
     );
     let r = i64x2::new(-3422653801050278697, 1909270979770548186);
 
-    assert_eq!(r, transmute(lsx_vsadd_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1540,7 +1907,13 @@ unsafe fn test_lsx_vsadd_h() {
     let b = i16x8::new(26970, 17131, 15547, -7614, -8479, 22338, 3567, -22299);
     let r = i64x2::new(6720170624686097630, -304244782337649222);
 
-    assert_eq!(r, transmute(lsx_vsadd_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1549,7 +1922,13 @@ unsafe fn test_lsx_vsadd_w() {
     let b = i32x4::new(-1026388582, 222487110, 501504960, -1863994162);
     let r = i64x2::new(-6565289918505943040, -6915373914453178024);
 
-    assert_eq!(r, transmute(lsx_vsadd_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1558,7 +1937,13 @@ unsafe fn test_lsx_vsadd_d() {
     let b = i64x2::new(-6599608819082608284, -5088169537193133686);
     let r = i64x2::new(-8567396806692999839, -9223372036854775808);
 
-    assert_eq!(r, transmute(lsx_vsadd_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1571,7 +1956,13 @@ unsafe fn test_lsx_vsadd_bu() {
     );
     let r = i64x2::new(-5404438145481572386, -7318352348905473);
 
-    assert_eq!(r, transmute(lsx_vsadd_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1580,7 +1971,13 @@ unsafe fn test_lsx_vsadd_hu() {
     let b = u16x8::new(31219, 59227, 25607, 62798, 18845, 3238, 19902, 24978);
     let r = i64x2::new(-8740258447361, -136834913009665);
 
-    assert_eq!(r, transmute(lsx_vsadd_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1589,7 +1986,13 @@ unsafe fn test_lsx_vsadd_wu() {
     let b = u32x4::new(3676524021, 3894343575, 904432536, 1616820031);
     let r = i64x2::new(-1, -7583652642497232897);
 
-    assert_eq!(r, transmute(lsx_vsadd_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1598,7 +2001,13 @@ unsafe fn test_lsx_vsadd_du() {
     let b = u64x2::new(11054638512585704882, 3549000132135395099);
     let r = i64x2::new(-3651327027786652925, -623479558932885349);
 
-    assert_eq!(r, transmute(lsx_vsadd_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsadd_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1611,7 +2020,10 @@ unsafe fn test_lsx_vavg_b() {
     );
     let r = i64x2::new(-152206416164856247, 4369276355735447089);
 
-    assert_eq!(r, transmute(lsx_vavg_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1620,7 +2032,10 @@ unsafe fn test_lsx_vavg_h() {
     let b = i16x8::new(-3088, -25854, -32552, -8417, 7808, -12495, 22032, -5168);
     let r = i64x2::new(696836182083297626, -4337760619710117321);
 
-    assert_eq!(r, transmute(lsx_vavg_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1629,7 +2044,10 @@ unsafe fn test_lsx_vavg_w() {
     let b = i32x4::new(-324844828, -1580060766, -1909832882, 328273785);
     let r = i64x2::new(475428188150908257, 4521676108535152711);
 
-    assert_eq!(r, transmute(lsx_vavg_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1638,7 +2056,10 @@ unsafe fn test_lsx_vavg_d() {
     let b = i64x2::new(3169904420607189220, 5159962511251707672);
     let r = i64x2::new(2328313764472338215, 5669256157716045974);
 
-    assert_eq!(r, transmute(lsx_vavg_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1651,7 +2072,13 @@ unsafe fn test_lsx_vavg_bu() {
     );
     let r = i64x2::new(-5663745084945885565, 2801126043194071837);
 
-    assert_eq!(r, transmute(lsx_vavg_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1660,7 +2087,13 @@ unsafe fn test_lsx_vavg_hu() {
     let b = u16x8::new(44835, 36733, 12115, 42874, 4819, 12201, 27397, 25394);
     let r = i64x2::new(-4196978047981735086, -6439149718662907396);
 
-    assert_eq!(r, transmute(lsx_vavg_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1669,7 +2102,13 @@ unsafe fn test_lsx_vavg_wu() {
     let b = u32x4::new(160886383, 26081142, 459122380, 2523086630);
     let r = i64x2::new(123816739188229069, -5586965600173345916);
 
-    assert_eq!(r, transmute(lsx_vavg_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1678,7 +2117,13 @@ unsafe fn test_lsx_vavg_du() {
     let b = u64x2::new(9749063966076740681, 5963120178993456389);
     let r = i64x2::new(-7770235857859936532, 7939635441364553211);
 
-    assert_eq!(r, transmute(lsx_vavg_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavg_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1691,7 +2136,13 @@ unsafe fn test_lsx_vavgr_b() {
     );
     let r = i64x2::new(1883712581662731545, -1226681417271426582);
 
-    assert_eq!(r, transmute(lsx_vavgr_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1700,7 +2151,13 @@ unsafe fn test_lsx_vavgr_h() {
     let b = i16x8::new(-9758, -8332, 20577, 31066, 31120, 14788, -22323, 16722);
     let r = i64x2::new(3801916629507170613, 3994084079587580569);
 
-    assert_eq!(r, transmute(lsx_vavgr_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1709,7 +2166,13 @@ unsafe fn test_lsx_vavgr_w() {
     let b = i32x4::new(1278058715, -155858446, -195547847, -750518746);
     let r = i64x2::new(4040594005688324125, -5795079921582298726);
 
-    assert_eq!(r, transmute(lsx_vavgr_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1718,7 +2181,13 @@ unsafe fn test_lsx_vavgr_d() {
     let b = i64x2::new(8758126674980055299, -7441643514470614533);
     let r = i64x2::new(3399991646978312393, -1904131665097658207);
 
-    assert_eq!(r, transmute(lsx_vavgr_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1731,7 +2200,13 @@ unsafe fn test_lsx_vavgr_bu() {
     );
     let r = i64x2::new(9122444831751176042, 6010164553039771699);
 
-    assert_eq!(r, transmute(lsx_vavgr_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1740,7 +2215,13 @@ unsafe fn test_lsx_vavgr_hu() {
     let b = u16x8::new(26111, 34713, 61420, 23702, 29204, 9543, 62786, 7043);
     let r = i64x2::new(7022187818705851223, 4754859411904311722);
 
-    assert_eq!(r, transmute(lsx_vavgr_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1749,7 +2230,13 @@ unsafe fn test_lsx_vavgr_wu() {
     let b = u32x4::new(1930150361, 3668628165, 2983921396, 2410913126);
     let r = i64x2::new(-5401180487351753235, 8140240017388800980);
 
-    assert_eq!(r, transmute(lsx_vavgr_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1758,7 +2245,13 @@ unsafe fn test_lsx_vavgr_du() {
     let b = u64x2::new(8650759135311802962, 11380630663742852932);
     let r = i64x2::new(6046550632940509412, 8095423581736830430);
 
-    assert_eq!(r, transmute(lsx_vavgr_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vavgr_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1771,7 +2264,13 @@ unsafe fn test_lsx_vssub_b() {
     );
     let r = i64x2::new(628822736562549631, -9187601072510296593);
 
-    assert_eq!(r, transmute(lsx_vssub_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1780,7 +2279,13 @@ unsafe fn test_lsx_vssub_h() {
     let b = i16x8::new(-26027, 6118, -13204, 25080, 12458, 8441, 24701, 11617);
     let r = i64x2::new(-9223231300041015297, 1942699741282756937);
 
-    assert_eq!(r, transmute(lsx_vssub_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1789,7 +2294,13 @@ unsafe fn test_lsx_vssub_w() {
     let b = i32x4::new(-1808829767, 2144666490, 146236682, 1180114488);
     let r = i64x2::new(-9223372035405031217, -177933965588659662);
 
-    assert_eq!(r, transmute(lsx_vssub_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1798,7 +2309,13 @@ unsafe fn test_lsx_vssub_d() {
     let b = i64x2::new(-2293337525465880409, 5736255249834646932);
     let r = i64x2::new(2921430482628531027, -4208815595153969049);
 
-    assert_eq!(r, transmute(lsx_vssub_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1811,7 +2328,13 @@ unsafe fn test_lsx_vssub_bu() {
     );
     let r = i64x2::new(1441151919413273782, 87960930222283);
 
-    assert_eq!(r, transmute(lsx_vssub_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1820,7 +2343,13 @@ unsafe fn test_lsx_vssub_hu() {
     let b = u16x8::new(50468, 33060, 15257, 59071, 59343, 21993, 42978, 20097);
     let r = i64x2::new(902801202201243247, -7922957643493867520);
 
-    assert_eq!(r, transmute(lsx_vssub_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1829,7 +2358,13 @@ unsafe fn test_lsx_vssub_wu() {
     let b = u32x4::new(31483972, 3489479082, 152079374, 1875131600);
     let r = i64x2::new(66202020638834260, 1378022115978010238);
 
-    assert_eq!(r, transmute(lsx_vssub_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1838,7 +2373,13 @@ unsafe fn test_lsx_vssub_du() {
     let b = u64x2::new(6460869225596371206, 16765308520486969885);
     let r = i64x2::new(8426906920692365065, 0);
 
-    assert_eq!(r, transmute(lsx_vssub_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssub_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1851,7 +2392,13 @@ unsafe fn test_lsx_vabsd_b() {
     );
     let r = i64x2::new(4230359294854509733, 2116586434120326452);
 
-    assert_eq!(r, transmute(lsx_vabsd_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1860,7 +2407,13 @@ unsafe fn test_lsx_vabsd_h() {
     let b = i16x8::new(9346, 27961, 21592, 10762, -6831, 17219, 14968, -1750);
     let r = i64x2::new(4018377481144584593, 2994052849949411737);
 
-    assert_eq!(r, transmute(lsx_vabsd_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1869,7 +2422,13 @@ unsafe fn test_lsx_vabsd_w() {
     let b = i32x4::new(-638463360, -1154268425, 818053243, -1766966029);
     let r = i64x2::new(4346218292750542585, 1613133471209364690);
 
-    assert_eq!(r, transmute(lsx_vabsd_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1878,7 +2437,13 @@ unsafe fn test_lsx_vabsd_d() {
     let b = i64x2::new(-8533946706796471089, 1165272962517390961);
     let r = i64x2::new(7188249046367538699, 8146605509049538382);
 
-    assert_eq!(r, transmute(lsx_vabsd_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1891,7 +2456,13 @@ unsafe fn test_lsx_vabsd_bu() {
     );
     let r = i64x2::new(2316568964225934796, 5350198762417854927);
 
-    assert_eq!(r, transmute(lsx_vabsd_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1900,7 +2471,13 @@ unsafe fn test_lsx_vabsd_hu() {
     let b = u16x8::new(42102, 40052, 6807, 16289, 29686, 38061, 42843, 26642);
     let r = i64x2::new(-6889746235852116468, 1175584127230950722);
 
-    assert_eq!(r, transmute(lsx_vabsd_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1909,7 +2486,13 @@ unsafe fn test_lsx_vabsd_wu() {
     let b = u32x4::new(3008439409, 976530727, 1726048801, 4235308512);
     let r = i64x2::new(-5056055741505581388, 103751774096297765);
 
-    assert_eq!(r, transmute(lsx_vabsd_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1918,7 +2501,13 @@ unsafe fn test_lsx_vabsd_du() {
     let b = u64x2::new(305704565845198935, 18327726360649467511);
     let r = i64x2::new(-4540227154002526968, -1590034053554043722);
 
-    assert_eq!(r, transmute(lsx_vabsd_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vabsd_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1931,7 +2520,10 @@ unsafe fn test_lsx_vmul_b() {
     );
     let r = i64x2::new(-836412611799730432, -7959044669412588992);
 
-    assert_eq!(r, transmute(lsx_vmul_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmul_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1940,7 +2532,10 @@ unsafe fn test_lsx_vmul_h() {
     let b = i16x8::new(-18582, -25667, 17674, 8424, -17121, -21798, 28934, -353);
     let r = i64x2::new(-7419436171490628650, 3947512047518358605);
 
-    assert_eq!(r, transmute(lsx_vmul_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmul_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1949,7 +2544,10 @@ unsafe fn test_lsx_vmul_w() {
     let b = i32x4::new(1754730718, 782084571, 894216679, -1895747372);
     let r = i64x2::new(6602438528086061106, 4680306660704041039);
 
-    assert_eq!(r, transmute(lsx_vmul_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmul_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1958,7 +2556,10 @@ unsafe fn test_lsx_vmul_d() {
     let b = i64x2::new(8096709215426138432, -5454415917204378153);
     let r = i64x2::new(-1062747544199352000, -649255846668983579);
 
-    assert_eq!(r, transmute(lsx_vmul_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmul_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -1976,7 +2577,11 @@ unsafe fn test_lsx_vmadd_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmadd_b(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmadd_b(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -1989,7 +2594,11 @@ unsafe fn test_lsx_vmadd_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmadd_h(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmadd_h(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2002,7 +2611,11 @@ unsafe fn test_lsx_vmadd_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmadd_w(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmadd_w(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2015,7 +2628,11 @@ unsafe fn test_lsx_vmadd_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmadd_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmadd_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2034,7 +2651,11 @@ unsafe fn test_lsx_vmsub_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmsub_b(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmsub_b(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2047,7 +2668,11 @@ unsafe fn test_lsx_vmsub_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmsub_h(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmsub_h(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2060,7 +2685,11 @@ unsafe fn test_lsx_vmsub_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmsub_w(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmsub_w(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2073,7 +2702,11 @@ unsafe fn test_lsx_vmsub_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmsub_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmsub_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2087,7 +2720,10 @@ unsafe fn test_lsx_vdiv_b() {
     );
     let r = i64x2::new(720575944674246657, 281475060530176);
 
-    assert_eq!(r, transmute(lsx_vdiv_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2096,7 +2732,10 @@ unsafe fn test_lsx_vdiv_h() {
     let b = i16x8::new(-11221, 24673, 19931, 3799, -3251, -21373, -13758, -31286);
     let r = i64x2::new(-1125904201744385, 281470681743353);
 
-    assert_eq!(r, transmute(lsx_vdiv_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2105,7 +2744,10 @@ unsafe fn test_lsx_vdiv_w() {
     let b = i32x4::new(-775731190, 1887886939, 1001718213, 1135075421);
     let r = i64x2::new(4294967295, 4294967297);
 
-    assert_eq!(r, transmute(lsx_vdiv_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2114,7 +2756,10 @@ unsafe fn test_lsx_vdiv_d() {
     let b = i64x2::new(-9175012156877545557, -6390704898809702209);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vdiv_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2127,7 +2772,13 @@ unsafe fn test_lsx_vdiv_bu() {
     );
     let r = i64x2::new(261, 72058702139687425);
 
-    assert_eq!(r, transmute(lsx_vdiv_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2136,7 +2787,13 @@ unsafe fn test_lsx_vdiv_hu() {
     let b = u16x8::new(25282, 44917, 13706, 63351, 58837, 46710, 29092, 57823);
     let r = i64x2::new(4294967297, 0);
 
-    assert_eq!(r, transmute(lsx_vdiv_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2145,7 +2802,13 @@ unsafe fn test_lsx_vdiv_wu() {
     let b = u32x4::new(1130189258, 1211056894, 2357258312, 3855913706);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vdiv_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2154,7 +2817,13 @@ unsafe fn test_lsx_vdiv_du() {
     let b = u64x2::new(14945948123666054968, 10864054932328247404);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vdiv_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vdiv_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2167,7 +2836,13 @@ unsafe fn test_lsx_vhaddw_h_b() {
     );
     let r = i64x2::new(13791943145684950, -562821104926904);
 
-    assert_eq!(r, transmute(lsx_vhaddw_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2178,7 +2853,13 @@ unsafe fn test_lsx_vhaddw_w_h() {
     );
     let r = i64x2::new(56307021213062, 183021441324639);
 
-    assert_eq!(r, transmute(lsx_vhaddw_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2187,7 +2868,13 @@ unsafe fn test_lsx_vhaddw_d_w() {
     let b = i32x4::new(-1119468785, -1334232049, -1752131604, -2016112631);
     let r = i64x2::new(-2502031305, -1217615295);
 
-    assert_eq!(r, transmute(lsx_vhaddw_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2200,7 +2887,13 @@ unsafe fn test_lsx_vhaddw_hu_bu() {
     );
     let r = i64x2::new(45601115212087520, 21110838012870921);
 
-    assert_eq!(r, transmute(lsx_vhaddw_hu_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_hu_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2209,7 +2902,13 @@ unsafe fn test_lsx_vhaddw_wu_hu() {
     let b = u16x8::new(40369, 53005, 64424, 35720, 9231, 19965, 20662, 8208);
     let r = i64x2::new(411432097222434, 312888367535410);
 
-    assert_eq!(r, transmute(lsx_vhaddw_wu_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_wu_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2218,7 +2917,13 @@ unsafe fn test_lsx_vhaddw_du_wu() {
     let b = u32x4::new(728838120, 1267673009, 2659634151, 2264611356);
     let r = i64x2::new(4172122985, 4839922613);
 
-    assert_eq!(r, transmute(lsx_vhaddw_du_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_du_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2231,7 +2936,13 @@ unsafe fn test_lsx_vhsubw_h_b() {
     );
     let r = i64x2::new(-4503363402989617, -31243430355664844);
 
-    assert_eq!(r, transmute(lsx_vhsubw_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2240,7 +2951,13 @@ unsafe fn test_lsx_vhsubw_w_h() {
     let b = i16x8::new(-14204, -13312, 8240, -4455, -6362, -4711, -30790, -15773);
     let r = i64x2::new(70059506530916, 60275571046613);
 
-    assert_eq!(r, transmute(lsx_vhsubw_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2249,7 +2966,13 @@ unsafe fn test_lsx_vhsubw_d_w() {
     let b = i32x4::new(-1671723008, 870456702, 264823818, 13322401);
     let r = i64x2::new(-201438605, 449141316);
 
-    assert_eq!(r, transmute(lsx_vhsubw_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2262,7 +2985,13 @@ unsafe fn test_lsx_vhsubw_hu_bu() {
     );
     let r = i64x2::new(-62206416523952172, 42783380429340790);
 
-    assert_eq!(r, transmute(lsx_vhsubw_hu_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_hu_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2271,7 +3000,13 @@ unsafe fn test_lsx_vhsubw_wu_hu() {
     let b = u16x8::new(5212, 32159, 36502, 59290, 7604, 229, 35511, 47443);
     let r = i64x2::new(24696062008394, -147484881944276);
 
-    assert_eq!(r, transmute(lsx_vhsubw_wu_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_wu_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2280,7 +3015,13 @@ unsafe fn test_lsx_vhsubw_du_wu() {
     let b = u32x4::new(1383087137, 2403951939, 360532131, 3513614550);
     let r = i64x2::new(-601935499, 31776736);
 
-    assert_eq!(r, transmute(lsx_vhsubw_du_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_du_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2293,7 +3034,10 @@ unsafe fn test_lsx_vmod_b() {
     );
     let r = i64x2::new(2804691417388804007, -2461515231199824166);
 
-    assert_eq!(r, transmute(lsx_vmod_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2302,7 +3046,10 @@ unsafe fn test_lsx_vmod_h() {
     let b = i16x8::new(1550, 9221, -12080, 14553, -24847, 28286, 1074, 192);
     let r = i64x2::new(3930282117007147005, -10982007906888970);
 
-    assert_eq!(r, transmute(lsx_vmod_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2311,7 +3058,10 @@ unsafe fn test_lsx_vmod_w() {
     let b = i32x4::new(344507881, 1692387020, -1397506903, -1257953510);
     let r = i64x2::new(-5027973877095011085, 2553570821342119010);
 
-    assert_eq!(r, transmute(lsx_vmod_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2320,7 +3070,10 @@ unsafe fn test_lsx_vmod_d() {
     let b = i64x2::new(4636642606889723746, -259899475747531088);
     let r = i64x2::new(-1381676014874400835, -257849503742906530);
 
-    assert_eq!(r, transmute(lsx_vmod_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2333,7 +3086,13 @@ unsafe fn test_lsx_vmod_bu() {
     );
     let r = i64x2::new(7287961163701724026, 4745974892933063220);
 
-    assert_eq!(r, transmute(lsx_vmod_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2342,7 +3101,13 @@ unsafe fn test_lsx_vmod_hu() {
     let b = u16x8::new(15317, 24954, 61354, 3720, 21471, 6193, 8193, 35745);
     let r = i64x2::new(315403234587388856, 7101062794264266609);
 
-    assert_eq!(r, transmute(lsx_vmod_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2351,7 +3116,13 @@ unsafe fn test_lsx_vmod_wu() {
     let b = u32x4::new(49228057, 2249712923, 358897384, 1782599598);
     let r = i64x2::new(1070413902953059662, 3340025749258890964);
 
-    assert_eq!(r, transmute(lsx_vmod_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2360,7 +3131,13 @@ unsafe fn test_lsx_vmod_du() {
     let b = u64x2::new(16850073055169051895, 16069565262862467484);
     let r = i64x2::new(7747010922784437137, 20234676239478699);
 
-    assert_eq!(r, transmute(lsx_vmod_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmod_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2370,7 +3147,7 @@ unsafe fn test_lsx_vreplve_b() {
     );
     let r = i64x2::new(-2893606913523066921, -2893606913523066921);
 
-    assert_eq!(r, transmute(lsx_vreplve_b(transmute(a), -8)));
+    assert_eq!(r, transmute(lsx_vreplve_b(black_box(transmute(a)), -8)));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2378,7 +3155,7 @@ unsafe fn test_lsx_vreplve_h() {
     let a = i16x8::new(-29429, -23495, 8705, -7614, -25353, 11887, -25989, -12818);
     let r = i64x2::new(-3607719825936298514, -3607719825936298514);
 
-    assert_eq!(r, transmute(lsx_vreplve_h(transmute(a), 7)));
+    assert_eq!(r, transmute(lsx_vreplve_h(black_box(transmute(a)), 7)));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2386,7 +3163,7 @@ unsafe fn test_lsx_vreplve_w() {
     let a = i32x4::new(1584940676, 95787593, -1655264847, 682404402);
     let r = i64x2::new(411404579393346121, 411404579393346121);
 
-    assert_eq!(r, transmute(lsx_vreplve_w(transmute(a), -3)));
+    assert_eq!(r, transmute(lsx_vreplve_w(black_box(transmute(a)), -3)));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2394,7 +3171,7 @@ unsafe fn test_lsx_vreplve_d() {
     let a = i64x2::new(7614424214598615675, -7096892795239148002);
     let r = i64x2::new(7614424214598615675, 7614424214598615675);
 
-    assert_eq!(r, transmute(lsx_vreplve_d(transmute(a), 0)));
+    assert_eq!(r, transmute(lsx_vreplve_d(black_box(transmute(a)), 0)));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2404,7 +3181,7 @@ unsafe fn test_lsx_vreplvei_b() {
     );
     let r = i64x2::new(-2097865012304223518, -2097865012304223518);
 
-    assert_eq!(r, transmute(lsx_vreplvei_b::<5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vreplvei_b::<5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2412,7 +3189,7 @@ unsafe fn test_lsx_vreplvei_h() {
     let a = i16x8::new(-15455, -4410, 5029, 25863, -23170, 26570, 27423, -834);
     let r = i64x2::new(7719006069021698847, 7719006069021698847);
 
-    assert_eq!(r, transmute(lsx_vreplvei_h::<6>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vreplvei_h::<6>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2420,7 +3197,7 @@ unsafe fn test_lsx_vreplvei_w() {
     let a = i32x4::new(1843143434, 491125746, -328585251, -1996512058);
     let r = i64x2::new(7916240772710277898, 7916240772710277898);
 
-    assert_eq!(r, transmute(lsx_vreplvei_w::<0>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vreplvei_w::<0>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2428,7 +3205,7 @@ unsafe fn test_lsx_vreplvei_d() {
     let a = i64x2::new(4333963848299154309, -8310246545782080694);
     let r = i64x2::new(-8310246545782080694, -8310246545782080694);
 
-    assert_eq!(r, transmute(lsx_vreplvei_d::<1>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vreplvei_d::<1>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2441,7 +3218,13 @@ unsafe fn test_lsx_vpickev_b() {
     );
     let r = i64x2::new(3921750152141124833, -933322373843017127);
 
-    assert_eq!(r, transmute(lsx_vpickev_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickev_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2450,7 +3233,13 @@ unsafe fn test_lsx_vpickev_h() {
     let b = i16x8::new(-5248, -1786, -21768, 23214, -4223, 23538, -24936, -32316);
     let r = i64x2::new(-7018596679058658432, 139073165196191894);
 
-    assert_eq!(r, transmute(lsx_vpickev_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickev_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2459,7 +3248,13 @@ unsafe fn test_lsx_vpickev_w() {
     let b = i32x4::new(-1187277846, -787064901, -980229113, 1746235326);
     let r = i64x2::new(-4210051979814398998, -769258006856513132);
 
-    assert_eq!(r, transmute(lsx_vpickev_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickev_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2468,7 +3263,13 @@ unsafe fn test_lsx_vpickev_d() {
     let b = i64x2::new(6574352346370076190, -3979792156310826694);
     let r = i64x2::new(6574352346370076190, 1789073368466131160);
 
-    assert_eq!(r, transmute(lsx_vpickev_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickev_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2481,7 +3282,13 @@ unsafe fn test_lsx_vpickod_b() {
     );
     let r = i64x2::new(8220640377280882872, -6083110277645985532);
 
-    assert_eq!(r, transmute(lsx_vpickod_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickod_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2490,7 +3297,13 @@ unsafe fn test_lsx_vpickod_h() {
     let b = i16x8::new(12047, 25024, -10709, -28077, 24357, 19934, 10289, 28546);
     let r = i64x2::new(8035070303515402688, 6167254016163165900);
 
-    assert_eq!(r, transmute(lsx_vpickod_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickod_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2499,7 +3312,13 @@ unsafe fn test_lsx_vpickod_w() {
     let b = i32x4::new(-99240403, 314407358, 543396756, 1976776696);
     let r = i64x2::new(8490191261129341374, -7045044594236590438);
 
-    assert_eq!(r, transmute(lsx_vpickod_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickod_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2508,7 +3327,13 @@ unsafe fn test_lsx_vpickod_d() {
     let b = i64x2::new(-4197243771252175958, -543692393753629390);
     let r = i64x2::new(-543692393753629390, -7578696032343374601);
 
-    assert_eq!(r, transmute(lsx_vpickod_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickod_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2521,7 +3346,13 @@ unsafe fn test_lsx_vilvh_b() {
     );
     let r = i64x2::new(1211180715666052671, -2634368371891034045);
 
-    assert_eq!(r, transmute(lsx_vilvh_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvh_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2530,7 +3361,13 @@ unsafe fn test_lsx_vilvh_h() {
     let b = i16x8::new(23768, -31845, 28689, 14757, 9499, 7795, -13573, -10011);
     let r = i64x2::new(-4714953853167983333, 4564918175499275003);
 
-    assert_eq!(r, transmute(lsx_vilvh_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvh_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2539,7 +3376,13 @@ unsafe fn test_lsx_vilvh_w() {
     let b = i32x4::new(-737076987, 38515006, 602108871, -63099569);
     let r = i64x2::new(-5365723764939852857, -1200522227779556017);
 
-    assert_eq!(r, transmute(lsx_vilvh_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvh_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2548,7 +3391,13 @@ unsafe fn test_lsx_vilvh_d() {
     let b = i64x2::new(-2160658667838026389, 1449429407527660400);
     let r = i64x2::new(1449429407527660400, 5375050218784453679);
 
-    assert_eq!(r, transmute(lsx_vilvh_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvh_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2561,7 +3410,13 @@ unsafe fn test_lsx_vilvl_b() {
     );
     let r = i64x2::new(6945744258789947856, 8515979671552484861);
 
-    assert_eq!(r, transmute(lsx_vilvl_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvl_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2570,7 +3425,13 @@ unsafe fn test_lsx_vilvl_h() {
     let b = i16x8::new(11601, 6788, 3174, -4208, -25999, -25660, -4591, 7133);
     let r = i64x2::new(-6560589601043632815, -2260825085889541018);
 
-    assert_eq!(r, transmute(lsx_vilvl_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvl_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2579,7 +3440,13 @@ unsafe fn test_lsx_vilvl_w() {
     let b = i32x4::new(486029703, 1245981961, 112180197, 1939621508);
     let r = i64x2::new(-4282490222245561977, 7435326725564935433);
 
-    assert_eq!(r, transmute(lsx_vilvl_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvl_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2588,7 +3455,13 @@ unsafe fn test_lsx_vilvl_d() {
     let b = i64x2::new(3142531875873363679, 736682102982019415);
     let r = i64x2::new(3142531875873363679, 7063413230460842607);
 
-    assert_eq!(r, transmute(lsx_vilvl_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vilvl_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2601,7 +3474,13 @@ unsafe fn test_lsx_vpackev_b() {
     );
     let r = i64x2::new(-1928363389519380677, -1882898104368665381);
 
-    assert_eq!(r, transmute(lsx_vpackev_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackev_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2610,7 +3489,13 @@ unsafe fn test_lsx_vpackev_h() {
     let b = i16x8::new(-9444, 5210, -14402, 17972, 16606, 2450, 5123, 14727);
     let r = i64x2::new(7533052947329899292, 1461440082551914718);
 
-    assert_eq!(r, transmute(lsx_vpackev_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackev_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2619,7 +3504,13 @@ unsafe fn test_lsx_vpackev_w() {
     let b = i32x4::new(-872903277, 1255047449, -2110158279, 682925573);
     let r = i64x2::new(5636997704425442707, -8345976908349339079);
 
-    assert_eq!(r, transmute(lsx_vpackev_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackev_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2628,7 +3519,13 @@ unsafe fn test_lsx_vpackev_d() {
     let b = i64x2::new(-9119315954224042738, -4563700463464702181);
     let r = i64x2::new(-9119315954224042738, 7118943335298607169);
 
-    assert_eq!(r, transmute(lsx_vpackev_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackev_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2641,7 +3538,13 @@ unsafe fn test_lsx_vpackod_b() {
     );
     let r = i64x2::new(4389351353151377653, -4315624792288929032);
 
-    assert_eq!(r, transmute(lsx_vpackod_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackod_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2650,7 +3553,13 @@ unsafe fn test_lsx_vpackod_h() {
     let b = i16x8::new(-23247, 17928, -13353, -20146, 5696, 22071, -10728, -30262);
     let r = i64x2::new(-4433598883325590008, -9178747487946648009);
 
-    assert_eq!(r, transmute(lsx_vpackod_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackod_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2659,7 +3568,13 @@ unsafe fn test_lsx_vpackod_w() {
     let b = i32x4::new(445270781, 793617340, -1461557030, -22199234);
     let r = i64x2::new(51238874735551420, 6731566319615689790);
 
-    assert_eq!(r, transmute(lsx_vpackod_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackod_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2668,7 +3583,13 @@ unsafe fn test_lsx_vpackod_d() {
     let b = i64x2::new(9039771682296134623, -6404442538060227683);
     let r = i64x2::new(-6404442538060227683, -4670773907187480618);
 
-    assert_eq!(r, transmute(lsx_vpackod_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpackod_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2680,7 +3601,11 @@ unsafe fn test_lsx_vshuf_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vshuf_h(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vshuf_h(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2693,7 +3618,11 @@ unsafe fn test_lsx_vshuf_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vshuf_w(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vshuf_w(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2706,7 +3635,11 @@ unsafe fn test_lsx_vshuf_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vshuf_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vshuf_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2720,7 +3653,10 @@ unsafe fn test_lsx_vand_v() {
     );
     let r = i64x2::new(244105884219744360, -9223116804091473582);
 
-    assert_eq!(r, transmute(lsx_vand_v(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vand_v(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2730,7 +3666,7 @@ unsafe fn test_lsx_vandi_b() {
     );
     let r = i64x2::new(-8135737750142058361, -7666517314596397435);
 
-    assert_eq!(r, transmute(lsx_vandi_b::<159>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vandi_b::<159>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2743,7 +3679,10 @@ unsafe fn test_lsx_vor_v() {
     );
     let r = i64x2::new(-2351582766212852737, -4924766118269159990);
 
-    assert_eq!(r, transmute(lsx_vor_v(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vor_v(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2753,7 +3692,7 @@ unsafe fn test_lsx_vori_b() {
     );
     let r = i64x2::new(-589140355308650538, -3179554720060804109);
 
-    assert_eq!(r, transmute(lsx_vori_b::<210>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vori_b::<210>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2766,7 +3705,10 @@ unsafe fn test_lsx_vnor_v() {
     );
     let r = i64x2::new(3036560889408918025, 7823034030269427744);
 
-    assert_eq!(r, transmute(lsx_vnor_v(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vnor_v(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2776,7 +3718,7 @@ unsafe fn test_lsx_vnori_b() {
     );
     let r = i64x2::new(5227628601268782144, 596802560304890884);
 
-    assert_eq!(r, transmute(lsx_vnori_b::<51>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vnori_b::<51>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2789,7 +3731,10 @@ unsafe fn test_lsx_vxor_v() {
     );
     let r = i64x2::new(8732028225622312747, 6858262329367852470);
 
-    assert_eq!(r, transmute(lsx_vxor_v(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vxor_v(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2799,7 +3744,7 @@ unsafe fn test_lsx_vxori_b() {
     );
     let r = i64x2::new(3478586993001400570, 4687744515358339026);
 
-    assert_eq!(r, transmute(lsx_vxori_b::<225>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vxori_b::<225>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2817,7 +3762,11 @@ unsafe fn test_lsx_vbitsel_v() {
 
     assert_eq!(
         r,
-        transmute(lsx_vbitsel_v(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vbitsel_v(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -2833,7 +3782,10 @@ unsafe fn test_lsx_vbitseli_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vbitseli_b::<65>(transmute(a), transmute(b)))
+        transmute(lsx_vbitseli_b::<65>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -2844,7 +3796,7 @@ unsafe fn test_lsx_vshuf4i_b() {
     );
     let r = i64x2::new(3937170420478429898, -3347145886530736916);
 
-    assert_eq!(r, transmute(lsx_vshuf4i_b::<234>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vshuf4i_b::<234>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2852,7 +3804,7 @@ unsafe fn test_lsx_vshuf4i_h() {
     let a = i16x8::new(27707, -1094, -15784, -28387, 31634, -12323, -30387, -11480);
     let r = i64x2::new(-7989953385787032646, -3231104182470389795);
 
-    assert_eq!(r, transmute(lsx_vshuf4i_h::<209>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vshuf4i_h::<209>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2860,35 +3812,38 @@ unsafe fn test_lsx_vshuf4i_w() {
     let a = i32x4::new(768986805, -1036149600, -1196682940, -214444511);
     let r = i64x2::new(3302773179299516085, -5139714087882845884);
 
-    assert_eq!(r, transmute(lsx_vshuf4i_w::<160>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vshuf4i_w::<160>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
 unsafe fn test_lsx_vreplgr2vr_b() {
     let r = i64x2::new(795741901218843403, 795741901218843403);
 
-    assert_eq!(r, transmute(lsx_vreplgr2vr_b(970839819)));
+    assert_eq!(r, transmute(lsx_vreplgr2vr_b(black_box(970839819))));
 }
 
 #[simd_test(enable = "lsx")]
 unsafe fn test_lsx_vreplgr2vr_h() {
     let r = i64x2::new(-6504141532176800324, -6504141532176800324);
 
-    assert_eq!(r, transmute(lsx_vreplgr2vr_h(93693372)));
+    assert_eq!(r, transmute(lsx_vreplgr2vr_h(black_box(93693372))));
 }
 
 #[simd_test(enable = "lsx")]
 unsafe fn test_lsx_vreplgr2vr_w() {
     let r = i64x2::new(-6737078705572473188, -6737078705572473188);
 
-    assert_eq!(r, transmute(lsx_vreplgr2vr_w(-1568598372)));
+    assert_eq!(r, transmute(lsx_vreplgr2vr_w(black_box(-1568598372))));
 }
 
 #[simd_test(enable = "lsx")]
 unsafe fn test_lsx_vreplgr2vr_d() {
     let r = i64x2::new(5000134708087557572, 5000134708087557572);
 
-    assert_eq!(r, transmute(lsx_vreplgr2vr_d(5000134708087557572)));
+    assert_eq!(
+        r,
+        transmute(lsx_vreplgr2vr_d(black_box(5000134708087557572)))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -2898,7 +3853,7 @@ unsafe fn test_lsx_vpcnt_b() {
     );
     let r = i64x2::new(217867142450840068, 145528077781566722);
 
-    assert_eq!(r, transmute(lsx_vpcnt_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpcnt_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2906,7 +3861,7 @@ unsafe fn test_lsx_vpcnt_h() {
     let a = i16x8::new(-512, 10388, -21267, -27094, 1085, -26444, -29360, -11576);
     let r = i64x2::new(1970367786975239, 1970350607237126);
 
-    assert_eq!(r, transmute(lsx_vpcnt_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpcnt_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2914,7 +3869,7 @@ unsafe fn test_lsx_vpcnt_w() {
     let a = i32x4::new(1399276601, -2094725994, -100739325, -1239551533);
     let r = i64x2::new(47244640271, 81604378645);
 
-    assert_eq!(r, transmute(lsx_vpcnt_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpcnt_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2922,7 +3877,7 @@ unsafe fn test_lsx_vpcnt_d() {
     let a = i64x2::new(-4470823169399930539, 3184270543884128372);
     let r = i64x2::new(29, 25);
 
-    assert_eq!(r, transmute(lsx_vpcnt_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpcnt_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2932,7 +3887,7 @@ unsafe fn test_lsx_vclo_b() {
     );
     let r = i64x2::new(72057594071547904, 3311470116864);
 
-    assert_eq!(r, transmute(lsx_vclo_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclo_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2940,7 +3895,7 @@ unsafe fn test_lsx_vclo_h() {
     let a = i16x8::new(-5432, 27872, -9150, 27393, 25236, 1028, -21312, -25189);
     let r = i64x2::new(8589934595, 281479271677952);
 
-    assert_eq!(r, transmute(lsx_vclo_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclo_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2948,7 +3903,7 @@ unsafe fn test_lsx_vclo_w() {
     let a = i32x4::new(1214322611, -1755838761, -1222326743, -1511364419);
     let r = i64x2::new(4294967296, 4294967297);
 
-    assert_eq!(r, transmute(lsx_vclo_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclo_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2956,7 +3911,7 @@ unsafe fn test_lsx_vclo_d() {
     let a = i64x2::new(-249299854527467825, -459308653408461862);
     let r = i64x2::new(6, 5);
 
-    assert_eq!(r, transmute(lsx_vclo_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclo_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2966,7 +3921,7 @@ unsafe fn test_lsx_vclz_b() {
     );
     let r = i64x2::new(144116287587483648, 72903118479688195);
 
-    assert_eq!(r, transmute(lsx_vclz_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclz_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2974,7 +3929,7 @@ unsafe fn test_lsx_vclz_h() {
     let a = i16x8::new(1222, 32426, 3164, -10763, 10189, -4197, -21841, -28676);
     let r = i64x2::new(17179934725, 2);
 
-    assert_eq!(r, transmute(lsx_vclz_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclz_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2982,7 +3937,7 @@ unsafe fn test_lsx_vclz_w() {
     let a = i32x4::new(-490443689, -1039971379, -217310592, -1921086575);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vclz_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclz_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -2990,7 +3945,7 @@ unsafe fn test_lsx_vclz_d() {
     let a = i64x2::new(4630351532137644314, -6587611980764816064);
     let r = i64x2::new(1, 0);
 
-    assert_eq!(r, transmute(lsx_vclz_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vclz_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3000,7 +3955,10 @@ unsafe fn test_lsx_vpickve2gr_b() {
     );
     let r: i32 = 51;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_b::<15>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickve2gr_b::<15>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3008,7 +3966,7 @@ unsafe fn test_lsx_vpickve2gr_h() {
     let a = i16x8::new(-12924, 31013, 18171, 20404, 21226, 14128, -6255, 26521);
     let r: i32 = 21226;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_h::<4>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpickve2gr_h::<4>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3016,7 +3974,7 @@ unsafe fn test_lsx_vpickve2gr_w() {
     let a = i32x4::new(-1559379275, 2065542381, -1882161334, 1502157419);
     let r: i32 = -1882161334;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_w::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpickve2gr_w::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3024,7 +3982,7 @@ unsafe fn test_lsx_vpickve2gr_d() {
     let a = i64x2::new(-6941380853339482104, 8405634758774935528);
     let r: i64 = -6941380853339482104;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_d::<0>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vpickve2gr_d::<0>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3034,7 +3992,10 @@ unsafe fn test_lsx_vpickve2gr_bu() {
     );
     let r: u32 = 199;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_bu::<8>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickve2gr_bu::<8>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3042,7 +4003,10 @@ unsafe fn test_lsx_vpickve2gr_hu() {
     let a = i16x8::new(25003, 5139, -12977, 7550, -12177, 19294, -2216, 12693);
     let r: u32 = 25003;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_hu::<0>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickve2gr_hu::<0>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3050,7 +4014,10 @@ unsafe fn test_lsx_vpickve2gr_wu() {
     let a = i32x4::new(-295894883, 551663550, -710853968, 82692774);
     let r: u32 = 3999072413;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_wu::<0>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickve2gr_wu::<0>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3058,7 +4025,10 @@ unsafe fn test_lsx_vpickve2gr_du() {
     let a = i64x2::new(748282319555413922, -1352335765832355666);
     let r: u64 = 748282319555413922;
 
-    assert_eq!(r, transmute(lsx_vpickve2gr_du::<0>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vpickve2gr_du::<0>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3070,7 +4040,7 @@ unsafe fn test_lsx_vinsgr2vr_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vinsgr2vr_b::<14>(transmute(a), 1333652061))
+        transmute(lsx_vinsgr2vr_b::<14>(black_box(transmute(a)), 1333652061))
     );
 }
 
@@ -3079,7 +4049,10 @@ unsafe fn test_lsx_vinsgr2vr_h() {
     let a = i16x8::new(-20591, 7819, 25287, -11296, 4604, 28833, -1306, 6418);
     let r = i64x2::new(-3179432729573085295, 1806782266980897276);
 
-    assert_eq!(r, transmute(lsx_vinsgr2vr_h::<5>(transmute(a), -987420193)));
+    assert_eq!(
+        r,
+        transmute(lsx_vinsgr2vr_h::<5>(black_box(transmute(a)), -987420193))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3087,7 +4060,10 @@ unsafe fn test_lsx_vinsgr2vr_w() {
     let a = i32x4::new(1608179655, 886830932, -621638499, 2021214690);
     let r = i64x2::new(3808909851629379527, 8681050995079237782);
 
-    assert_eq!(r, transmute(lsx_vinsgr2vr_w::<2>(transmute(a), -960507754)));
+    assert_eq!(
+        r,
+        transmute(lsx_vinsgr2vr_w::<2>(black_box(transmute(a)), -960507754))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3095,7 +4071,10 @@ unsafe fn test_lsx_vinsgr2vr_d() {
     let a = i64x2::new(-6562091001143116290, -2425423285843953307);
     let r = i64x2::new(-6562091001143116290, -233659266);
 
-    assert_eq!(r, transmute(lsx_vinsgr2vr_d::<1>(transmute(a), -233659266)));
+    assert_eq!(
+        r,
+        transmute(lsx_vinsgr2vr_d::<1>(black_box(transmute(a)), -233659266))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3104,7 +4083,13 @@ unsafe fn test_lsx_vfadd_s() {
     let b = u32x4::new(1050272808, 1054022924, 1064036136, 1063113730);
     let r = i64x2::new(4588396142719948771, 4567018621615066847);
 
-    assert_eq!(r, transmute(lsx_vfadd_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfadd_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3113,7 +4098,13 @@ unsafe fn test_lsx_vfadd_d() {
     let b = u64x2::new(4605819027271079334, 4601207158507578498);
     let r = i64x2::new(4608685566198055604, 4608371493448991663);
 
-    assert_eq!(r, transmute(lsx_vfadd_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfadd_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3122,7 +4113,13 @@ unsafe fn test_lsx_vfsub_s() {
     let b = u32x4::new(1063475462, 1045836432, 1065150677, 1042376676);
     let r = i64x2::new(4532926601401089072, 4475386505810184670);
 
-    assert_eq!(r, transmute(lsx_vfsub_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfsub_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3131,7 +4128,13 @@ unsafe fn test_lsx_vfsub_d() {
     let b = u64x2::new(4605973926398825814, 4600156145303017004);
     let r = i64x2::new(-4622342180736116526, 4603750919602422881);
 
-    assert_eq!(r, transmute(lsx_vfsub_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfsub_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3140,7 +4143,13 @@ unsafe fn test_lsx_vfmul_s() {
     let b = u32x4::new(1065241951, 1044285812, 1050678216, 1009264512);
     let r = i64x2::new(4471727895898079441, 4289440988347233543);
 
-    assert_eq!(r, transmute(lsx_vfmul_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmul_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3149,7 +4158,13 @@ unsafe fn test_lsx_vfmul_d() {
     let b = u64x2::new(4605208047666947899, 4599634375243914522);
     let r = i64x2::new(4591550625791030606, 4595475933048682142);
 
-    assert_eq!(r, transmute(lsx_vfmul_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmul_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3158,7 +4173,13 @@ unsafe fn test_lsx_vfdiv_s() {
     let b = u32x4::new(1055538538, 1042248668, 1061233585, 1063649172);
     let r = i64x2::new(4613180427594946541, 4523223175100126088);
 
-    assert_eq!(r, transmute(lsx_vfdiv_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfdiv_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3167,7 +4188,13 @@ unsafe fn test_lsx_vfdiv_d() {
     let b = u64x2::new(4606326032528596062, 4601783079746725386);
     let r = i64x2::new(4592460108638699314, 4612120084672695832);
 
-    assert_eq!(r, transmute(lsx_vfdiv_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfdiv_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3176,7 +4203,13 @@ unsafe fn test_lsx_vfcvt_h_s() {
     let b = u32x4::new(1049501482, 1043939972, 1042291392, 1041250232);
     let r = i64x2::new(3495410141992989809, 3873441386606634666);
 
-    assert_eq!(r, transmute(lsx_vfcvt_h_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcvt_h_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3185,7 +4218,13 @@ unsafe fn test_lsx_vfcvt_s_d() {
     let b = u64x2::new(4600251021237488420, 4593890179408150924);
     let r = i64x2::new(4469319308295208818, 4496796258465732597);
 
-    assert_eq!(r, transmute(lsx_vfcvt_s_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcvt_s_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3194,7 +4233,13 @@ unsafe fn test_lsx_vfmin_s() {
     let b = u32x4::new(1060093085, 1026130528, 1057322097, 1057646773);
     let r = i64x2::new(4407197060203522560, 4542558301798153756);
 
-    assert_eq!(r, transmute(lsx_vfmin_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmin_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3203,7 +4248,13 @@ unsafe fn test_lsx_vfmin_d() {
     let b = u64x2::new(4584808359801648672, 4602712060570539582);
     let r = i64x2::new(4584808359801648672, 4602712060570539582);
 
-    assert_eq!(r, transmute(lsx_vfmin_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmin_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3212,7 +4263,13 @@ unsafe fn test_lsx_vfmina_s() {
     let b = u32x4::new(1049119234, 1058336224, 1057046116, 1029386720);
     let r = i64x2::new(4519411155382848002, 4421182298393539560);
 
-    assert_eq!(r, transmute(lsx_vfmina_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmina_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3221,7 +4278,13 @@ unsafe fn test_lsx_vfmina_d() {
     let b = u64x2::new(4599088744110071826, 4598732503789588496);
     let r = i64x2::new(4599088744110071826, 4598732503789588496);
 
-    assert_eq!(r, transmute(lsx_vfmina_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmina_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3230,7 +4293,13 @@ unsafe fn test_lsx_vfmax_s() {
     let b = u32x4::new(1042175760, 1040826492, 1059132266, 1050815434);
     let r = i64x2::new(4557520760982391874, 4573984521684325226);
 
-    assert_eq!(r, transmute(lsx_vfmax_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmax_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3239,7 +4308,13 @@ unsafe fn test_lsx_vfmax_d() {
     let b = u64x2::new(4593616624275112016, 4605244843740986156);
     let r = i64x2::new(4606275407710467505, 4605244843740986156);
 
-    assert_eq!(r, transmute(lsx_vfmax_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmax_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3248,7 +4323,13 @@ unsafe fn test_lsx_vfmaxa_s() {
     let b = u32x4::new(1064739422, 1055122552, 1049654310, 1057411362);
     let r = i64x2::new(4531716855176798814, 4541547219258471462);
 
-    assert_eq!(r, transmute(lsx_vfmaxa_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmaxa_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3257,7 +4338,13 @@ unsafe fn test_lsx_vfmaxa_d() {
     let b = u64x2::new(4603647289310579471, 4603999027307573908);
     let r = i64x2::new(4603647289310579471, 4606304546706191737);
 
-    assert_eq!(r, transmute(lsx_vfmaxa_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfmaxa_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3265,7 +4352,7 @@ unsafe fn test_lsx_vfclass_s() {
     let a = u32x4::new(1059786314, 1058231666, 1061513647, 1038650488);
     let r = i64x2::new(549755814016, 549755814016);
 
-    assert_eq!(r, transmute(lsx_vfclass_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfclass_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3273,7 +4360,7 @@ unsafe fn test_lsx_vfclass_d() {
     let a = u64x2::new(4601724705608768104, 4601126152607382566);
     let r = i64x2::new(128, 128);
 
-    assert_eq!(r, transmute(lsx_vfclass_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfclass_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3281,7 +4368,7 @@ unsafe fn test_lsx_vfsqrt_s() {
     let a = u32x4::new(1055398716, 1050305974, 995168768, 1064901995);
     let r = i64x2::new(4543169501430832482, 4574681629207255333);
 
-    assert_eq!(r, transmute(lsx_vfsqrt_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfsqrt_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3289,7 +4376,7 @@ unsafe fn test_lsx_vfsqrt_d() {
     let a = u64x2::new(4605784293613801157, 4602267946351406890);
     let r = i64x2::new(4606453893731357485, 4604397310232711799);
 
-    assert_eq!(r, transmute(lsx_vfsqrt_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfsqrt_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3297,7 +4384,7 @@ unsafe fn test_lsx_vfrecip_s() {
     let a = u32x4::new(1003452672, 1050811504, 1044295808, 1064402913);
     let r = i64x2::new(4632552602764963931, 4577820515916044016);
 
-    assert_eq!(r, transmute(lsx_vfrecip_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrecip_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3305,7 +4392,7 @@ unsafe fn test_lsx_vfrecip_d() {
     let a = u64x2::new(4598634931235673106, 4598630619264835010);
     let r = i64x2::new(4615355353482170689, 4615362460048142095);
 
-    assert_eq!(r, transmute(lsx_vfrecip_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrecip_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx,frecipe")]
@@ -3313,7 +4400,7 @@ unsafe fn test_lsx_vfrecipe_s() {
     let a = u32x4::new(1057583779, 1062308847, 1060089100, 1048454688);
     let r = i64x2::new(4583644530211711115, 4647978179615164140);
 
-    assert_eq!(r, transmute(lsx_vfrecipe_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrecipe_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx,frecipe")]
@@ -3321,7 +4408,7 @@ unsafe fn test_lsx_vfrecipe_d() {
     let a = u64x2::new(4605515926442181274, 4605369703273365674);
     let r = i64x2::new(4608204937770303488, 4608317161507651584);
 
-    assert_eq!(r, transmute(lsx_vfrecipe_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrecipe_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx,frecipe")]
@@ -3329,7 +4416,7 @@ unsafe fn test_lsx_vfrsqrte_s() {
     let a = u32x4::new(1064377488, 1055815904, 1056897740, 1064016656);
     let r = i64x2::new(4592421282989204764, 4577184195020153336);
 
-    assert_eq!(r, transmute(lsx_vfrsqrte_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrsqrte_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx,frecipe")]
@@ -3337,7 +4424,7 @@ unsafe fn test_lsx_vfrsqrte_d() {
     let a = u64x2::new(4602766865443628663, 4605323203937791867);
     let r = i64x2::new(4608986772678901760, 4607734355383549952);
 
-    assert_eq!(r, transmute(lsx_vfrsqrte_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrsqrte_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3345,7 +4432,7 @@ unsafe fn test_lsx_vfrint_s() {
     let a = u32x4::new(1062138521, 1056849108, 1034089720, 1038314384);
     let r = i64x2::new(1065353216, 0);
 
-    assert_eq!(r, transmute(lsx_vfrint_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrint_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3353,7 +4440,7 @@ unsafe fn test_lsx_vfrint_d() {
     let a = u64x2::new(4598620052333442366, 4603262362368837514);
     let r = i64x2::new(0, 4607182418800017408);
 
-    assert_eq!(r, transmute(lsx_vfrint_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrint_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3361,7 +4448,7 @@ unsafe fn test_lsx_vfrsqrt_s() {
     let a = u32x4::new(1058614029, 1050504950, 1013814976, 1062355001);
     let r = i64x2::new(4604601921912011494, 4579384257679777264);
 
-    assert_eq!(r, transmute(lsx_vfrsqrt_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrsqrt_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3369,7 +4456,7 @@ unsafe fn test_lsx_vfrsqrt_d() {
     let a = u64x2::new(4602924191185043139, 4606088351077917251);
     let r = i64x2::new(4608881149202581394, 4607483676176768181);
 
-    assert_eq!(r, transmute(lsx_vfrsqrt_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrsqrt_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3377,7 +4464,7 @@ unsafe fn test_lsx_vflogb_s() {
     let a = u32x4::new(1053488512, 1061429282, 1064965594, 1061326585);
     let r = i64x2::new(-4647714812225126400, -4647714812233515008);
 
-    assert_eq!(r, transmute(lsx_vflogb_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vflogb_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3385,7 +4472,7 @@ unsafe fn test_lsx_vflogb_d() {
     let a = u64x2::new(4589481276789128632, 4599408395082246526);
     let r = i64x2::new(-4607182418800017408, -4611686018427387904);
 
-    assert_eq!(r, transmute(lsx_vflogb_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vflogb_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3393,7 +4480,7 @@ unsafe fn test_lsx_vfcvth_s_h() {
     let a = i16x8::new(29550, -13884, 689, -1546, 24006, -19112, -12769, 1779);
     let r = i64x2::new(-4707668984349540352, 4097818267320836096);
 
-    assert_eq!(r, transmute(lsx_vfcvth_s_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfcvth_s_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3401,7 +4488,7 @@ unsafe fn test_lsx_vfcvth_d_s() {
     let a = u32x4::new(1051543000, 1042275304, 1038283216, 1063876621);
     let r = i64x2::new(4592649323212177408, 4606389677895712768);
 
-    assert_eq!(r, transmute(lsx_vfcvth_d_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfcvth_d_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3409,7 +4496,7 @@ unsafe fn test_lsx_vfcvtl_s_h() {
     let a = i16x8::new(-21951, -13772, -17190, 9566, -19227, 9682, 13427, -30861);
     let r = i64x2::new(-4519784435355738112, 4371798972740354048);
 
-    assert_eq!(r, transmute(lsx_vfcvtl_s_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfcvtl_s_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3417,7 +4504,7 @@ unsafe fn test_lsx_vfcvtl_d_s() {
     let a = u32x4::new(1059809930, 1051084496, 1062618346, 1058273673);
     let r = i64x2::new(4604206389789720576, 4599521958080544768);
 
-    assert_eq!(r, transmute(lsx_vfcvtl_d_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfcvtl_d_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3425,7 +4512,7 @@ unsafe fn test_lsx_vftint_w_s() {
     let a = u32x4::new(1064738153, 1040181800, 1064331056, 1050732566);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftint_w_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftint_w_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3433,7 +4520,7 @@ unsafe fn test_lsx_vftint_l_d() {
     let a = u64x2::new(4602244632405616462, 4606437548563176328);
     let r = i64x2::new(0, 1);
 
-    assert_eq!(r, transmute(lsx_vftint_l_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftint_l_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3441,7 +4528,7 @@ unsafe fn test_lsx_vftint_wu_s() {
     let a = u32x4::new(1051598962, 1051261298, 1059326008, 1057784192);
     let r = i64x2::new(0, 4294967297);
 
-    assert_eq!(r, transmute(lsx_vftint_wu_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftint_wu_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3449,7 +4536,7 @@ unsafe fn test_lsx_vftint_lu_d() {
     let a = u64x2::new(4605561240422589260, 4595241299507769712);
     let r = i64x2::new(1, 0);
 
-    assert_eq!(r, transmute(lsx_vftint_lu_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftint_lu_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3457,7 +4544,7 @@ unsafe fn test_lsx_vftintrz_w_s() {
     let a = u32x4::new(1027659872, 1064207676, 1058472873, 1055740014);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrz_w_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrz_w_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3465,7 +4552,7 @@ unsafe fn test_lsx_vftintrz_l_d() {
     let a = u64x2::new(4605051539601556532, 4605129242354661923);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrz_l_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrz_l_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3473,7 +4560,7 @@ unsafe fn test_lsx_vftintrz_wu_s() {
     let a = u32x4::new(1060876751, 1053710034, 1057340881, 1055555596);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrz_wu_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrz_wu_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3481,7 +4568,7 @@ unsafe fn test_lsx_vftintrz_lu_d() {
     let a = u64x2::new(4598711097624940956, 4598268778109474002);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrz_lu_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrz_lu_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3489,7 +4576,7 @@ unsafe fn test_lsx_vffint_s_w() {
     let a = i32x4::new(81337967, 1396520141, 2124859806, 1655115736);
     let r = i64x2::new(5667351778062705614, 5676028806041521555);
 
-    assert_eq!(r, transmute(lsx_vffint_s_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vffint_s_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3497,7 +4584,7 @@ unsafe fn test_lsx_vffint_d_l() {
     let a = i64x2::new(-1543454772280682525, -7672333112582708041);
     let r = i64x2::new(-4344448119835677720, -4333977527979901593);
 
-    assert_eq!(r, transmute(lsx_vffint_d_l(transmute(a))));
+    assert_eq!(r, transmute(lsx_vffint_d_l(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3505,7 +4592,7 @@ unsafe fn test_lsx_vffint_s_wu() {
     let a = u32x4::new(2224947834, 194720725, 2248289069, 1131100007);
     let r = i64x2::new(5564675890493038082, 5658445755393114667);
 
-    assert_eq!(r, transmute(lsx_vffint_s_wu(transmute(a))));
+    assert_eq!(r, transmute(lsx_vffint_s_wu(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3513,7 +4600,7 @@ unsafe fn test_lsx_vffint_d_lu() {
     let a = u64x2::new(11793247389644223387, 1356636411353166515);
     let r = i64x2::new(4892164017273962878, 4878194157796724979);
 
-    assert_eq!(r, transmute(lsx_vffint_d_lu(transmute(a))));
+    assert_eq!(r, transmute(lsx_vffint_d_lu(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3526,7 +4613,13 @@ unsafe fn test_lsx_vandn_v() {
     );
     let r = i64x2::new(184648152262214664, 2315143230533931624);
 
-    assert_eq!(r, transmute(lsx_vandn_v(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vandn_v(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3536,7 +4629,7 @@ unsafe fn test_lsx_vneg_b() {
     );
     let r = i64x2::new(-6195839201974406282, 3566844512212398771);
 
-    assert_eq!(r, transmute(lsx_vneg_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vneg_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3544,7 +4637,7 @@ unsafe fn test_lsx_vneg_h() {
     let a = i16x8::new(-6540, 25893, -2534, 29805, -28719, -16331, -20168, 14650);
     let r = i64x2::new(-8389350794815923828, -4123521786840387537);
 
-    assert_eq!(r, transmute(lsx_vneg_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vneg_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3552,7 +4645,7 @@ unsafe fn test_lsx_vneg_w() {
     let a = i32x4::new(-927815384, -898911982, 716171852, -2025175544);
     let r = i64x2::new(3860797565600356056, 8698062733717804468);
 
-    assert_eq!(r, transmute(lsx_vneg_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vneg_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3560,7 +4653,7 @@ unsafe fn test_lsx_vneg_d() {
     let a = i64x2::new(4241851098775470984, 2487122929432859927);
     let r = i64x2::new(-4241851098775470984, -2487122929432859927);
 
-    assert_eq!(r, transmute(lsx_vneg_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vneg_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3573,7 +4666,10 @@ unsafe fn test_lsx_vmuh_b() {
     );
     let r = i64x2::new(931993372669836524, 2017024359980467698);
 
-    assert_eq!(r, transmute(lsx_vmuh_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_b(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3582,7 +4678,10 @@ unsafe fn test_lsx_vmuh_h() {
     let b = i16x8::new(-446, -16863, 19467, -13578, -9673, -26572, -7864, 9855);
     let r = i64x2::new(-1422322400225984462, -842721997477184351);
 
-    assert_eq!(r, transmute(lsx_vmuh_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_h(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3591,7 +4690,10 @@ unsafe fn test_lsx_vmuh_w() {
     let b = i32x4::new(-1684820454, 449222301, 1106076122, 431017950);
     let r = i64x2::new(-950505610786872114, 420439596918869732);
 
-    assert_eq!(r, transmute(lsx_vmuh_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_w(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3600,7 +4702,10 @@ unsafe fn test_lsx_vmuh_d() {
     let b = i64x2::new(-1208434038665242614, -6078343251861677818);
     let r = i64x2::new(-121343209662433286, 284995587689374477);
 
-    assert_eq!(r, transmute(lsx_vmuh_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_d(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3613,7 +4718,13 @@ unsafe fn test_lsx_vmuh_bu() {
     );
     let r = i64x2::new(8725461799780227590, -3369022092985820632);
 
-    assert_eq!(r, transmute(lsx_vmuh_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3622,7 +4733,13 @@ unsafe fn test_lsx_vmuh_hu() {
     let b = u16x8::new(14769, 6489, 58866, 5997, 46648, 26325, 42186, 26942);
     let r = i64x2::new(1572068217944938757, 4366267597274655896);
 
-    assert_eq!(r, transmute(lsx_vmuh_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3631,7 +4748,13 @@ unsafe fn test_lsx_vmuh_wu() {
     let b = u32x4::new(1981234883, 1290836259, 1284878577, 702668871);
     let r = i64x2::new(4011887256539048298, 960560772888018584);
 
-    assert_eq!(r, transmute(lsx_vmuh_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3640,7 +4763,13 @@ unsafe fn test_lsx_vmuh_du() {
     let b = u64x2::new(14805542397189366587, 10025341254588295994);
     let r = i64x2::new(-9132083796568587258, 2493261783600858707);
 
-    assert_eq!(r, transmute(lsx_vmuh_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmuh_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3650,7 +4779,7 @@ unsafe fn test_lsx_vsllwil_h_b() {
     );
     let r = i64x2::new(-990777899147527584, 126109727303143360);
 
-    assert_eq!(r, transmute(lsx_vsllwil_h_b::<5>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsllwil_h_b::<5>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3658,7 +4787,7 @@ unsafe fn test_lsx_vsllwil_w_h() {
     let a = i16x8::new(25135, -4241, 25399, -32451, 5597, -16847, 3192, -14694);
     let r = i64x2::new(-9326057613926912, -71360503652913664);
 
-    assert_eq!(r, transmute(lsx_vsllwil_w_h::<9>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsllwil_w_h::<9>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3666,7 +4795,7 @@ unsafe fn test_lsx_vsllwil_d_w() {
     let a = i32x4::new(1472328927, -2106442262, 379100488, -607174188);
     let r = i64x2::new(6030659284992, -8627987505152);
 
-    assert_eq!(r, transmute(lsx_vsllwil_d_w::<12>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vsllwil_d_w::<12>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -3676,7 +4805,10 @@ unsafe fn test_lsx_vsllwil_hu_bu() {
     );
     let r = i64x2::new(6953679870551405312, 6809531147446388736);
 
-    assert_eq!(r, transmute(lsx_vsllwil_hu_bu::<7>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsllwil_hu_bu::<7>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3684,7 +4816,10 @@ unsafe fn test_lsx_vsllwil_wu_hu() {
     let a = u16x8::new(370, 47410, 29611, 6206, 10390, 34658, 65264, 5264);
     let r = i64x2::new(52127846272954880, 6823569169558272);
 
-    assert_eq!(r, transmute(lsx_vsllwil_wu_hu::<8>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsllwil_wu_hu::<8>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3692,7 +4827,10 @@ unsafe fn test_lsx_vsllwil_du_wu() {
     let a = u32x4::new(3249798491, 4098547305, 1101510259, 3478509641);
     let r = i64x2::new(13630642809995264, 17190553355550720);
 
-    assert_eq!(r, transmute(lsx_vsllwil_du_wu::<22>(transmute(a))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsllwil_du_wu::<22>(black_box(transmute(a))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3701,7 +4839,13 @@ unsafe fn test_lsx_vsran_b_h() {
     let b = i16x8::new(-12507, -16997, -17826, 5682, -298, -28572, -8117, -13478);
     let r = i64x2::new(-864943573596831881, 0);
 
-    assert_eq!(r, transmute(lsx_vsran_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsran_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3710,7 +4854,13 @@ unsafe fn test_lsx_vsran_h_w() {
     let b = i32x4::new(-52337348, -677553123, -58200260, -1473338606);
     let r = i64x2::new(1267763303694925820, 0);
 
-    assert_eq!(r, transmute(lsx_vsran_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsran_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3719,7 +4869,13 @@ unsafe fn test_lsx_vsran_w_d() {
     let b = i64x2::new(-8585295495893484131, -2657141976436452013);
     let r = i64x2::new(-5882350952887806270, 0);
 
-    assert_eq!(r, transmute(lsx_vsran_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsran_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3728,7 +4884,13 @@ unsafe fn test_lsx_vssran_b_h() {
     let b = i16x8::new(9459, 15241, 22170, 28027, 5348, 14784, 22613, -9469);
     let r = i64x2::new(9187483431610086528, 0);
 
-    assert_eq!(r, transmute(lsx_vssran_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssran_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3737,7 +4899,13 @@ unsafe fn test_lsx_vssran_h_w() {
     let b = i32x4::new(2070726003, -944816867, -160621862, -1222036466);
     let r = i64x2::new(-5219109151313101350, 0);
 
-    assert_eq!(r, transmute(lsx_vssran_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssran_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3746,7 +4914,13 @@ unsafe fn test_lsx_vssran_w_d() {
     let b = i64x2::new(-7078666005882550400, -2564990402652718339);
     let r = i64x2::new(-15032385536, 0);
 
-    assert_eq!(r, transmute(lsx_vssran_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssran_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3755,7 +4929,13 @@ unsafe fn test_lsx_vssran_bu_h() {
     let b = u16x8::new(2372, 26267, 4722, 47876, 44857, 55242, 45998, 51450);
     let r = i64x2::new(47227865344, 0);
 
-    assert_eq!(r, transmute(lsx_vssran_bu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssran_bu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3764,7 +4944,13 @@ unsafe fn test_lsx_vssran_hu_w() {
     let b = u32x4::new(2085279153, 2679576985, 2935643238, 3797496208);
     let r = i64x2::new(281470684234479, 0);
 
-    assert_eq!(r, transmute(lsx_vssran_hu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssran_hu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3773,7 +4959,13 @@ unsafe fn test_lsx_vssran_wu_d() {
     let b = u64x2::new(3904652404244024971, 4230656884168675704);
     let r = i64x2::new(536870912000, 0);
 
-    assert_eq!(r, transmute(lsx_vssran_wu_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssran_wu_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3782,7 +4974,13 @@ unsafe fn test_lsx_vsrarn_b_h() {
     let b = i16x8::new(-19071, -903, 11542, -25909, 24111, 14882, -27192, -8283);
     let r = i64x2::new(7076043428318610384, 0);
 
-    assert_eq!(r, transmute(lsx_vsrarn_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrarn_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3791,7 +4989,13 @@ unsafe fn test_lsx_vsrarn_h_w() {
     let b = i32x4::new(-1571698573, 1467958613, -1857488008, 424713310);
     let r = i64x2::new(498163119212, 0);
 
-    assert_eq!(r, transmute(lsx_vsrarn_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrarn_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3800,7 +5004,13 @@ unsafe fn test_lsx_vsrarn_w_d() {
     let b = i64x2::new(-8645668865455529235, -3129277582817496880);
     let r = i64x2::new(-8628090759335017621, 0);
 
-    assert_eq!(r, transmute(lsx_vsrarn_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrarn_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3809,7 +5019,13 @@ unsafe fn test_lsx_vssrarn_b_h() {
     let b = i16x8::new(24298, 2343, 24641, 20910, 3142, -1171, 25850, 15932);
     let r = i64x2::new(-148338468081139694, 0);
 
-    assert_eq!(r, transmute(lsx_vssrarn_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrarn_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3818,7 +5034,13 @@ unsafe fn test_lsx_vssrarn_h_w() {
     let b = i32x4::new(1911424854, -931292983, -1710824608, -1179580317);
     let r = i64x2::new(-9223231301513904204, 0);
 
-    assert_eq!(r, transmute(lsx_vssrarn_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrarn_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3827,7 +5049,13 @@ unsafe fn test_lsx_vssrarn_w_d() {
     let b = i64x2::new(2843689038926761304, -6830262024912907383);
     let r = i64x2::new(-9223372034707292161, 0);
 
-    assert_eq!(r, transmute(lsx_vssrarn_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrarn_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3836,7 +5064,13 @@ unsafe fn test_lsx_vssrarn_bu_h() {
     let b = u16x8::new(60210, 40155, 14296, 25577, 1550, 1674, 5330, 10645);
     let r = i64x2::new(10999415373897, 0);
 
-    assert_eq!(r, transmute(lsx_vssrarn_bu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrarn_bu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3845,7 +5079,13 @@ unsafe fn test_lsx_vssrarn_hu_w() {
     let b = u32x4::new(3570029841, 3229468238, 1070101998, 3159433736);
     let r = i64x2::new(281474976645120, 0);
 
-    assert_eq!(r, transmute(lsx_vssrarn_hu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrarn_hu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3854,7 +5094,13 @@ unsafe fn test_lsx_vssrarn_wu_d() {
     let b = u64x2::new(1112771813772164907, 646071836375127186);
     let r = i64x2::new(963446, 0);
 
-    assert_eq!(r, transmute(lsx_vssrarn_wu_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrarn_wu_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3863,7 +5109,13 @@ unsafe fn test_lsx_vsrln_b_h() {
     let b = i16x8::new(-11667, 13077, -23656, 5150, -23771, -31329, 20729, 15169);
     let r = i64x2::new(23363148983015937, 0);
 
-    assert_eq!(r, transmute(lsx_vsrln_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrln_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3872,7 +5124,13 @@ unsafe fn test_lsx_vsrln_h_w() {
     let b = i32x4::new(1775989751, -1602688801, -801213995, -1801759515);
     let r = i64x2::new(-7033214568759295968, 0);
 
-    assert_eq!(r, transmute(lsx_vsrln_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrln_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3881,7 +5139,13 @@ unsafe fn test_lsx_vsrln_w_d() {
     let b = i64x2::new(-1428152872702150626, 3907864416256094744);
     let r = i64x2::new(-8718771486483115547, 0);
 
-    assert_eq!(r, transmute(lsx_vsrln_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrln_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3890,7 +5154,13 @@ unsafe fn test_lsx_vssrln_bu_h() {
     let b = u16x8::new(41072, 41125, 44619, 49581, 20733, 905, 47558, 7801);
     let r = i64x2::new(8862857593125412863, 0);
 
-    assert_eq!(r, transmute(lsx_vssrln_bu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrln_bu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3899,7 +5169,13 @@ unsafe fn test_lsx_vssrln_hu_w() {
     let b = u32x4::new(1325069171, 1380839173, 3495604120, 2839043866);
     let r = i64x2::new(16889194387279379, 0);
 
-    assert_eq!(r, transmute(lsx_vssrln_hu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrln_hu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3908,7 +5184,13 @@ unsafe fn test_lsx_vssrln_wu_d() {
     let b = u64x2::new(3908262745817581251, 17131627096934512209);
     let r = i64x2::new(-1, 0);
 
-    assert_eq!(r, transmute(lsx_vssrln_wu_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrln_wu_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3917,7 +5199,13 @@ unsafe fn test_lsx_vsrlrn_b_h() {
     let b = i16x8::new(22830, -27866, -24616, -9547, 11336, 320, 19908, 7056);
     let r = i64x2::new(-4888418841542521598, 0);
 
-    assert_eq!(r, transmute(lsx_vsrlrn_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlrn_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3926,7 +5214,13 @@ unsafe fn test_lsx_vsrlrn_h_w() {
     let b = i32x4::new(1387862348, 119424523, 185407104, 1890720739);
     let r = i64x2::new(2222313691660711041, 0);
 
-    assert_eq!(r, transmute(lsx_vsrlrn_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlrn_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3935,7 +5229,13 @@ unsafe fn test_lsx_vsrlrn_w_d() {
     let b = i64x2::new(-8550351213501194562, 7071641301481388656);
     let r = i64x2::new(182866822561795, 0);
 
-    assert_eq!(r, transmute(lsx_vsrlrn_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsrlrn_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3944,7 +5244,13 @@ unsafe fn test_lsx_vssrlrn_bu_h() {
     let b = u16x8::new(51122, 39148, 45511, 57479, 62603, 43668, 5537, 61004);
     let r = i64x2::new(432344477600776959, 0);
 
-    assert_eq!(r, transmute(lsx_vssrlrn_bu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrlrn_bu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3953,7 +5259,13 @@ unsafe fn test_lsx_vssrlrn_hu_w() {
     let b = u32x4::new(1618795892, 3678356443, 862445734, 2115250342);
     let r = i64x2::new(-4293983341, 0);
 
-    assert_eq!(r, transmute(lsx_vssrlrn_hu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrlrn_hu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3962,7 +5274,13 @@ unsafe fn test_lsx_vssrlrn_wu_d() {
     let b = u64x2::new(13406765083608623828, 7214649593148131096);
     let r = i64x2::new(-1, 0);
 
-    assert_eq!(r, transmute(lsx_vssrlrn_wu_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrlrn_wu_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -3977,7 +5295,10 @@ unsafe fn test_lsx_vfrstpi_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfrstpi_b::<28>(transmute(a), transmute(b)))
+        transmute(lsx_vfrstpi_b::<28>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -3987,7 +5308,13 @@ unsafe fn test_lsx_vfrstpi_h() {
     let b = i16x8::new(9590, -8044, 15088, 4172, 1721, 27581, -19895, -25679);
     let r = i64x2::new(-4160352588467724069, 5959935604366651239);
 
-    assert_eq!(r, transmute(lsx_vfrstpi_h::<1>(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfrstpi_h::<1>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4005,7 +5332,11 @@ unsafe fn test_lsx_vfrstp_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfrstp_b(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfrstp_b(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4018,7 +5349,11 @@ unsafe fn test_lsx_vfrstp_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfrstp_h(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfrstp_h(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4030,7 +5365,10 @@ unsafe fn test_lsx_vshuf4i_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vshuf4i_d::<153>(transmute(a), transmute(b)))
+        transmute(lsx_vshuf4i_d::<153>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -4041,7 +5379,7 @@ unsafe fn test_lsx_vbsrl_v() {
     );
     let r = i64x2::new(4570595419764160432, 56);
 
-    assert_eq!(r, transmute(lsx_vbsrl_v::<7>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbsrl_v::<7>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4051,7 +5389,7 @@ unsafe fn test_lsx_vbsll_v() {
     );
     let r = i64x2::new(0, -1801439850948198400);
 
-    assert_eq!(r, transmute(lsx_vbsll_v::<15>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vbsll_v::<15>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4066,7 +5404,10 @@ unsafe fn test_lsx_vextrins_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vextrins_b::<21>(transmute(a), transmute(b)))
+        transmute(lsx_vextrins_b::<21>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -4078,7 +5419,10 @@ unsafe fn test_lsx_vextrins_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vextrins_h::<33>(transmute(a), transmute(b)))
+        transmute(lsx_vextrins_h::<33>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -4090,7 +5434,10 @@ unsafe fn test_lsx_vextrins_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vextrins_w::<57>(transmute(a), transmute(b)))
+        transmute(lsx_vextrins_w::<57>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -4102,7 +5449,10 @@ unsafe fn test_lsx_vextrins_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vextrins_d::<62>(transmute(a), transmute(b)))
+        transmute(lsx_vextrins_d::<62>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -4113,7 +5463,7 @@ unsafe fn test_lsx_vmskltz_b() {
     );
     let r = i64x2::new(40038, 0);
 
-    assert_eq!(r, transmute(lsx_vmskltz_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmskltz_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4121,7 +5471,7 @@ unsafe fn test_lsx_vmskltz_h() {
     let a = i16x8::new(16730, 29121, -23447, -8647, -22303, 21817, 30964, -27069);
     let r = i64x2::new(156, 0);
 
-    assert_eq!(r, transmute(lsx_vmskltz_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmskltz_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4129,7 +5479,7 @@ unsafe fn test_lsx_vmskltz_w() {
     let a = i32x4::new(-657282776, -1247210048, 162595942, 949871015);
     let r = i64x2::new(3, 0);
 
-    assert_eq!(r, transmute(lsx_vmskltz_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmskltz_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4137,7 +5487,7 @@ unsafe fn test_lsx_vmskltz_d() {
     let a = i64x2::new(7728638770319849738, 4250984610820351699);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vmskltz_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmskltz_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4150,7 +5500,13 @@ unsafe fn test_lsx_vsigncov_b() {
     );
     let r = i64x2::new(-9074694153930972472, 1986788453588057010);
 
-    assert_eq!(r, transmute(lsx_vsigncov_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsigncov_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4159,7 +5515,13 @@ unsafe fn test_lsx_vsigncov_h() {
     let b = i16x8::new(27367, 4727, -2962, 14937, 26207, -19075, -26630, 10708);
     let r = i64x2::new(-4204122973533661927, -3013866947575178847);
 
-    assert_eq!(r, transmute(lsx_vsigncov_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsigncov_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4168,7 +5530,13 @@ unsafe fn test_lsx_vsigncov_w() {
     let b = i32x4::new(-1719915889, 290419288, 202835952, -1715336967);
     let r = i64x2::new(-1247341342367689359, -7367316170792699888);
 
-    assert_eq!(r, transmute(lsx_vsigncov_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsigncov_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4177,7 +5545,13 @@ unsafe fn test_lsx_vsigncov_d() {
     let b = i64x2::new(-7146260093067324952, -4263419240070336957);
     let r = i64x2::new(-7146260093067324952, 4263419240070336957);
 
-    assert_eq!(r, transmute(lsx_vsigncov_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsigncov_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4189,7 +5563,11 @@ unsafe fn test_lsx_vfmadd_s() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfmadd_s(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfmadd_s(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4202,7 +5580,11 @@ unsafe fn test_lsx_vfmadd_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfmadd_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfmadd_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4215,7 +5597,11 @@ unsafe fn test_lsx_vfmsub_s() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfmsub_s(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfmsub_s(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4228,7 +5614,11 @@ unsafe fn test_lsx_vfmsub_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfmsub_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfmsub_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4241,7 +5631,11 @@ unsafe fn test_lsx_vfnmadd_s() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfnmadd_s(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfnmadd_s(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4254,7 +5648,11 @@ unsafe fn test_lsx_vfnmadd_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfnmadd_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfnmadd_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4267,7 +5665,11 @@ unsafe fn test_lsx_vfnmsub_s() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfnmsub_s(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfnmsub_s(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4280,7 +5682,11 @@ unsafe fn test_lsx_vfnmsub_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vfnmsub_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vfnmsub_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -4289,7 +5695,7 @@ unsafe fn test_lsx_vftintrne_w_s() {
     let a = u32x4::new(1031214064, 1059673230, 1042813024, 1053602874);
     let r = i64x2::new(4294967296, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrne_w_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrne_w_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4297,7 +5703,7 @@ unsafe fn test_lsx_vftintrne_l_d() {
     let a = u64x2::new(4606989588359571497, 4604713245380178790);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftintrne_l_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrne_l_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4305,7 +5711,7 @@ unsafe fn test_lsx_vftintrp_w_s() {
     let a = u32x4::new(1061716225, 1050491008, 1064711040, 1065018777);
     let r = i64x2::new(4294967297, 4294967297);
 
-    assert_eq!(r, transmute(lsx_vftintrp_w_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrp_w_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4313,7 +5719,7 @@ unsafe fn test_lsx_vftintrp_l_d() {
     let a = u64x2::new(4587516915944025472, 4601504548481216392);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftintrp_l_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrp_l_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4321,7 +5727,7 @@ unsafe fn test_lsx_vftintrm_w_s() {
     let a = u32x4::new(1045772456, 1065200707, 1061587478, 1035467272);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrm_w_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrm_w_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4329,7 +5735,7 @@ unsafe fn test_lsx_vftintrm_l_d() {
     let a = u64x2::new(4597123259408216804, 4594399417822716772);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrm_l_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrm_l_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4338,7 +5744,13 @@ unsafe fn test_lsx_vftint_w_d() {
     let b = u64x2::new(4606905060326467647, 4606985586417166381);
     let r = i64x2::new(4294967297, 0);
 
-    assert_eq!(r, transmute(lsx_vftint_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vftint_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4347,7 +5759,13 @@ unsafe fn test_lsx_vffint_s_l() {
     let b = i64x2::new(5814449889729512723, -111756032377486319);
     let r = i64x2::new(-2610252963668467161, 6669016150524087533);
 
-    assert_eq!(r, transmute(lsx_vffint_s_l(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vffint_s_l(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4356,7 +5774,13 @@ unsafe fn test_lsx_vftintrz_w_d() {
     let b = u64x2::new(4599106720144900270, 4600531579473237336);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrz_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vftintrz_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4365,7 +5789,13 @@ unsafe fn test_lsx_vftintrp_w_d() {
     let b = u64x2::new(4606104970322966899, 4595679410565085836);
     let r = i64x2::new(4294967297, 4294967297);
 
-    assert_eq!(r, transmute(lsx_vftintrp_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vftintrp_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4374,7 +5804,13 @@ unsafe fn test_lsx_vftintrm_w_d() {
     let b = u64x2::new(4606733822200032543, 4589510164179968984);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrm_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vftintrm_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4383,7 +5819,13 @@ unsafe fn test_lsx_vftintrne_w_d() {
     let b = u64x2::new(4599197176714081204, 4605745859931721980);
     let r = i64x2::new(4294967296, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrne_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vftintrne_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4391,7 +5833,7 @@ unsafe fn test_lsx_vftintl_l_s() {
     let a = u32x4::new(1058856635, 1060563398, 1061422616, 1056124918);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftintl_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintl_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4399,7 +5841,7 @@ unsafe fn test_lsx_vftinth_l_s() {
     let a = u32x4::new(1045383680, 1040752748, 1061879518, 1054801708);
     let r = i64x2::new(1, 0);
 
-    assert_eq!(r, transmute(lsx_vftinth_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftinth_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4407,7 +5849,7 @@ unsafe fn test_lsx_vffinth_d_w() {
     let a = i32x4::new(517100418, -188510766, 949226647, -87467194);
     let r = i64x2::new(4741245898611228672, -4497729803343888384);
 
-    assert_eq!(r, transmute(lsx_vffinth_d_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vffinth_d_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4415,7 +5857,7 @@ unsafe fn test_lsx_vffintl_d_w() {
     let a = i32x4::new(1273684401, -2137528906, -2109294912, -1646387998);
     let r = i64x2::new(4743129027571613696, -4476619782820462592);
 
-    assert_eq!(r, transmute(lsx_vffintl_d_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vffintl_d_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4423,7 +5865,7 @@ unsafe fn test_lsx_vftintrzl_l_s() {
     let a = u32x4::new(1031186688, 987838976, 1034565688, 1061017371);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrzl_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrzl_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4431,7 +5873,7 @@ unsafe fn test_lsx_vftintrzh_l_s() {
     let a = u32x4::new(1049433828, 1048953580, 1060964637, 1059899586);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrzh_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrzh_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4439,7 +5881,7 @@ unsafe fn test_lsx_vftintrpl_l_s() {
     let a = u32x4::new(1061834803, 1064858941, 1060475110, 1063896216);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftintrpl_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrpl_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4447,7 +5889,7 @@ unsafe fn test_lsx_vftintrph_l_s() {
     let a = u32x4::new(1059691939, 1065187151, 1059017027, 1061117394);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftintrph_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrph_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4455,7 +5897,7 @@ unsafe fn test_lsx_vftintrml_l_s() {
     let a = u32x4::new(1062985651, 1065211455, 1056421466, 1057373572);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrml_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrml_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4463,7 +5905,7 @@ unsafe fn test_lsx_vftintrmh_l_s() {
     let a = u32x4::new(1050224290, 1063763666, 1057677270, 1063622234);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrmh_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrmh_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4471,7 +5913,7 @@ unsafe fn test_lsx_vftintrnel_l_s() {
     let a = u32x4::new(1060174609, 1050974638, 1047193308, 1062040876);
     let r = i64x2::new(1, 0);
 
-    assert_eq!(r, transmute(lsx_vftintrnel_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrnel_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4479,7 +5921,7 @@ unsafe fn test_lsx_vftintrneh_l_s() {
     let a = u32x4::new(1055675382, 1036879184, 1064176794, 1063791852);
     let r = i64x2::new(1, 1);
 
-    assert_eq!(r, transmute(lsx_vftintrneh_l_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vftintrneh_l_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4487,7 +5929,7 @@ unsafe fn test_lsx_vfrintrne_s() {
     let a = u32x4::new(1054667842, 1061395025, 1062986478, 1062529334);
     let r = i64x2::new(4575657221408423936, 4575657222473777152);
 
-    assert_eq!(r, transmute(lsx_vfrintrne_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrne_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4495,7 +5937,7 @@ unsafe fn test_lsx_vfrintrne_d() {
     let a = u64x2::new(4603260356641870565, 4601614335120512898);
     let r = i64x2::new(4607182418800017408, 0);
 
-    assert_eq!(r, transmute(lsx_vfrintrne_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrne_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4503,7 +5945,7 @@ unsafe fn test_lsx_vfrintrz_s() {
     let a = u32x4::new(1063039577, 1033416832, 1052369306, 1057885024);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfrintrz_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrz_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4511,7 +5953,7 @@ unsafe fn test_lsx_vfrintrz_d() {
     let a = u64x2::new(4601515428088814484, 4604735152905786794);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfrintrz_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrz_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4519,7 +5961,7 @@ unsafe fn test_lsx_vfrintrp_s() {
     let a = u32x4::new(1061968959, 1056597596, 1064869916, 1058742360);
     let r = i64x2::new(4575657222473777152, 4575657222473777152);
 
-    assert_eq!(r, transmute(lsx_vfrintrp_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrp_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4527,7 +5969,7 @@ unsafe fn test_lsx_vfrintrp_d() {
     let a = u64x2::new(4603531792479663401, 4587997630530425392);
     let r = i64x2::new(4607182418800017408, 4607182418800017408);
 
-    assert_eq!(r, transmute(lsx_vfrintrp_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrp_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4535,7 +5977,7 @@ unsafe fn test_lsx_vfrintrm_s() {
     let a = u32x4::new(1058024441, 1044087184, 1059777964, 1050835426);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfrintrm_s(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrm_s(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4543,7 +5985,7 @@ unsafe fn test_lsx_vfrintrm_d() {
     let a = u64x2::new(4589388034824743512, 4606800774570289382);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfrintrm_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vfrintrm_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -4556,7 +5998,7 @@ unsafe fn test_lsx_vstelm_b() {
     ];
     let r = i64x2::new(2624488095427530938, -2742340989646681128);
 
-    lsx_vstelm_b::<0, 0>(transmute(a), o.as_mut_ptr());
+    lsx_vstelm_b::<0, 0>(black_box(transmute(a)), o.as_mut_ptr());
     assert_eq!(r, transmute(o));
 }
 
@@ -4568,7 +6010,7 @@ unsafe fn test_lsx_vstelm_h() {
     ];
     let r = i64x2::new(-5777879910580360821, -8010388107109560809);
 
-    lsx_vstelm_h::<0, 1>(transmute(a), o.as_mut_ptr());
+    lsx_vstelm_h::<0, 1>(black_box(transmute(a)), o.as_mut_ptr());
     assert_eq!(r, transmute(o));
 }
 
@@ -4580,7 +6022,7 @@ unsafe fn test_lsx_vstelm_w() {
     ];
     let r = i64x2::new(-7107014201697162202, -4954294907532227136);
 
-    lsx_vstelm_w::<0, 3>(transmute(a), o.as_mut_ptr());
+    lsx_vstelm_w::<0, 3>(black_box(transmute(a)), o.as_mut_ptr());
     assert_eq!(r, transmute(o));
 }
 
@@ -4592,7 +6034,7 @@ unsafe fn test_lsx_vstelm_d() {
     ];
     let r = i64x2::new(2628828971609511929, -1577551211298588582);
 
-    lsx_vstelm_d::<0, 0>(transmute(a), o.as_mut_ptr());
+    lsx_vstelm_d::<0, 0>(black_box(transmute(a)), o.as_mut_ptr());
     assert_eq!(r, transmute(o));
 }
 
@@ -4602,7 +6044,13 @@ unsafe fn test_lsx_vaddwev_d_w() {
     let b = i32x4::new(-2105551735, -1478351177, 1027048582, -607110700);
     let r = i64x2::new(-3995454036, 2115628395);
 
-    assert_eq!(r, transmute(lsx_vaddwev_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4611,7 +6059,13 @@ unsafe fn test_lsx_vaddwev_w_h() {
     let b = i16x8::new(-17479, -32614, 24343, 25426, -14077, -12419, 10115, 23013);
     let r = i64x2::new(57531086920254, -11304353922851);
 
-    assert_eq!(r, transmute(lsx_vaddwev_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4624,7 +6078,13 @@ unsafe fn test_lsx_vaddwev_h_b() {
     );
     let r = i64x2::new(-6191796646052051, 32369798417022969);
 
-    assert_eq!(r, transmute(lsx_vaddwev_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4633,7 +6093,13 @@ unsafe fn test_lsx_vaddwod_d_w() {
     let b = i32x4::new(420515981, 473447119, 1471756335, 1044924117);
     let r = i64x2::new(126219465, 3020814787);
 
-    assert_eq!(r, transmute(lsx_vaddwod_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4642,7 +6108,13 @@ unsafe fn test_lsx_vaddwod_w_h() {
     let b = i16x8::new(-26581, -22301, 18214, -3616, -24489, 12150, -10765, -24232);
     let r = i64x2::new(-151719719748481, -112154480997307);
 
-    assert_eq!(r, transmute(lsx_vaddwod_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4655,7 +6127,13 @@ unsafe fn test_lsx_vaddwod_h_b() {
     );
     let r = i64x2::new(-18014780768845678, 14636475441676413);
 
-    assert_eq!(r, transmute(lsx_vaddwod_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4664,7 +6142,13 @@ unsafe fn test_lsx_vaddwev_d_wu() {
     let b = u32x4::new(1482213353, 1001198416, 3345983326, 2244256337);
     let r = i64x2::new(4022160583, 4539965521);
 
-    assert_eq!(r, transmute(lsx_vaddwev_d_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4673,7 +6157,13 @@ unsafe fn test_lsx_vaddwev_w_hu() {
     let b = u16x8::new(28483, 24704, 9817, 62062, 47674, 8032, 29897, 62737);
     let r = i64x2::new(176725019407839, 226649719257774);
 
-    assert_eq!(r, transmute(lsx_vaddwev_w_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4686,7 +6176,13 @@ unsafe fn test_lsx_vaddwev_h_bu() {
     );
     let r = i64x2::new(85006057160704351, 47850943627526421);
 
-    assert_eq!(r, transmute(lsx_vaddwev_h_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4695,7 +6191,13 @@ unsafe fn test_lsx_vaddwod_d_wu() {
     let b = u32x4::new(2782520439, 2496077290, 2678772394, 196273109);
     let r = i64x2::new(4147231270, 2289089430);
 
-    assert_eq!(r, transmute(lsx_vaddwod_d_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4704,7 +6206,13 @@ unsafe fn test_lsx_vaddwod_w_hu() {
     let b = u16x8::new(20353, 34039, 21222, 4948, 58293, 4766, 51360, 37497);
     let r = i64x2::new(82519206727777, 206875689791292);
 
-    assert_eq!(r, transmute(lsx_vaddwod_w_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4717,7 +6225,13 @@ unsafe fn test_lsx_vaddwod_h_bu() {
     );
     let r = i64x2::new(73466429242409013, 32932877227196635);
 
-    assert_eq!(r, transmute(lsx_vaddwod_h_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4726,7 +6240,13 @@ unsafe fn test_lsx_vaddwev_d_wu_w() {
     let b = i32x4::new(-1308530150, 1427930358, 1723198474, 1987356336);
     let r = i64x2::new(2478528121, 3014708115);
 
-    assert_eq!(r, transmute(lsx_vaddwev_d_wu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_d_wu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4735,7 +6255,13 @@ unsafe fn test_lsx_vaddwev_w_hu_h() {
     let b = i16x8::new(-11621, -6593, 7431, -1189, -12361, -15174, 16182, -32434);
     let r = i64x2::new(64158221463769, 194716637325930);
 
-    assert_eq!(r, transmute(lsx_vaddwev_w_hu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_w_hu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4748,7 +6274,13 @@ unsafe fn test_lsx_vaddwev_h_bu_b() {
     );
     let r = i64x2::new(71776235037065355, -7880749580746636);
 
-    assert_eq!(r, transmute(lsx_vaddwev_h_bu_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_h_bu_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4757,7 +6289,13 @@ unsafe fn test_lsx_vaddwod_d_wu_w() {
     let b = i32x4::new(-1646368557, 586112311, 376247963, 1048800083);
     let r = i64x2::new(3497092601, 3306080422);
 
-    assert_eq!(r, transmute(lsx_vaddwod_d_wu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_d_wu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4766,7 +6304,13 @@ unsafe fn test_lsx_vaddwod_w_hu_h() {
     let b = i16x8::new(31700, 22725, 14068, -14860, -28839, -14513, -1195, 27082);
     let r = i64x2::new(-10273561712908, 369560461022726);
 
-    assert_eq!(r, transmute(lsx_vaddwod_w_hu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_w_hu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4779,7 +6323,13 @@ unsafe fn test_lsx_vaddwod_h_bu_b() {
     );
     let r = i64x2::new(49259327819481212, 19140654913421439);
 
-    assert_eq!(r, transmute(lsx_vaddwod_h_bu_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_h_bu_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4788,7 +6338,13 @@ unsafe fn test_lsx_vsubwev_d_w() {
     let b = i32x4::new(-2090701374, 629564229, -1170676885, 1069800209);
     let r = i64x2::new(4070621277, 63900397);
 
-    assert_eq!(r, transmute(lsx_vsubwev_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4797,7 +6353,13 @@ unsafe fn test_lsx_vsubwev_w_h() {
     let b = i16x8::new(-23957, 9416, -29569, -13210, 5333, 8420, 18648, -24201);
     let r = i64x2::new(228187317494294, -105188044063209);
 
-    assert_eq!(r, transmute(lsx_vsubwev_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4810,7 +6372,13 @@ unsafe fn test_lsx_vsubwev_h_b() {
     );
     let r = i64x2::new(-41939247539617653, -14355228098887689);
 
-    assert_eq!(r, transmute(lsx_vsubwev_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4819,7 +6387,13 @@ unsafe fn test_lsx_vsubwod_d_w() {
     let b = i32x4::new(1436617964, -45524609, 502994793, -2039550077);
     let r = i64x2::new(-1037882987, 3497647797);
 
-    assert_eq!(r, transmute(lsx_vsubwod_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4828,7 +6402,13 @@ unsafe fn test_lsx_vsubwod_w_h() {
     let b = i16x8::new(-1276, 12669, 24115, 19617, -26739, 1910, -757, 23994);
     let r = i64x2::new(-158286724709540, -182411556002309);
 
-    assert_eq!(r, transmute(lsx_vsubwod_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4841,7 +6421,13 @@ unsafe fn test_lsx_vsubwod_h_b() {
     );
     let r = i64x2::new(23925540523802608, 562958549909362);
 
-    assert_eq!(r, transmute(lsx_vsubwod_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4850,7 +6436,13 @@ unsafe fn test_lsx_vsubwev_d_wu() {
     let b = u32x4::new(1691253880, 1939268473, 1629937431, 2921768539);
     let r = i64x2::new(974418830, 1402878171);
 
-    assert_eq!(r, transmute(lsx_vsubwev_d_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4859,7 +6451,13 @@ unsafe fn test_lsx_vsubwev_w_hu() {
     let b = u16x8::new(15957, 42770, 43138, 30319, 50823, 18089, 64120, 18054);
     let r = i64x2::new(-41807211666923, -194858371266981);
 
-    assert_eq!(r, transmute(lsx_vsubwev_w_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4872,7 +6470,13 @@ unsafe fn test_lsx_vsubwev_h_bu() {
     );
     let r = i64x2::new(-1407181617889293, 47851128289689387);
 
-    assert_eq!(r, transmute(lsx_vsubwev_h_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4881,7 +6485,13 @@ unsafe fn test_lsx_vsubwod_d_wu() {
     let b = u32x4::new(103354715, 19070238, 1662532733, 3761231766);
     let r = i64x2::new(3487028338, -1512426824);
 
-    assert_eq!(r, transmute(lsx_vsubwod_d_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4890,7 +6500,13 @@ unsafe fn test_lsx_vsubwod_w_hu() {
     let b = u16x8::new(21739, 45406, 21733, 63910, 6659, 16020, 1211, 637);
     let r = i64x2::new(-93999654264447, 232211701825972);
 
-    assert_eq!(r, transmute(lsx_vsubwod_w_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4903,7 +6519,13 @@ unsafe fn test_lsx_vsubwod_h_bu() {
     );
     let r = i64x2::new(-14355150803107815, 14636020195655765);
 
-    assert_eq!(r, transmute(lsx_vsubwod_h_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4912,7 +6534,13 @@ unsafe fn test_lsx_vaddwev_q_d() {
     let b = i64x2::new(6738886902337351868, -5985538541381931477);
     let r = i64x2::new(5606769623790009521, 0);
 
-    assert_eq!(r, transmute(lsx_vaddwev_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4921,7 +6549,13 @@ unsafe fn test_lsx_vaddwod_q_d() {
     let b = i64x2::new(-1244049724346527963, -3275029038845457041);
     let r = i64x2::new(-4417812606654001824, -1);
 
-    assert_eq!(r, transmute(lsx_vaddwod_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4930,7 +6564,13 @@ unsafe fn test_lsx_vaddwev_q_du() {
     let b = u64x2::new(6745766838534849346, 15041258018068294402);
     let r = i64x2::new(5074243625310689089, 1);
 
-    assert_eq!(r, transmute(lsx_vaddwev_q_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4939,7 +6579,13 @@ unsafe fn test_lsx_vaddwod_q_du() {
     let b = u64x2::new(13496765248439164553, 4640846570780442359);
     let r = i64x2::new(-2107214925415534967, 0);
 
-    assert_eq!(r, transmute(lsx_vaddwod_q_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4948,7 +6594,13 @@ unsafe fn test_lsx_vsubwev_q_d() {
     let b = i64x2::new(8029026411722387723, -2105201823388787841);
     let r = i64x2::new(480269655671735476, 0);
 
-    assert_eq!(r, transmute(lsx_vsubwev_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4957,7 +6609,13 @@ unsafe fn test_lsx_vsubwod_q_d() {
     let b = i64x2::new(5758437127240728961, 2933507971643343184);
     let r = i64x2::new(-8752278892998837291, -1);
 
-    assert_eq!(r, transmute(lsx_vsubwod_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4966,7 +6624,13 @@ unsafe fn test_lsx_vsubwev_q_du() {
     let b = u64x2::new(1574118313456291324, 7787456577305510529);
     let r = i64x2::new(-4672772323591679948, 0);
 
-    assert_eq!(r, transmute(lsx_vsubwev_q_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwev_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4975,7 +6639,13 @@ unsafe fn test_lsx_vsubwod_q_du() {
     let b = u64x2::new(5627376085113520030, 12775637764770549815);
     let r = i64x2::new(6257163948134922640, -1);
 
-    assert_eq!(r, transmute(lsx_vsubwod_q_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsubwod_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4984,7 +6654,13 @@ unsafe fn test_lsx_vaddwev_q_du_d() {
     let b = i64x2::new(-1159499132550683978, -4257322329662100669);
     let r = i64x2::new(-8502520416635627524, 0);
 
-    assert_eq!(r, transmute(lsx_vaddwev_q_du_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwev_q_du_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -4993,7 +6669,13 @@ unsafe fn test_lsx_vaddwod_q_du_d() {
     let b = i64x2::new(-3902573037873546881, 160140233311333524);
     let r = i64x2::new(286209858134078253, 0);
 
-    assert_eq!(r, transmute(lsx_vaddwod_q_du_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vaddwod_q_du_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5002,7 +6684,13 @@ unsafe fn test_lsx_vmulwev_d_w() {
     let b = i32x4::new(8741677, -276509855, -1214560052, -1338519080);
     let r = i64x2::new(11251431313755612, -2205748716678689436);
 
-    assert_eq!(r, transmute(lsx_vmulwev_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5011,7 +6699,13 @@ unsafe fn test_lsx_vmulwev_w_h() {
     let b = i16x8::new(30661, -20472, 1422, -16868, 4256, 9713, -27765, -7287);
     let r = i64x2::new(-178740441125036345, 469367082934888736);
 
-    assert_eq!(r, transmute(lsx_vmulwev_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5024,7 +6718,13 @@ unsafe fn test_lsx_vmulwev_h_b() {
     );
     let r = i64x2::new(38855607073696482, 823864071118590255);
 
-    assert_eq!(r, transmute(lsx_vmulwev_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5033,7 +6733,13 @@ unsafe fn test_lsx_vmulwod_d_w() {
     let b = i32x4::new(63312847, -1377579771, -2054819244, -1416520586);
     let r = i64x2::new(1549708311038418702, 2478205834807109862);
 
-    assert_eq!(r, transmute(lsx_vmulwod_d_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5042,7 +6748,13 @@ unsafe fn test_lsx_vmulwod_w_h() {
     let b = i16x8::new(23748, 11912, 4946, -23048, 22372, 24702, -24875, -27771);
     let r = i64x2::new(3222038736804363232, 360450672278114574);
 
-    assert_eq!(r, transmute(lsx_vmulwod_w_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5055,7 +6767,13 @@ unsafe fn test_lsx_vmulwod_h_b() {
     );
     let r = i64x2::new(-351280556043402912, 951366355207905332);
 
-    assert_eq!(r, transmute(lsx_vmulwod_h_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5064,7 +6782,13 @@ unsafe fn test_lsx_vmulwev_d_wu() {
     let b = u32x4::new(1769900227, 2256955703, 2342391995, 2407560006);
     let r = i64x2::new(3651844205567962921, 7772247680216328210);
 
-    assert_eq!(r, transmute(lsx_vmulwev_d_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5073,7 +6797,13 @@ unsafe fn test_lsx_vmulwev_w_hu() {
     let b = u16x8::new(20499, 45056, 20580, 12771, 53914, 60742, 45402, 40547);
     let r = i64x2::new(4070644332601545987, 8033224333626513014);
 
-    assert_eq!(r, transmute(lsx_vmulwev_w_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5086,7 +6816,13 @@ unsafe fn test_lsx_vmulwev_h_bu() {
     );
     let r = i64x2::new(271910110892810861, 1947809607093856504);
 
-    assert_eq!(r, transmute(lsx_vmulwev_h_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5095,7 +6831,13 @@ unsafe fn test_lsx_vmulwod_d_wu() {
     let b = u32x4::new(3750239707, 1422851626, 1277923597, 1377279439);
     let r = i64x2::new(2821622727533716246, 3005960862740149995);
 
-    assert_eq!(r, transmute(lsx_vmulwod_d_wu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5104,7 +6846,13 @@ unsafe fn test_lsx_vmulwod_w_hu() {
     let b = u16x8::new(38950, 5357, 36233, 17707, 61077, 61518, 5789, 13317);
     let r = i64x2::new(2460325445475503463, 3109522059894091248);
 
-    assert_eq!(r, transmute(lsx_vmulwod_w_hu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5117,7 +6865,13 @@ unsafe fn test_lsx_vmulwod_h_bu() {
     );
     let r = i64x2::new(7364114643151226902, 6612146073643521312);
 
-    assert_eq!(r, transmute(lsx_vmulwod_h_bu(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5126,7 +6880,13 @@ unsafe fn test_lsx_vmulwev_d_wu_w() {
     let b = i32x4::new(1254729285, 1938836163, -1902169358, -257980375);
     let r = i64x2::new(2295762833698990875, -6669027432954818262);
 
-    assert_eq!(r, transmute(lsx_vmulwev_d_wu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_d_wu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5135,7 +6895,13 @@ unsafe fn test_lsx_vmulwev_w_hu_h() {
     let b = i16x8::new(-30477, -10049, 16428, -30668, 21000, 24834, -3219, -9555);
     let r = i64x2::new(3369342936690107644, -701630285043265176);
 
-    assert_eq!(r, transmute(lsx_vmulwev_w_hu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_w_hu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5148,7 +6914,13 @@ unsafe fn test_lsx_vmulwev_h_bu_b() {
     );
     let r = i64x2::new(-1134643098233554544, -1885853116779133038);
 
-    assert_eq!(r, transmute(lsx_vmulwev_h_bu_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_h_bu_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5157,7 +6929,13 @@ unsafe fn test_lsx_vmulwod_d_wu_w() {
     let b = i32x4::new(1204047391, -1970001586, 608763444, -2082771896);
     let r = i64x2::new(-5967343163181744876, -3673352984882804288);
 
-    assert_eq!(r, transmute(lsx_vmulwod_d_wu_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_d_wu_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5166,7 +6944,13 @@ unsafe fn test_lsx_vmulwod_w_hu_h() {
     let b = i16x8::new(-3735, -12972, -4920, 7170, 11577, 9785, 4896, -537);
     let r = i64x2::new(1024392868267999948, -48053790042385565);
 
-    assert_eq!(r, transmute(lsx_vmulwod_w_hu_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_w_hu_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5179,7 +6963,13 @@ unsafe fn test_lsx_vmulwod_h_bu_b() {
     );
     let r = i64x2::new(1905300476090387090, -3940634277386171400);
 
-    assert_eq!(r, transmute(lsx_vmulwod_h_bu_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_h_bu_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5188,7 +6978,13 @@ unsafe fn test_lsx_vmulwev_q_d() {
     let b = i64x2::new(7023560313675997328, 4368639658790376608);
     let r = i64x2::new(-1409563343912029488, -2779799970834089134);
 
-    assert_eq!(r, transmute(lsx_vmulwev_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5197,7 +6993,13 @@ unsafe fn test_lsx_vmulwod_q_d() {
     let b = i64x2::new(1734538850547798281, 6505001633960390309);
     let r = i64x2::new(655114704133495137, -1013080750363369114);
 
-    assert_eq!(r, transmute(lsx_vmulwod_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5206,7 +7008,13 @@ unsafe fn test_lsx_vmulwev_q_du() {
     let b = u64x2::new(15048173707940873365, 13594773395779002998);
     let r = i64x2::new(-4049323972691826149, 6179334620527225413);
 
-    assert_eq!(r, transmute(lsx_vmulwev_q_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5215,7 +7023,13 @@ unsafe fn test_lsx_vmulwod_q_du() {
     let b = u64x2::new(16172423495582959833, 11676106279348566952);
     let r = i64x2::new(-66293137947075128, 3694303051148166412);
 
-    assert_eq!(r, transmute(lsx_vmulwod_q_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5224,7 +7038,13 @@ unsafe fn test_lsx_vmulwev_q_du_d() {
     let b = i64x2::new(-7071166739782294817, 8496829998090419991);
     let r = i64x2::new(5234431817964974175, -5931105679667820544);
 
-    assert_eq!(r, transmute(lsx_vmulwev_q_du_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwev_q_du_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5233,7 +7053,13 @@ unsafe fn test_lsx_vmulwod_q_du_d() {
     let b = i64x2::new(-9085162554263782091, -3351642387065053502);
     let r = i64x2::new(-3119502026085414102, -1153233394465180223);
 
-    assert_eq!(r, transmute(lsx_vmulwod_q_du_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vmulwod_q_du_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5242,7 +7068,13 @@ unsafe fn test_lsx_vhaddw_q_d() {
     let b = i64x2::new(9222966760421493517, -8347454331188625422);
     let r = i64x2::new(6438946365641244151, 0);
 
-    assert_eq!(r, transmute(lsx_vhaddw_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5251,7 +7083,13 @@ unsafe fn test_lsx_vhaddw_qu_du() {
     let b = u64x2::new(2141387370256045519, 12417156199252644485);
     let r = i64x2::new(5083013417816990364, 0);
 
-    assert_eq!(r, transmute(lsx_vhaddw_qu_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhaddw_qu_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5260,7 +7098,13 @@ unsafe fn test_lsx_vhsubw_q_d() {
     let b = i64x2::new(-3245503809142406078, 8660213762027125085);
     let r = i64x2::new(817818278178354941, 0);
 
-    assert_eq!(r, transmute(lsx_vhsubw_q_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5269,7 +7113,13 @@ unsafe fn test_lsx_vhsubw_qu_du() {
     let b = u64x2::new(3098179646743711521, 11374525358855478565);
     let r = i64x2::new(-8990580109137044958, 0);
 
-    assert_eq!(r, transmute(lsx_vhsubw_qu_du(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vhsubw_qu_du(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5281,7 +7131,11 @@ unsafe fn test_lsx_vmaddwev_d_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_d_w(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5294,7 +7148,11 @@ unsafe fn test_lsx_vmaddwev_w_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_w_h(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5311,7 +7169,11 @@ unsafe fn test_lsx_vmaddwev_h_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_h_b(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5324,7 +7186,11 @@ unsafe fn test_lsx_vmaddwev_d_wu() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_d_wu(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5337,7 +7203,11 @@ unsafe fn test_lsx_vmaddwev_w_hu() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_w_hu(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5354,7 +7224,11 @@ unsafe fn test_lsx_vmaddwev_h_bu() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_h_bu(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5367,7 +7241,11 @@ unsafe fn test_lsx_vmaddwod_d_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_d_w(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_d_w(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5380,7 +7258,11 @@ unsafe fn test_lsx_vmaddwod_w_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_w_h(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_w_h(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5397,7 +7279,11 @@ unsafe fn test_lsx_vmaddwod_h_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_h_b(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_h_b(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5410,7 +7296,11 @@ unsafe fn test_lsx_vmaddwod_d_wu() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_d_wu(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_d_wu(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5423,7 +7313,11 @@ unsafe fn test_lsx_vmaddwod_w_hu() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_w_hu(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_w_hu(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5440,7 +7334,11 @@ unsafe fn test_lsx_vmaddwod_h_bu() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_h_bu(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_h_bu(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5454,9 +7352,9 @@ unsafe fn test_lsx_vmaddwev_d_wu_w() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwev_d_wu_w(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5471,9 +7369,9 @@ unsafe fn test_lsx_vmaddwev_w_hu_h() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwev_w_hu_h(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5492,9 +7390,9 @@ unsafe fn test_lsx_vmaddwev_h_bu_b() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwev_h_bu_b(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5509,9 +7407,9 @@ unsafe fn test_lsx_vmaddwod_d_wu_w() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwod_d_wu_w(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5526,9 +7424,9 @@ unsafe fn test_lsx_vmaddwod_w_hu_h() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwod_w_hu_h(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5547,9 +7445,9 @@ unsafe fn test_lsx_vmaddwod_h_bu_b() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwod_h_bu_b(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5563,7 +7461,11 @@ unsafe fn test_lsx_vmaddwev_q_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_q_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5576,7 +7478,11 @@ unsafe fn test_lsx_vmaddwod_q_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_q_d(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_q_d(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5589,7 +7495,11 @@ unsafe fn test_lsx_vmaddwev_q_du() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwev_q_du(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwev_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5602,7 +7512,11 @@ unsafe fn test_lsx_vmaddwod_q_du() {
 
     assert_eq!(
         r,
-        transmute(lsx_vmaddwod_q_du(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vmaddwod_q_du(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -5616,9 +7530,9 @@ unsafe fn test_lsx_vmaddwev_q_du_d() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwev_q_du_d(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5633,9 +7547,9 @@ unsafe fn test_lsx_vmaddwod_q_du_d() {
     assert_eq!(
         r,
         transmute(lsx_vmaddwod_q_du_d(
-            transmute(a),
-            transmute(b),
-            transmute(c)
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
         ))
     );
 }
@@ -5650,7 +7564,13 @@ unsafe fn test_lsx_vrotr_b() {
     );
     let r = i64x2::new(2841128540244802403, -8694309599374351908);
 
-    assert_eq!(r, transmute(lsx_vrotr_b(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vrotr_b(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5659,7 +7579,13 @@ unsafe fn test_lsx_vrotr_h() {
     let b = i16x8::new(-6485, 1418, 8263, -29872, -6491, 3930, -20621, 32531);
     let r = i64x2::new(2742461657407651598, 3308267577913279393);
 
-    assert_eq!(r, transmute(lsx_vrotr_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vrotr_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5668,7 +7594,13 @@ unsafe fn test_lsx_vrotr_w() {
     let b = i32x4::new(1956224189, -1858012941, -1889446514, -2130978943);
     let r = i64x2::new(6458469860191573231, -8548346292466177157);
 
-    assert_eq!(r, transmute(lsx_vrotr_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vrotr_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5677,7 +7609,13 @@ unsafe fn test_lsx_vrotr_d() {
     let b = i64x2::new(4553458262651691654, -5062393334123159235);
     let r = i64x2::new(-3594618648537251961, 7897385285240526033);
 
-    assert_eq!(r, transmute(lsx_vrotr_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vrotr_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5686,7 +7624,10 @@ unsafe fn test_lsx_vadd_q() {
     let b = i64x2::new(114135477458514099, 3481307531297359399);
     let r = i64x2::new(2537705118259771652, 4159381110985057604);
 
-    assert_eq!(r, transmute(lsx_vadd_q(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vadd_q(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5695,7 +7636,10 @@ unsafe fn test_lsx_vsub_q() {
     let b = i64x2::new(-8526086848853095438, -1323481969747305966);
     let r = i64x2::new(-2027679534337857341, -1789445478164204527);
 
-    assert_eq!(r, transmute(lsx_vsub_q(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vsub_q(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -5745,7 +7689,7 @@ unsafe fn test_lsx_vmskgez_b() {
     );
     let r = i64x2::new(24930, 0);
 
-    assert_eq!(r, transmute(lsx_vmskgez_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmskgez_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5755,7 +7699,7 @@ unsafe fn test_lsx_vmsknz_b() {
     );
     let r = i64x2::new(65535, 0);
 
-    assert_eq!(r, transmute(lsx_vmsknz_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vmsknz_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5765,7 +7709,7 @@ unsafe fn test_lsx_vexth_h_b() {
     );
     let r = i64x2::new(-3377613816397739, 32088276197572514);
 
-    assert_eq!(r, transmute(lsx_vexth_h_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_h_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5773,7 +7717,7 @@ unsafe fn test_lsx_vexth_w_h() {
     let a = i16x8::new(14576, -26514, 14165, -15781, 10106, 1864, 23348, 30478);
     let r = i64x2::new(8005819049850, 130902013270836);
 
-    assert_eq!(r, transmute(lsx_vexth_w_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_w_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5781,7 +7725,7 @@ unsafe fn test_lsx_vexth_d_w() {
     let a = i32x4::new(863783254, 799653326, -1122161877, -652869192);
     let r = i64x2::new(-1122161877, -652869192);
 
-    assert_eq!(r, transmute(lsx_vexth_d_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_d_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5789,7 +7733,7 @@ unsafe fn test_lsx_vexth_q_d() {
     let a = i64x2::new(2924262436748867523, 1959694872821330818);
     let r = i64x2::new(1959694872821330818, 0);
 
-    assert_eq!(r, transmute(lsx_vexth_q_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_q_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5799,7 +7743,7 @@ unsafe fn test_lsx_vexth_hu_bu() {
     );
     let r = i64x2::new(61080980486815914, 60235902725652628);
 
-    assert_eq!(r, transmute(lsx_vexth_hu_bu(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_hu_bu(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5807,7 +7751,7 @@ unsafe fn test_lsx_vexth_wu_hu() {
     let a = u16x8::new(58875, 18924, 17611, 30197, 33869, 53931, 4693, 53025);
     let r = i64x2::new(231631881274445, 227740640875093);
 
-    assert_eq!(r, transmute(lsx_vexth_wu_hu(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_wu_hu(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5815,7 +7759,7 @@ unsafe fn test_lsx_vexth_du_wu() {
     let a = u32x4::new(3499742961, 2840979237, 2082263829, 1096292547);
     let r = i64x2::new(2082263829, 1096292547);
 
-    assert_eq!(r, transmute(lsx_vexth_du_wu(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_du_wu(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5823,7 +7767,7 @@ unsafe fn test_lsx_vexth_qu_du() {
     let a = u64x2::new(14170556367894986991, 14238702840099699193);
     let r = i64x2::new(-4208041233609852423, 0);
 
-    assert_eq!(r, transmute(lsx_vexth_qu_du(transmute(a))));
+    assert_eq!(r, transmute(lsx_vexth_qu_du(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5833,7 +7777,7 @@ unsafe fn test_lsx_vrotri_b() {
     );
     let r = i64x2::new(-2919654548887155519, -96080239582005205);
 
-    assert_eq!(r, transmute(lsx_vrotri_b::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vrotri_b::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5841,7 +7785,7 @@ unsafe fn test_lsx_vrotri_h() {
     let a = i16x8::new(-14120, -16812, -19570, -990, 24476, -7640, 20329, 8879);
     let r = i64x2::new(-556925602567188047, 4998607264501841720);
 
-    assert_eq!(r, transmute(lsx_vrotri_h::<15>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vrotri_h::<15>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5849,7 +7793,7 @@ unsafe fn test_lsx_vrotri_w() {
     let a = i32x4::new(-1760224525, -1644621284, 1835781046, -1487934110);
     let r = i64x2::new(2845787365010917052, -6209343103231659283);
 
-    assert_eq!(r, transmute(lsx_vrotri_w::<2>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vrotri_w::<2>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5857,7 +7801,7 @@ unsafe fn test_lsx_vrotri_d() {
     let a = i64x2::new(8884634342417174882, 244175985366916345);
     let r = i64x2::new(-3963790888197019724, 4020656082573561910);
 
-    assert_eq!(r, transmute(lsx_vrotri_d::<52>(transmute(a))));
+    assert_eq!(r, transmute(lsx_vrotri_d::<52>(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5865,7 +7809,7 @@ unsafe fn test_lsx_vextl_q_d() {
     let a = i64x2::new(-5110246490938885255, 377414780188285171);
     let r = i64x2::new(-5110246490938885255, -1);
 
-    assert_eq!(r, transmute(lsx_vextl_q_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_vextl_q_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -5880,7 +7824,10 @@ unsafe fn test_lsx_vsrlni_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlni_b_h::<14>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlni_b_h::<14>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5892,7 +7839,10 @@ unsafe fn test_lsx_vsrlni_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlni_h_w::<26>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlni_h_w::<26>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5904,7 +7854,10 @@ unsafe fn test_lsx_vsrlni_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlni_w_d::<18>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlni_w_d::<18>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5916,7 +7869,10 @@ unsafe fn test_lsx_vsrlni_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlni_d_q::<74>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlni_d_q::<74>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5932,7 +7888,10 @@ unsafe fn test_lsx_vsrlrni_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlrni_b_h::<6>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlrni_b_h::<6>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5944,7 +7903,10 @@ unsafe fn test_lsx_vsrlrni_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlrni_h_w::<6>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlrni_h_w::<6>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5956,7 +7918,10 @@ unsafe fn test_lsx_vsrlrni_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlrni_w_d::<52>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlrni_w_d::<52>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5968,7 +7933,10 @@ unsafe fn test_lsx_vsrlrni_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrlrni_d_q::<101>(transmute(a), transmute(b)))
+        transmute(lsx_vsrlrni_d_q::<101>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5984,7 +7952,10 @@ unsafe fn test_lsx_vssrlni_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_b_h::<13>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_b_h::<13>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -5996,7 +7967,10 @@ unsafe fn test_lsx_vssrlni_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_h_w::<23>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_h_w::<23>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6008,7 +7982,10 @@ unsafe fn test_lsx_vssrlni_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_w_d::<12>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_w_d::<12>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6020,7 +7997,10 @@ unsafe fn test_lsx_vssrlni_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_d_q::<88>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_d_q::<88>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6036,7 +8016,10 @@ unsafe fn test_lsx_vssrlni_bu_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_bu_h::<13>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_bu_h::<13>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6048,7 +8031,10 @@ unsafe fn test_lsx_vssrlni_hu_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_hu_w::<9>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_hu_w::<9>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6060,7 +8046,10 @@ unsafe fn test_lsx_vssrlni_wu_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_wu_d::<59>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_wu_d::<59>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6072,7 +8061,10 @@ unsafe fn test_lsx_vssrlni_du_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlni_du_q::<6>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlni_du_q::<6>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6088,7 +8080,10 @@ unsafe fn test_lsx_vssrlrni_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_b_h::<0>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_b_h::<0>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6100,7 +8095,10 @@ unsafe fn test_lsx_vssrlrni_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_h_w::<28>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_h_w::<28>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6112,7 +8110,10 @@ unsafe fn test_lsx_vssrlrni_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_w_d::<1>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_w_d::<1>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6124,7 +8125,10 @@ unsafe fn test_lsx_vssrlrni_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_d_q::<60>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_d_q::<60>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6140,7 +8144,10 @@ unsafe fn test_lsx_vssrlrni_bu_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_bu_h::<13>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_bu_h::<13>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6152,7 +8159,10 @@ unsafe fn test_lsx_vssrlrni_hu_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_hu_w::<25>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_hu_w::<25>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6164,7 +8174,10 @@ unsafe fn test_lsx_vssrlrni_wu_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_wu_d::<36>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_wu_d::<36>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6176,7 +8189,10 @@ unsafe fn test_lsx_vssrlrni_du_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrlrni_du_q::<38>(transmute(a), transmute(b)))
+        transmute(lsx_vssrlrni_du_q::<38>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6192,7 +8208,10 @@ unsafe fn test_lsx_vsrani_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrani_b_h::<5>(transmute(a), transmute(b)))
+        transmute(lsx_vsrani_b_h::<5>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6204,7 +8223,10 @@ unsafe fn test_lsx_vsrani_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrani_h_w::<4>(transmute(a), transmute(b)))
+        transmute(lsx_vsrani_h_w::<4>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6216,7 +8238,10 @@ unsafe fn test_lsx_vsrani_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrani_w_d::<24>(transmute(a), transmute(b)))
+        transmute(lsx_vsrani_w_d::<24>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6228,7 +8253,10 @@ unsafe fn test_lsx_vsrani_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrani_d_q::<81>(transmute(a), transmute(b)))
+        transmute(lsx_vsrani_d_q::<81>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6244,7 +8272,10 @@ unsafe fn test_lsx_vsrarni_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrarni_b_h::<3>(transmute(a), transmute(b)))
+        transmute(lsx_vsrarni_b_h::<3>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6256,7 +8287,10 @@ unsafe fn test_lsx_vsrarni_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrarni_h_w::<15>(transmute(a), transmute(b)))
+        transmute(lsx_vsrarni_h_w::<15>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6268,7 +8302,10 @@ unsafe fn test_lsx_vsrarni_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrarni_w_d::<59>(transmute(a), transmute(b)))
+        transmute(lsx_vsrarni_w_d::<59>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6280,7 +8317,10 @@ unsafe fn test_lsx_vsrarni_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vsrarni_d_q::<0>(transmute(a), transmute(b)))
+        transmute(lsx_vsrarni_d_q::<0>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6296,7 +8336,10 @@ unsafe fn test_lsx_vssrani_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_b_h::<0>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_b_h::<0>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6308,7 +8351,10 @@ unsafe fn test_lsx_vssrani_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_h_w::<28>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_h_w::<28>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6320,7 +8366,10 @@ unsafe fn test_lsx_vssrani_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_w_d::<49>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_w_d::<49>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6332,7 +8381,10 @@ unsafe fn test_lsx_vssrani_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_d_q::<80>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_d_q::<80>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6348,7 +8400,10 @@ unsafe fn test_lsx_vssrani_bu_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_bu_h::<14>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_bu_h::<14>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6360,7 +8415,10 @@ unsafe fn test_lsx_vssrani_hu_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_hu_w::<23>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_hu_w::<23>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6372,7 +8430,10 @@ unsafe fn test_lsx_vssrani_wu_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_wu_d::<13>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_wu_d::<13>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6384,7 +8445,10 @@ unsafe fn test_lsx_vssrani_du_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrani_du_q::<33>(transmute(a), transmute(b)))
+        transmute(lsx_vssrani_du_q::<33>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6400,7 +8464,10 @@ unsafe fn test_lsx_vssrarni_b_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_b_h::<2>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_b_h::<2>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6412,7 +8479,10 @@ unsafe fn test_lsx_vssrarni_h_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_h_w::<29>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_h_w::<29>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6424,7 +8494,10 @@ unsafe fn test_lsx_vssrarni_w_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_w_d::<18>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_w_d::<18>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6436,7 +8509,10 @@ unsafe fn test_lsx_vssrarni_d_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_d_q::<70>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_d_q::<70>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6452,7 +8528,10 @@ unsafe fn test_lsx_vssrarni_bu_h() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_bu_h::<14>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_bu_h::<14>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6464,7 +8543,10 @@ unsafe fn test_lsx_vssrarni_hu_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_hu_w::<13>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_hu_w::<13>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6476,7 +8558,10 @@ unsafe fn test_lsx_vssrarni_wu_d() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_wu_d::<15>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_wu_d::<15>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6488,7 +8573,10 @@ unsafe fn test_lsx_vssrarni_du_q() {
 
     assert_eq!(
         r,
-        transmute(lsx_vssrarni_du_q::<126>(transmute(a), transmute(b)))
+        transmute(lsx_vssrarni_du_q::<126>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6500,7 +8588,10 @@ unsafe fn test_lsx_vpermi_w() {
 
     assert_eq!(
         r,
-        transmute(lsx_vpermi_w::<158>(transmute(a), transmute(b)))
+        transmute(lsx_vpermi_w::<158>(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
     );
 }
 
@@ -6524,7 +8615,7 @@ unsafe fn test_lsx_vst() {
     ];
     let r = i64x2::new(4153633675232462821, -2083384694265299697);
 
-    lsx_vst::<0>(transmute(a), o.as_mut_ptr());
+    lsx_vst::<0>(black_box(transmute(a)), o.as_mut_ptr());
     assert_eq!(r, transmute(o));
 }
 
@@ -6534,7 +8625,13 @@ unsafe fn test_lsx_vssrlrn_b_h() {
     let b = i16x8::new(17437, 9775, -20467, -31838, 5913, 4238, -7458, 2822);
     let r = i64x2::new(5981906731171643399, 0);
 
-    assert_eq!(r, transmute(lsx_vssrlrn_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrlrn_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6543,7 +8640,13 @@ unsafe fn test_lsx_vssrlrn_h_w() {
     let b = i32x4::new(-2116426818, 1641049288, 712377342, -1572394121);
     let r = i64x2::new(31243728857268226, 0);
 
-    assert_eq!(r, transmute(lsx_vssrlrn_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrlrn_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6552,7 +8655,13 @@ unsafe fn test_lsx_vssrlrn_w_d() {
     let b = i64x2::new(-3890929847852895653, -7819301294522132056);
     let r = i64x2::new(66519777023098879, 0);
 
-    assert_eq!(r, transmute(lsx_vssrlrn_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrlrn_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6561,7 +8670,13 @@ unsafe fn test_lsx_vssrln_b_h() {
     let b = i16x8::new(-14062, -29610, -24609, -8884, -1818, 32133, 29934, -6498);
     let r = i64x2::new(140183437672319, 0);
 
-    assert_eq!(r, transmute(lsx_vssrln_b_h(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrln_b_h(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6570,7 +8685,13 @@ unsafe fn test_lsx_vssrln_h_w() {
     let b = i32x4::new(-1437891045, 1546371535, -1800954476, -1892390372);
     let r = i64x2::new(2820489990832156, 0);
 
-    assert_eq!(r, transmute(lsx_vssrln_h_w(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrln_h_w(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6579,7 +8700,13 @@ unsafe fn test_lsx_vssrln_w_d() {
     let b = i64x2::new(2034490755997557661, -3470252066162700534);
     let r = i64x2::new(9223372034707292159, 0);
 
-    assert_eq!(r, transmute(lsx_vssrln_w_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vssrln_w_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6592,7 +8719,10 @@ unsafe fn test_lsx_vorn_v() {
     );
     let r = i64x2::new(-883973744907789059, -2901520201165080862);
 
-    assert_eq!(r, transmute(lsx_vorn_v(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vorn_v(black_box(transmute(a)), black_box(transmute(b))))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6615,7 +8745,11 @@ unsafe fn test_lsx_vshuf_b() {
 
     assert_eq!(
         r,
-        transmute(lsx_vshuf_b(transmute(a), transmute(b), transmute(c)))
+        transmute(lsx_vshuf_b(
+            black_box(transmute(a)),
+            black_box(transmute(b)),
+            black_box(transmute(c))
+        ))
     );
 }
 
@@ -6639,7 +8773,7 @@ unsafe fn test_lsx_vstx() {
     ];
     let r = i64x2::new(-1493444417618012559, 7191635320606490850);
 
-    lsx_vstx(transmute(a), o.as_mut_ptr(), 0);
+    lsx_vstx(black_box(transmute(a)), o.as_mut_ptr(), 0);
     assert_eq!(r, transmute(o));
 }
 
@@ -6648,7 +8782,7 @@ unsafe fn test_lsx_vextl_qu_du() {
     let a = u64x2::new(14708598110732796778, 2132245682694336458);
     let r = i64x2::new(-3738145962976754838, 0);
 
-    assert_eq!(r, transmute(lsx_vextl_qu_du(transmute(a))));
+    assert_eq!(r, transmute(lsx_vextl_qu_du(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6658,7 +8792,7 @@ unsafe fn test_lsx_bnz_b() {
     );
     let r: i32 = 1;
 
-    assert_eq!(r, transmute(lsx_bnz_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_bnz_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6666,7 +8800,7 @@ unsafe fn test_lsx_bnz_d() {
     let a = u64x2::new(2935166648440262530, 9853932033129373129);
     let r: i32 = 1;
 
-    assert_eq!(r, transmute(lsx_bnz_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_bnz_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6674,7 +8808,7 @@ unsafe fn test_lsx_bnz_h() {
     let a = u16x8::new(55695, 60003, 59560, 35123, 25693, 41352, 61626, 42007);
     let r: i32 = 1;
 
-    assert_eq!(r, transmute(lsx_bnz_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_bnz_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6684,7 +8818,7 @@ unsafe fn test_lsx_bnz_v() {
     );
     let r: i32 = 1;
 
-    assert_eq!(r, transmute(lsx_bnz_v(transmute(a))));
+    assert_eq!(r, transmute(lsx_bnz_v(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6692,7 +8826,7 @@ unsafe fn test_lsx_bnz_w() {
     let a = u32x4::new(1172712391, 4211490091, 1954893853, 1606462106);
     let r: i32 = 1;
 
-    assert_eq!(r, transmute(lsx_bnz_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_bnz_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6702,7 +8836,7 @@ unsafe fn test_lsx_bz_b() {
     );
     let r: i32 = 0;
 
-    assert_eq!(r, transmute(lsx_bz_b(transmute(a))));
+    assert_eq!(r, transmute(lsx_bz_b(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6710,7 +8844,7 @@ unsafe fn test_lsx_bz_d() {
     let a = u64x2::new(6051854163594201075, 9957257179760945130);
     let r: i32 = 0;
 
-    assert_eq!(r, transmute(lsx_bz_d(transmute(a))));
+    assert_eq!(r, transmute(lsx_bz_d(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6718,7 +8852,7 @@ unsafe fn test_lsx_bz_h() {
     let a = u16x8::new(19470, 29377, 53886, 60432, 20799, 41755, 54479, 52192);
     let r: i32 = 0;
 
-    assert_eq!(r, transmute(lsx_bz_h(transmute(a))));
+    assert_eq!(r, transmute(lsx_bz_h(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6728,7 +8862,7 @@ unsafe fn test_lsx_bz_v() {
     );
     let r: i32 = 0;
 
-    assert_eq!(r, transmute(lsx_bz_v(transmute(a))));
+    assert_eq!(r, transmute(lsx_bz_v(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6736,7 +8870,7 @@ unsafe fn test_lsx_bz_w() {
     let a = u32x4::new(840335855, 1404686204, 628335401, 1171808080);
     let r: i32 = 0;
 
-    assert_eq!(r, transmute(lsx_bz_w(transmute(a))));
+    assert_eq!(r, transmute(lsx_bz_w(black_box(transmute(a)))));
 }
 
 #[simd_test(enable = "lsx")]
@@ -6745,7 +8879,13 @@ unsafe fn test_lsx_vfcmp_caf_d() {
     let b = u64x2::new(4594845432849836188, 4605165420863530034);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_caf_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_caf_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6754,7 +8894,13 @@ unsafe fn test_lsx_vfcmp_caf_s() {
     let b = u32x4::new(1058412800, 1058762495, 1028487696, 1027290752);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_caf_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_caf_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6763,7 +8909,13 @@ unsafe fn test_lsx_vfcmp_ceq_d() {
     let b = u64x2::new(4605937250150464526, 4596769502461699132);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_ceq_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_ceq_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6772,7 +8924,13 @@ unsafe fn test_lsx_vfcmp_ceq_s() {
     let b = u32x4::new(1057471620, 1064008655, 1062698831, 1064822930);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_ceq_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_ceq_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6781,7 +8939,13 @@ unsafe fn test_lsx_vfcmp_cle_d() {
     let b = u64x2::new(4596931282408842596, 4592481315209481584);
     let r = i64x2::new(-1, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cle_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cle_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6790,7 +8954,13 @@ unsafe fn test_lsx_vfcmp_cle_s() {
     let b = u32x4::new(1021993344, 1043028808, 1064182329, 1054794412);
     let r = i64x2::new(-4294967296, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cle_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cle_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6799,7 +8969,13 @@ unsafe fn test_lsx_vfcmp_clt_d() {
     let b = u64x2::new(4603056125735978454, 4595932368389116476);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_clt_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_clt_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6808,7 +8984,13 @@ unsafe fn test_lsx_vfcmp_clt_s() {
     let b = u32x4::new(1040327468, 1040072248, 1063314103, 1061361061);
     let r = i64x2::new(0, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_clt_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_clt_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6817,7 +8999,13 @@ unsafe fn test_lsx_vfcmp_cne_d() {
     let b = u64x2::new(4602354759349431170, 4598595124838935466);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cne_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cne_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6826,7 +9014,13 @@ unsafe fn test_lsx_vfcmp_cne_s() {
     let b = u32x4::new(1063262940, 1058010357, 1052721962, 1061295988);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cne_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cne_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6835,7 +9029,13 @@ unsafe fn test_lsx_vfcmp_cor_d() {
     let b = u64x2::new(4606863361114437050, 4600753700959452152);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cor_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cor_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6844,7 +9044,13 @@ unsafe fn test_lsx_vfcmp_cor_s() {
     let b = u32x4::new(1053615382, 1065255138, 1051565294, 1041776832);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cor_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cor_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6853,7 +9059,13 @@ unsafe fn test_lsx_vfcmp_cueq_d() {
     let b = u64x2::new(4603317345052528721, 4586734343919602352);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cueq_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cueq_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6862,7 +9074,13 @@ unsafe fn test_lsx_vfcmp_cueq_s() {
     let b = u32x4::new(1057082822, 1059761998, 1052599998, 1054369118);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cueq_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cueq_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6871,7 +9089,13 @@ unsafe fn test_lsx_vfcmp_cule_d() {
     let b = u64x2::new(4604253448175093958, 4599648167588382448);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cule_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cule_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6880,7 +9104,13 @@ unsafe fn test_lsx_vfcmp_cule_s() {
     let b = u32x4::new(1051100696, 1062219104, 1064568294, 1032521352);
     let r = i64x2::new(-4294967296, 4294967295);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cule_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cule_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6889,7 +9119,13 @@ unsafe fn test_lsx_vfcmp_cult_d() {
     let b = u64x2::new(4602944708025910986, 4606429728449082215);
     let r = i64x2::new(0, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cult_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cult_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6898,7 +9134,13 @@ unsafe fn test_lsx_vfcmp_cult_s() {
     let b = u32x4::new(1030808384, 1044268840, 1050761328, 1037308928);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cult_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cult_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6907,7 +9149,13 @@ unsafe fn test_lsx_vfcmp_cun_d() {
     let b = u64x2::new(4599145506416791474, 4602762942707610466);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cun_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cun_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6916,7 +9164,13 @@ unsafe fn test_lsx_vfcmp_cune_d() {
     let b = u64x2::new(4602895209237804084, 4598685577984089858);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cune_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cune_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6925,7 +9179,13 @@ unsafe fn test_lsx_vfcmp_cune_s() {
     let b = u32x4::new(1049955876, 1032474200, 1023410112, 1050347912);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cune_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cune_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6934,7 +9194,13 @@ unsafe fn test_lsx_vfcmp_cun_s() {
     let b = u32x4::new(1053288920, 1059911123, 1058695573, 1062913175);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_cun_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_cun_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6943,7 +9209,13 @@ unsafe fn test_lsx_vfcmp_saf_d() {
     let b = u64x2::new(4589118818065931376, 4603302333347826011);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_saf_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_saf_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6952,7 +9224,13 @@ unsafe fn test_lsx_vfcmp_saf_s() {
     let b = u32x4::new(1044756936, 1054667546, 1059141760, 1062203553);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_saf_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_saf_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6961,7 +9239,13 @@ unsafe fn test_lsx_vfcmp_seq_d() {
     let b = u64x2::new(4594167956310606988, 4596272126122589228);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_seq_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_seq_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6970,7 +9254,13 @@ unsafe fn test_lsx_vfcmp_seq_s() {
     let b = u32x4::new(1057231588, 1051495460, 1057998997, 1049117328);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_seq_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_seq_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6979,7 +9269,13 @@ unsafe fn test_lsx_vfcmp_sle_d() {
     let b = u64x2::new(4603919005855163252, 4594682846653946884);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sle_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sle_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6988,7 +9284,13 @@ unsafe fn test_lsx_vfcmp_sle_s() {
     let b = u32x4::new(1045989468, 1052518900, 1046184640, 1032417352);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sle_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sle_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -6997,7 +9299,13 @@ unsafe fn test_lsx_vfcmp_slt_d() {
     let b = u64x2::new(4600564867142526828, 4585131890265864544);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_slt_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_slt_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7006,7 +9314,13 @@ unsafe fn test_lsx_vfcmp_slt_s() {
     let b = u32x4::new(1063435026, 1062439603, 1060665555, 1059252630);
     let r = i64x2::new(-1, -4294967296);
 
-    assert_eq!(r, transmute(lsx_vfcmp_slt_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_slt_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7015,7 +9329,13 @@ unsafe fn test_lsx_vfcmp_sne_d() {
     let b = u64x2::new(4606789952952688555, 4605380358192261377);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sne_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sne_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7024,7 +9344,13 @@ unsafe fn test_lsx_vfcmp_sne_s() {
     let b = u32x4::new(1055803760, 1063372602, 1062608900, 1054634370);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sne_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sne_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7033,7 +9359,13 @@ unsafe fn test_lsx_vfcmp_sor_d() {
     let b = u64x2::new(4606380175568635560, 4602092067387067462);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sor_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sor_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7042,7 +9374,13 @@ unsafe fn test_lsx_vfcmp_sor_s() {
     let b = u32x4::new(1064534350, 1035771168, 1059142426, 1034677600);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sor_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sor_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7051,7 +9389,13 @@ unsafe fn test_lsx_vfcmp_sueq_d() {
     let b = u64x2::new(4602917609947054533, 4605983209212177197);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sueq_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sueq_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7060,7 +9404,13 @@ unsafe fn test_lsx_vfcmp_sueq_s() {
     let b = u32x4::new(1064871165, 1059796257, 1055456352, 1058662692);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sueq_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sueq_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7069,7 +9419,13 @@ unsafe fn test_lsx_vfcmp_sule_d() {
     let b = u64x2::new(4594044173266256632, 4601549551994738386);
     let r = i64x2::new(0, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sule_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sule_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7078,7 +9434,13 @@ unsafe fn test_lsx_vfcmp_sule_s() {
     let b = u32x4::new(1061061244, 1051874412, 1041025316, 1056018690);
     let r = i64x2::new(4294967295, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sule_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sule_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7087,7 +9449,13 @@ unsafe fn test_lsx_vfcmp_sult_d() {
     let b = u64x2::new(4603848042095479627, 4605032971316970060);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sult_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sult_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7096,7 +9464,13 @@ unsafe fn test_lsx_vfcmp_sult_s() {
     let b = u32x4::new(1053631630, 1064026599, 1058029398, 1041182304);
     let r = i64x2::new(-4294967296, 4294967295);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sult_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sult_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7105,7 +9479,13 @@ unsafe fn test_lsx_vfcmp_sun_d() {
     let b = u64x2::new(4560681020073292800, 4604624347352815433);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sun_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sun_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7114,7 +9494,13 @@ unsafe fn test_lsx_vfcmp_sune_d() {
     let b = u64x2::new(4593947987798339484, 4603656097008761637);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sune_d(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sune_d(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7123,7 +9509,13 @@ unsafe fn test_lsx_vfcmp_sune_s() {
     let b = u32x4::new(1049327168, 1034635272, 1042258196, 1062844003);
     let r = i64x2::new(-1, -1);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sune_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sune_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]
@@ -7132,7 +9524,13 @@ unsafe fn test_lsx_vfcmp_sun_s() {
     let b = u32x4::new(1057442863, 1064573466, 1058086753, 1015993248);
     let r = i64x2::new(0, 0);
 
-    assert_eq!(r, transmute(lsx_vfcmp_sun_s(transmute(a), transmute(b))));
+    assert_eq!(
+        r,
+        transmute(lsx_vfcmp_sun_s(
+            black_box(transmute(a)),
+            black_box(transmute(b))
+        ))
+    );
 }
 
 #[simd_test(enable = "lsx")]

@@ -5,6 +5,7 @@
 // ignore-tidy-linelength
 //@ only-x86_64-unknown-linux-gnu
 //@ revisions:rpass1 rpass2 rpass3 rpass4
+//@ ignore-backends: gcc
 
 //@ [rpass1]compile-flags: -Zquery-dep-graph -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=single -Zsplit-dwarf-inlining=on
 //@ [rpass2]compile-flags: -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=single -Zsplit-dwarf-inlining=on

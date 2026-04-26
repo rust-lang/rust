@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 
 // Track the status of MIR optimizations simplifying `Ok(res?)` for both the old and new desugarings

@@ -1,20 +1,19 @@
-use super::{FailMode, TestCx, WillExecute};
-use crate::errors;
+use super::{Emit, FailMode, PassMode, ProcRes, TestCx, WillExecute};
 
 impl TestCx<'_> {
     pub(super) fn run_incremental_test(&self) {
         // Basic plan for a test incremental/foo/bar.rs:
-        // - load list of revisions rpass1, cfail2, rpass3
-        //   - each should begin with `cfail`, `cpass`, or `rpass`
-        //   - if `cpass`, expect compilation to succeed, don't execute
+        // - load list of revisions rpass1, bfail2, rpass3
+        //   - each should begin with `bfail`, `bpass`, or `rpass`
+        //   - if `bfail`, expect compilation to fail
+        //   - if `bpass`, expect compilation to succeed, don't execute
         //   - if `rpass`, expect compilation and execution to succeed
-        //   - if `cfail`, expect compilation to fail
         // - create a directory build/foo/bar.incremental
         // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass1
         //   - because name of revision starts with "rpass", expect success
-        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C cfail2
-        //   - because name of revision starts with "cfail", expect an error
-        //   - load expected errors as usual, but filter for those with `[cfail2]`
+        // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C bfail2
+        //   - because name of revision starts with "bfail", expect an error
+        //   - load expected errors as usual, but filter for those with `[bfail2]`
         // - compile foo/bar.rs with -C incremental=.../foo/bar.incremental and -C rpass3
         //   - because name of revision starts with "rpass", expect success
         // - execute build/foo/bar.exe and save output
@@ -33,23 +32,25 @@ impl TestCx<'_> {
         }
 
         if revision.starts_with("cpass") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
-            }
             self.run_cpass_test();
+        } else if revision.starts_with("bpass") {
+            self.run_bpass_test();
         } else if revision.starts_with("rpass") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
-            }
             self.run_rpass_test();
-        } else if revision.starts_with("cfail") {
-            self.run_cfail_test();
+        } else if revision.starts_with("bfail") {
+            self.run_bfail_test();
         } else {
-            self.fatal("revision name must begin with `cfail`, `cpass`, or `rpass`");
+            self.fatal("revision name must begin with `bfail`, `bpass`, or `rpass`");
         }
     }
 
     fn run_cpass_test(&self) {
+        let proc_res = self.compile_test(WillExecute::No, Emit::Metadata);
+        self.check_if_test_should_compile(None, Some(PassMode::Check), &proc_res);
+        self.check_compiler_output_for_incr(&proc_res);
+    }
+
+    fn run_bpass_test(&self) {
         let emit_metadata = self.should_emit_metadata(self.pass_mode());
         let proc_res = self.compile_test(WillExecute::No, emit_metadata);
 
@@ -57,10 +58,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("build-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
     }
 
     fn run_rpass_test(&self) {
@@ -72,10 +70,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
 
         if let WillExecute::Disabled = should_run {
             return;
@@ -87,22 +82,17 @@ impl TestCx<'_> {
         }
     }
 
-    fn run_cfail_test(&self) {
+    fn run_bfail_test(&self) {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
         self.check_if_test_should_compile(Some(FailMode::Build), pm, &proc_res);
-        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
+        self.check_compiler_output_for_incr(&proc_res);
+    }
 
-        let output_to_check = self.get_output(&proc_res);
+    fn check_compiler_output_for_incr(&self, proc_res: &ProcRes) {
+        let output_to_check = self.get_output(proc_res);
         self.check_expected_errors(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
-        if self.props.should_ice {
-            match proc_res.status.code() {
-                Some(101) => (),
-                _ => self.fatal("expected ICE"),
-            }
-        }
-
-        self.check_forbid_output(&output_to_check, &proc_res);
+        self.check_all_error_patterns(&output_to_check, proc_res);
+        self.check_forbid_output(&output_to_check, proc_res);
     }
 }

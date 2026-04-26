@@ -19,7 +19,7 @@ pub(crate) fn discover_lldb(builder: &Builder<'_>) -> Option<Lldb> {
         .arg("--version")
         .run_capture(builder)
         .stdout_if_ok()
-        .and_then(|v| if v.trim().is_empty() { None } else { Some(v) })?;
+        .filter(|v| !v.trim().is_empty())?;
 
     Some(Lldb { lldb_exe, lldb_version })
 }

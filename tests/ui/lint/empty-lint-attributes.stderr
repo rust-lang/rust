@@ -4,7 +4,7 @@ warning: unused attribute
 LL | #[forbid()]
    | ^^^^^^^^^^^ help: remove this attribute
    |
-   = note: using `forbid` with an empty list has no effect
+   = note: attribute `forbid` with an empty list has no effect
    = note: requested on the command line with `-W unused-attributes`
 
 warning: unused attribute
@@ -13,7 +13,7 @@ warning: unused attribute
 LL | #[deny(reason = "ultion")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
-   = note: using `deny` with an empty list has no effect
+   = note: attribute `deny` without any lints has no effect
 
 warning: unused attribute
   --> $DIR/empty-lint-attributes.rs:6:1
@@ -21,7 +21,7 @@ warning: unused attribute
 LL | #![allow()]
    | ^^^^^^^^^^^ help: remove this attribute
    |
-   = note: using `allow` with an empty list has no effect
+   = note: attribute `allow` with an empty list has no effect
 
 warning: unused attribute
   --> $DIR/empty-lint-attributes.rs:7:1
@@ -29,7 +29,7 @@ warning: unused attribute
 LL | #![warn(reason = "observationalism")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
-   = note: using `warn` with an empty list has no effect
+   = note: attribute `warn` without any lints has no effect
 
 warning: 4 warnings emitted
 

@@ -1,5 +1,5 @@
 //@ aux-build:my_lib.rs
-//@ revisions:cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ compile-flags:-Z query-dep-graph
 //@ ignore-backends: gcc
 

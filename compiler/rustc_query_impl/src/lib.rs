@@ -8,7 +8,7 @@
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
-use rustc_data_structures::sync::AtomicU64;
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_middle::dep_graph;
 use rustc_middle::queries::{ExternProviders, Providers};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
@@ -17,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
-pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
+pub use crate::job::{QueryJobMap, break_query_cycle, print_query_stack};
 
 mod dep_kind_vtables;
 mod error;
@@ -56,6 +56,7 @@ pub fn query_system<'tcx>(
         local_providers,
         extern_providers,
         jobs: AtomicU64::new(1),
+        cycle_handler_nesting: Lock::new(0),
     }
 }
 

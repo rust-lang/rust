@@ -16,7 +16,10 @@ use triomphe::Arc;
 
 use crate::{
     ParamEnvAndCrate,
-    next_solver::{Const, ConstKind, Region, RegionKind, StoredConst, StoredGenericArgs, StoredTy},
+    next_solver::{
+        Allocation, AllocationData, Const, ConstKind, Region, RegionKind, StoredConst,
+        StoredGenericArgs, StoredTy,
+    },
     traits::StoredParamEnvAndCrate,
 };
 use crate::{
@@ -137,6 +140,18 @@ impl<'db> Filler<'db> {
             OperandKind::Constant { konst, ty } => {
                 self.fill_const(konst)?;
                 self.fill_ty(ty)?;
+            }
+            OperandKind::Allocation { allocation } => {
+                let alloc = allocation.as_ref();
+                let mut ty = alloc.ty.store();
+                self.fill_ty(&mut ty)?;
+                *allocation = Allocation::new(AllocationData {
+                    ty: ty.as_ref(),
+                    memory: alloc.memory.clone(),
+                    // FIXME: Do we need to fill the memory map too?
+                    memory_map: alloc.memory_map.clone(),
+                })
+                .store();
             }
             OperandKind::Copy(_) | OperandKind::Move(_) | OperandKind::Static(_) => (),
         }

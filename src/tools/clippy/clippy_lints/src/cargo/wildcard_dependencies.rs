@@ -10,7 +10,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
         // VersionReq::any() does not work
         if let Ok(wildcard_ver) = semver::VersionReq::parse("*")
             && let Some(ref source) = dep.source
-            && !source.starts_with("git")
+            && !source.repr.starts_with("git")
             && dep.req == wildcard_ver
         {
             span_lint(

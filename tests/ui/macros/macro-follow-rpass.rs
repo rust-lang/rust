@@ -1,5 +1,10 @@
 //@ edition:2015..2021
 //@ check-pass
+//@ reference: macro.decl.follow-set.token-expr-stmt
+//@ reference: macro.decl.follow-set.token-pat
+//@ reference: macro.decl.follow-set.edition2021
+//@ reference: macro.decl.follow-set.token-path-ty
+//@ reference: macro.decl.follow-set.token-other
 #![allow(unused_macros)]
 // Check the macro follow sets (see corresponding cfail test).
 

@@ -817,6 +817,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(lint_llvm_ir, true);
     tracked!(llvm_module_flag, vec![("bar".to_string(), 123, "max".to_string())]);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
+    tracked!(llvm_writable, true);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));

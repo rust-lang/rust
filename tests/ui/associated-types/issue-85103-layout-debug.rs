@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type Edges<'a, E> = Cow<'a, [E]>;
 //~^ ERROR the trait bound `[E]: ToOwned` is not satisfied
 

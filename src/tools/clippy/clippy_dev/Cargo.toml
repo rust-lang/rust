@@ -9,7 +9,7 @@ chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 clap = { version = "4.4", features = ["derive"] }
 indoc = "1.0"
 itertools = "0.12"
-opener = "0.7"
+opener = "0.8"
 rustc-literal-escaper = "0.0.7"
 walkdir = "2.3"
 

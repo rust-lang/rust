@@ -1,8 +1,8 @@
 //! Discovers tests
 
 use hir::{Crate, Module, ModuleDef, Semantics};
-use ide_db::base_db;
-use ide_db::{FileId, RootDatabase, base_db::RootQueryDb};
+use ide_db::base_db::{self, all_crates};
+use ide_db::{FileId, RootDatabase};
 use syntax::TextRange;
 
 use crate::{NavigationTarget, Runnable, TryToNav, runnables::runnable_fn};
@@ -26,7 +26,7 @@ pub struct TestItem {
 }
 
 pub(crate) fn discover_test_roots(db: &RootDatabase) -> Vec<TestItem> {
-    db.all_crates()
+    all_crates(db)
         .iter()
         .copied()
         .filter(|&id| id.data(db).origin.is_local())
@@ -48,7 +48,7 @@ pub(crate) fn discover_test_roots(db: &RootDatabase) -> Vec<TestItem> {
 fn find_crate_by_id(db: &RootDatabase, crate_id: &str) -> Option<base_db::Crate> {
     // here, we use display_name as the crate id. This is not super ideal, but it works since we
     // only show tests for the local crates.
-    db.all_crates().iter().copied().find(|&id| {
+    all_crates(db).iter().copied().find(|&id| {
         id.data(db).origin.is_local()
             && id.extra_data(db).display_name.as_ref().is_some_and(|x| x.to_string() == crate_id)
     })

@@ -332,7 +332,6 @@ impl<'a> LintExtractor<'a> {
         if matches!(
             lint.name.as_str(),
             "unused_features" // broken lint
-            | "soft_unstable" // cannot have a stable example
         ) {
             return Ok(());
         }

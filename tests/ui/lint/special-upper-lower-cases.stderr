@@ -1,32 +1,35 @@
-warning: type `𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
-  --> $DIR/special-upper-lower-cases.rs:10:8
+warning: identifier contains 9 non normalized (NFKC) characters: '𝕟', '𝕠', '𝕥', '𝕒', '𝕔', '𝕒', '𝕞', '𝕖', and '𝕝'
+  --> $DIR/special-upper-lower-cases.rs:11:8
    |
 LL | struct 𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝;
-   |        ^^^^^^^^^ should have an UpperCamelCase name
+   |        ^^^^^^^^^
    |
-   = note: `#[warn(non_camel_case_types)]` (part of `#[warn(nonstandard_style)]`) on by default
+   = note: these characters are included in the Not_NFKC Unicode general security profile
+   = note: `#[warn(uncommon_codepoints)]` on by default
 
-warning: type `𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
+warning: identifier contains 9 non normalized (NFKC) characters: '𝕟', '𝕠', '𝕥', '𝕒', '𝕔', '𝕒', '𝕞', '𝕖', and '𝕝'
   --> $DIR/special-upper-lower-cases.rs:14:8
    |
 LL | struct 𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝;
-   |        ^^^^^^^^^^^ should have an UpperCamelCase name
+   |        ^^^^^^^^^^^
+   |
+   = note: these characters are included in the Not_NFKC Unicode general security profile
 
-warning: static variable `𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲` should have an upper case name
+warning: identifier contains 12 non normalized (NFKC) characters: '𝗻', '𝗼', '𝗻', '𝘂', '𝗽', '𝗽', '𝗲', '𝗿', '𝗰', '𝗮', '𝘀', and '𝗲'
   --> $DIR/special-upper-lower-cases.rs:17:8
    |
 LL | static 𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲: i32 = 1;
-   |        ^^^^^^^^^^^^ should have an UPPER_CASE name
+   |        ^^^^^^^^^^^^
    |
-   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
+   = note: these characters are included in the Not_NFKC Unicode general security profile
 
-warning: variable `𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢` should have a snake case name
+warning: identifier contains 9 non normalized (NFKC) characters: '𝓢', '𝓝', '𝓐', '𝓐', '𝓐', '𝓐', '𝓚', '𝓔', and '𝓢'
   --> $DIR/special-upper-lower-cases.rs:21:9
    |
 LL |     let 𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢 = 1;
-   |         ^^^^^^^^^ should have a snake_case name
+   |         ^^^^^^^^^
    |
-   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+   = note: these characters are included in the Not_NFKC Unicode general security profile
 
 warning: 4 warnings emitted
 

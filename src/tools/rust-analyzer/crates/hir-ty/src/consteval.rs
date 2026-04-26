@@ -8,28 +8,30 @@ use hir_def::{
     ConstId, EnumVariantId, ExpressionStoreOwnerId, GeneralConstId, GenericDefId, HasModule,
     StaticId,
     attrs::AttrFlags,
-    builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{Body, ExpressionStore},
     hir::{Expr, ExprId, Literal},
 };
 use hir_expand::Lookup;
+use rustc_abi::Size;
+use rustc_apfloat::Float;
 use rustc_type_ir::inherent::IntoKind;
+use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    LifetimeElisionKind, MemoryMap, ParamEnvAndCrate, TyLoweringContext,
+    LifetimeElisionKind, ParamEnvAndCrate, TyLoweringContext,
     db::HirDatabase,
     display::DisplayTarget,
     infer::InferenceContext,
-    mir::{MirEvalError, MirLowerError},
+    mir::{MirEvalError, MirLowerError, pad16},
     next_solver::{
-        Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
-        StoredConst, StoredGenericArgs, Ty, ValueConst,
+        Allocation, Const, ConstKind, Consts, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
+        ScalarInt, StoredAllocation, StoredGenericArgs, Ty, TyKind, ValTreeKind, default_types,
     },
     traits::StoredParamEnvAndCrate,
 };
 
-use super::mir::{interpret_mir, lower_body_to_mir, pad16};
+use super::mir::{interpret_mir, lower_body_to_mir};
 
 pub fn unknown_const<'db>(_ty: Ty<'db>) -> Const<'db> {
     Const::new(DbInterner::conjure(), rustc_type_ir::ConstKind::Error(ErrorGuaranteed))
@@ -84,140 +86,87 @@ pub fn intern_const_ref<'a>(
     db: &'a dyn HirDatabase,
     value: &Literal,
     ty: Ty<'a>,
-    _krate: Crate,
+    krate: Crate,
 ) -> Const<'a> {
     let interner = DbInterner::new_no_crate(db);
-    let kind = match value {
-        &Literal::Uint(i, builtin_ty)
-            if builtin_ty.is_none() || ty.as_builtin() == builtin_ty.map(BuiltinType::Uint) =>
-        {
-            let memory = match ty.as_builtin() {
-                Some(BuiltinType::Uint(builtin_uint)) => match builtin_uint {
-                    BuiltinUint::U8 => Box::new([i as u8]) as Box<[u8]>,
-                    BuiltinUint::U16 => Box::new((i as u16).to_le_bytes()),
-                    BuiltinUint::U32 => Box::new((i as u32).to_le_bytes()),
-                    BuiltinUint::U64 => Box::new((i as u64).to_le_bytes()),
-                    BuiltinUint::U128 => Box::new((i).to_le_bytes()),
-                    BuiltinUint::Usize => Box::new((i as usize).to_le_bytes()),
-                },
-                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
-            };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
-                ty,
-                ConstBytes { memory, memory_map: MemoryMap::default() },
-            ))
-        }
-        &Literal::Int(i, None)
-            if ty
-                .as_builtin()
-                .is_some_and(|builtin_ty| matches!(builtin_ty, BuiltinType::Uint(_))) =>
-        {
-            let memory = match ty.as_builtin() {
-                Some(BuiltinType::Uint(builtin_uint)) => match builtin_uint {
-                    BuiltinUint::U8 => Box::new([i as u8]) as Box<[u8]>,
-                    BuiltinUint::U16 => Box::new((i as u16).to_le_bytes()),
-                    BuiltinUint::U32 => Box::new((i as u32).to_le_bytes()),
-                    BuiltinUint::U64 => Box::new((i as u64).to_le_bytes()),
-                    BuiltinUint::U128 => Box::new((i as u128).to_le_bytes()),
-                    BuiltinUint::Usize => Box::new((i as usize).to_le_bytes()),
-                },
-                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
-            };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
-                ty,
-                ConstBytes { memory, memory_map: MemoryMap::default() },
-            ))
-        }
-        &Literal::Int(i, builtin_ty)
-            if builtin_ty.is_none() || ty.as_builtin() == builtin_ty.map(BuiltinType::Int) =>
-        {
-            let memory = match ty.as_builtin() {
-                Some(BuiltinType::Int(builtin_int)) => match builtin_int {
-                    BuiltinInt::I8 => Box::new([i as u8]) as Box<[u8]>,
-                    BuiltinInt::I16 => Box::new((i as i16).to_le_bytes()),
-                    BuiltinInt::I32 => Box::new((i as i32).to_le_bytes()),
-                    BuiltinInt::I64 => Box::new((i as i64).to_le_bytes()),
-                    BuiltinInt::I128 => Box::new((i).to_le_bytes()),
-                    BuiltinInt::Isize => Box::new((i as isize).to_le_bytes()),
-                },
-                _ => return Const::new(interner, rustc_type_ir::ConstKind::Error(ErrorGuaranteed)),
-            };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
-                ty,
-                ConstBytes { memory, memory_map: MemoryMap::default() },
-            ))
-        }
-        Literal::Float(float_type_wrapper, builtin_float)
-            if builtin_float.is_none()
-                || ty.as_builtin() == builtin_float.map(BuiltinType::Float) =>
-        {
-            let memory = match ty.as_builtin().unwrap() {
-                BuiltinType::Float(builtin_float) => match builtin_float {
-                    // FIXME:
-                    hir_def::builtin_type::BuiltinFloat::F16 => Box::new([0u8; 2]) as Box<[u8]>,
-                    hir_def::builtin_type::BuiltinFloat::F32 => {
-                        Box::new(float_type_wrapper.to_f32().to_le_bytes())
-                    }
-                    hir_def::builtin_type::BuiltinFloat::F64 => {
-                        Box::new(float_type_wrapper.to_f64().to_le_bytes())
-                    }
-                    // FIXME:
-                    hir_def::builtin_type::BuiltinFloat::F128 => Box::new([0; 16]),
-                },
-                _ => unreachable!(),
-            };
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
-                ty,
-                ConstBytes { memory, memory_map: MemoryMap::default() },
-            ))
-        }
-        Literal::Bool(b) if ty.is_bool() => rustc_type_ir::ConstKind::Value(ValueConst::new(
-            ty,
-            ConstBytes { memory: Box::new([*b as u8]), memory_map: MemoryMap::default() },
-        )),
-        Literal::Char(c) if ty.is_char() => rustc_type_ir::ConstKind::Value(ValueConst::new(
-            ty,
-            ConstBytes {
-                memory: (*c as u32).to_le_bytes().into(),
-                memory_map: MemoryMap::default(),
-            },
-        )),
-        Literal::String(symbol) if ty.is_str() => rustc_type_ir::ConstKind::Value(ValueConst::new(
-            ty,
-            ConstBytes {
-                memory: symbol.as_str().as_bytes().into(),
-                memory_map: MemoryMap::default(),
-            },
-        )),
-        Literal::ByteString(items) if ty.as_slice().is_some_and(|ty| ty.is_u8()) => {
-            rustc_type_ir::ConstKind::Value(ValueConst::new(
-                ty,
-                ConstBytes { memory: items.clone(), memory_map: MemoryMap::default() },
-            ))
-        }
-        // FIXME
-        Literal::CString(_items) => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
-        _ => rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
+    let Ok(data_layout) = db.target_data_layout(krate) else {
+        return Const::error(interner);
     };
-    Const::new(interner, kind)
+    let valtree = match (ty.kind(), value) {
+        (TyKind::Uint(uint), Literal::Uint(value, _)) => {
+            let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
+            let scalar = ScalarInt::try_from_uint(*value, size).unwrap();
+            ValTreeKind::Leaf(scalar)
+        }
+        (TyKind::Uint(uint), Literal::Int(value, _)) => {
+            // `Literal::Int` is the default, so we also need to account for the type being uint.
+            let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
+            let scalar = ScalarInt::try_from_uint(*value as u128, size).unwrap();
+            ValTreeKind::Leaf(scalar)
+        }
+        (TyKind::Int(int), Literal::Int(value, _)) => {
+            let size = int.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
+            let scalar = ScalarInt::try_from_int(*value, size).unwrap();
+            ValTreeKind::Leaf(scalar)
+        }
+        (TyKind::Bool, Literal::Bool(value)) => ValTreeKind::Leaf(ScalarInt::from(*value)),
+        (TyKind::Char, Literal::Char(value)) => ValTreeKind::Leaf(ScalarInt::from(*value)),
+        (TyKind::Float(float), Literal::Float(value, _)) => {
+            let size = Size::from_bits(float.bit_width());
+            let value = match float {
+                rustc_ast_ir::FloatTy::F16 => value.to_f16().to_bits(),
+                rustc_ast_ir::FloatTy::F32 => value.to_f32().to_bits(),
+                rustc_ast_ir::FloatTy::F64 => value.to_f64().to_bits(),
+                rustc_ast_ir::FloatTy::F128 => value.to_f128().to_bits(),
+            };
+            let scalar = ScalarInt::try_from_uint(value, size).unwrap();
+            ValTreeKind::Leaf(scalar)
+        }
+        (_, Literal::String(value)) => {
+            let u8_values = &interner.default_types().consts.u8_values;
+            ValTreeKind::Branch(Consts::new_from_iter(
+                interner,
+                value.as_str().as_bytes().iter().map(|&byte| u8_values[usize::from(byte)]),
+            ))
+        }
+        (_, Literal::ByteString(value)) => {
+            let u8_values = &interner.default_types().consts.u8_values;
+            ValTreeKind::Branch(Consts::new_from_iter(
+                interner,
+                value.iter().map(|&byte| u8_values[usize::from(byte)]),
+            ))
+        }
+        (_, Literal::CString(_)) => {
+            // FIXME:
+            return Const::error(interner);
+        }
+        _ => {
+            never!("mismatching type for literal");
+            return Const::error(interner);
+        }
+    };
+    Const::new_valtree(interner, ty, valtree)
 }
 
 /// Interns a possibly-unknown target usize
 pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Crate) -> Const<'db> {
-    intern_const_ref(
-        db,
-        &match value {
-            Some(value) => Literal::Uint(value, Some(BuiltinUint::Usize)),
-            None => {
-                return Const::new(
-                    DbInterner::new_no_crate(db),
-                    rustc_type_ir::ConstKind::Error(ErrorGuaranteed),
-                );
-            }
-        },
-        Ty::new_uint(DbInterner::new_no_crate(db), rustc_type_ir::UintTy::Usize),
-        krate,
-    )
+    let interner = DbInterner::new_no_crate(db);
+    let value = match value {
+        Some(value) => value,
+        None => {
+            return Const::error(interner);
+        }
+    };
+    let Ok(data_layout) = db.target_data_layout(krate) else {
+        return Const::error(interner);
+    };
+    let usize_ty = interner.default_types().types.usize;
+    let scalar = ScalarInt::try_from_uint(value, data_layout.pointer_size()).unwrap();
+    Const::new_valtree(interner, usize_ty, ValTreeKind::Leaf(scalar))
+}
+
+pub fn allocation_as_usize(ec: Allocation<'_>) -> u128 {
+    u128::from_le_bytes(pad16(&ec.memory, false))
 }
 
 pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u128> {
@@ -230,18 +179,28 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
             GeneralConstId::ConstId(id) => {
                 let subst = unevaluated_const.args;
                 let ec = db.const_eval(id, subst, None).ok()?;
-                try_const_usize(db, ec)
+                Some(allocation_as_usize(ec))
             }
             GeneralConstId::StaticId(id) => {
                 let ec = db.const_eval_static(id).ok()?;
-                try_const_usize(db, ec)
+                Some(allocation_as_usize(ec))
             }
             GeneralConstId::AnonConstId(_) => None,
         },
-        ConstKind::Value(val) => Some(u128::from_le_bytes(pad16(&val.value.inner().memory, false))),
+        ConstKind::Value(val) => {
+            if val.ty == default_types(db).types.usize {
+                Some(val.value.inner().to_leaf().to_uint_unchecked())
+            } else {
+                None
+            }
+        }
         ConstKind::Error(_) => None,
         ConstKind::Expr(_) => None,
     }
+}
+
+pub fn allocation_as_isize(ec: Allocation<'_>) -> i128 {
+    i128::from_le_bytes(pad16(&ec.memory, true))
 }
 
 pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<i128> {
@@ -254,15 +213,21 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
             GeneralConstId::ConstId(id) => {
                 let subst = unevaluated_const.args;
                 let ec = db.const_eval(id, subst, None).ok()?;
-                try_const_isize(db, &ec)
+                Some(allocation_as_isize(ec))
             }
             GeneralConstId::StaticId(id) => {
                 let ec = db.const_eval_static(id).ok()?;
-                try_const_isize(db, &ec)
+                Some(allocation_as_isize(ec))
             }
             GeneralConstId::AnonConstId(_) => None,
         },
-        ConstKind::Value(val) => Some(i128::from_le_bytes(pad16(&val.value.inner().memory, true))),
+        ConstKind::Value(val) => {
+            if val.ty == default_types(db).types.isize {
+                Some(val.value.inner().to_leaf().to_int_unchecked())
+            } else {
+                None
+            }
+        }
         ConstKind::Error(_) => None,
         ConstKind::Expr(_) => None,
     }
@@ -299,11 +264,7 @@ pub(crate) fn const_eval_discriminant_variant(
             .store(),
     )?;
     let c = interpret_mir(db, mir_body, false, None)?.0?;
-    let c = if is_signed {
-        try_const_isize(db, &c).unwrap()
-    } else {
-        try_const_usize(db, c).unwrap() as i128
-    };
+    let c = if is_signed { allocation_as_isize(c) } else { allocation_as_usize(c) as i128 };
     Ok(c)
 }
 
@@ -341,7 +302,11 @@ pub(crate) fn eval_to_const<'db>(expr: ExprId, ctx: &mut InferenceContext<'_, 'd
             lower_body_to_mir(ctx.db, body_owner, Body::of(ctx.db, body_owner), &infer, expr)
         && let Ok((Ok(result), _)) = interpret_mir(ctx.db, Arc::new(mir_body), true, None)
     {
-        return result;
+        return Const::new_from_allocation(
+            ctx.interner(),
+            &result,
+            ParamEnvAndCrate { param_env: ctx.table.param_env, krate: ctx.resolver.krate() },
+        );
     }
     Const::error(ctx.interner())
 }
@@ -359,7 +324,7 @@ pub(crate) fn const_eval<'db>(
     def: ConstId,
     subst: GenericArgs<'db>,
     trait_env: Option<ParamEnvAndCrate<'db>>,
-) -> Result<Const<'db>, ConstEvalError> {
+) -> Result<Allocation<'db>, ConstEvalError> {
     return match const_eval_query(db, def, subst.store(), trait_env.map(|env| env.store())) {
         Ok(konst) => Ok(konst.as_ref()),
         Err(err) => Err(err.clone()),
@@ -371,7 +336,7 @@ pub(crate) fn const_eval<'db>(
         def: ConstId,
         subst: StoredGenericArgs,
         trait_env: Option<StoredParamEnvAndCrate>,
-    ) -> Result<StoredConst, ConstEvalError> {
+    ) -> Result<StoredAllocation, ConstEvalError> {
         let body = db.monomorphized_mir_body(
             def.into(),
             subst,
@@ -392,7 +357,7 @@ pub(crate) fn const_eval<'db>(
         _: ConstId,
         _: StoredGenericArgs,
         _: Option<StoredParamEnvAndCrate>,
-    ) -> Result<StoredConst, ConstEvalError> {
+    ) -> Result<StoredAllocation, ConstEvalError> {
         Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
     }
 }
@@ -400,7 +365,7 @@ pub(crate) fn const_eval<'db>(
 pub(crate) fn const_eval_static<'db>(
     db: &'db dyn HirDatabase,
     def: StaticId,
-) -> Result<Const<'db>, ConstEvalError> {
+) -> Result<Allocation<'db>, ConstEvalError> {
     return match const_eval_static_query(db, def) {
         Ok(konst) => Ok(konst.as_ref()),
         Err(err) => Err(err.clone()),
@@ -410,7 +375,7 @@ pub(crate) fn const_eval_static<'db>(
     pub(crate) fn const_eval_static_query<'db>(
         db: &'db dyn HirDatabase,
         def: StaticId,
-    ) -> Result<StoredConst, ConstEvalError> {
+    ) -> Result<StoredAllocation, ConstEvalError> {
         let interner = DbInterner::new_no_crate(db);
         let body = db.monomorphized_mir_body(
             def.into(),
@@ -430,7 +395,7 @@ pub(crate) fn const_eval_static<'db>(
         _: &dyn HirDatabase,
         _: salsa::Id,
         _: StaticId,
-    ) -> Result<StoredConst, ConstEvalError> {
+    ) -> Result<StoredAllocation, ConstEvalError> {
         Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
     }
 }

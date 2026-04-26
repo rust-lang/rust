@@ -603,6 +603,10 @@ pub(crate) struct Config {
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub(crate) verbose: bool,
 
+    /// Whether to enable verbose subprocess output for run-make tests.
+    /// Set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture).
+    pub verbose_run_make_subprocess_output: bool,
+
     /// Where to find the remote test client process, if we're using it.
     ///
     /// Note: this is *only* used for target platform executables created by `run-make` test

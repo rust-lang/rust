@@ -18,7 +18,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
@@ -261,7 +261,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // that the `PostAnalysisNormalize` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.typing_env, c.const_).ok()?;
+        let val = self
+            .tcx
+            .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(c.const_))
+            .ok()?;
 
         self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
             .as_mplace_or_imm()

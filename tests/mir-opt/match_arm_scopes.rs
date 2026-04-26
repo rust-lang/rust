@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Test that StorageDead and Drops are generated properly for bindings in
 // matches:

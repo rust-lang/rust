@@ -16,5 +16,13 @@ LL | impl Wake for MyWakerPartial {
    |
    = help: use `std::task::Waker::noop()` instead
 
-error: aborting due to 2 previous errors
+error: manual implementation of a no-op waker
+  --> tests/ui/manual_noop_waker.rs:60:10
+   |
+LL |     impl Wake for CustomWaker {
+   |          ^^^^
+   |
+   = help: use `std::task::Waker::noop()` instead
+
+error: aborting due to 3 previous errors
 

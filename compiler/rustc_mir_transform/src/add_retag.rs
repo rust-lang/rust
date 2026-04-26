@@ -24,6 +24,7 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         | ty::Str
         | ty::FnDef(..)
         | ty::Never => false,
+        ty::Pat(base, ..) => may_contain_reference(*base, depth, tcx),
         // References and Boxes (`noalias` sources)
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,

@@ -13,8 +13,8 @@
 
 fn main() {
     unsafe extern "C" fn variadic(mut ap: ...) {
-        ap.arg::<i32>();
-        ap.arg::<i32>();
+        ap.next_arg::<i32>();
+        ap.next_arg::<i32>();
     }
 
     unsafe { variadic(0i32, (), 1i32) }

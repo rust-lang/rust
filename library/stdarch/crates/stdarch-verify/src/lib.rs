@@ -120,6 +120,13 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 );
             }
 
+            // Newer intrinsics don't have `rustc_legacy_const_generics` - assume they belong at
+            // the end of the argument list
+            if required_const.is_empty() && legacy_const_generics.is_empty() {
+                legacy_const_generics =
+                    (arguments.len()..(arguments.len() + const_arguments.len())).collect();
+            }
+
             // The list of required consts, used to verify the arguments, comes from either the
             // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
             let required_const = if required_const.is_empty() {
@@ -136,14 +143,14 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 arguments.insert(idx, ty);
             }
 
-            // strip leading underscore from fn name when building a test
-            // _mm_foo -> mm_foo such that the test name is test_mm_foo.
-            let test_name_string = format!("{name}");
-            let mut test_name_id = test_name_string.as_str();
-            while test_name_id.starts_with('_') {
-                test_name_id = &test_name_id[1..];
-            }
-            let has_test = tests.contains(&format!("test_{test_name_id}"));
+            // Strip leading underscore from fn name when building a test
+            // `_mm_foo` -> `mm_foo` such that the test name is `test_mm_foo`.
+            let test_name = name.to_string();
+            let test_name = test_name.trim_start_matches('_');
+            let has_test = tests.contains(&format!("test_{test_name}"))
+                // SVE load/store tests start with `test` or `_with_`
+                || tests.iter().any(|t| t.starts_with(&format!("test_{test_name}"))
+                                        || t.ends_with(&format!("_with_{test_name}")));
 
             let doc = find_doc(&f.attrs);
 
@@ -346,6 +353,50 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "v8f16" => quote! { &v8f16 },
             "v4f32" => quote! { &v4f32 },
             "v2f64" => quote! { &v2f64 },
+
+            "svbool_t" => quote! { &SVBOOL },
+            "svint8_t" => quote! { &SVI8 },
+            "svint8x2_t" => quote! { &SVI8X2 },
+            "svint8x3_t" => quote! { &SVI8X3 },
+            "svint8x4_t" => quote! { &SVI8X4 },
+            "svint16_t" => quote! { &SVI16 },
+            "svint16x2_t" => quote! { &SVI16X2 },
+            "svint16x3_t" => quote! { &SVI16X3 },
+            "svint16x4_t" => quote! { &SVI16X4 },
+            "svint32_t" => quote! { &SVI32 },
+            "svint32x2_t" => quote! { &SVI32X2 },
+            "svint32x3_t" => quote! { &SVI32X3 },
+            "svint32x4_t" => quote! { &SVI32X4 },
+            "svint64_t" => quote! { &SVI64 },
+            "svint64x2_t" => quote! { &SVI64X2 },
+            "svint64x3_t" => quote! { &SVI64X3 },
+            "svint64x4_t" => quote! { &SVI64X4 },
+            "svuint8_t" => quote! { &SVU8 },
+            "svuint8x2_t" => quote! { &SVU8X2 },
+            "svuint8x3_t" => quote! { &SVU8X3 },
+            "svuint8x4_t" => quote! { &SVU8X4 },
+            "svuint16_t" => quote! { &SVU16 },
+            "svuint16x2_t" => quote! { &SVU16X2 },
+            "svuint16x3_t" => quote! { &SVU16X3 },
+            "svuint16x4_t" => quote! { &SVU16X4 },
+            "svuint32_t" => quote! { &SVU32 },
+            "svuint32x2_t" => quote! { &SVU32X2 },
+            "svuint32x3_t" => quote! { &SVU32X3 },
+            "svuint32x4_t" => quote! { &SVU32X4 },
+            "svuint64_t" => quote! { &SVU64 },
+            "svuint64x2_t" => quote! { &SVU64X2 },
+            "svuint64x3_t" => quote! { &SVU64X3 },
+            "svuint64x4_t" => quote! { &SVU64X4 },
+            "svfloat32_t" => quote! { &SVF32 },
+            "svfloat32x2_t" => quote! { &SVF32X2 },
+            "svfloat32x3_t" => quote! { &SVF32X3 },
+            "svfloat32x4_t" => quote! { &SVF32X4 },
+            "svfloat64_t" => quote! { &SVF64 },
+            "svfloat64x2_t" => quote! { &SVF64X2 },
+            "svfloat64x3_t" => quote! { &SVF64X3 },
+            "svfloat64x4_t" => quote! { &SVF64X4 },
+            "svprfop" => quote! { &SVPRFOP },
+            "svpattern" => quote! { &SVPATTERN },
 
             // Generic types
             "T" => quote! { &GENERICT },

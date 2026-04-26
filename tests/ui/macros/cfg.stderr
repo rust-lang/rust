@@ -9,22 +9,30 @@ error[E0539]: malformed `cfg` macro input
    |
 LL |     cfg!(123);
    |     ^^^^^---^
-   |     |    |
-   |     |    expected a valid identifier here
-   |     help: must be of the form: `cfg!(predicate)`
+   |          |
+   |          expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL -     cfg!(123);
+LL +     cfg!(predicate);
+   |
 
 error[E0539]: malformed `cfg` macro input
   --> $DIR/cfg.rs:4:5
    |
 LL |     cfg!(foo = 123);
    |     ^^^^^^^^^^^---^
-   |     |          |
-   |     |          expected a string literal here
-   |     help: must be of the form: `cfg!(predicate)`
+   |                |
+   |                expected a string literal here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL -     cfg!(foo = 123);
+LL +     cfg!(predicate);
+   |
 
 error: expected 1 cfg-pattern
   --> $DIR/cfg.rs:5:5
@@ -38,7 +46,7 @@ warning: unexpected `cfg` condition name: `foo`
 LL |     cfg!(foo);
    |          ^^^
    |
-   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: expected names are: `FALSE` and `test` and 32 more
    = help: to expect this configuration use `--check-cfg=cfg(foo)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default

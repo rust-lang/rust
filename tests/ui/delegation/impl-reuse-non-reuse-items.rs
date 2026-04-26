@@ -1,4 +1,3 @@
-#![allow(incomplete_features)]
 #![feature(fn_delegation)]
 
 mod non_delegatable_items {

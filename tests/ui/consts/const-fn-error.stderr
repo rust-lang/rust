@@ -1,22 +1,20 @@
-error[E0277]: the trait bound `std::ops::Range<usize>: [const] Iterator` is not satisfied
-  --> $DIR/const-fn-error.rs:5:14
-   |
-LL |     for i in 0..x {
-   |              ^^^^ required by a bound introduced by this call
-   |
-note: trait `Iterator` is implemented but not `const`
-  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
-   = note: required for `std::ops::Range<usize>` to implement `[const] IntoIterator`
-
-error[E0277]: the trait bound `std::ops::Range<usize>: [const] Iterator` is not satisfied
+error[E0015]: cannot use `for` loop on `std::ops::Range<usize>` in constant functions
   --> $DIR/const-fn-error.rs:5:14
    |
 LL |     for i in 0..x {
    |              ^^^^
    |
-note: trait `Iterator` is implemented but not `const`
-  --> $SRC_DIR/core/src/iter/range.rs:LL:COL
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot use `for` loop on `std::ops::Range<usize>` in constant functions
+  --> $DIR/const-fn-error.rs:5:14
+   |
+LL |     for i in 0..x {
+   |              ^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0015`.

@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-estimate
+//@compile-flags: -Zmiri-genmc-estimate
 
 // Translated from GenMC's "litmus/viktor-relseq" test.
 //

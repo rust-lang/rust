@@ -1302,12 +1302,16 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
     }
 
-    /// Parses mutability (`mut` or nothing).
+    /// Parse nothing or `mut`.
     fn parse_mutability(&mut self) -> Mutability {
         if self.eat_keyword(exp!(Mut)) { Mutability::Mut } else { Mutability::Not }
     }
 
-    /// Parses reference binding mode (`ref`, `ref mut`, `ref pin const`, `ref pin mut`, or nothing).
+    /// Parse nothing or a by-reference mode.
+    ///
+    /// ```ebnf
+    /// ByRef = "ref" PinAndMut?
+    /// ```
     fn parse_byref(&mut self) -> ByRef {
         if self.eat_keyword(exp!(Ref)) {
             let (pinnedness, mutability) = self.parse_pin_and_mut();
@@ -1317,8 +1321,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Possibly parses mutability (`const` or `mut`).
-    fn parse_const_or_mut(&mut self) -> Option<Mutability> {
+    /// Parse nothing or "explicit" mutability.
+    ///
+    /// ```ebnf
+    /// MutOrConst = "mut" | "const"
+    /// ```
+    fn parse_mut_or_const(&mut self) -> Option<Mutability> {
         if self.eat_keyword(exp!(Mut)) {
             Some(Mutability::Mut)
         } else if self.eat_keyword(exp!(Const)) {
@@ -1328,6 +1336,11 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse a field name.
+    ///
+    /// ```enbf
+    /// FieldName = IntLit | Ident
+    /// ```
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {

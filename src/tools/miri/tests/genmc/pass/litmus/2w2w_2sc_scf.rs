@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Translated from GenMC's test "2+2W+2sc+scf".
 // It tests correct handling of SeqCst fences combined with relaxed accesses.
 

@@ -1,4 +1,5 @@
-//@ build-pass
+// FIXME: The FileCheck directives in this test are unchecked and probably broken.
+//@ skip-filecheck
 //@ only-aarch64
 #![crate_type = "lib"]
 #![allow(incomplete_features, internal_features)]

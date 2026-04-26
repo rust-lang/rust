@@ -89,6 +89,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
+    Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -238,7 +239,7 @@ fn missing_items_err(
         let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
-            tcx.impl_trait_ref(impl_def_id).instantiate_identity(),
+            tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip(),
         ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
@@ -369,10 +370,10 @@ fn bounds_from_generic_predicates<'tcx>(
                     let mut projections_str = vec![];
                     for projection in &projections {
                         let p = projection.skip_binder();
-                        if bound == tcx.parent(p.projection_term.def_id)
+                        if bound == tcx.parent(p.projection_term.def_id())
                             && p.projection_term.self_ty() == ty
                         {
-                            let name = tcx.item_name(p.projection_term.def_id);
+                            let name = tcx.item_name(p.projection_term.def_id());
                             projections_str.push(format!("{} = {}", name, p.term));
                         }
                     }
@@ -478,7 +479,7 @@ fn fn_sig_suggestion<'tcx>(
                 }
             })
         })
-        .chain(std::iter::once(if sig.c_variadic { Some("...".to_string()) } else { None }))
+        .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
         .flatten()
         .collect::<Vec<String>>()
         .join(", ");
@@ -489,6 +490,7 @@ fn fn_sig_suggestion<'tcx>(
             && let Some(output) = tcx
                 .explicit_item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated_copied(tcx, alias_ty.args)
+                .map(Unnormalized::skip_norm_wip)
                 .find_map(|(bound, _)| {
                     bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
                 }) {
@@ -506,7 +508,7 @@ fn fn_sig_suggestion<'tcx>(
 
     let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
-    let safety = sig.safety.prefix_str();
+    let safety = sig.safety().prefix_str();
     let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates, assoc);
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
@@ -536,22 +538,26 @@ fn suggestion_signature<'tcx>(
             tcx,
             tcx.liberate_late_bound_regions(
                 assoc.def_id,
-                tcx.fn_sig(assoc.def_id).instantiate(tcx, args),
+                tcx.fn_sig(assoc.def_id).instantiate(tcx, args).skip_norm_wip(),
             ),
             assoc.ident(tcx),
-            tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
+            tcx.predicates_of(assoc.def_id)
+                .instantiate_own(tcx, args)
+                .map(|(c, s)| (c.skip_norm_wip(), s)),
             assoc,
         ),
         ty::AssocKind::Type { .. } => {
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
-                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
+                tcx.predicates_of(assoc.def_id)
+                    .instantiate_own(tcx, args)
+                    .map(|(c, s)| (c.skip_norm_wip(), s)),
                 assoc,
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
         ty::AssocKind::Const { name, .. } => {
-            let ty = tcx.type_of(assoc.def_id).instantiate_identity();
+            let ty = tcx.type_of(assoc.def_id).instantiate_identity().skip_norm_wip();
             let val = tcx
                 .infer_ctxt()
                 .build(TypingMode::non_body_analysis())

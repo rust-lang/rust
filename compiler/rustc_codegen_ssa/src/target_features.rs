@@ -10,7 +10,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, edit_distance, sym};
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, SanitizerSet};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
@@ -457,6 +457,15 @@ pub fn retpoline_features_by_flags(sess: &Session, features: &mut Vec<String>) {
         features.push("+retpoline-external-thunk".into());
         features.push("+retpoline-indirect-branches".into());
         features.push("+retpoline-indirect-calls".into());
+    }
+}
+
+/// Computes the backend target features to be added to account for sanitizer flags.
+pub fn sanitizer_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+    // It's intentional that this is done only for non-kernel version of hwaddress. This matches
+    // clang behavior.
+    if sess.sanitizers().contains(SanitizerSet::HWADDRESS) {
+        features.push("+tagged-globals".into());
     }
 }
 

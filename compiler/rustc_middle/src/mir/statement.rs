@@ -629,7 +629,7 @@ impl<'tcx> Operand<'tcx> {
         args: &[GenericArg<'tcx>],
         span: Span,
     ) -> Self {
-        let const_ = Const::from_unevaluated(tcx, def_id).instantiate(tcx, args);
+        let const_ = Const::from_unevaluated(tcx, def_id).instantiate(tcx, args).skip_norm_wip();
         Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
     }
 
@@ -819,7 +819,9 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Tuple => {
                     Ty::new_tup_from_iter(tcx, ops.iter().map(|op| op.ty(local_decls, tcx)))
                 }
-                AggregateKind::Adt(did, _, args, _, _) => tcx.type_of(did).instantiate(tcx, args),
+                AggregateKind::Adt(did, _, args, _, _) => {
+                    tcx.type_of(did).instantiate(tcx, args).skip_norm_wip()
+                }
                 AggregateKind::Closure(did, args) => Ty::new_closure(tcx, did, args),
                 AggregateKind::Coroutine(did, args) => Ty::new_coroutine(tcx, did, args),
                 AggregateKind::CoroutineClosure(did, args) => {

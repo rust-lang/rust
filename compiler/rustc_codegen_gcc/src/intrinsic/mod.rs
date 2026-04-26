@@ -7,8 +7,6 @@ use std::iter;
 #[cfg(feature = "master")]
 use gccjit::Type;
 use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
-#[cfg(feature = "master")]
-use rustc_abi::ExternAbi;
 use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
@@ -1483,32 +1481,26 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
     // `unsafe fn(*mut i8) -> ()`
     let try_fn_ty = Ty::new_fn_ptr(
         tcx,
-        ty::Binder::dummy(tcx.mk_fn_sig(
+        ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
             iter::once(i8p),
             tcx.types.unit,
-            false,
             rustc_hir::Safety::Unsafe,
-            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
     let catch_fn_ty = Ty::new_fn_ptr(
         tcx,
-        ty::Binder::dummy(tcx.mk_fn_sig(
+        ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
             [i8p, i8p].iter().cloned(),
             tcx.types.unit,
-            false,
             rustc_hir::Safety::Unsafe,
-            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
-    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
+    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig_rust_abi(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
-        false,
         rustc_hir::Safety::Unsafe,
-        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));

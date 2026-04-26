@@ -1,4 +1,8 @@
 #![deny = "foo"] //~ ERROR malformed `deny` attribute input
-#![allow(bar = "baz")]
-//~^ ERROR malformed `allow` attribute input [E0539]
+#![allow(bar = "baz")] //~ ERROR malformed lint attribute
+                       //~| ERROR malformed lint attribute
+                       //~| ERROR malformed lint attribute
+                       //~| ERROR malformed lint attribute
+                       //~| ERROR malformed lint attribute
+                       //~| ERROR malformed lint attribute
 fn main() { }

@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@revisions: join no_join
 
 // Translated from GenMC's "litmus/detour" test.

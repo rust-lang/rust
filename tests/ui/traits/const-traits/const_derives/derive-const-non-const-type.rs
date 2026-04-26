@@ -10,6 +10,6 @@ impl Default for A {
 
 #[derive_const(Default)]
 pub struct S(A);
-//~^ ERROR: `A: [const] Default` is not satisfied
+//~^ ERROR: cannot call non-const associated function
 
 fn main() {}

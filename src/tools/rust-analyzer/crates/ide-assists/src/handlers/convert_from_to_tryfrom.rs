@@ -74,8 +74,8 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert From to TryFrom",
         impl_.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(impl_.syntax());
+            let editor = builder.make_editor(impl_.syntax());
+            let make = editor.make();
 
             editor.replace(trait_ty.syntax(), make.ty(&format!("TryFrom<{from_type}>")).syntax());
             editor.replace(
@@ -83,11 +83,11 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
                 make.ty("Result<Self, Self::Error>").syntax(),
             );
             editor.replace(from_fn_name.syntax(), make.name("try_from").syntax());
-            editor.replace(tail_expr.syntax(), wrap_ok(&make, tail_expr.clone()).syntax());
+            editor.replace(tail_expr.syntax(), wrap_ok(make, tail_expr.clone()).syntax());
 
             for r in return_exprs {
                 let t = r.expr().unwrap_or_else(|| make.expr_unit());
-                editor.replace(t.syntax(), wrap_ok(&make, t.clone()).syntax());
+                editor.replace(t.syntax(), wrap_ok(make, t.clone()).syntax());
             }
 
             let error_type_alias =
@@ -111,7 +111,6 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
                     make.whitespace("\n").syntax_element(),
                 ],
             );
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

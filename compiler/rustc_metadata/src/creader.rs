@@ -1,5 +1,6 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::Path;
 use std::str::FromStr;
@@ -23,6 +24,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
@@ -107,21 +109,6 @@ pub(crate) struct Library {
 enum LoadResult {
     Previous(CrateNum),
     Loaded(Library),
-}
-
-/// A reference to `CrateMetadata` that can also give access to whole crate store when necessary.
-#[derive(Clone, Copy)]
-pub(crate) struct CrateMetadataRef<'a> {
-    pub cdata: &'a CrateMetadata,
-    pub cstore: &'a CStore,
-}
-
-impl std::ops::Deref for CrateMetadataRef<'_> {
-    type Target = CrateMetadata;
-
-    fn deref(&self) -> &Self::Target {
-        self.cdata
-    }
 }
 
 struct CrateDump<'a>(&'a CStore);
@@ -243,11 +230,8 @@ impl CStore {
         self.metas[cnum].is_some()
     }
 
-    pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
-        let cdata = self.metas[cnum]
-            .as_ref()
-            .unwrap_or_else(|| panic!("Failed to get crate data for {cnum:?}"));
-        CrateMetadataRef { cdata, cstore: self }
+    pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> &CrateMetadata {
+        self.metas[cnum].as_ref().unwrap_or_else(|| panic!("Failed to get crate data for {cnum:?}"))
     }
 
     pub(crate) fn get_crate_data_mut(&mut self, cnum: CrateNum) -> &mut CrateMetadata {
@@ -282,14 +266,13 @@ impl CStore {
     }
 
     pub fn all_proc_macro_def_ids(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
-        self.iter_crate_data()
-            .flat_map(move |(krate, data)| data.proc_macros_for_crate(tcx, krate, self))
+        self.iter_crate_data().flat_map(move |(krate, data)| data.proc_macros_for_crate(tcx, krate))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
-            let data = self.get_crate_data(cnum);
-            for dep in data.dependencies() {
+            let cdata = self.get_crate_data(cnum);
+            for dep in cdata.dependencies() {
                 if dep != cnum {
                     self.push_dependencies_in_postorder(deps, dep);
                 }
@@ -463,6 +446,12 @@ impl CStore {
         }
     }
 
+    pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        self.report_incompatible_target_modifiers(tcx, krate);
+        self.report_incompatible_partial_mitigations(tcx, krate);
+        self.report_incompatible_async_drop_feature(tcx, krate);
+    }
+
     pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
             if !OptionsTargetModifiers::is_target_modifier(flag_name) {
@@ -480,6 +469,43 @@ impl CStore {
             let dep_mods = data.target_modifiers();
             if mods != dep_mods {
                 Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+            }
+        }
+    }
+
+    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
+        let mut my_mitigations: BTreeMap<_, _> =
+            my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
+        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations(tcx.sess.edition()) {
+            my_mitigations.remove(&skipped_mitigation);
+        }
+        const MAX_ERRORS_PER_MITIGATION: usize = 5;
+        let mut errors_per_mitigation = BTreeMap::new();
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            let their_mitigations = data.enabled_denied_partial_mitigations();
+            for my_mitigation in my_mitigations.values() {
+                let their_mitigation = their_mitigations
+                    .iter()
+                    .find(|mitigation| mitigation.kind == my_mitigation.kind)
+                    .map_or(DeniedPartialMitigationLevel::Enabled(false), |m| m.level);
+                if their_mitigation < my_mitigation.level {
+                    let errors = errors_per_mitigation.entry(my_mitigation.kind).or_insert(0);
+                    if *errors >= MAX_ERRORS_PER_MITIGATION {
+                        continue;
+                    }
+                    *errors += 1;
+
+                    tcx.dcx().emit_err(errors::MitigationLessStrictInDependency {
+                        span: krate.spans.inner_span.shrink_to_lo(),
+                        mitigation_name: my_mitigation.kind.to_string(),
+                        mitigation_level: my_mitigation.level.level_str().to_string(),
+                        extern_crate: data.name(),
+                    });
+                }
             }
         }
     }
@@ -631,7 +657,6 @@ impl CStore {
 
         let crate_metadata = CrateMetadata::new(
             tcx,
-            self,
             metadata,
             crate_root,
             raw_proc_macros,
@@ -820,12 +845,12 @@ impl CStore {
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
                 let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
-                let data = self.get_crate_data_mut(cnum);
-                if data.is_proc_macro_crate() {
+                let cdata = self.get_crate_data_mut(cnum);
+                if cdata.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
-                data.set_dep_kind(cmp::max(data.dep_kind(), dep_kind));
-                data.update_and_private_dep(private_dep);
+                cdata.set_dep_kind(cmp::max(cdata.dep_kind(), dep_kind));
+                cdata.update_and_private_dep(private_dep);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
@@ -1000,14 +1025,14 @@ impl CStore {
         ) else {
             return;
         };
-        let data = self.get_crate_data(cnum);
+        let cdata = self.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
-        if !data.is_panic_runtime() {
+        if !cdata.is_panic_runtime() {
             tcx.dcx().emit_err(errors::CrateNotPanicRuntime { crate_name: name });
         }
-        if data.required_panic_strategy() != Some(desired_strategy) {
+        if cdata.required_panic_strategy() != Some(desired_strategy) {
             tcx.dcx()
                 .emit_err(errors::NoPanicStrategy { crate_name: name, strategy: desired_strategy });
         }
@@ -1024,20 +1049,27 @@ impl CStore {
 
         info!("loading profiler");
 
+        // HACK: This uses conditional despite actually being unconditional to ensure that
+        // there is no error emitted when two dylibs independently depend on profiler_builtins.
+        // This is fine as profiler_builtins is always statically linked into the dylib just
+        // like compiler_builtins. Unlike compiler_builtins however there is no guaranteed
+        // common dylib that the duplicate crate check believes the crate to be included in.
+        // add_upstream_rust_crates has a corresponding check that forces profiler_builtins
+        // to be statically linked in even when marked as NotLinked.
         let name = Symbol::intern(&tcx.sess.opts.unstable_opts.profiler_runtime);
         let Some(cnum) = self.resolve_crate(
             tcx,
             name,
             DUMMY_SP,
-            CrateDepKind::Unconditional,
+            CrateDepKind::Conditional,
             CrateOrigin::Injected,
         ) else {
             return;
         };
-        let data = self.get_crate_data(cnum);
+        let cdata = self.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-        if !data.is_profiler_runtime() {
+        if !cdata.is_profiler_runtime() {
             tcx.dcx().emit_err(errors::NotProfilerRuntime { crate_name: name });
         }
     }
@@ -1191,9 +1223,9 @@ impl CStore {
         };
 
         // Sanity check that the loaded crate is `#![compiler_builtins]`
-        let cmeta = self.get_crate_data(cnum);
-        if !cmeta.is_compiler_builtins() {
-            tcx.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cmeta.name() });
+        let cdata = self.get_crate_data(cnum);
+        if !cdata.is_compiler_builtins() {
+            tcx.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cdata.name() });
         }
     }
 

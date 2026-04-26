@@ -387,6 +387,9 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                 w!(self, "Const({})", self.hir_display(&konst.as_ref()))
             }
             OperandKind::Static(s) => w!(self, "Static({:?})", s),
+            OperandKind::Allocation { allocation } => {
+                w!(self, "Allocation({})", self.hir_display(&allocation.as_ref()))
+            }
         }
     }
 

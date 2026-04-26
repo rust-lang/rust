@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: AddRetag
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // ignore-tidy-linelength

@@ -398,6 +398,16 @@ impl Config {
             self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
         }
         self.unpack(&tarball, root_dir, "gcc-dev");
+
+        if self.should_fix_bins_and_dylibs() {
+            let lib_dir = root_dir.join("lib");
+            for entry in t!(fs::read_dir(lib_dir)) {
+                let lib = t!(entry).path();
+                if path_is_dylib(&lib) {
+                    self.fix_bin_or_dylib(&lib);
+                }
+            }
+        }
     }
 }
 
@@ -677,6 +687,8 @@ fn fix_bin_or_dylib(out: &Path, fname: &Path, exec_ctx: &ExecutionContext) {
         // bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
         // cc.lib: Needed similarly for `libstdc++.so.6`.
         // zlib: Needed as a system dependency of `libLLVM-*.so`.
+        // zstd.out: Needed as a system dependency of `libgccjit.so`. `.out` is necessary as the
+        //           default output of `zstd` derivation is `.bin`.
         // patchelf: Needed for patching ELF binaries (see doc comment above).
         let nix_deps_dir = out.join(".nix-deps");
         const NIX_EXPR: &str = "
@@ -685,6 +697,7 @@ fn fix_bin_or_dylib(out: &Path, fname: &Path, exec_ctx: &ExecutionContext) {
             name = \"rust-stage0-dependencies\";
             paths = [
                 zlib
+                zstd.out
                 patchelf
                 stdenv.cc.bintools
                 stdenv.cc.cc.lib

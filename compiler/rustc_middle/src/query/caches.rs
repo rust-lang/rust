@@ -65,9 +65,7 @@ where
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        // We may be overwriting another value. This is all right, since the dep-graph
-        // will check that the value fingerprint matches.
-        self.cache.insert(key, (value, index));
+        self.cache.insert_unique(key, (value, index));
     }
 
     fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {

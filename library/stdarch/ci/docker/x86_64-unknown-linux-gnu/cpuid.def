@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2025 Intel Corporation.
+# Copyright (C) 2017-2026 Intel Corporation.
 # 
 # This software and the related documents are Intel copyrighted materials, and your
 # use of them is governed by the express license under which they were provided to
@@ -23,8 +23,9 @@
 00000004 00000004 => 00000000 00000000 00000000 00000000
 00000005 ******** => 00000040 00000040 00000003 00042120 #MONITOR/MWAIT
 00000006 ******** => 00000077 00000002 00000001 00000000 #Thermal and Power
-00000007 00000000 => 00000001 f3bfbfbf bac05ffe 03d54130 #Extended Features
+00000007 00000000 => 00000002 f3bfbfbf bac05ffe 03d54130 #Extended Features
 00000007 00000001 => 98ee00bf 00000002 00000020 1d29cd3e
+00000007 00000002 => 00000000 00000000 00000000 00000010
 00000008 ******** => 00000000 00000000 00000000 00000000
 00000009 ******** => 00000000 00000000 00000000 00000000 #Direct Cache
 0000000a ******** => 07300403 00000000 00000000 00000603

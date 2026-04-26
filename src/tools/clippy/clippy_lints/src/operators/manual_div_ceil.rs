@@ -148,7 +148,8 @@ fn build_suggestion(
     rhs: &Expr<'_>,
     applicability: &mut Applicability,
 ) {
-    let dividend_sugg = Sugg::hir_with_applicability(cx, lhs, "..", applicability).maybe_paren();
+    let ctxt = expr.span.ctxt();
+    let dividend_sugg = Sugg::hir_with_context(cx, lhs, ctxt, "..", applicability).maybe_paren();
     let rhs_ty = cx.typeck_results().expr_ty(rhs);
     let type_suffix = if cx.typeck_results().expr_ty(lhs).is_numeric()
         && matches!(
@@ -186,7 +187,7 @@ fn build_suggestion(
     };
 
     // Dereference the RHS if it is a reference type
-    let divisor_snippet = match Sugg::hir_with_context(cx, rhs, expr.span.ctxt(), "_", applicability) {
+    let divisor_snippet = match Sugg::hir_with_context(cx, rhs, ctxt, "_", applicability) {
         sugg if rhs_ty.is_ref() => sugg.deref(),
         sugg => sugg,
     };

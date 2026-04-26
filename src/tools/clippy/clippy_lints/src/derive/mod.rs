@@ -204,7 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
         {
             let adt_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
             let trait_ref = &of_trait.trait_ref;
-            let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+            let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
             let is_automatically_derived = cx.tcx.is_automatically_derived(item.owner_id.to_def_id());
 
             derived_hash_with_manual_eq::check(cx, item.span, trait_ref, ty, adt_hir_id, is_automatically_derived);

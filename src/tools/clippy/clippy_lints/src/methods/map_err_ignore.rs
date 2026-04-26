@@ -11,8 +11,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, arg: &Expr<'_>) {
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx
             .tcx
-            .type_of(impl_id)
-            .instantiate_identity()
+            .type_of(impl_id).instantiate_identity().skip_norm_wip()
             .is_diag_item(cx, sym::Result)
         && let ExprKind::Closure(&Closure {
             capture_clause: CaptureBy::Ref,

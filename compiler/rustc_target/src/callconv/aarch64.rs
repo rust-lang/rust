@@ -35,7 +35,7 @@ where
             // The softfloat ABI treats floats like integers, so they
             // do not get homogeneous aggregate treatment.
             RegKind::Float => cx.target_spec().rustc_abi != Some(RustcAbi::Softfloat),
-            RegKind::Vector => size.bits() == 64 || size.bits() == 128,
+            RegKind::Vector { .. } => size.bits() == 64 || size.bits() == 128,
         };
 
         valid_unit.then_some(Uniform::consecutive(unit, size))

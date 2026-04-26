@@ -92,7 +92,7 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     }
 }
 
-pub fn get_span_and_frames<'tcx>(
+pub(crate) fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     stack: &[Frame<'tcx, impl Provenance, impl Sized>],
 ) -> (Span, Vec<errors::FrameNote>) {

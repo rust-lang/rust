@@ -1731,11 +1731,14 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(DotDotDotForRemainingFields { span: self.token.span, token_str });
     }
 
+    /// Parse a field in a struct pattern.
+    ///
+    /// ```ebnf
+    /// PatField = FieldName ":" Pat | "box"? "mut"? ByRef? Ident
+    /// ```
     fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {
-        // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
-            // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
             let pat = self.parse_pat_allow_top_guard(
@@ -1747,7 +1750,6 @@ impl<'a> Parser<'a> {
             hi = pat.span;
             (pat, fieldname, false)
         } else {
-            // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(exp!(Box));
             if is_box {
                 self.psess.gated_spans.gate(sym::box_patterns, self.prev_token.span);
@@ -1756,7 +1758,7 @@ impl<'a> Parser<'a> {
             let mutability = self.parse_mutability();
             let by_ref = self.parse_byref();
 
-            let fieldname = self.parse_field_name()?;
+            let fieldname = self.parse_ident_common(false)?;
             hi = self.prev_token.span;
             let ann = BindingMode(by_ref, mutability);
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);

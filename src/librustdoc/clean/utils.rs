@@ -126,7 +126,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
 
         // Elide arguments that coincide with their default.
         if !elision_has_failed_once_before && let Some(default) = param.default_value(cx.tcx) {
-            let default = default.instantiate(cx.tcx, args.as_ref());
+            let default = default.instantiate(cx.tcx, args.as_ref()).skip_norm_wip();
             if can_elide_generic_arg(arg, arg.rebind(default)) {
                 return None;
             }
@@ -371,7 +371,7 @@ pub(crate) fn print_evaluated_const(
     with_type: bool,
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = tcx.type_of(def_id).instantiate_identity();
+        let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (mir::ConstValue::Scalar(_), &ty::Adt(_, _)) => None,

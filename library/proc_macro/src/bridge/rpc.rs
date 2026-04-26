@@ -244,6 +244,14 @@ impl PanicMessage {
             PanicMessage::Unknown => None,
         }
     }
+
+    pub fn into_string(self) -> Option<String> {
+        match self {
+            PanicMessage::StaticStr(s) => Some(s.into()),
+            PanicMessage::String(s) => Some(s),
+            PanicMessage::Unknown => None,
+        }
+    }
 }
 
 impl<S> Encode<S> for PanicMessage {

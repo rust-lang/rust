@@ -5,7 +5,6 @@ use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
-use super::OnDuplicate;
 use crate::attributes::SingleAttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
@@ -18,18 +17,12 @@ pub(crate) struct CustomMirParser;
 impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
 
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut dialect = None;
         let mut phase = None;
@@ -82,7 +75,7 @@ fn extract_value<S: Stage>(
     }
 
     let Some(val) = arg.name_value() else {
-        cx.adcx().expected_single_argument(arg.span().unwrap_or(span));
+        cx.adcx().expected_name_value(span, Some(key));
         *failed = true;
         return;
     };

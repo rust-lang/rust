@@ -2,7 +2,7 @@
 
 use hir::{Crate, Module};
 use hir_ty::db::HirDatabase;
-use ide_db::{LineIndexDatabase, base_db::SourceDatabase};
+use ide_db::{base_db::SourceDatabase, line_index};
 use profile::StopWatch;
 use project_model::{CargoConfig, RustLibSource};
 use syntax::TextRange;
@@ -38,7 +38,7 @@ impl flags::RunTests {
             })
             .filter(|x| x.is_test(db));
         let span_formatter = |file_id, text_range: TextRange| {
-            let line_col = match db.line_index(file_id).try_line_col(text_range.start()) {
+            let line_col = match line_index(db, file_id).try_line_col(text_range.start()) {
                 None => " (unknown line col)".to_owned(),
                 Some(x) => format!("#{}:{}", x.line + 1, x.col),
             };

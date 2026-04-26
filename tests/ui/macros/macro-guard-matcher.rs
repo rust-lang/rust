@@ -2,7 +2,7 @@
 
 fn main() {
     macro_rules! m {
-        ($x:guard) => {};
+        ($g:guard) => {};
     }
 
     // Accepts
@@ -14,4 +14,12 @@ fn main() {
 
     // Rejects
     m!(let Some(x) = Some(1)); //~ERROR no rules expected keyword `let`
+
+    macro_rules! m_m {
+        ($g:guard) => { m!($g); };
+    }
+
+    // Accepted since `m` recognizes that the sequence produced by the expansion of
+    // metavar `$g` "begins" (i.e., is) a guard since it's of kind `guard`.
+    m_m!(if true);
 }

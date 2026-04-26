@@ -16,7 +16,7 @@ use rustc_errors::Applicability;
 use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
@@ -78,7 +78,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     impl_def_id: LocalDefId,
     of_trait: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
 
     // Don't complain about unconstrained type params when self ty isn't known due to errors.
     // (#36836)
@@ -86,7 +86,8 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
 
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref = of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate_identity());
+    let impl_trait_ref =
+        of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip());
 
     impl_trait_ref.error_reported()?;
 
@@ -107,7 +108,11 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
             match item.kind {
                 ty::AssocKind::Type { .. } => {
                     if item.defaultness(tcx).has_value() {
-                        cgp::parameters_for(tcx, tcx.type_of(def_id).instantiate_identity(), true)
+                        cgp::parameters_for(
+                            tcx,
+                            tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
+                            true,
+                        )
                     } else {
                         vec![]
                     }
@@ -187,7 +192,7 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
 
     // Don't complain about unconstrained type params when self ty isn't known due to errors.
     // (#36836)
@@ -195,8 +200,10 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
 
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
-    let impl_trait_ref =
-        tcx.impl_opt_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
+    let impl_trait_ref = tcx
+        .impl_opt_trait_ref(impl_def_id)
+        .map(ty::EarlyBinder::instantiate_identity)
+        .map(Unnormalized::skip_norm_wip);
 
     impl_trait_ref.error_reported()?;
 

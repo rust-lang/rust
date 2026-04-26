@@ -1,5 +1,9 @@
 #![warn(clippy::if_then_some_else_none)]
-#![allow(clippy::redundant_pattern_matching, clippy::unnecessary_lazy_evaluations)]
+#![allow(
+    clippy::redundant_pattern_matching,
+    clippy::unnecessary_lazy_evaluations,
+    clippy::manual_filter
+)]
 
 fn main() {
     // Should issue an error.

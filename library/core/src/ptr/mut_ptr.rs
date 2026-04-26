@@ -594,7 +594,7 @@ impl<T: PointeeSized> *mut T {
     ///
     /// [`as_mut`]: #method.as_mut
     /// [`as_uninit_mut`]: #method.as_uninit_mut
-    /// [`as_ref_unchecked`]: #method.as_mut_unchecked
+    /// [`as_ref_unchecked`]: #method.as_ref_unchecked
     ///
     /// # Safety
     ///

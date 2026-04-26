@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// let range = Range { start: 0, end: 1 };
     /// println!("{}", range.end); // `end` is _not_ disallowed in the config.
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.95.0"]
     pub DISALLOWED_FIELDS,
     style,
     "declaration of a disallowed field use"

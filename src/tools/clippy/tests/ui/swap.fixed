@@ -195,3 +195,14 @@ const fn issue_10421(x: u32) -> u32 {
     let a = a;
     a
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_slice {
+        ($val:expr) => {
+            *&mut $val
+        };
+    }
+
+    let mut foo = [1, 2];
+    test_slice!(foo).swap(0, 1);
+}

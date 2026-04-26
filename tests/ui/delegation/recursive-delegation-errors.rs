@@ -1,6 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
-
 
 mod first_mod {
     reuse foo;

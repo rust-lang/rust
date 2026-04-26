@@ -18,9 +18,8 @@ use crate::errors::{
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace, ValuePairs};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 
-// HACK(eddyb) maybe move this in a more central location.
 #[derive(Copy, Clone)]
-pub struct Highlighted<'tcx, T> {
+pub(crate) struct Highlighted<'tcx, T> {
     pub tcx: TyCtxt<'tcx>,
     pub highlight: RegionHighlightMode<'tcx>,
     pub value: T,

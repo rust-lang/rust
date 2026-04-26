@@ -8,7 +8,7 @@ LL |     let _ = m![begin x end];
    |             --------------- in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: there is a macro metavariable with similar name
+help: there is a macro metavariable with a similar name
    |
 LL -         [$arg]
 LL +         [$ard]

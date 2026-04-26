@@ -3,7 +3,6 @@
 // should emit a resolution error, not ICE.
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait {
     fn bar();

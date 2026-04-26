@@ -441,7 +441,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(def_id) = preds.principal_def_id()
                 {
                     for (clause, span) in
-                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).into_iter()
                     {
                         if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
                             clause.kind().skip_binder()
@@ -584,24 +584,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_ref = self.tcx.impl_trait_ref(impl_def_id);
         let trait_args = trait_ref
             .instantiate_identity()
+            .skip_norm_wip()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_replaced_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
             .args;
         let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
             .rebase_onto(self.tcx, impl_def_id, trait_args);
 
-        let Ok(trait_predicates) =
-            self.tcx
-                .explicit_predicates_of(trait_item_def_id)
-                .instantiate_own(self.tcx, trait_item_args)
-                .map(|(pred, _)| {
-                    if pred.is_suggestable(self.tcx, false) {
-                        Ok(pred.to_string())
-                    } else {
-                        Err(())
-                    }
-                })
-                .collect::<Result<Vec<_>, ()>>()
+        let Ok(trait_predicates) = self
+            .tcx
+            .explicit_predicates_of(trait_item_def_id)
+            .instantiate_own(self.tcx, trait_item_args)
+            .map(|(pred, _)| {
+                let pred = pred.skip_norm_wip();
+                if pred.is_suggestable(self.tcx, false) { Ok(pred.to_string()) } else { Err(()) }
+            })
+            .collect::<Result<Vec<_>, ()>>()
         else {
             return;
         };

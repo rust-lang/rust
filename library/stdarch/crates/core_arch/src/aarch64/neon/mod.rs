@@ -1022,8 +1022,12 @@ mod tests {
         ($elem_ty:ty, $len:expr, $vec_ty:ty, $store:expr, $load:expr) => {
             let vals: [$elem_ty; $len] = crate::array::from_fn(|i| i as $elem_ty);
             let a: $vec_ty = transmute(vals);
-            let mut tmp = [0 as $elem_ty; $len];
+            let mut tmp = core::mem::MaybeUninit::<[$elem_ty; $len]>::uninit();
             $store(tmp.as_mut_ptr().cast(), a);
+
+            // With Miri this will check that all elements were initialized.
+            let tmp = tmp.assume_init();
+
             let r: $vec_ty = $load(tmp.as_ptr().cast());
             let out: [$elem_ty; $len] = transmute(r);
             assert_eq!(out, vals);

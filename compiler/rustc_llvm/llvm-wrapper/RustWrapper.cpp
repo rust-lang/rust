@@ -9,6 +9,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticHandler.h"
@@ -298,10 +299,12 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
                   .getCallee());
 }
 
-extern "C" LLVMValueRef LLVMRustGetOrInsertGlobal(LLVMModuleRef M,
-                                                  const char *Name,
-                                                  size_t NameLen,
-                                                  LLVMTypeRef Ty) {
+// Get the global variable with the given name if it exists or create a new
+// external global.
+extern "C" LLVMValueRef
+LLVMRustGetOrInsertGlobalInAddrspace(LLVMModuleRef M, const char *Name,
+                                     size_t NameLen, LLVMTypeRef Ty,
+                                     unsigned int AddressSpace) {
   Module *Mod = unwrap(M);
   auto NameRef = StringRef(Name, NameLen);
 
@@ -312,8 +315,22 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertGlobal(LLVMModuleRef M,
   GlobalVariable *GV = Mod->getGlobalVariable(NameRef, true);
   if (!GV)
     GV = new GlobalVariable(*Mod, unwrap(Ty), false,
-                            GlobalValue::ExternalLinkage, nullptr, NameRef);
+                            GlobalValue::ExternalLinkage, nullptr, NameRef,
+                            nullptr, GlobalValue::NotThreadLocal, AddressSpace);
   return wrap(GV);
+}
+
+// Get the global variable with the given name if it exists or create a new
+// external global.
+extern "C" LLVMValueRef LLVMRustGetOrInsertGlobal(LLVMModuleRef M,
+                                                  const char *Name,
+                                                  size_t NameLen,
+                                                  LLVMTypeRef Ty) {
+  Module *Mod = unwrap(M);
+  unsigned int AddressSpace =
+      Mod->getDataLayout().getDefaultGlobalsAddressSpace();
+  return LLVMRustGetOrInsertGlobalInAddrspace(M, Name, NameLen, Ty,
+                                              AddressSpace);
 }
 
 // Must match the layout of `rustc_codegen_llvm::llvm::ffi::AttributeKind`.
@@ -1813,6 +1830,19 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
     MD = GV.getSanitizerMetadata();
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
+}
+
+extern "C" bool LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn,
+                                                 LLVMValueRef *NewFn) {
+  Function *F = unwrap<Function>(Fn);
+  Function *NewF = nullptr;
+  bool CanUpgrade = UpgradeIntrinsicFunction(F, NewF, false);
+  *NewFn = wrap(NewF);
+  return CanUpgrade;
+}
+
+extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
+  return Intrinsic::isTargetIntrinsic(ID);
 }
 
 // Statically assert that the fixed metadata kind IDs declared in

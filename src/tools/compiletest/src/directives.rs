@@ -135,7 +135,7 @@ pub(crate) struct TestProps {
     pub(crate) pretty_mode: String,
     // Only compare pretty output and don't try compiling
     pub(crate) pretty_compare_only: bool,
-    // Patterns which must not appear in the output of a cfail test.
+    /// Strings that must not appear in compile/run output.
     pub(crate) forbid_output: Vec<String>,
     // Revisions to test for incremental compilation.
     pub(crate) revisions: Vec<String>,
@@ -185,8 +185,6 @@ pub(crate) struct TestProps {
     // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub(crate) rustfix_only_machine_applicable: bool,
     pub(crate) assembly_output: Option<String>,
-    // If true, the test is expected to ICE
-    pub(crate) should_ice: bool,
     // If true, the stderr is expected to be different across bit-widths.
     pub(crate) stderr_per_bitwidth: bool,
     // The MIR opt to unit test, if any
@@ -197,6 +195,9 @@ pub(crate) struct TestProps {
     /// Extra flags to pass to `llvm-cov` when producing coverage reports.
     /// Only used by the "coverage-run" test mode.
     pub(crate) llvm_cov_flags: Vec<String>,
+    /// Don't run LLVM's `filecheck` tool to check compiler output,
+    /// in tests that would normally run it.
+    pub(crate) skip_filecheck: bool,
     /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
     pub(crate) filecheck_flags: Vec<String>,
     /// Don't automatically insert any `--check-cfg` args
@@ -220,7 +221,6 @@ mod directives {
     pub(crate) const COMPILE_FLAGS: &str = "compile-flags";
     pub(crate) const RUN_FLAGS: &str = "run-flags";
     pub(crate) const DOC_FLAGS: &str = "doc-flags";
-    pub(crate) const SHOULD_ICE: &str = "should-ice";
     pub(crate) const BUILD_AUX_DOCS: &str = "build-aux-docs";
     pub(crate) const UNIQUE_DOC_OUT_DIR: &str = "unique-doc-out-dir";
     pub(crate) const FORCE_HOST: &str = "force-host";
@@ -307,11 +307,11 @@ impl TestProps {
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
             assembly_output: None,
-            should_ice: false,
             stderr_per_bitwidth: false,
             mir_unit_test: None,
             remap_src_base: false,
             llvm_cov_flags: vec![],
+            skip_filecheck: false,
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
             add_minicore: false,
@@ -377,10 +377,6 @@ impl TestProps {
             );
         }
 
-        if self.should_ice {
-            self.failure_status = Some(101);
-        }
-
         if config.mode == TestMode::Incremental {
             self.incremental = true;
         }
@@ -412,8 +408,7 @@ impl TestProps {
 
     fn update_fail_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_ui = |mode: &str| {
-            // Mode::Crashes may need build-fail in order to trigger llvm errors or stack overflows
-            if config.mode != TestMode::Ui && config.mode != TestMode::Crashes {
+            if config.mode != TestMode::Ui {
                 panic!("`{}-fail` directive is only supported in UI tests", mode);
             }
         };
@@ -445,15 +440,6 @@ impl TestProps {
     fn update_pass_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
-            (TestMode::Crashes, _) => (),
-            (TestMode::Codegen, "build-pass") => (),
-            (TestMode::Incremental, _) => {
-                // FIXME(Zalathar): This only detects forbidden directives that are
-                // declared _after_ the incompatible `//@ revisions:` directive(s).
-                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
-                    panic!("`{s}` directive is only supported in `cfail` incremental tests")
-                }
-            }
             (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {

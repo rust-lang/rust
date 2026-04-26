@@ -26,6 +26,8 @@ Arguments:
 Options:
   -v, --verbose...
           use verbose output (-vv for very verbose)
+  -q, --quiet
+          use quiet output
   -i, --incremental
           use incremental compilation
       --config <FILE>

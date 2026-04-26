@@ -1,6 +1,7 @@
 use std::mem;
 
 use rustc_arena::TypedArena;
+use rustc_span::ErrorGuaranteed;
 
 use crate::ty::TyCtxt;
 
@@ -47,6 +48,21 @@ impl<'tcx, T> ArenaCached<'tcx> for Option<&'tcx T> {
         value: Option<T>,
     ) -> Self {
         // Don't store None in the arena, and wrap the allocated reference in Some.
+        try { do_alloc(tcx, typed_arena, value?) }
+    }
+}
+
+impl<'tcx, T> ArenaCached<'tcx> for Result<&'tcx T, ErrorGuaranteed> {
+    type Provided = Result<T, ErrorGuaranteed>;
+    /// The provide value is `Result<T, ErrorGuaranteed>`, but we only store `T` in the arena.
+    type Allocated = T;
+
+    fn alloc_in_arena(
+        tcx: TyCtxt<'tcx>,
+        typed_arena: &'tcx TypedArena<T>,
+        value: Result<T, ErrorGuaranteed>,
+    ) -> Self {
+        // Don't store Err(ErrorGuaranteed) in the arena, and wrap the allocated reference in Ok.
         try { do_alloc(tcx, typed_arena, value?) }
     }
 }

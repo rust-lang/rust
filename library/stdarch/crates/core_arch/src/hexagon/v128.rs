@@ -15,6 +15,18 @@
 //!
 //! To use this module, compile with `-C target-feature=+hvx-length128b`.
 //!
+//! ## Naming Convention
+//!
+//! Function names preserve the original Q6 naming case because the convention
+//! uses case to distinguish register types:
+//! - `W` (uppercase) = vector pair (`HvxVectorPair`)
+//! - `V` (uppercase) = vector (`HvxVector`)
+//! - `Q` (uppercase) = predicate (`HvxVectorPred`)
+//! - `R` = scalar register (`i32`)
+//!
+//! For example, `Q6_W_vcombine_VV` operates on a vector pair while
+//! `Q6_V_hi_W` extracts a vector from a pair.
+//!
 //! ## Architecture Versions
 //!
 //! Different intrinsics require different HVX architecture versions. Use the
@@ -31,6 +43,7 @@
 //! Each version includes all features from previous versions.
 
 #![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -1034,7 +1047,7 @@ unsafe extern "unadjusted" {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(extractw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_r_vextract_vr(vu: HvxVector, rs: i32) -> i32 {
+pub unsafe fn Q6_R_vextract_VR(vu: HvxVector, rs: i32) -> i32 {
     extractw(vu, rs)
 }
 
@@ -1046,7 +1059,7 @@ pub unsafe fn q6_r_vextract_vr(vu: HvxVector, rs: i32) -> i32 {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(hi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_hi_w(vss: HvxVectorPair) -> HvxVector {
+pub unsafe fn Q6_V_hi_W(vss: HvxVectorPair) -> HvxVector {
     hi(vss)
 }
 
@@ -1058,7 +1071,7 @@ pub unsafe fn q6_v_hi_w(vss: HvxVectorPair) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(lo))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_lo_w(vss: HvxVectorPair) -> HvxVector {
+pub unsafe fn Q6_V_lo_W(vss: HvxVectorPair) -> HvxVector {
     lo(vss)
 }
 
@@ -1070,7 +1083,7 @@ pub unsafe fn q6_v_lo_w(vss: HvxVectorPair) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(lvsplatw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vsplat_r(rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vsplat_R(rt: i32) -> HvxVector {
     lvsplatw(rt)
 }
 
@@ -1082,7 +1095,7 @@ pub unsafe fn q6_v_vsplat_r(rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vabsdiff_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vabsdiff_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vabsdiffh(vu, vv)
 }
 
@@ -1094,7 +1107,7 @@ pub unsafe fn q6_vuh_vabsdiff_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vabsdiff_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vabsdiff_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vabsdiffub(vu, vv)
 }
 
@@ -1106,7 +1119,7 @@ pub unsafe fn q6_vub_vabsdiff_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vabsdiff_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vabsdiff_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vabsdiffuh(vu, vv)
 }
 
@@ -1118,7 +1131,7 @@ pub unsafe fn q6_vuh_vabsdiff_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vabsdiff_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vabsdiff_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vabsdiffw(vu, vv)
 }
 
@@ -1130,7 +1143,7 @@ pub unsafe fn q6_vuw_vabsdiff_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vabs_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vabs_Vh(vu: HvxVector) -> HvxVector {
     vabsh(vu)
 }
 
@@ -1142,7 +1155,7 @@ pub unsafe fn q6_vh_vabs_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsh_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vabs_vh_sat(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vabs_Vh_sat(vu: HvxVector) -> HvxVector {
     vabsh_sat(vu)
 }
 
@@ -1154,7 +1167,7 @@ pub unsafe fn q6_vh_vabs_vh_sat(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vabs_vw(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vabs_Vw(vu: HvxVector) -> HvxVector {
     vabsw(vu)
 }
 
@@ -1166,7 +1179,7 @@ pub unsafe fn q6_vw_vabs_vw(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsw_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vabs_vw_sat(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vabs_Vw_sat(vu: HvxVector) -> HvxVector {
     vabsw_sat(vu)
 }
 
@@ -1178,7 +1191,7 @@ pub unsafe fn q6_vw_vabs_vw_sat(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vadd_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vadd_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddb(vu, vv)
 }
 
@@ -1190,7 +1203,7 @@ pub unsafe fn q6_vb_vadd_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddb_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wb_vadd_wbwb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wb_vadd_WbWb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddb_dv(vuu, vvv)
 }
 
@@ -1202,7 +1215,7 @@ pub unsafe fn q6_wb_vadd_wbwb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vadd_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vadd_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddh(vu, vv)
 }
 
@@ -1214,7 +1227,7 @@ pub unsafe fn q6_vh_vadd_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddh_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vadd_whwh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vadd_WhWh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddh_dv(vuu, vvv)
 }
 
@@ -1226,7 +1239,7 @@ pub unsafe fn q6_wh_vadd_whwh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vadd_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vadd_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddhsat(vu, vv)
 }
 
@@ -1238,7 +1251,7 @@ pub unsafe fn q6_vh_vadd_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vadd_whwh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vadd_WhWh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddhsat_dv(vuu, vvv)
 }
 
@@ -1250,7 +1263,7 @@ pub unsafe fn q6_wh_vadd_whwh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vadd_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vadd_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vaddhw(vu, vv)
 }
 
@@ -1262,7 +1275,7 @@ pub unsafe fn q6_ww_vadd_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddubh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vadd_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vadd_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vaddubh(vu, vv)
 }
 
@@ -1274,7 +1287,7 @@ pub unsafe fn q6_wh_vadd_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vadd_vubvub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vadd_VubVub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddubsat(vu, vv)
 }
 
@@ -1286,7 +1299,7 @@ pub unsafe fn q6_vub_vadd_vubvub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddubsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wub_vadd_wubwub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wub_vadd_WubWub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddubsat_dv(vuu, vvv)
 }
 
@@ -1298,7 +1311,7 @@ pub unsafe fn q6_wub_vadd_wubwub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vadduhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vadd_vuhvuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vadd_VuhVuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadduhsat(vu, vv)
 }
 
@@ -1310,7 +1323,7 @@ pub unsafe fn q6_vuh_vadd_vuhvuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vadduhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vadd_wuhwuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wuh_vadd_WuhWuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vadduhsat_dv(vuu, vvv)
 }
 
@@ -1322,7 +1335,7 @@ pub unsafe fn q6_wuh_vadd_wuhwuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vadduhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vadd_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vadd_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vadduhw(vu, vv)
 }
 
@@ -1334,7 +1347,7 @@ pub unsafe fn q6_ww_vadd_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vadd_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vadd_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     simd_add(vu, vv)
 }
 
@@ -1346,7 +1359,7 @@ pub unsafe fn q6_vw_vadd_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddw_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vadd_wwww(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vadd_WwWw(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddw_dv(vuu, vvv)
 }
 
@@ -1358,7 +1371,7 @@ pub unsafe fn q6_ww_vadd_wwww(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vadd_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vadd_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddwsat(vu, vv)
 }
 
@@ -1370,7 +1383,7 @@ pub unsafe fn q6_vw_vadd_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vadd_wwww_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vadd_WwWw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddwsat_dv(vuu, vvv)
 }
 
@@ -1382,7 +1395,7 @@ pub unsafe fn q6_ww_vadd_wwww_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(valignb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_valign_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_valign_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     valignb(vu, vv, rt)
 }
 
@@ -1394,7 +1407,7 @@ pub unsafe fn q6_v_valign_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(valignbi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_valign_vvi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVector {
+pub unsafe fn Q6_V_valign_VVI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVector {
     valignbi(vu, vv, iu3)
 }
 
@@ -1406,7 +1419,7 @@ pub unsafe fn q6_v_valign_vvi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vand))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vand_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vand_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     simd_and(vu, vv)
 }
 
@@ -1418,7 +1431,7 @@ pub unsafe fn q6_v_vand_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasl_vhr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vasl_VhR(vu: HvxVector, rt: i32) -> HvxVector {
     vaslh(vu, rt)
 }
 
@@ -1430,7 +1443,7 @@ pub unsafe fn q6_vh_vasl_vhr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasl_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vasl_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaslhv(vu, vv)
 }
 
@@ -1442,7 +1455,7 @@ pub unsafe fn q6_vh_vasl_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vasl_vwr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vasl_VwR(vu: HvxVector, rt: i32) -> HvxVector {
     vaslw(vu, rt)
 }
 
@@ -1454,7 +1467,7 @@ pub unsafe fn q6_vw_vasl_vwr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vaslacc_vwvwr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vaslacc_VwVwR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vaslw_acc(vx, vu, rt)
 }
 
@@ -1466,7 +1479,7 @@ pub unsafe fn q6_vw_vaslacc_vwvwr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslwv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vasl_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vasl_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaslwv(vu, vv)
 }
 
@@ -1478,7 +1491,7 @@ pub unsafe fn q6_vw_vasl_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasr_vhr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vasr_VhR(vu: HvxVector, rt: i32) -> HvxVector {
     vasrh(vu, rt)
 }
 
@@ -1490,7 +1503,7 @@ pub unsafe fn q6_vh_vasr_vhr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhbrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vasr_vhvhr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vb_vasr_VhVhR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrhbrndsat(vu, vv, rt)
 }
 
@@ -1502,7 +1515,7 @@ pub unsafe fn q6_vb_vasr_vhvhr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) ->
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhubrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vasr_vhvhr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vub_vasr_VhVhR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrhubrndsat(vu, vv, rt)
 }
 
@@ -1514,7 +1527,7 @@ pub unsafe fn q6_vub_vasr_vhvhr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vasr_vhvhr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vub_vasr_VhVhR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrhubsat(vu, vv, rt)
 }
 
@@ -1526,7 +1539,7 @@ pub unsafe fn q6_vub_vasr_vhvhr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasr_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vasr_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vasrhv(vu, vv)
 }
 
@@ -1538,7 +1551,7 @@ pub unsafe fn q6_vh_vasr_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vasr_vwr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vasr_VwR(vu: HvxVector, rt: i32) -> HvxVector {
     vasrw(vu, rt)
 }
 
@@ -1550,7 +1563,7 @@ pub unsafe fn q6_vw_vasr_vwr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vasracc_vwvwr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vasracc_VwVwR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vasrw_acc(vx, vu, rt)
 }
 
@@ -1562,7 +1575,7 @@ pub unsafe fn q6_vw_vasracc_vwvwr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasr_vwvwr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vasr_VwVwR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrwh(vu, vv, rt)
 }
 
@@ -1574,7 +1587,7 @@ pub unsafe fn q6_vh_vasr_vwvwr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasr_vwvwr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vasr_VwVwR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrwhrndsat(vu, vv, rt)
 }
 
@@ -1586,7 +1599,7 @@ pub unsafe fn q6_vh_vasr_vwvwr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) ->
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasr_vwvwr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vasr_VwVwR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrwhsat(vu, vv, rt)
 }
 
@@ -1598,7 +1611,7 @@ pub unsafe fn q6_vh_vasr_vwvwr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vasr_vwvwr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuh_vasr_VwVwR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrwuhsat(vu, vv, rt)
 }
 
@@ -1610,7 +1623,7 @@ pub unsafe fn q6_vuh_vasr_vwvwr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vasr_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vasr_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vasrwv(vu, vv)
 }
 
@@ -1622,7 +1635,7 @@ pub unsafe fn q6_vw_vasr_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vassign))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_equals_v(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_equals_V(vu: HvxVector) -> HvxVector {
     vassign(vu)
 }
 
@@ -1634,7 +1647,7 @@ pub unsafe fn q6_v_equals_v(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vassignp))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_equals_w(vuu: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_W_equals_W(vuu: HvxVectorPair) -> HvxVectorPair {
     vassignp(vuu)
 }
 
@@ -1646,7 +1659,7 @@ pub unsafe fn q6_w_equals_w(vuu: HvxVectorPair) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vavg_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vavg_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgh(vu, vv)
 }
 
@@ -1658,7 +1671,7 @@ pub unsafe fn q6_vh_vavg_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavghrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vavg_vhvh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vavg_VhVh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavghrnd(vu, vv)
 }
 
@@ -1670,7 +1683,7 @@ pub unsafe fn q6_vh_vavg_vhvh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vavg_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vavg_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgub(vu, vv)
 }
 
@@ -1682,7 +1695,7 @@ pub unsafe fn q6_vub_vavg_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgubrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vavg_vubvub_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vavg_VubVub_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgubrnd(vu, vv)
 }
 
@@ -1694,7 +1707,7 @@ pub unsafe fn q6_vub_vavg_vubvub_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavguh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vavg_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vavg_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavguh(vu, vv)
 }
 
@@ -1706,7 +1719,7 @@ pub unsafe fn q6_vuh_vavg_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavguhrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vavg_vuhvuh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vavg_VuhVuh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavguhrnd(vu, vv)
 }
 
@@ -1718,7 +1731,7 @@ pub unsafe fn q6_vuh_vavg_vuhvuh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vavg_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vavg_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgw(vu, vv)
 }
 
@@ -1730,7 +1743,7 @@ pub unsafe fn q6_vw_vavg_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgwrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vavg_vwvw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vavg_VwVw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgwrnd(vu, vv)
 }
 
@@ -1742,7 +1755,7 @@ pub unsafe fn q6_vw_vavg_vwvw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vcl0h))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vcl0_vuh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vcl0_Vuh(vu: HvxVector) -> HvxVector {
     vcl0h(vu)
 }
 
@@ -1754,7 +1767,7 @@ pub unsafe fn q6_vuh_vcl0_vuh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vcl0w))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vcl0_vuw(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vcl0_Vuw(vu: HvxVector) -> HvxVector {
     vcl0w(vu)
 }
 
@@ -1766,7 +1779,7 @@ pub unsafe fn q6_vuw_vcl0_vuw(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vcombine))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vcombine_vv(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_W_vcombine_VV(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vcombine(vu, vv)
 }
 
@@ -1778,7 +1791,7 @@ pub unsafe fn q6_w_vcombine_vv(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vd0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vzero() -> HvxVector {
+pub unsafe fn Q6_V_vzero() -> HvxVector {
     vd0()
 }
 
@@ -1790,7 +1803,7 @@ pub unsafe fn q6_v_vzero() -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vdeal_vb(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vdeal_Vb(vu: HvxVector) -> HvxVector {
     vdealb(vu)
 }
 
@@ -1802,7 +1815,7 @@ pub unsafe fn q6_vb_vdeal_vb(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealb4w))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vdeale_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vdeale_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vdealb4w(vu, vv)
 }
 
@@ -1814,7 +1827,7 @@ pub unsafe fn q6_vb_vdeale_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vdeal_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vdeal_Vh(vu: HvxVector) -> HvxVector {
     vdealh(vu)
 }
 
@@ -1826,7 +1839,7 @@ pub unsafe fn q6_vh_vdeal_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealvdd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vdeal_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_W_vdeal_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
     vdealvdd(vu, vv, rt)
 }
 
@@ -1838,7 +1851,7 @@ pub unsafe fn q6_w_vdeal_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdelta))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vdelta_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vdelta_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vdelta(vu, vv)
 }
 
@@ -1850,7 +1863,7 @@ pub unsafe fn q6_v_vdelta_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vdmpy_vubrb(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vdmpy_VubRb(vu: HvxVector, rt: i32) -> HvxVector {
     vdmpybus(vu, rt)
 }
 
@@ -1862,7 +1875,7 @@ pub unsafe fn q6_vh_vdmpy_vubrb(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vdmpyacc_vhvubrb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vdmpyacc_VhVubRb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vdmpybus_acc(vx, vu, rt)
 }
 
@@ -1874,7 +1887,7 @@ pub unsafe fn q6_vh_vdmpyacc_vhvubrb(vx: HvxVector, vu: HvxVector, rt: i32) -> H
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vdmpy_wubrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vdmpy_WubRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vdmpybus_dv(vuu, rt)
 }
 
@@ -1886,7 +1899,7 @@ pub unsafe fn q6_wh_vdmpy_wubrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus_dv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vdmpyacc_whwubrb(
+pub unsafe fn Q6_Wh_vdmpyacc_WhWubRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -1902,7 +1915,7 @@ pub unsafe fn q6_wh_vdmpyacc_whwubrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpy_vhrb(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpy_VhRb(vu: HvxVector, rt: i32) -> HvxVector {
     vdmpyhb(vu, rt)
 }
 
@@ -1914,7 +1927,7 @@ pub unsafe fn q6_vw_vdmpy_vhrb(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpyacc_vwvhrb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpyacc_VwVhRb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vdmpyhb_acc(vx, vu, rt)
 }
 
@@ -1926,7 +1939,7 @@ pub unsafe fn q6_vw_vdmpyacc_vwvhrb(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vdmpy_whrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vdmpy_WhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vdmpyhb_dv(vuu, rt)
 }
 
@@ -1938,7 +1951,7 @@ pub unsafe fn q6_ww_vdmpy_whrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb_dv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vdmpyacc_wwwhrb(
+pub unsafe fn Q6_Ww_vdmpyacc_WwWhRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -1954,7 +1967,7 @@ pub unsafe fn q6_ww_vdmpyacc_wwwhrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhisat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpy_whrh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpy_WhRh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
     vdmpyhisat(vuu, rt)
 }
 
@@ -1966,7 +1979,7 @@ pub unsafe fn q6_vw_vdmpy_whrh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhisat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpyacc_vwwhrh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpyacc_VwWhRh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: i32) -> HvxVector {
     vdmpyhisat_acc(vx, vuu, rt)
 }
 
@@ -1978,7 +1991,7 @@ pub unsafe fn q6_vw_vdmpyacc_vwwhrh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: i
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpy_vhrh_sat(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpy_VhRh_sat(vu: HvxVector, rt: i32) -> HvxVector {
     vdmpyhsat(vu, rt)
 }
 
@@ -1990,7 +2003,7 @@ pub unsafe fn q6_vw_vdmpy_vhrh_sat(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpyacc_vwvhrh_sat(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpyacc_VwVhRh_sat(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vdmpyhsat_acc(vx, vu, rt)
 }
 
@@ -2002,7 +2015,7 @@ pub unsafe fn q6_vw_vdmpyacc_vwvhrh_sat(vx: HvxVector, vu: HvxVector, rt: i32) -
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsuisat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpy_whruh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpy_WhRuh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
     vdmpyhsuisat(vuu, rt)
 }
 
@@ -2014,7 +2027,7 @@ pub unsafe fn q6_vw_vdmpy_whruh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsuisat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpyacc_vwwhruh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpyacc_VwWhRuh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: i32) -> HvxVector {
     vdmpyhsuisat_acc(vx, vuu, rt)
 }
 
@@ -2026,7 +2039,7 @@ pub unsafe fn q6_vw_vdmpyacc_vwwhruh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsusat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpy_vhruh_sat(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpy_VhRuh_sat(vu: HvxVector, rt: i32) -> HvxVector {
     vdmpyhsusat(vu, rt)
 }
 
@@ -2038,7 +2051,7 @@ pub unsafe fn q6_vw_vdmpy_vhruh_sat(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsusat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpyacc_vwvhruh_sat(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpyacc_VwVhRuh_sat(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vdmpyhsusat_acc(vx, vu, rt)
 }
 
@@ -2050,7 +2063,7 @@ pub unsafe fn q6_vw_vdmpyacc_vwvhruh_sat(vx: HvxVector, vu: HvxVector, rt: i32) 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhvsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpy_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpy_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vdmpyhvsat(vu, vv)
 }
 
@@ -2062,7 +2075,7 @@ pub unsafe fn q6_vw_vdmpy_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhvsat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vdmpyacc_vwvhvh_sat(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vdmpyacc_VwVhVh_sat(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vdmpyhvsat_acc(vx, vu, vv)
 }
 
@@ -2074,7 +2087,7 @@ pub unsafe fn q6_vw_vdmpyacc_vwvhvh_sat(vx: HvxVector, vu: HvxVector, vv: HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdsaduh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vdsad_wuhruh(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vdsad_WuhRuh(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vdsaduh(vuu, rt)
 }
 
@@ -2086,7 +2099,7 @@ pub unsafe fn q6_wuw_vdsad_wuhruh(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdsaduh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vdsadacc_wuwwuhruh(
+pub unsafe fn Q6_Wuw_vdsadacc_WuwWuhRuh(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -2102,7 +2115,7 @@ pub unsafe fn q6_wuw_vdsadacc_wuwwuhruh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vinsertwr))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vinsert_vwr(vx: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vinsert_VwR(vx: HvxVector, rt: i32) -> HvxVector {
     vinsertwr(vx, rt)
 }
 
@@ -2114,7 +2127,7 @@ pub unsafe fn q6_vw_vinsert_vwr(vx: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlalignb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vlalign_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vlalign_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vlalignb(vu, vv, rt)
 }
 
@@ -2126,7 +2139,7 @@ pub unsafe fn q6_v_vlalign_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlalignbi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vlalign_vvi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVector {
+pub unsafe fn Q6_V_vlalign_VVI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVector {
     vlalignbi(vu, vv, iu3)
 }
 
@@ -2138,7 +2151,7 @@ pub unsafe fn q6_v_vlalign_vvi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vlsr_vuhr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuh_vlsr_VuhR(vu: HvxVector, rt: i32) -> HvxVector {
     vlsrh(vu, rt)
 }
 
@@ -2150,7 +2163,7 @@ pub unsafe fn q6_vuh_vlsr_vuhr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vlsr_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vlsr_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vlsrhv(vu, vv)
 }
 
@@ -2162,7 +2175,7 @@ pub unsafe fn q6_vh_vlsr_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vlsr_vuwr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuw_vlsr_VuwR(vu: HvxVector, rt: i32) -> HvxVector {
     vlsrw(vu, rt)
 }
 
@@ -2174,7 +2187,7 @@ pub unsafe fn q6_vuw_vlsr_vuwr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrwv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vlsr_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vlsr_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vlsrwv(vu, vv)
 }
 
@@ -2186,7 +2199,7 @@ pub unsafe fn q6_vw_vlsr_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvvb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vlut32_vbvbr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vb_vlut32_VbVbR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vlutvvb(vu, vv, rt)
 }
 
@@ -2198,7 +2211,7 @@ pub unsafe fn q6_vb_vlut32_vbvbr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVe
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvvb_oracc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vlut32or_vbvbvbr(
+pub unsafe fn Q6_Vb_vlut32or_VbVbVbR(
     vx: HvxVector,
     vu: HvxVector,
     vv: HvxVector,
@@ -2215,7 +2228,7 @@ pub unsafe fn q6_vb_vlut32or_vbvbvbr(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vlut16_vbvhr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vlut16_VbVhR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
     vlutvwh(vu, vv, rt)
 }
 
@@ -2227,7 +2240,7 @@ pub unsafe fn q6_wh_vlut16_vbvhr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVe
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvwh_oracc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vlut16or_whvbvhr(
+pub unsafe fn Q6_Wh_vlut16or_WhVbVhR(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2244,7 +2257,7 @@ pub unsafe fn q6_wh_vlut16or_whvbvhr(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmax_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vmax_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmaxh(vu, vv)
 }
 
@@ -2256,7 +2269,7 @@ pub unsafe fn q6_vh_vmax_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vmax_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vmax_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmaxub(vu, vv)
 }
 
@@ -2268,7 +2281,7 @@ pub unsafe fn q6_vub_vmax_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vmax_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vmax_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmaxuh(vu, vv)
 }
 
@@ -2280,7 +2293,7 @@ pub unsafe fn q6_vuh_vmax_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmax_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmax_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmaxw(vu, vv)
 }
 
@@ -2292,7 +2305,7 @@ pub unsafe fn q6_vw_vmax_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmin_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vmin_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vminh(vu, vv)
 }
 
@@ -2304,7 +2317,7 @@ pub unsafe fn q6_vh_vmin_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vmin_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vmin_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vminub(vu, vv)
 }
 
@@ -2316,7 +2329,7 @@ pub unsafe fn q6_vub_vmin_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vmin_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vmin_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vminuh(vu, vv)
 }
 
@@ -2328,7 +2341,7 @@ pub unsafe fn q6_vuh_vmin_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmin_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmin_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vminw(vu, vv)
 }
 
@@ -2340,7 +2353,7 @@ pub unsafe fn q6_vw_vmin_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpa_wubrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpa_WubRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vmpabus(vuu, rt)
 }
 
@@ -2352,7 +2365,7 @@ pub unsafe fn q6_wh_vmpa_wubrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpaacc_whwubrb(
+pub unsafe fn Q6_Wh_vmpaacc_WhWubRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -2368,7 +2381,7 @@ pub unsafe fn q6_wh_vmpaacc_whwubrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabusv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpa_wubwb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpa_WubWb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vmpabusv(vuu, vvv)
 }
 
@@ -2380,7 +2393,7 @@ pub unsafe fn q6_wh_vmpa_wubwb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabuuv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpa_wubwub(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpa_WubWub(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vmpabuuv(vuu, vvv)
 }
 
@@ -2392,7 +2405,7 @@ pub unsafe fn q6_wh_vmpa_wubwub(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVe
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpahb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpa_whrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vmpa_WhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vmpahb(vuu, rt)
 }
 
@@ -2404,7 +2417,7 @@ pub unsafe fn q6_ww_vmpa_whrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpahb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpaacc_wwwhrb(
+pub unsafe fn Q6_Ww_vmpaacc_WwWhRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -2420,7 +2433,7 @@ pub unsafe fn q6_ww_vmpaacc_wwwhrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpy_vubrb(vu: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpy_VubRb(vu: HvxVector, rt: i32) -> HvxVectorPair {
     vmpybus(vu, rt)
 }
 
@@ -2432,7 +2445,7 @@ pub unsafe fn q6_wh_vmpy_vubrb(vu: HvxVector, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpyacc_whvubrb(vxx: HvxVectorPair, vu: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpyacc_WhVubRb(vxx: HvxVectorPair, vu: HvxVector, rt: i32) -> HvxVectorPair {
     vmpybus_acc(vxx, vu, rt)
 }
 
@@ -2444,7 +2457,7 @@ pub unsafe fn q6_wh_vmpyacc_whvubrb(vxx: HvxVectorPair, vu: HvxVector, rt: i32) 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybusv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpy_vubvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpy_VubVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpybusv(vu, vv)
 }
 
@@ -2456,7 +2469,7 @@ pub unsafe fn q6_wh_vmpy_vubvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybusv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpyacc_whvubvb(
+pub unsafe fn Q6_Wh_vmpyacc_WhVubVb(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2472,7 +2485,7 @@ pub unsafe fn q6_wh_vmpyacc_whvubvb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpy_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpy_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpybv(vu, vv)
 }
 
@@ -2484,7 +2497,7 @@ pub unsafe fn q6_wh_vmpy_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpyacc_whvbvb(
+pub unsafe fn Q6_Wh_vmpyacc_WhVbVb(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2500,7 +2513,7 @@ pub unsafe fn q6_wh_vmpyacc_whvbvb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyewuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpye_vwvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpye_VwVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyewuh(vu, vv)
 }
 
@@ -2512,7 +2525,7 @@ pub unsafe fn q6_vw_vmpye_vwvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpy_vhrh(vu: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vmpy_VhRh(vu: HvxVector, rt: i32) -> HvxVectorPair {
     vmpyh(vu, rt)
 }
 
@@ -2524,7 +2537,7 @@ pub unsafe fn q6_ww_vmpy_vhrh(vu: HvxVector, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhsat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpyacc_wwvhrh_sat(
+pub unsafe fn Q6_Ww_vmpyacc_WwVhRh_sat(
     vxx: HvxVectorPair,
     vu: HvxVector,
     rt: i32,
@@ -2540,7 +2553,7 @@ pub unsafe fn q6_ww_vmpyacc_wwvhrh_sat(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhsrs))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpy_vhrh_s1_rnd_sat(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpy_VhRh_s1_rnd_sat(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyhsrs(vu, rt)
 }
 
@@ -2552,7 +2565,7 @@ pub unsafe fn q6_vh_vmpy_vhrh_s1_rnd_sat(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhss))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpy_vhrh_s1_sat(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpy_VhRh_s1_sat(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyhss(vu, rt)
 }
 
@@ -2564,7 +2577,7 @@ pub unsafe fn q6_vh_vmpy_vhrh_s1_sat(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpy_vhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vmpy_VhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpyhus(vu, vv)
 }
 
@@ -2576,7 +2589,7 @@ pub unsafe fn q6_ww_vmpy_vhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpyacc_wwvhvuh(
+pub unsafe fn Q6_Ww_vmpyacc_WwVhVuh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2592,7 +2605,7 @@ pub unsafe fn q6_ww_vmpyacc_wwvhvuh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpy_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vmpy_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpyhv(vu, vv)
 }
 
@@ -2604,7 +2617,7 @@ pub unsafe fn q6_ww_vmpy_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpyacc_wwvhvh(
+pub unsafe fn Q6_Ww_vmpyacc_WwVhVh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2620,7 +2633,7 @@ pub unsafe fn q6_ww_vmpyacc_wwvhvh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhvsrs))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpy_vhvh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpy_VhVh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyhvsrs(vu, vv)
 }
 
@@ -2632,7 +2645,7 @@ pub unsafe fn q6_vh_vmpy_vhvh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyieoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyieo_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyieo_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyieoh(vu, vv)
 }
 
@@ -2644,7 +2657,7 @@ pub unsafe fn q6_vw_vmpyieo_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiewh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyieacc_vwvwvh(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyieacc_VwVwVh(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyiewh_acc(vx, vu, vv)
 }
 
@@ -2656,7 +2669,7 @@ pub unsafe fn q6_vw_vmpyieacc_vwvwvh(vx: HvxVector, vu: HvxVector, vv: HvxVector
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiewuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyie_vwvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyie_VwVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyiewuh(vu, vv)
 }
 
@@ -2668,7 +2681,7 @@ pub unsafe fn q6_vw_vmpyie_vwvuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiewuh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyieacc_vwvwvuh(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyieacc_VwVwVuh(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyiewuh_acc(vx, vu, vv)
 }
 
@@ -2680,7 +2693,7 @@ pub unsafe fn q6_vw_vmpyieacc_vwvwvuh(vx: HvxVector, vu: HvxVector, vv: HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyih))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpyi_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpyi_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyih(vu, vv)
 }
 
@@ -2692,7 +2705,7 @@ pub unsafe fn q6_vh_vmpyi_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyih_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpyiacc_vhvhvh(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpyiacc_VhVhVh(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyih_acc(vx, vu, vv)
 }
 
@@ -2704,7 +2717,7 @@ pub unsafe fn q6_vh_vmpyiacc_vhvhvh(vx: HvxVector, vu: HvxVector, vv: HvxVector)
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyihb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpyi_vhrb(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpyi_VhRb(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyihb(vu, rt)
 }
 
@@ -2716,7 +2729,7 @@ pub unsafe fn q6_vh_vmpyi_vhrb(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyihb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vmpyiacc_vhvhrb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vmpyiacc_VhVhRb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vmpyihb_acc(vx, vu, rt)
 }
 
@@ -2728,7 +2741,7 @@ pub unsafe fn q6_vh_vmpyiacc_vhvhrb(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiowh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyio_vwvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyio_VwVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyiowh(vu, vv)
 }
 
@@ -2740,7 +2753,7 @@ pub unsafe fn q6_vw_vmpyio_vwvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyi_vwrb(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyi_VwRb(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyiwb(vu, rt)
 }
 
@@ -2752,7 +2765,7 @@ pub unsafe fn q6_vw_vmpyi_vwrb(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyiacc_vwvwrb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyiacc_VwVwRb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vmpyiwb_acc(vx, vu, rt)
 }
 
@@ -2764,7 +2777,7 @@ pub unsafe fn q6_vw_vmpyiacc_vwvwrb(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyi_vwrh(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyi_VwRh(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyiwh(vu, rt)
 }
 
@@ -2776,7 +2789,7 @@ pub unsafe fn q6_vw_vmpyi_vwrh(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyiacc_vwvwrh(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyiacc_VwVwRh(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vmpyiwh_acc(vx, vu, rt)
 }
 
@@ -2788,7 +2801,7 @@ pub unsafe fn q6_vw_vmpyiacc_vwvwrh(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyo_vwvh_s1_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyo_VwVh_s1_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyowh(vu, vv)
 }
 
@@ -2800,7 +2813,7 @@ pub unsafe fn q6_vw_vmpyo_vwvh_s1_sat(vu: HvxVector, vv: HvxVector) -> HvxVector
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh_rnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyo_vwvh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyo_VwVh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyowh_rnd(vu, vv)
 }
 
@@ -2812,7 +2825,7 @@ pub unsafe fn q6_vw_vmpyo_vwvh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVe
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh_rnd_sacc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyoacc_vwvwvh_s1_rnd_sat_shift(
+pub unsafe fn Q6_Vw_vmpyoacc_VwVwVh_s1_rnd_sat_shift(
     vx: HvxVector,
     vu: HvxVector,
     vv: HvxVector,
@@ -2828,7 +2841,7 @@ pub unsafe fn q6_vw_vmpyoacc_vwvwvh_s1_rnd_sat_shift(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh_sacc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyoacc_vwvwvh_s1_sat_shift(
+pub unsafe fn Q6_Vw_vmpyoacc_VwVwVh_s1_sat_shift(
     vx: HvxVector,
     vu: HvxVector,
     vv: HvxVector,
@@ -2844,7 +2857,7 @@ pub unsafe fn q6_vw_vmpyoacc_vwvwvh_s1_sat_shift(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vmpy_vubrub(vu: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wuh_vmpy_VubRub(vu: HvxVector, rt: i32) -> HvxVectorPair {
     vmpyub(vu, rt)
 }
 
@@ -2856,7 +2869,7 @@ pub unsafe fn q6_wuh_vmpy_vubrub(vu: HvxVector, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyub_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vmpyacc_wuhvubrub(
+pub unsafe fn Q6_Wuh_vmpyacc_WuhVubRub(
     vxx: HvxVectorPair,
     vu: HvxVector,
     rt: i32,
@@ -2872,7 +2885,7 @@ pub unsafe fn q6_wuh_vmpyacc_wuhvubrub(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyubv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vmpy_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wuh_vmpy_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpyubv(vu, vv)
 }
 
@@ -2884,7 +2897,7 @@ pub unsafe fn q6_wuh_vmpy_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyubv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vmpyacc_wuhvubvub(
+pub unsafe fn Q6_Wuh_vmpyacc_WuhVubVub(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2900,7 +2913,7 @@ pub unsafe fn q6_wuh_vmpyacc_wuhvubvub(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vmpy_vuhruh(vu: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vmpy_VuhRuh(vu: HvxVector, rt: i32) -> HvxVectorPair {
     vmpyuh(vu, rt)
 }
 
@@ -2912,7 +2925,7 @@ pub unsafe fn q6_wuw_vmpy_vuhruh(vu: HvxVector, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vmpyacc_wuwvuhruh(
+pub unsafe fn Q6_Wuw_vmpyacc_WuwVuhRuh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     rt: i32,
@@ -2928,7 +2941,7 @@ pub unsafe fn q6_wuw_vmpyacc_wuwvuhruh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vmpy_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vmpy_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpyuhv(vu, vv)
 }
 
@@ -2940,7 +2953,7 @@ pub unsafe fn q6_wuw_vmpy_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuhv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vmpyacc_wuwvuhvuh(
+pub unsafe fn Q6_Wuw_vmpyacc_WuwVuhVuh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -2956,7 +2969,7 @@ pub unsafe fn q6_wuw_vmpyacc_wuwvuhvuh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnavgh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vnavg_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vnavg_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vnavgh(vu, vv)
 }
 
@@ -2968,7 +2981,7 @@ pub unsafe fn q6_vh_vnavg_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnavgub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vnavg_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vnavg_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vnavgub(vu, vv)
 }
 
@@ -2980,7 +2993,7 @@ pub unsafe fn q6_vb_vnavg_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnavgw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vnavg_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vnavg_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vnavgw(vu, vv)
 }
 
@@ -2992,7 +3005,7 @@ pub unsafe fn q6_vw_vnavg_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnormamth))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vnormamt_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vnormamt_Vh(vu: HvxVector) -> HvxVector {
     vnormamth(vu)
 }
 
@@ -3004,7 +3017,7 @@ pub unsafe fn q6_vh_vnormamt_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnormamtw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vnormamt_vw(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vnormamt_Vw(vu: HvxVector) -> HvxVector {
     vnormamtw(vu)
 }
 
@@ -3016,7 +3029,7 @@ pub unsafe fn q6_vw_vnormamt_vw(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnot))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vnot_v(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vnot_V(vu: HvxVector) -> HvxVector {
     vnot(vu)
 }
 
@@ -3028,7 +3041,7 @@ pub unsafe fn q6_v_vnot_v(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vor))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vor_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vor_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     simd_or(vu, vv)
 }
 
@@ -3040,7 +3053,7 @@ pub unsafe fn q6_v_vor_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackeb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vpacke_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vpacke_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackeb(vu, vv)
 }
 
@@ -3052,7 +3065,7 @@ pub unsafe fn q6_vb_vpacke_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackeh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vpacke_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vpacke_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackeh(vu, vv)
 }
 
@@ -3064,7 +3077,7 @@ pub unsafe fn q6_vh_vpacke_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackhb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vpack_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vpack_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackhb_sat(vu, vv)
 }
 
@@ -3076,7 +3089,7 @@ pub unsafe fn q6_vb_vpack_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackhub_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vpack_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vpack_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackhub_sat(vu, vv)
 }
 
@@ -3088,7 +3101,7 @@ pub unsafe fn q6_vub_vpack_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackob))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vpacko_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vpacko_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackob(vu, vv)
 }
 
@@ -3100,7 +3113,7 @@ pub unsafe fn q6_vb_vpacko_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vpacko_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vpacko_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackoh(vu, vv)
 }
 
@@ -3112,7 +3125,7 @@ pub unsafe fn q6_vh_vpacko_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackwh_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vpack_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vpack_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackwh_sat(vu, vv)
 }
 
@@ -3124,7 +3137,7 @@ pub unsafe fn q6_vh_vpack_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackwuh_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vpack_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vpack_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vpackwuh_sat(vu, vv)
 }
 
@@ -3136,7 +3149,7 @@ pub unsafe fn q6_vuh_vpack_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpopcounth))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vpopcount_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vpopcount_Vh(vu: HvxVector) -> HvxVector {
     vpopcounth(vu)
 }
 
@@ -3148,7 +3161,7 @@ pub unsafe fn q6_vh_vpopcount_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrdelta))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vrdelta_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vrdelta_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrdelta(vu, vv)
 }
 
@@ -3160,7 +3173,7 @@ pub unsafe fn q6_v_vrdelta_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vrmpy_vubrb(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vrmpy_VubRb(vu: HvxVector, rt: i32) -> HvxVector {
     vrmpybus(vu, rt)
 }
 
@@ -3172,7 +3185,7 @@ pub unsafe fn q6_vw_vrmpy_vubrb(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vrmpyacc_vwvubrb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vrmpyacc_VwVubRb(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vrmpybus_acc(vx, vu, rt)
 }
 
@@ -3184,7 +3197,7 @@ pub unsafe fn q6_vw_vrmpyacc_vwvubrb(vx: HvxVector, vu: HvxVector, rt: i32) -> H
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vrmpy_wubrbi(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vrmpy_WubRbI(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVectorPair {
     vrmpybusi(vuu, rt, iu1)
 }
 
@@ -3196,7 +3209,7 @@ pub unsafe fn q6_ww_vrmpy_wubrbi(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVe
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusi_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vrmpyacc_wwwubrbi(
+pub unsafe fn Q6_Ww_vrmpyacc_WwWubRbI(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -3213,7 +3226,7 @@ pub unsafe fn q6_ww_vrmpyacc_wwwubrbi(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vrmpy_vubvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vrmpy_VubVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrmpybusv(vu, vv)
 }
 
@@ -3225,7 +3238,7 @@ pub unsafe fn q6_vw_vrmpy_vubvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vrmpyacc_vwvubvb(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vrmpyacc_VwVubVb(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrmpybusv_acc(vx, vu, vv)
 }
 
@@ -3237,7 +3250,7 @@ pub unsafe fn q6_vw_vrmpyacc_vwvubvb(vx: HvxVector, vu: HvxVector, vv: HvxVector
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vrmpy_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vrmpy_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrmpybv(vu, vv)
 }
 
@@ -3249,7 +3262,7 @@ pub unsafe fn q6_vw_vrmpy_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vrmpyacc_vwvbvb(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vrmpyacc_VwVbVb(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrmpybv_acc(vx, vu, vv)
 }
 
@@ -3261,7 +3274,7 @@ pub unsafe fn q6_vw_vrmpyacc_vwvbvb(vx: HvxVector, vu: HvxVector, vv: HvxVector)
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vrmpy_vubrub(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuw_vrmpy_VubRub(vu: HvxVector, rt: i32) -> HvxVector {
     vrmpyub(vu, rt)
 }
 
@@ -3273,7 +3286,7 @@ pub unsafe fn q6_vuw_vrmpy_vubrub(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyub_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vrmpyacc_vuwvubrub(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuw_vrmpyacc_VuwVubRub(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vrmpyub_acc(vx, vu, rt)
 }
 
@@ -3285,7 +3298,7 @@ pub unsafe fn q6_vuw_vrmpyacc_vuwvubrub(vx: HvxVector, vu: HvxVector, rt: i32) -
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vrmpy_wubrubi(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vrmpy_WubRubI(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVectorPair {
     vrmpyubi(vuu, rt, iu1)
 }
 
@@ -3297,7 +3310,7 @@ pub unsafe fn q6_wuw_vrmpy_wubrubi(vuu: HvxVectorPair, rt: i32, iu1: i32) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubi_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vrmpyacc_wuwwubrubi(
+pub unsafe fn Q6_Wuw_vrmpyacc_WuwWubRubI(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -3314,7 +3327,7 @@ pub unsafe fn q6_wuw_vrmpyacc_wuwwubrubi(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vrmpy_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vrmpy_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrmpyubv(vu, vv)
 }
 
@@ -3326,7 +3339,7 @@ pub unsafe fn q6_vuw_vrmpy_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vrmpyacc_vuwvubvub(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vrmpyacc_VuwVubVub(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrmpyubv_acc(vx, vu, vv)
 }
 
@@ -3338,7 +3351,7 @@ pub unsafe fn q6_vuw_vrmpyacc_vuwvubvub(vx: HvxVector, vu: HvxVector, vv: HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vror))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vror_vr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vror_VR(vu: HvxVector, rt: i32) -> HvxVector {
     vror(vu, rt)
 }
 
@@ -3350,7 +3363,7 @@ pub unsafe fn q6_v_vror_vr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vround_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vround_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vroundhb(vu, vv)
 }
 
@@ -3362,7 +3375,7 @@ pub unsafe fn q6_vb_vround_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundhub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vround_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vround_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vroundhub(vu, vv)
 }
 
@@ -3374,7 +3387,7 @@ pub unsafe fn q6_vub_vround_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vround_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vround_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vroundwh(vu, vv)
 }
 
@@ -3386,7 +3399,7 @@ pub unsafe fn q6_vh_vround_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundwuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vround_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vround_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vroundwuh(vu, vv)
 }
 
@@ -3398,7 +3411,7 @@ pub unsafe fn q6_vuh_vround_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrsadubi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vrsad_wubrubi(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vrsad_WubRubI(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVectorPair {
     vrsadubi(vuu, rt, iu1)
 }
 
@@ -3410,7 +3423,7 @@ pub unsafe fn q6_wuw_vrsad_wubrubi(vuu: HvxVectorPair, rt: i32, iu1: i32) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrsadubi_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vrsadacc_wuwwubrubi(
+pub unsafe fn Q6_Wuw_vrsadacc_WuwWubRubI(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -3427,7 +3440,7 @@ pub unsafe fn q6_wuw_vrsadacc_wuwwubrubi(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsathub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vsat_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vsat_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsathub(vu, vv)
 }
 
@@ -3439,7 +3452,7 @@ pub unsafe fn q6_vub_vsat_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsatwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vsat_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vsat_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsatwh(vu, vv)
 }
 
@@ -3451,7 +3464,7 @@ pub unsafe fn q6_vh_vsat_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vsxt_vb(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vsxt_Vb(vu: HvxVector) -> HvxVectorPair {
     vsb(vu)
 }
 
@@ -3463,7 +3476,7 @@ pub unsafe fn q6_wh_vsxt_vb(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vsxt_vh(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vsxt_Vh(vu: HvxVector) -> HvxVectorPair {
     vsh(vu)
 }
 
@@ -3475,7 +3488,7 @@ pub unsafe fn q6_ww_vsxt_vh(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufeh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vshuffe_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vshuffe_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vshufeh(vu, vv)
 }
 
@@ -3487,7 +3500,7 @@ pub unsafe fn q6_vh_vshuffe_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vshuff_vb(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vshuff_Vb(vu: HvxVector) -> HvxVector {
     vshuffb(vu)
 }
 
@@ -3499,7 +3512,7 @@ pub unsafe fn q6_vb_vshuff_vb(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffeb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vshuffe_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vshuffe_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vshuffeb(vu, vv)
 }
 
@@ -3511,7 +3524,7 @@ pub unsafe fn q6_vb_vshuffe_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vshuff_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vshuff_Vh(vu: HvxVector) -> HvxVector {
     vshuffh(vu)
 }
 
@@ -3523,7 +3536,7 @@ pub unsafe fn q6_vh_vshuff_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffob))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vshuffo_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vshuffo_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vshuffob(vu, vv)
 }
 
@@ -3535,7 +3548,7 @@ pub unsafe fn q6_vb_vshuffo_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffvdd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vshuff_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_W_vshuff_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
     vshuffvdd(vu, vv, rt)
 }
 
@@ -3547,7 +3560,7 @@ pub unsafe fn q6_w_vshuff_vvr(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufoeb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wb_vshuffoe_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wb_vshuffoe_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vshufoeb(vu, vv)
 }
 
@@ -3559,7 +3572,7 @@ pub unsafe fn q6_wb_vshuffoe_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufoeh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vshuffoe_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vshuffoe_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vshufoeh(vu, vv)
 }
 
@@ -3571,7 +3584,7 @@ pub unsafe fn q6_wh_vshuffoe_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vshuffo_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vshuffo_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vshufoh(vu, vv)
 }
 
@@ -3583,7 +3596,7 @@ pub unsafe fn q6_vh_vshuffo_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vsub_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vsub_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubb(vu, vv)
 }
 
@@ -3595,7 +3608,7 @@ pub unsafe fn q6_vb_vsub_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubb_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wb_vsub_wbwb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wb_vsub_WbWb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubb_dv(vuu, vvv)
 }
 
@@ -3607,7 +3620,7 @@ pub unsafe fn q6_wb_vsub_wbwb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vsub_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vsub_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubh(vu, vv)
 }
 
@@ -3619,7 +3632,7 @@ pub unsafe fn q6_vh_vsub_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubh_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vsub_whwh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vsub_WhWh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubh_dv(vuu, vvv)
 }
 
@@ -3631,7 +3644,7 @@ pub unsafe fn q6_wh_vsub_whwh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vsub_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vsub_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubhsat(vu, vv)
 }
 
@@ -3643,7 +3656,7 @@ pub unsafe fn q6_vh_vsub_vhvh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vsub_whwh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vsub_WhWh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubhsat_dv(vuu, vvv)
 }
 
@@ -3655,7 +3668,7 @@ pub unsafe fn q6_wh_vsub_whwh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vsub_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vsub_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vsubhw(vu, vv)
 }
 
@@ -3667,7 +3680,7 @@ pub unsafe fn q6_ww_vsub_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsububh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vsub_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vsub_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vsububh(vu, vv)
 }
 
@@ -3679,7 +3692,7 @@ pub unsafe fn q6_wh_vsub_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsububsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vsub_vubvub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vsub_VubVub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsububsat(vu, vv)
 }
 
@@ -3691,7 +3704,7 @@ pub unsafe fn q6_vub_vsub_vubvub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsububsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wub_vsub_wubwub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wub_vsub_WubWub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsububsat_dv(vuu, vvv)
 }
 
@@ -3703,7 +3716,7 @@ pub unsafe fn q6_wub_vsub_wubwub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vsub_vuhvuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vsub_VuhVuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubuhsat(vu, vv)
 }
 
@@ -3715,7 +3728,7 @@ pub unsafe fn q6_vuh_vsub_vuhvuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubuhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vsub_wuhwuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wuh_vsub_WuhWuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubuhsat_dv(vuu, vvv)
 }
 
@@ -3727,7 +3740,7 @@ pub unsafe fn q6_wuh_vsub_wuhwuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubuhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vsub_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vsub_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vsubuhw(vu, vv)
 }
 
@@ -3739,7 +3752,7 @@ pub unsafe fn q6_ww_vsub_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vsub_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vsub_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     simd_sub(vu, vv)
 }
 
@@ -3751,7 +3764,7 @@ pub unsafe fn q6_vw_vsub_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubw_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vsub_wwww(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vsub_WwWw(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubw_dv(vuu, vvv)
 }
 
@@ -3763,7 +3776,7 @@ pub unsafe fn q6_ww_vsub_wwww(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vsub_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vsub_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubwsat(vu, vv)
 }
 
@@ -3775,7 +3788,7 @@ pub unsafe fn q6_vw_vsub_vwvw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vsub_wwww_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vsub_WwWw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubwsat_dv(vuu, vvv)
 }
 
@@ -3787,7 +3800,7 @@ pub unsafe fn q6_ww_vsub_wwww_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vtmpy_wbrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vtmpy_WbRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vtmpyb(vuu, rt)
 }
 
@@ -3799,7 +3812,7 @@ pub unsafe fn q6_wh_vtmpy_wbrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vtmpyacc_whwbrb(
+pub unsafe fn Q6_Wh_vtmpyacc_WhWbRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -3815,7 +3828,7 @@ pub unsafe fn q6_wh_vtmpyacc_whwbrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vtmpy_wubrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vtmpy_WubRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vtmpybus(vuu, rt)
 }
 
@@ -3827,7 +3840,7 @@ pub unsafe fn q6_wh_vtmpy_wubrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vtmpyacc_whwubrb(
+pub unsafe fn Q6_Wh_vtmpyacc_WhWubRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -3843,7 +3856,7 @@ pub unsafe fn q6_wh_vtmpyacc_whwubrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vtmpy_whrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vtmpy_WhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vtmpyhb(vuu, rt)
 }
 
@@ -3855,7 +3868,7 @@ pub unsafe fn q6_ww_vtmpy_whrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyhb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vtmpyacc_wwwhrb(
+pub unsafe fn Q6_Ww_vtmpyacc_WwWhRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -3871,7 +3884,7 @@ pub unsafe fn q6_ww_vtmpyacc_wwwhrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vunpack_vb(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vunpack_Vb(vu: HvxVector) -> HvxVectorPair {
     vunpackb(vu)
 }
 
@@ -3883,7 +3896,7 @@ pub unsafe fn q6_wh_vunpack_vb(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vunpack_vh(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vunpack_Vh(vu: HvxVector) -> HvxVectorPair {
     vunpackh(vu)
 }
 
@@ -3895,7 +3908,7 @@ pub unsafe fn q6_ww_vunpack_vh(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackob))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vunpackoor_whvb(vxx: HvxVectorPair, vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vunpackoor_WhVb(vxx: HvxVectorPair, vu: HvxVector) -> HvxVectorPair {
     vunpackob(vxx, vu)
 }
 
@@ -3907,7 +3920,7 @@ pub unsafe fn q6_wh_vunpackoor_whvb(vxx: HvxVectorPair, vu: HvxVector) -> HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vunpackoor_wwvh(vxx: HvxVectorPair, vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vunpackoor_WwVh(vxx: HvxVectorPair, vu: HvxVector) -> HvxVectorPair {
     vunpackoh(vxx, vu)
 }
 
@@ -3919,7 +3932,7 @@ pub unsafe fn q6_ww_vunpackoor_wwvh(vxx: HvxVectorPair, vu: HvxVector) -> HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vunpack_vub(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wuh_vunpack_Vub(vu: HvxVector) -> HvxVectorPair {
     vunpackub(vu)
 }
 
@@ -3931,7 +3944,7 @@ pub unsafe fn q6_wuh_vunpack_vub(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vunpack_vuh(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vunpack_Vuh(vu: HvxVector) -> HvxVectorPair {
     vunpackuh(vu)
 }
 
@@ -3943,7 +3956,7 @@ pub unsafe fn q6_wuw_vunpack_vuh(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vxor))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vxor_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vxor_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     simd_xor(vu, vv)
 }
 
@@ -3955,7 +3968,7 @@ pub unsafe fn q6_v_vxor_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vzb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuh_vzxt_vub(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wuh_vzxt_Vub(vu: HvxVector) -> HvxVectorPair {
     vzb(vu)
 }
 
@@ -3967,7 +3980,7 @@ pub unsafe fn q6_wuh_vzxt_vub(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vzh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vzxt_vuh(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vzxt_Vuh(vu: HvxVector) -> HvxVectorPair {
     vzh(vu)
 }
 
@@ -3979,7 +3992,7 @@ pub unsafe fn q6_wuw_vzxt_vuh(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(lvsplatb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vsplat_r(rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vb_vsplat_R(rt: i32) -> HvxVector {
     lvsplatb(rt)
 }
 
@@ -3991,7 +4004,7 @@ pub unsafe fn q6_vb_vsplat_r(rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(lvsplath))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vsplat_r(rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vsplat_R(rt: i32) -> HvxVector {
     lvsplath(rt)
 }
 
@@ -4003,7 +4016,7 @@ pub unsafe fn q6_vh_vsplat_r(rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddbsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vadd_vbvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vadd_VbVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddbsat(vu, vv)
 }
 
@@ -4015,7 +4028,7 @@ pub unsafe fn q6_vb_vadd_vbvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddbsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wb_vadd_wbwb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wb_vadd_WbWb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vaddbsat_dv(vuu, vvv)
 }
 
@@ -4027,7 +4040,7 @@ pub unsafe fn q6_wb_vadd_wbwb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddclbh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vadd_vclb_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vadd_vclb_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddclbh(vu, vv)
 }
 
@@ -4039,7 +4052,7 @@ pub unsafe fn q6_vh_vadd_vclb_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddclbw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vadd_vclb_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vadd_vclb_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddclbw(vu, vv)
 }
 
@@ -4051,7 +4064,7 @@ pub unsafe fn q6_vw_vadd_vclb_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddhw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vaddacc_wwvhvh(
+pub unsafe fn Q6_Ww_vaddacc_WwVhVh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -4067,7 +4080,7 @@ pub unsafe fn q6_ww_vaddacc_wwvhvh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddubh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vaddacc_whvubvub(
+pub unsafe fn Q6_Wh_vaddacc_WhVubVub(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -4083,7 +4096,7 @@ pub unsafe fn q6_wh_vaddacc_whvubvub(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddububb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vadd_vubvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vadd_VubVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vaddububb_sat(vu, vv)
 }
 
@@ -4095,7 +4108,7 @@ pub unsafe fn q6_vub_vadd_vubvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vadduhw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vaddacc_wwvuhvuh(
+pub unsafe fn Q6_Ww_vaddacc_WwVuhVuh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -4111,7 +4124,7 @@ pub unsafe fn q6_ww_vaddacc_wwvuhvuh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vadduwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vadd_vuwvuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vadd_VuwVuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadduwsat(vu, vv)
 }
 
@@ -4123,7 +4136,7 @@ pub unsafe fn q6_vuw_vadd_vuwvuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vadduwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vadd_wuwwuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vadd_WuwWuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vadduwsat_dv(vuu, vvv)
 }
 
@@ -4135,7 +4148,7 @@ pub unsafe fn q6_wuw_vadd_wuwwuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vasrhbsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vasr_vhvhr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vb_vasr_VhVhR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrhbsat(vu, vv, rt)
 }
 
@@ -4147,7 +4160,7 @@ pub unsafe fn q6_vb_vasr_vhvhr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vasruwuhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vasr_vuwvuwr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuh_vasr_VuwVuwR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasruwuhrndsat(vu, vv, rt)
 }
 
@@ -4159,7 +4172,7 @@ pub unsafe fn q6_vuh_vasr_vuwvuwr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32)
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vasrwuhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vasr_vwvwr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuh_vasr_VwVwR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasrwuhrndsat(vu, vv, rt)
 }
 
@@ -4171,7 +4184,7 @@ pub unsafe fn q6_vuh_vasr_vwvwr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlsrb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vlsr_vubr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vub_vlsr_VubR(vu: HvxVector, rt: i32) -> HvxVector {
     vlsrb(vu, rt)
 }
 
@@ -4183,7 +4196,7 @@ pub unsafe fn q6_vub_vlsr_vubr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvvb_nm))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vlut32_vbvbr_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vb_vlut32_VbVbR_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vlutvvb_nm(vu, vv, rt)
 }
 
@@ -4195,7 +4208,7 @@ pub unsafe fn q6_vb_vlut32_vbvbr_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvvb_oracci))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vlut32or_vbvbvbi(
+pub unsafe fn Q6_Vb_vlut32or_VbVbVbI(
     vx: HvxVector,
     vu: HvxVector,
     vv: HvxVector,
@@ -4212,7 +4225,7 @@ pub unsafe fn q6_vb_vlut32or_vbvbvbi(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvvbi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vlut32_vbvbi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVector {
+pub unsafe fn Q6_Vb_vlut32_VbVbI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVector {
     vlutvvbi(vu, vv, iu3)
 }
 
@@ -4224,7 +4237,7 @@ pub unsafe fn q6_vb_vlut32_vbvbi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxV
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvwh_nm))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vlut16_vbvhr_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vlut16_VbVhR_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVectorPair {
     vlutvwh_nm(vu, vv, rt)
 }
 
@@ -4236,7 +4249,7 @@ pub unsafe fn q6_wh_vlut16_vbvhr_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvwh_oracci))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vlut16or_whvbvhi(
+pub unsafe fn Q6_Wh_vlut16or_WhVbVhI(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -4253,7 +4266,7 @@ pub unsafe fn q6_wh_vlut16or_whvbvhi(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvwhi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vlut16_vbvhi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vlut16_VbVhI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVectorPair {
     vlutvwhi(vu, vv, iu3)
 }
 
@@ -4265,7 +4278,7 @@ pub unsafe fn q6_wh_vlut16_vbvhi(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxV
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmaxb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vmax_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vmax_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmaxb(vu, vv)
 }
 
@@ -4277,7 +4290,7 @@ pub unsafe fn q6_vb_vmax_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vminb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vmin_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vmin_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vminb(vu, vv)
 }
 
@@ -4289,7 +4302,7 @@ pub unsafe fn q6_vb_vmin_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpauhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpa_wuhrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vmpa_WuhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vmpauhb(vuu, rt)
 }
 
@@ -4301,7 +4314,7 @@ pub unsafe fn q6_ww_vmpa_wuhrb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpauhb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpaacc_wwwuhrb(
+pub unsafe fn Q6_Ww_vmpaacc_WwWuhRb(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -4317,7 +4330,7 @@ pub unsafe fn q6_ww_vmpaacc_wwwuhrb(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyewuh_64))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vmpye_vwvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_W_vmpye_VwVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpyewuh_64(vu, vv)
 }
 
@@ -4329,7 +4342,7 @@ pub unsafe fn q6_w_vmpye_vwvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyiwub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyi_vwrub(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyi_VwRub(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyiwub(vu, rt)
 }
 
@@ -4341,7 +4354,7 @@ pub unsafe fn q6_vw_vmpyi_vwrub(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyiwub_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vmpyiacc_vwvwrub(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vw_vmpyiacc_VwVwRub(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vmpyiwub_acc(vx, vu, rt)
 }
 
@@ -4353,7 +4366,7 @@ pub unsafe fn q6_vw_vmpyiacc_vwvwrub(vx: HvxVector, vu: HvxVector, rt: i32) -> H
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyowh_64_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vmpyoacc_wvwvh(
+pub unsafe fn Q6_W_vmpyoacc_WVwVh(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -4369,7 +4382,7 @@ pub unsafe fn q6_w_vmpyoacc_wvwvh(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vrounduhub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vround_vuhvuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vround_VuhVuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrounduhub(vu, vv)
 }
 
@@ -4381,7 +4394,7 @@ pub unsafe fn q6_vub_vround_vuhvuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vrounduwuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vround_vuwvuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vround_VuwVuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrounduwuh(vu, vv)
 }
 
@@ -4393,7 +4406,7 @@ pub unsafe fn q6_vuh_vround_vuwvuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsatuwuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vsat_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vsat_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsatuwuh(vu, vv)
 }
 
@@ -4405,7 +4418,7 @@ pub unsafe fn q6_vuh_vsat_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubbsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vsub_vbvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vsub_VbVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubbsat(vu, vv)
 }
 
@@ -4417,7 +4430,7 @@ pub unsafe fn q6_vb_vsub_vbvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubbsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wb_vsub_wbwb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wb_vsub_WbWb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubbsat_dv(vuu, vvv)
 }
 
@@ -4429,7 +4442,7 @@ pub unsafe fn q6_wb_vsub_wbwb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubububb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vsub_vubvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vsub_VubVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubububb_sat(vu, vv)
 }
 
@@ -4441,7 +4454,7 @@ pub unsafe fn q6_vub_vsub_vubvb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubuwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vsub_vuwvuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vsub_VuwVuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsubuwsat(vu, vv)
 }
 
@@ -4453,7 +4466,7 @@ pub unsafe fn q6_vuw_vsub_vuwvuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubuwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wuw_vsub_wuwwuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
+pub unsafe fn Q6_Wuw_vsub_WuwWuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVectorPair {
     vsubuwsat_dv(vuu, vvv)
 }
 
@@ -4465,7 +4478,7 @@ pub unsafe fn q6_wuw_vsub_wuwwuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vabsb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vabs_vb(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vabs_Vb(vu: HvxVector) -> HvxVector {
     vabsb(vu)
 }
 
@@ -4477,7 +4490,7 @@ pub unsafe fn q6_vb_vabs_vb(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vabsb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vabs_vb_sat(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vabs_Vb_sat(vu: HvxVector) -> HvxVector {
     vabsb_sat(vu)
 }
 
@@ -4489,7 +4502,7 @@ pub unsafe fn q6_vb_vabs_vb_sat(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vaslh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vaslacc_vhvhr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vaslacc_VhVhR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vaslh_acc(vx, vu, rt)
 }
 
@@ -4501,7 +4514,7 @@ pub unsafe fn q6_vh_vaslacc_vhvhr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasrh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vasracc_vhvhr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vh_vasracc_VhVhR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vasrh_acc(vx, vu, rt)
 }
 
@@ -4513,7 +4526,7 @@ pub unsafe fn q6_vh_vasracc_vhvhr(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasruhubrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vasr_vuhvuhr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vub_vasr_VuhVuhR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasruhubrndsat(vu, vv, rt)
 }
 
@@ -4525,7 +4538,7 @@ pub unsafe fn q6_vub_vasr_vuhvuhr_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32)
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasruhubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vasr_vuhvuhr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vub_vasr_VuhVuhR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasruhubsat(vu, vv, rt)
 }
 
@@ -4537,7 +4550,7 @@ pub unsafe fn q6_vub_vasr_vuhvuhr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasruwuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vasr_vuwvuwr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuh_vasr_VuwVuwR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector {
     vasruwuhsat(vu, vv, rt)
 }
 
@@ -4549,7 +4562,7 @@ pub unsafe fn q6_vuh_vasr_vuwvuwr_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavgb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vavg_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vavg_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgb(vu, vv)
 }
 
@@ -4561,7 +4574,7 @@ pub unsafe fn q6_vb_vavg_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavgbrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vavg_vbvb_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vavg_VbVb_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavgbrnd(vu, vv)
 }
 
@@ -4573,7 +4586,7 @@ pub unsafe fn q6_vb_vavg_vbvb_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavguw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vavg_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vavg_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavguw(vu, vv)
 }
 
@@ -4585,7 +4598,7 @@ pub unsafe fn q6_vuw_vavg_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavguwrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vavg_vuwvuw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vavg_VuwVuw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vavguwrnd(vu, vv)
 }
 
@@ -4597,7 +4610,7 @@ pub unsafe fn q6_vuw_vavg_vuwvuw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vdd0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vzero() -> HvxVectorPair {
+pub unsafe fn Q6_W_vzero() -> HvxVectorPair {
     vdd0()
 }
 
@@ -4609,7 +4622,7 @@ pub unsafe fn q6_w_vzero() -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vgathermh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vgather_armvh(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVector) {
+pub unsafe fn Q6_vgather_ARMVh(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVector) {
     vgathermh(rs, rt, mu, vv)
 }
 
@@ -4621,7 +4634,7 @@ pub unsafe fn q6_vgather_armvh(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vgathermhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vgather_armww(rs: *mut HvxVector, rt: i32, mu: i32, vvv: HvxVectorPair) {
+pub unsafe fn Q6_vgather_ARMWw(rs: *mut HvxVector, rt: i32, mu: i32, vvv: HvxVectorPair) {
     vgathermhw(rs, rt, mu, vvv)
 }
 
@@ -4633,7 +4646,7 @@ pub unsafe fn q6_vgather_armww(rs: *mut HvxVector, rt: i32, mu: i32, vvv: HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vgathermw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vgather_armvw(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVector) {
+pub unsafe fn Q6_vgather_ARMVw(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVector) {
     vgathermw(rs, rt, mu, vv)
 }
 
@@ -4645,7 +4658,7 @@ pub unsafe fn q6_vgather_armvw(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpabuu))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpa_wubrub(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Wh_vmpa_WubRub(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
     vmpabuu(vuu, rt)
 }
 
@@ -4657,7 +4670,7 @@ pub unsafe fn q6_wh_vmpa_wubrub(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpabuu_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wh_vmpaacc_whwubrub(
+pub unsafe fn Q6_Wh_vmpaacc_WhWubRub(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     rt: i32,
@@ -4673,7 +4686,7 @@ pub unsafe fn q6_wh_vmpaacc_whwubrub(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpyh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vmpyacc_wwvhrh(vxx: HvxVectorPair, vu: HvxVector, rt: i32) -> HvxVectorPair {
+pub unsafe fn Q6_Ww_vmpyacc_WwVhRh(vxx: HvxVectorPair, vu: HvxVector, rt: i32) -> HvxVectorPair {
     vmpyh_acc(vxx, vu, rt)
 }
 
@@ -4685,7 +4698,7 @@ pub unsafe fn q6_ww_vmpyacc_wwvhrh(vxx: HvxVectorPair, vu: HvxVector, rt: i32) -
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpyuhe))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vmpye_vuhruh(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuw_vmpye_VuhRuh(vu: HvxVector, rt: i32) -> HvxVector {
     vmpyuhe(vu, rt)
 }
 
@@ -4697,7 +4710,7 @@ pub unsafe fn q6_vuw_vmpye_vuhruh(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpyuhe_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vmpyeacc_vuwvuhruh(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_Vuw_vmpyeacc_VuwVuhRuh(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxVector {
     vmpyuhe_acc(vx, vu, rt)
 }
 
@@ -4709,7 +4722,7 @@ pub unsafe fn q6_vuw_vmpyeacc_vuwvuhruh(vx: HvxVector, vu: HvxVector, rt: i32) -
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vnavgb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vnavg_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vnavg_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vnavgb(vu, vv)
 }
 
@@ -4721,7 +4734,7 @@ pub unsafe fn q6_vb_vnavg_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatter_rmvhv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
+pub unsafe fn Q6_vscatter_RMVhV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
     vscattermh(rt, mu, vv, vw)
 }
 
@@ -4733,7 +4746,7 @@ pub unsafe fn q6_vscatter_rmvhv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermh_add))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatteracc_rmvhv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
+pub unsafe fn Q6_vscatteracc_RMVhV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
     vscattermh_add(rt, mu, vv, vw)
 }
 
@@ -4745,7 +4758,7 @@ pub unsafe fn q6_vscatteracc_rmvhv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatter_rmwwv(rt: i32, mu: i32, vvv: HvxVectorPair, vw: HvxVector) {
+pub unsafe fn Q6_vscatter_RMWwV(rt: i32, mu: i32, vvv: HvxVectorPair, vw: HvxVector) {
     vscattermhw(rt, mu, vvv, vw)
 }
 
@@ -4757,7 +4770,7 @@ pub unsafe fn q6_vscatter_rmwwv(rt: i32, mu: i32, vvv: HvxVectorPair, vw: HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermhw_add))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatteracc_rmwwv(rt: i32, mu: i32, vvv: HvxVectorPair, vw: HvxVector) {
+pub unsafe fn Q6_vscatteracc_RMWwV(rt: i32, mu: i32, vvv: HvxVectorPair, vw: HvxVector) {
     vscattermhw_add(rt, mu, vvv, vw)
 }
 
@@ -4769,7 +4782,7 @@ pub unsafe fn q6_vscatteracc_rmwwv(rt: i32, mu: i32, vvv: HvxVectorPair, vw: Hvx
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatter_rmvwv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
+pub unsafe fn Q6_vscatter_RMVwV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
     vscattermw(rt, mu, vv, vw)
 }
 
@@ -4781,7 +4794,7 @@ pub unsafe fn q6_vscatter_rmvwv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermw_add))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatteracc_rmvwv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
+pub unsafe fn Q6_vscatteracc_RMVwV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) {
     vscattermw_add(rt, mu, vv, vw)
 }
 
@@ -4793,7 +4806,7 @@ pub unsafe fn q6_vscatteracc_rmvwv(rt: i32, mu: i32, vv: HvxVector, vw: HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[cfg_attr(test, assert_instr(vasr_into))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_vasrinto_wwvwvw(
+pub unsafe fn Q6_Ww_vasrinto_WwVwVw(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -4809,7 +4822,7 @@ pub unsafe fn q6_ww_vasrinto_wwvwvw(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[cfg_attr(test, assert_instr(vrotr))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuw_vrotr_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuw_vrotr_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vrotr(vu, vv)
 }
 
@@ -4821,7 +4834,7 @@ pub unsafe fn q6_vuw_vrotr_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[cfg_attr(test, assert_instr(vsatdw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vsatdw_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vsatdw_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsatdw(vu, vv)
 }
 
@@ -4833,7 +4846,7 @@ pub unsafe fn q6_vw_vsatdw_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyhubs10))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_v6mpy_wubwbi_h(
+pub unsafe fn Q6_Ww_v6mpy_WubWbI_h(
     vuu: HvxVectorPair,
     vvv: HvxVectorPair,
     iu2: i32,
@@ -4849,7 +4862,7 @@ pub unsafe fn q6_ww_v6mpy_wubwbi_h(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyhubs10_vxx))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_v6mpyacc_wwwubwbi_h(
+pub unsafe fn Q6_Ww_v6mpyacc_WwWubWbI_h(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     vvv: HvxVectorPair,
@@ -4866,7 +4879,7 @@ pub unsafe fn q6_ww_v6mpyacc_wwwubwbi_h(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyvubs10))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_v6mpy_wubwbi_v(
+pub unsafe fn Q6_Ww_v6mpy_WubWbI_v(
     vuu: HvxVectorPair,
     vvv: HvxVectorPair,
     iu2: i32,
@@ -4882,7 +4895,7 @@ pub unsafe fn q6_ww_v6mpy_wubwbi_v(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyvubs10_vxx))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_ww_v6mpyacc_wwwubwbi_v(
+pub unsafe fn Q6_Ww_v6mpyacc_WwWubWbI_v(
     vxx: HvxVectorPair,
     vuu: HvxVectorPair,
     vvv: HvxVectorPair,
@@ -4899,7 +4912,7 @@ pub unsafe fn q6_ww_v6mpyacc_wwwubwbi_v(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vabs_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vabs_vhf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vabs_Vhf(vu: HvxVector) -> HvxVector {
     vabs_hf(vu)
 }
 
@@ -4911,7 +4924,7 @@ pub unsafe fn q6_vhf_vabs_vhf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vabs_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vabs_vsf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vabs_Vsf(vu: HvxVector) -> HvxVector {
     vabs_sf(vu)
 }
 
@@ -4923,7 +4936,7 @@ pub unsafe fn q6_vsf_vabs_vsf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vadd_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vadd_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_hf(vu, vv)
 }
 
@@ -4935,7 +4948,7 @@ pub unsafe fn q6_vqf16_vadd_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_hf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vadd_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vadd_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_hf_hf(vu, vv)
 }
 
@@ -4947,7 +4960,7 @@ pub unsafe fn q6_vhf_vadd_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vadd_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vadd_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_qf16(vu, vv)
 }
 
@@ -4959,7 +4972,7 @@ pub unsafe fn q6_vqf16_vadd_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf16_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vadd_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vadd_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_qf16_mix(vu, vv)
 }
 
@@ -4971,7 +4984,7 @@ pub unsafe fn q6_vqf16_vadd_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vadd_vqf32vqf32(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vadd_Vqf32Vqf32(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_qf32(vu, vv)
 }
 
@@ -4983,7 +4996,7 @@ pub unsafe fn q6_vqf32_vadd_vqf32vqf32(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf32_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vadd_vqf32vsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vadd_Vqf32Vsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_qf32_mix(vu, vv)
 }
 
@@ -4995,7 +5008,7 @@ pub unsafe fn q6_vqf32_vadd_vqf32vsf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vadd_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vadd_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_sf(vu, vv)
 }
 
@@ -5007,7 +5020,7 @@ pub unsafe fn q6_vqf32_vadd_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wsf_vadd_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wsf_vadd_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vadd_sf_hf(vu, vv)
 }
 
@@ -5019,7 +5032,7 @@ pub unsafe fn q6_wsf_vadd_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_sf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vadd_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vadd_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vadd_sf_sf(vu, vv)
 }
 
@@ -5031,7 +5044,7 @@ pub unsafe fn q6_vsf_vadd_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vassign_fp))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vfmv_vw(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_vfmv_Vw(vu: HvxVector) -> HvxVector {
     vassign_fp(vu)
 }
 
@@ -5043,7 +5056,7 @@ pub unsafe fn q6_vw_vfmv_vw(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vconv_hf_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_equals_vqf16(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_equals_Vqf16(vu: HvxVector) -> HvxVector {
     vconv_hf_qf16(vu)
 }
 
@@ -5055,7 +5068,7 @@ pub unsafe fn q6_vhf_equals_vqf16(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vconv_hf_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_equals_wqf32(vuu: HvxVectorPair) -> HvxVector {
+pub unsafe fn Q6_Vhf_equals_Wqf32(vuu: HvxVectorPair) -> HvxVector {
     vconv_hf_qf32(vuu)
 }
 
@@ -5067,7 +5080,7 @@ pub unsafe fn q6_vhf_equals_wqf32(vuu: HvxVectorPair) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vconv_sf_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_equals_vqf32(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_equals_Vqf32(vu: HvxVector) -> HvxVector {
     vconv_sf_qf32(vu)
 }
 
@@ -5079,7 +5092,7 @@ pub unsafe fn q6_vsf_equals_vqf32(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_b_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_vcvt_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_vcvt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vcvt_b_hf(vu, vv)
 }
 
@@ -5091,7 +5104,7 @@ pub unsafe fn q6_vb_vcvt_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_h_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_vcvt_vhf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_vcvt_Vhf(vu: HvxVector) -> HvxVector {
     vcvt_h_hf(vu)
 }
 
@@ -5103,7 +5116,7 @@ pub unsafe fn q6_vh_vcvt_vhf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_b))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_whf_vcvt_vb(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Whf_vcvt_Vb(vu: HvxVector) -> HvxVectorPair {
     vcvt_hf_b(vu)
 }
 
@@ -5115,7 +5128,7 @@ pub unsafe fn q6_whf_vcvt_vb(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_h))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vcvt_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vcvt_Vh(vu: HvxVector) -> HvxVector {
     vcvt_hf_h(vu)
 }
 
@@ -5127,7 +5140,7 @@ pub unsafe fn q6_vhf_vcvt_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vcvt_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vcvt_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vcvt_hf_sf(vu, vv)
 }
 
@@ -5139,7 +5152,7 @@ pub unsafe fn q6_vhf_vcvt_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_ub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_whf_vcvt_vub(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Whf_vcvt_Vub(vu: HvxVector) -> HvxVectorPair {
     vcvt_hf_ub(vu)
 }
 
@@ -5151,7 +5164,7 @@ pub unsafe fn q6_whf_vcvt_vub(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_uh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vcvt_vuh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vcvt_Vuh(vu: HvxVector) -> HvxVector {
     vcvt_hf_uh(vu)
 }
 
@@ -5163,7 +5176,7 @@ pub unsafe fn q6_vhf_vcvt_vuh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wsf_vcvt_vhf(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wsf_vcvt_Vhf(vu: HvxVector) -> HvxVectorPair {
     vcvt_sf_hf(vu)
 }
 
@@ -5175,7 +5188,7 @@ pub unsafe fn q6_wsf_vcvt_vhf(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_ub_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vcvt_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vcvt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vcvt_ub_hf(vu, vv)
 }
 
@@ -5187,7 +5200,7 @@ pub unsafe fn q6_vub_vcvt_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_uh_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vcvt_vhf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vcvt_Vhf(vu: HvxVector) -> HvxVector {
     vcvt_uh_hf(vu)
 }
 
@@ -5199,7 +5212,7 @@ pub unsafe fn q6_vuh_vcvt_vhf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vdmpy_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vdmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vdmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vdmpy_sf_hf(vu, vv)
 }
 
@@ -5211,7 +5224,7 @@ pub unsafe fn q6_vsf_vdmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vdmpy_sf_hf_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vdmpyacc_vsfvhfvhf(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vdmpyacc_VsfVhfVhf(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vdmpy_sf_hf_acc(vx, vu, vv)
 }
 
@@ -5223,7 +5236,7 @@ pub unsafe fn q6_vsf_vdmpyacc_vsfvhfvhf(vx: HvxVector, vu: HvxVector, vv: HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmax_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vfmax_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vfmax_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vfmax_hf(vu, vv)
 }
 
@@ -5235,7 +5248,7 @@ pub unsafe fn q6_vhf_vfmax_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmax_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vfmax_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vfmax_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vfmax_sf(vu, vv)
 }
 
@@ -5247,7 +5260,7 @@ pub unsafe fn q6_vsf_vfmax_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmin_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vfmin_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vfmin_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vfmin_hf(vu, vv)
 }
 
@@ -5259,7 +5272,7 @@ pub unsafe fn q6_vhf_vfmin_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmin_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vfmin_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vfmin_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vfmin_sf(vu, vv)
 }
 
@@ -5271,7 +5284,7 @@ pub unsafe fn q6_vsf_vfmin_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfneg_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vfneg_vhf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vfneg_Vhf(vu: HvxVector) -> HvxVector {
     vfneg_hf(vu)
 }
 
@@ -5283,7 +5296,7 @@ pub unsafe fn q6_vhf_vfneg_vhf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfneg_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vfneg_vsf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vfneg_Vsf(vu: HvxVector) -> HvxVector {
     vfneg_sf(vu)
 }
 
@@ -5295,7 +5308,7 @@ pub unsafe fn q6_vsf_vfneg_vsf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmax_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vmax_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vmax_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmax_hf(vu, vv)
 }
 
@@ -5307,7 +5320,7 @@ pub unsafe fn q6_vhf_vmax_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmax_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vmax_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vmax_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmax_sf(vu, vv)
 }
 
@@ -5319,7 +5332,7 @@ pub unsafe fn q6_vsf_vmax_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmin_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vmin_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vmin_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmin_hf(vu, vv)
 }
 
@@ -5331,7 +5344,7 @@ pub unsafe fn q6_vhf_vmin_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmin_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vmin_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vmin_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmin_sf(vu, vv)
 }
 
@@ -5343,7 +5356,7 @@ pub unsafe fn q6_vsf_vmin_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_hf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_hf_hf(vu, vv)
 }
 
@@ -5355,7 +5368,7 @@ pub unsafe fn q6_vhf_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_hf_hf_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vmpyacc_vhfvhfvhf(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vmpyacc_VhfVhfVhf(vx: HvxVector, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_hf_hf_acc(vx, vu, vv)
 }
 
@@ -5367,7 +5380,7 @@ pub unsafe fn q6_vhf_vmpyacc_vhfvhfvhf(vx: HvxVector, vu: HvxVector, vv: HvxVect
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vmpy_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vmpy_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_qf16(vu, vv)
 }
 
@@ -5379,7 +5392,7 @@ pub unsafe fn q6_vqf16_vmpy_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf16_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_qf16_hf(vu, vv)
 }
 
@@ -5391,7 +5404,7 @@ pub unsafe fn q6_vqf16_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf16_mix_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vmpy_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vmpy_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_qf16_mix_hf(vu, vv)
 }
 
@@ -5403,7 +5416,7 @@ pub unsafe fn q6_vqf16_vmpy_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vmpy_vqf32vqf32(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vmpy_Vqf32Vqf32(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_qf32(vu, vv)
 }
 
@@ -5415,7 +5428,7 @@ pub unsafe fn q6_vqf32_vmpy_vqf32vqf32(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wqf32_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wqf32_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpy_qf32_hf(vu, vv)
 }
 
@@ -5427,7 +5440,7 @@ pub unsafe fn q6_wqf32_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPai
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_mix_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wqf32_vmpy_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wqf32_vmpy_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpy_qf32_mix_hf(vu, vv)
 }
 
@@ -5439,7 +5452,7 @@ pub unsafe fn q6_wqf32_vmpy_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVectorP
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wqf32_vmpy_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wqf32_vmpy_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpy_qf32_qf16(vu, vv)
 }
 
@@ -5451,7 +5464,7 @@ pub unsafe fn q6_wqf32_vmpy_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vmpy_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vmpy_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_qf32_sf(vu, vv)
 }
 
@@ -5463,7 +5476,7 @@ pub unsafe fn q6_vqf32_vmpy_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wsf_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wsf_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vmpy_sf_hf(vu, vv)
 }
 
@@ -5475,7 +5488,7 @@ pub unsafe fn q6_wsf_vmpy_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_sf_hf_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wsf_vmpyacc_wsfvhfvhf(
+pub unsafe fn Q6_Wsf_vmpyacc_WsfVhfVhf(
     vxx: HvxVectorPair,
     vu: HvxVector,
     vv: HvxVector,
@@ -5491,7 +5504,7 @@ pub unsafe fn q6_wsf_vmpyacc_wsfvhfvhf(
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_sf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vmpy_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vmpy_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpy_sf_sf(vu, vv)
 }
 
@@ -5503,7 +5516,7 @@ pub unsafe fn q6_vsf_vmpy_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vsub_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vsub_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_hf(vu, vv)
 }
 
@@ -5515,7 +5528,7 @@ pub unsafe fn q6_vqf16_vsub_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_hf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_vsub_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_vsub_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_hf_hf(vu, vv)
 }
 
@@ -5527,7 +5540,7 @@ pub unsafe fn q6_vhf_vsub_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vsub_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vsub_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_qf16(vu, vv)
 }
 
@@ -5539,7 +5552,7 @@ pub unsafe fn q6_vqf16_vsub_vqf16vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf16_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf16_vsub_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf16_vsub_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_qf16_mix(vu, vv)
 }
 
@@ -5551,7 +5564,7 @@ pub unsafe fn q6_vqf16_vsub_vqf16vhf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vsub_vqf32vqf32(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vsub_Vqf32Vqf32(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_qf32(vu, vv)
 }
 
@@ -5563,7 +5576,7 @@ pub unsafe fn q6_vqf32_vsub_vqf32vqf32(vu: HvxVector, vv: HvxVector) -> HvxVecto
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf32_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vsub_vqf32vsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vsub_Vqf32Vsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_qf32_mix(vu, vv)
 }
 
@@ -5575,7 +5588,7 @@ pub unsafe fn q6_vqf32_vsub_vqf32vsf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vqf32_vsub_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vqf32_vsub_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_sf(vu, vv)
 }
 
@@ -5587,7 +5600,7 @@ pub unsafe fn q6_vqf32_vsub_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_wsf_vsub_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Wsf_vsub_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vsub_sf_hf(vu, vv)
 }
 
@@ -5599,7 +5612,7 @@ pub unsafe fn q6_wsf_vsub_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_sf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_vsub_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_vsub_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vsub_sf_sf(vu, vv)
 }
 
@@ -5611,7 +5624,7 @@ pub unsafe fn q6_vsf_vsub_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvuhubrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vasr_wuhvub_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vasr_WuhVub_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
     vasrvuhubrndsat(vuu, vv)
 }
 
@@ -5623,7 +5636,7 @@ pub unsafe fn q6_vub_vasr_wuhvub_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> H
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvuhubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vub_vasr_wuhvub_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vub_vasr_WuhVub_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
     vasrvuhubsat(vuu, vv)
 }
 
@@ -5635,7 +5648,7 @@ pub unsafe fn q6_vub_vasr_wuhvub_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVe
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvwuhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vasr_wwvuh_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vasr_WwVuh_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
     vasrvwuhrndsat(vuu, vv)
 }
 
@@ -5647,7 +5660,7 @@ pub unsafe fn q6_vuh_vasr_wwvuh_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> Hv
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvwuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vasr_wwvuh_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vasr_WwVuh_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVector {
     vasrvwuhsat(vuu, vv)
 }
 
@@ -5659,7 +5672,7 @@ pub unsafe fn q6_vuh_vasr_wwvuh_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVec
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vmpyuhvs))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vuh_vmpy_vuhvuh_rs16(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vuh_vmpy_VuhVuh_rs16(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmpyuhvs(vu, vv)
 }
 
@@ -5671,7 +5684,7 @@ pub unsafe fn q6_vuh_vmpy_vuhvuh_rs16(vu: HvxVector, vv: HvxVector) -> HvxVector
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_h_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_equals_vhf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_equals_Vhf(vu: HvxVector) -> HvxVector {
     vconv_h_hf(vu)
 }
 
@@ -5683,7 +5696,7 @@ pub unsafe fn q6_vh_equals_vhf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_hf_h))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vhf_equals_vh(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vhf_equals_Vh(vu: HvxVector) -> HvxVector {
     vconv_hf_h(vu)
 }
 
@@ -5695,7 +5708,7 @@ pub unsafe fn q6_vhf_equals_vh(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_sf_w))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vsf_equals_vw(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vsf_equals_Vw(vu: HvxVector) -> HvxVector {
     vconv_sf_w(vu)
 }
 
@@ -5707,7 +5720,7 @@ pub unsafe fn q6_vsf_equals_vw(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_w_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_equals_vsf(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_equals_Vsf(vu: HvxVector) -> HvxVector {
     vconv_w_sf(vu)
 }
 
@@ -5719,7 +5732,7 @@ pub unsafe fn q6_vw_equals_vsf(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(get_qfext))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vgetqfext_vr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vgetqfext_VR(vu: HvxVector, rt: i32) -> HvxVector {
     get_qfext(vu, rt)
 }
 
@@ -5731,7 +5744,7 @@ pub unsafe fn q6_v_vgetqfext_vr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(set_qfext))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vsetqfext_vr(vu: HvxVector, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vsetqfext_VR(vu: HvxVector, rt: i32) -> HvxVector {
     set_qfext(vu, rt)
 }
 
@@ -5743,7 +5756,7 @@ pub unsafe fn q6_v_vsetqfext_vr(vu: HvxVector, rt: i32) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vabs_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vabs_v(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vabs_V(vu: HvxVector) -> HvxVector {
     vabs_f8(vu)
 }
 
@@ -5755,7 +5768,7 @@ pub unsafe fn q6_v_vabs_v(vu: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vcvt2_hf_b))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_whf_vcvt2_vb(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Whf_vcvt2_Vb(vu: HvxVector) -> HvxVectorPair {
     vcvt2_hf_b(vu)
 }
 
@@ -5767,7 +5780,7 @@ pub unsafe fn q6_whf_vcvt2_vb(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vcvt2_hf_ub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_whf_vcvt2_vub(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Whf_vcvt2_Vub(vu: HvxVector) -> HvxVectorPair {
     vcvt2_hf_ub(vu)
 }
 
@@ -5779,7 +5792,7 @@ pub unsafe fn q6_whf_vcvt2_vub(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_whf_vcvt_v(vu: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_Whf_vcvt_V(vu: HvxVector) -> HvxVectorPair {
     vcvt_hf_f8(vu)
 }
 
@@ -5791,7 +5804,7 @@ pub unsafe fn q6_whf_vcvt_v(vu: HvxVector) -> HvxVectorPair {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vfmax_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vfmax_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vfmax_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vfmax_f8(vu, vv)
 }
 
@@ -5803,7 +5816,7 @@ pub unsafe fn q6_v_vfmax_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vfmin_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vfmin_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vfmin_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
     vfmin_f8(vu, vv)
 }
 
@@ -5815,7 +5828,7 @@ pub unsafe fn q6_v_vfmin_vv(vu: HvxVector, vv: HvxVector) -> HvxVector {
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vfneg_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vfneg_v(vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vfneg_V(vu: HvxVector) -> HvxVector {
     vfneg_f8(vu)
 }
 
@@ -5827,7 +5840,7 @@ pub unsafe fn q6_v_vfneg_v(vu: HvxVector) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_and_qq(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Q_and_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         pred_and(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -5845,7 +5858,7 @@ pub unsafe fn q6_q_and_qq(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_and_qqn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Q_and_QQn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         pred_and_n(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -5863,7 +5876,7 @@ pub unsafe fn q6_q_and_qqn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPre
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_not_q(qs: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Q_not_Q(qs: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         pred_not(vandvrt(
             core::mem::transmute::<HvxVectorPred, HvxVector>(qs),
@@ -5881,7 +5894,7 @@ pub unsafe fn q6_q_not_q(qs: HvxVectorPred) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_or_qq(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Q_or_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         pred_or(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -5899,7 +5912,7 @@ pub unsafe fn q6_q_or_qq(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred 
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_or_qqn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Q_or_QQn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         pred_or_n(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -5917,7 +5930,7 @@ pub unsafe fn q6_q_or_qqn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vsetq_r(rt: i32) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vsetq_R(rt: i32) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(pred_scalar2(rt), -1))
 }
 
@@ -5929,7 +5942,7 @@ pub unsafe fn q6_q_vsetq_r(rt: i32) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_xor_qq(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Q_xor_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         pred_xor(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -5947,7 +5960,7 @@ pub unsafe fn q6_q_xor_qq(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vmem_qnriv(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
+pub unsafe fn Q6_vmem_QnRIV(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
     vS32b_nqpred_ai(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         rt,
@@ -5963,7 +5976,7 @@ pub unsafe fn q6_vmem_qnriv(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vmem_qnriv_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
+pub unsafe fn Q6_vmem_QnRIV_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
     vS32b_nt_nqpred_ai(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         rt,
@@ -5979,7 +5992,7 @@ pub unsafe fn q6_vmem_qnriv_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVec
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vmem_qriv_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
+pub unsafe fn Q6_vmem_QRIV_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
     vS32b_nt_qpred_ai(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         rt,
@@ -5995,7 +6008,7 @@ pub unsafe fn q6_vmem_qriv_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vmem_qriv(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
+pub unsafe fn Q6_vmem_QRIV(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
     vS32b_qpred_ai(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         rt,
@@ -6011,7 +6024,7 @@ pub unsafe fn q6_vmem_qriv(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector)
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_condacc_qnvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_condacc_QnVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vaddbnq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6027,7 +6040,7 @@ pub unsafe fn q6_vb_condacc_qnvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_condacc_qvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_condacc_QVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vaddbq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6043,7 +6056,7 @@ pub unsafe fn q6_vb_condacc_qvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_condacc_qnvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_condacc_QnVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vaddhnq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6059,7 +6072,7 @@ pub unsafe fn q6_vh_condacc_qnvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_condacc_qvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_condacc_QVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vaddhq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6075,7 +6088,7 @@ pub unsafe fn q6_vh_condacc_qvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_condacc_qnvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_condacc_QnVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vaddwnq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6091,7 +6104,7 @@ pub unsafe fn q6_vw_condacc_qnvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_condacc_qvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_condacc_QVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vaddwq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6107,7 +6120,7 @@ pub unsafe fn q6_vw_condacc_qvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vand_qr(qu: HvxVectorPred, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vand_QR(qu: HvxVectorPred, rt: i32) -> HvxVector {
     vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qu), rt)
 }
 
@@ -6119,7 +6132,7 @@ pub unsafe fn q6_v_vand_qr(qu: HvxVectorPred, rt: i32) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vandor_vqr(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vandor_VQR(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxVector {
     vandvrt_acc(vx, core::mem::transmute::<HvxVectorPred, HvxVector>(qu), rt)
 }
 
@@ -6131,7 +6144,7 @@ pub unsafe fn q6_v_vandor_vqr(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxV
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vand_vr(vu: HvxVector, rt: i32) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vand_VR(vu: HvxVector, rt: i32) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vu, rt))
 }
 
@@ -6143,7 +6156,7 @@ pub unsafe fn q6_q_vand_vr(vu: HvxVector, rt: i32) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vandor_qvr(qx: HvxVectorPred, vu: HvxVector, rt: i32) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vandor_QVR(qx: HvxVectorPred, vu: HvxVector, rt: i32) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt_acc(
         core::mem::transmute::<HvxVectorPred, HvxVector>(qx),
         vu,
@@ -6159,7 +6172,7 @@ pub unsafe fn q6_q_vandor_qvr(qx: HvxVectorPred, vu: HvxVector, rt: i32) -> HvxV
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eq_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_eq_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(veqb(vu, vv), -1))
 }
 
@@ -6171,7 +6184,7 @@ pub unsafe fn q6_q_vcmp_eq_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqand_qvbvb(
+pub unsafe fn Q6_Q_vcmp_eqand_QVbVb(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6194,7 +6207,7 @@ pub unsafe fn q6_q_vcmp_eqand_qvbvb(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqor_qvbvb(
+pub unsafe fn Q6_Q_vcmp_eqor_QVbVb(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6217,7 +6230,7 @@ pub unsafe fn q6_q_vcmp_eqor_qvbvb(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqxacc_qvbvb(
+pub unsafe fn Q6_Q_vcmp_eqxacc_QVbVb(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6240,7 +6253,7 @@ pub unsafe fn q6_q_vcmp_eqxacc_qvbvb(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eq_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_eq_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(veqh(vu, vv), -1))
 }
 
@@ -6252,7 +6265,7 @@ pub unsafe fn q6_q_vcmp_eq_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqand_qvhvh(
+pub unsafe fn Q6_Q_vcmp_eqand_QVhVh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6275,7 +6288,7 @@ pub unsafe fn q6_q_vcmp_eqand_qvhvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqor_qvhvh(
+pub unsafe fn Q6_Q_vcmp_eqor_QVhVh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6298,7 +6311,7 @@ pub unsafe fn q6_q_vcmp_eqor_qvhvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqxacc_qvhvh(
+pub unsafe fn Q6_Q_vcmp_eqxacc_QVhVh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6321,7 +6334,7 @@ pub unsafe fn q6_q_vcmp_eqxacc_qvhvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eq_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_eq_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(veqw(vu, vv), -1))
 }
 
@@ -6333,7 +6346,7 @@ pub unsafe fn q6_q_vcmp_eq_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqand_qvwvw(
+pub unsafe fn Q6_Q_vcmp_eqand_QVwVw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6356,7 +6369,7 @@ pub unsafe fn q6_q_vcmp_eqand_qvwvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqor_qvwvw(
+pub unsafe fn Q6_Q_vcmp_eqor_QVwVw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6379,7 +6392,7 @@ pub unsafe fn q6_q_vcmp_eqor_qvwvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_eqxacc_qvwvw(
+pub unsafe fn Q6_Q_vcmp_eqxacc_QVwVw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6402,7 +6415,7 @@ pub unsafe fn q6_q_vcmp_eqxacc_qvwvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgtb(vu, vv), -1))
 }
 
@@ -6414,7 +6427,7 @@ pub unsafe fn q6_q_vcmp_gt_vbvb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvbvb(
+pub unsafe fn Q6_Q_vcmp_gtand_QVbVb(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6437,7 +6450,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvbvb(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvbvb(
+pub unsafe fn Q6_Q_vcmp_gtor_QVbVb(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6460,7 +6473,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvbvb(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvbvb(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVbVb(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6483,7 +6496,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvbvb(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgth(vu, vv), -1))
 }
 
@@ -6495,7 +6508,7 @@ pub unsafe fn q6_q_vcmp_gt_vhvh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvhvh(
+pub unsafe fn Q6_Q_vcmp_gtand_QVhVh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6518,7 +6531,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvhvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvhvh(
+pub unsafe fn Q6_Q_vcmp_gtor_QVhVh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6541,7 +6554,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvhvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvhvh(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVhVh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6564,7 +6577,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvhvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgtub(vu, vv), -1))
 }
 
@@ -6576,7 +6589,7 @@ pub unsafe fn q6_q_vcmp_gt_vubvub(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvubvub(
+pub unsafe fn Q6_Q_vcmp_gtand_QVubVub(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6599,7 +6612,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvubvub(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvubvub(
+pub unsafe fn Q6_Q_vcmp_gtor_QVubVub(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6622,7 +6635,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvubvub(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvubvub(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVubVub(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6645,7 +6658,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvubvub(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgtuh(vu, vv), -1))
 }
 
@@ -6657,7 +6670,7 @@ pub unsafe fn q6_q_vcmp_gt_vuhvuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvuhvuh(
+pub unsafe fn Q6_Q_vcmp_gtand_QVuhVuh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6680,7 +6693,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvuhvuh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvuhvuh(
+pub unsafe fn Q6_Q_vcmp_gtor_QVuhVuh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6703,7 +6716,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvuhvuh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvuhvuh(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVuhVuh(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6726,7 +6739,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvuhvuh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgtuw(vu, vv), -1))
 }
 
@@ -6738,7 +6751,7 @@ pub unsafe fn q6_q_vcmp_gt_vuwvuw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvuwvuw(
+pub unsafe fn Q6_Q_vcmp_gtand_QVuwVuw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6761,7 +6774,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvuwvuw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvuwvuw(
+pub unsafe fn Q6_Q_vcmp_gtor_QVuwVuw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6784,7 +6797,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvuwvuw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvuwvuw(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVuwVuw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6807,7 +6820,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvuwvuw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgtw(vu, vv), -1))
 }
 
@@ -6819,7 +6832,7 @@ pub unsafe fn q6_q_vcmp_gt_vwvw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvwvw(
+pub unsafe fn Q6_Q_vcmp_gtand_QVwVw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6842,7 +6855,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvwvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvwvw(
+pub unsafe fn Q6_Q_vcmp_gtor_QVwVw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6865,7 +6878,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvwvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvwvw(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVwVw(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -6888,7 +6901,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvwvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vmux_qvv(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vmux_QVV(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> HvxVector {
     vmux(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qt), -1),
         vu,
@@ -6904,7 +6917,7 @@ pub unsafe fn q6_v_vmux_qvv(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> 
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_condnac_qnvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_condnac_QnVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vsubbnq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6920,7 +6933,7 @@ pub unsafe fn q6_vb_condnac_qnvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_condnac_qvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vb_condnac_QVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vsubbq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6936,7 +6949,7 @@ pub unsafe fn q6_vb_condnac_qvbvb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_condnac_qnvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_condnac_QnVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vsubhnq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6952,7 +6965,7 @@ pub unsafe fn q6_vh_condnac_qnvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_condnac_qvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vh_condnac_QVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vsubhq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6968,7 +6981,7 @@ pub unsafe fn q6_vh_condnac_qvhvh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_condnac_qnvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_condnac_QnVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vsubwnq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -6984,7 +6997,7 @@ pub unsafe fn q6_vw_condnac_qnvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_condnac_qvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_Vw_condnac_QVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
     vsubwq(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vx,
@@ -7000,7 +7013,7 @@ pub unsafe fn q6_vw_condnac_qvwvw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_w_vswap_qvv(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
+pub unsafe fn Q6_W_vswap_QVV(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
     vswap(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qt), -1),
         vu,
@@ -7016,7 +7029,7 @@ pub unsafe fn q6_w_vswap_qvv(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) ->
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vsetq2_r(rt: i32) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vsetq2_R(rt: i32) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(pred_scalar2v2(rt), -1))
 }
 
@@ -7028,7 +7041,7 @@ pub unsafe fn q6_q_vsetq2_r(rt: i32) -> HvxVectorPred {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_qb_vshuffe_qhqh(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Qb_vshuffe_QhQh(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         shuffeqh(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -7046,7 +7059,7 @@ pub unsafe fn q6_qb_vshuffe_qhqh(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVec
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_qh_vshuffe_qwqw(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
+pub unsafe fn Q6_Qh_vshuffe_QwQw(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(
         shuffeqw(
             vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qs), -1),
@@ -7064,7 +7077,7 @@ pub unsafe fn q6_qh_vshuffe_qwqw(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVec
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vand_qnr(qu: HvxVectorPred, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vand_QnR(qu: HvxVectorPred, rt: i32) -> HvxVector {
     vandnqrt(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qu), -1),
         rt,
@@ -7079,7 +7092,7 @@ pub unsafe fn q6_v_vand_qnr(qu: HvxVectorPred, rt: i32) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vandor_vqnr(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxVector {
+pub unsafe fn Q6_V_vandor_VQnR(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxVector {
     vandnqrt_acc(
         vx,
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qu), -1),
@@ -7095,7 +7108,7 @@ pub unsafe fn q6_v_vandor_vqnr(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> Hvx
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vand_qnv(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vand_QnV(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
     vandvnqv(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vu,
@@ -7110,7 +7123,7 @@ pub unsafe fn q6_v_vand_qnv(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_v_vand_qv(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
+pub unsafe fn Q6_V_vand_QV(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
     vandvqv(
         vandvrt(core::mem::transmute::<HvxVectorPred, HvxVector>(qv), -1),
         vu,
@@ -7125,7 +7138,7 @@ pub unsafe fn q6_v_vand_qv(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vgather_aqrmvh(
+pub unsafe fn Q6_vgather_AQRMVh(
     rs: *mut HvxVector,
     qs: HvxVectorPred,
     rt: i32,
@@ -7149,7 +7162,7 @@ pub unsafe fn q6_vgather_aqrmvh(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vgather_aqrmww(
+pub unsafe fn Q6_vgather_AQRMWw(
     rs: *mut HvxVector,
     qs: HvxVectorPred,
     rt: i32,
@@ -7173,7 +7186,7 @@ pub unsafe fn q6_vgather_aqrmww(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vgather_aqrmvw(
+pub unsafe fn Q6_vgather_AQRMVw(
     rs: *mut HvxVector,
     qs: HvxVectorPred,
     rt: i32,
@@ -7197,7 +7210,7 @@ pub unsafe fn q6_vgather_aqrmvw(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vb_prefixsum_q(qv: HvxVectorPred) -> HvxVector {
+pub unsafe fn Q6_Vb_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
     vprefixqb(vandvrt(
         core::mem::transmute::<HvxVectorPred, HvxVector>(qv),
         -1,
@@ -7212,7 +7225,7 @@ pub unsafe fn q6_vb_prefixsum_q(qv: HvxVectorPred) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vh_prefixsum_q(qv: HvxVectorPred) -> HvxVector {
+pub unsafe fn Q6_Vh_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
     vprefixqh(vandvrt(
         core::mem::transmute::<HvxVectorPred, HvxVector>(qv),
         -1,
@@ -7227,7 +7240,7 @@ pub unsafe fn q6_vh_prefixsum_q(qv: HvxVectorPred) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_prefixsum_q(qv: HvxVectorPred) -> HvxVector {
+pub unsafe fn Q6_Vw_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
     vprefixqw(vandvrt(
         core::mem::transmute::<HvxVectorPred, HvxVector>(qv),
         -1,
@@ -7242,7 +7255,7 @@ pub unsafe fn q6_vw_prefixsum_q(qv: HvxVectorPred) -> HvxVector {
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatter_qrmvhv(
+pub unsafe fn Q6_vscatter_QRMVhV(
     qs: HvxVectorPred,
     rt: i32,
     mu: i32,
@@ -7266,7 +7279,7 @@ pub unsafe fn q6_vscatter_qrmvhv(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatter_qrmwwv(
+pub unsafe fn Q6_vscatter_QRMWwV(
     qs: HvxVectorPred,
     rt: i32,
     mu: i32,
@@ -7290,7 +7303,7 @@ pub unsafe fn q6_vscatter_qrmwwv(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vscatter_qrmvwv(
+pub unsafe fn Q6_vscatter_QRMVwV(
     qs: HvxVectorPred,
     rt: i32,
     mu: i32,
@@ -7314,7 +7327,7 @@ pub unsafe fn q6_vscatter_qrmvwv(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_vw_vadd_vwvwq_carry_sat(
+pub unsafe fn Q6_Vw_vadd_VwVwQ_carry_sat(
     vu: HvxVector,
     vv: HvxVector,
     qs: HvxVectorPred,
@@ -7334,7 +7347,7 @@ pub unsafe fn q6_vw_vadd_vwvwq_carry_sat(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgthf(vu, vv), -1))
 }
 
@@ -7346,7 +7359,7 @@ pub unsafe fn q6_q_vcmp_gt_vhfvhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvhfvhf(
+pub unsafe fn Q6_Q_vcmp_gtand_QVhfVhf(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -7369,7 +7382,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvhfvhf(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvhfvhf(
+pub unsafe fn Q6_Q_vcmp_gtor_QVhfVhf(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -7392,7 +7405,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvhfvhf(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvhfvhf(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVhfVhf(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -7415,7 +7428,7 @@ pub unsafe fn q6_q_vcmp_gtxacc_qvhfvhf(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gt_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
+pub unsafe fn Q6_Q_vcmp_gt_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
     core::mem::transmute::<HvxVector, HvxVectorPred>(vandqrt(vgtsf(vu, vv), -1))
 }
 
@@ -7427,7 +7440,7 @@ pub unsafe fn q6_q_vcmp_gt_vsfvsf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtand_qvsfvsf(
+pub unsafe fn Q6_Q_vcmp_gtand_QVsfVsf(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -7450,7 +7463,7 @@ pub unsafe fn q6_q_vcmp_gtand_qvsfvsf(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtor_qvsfvsf(
+pub unsafe fn Q6_Q_vcmp_gtor_QVsfVsf(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,
@@ -7473,7 +7486,7 @@ pub unsafe fn q6_q_vcmp_gtor_qvsfvsf(
 #[inline(always)]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
-pub unsafe fn q6_q_vcmp_gtxacc_qvsfvsf(
+pub unsafe fn Q6_Q_vcmp_gtxacc_QVsfVsf(
     qx: HvxVectorPred,
     vu: HvxVector,
     vv: HvxVector,

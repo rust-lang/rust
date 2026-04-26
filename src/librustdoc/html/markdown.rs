@@ -582,6 +582,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_,
                 }
             }
             let id = self.id_map.derive(id);
+            let percent_encoded_id = small_url_encode(id.clone());
 
             if let Some(ref mut builder) = self.toc {
                 let mut text_header = String::new();
@@ -596,8 +597,9 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_,
                 std::cmp::min(level as u32 + (self.heading_offset as u32), MAX_HEADER_LEVEL);
             self.buf.push_back((Event::Html(format!("</h{level}>").into()), 0..0));
 
-            let start_tags =
-                format!("<h{level} id=\"{id}\"><a class=\"doc-anchor\" href=\"#{id}\">§</a>");
+            let start_tags = format!(
+                "<h{level} id=\"{id}\"><a class=\"doc-anchor\" href=\"#{percent_encoded_id}\">§</a>"
+            );
             return Some((Event::Html(start_tags.into()), 0..0));
         }
         event

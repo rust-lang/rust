@@ -22,7 +22,6 @@ pub fn main() {
         Foo { Self } => (),
         //~^ ERROR expected identifier, found keyword `Self`
         //~| ERROR mismatched types
-        //~| ERROR `Foo` does not have a field named `Self`
     }
 }
 

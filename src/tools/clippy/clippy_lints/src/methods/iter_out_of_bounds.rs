@@ -35,13 +35,12 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
             if let ty::Array(_, len) = cx.typeck_results().expr_ty(recv).peel_refs().kind() {
                 // For slice::Iter<'_, T>, the receiver might be an array literal: [1,2,3].iter().skip(..)
                 len.try_to_target_usize(cx.tcx).map(u128::from)
-            } else if let Some(args) = VecArgs::hir(cx, expr_or_init(cx, recv)) {
+            } else {
+                let args = VecArgs::hir(cx, expr_or_init(cx, recv))?;
                 match args {
                     VecArgs::Vec(vec) => vec.len().try_into().ok(),
                     VecArgs::Repeat(_, len) => expr_as_u128(cx, len),
                 }
-            } else {
-                None
             }
         },
         Some(sym::IterEmpty) => Some(0),

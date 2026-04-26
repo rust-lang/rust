@@ -2,10 +2,10 @@ use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
-use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
@@ -24,6 +24,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
+use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
@@ -222,13 +223,11 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                         // We only need to check `if let Some(x) = option` not `if let None = option`,
                         // because the later one will be suggested as `if option.is_none()` thus causing conflict.
                         res.ctor_parent(cx).is_lang_item(cx, OptionSome)
-                            && if_else.is_some()
-                            && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, None)
+                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, None))
                     },
                     sym::Result => {
                         (res.ctor_parent(cx).is_lang_item(cx, ResultOk)
-                            && if_else.is_some()
-                            && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
+                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, Some(let_pat_sym))))
                             || res.ctor_parent(cx).is_lang_item(cx, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
                                 && if_else.is_none()
@@ -328,7 +327,7 @@ enum TryMode {
 }
 
 fn find_try_mode<'tcx>(cx: &LateContext<'tcx>, scrutinee: &Expr<'tcx>) -> Option<TryMode> {
-    let scrutinee_ty = cx.typeck_results().expr_ty_adjusted(scrutinee);
+    let scrutinee_ty = cx.typeck_results().expr_ty_adjusted(scrutinee).peel_refs();
     let ty::Adt(scrutinee_adt_def, _) = scrutinee_ty.kind() else {
         return None;
     };
@@ -360,14 +359,18 @@ fn extract_ctor_call<'a, 'tcx>(
 
 // Extracts the local ID of a plain `val` pattern.
 fn extract_binding_pat(pat: &Pat<'_>) -> Option<HirId> {
-    if let PatKind::Binding(BindingMode::NONE, binding, _, None) = pat.kind {
+    if let PatKind::Binding(_, binding, _, None) = pat.kind {
         Some(binding)
     } else {
         None
     }
 }
 
-fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Arm<'tcx>) -> bool {
+fn check_arm_is_some_or_ok<'tcx>(
+    cx: &LateContext<'tcx>,
+    mode: TryMode,
+    arm: &Arm<'tcx>,
+) -> Option<IfLetOrMatchThen<'tcx>> {
     let happy_ctor = match mode {
         TryMode::Result => ResultOk,
         TryMode::Option => OptionSome,
@@ -378,13 +381,16 @@ fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Ar
         && let Some(val_binding) = extract_ctor_call(cx, happy_ctor, arm.pat)
         // Extract out `val`
         && let Some(binding) = extract_binding_pat(val_binding)
-        // Check body is just `=> val`
-        && peel_blocks(arm.body).res_local_id() == Some(binding)
     {
-        true
-    } else {
-        false
+        // Check body is just `=> val`
+        return Some(if peel_blocks(arm.body).res_local_id() == Some(binding) {
+            IfLetOrMatchThen::DirectReturn
+        } else {
+            IfLetOrMatchThen::ManualUnwrap(val_binding.span, arm.body)
+        });
     }
+
+    None
 }
 
 fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Arm<'tcx>) -> bool {
@@ -439,9 +445,23 @@ fn is_local_or_local_into(cx: &LateContext<'_>, expr: &Expr<'_>, val: HirId) -> 
     }
 }
 
-fn check_arms_are_try<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm1: &Arm<'tcx>, arm2: &Arm<'tcx>) -> bool {
-    (check_arm_is_some_or_ok(cx, mode, arm1) && check_arm_is_none_or_err(cx, mode, arm2))
-        || (check_arm_is_some_or_ok(cx, mode, arm2) && check_arm_is_none_or_err(cx, mode, arm1))
+fn check_arms_are_try<'tcx>(
+    cx: &LateContext<'tcx>,
+    mode: TryMode,
+    arm1: &Arm<'tcx>,
+    arm2: &Arm<'tcx>,
+) -> Option<IfLetOrMatchThen<'tcx>> {
+    (check_arm_is_none_or_err(cx, mode, arm2).then(|| check_arm_is_some_or_ok(cx, mode, arm1)))
+        .or_else(|| check_arm_is_none_or_err(cx, mode, arm1).then(|| check_arm_is_some_or_ok(cx, mode, arm2)))
+        .flatten()
+}
+
+#[derive(Debug)]
+enum IfLetOrMatchThen<'tcx> {
+    /// Return the binding from an if let or match arm as is.
+    DirectReturn,
+    /// Working on the binding from an if let or match arm as if it comes from a `?`.
+    ManualUnwrap(Span, &'tcx Expr<'tcx>),
 }
 
 fn check_if_try_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
@@ -449,19 +469,47 @@ fn check_if_try_match<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         && !expr.span.from_expansion()
         && let Some(mode) = find_try_mode(cx, scrutinee)
         && !span_contains_cfg(cx, expr.span)
-        && check_arms_are_try(cx, mode, arm1, arm2)
+        && let Some(if_let_or_match_then) = check_arms_are_try(cx, mode, arm1, arm2)
     {
-        let mut applicability = Applicability::MachineApplicable;
-        let snippet = snippet_with_applicability(cx, scrutinee.span.source_callsite(), "..", &mut applicability);
-
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             QUESTION_MARK,
             expr.span,
             "this `match` expression can be replaced with `?`",
-            "try instead",
-            snippet.into_owned() + "?",
-            applicability,
+            |diag| {
+                let mut applicability = Applicability::MachineApplicable;
+                let scrutinee_snippet =
+                    snippet_with_applicability(cx, scrutinee.span.source_callsite(), "..", &mut applicability);
+                match if_let_or_match_then {
+                    IfLetOrMatchThen::DirectReturn => {
+                        diag.span_suggestion(
+                            expr.span,
+                            "try instead",
+                            scrutinee_snippet.into_owned() + "?",
+                            applicability,
+                        );
+                    },
+                    IfLetOrMatchThen::ManualUnwrap(binding_span, arm_body) => {
+                        let indent = indent_of(cx, expr.span).unwrap_or_default();
+                        let arm_body_snippet = snippet_with_applicability(cx, arm_body.span, "..", &mut applicability);
+                        let mut sugg = reindent_multiline(&arm_body_snippet, true, Some(indent));
+                        let binding_snippet = snippet_with_applicability(cx, binding_span, "..", &mut applicability);
+                        let inner_indent = " ".repeat(indent + 4);
+                        if matches!(arm_body.kind, ExprKind::Block(..)) {
+                            sugg.insert_str(
+                                1,
+                                &format!("\n{inner_indent}let {binding_snippet} = {scrutinee_snippet}?;"),
+                            );
+                        } else {
+                            let outer_indent = " ".repeat(indent);
+                            sugg = format!(
+                                "{{\n{inner_indent}let {binding_snippet} = {scrutinee_snippet}?;\n{inner_indent}{sugg}\n{outer_indent}}}"
+                            );
+                        }
+                        diag.span_suggestion(expr.span, "try instead", sugg, applicability);
+                    },
+                }
+            },
         );
     }
 }
@@ -486,8 +534,8 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             if_then,
             if_else,
         )
-        && ((is_early_return(sym::Option, cx, &if_block) && peel_blocks(if_then).res_local_id() == Some(bind_id))
-            || is_early_return(sym::Result, cx, &if_block))
+        && let is_option_early_return = is_early_return(sym::Option, cx, &if_block)
+        && (is_option_early_return || is_early_return(sym::Result, cx, &if_block))
         && if_else
             .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
             .is_none_or(|e| !e)
@@ -499,32 +547,53 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             return;
         }
 
-        let mut applicability = Applicability::MachineApplicable;
-        let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-        let parent = cx.tcx.parent_hir_node(expr.hir_id);
-        let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
-        let method_call_str = match by_ref {
-            ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
-            ByRef::Yes(_, Mutability::Not) => ".as_ref()",
-            ByRef::No => "",
-        };
-
-        let mut sugg = format!(
-            "{receiver_str}{method_call_str}?{}",
-            if requires_semi { ";" } else { "" }
-        );
-        if is_else_clause(cx.tcx, expr) || (requires_semi && !matches!(parent, Node::Stmt(_) | Node::Block(_))) {
-            sugg = format!("{{ {sugg} }}");
+        // Leave `if let Some(x) = opt { .. } else { None }` to `needless_match` or `manual_map_option`.
+        if is_option_early_return
+            && if_else.is_some_and(|else_| !matches!(peel_blocks_with_stmt(else_).kind, ExprKind::Ret(_)))
+        {
+            return;
         }
 
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             QUESTION_MARK,
             expr.span,
             "this block may be rewritten with the `?` operator",
-            "replace it with",
-            sugg,
-            applicability,
+            |diag| {
+                let mut applicability = Applicability::MachineApplicable;
+                let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
+                if !is_option_early_return || peel_blocks(if_then).res_local_id() == Some(bind_id) {
+                    let parent = cx.tcx.parent_hir_node(expr.hir_id);
+                    let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
+                    let method_call_str = match by_ref {
+                        ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
+                        ByRef::Yes(_, Mutability::Not) => ".as_ref()",
+                        ByRef::No => "",
+                    };
+
+                    let mut sugg = format!(
+                        "{receiver_str}{method_call_str}?{}",
+                        if requires_semi { ";" } else { "" }
+                    );
+                    if is_else_clause(cx.tcx, expr)
+                        || (requires_semi && !matches!(parent, Node::Stmt(_) | Node::Block(_)))
+                    {
+                        sugg = format!("{{ {sugg} }}");
+                    }
+
+                    diag.span_suggestion(expr.span, "replace it with", sugg, applicability);
+                    return;
+                }
+
+                let mut sugg = snippet_with_applicability(cx, if_then.span, "..", &mut applicability).into_owned();
+                let binding_snippet = snippet_with_applicability(cx, field.span, "..", &mut applicability);
+                let indent = indent_of(cx, expr.span).unwrap_or_default();
+                sugg.insert_str(
+                    1,
+                    &format!("\n{}let {binding_snippet} = {receiver_str}?;", " ".repeat(indent + 4)),
+                );
+                diag.span_suggestion(expr.span, "replace it with", sugg, applicability);
+            },
         );
     }
 }

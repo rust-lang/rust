@@ -18,7 +18,7 @@ test = false
 anstyle-svg = "0.1.11"
 build_helper = { path = "../../build_helper" }
 camino = "1"
-colored = "2"
+colored = "3"
 diff = "0.1.10"
 getopts = "0.2"
 glob = "0.3.0"

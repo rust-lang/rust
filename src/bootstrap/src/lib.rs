@@ -676,6 +676,10 @@ impl Build {
             return;
         }
 
+        if self.config.dry_run() {
+            return;
+        }
+
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {

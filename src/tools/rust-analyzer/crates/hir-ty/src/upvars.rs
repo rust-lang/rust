@@ -1,8 +1,8 @@
 //! A simple query to collect tall locals (upvars) a closure use.
 
 use hir_def::{
-    DefWithBodyId,
-    expr_store::{Body, path::Path},
+    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
+    expr_store::{ExpressionStore, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     resolver::{HasResolver, Resolver, ValueNs},
 };
@@ -36,18 +36,89 @@ impl Upvars {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    #[inline]
+    pub fn as_ref(&self) -> UpvarsRef<'_> {
+        UpvarsRef(&self.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+// Kept sorted.
+pub struct UpvarsRef<'db>(&'db [BindingId]);
+
+impl UpvarsRef<'_> {
+    #[inline]
+    pub fn contains(self, local: BindingId) -> bool {
+        self.0.binary_search(&local).is_ok()
+    }
+
+    #[inline]
+    pub fn iter(self) -> impl ExactSizeIterator<Item = BindingId> {
+        self.0.iter().copied()
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
+    pub const fn empty() -> Self {
+        UpvarsRef(&[])
+    }
 }
 
 /// Returns a map from `Expr::Closure` to its upvars.
-#[salsa::tracked(returns(as_deref))]
 pub fn upvars_mentioned(
     db: &dyn HirDatabase,
-    owner: DefWithBodyId,
+    owner: ExpressionStoreOwnerId,
+) -> Option<&FxHashMap<ExprId, Upvars>> {
+    return match owner {
+        ExpressionStoreOwnerId::Signature(owner) => signature_upvars_mentioned(db, owner),
+        ExpressionStoreOwnerId::Body(owner) => body_upvars_mentioned(db, owner),
+        ExpressionStoreOwnerId::VariantFields(owner) => variant_fields_upvars_mentioned(db, owner),
+    };
+
+    #[salsa::tracked(returns(as_deref))]
+    pub fn signature_upvars_mentioned(
+        db: &dyn HirDatabase,
+        owner: GenericDefId,
+    ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+        upvars_mentioned_impl(db, owner.into())
+    }
+
+    #[salsa::tracked(returns(as_deref))]
+    pub fn body_upvars_mentioned(
+        db: &dyn HirDatabase,
+        owner: DefWithBodyId,
+    ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+        upvars_mentioned_impl(db, owner.into())
+    }
+
+    #[salsa::tracked(returns(as_deref))]
+    pub fn variant_fields_upvars_mentioned(
+        db: &dyn HirDatabase,
+        owner: VariantId,
+    ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
+        upvars_mentioned_impl(db, owner.into())
+    }
+}
+
+pub fn upvars_mentioned_impl(
+    db: &dyn HirDatabase,
+    owner: ExpressionStoreOwnerId,
 ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
-    let body = Body::of(db, owner);
+    let store = ExpressionStore::of(db, owner);
+    if store.const_expr_origins().is_empty() {
+        // Save constructing a Resolver.
+        return None;
+    }
     let mut resolver = owner.resolver(db);
     let mut result = FxHashMap::default();
-    handle_expr_outside_closure(db, &mut resolver, owner, body, body.root_expr(), &mut result);
+    for root_expr in store.expr_roots() {
+        handle_expr_outside_closure(db, &mut resolver, owner, store, root_expr, &mut result);
+    }
     return if result.is_empty() {
         None
     } else {
@@ -58,8 +129,8 @@ pub fn upvars_mentioned(
     fn handle_expr_outside_closure<'db>(
         db: &'db dyn HirDatabase,
         resolver: &mut Resolver<'db>,
-        owner: DefWithBodyId,
-        body: &Body,
+        owner: ExpressionStoreOwnerId,
+        body: &ExpressionStore,
         expr: ExprId,
         closures_map: &mut FxHashMap<ExprId, Upvars>,
     ) {
@@ -89,8 +160,8 @@ pub fn upvars_mentioned(
     fn handle_expr_inside_closure<'db>(
         db: &'db dyn HirDatabase,
         resolver: &mut Resolver<'db>,
-        owner: DefWithBodyId,
-        body: &Body,
+        owner: ExpressionStoreOwnerId,
+        body: &ExpressionStore,
         current_closure: ExprId,
         expr: ExprId,
         upvars: &mut FxHashSet<BindingId>,
@@ -170,8 +241,8 @@ pub fn upvars_mentioned(
 fn resolve_maybe_upvar<'db>(
     db: &'db dyn HirDatabase,
     resolver: &mut Resolver<'db>,
-    owner: DefWithBodyId,
-    body: &Body,
+    owner: ExpressionStoreOwnerId,
+    body: &ExpressionStore,
     current_closure: ExprId,
     expr: ExprId,
     id: ExprOrPatId,
@@ -179,8 +250,9 @@ fn resolve_maybe_upvar<'db>(
     path: &Path,
 ) {
     if let Path::BarePath(mod_path) = path
-        && matches!(mod_path.kind, PathKind::Plain)
-        && mod_path.segments().len() == 1
+        && matches!(mod_path.kind, PathKind::Plain | PathKind::SELF)
+        // `self` is length zero.
+        && mod_path.segments().len() <= 1
     {
         // Could be a variable.
         let guard = resolver.update_to_inner_scope(db, owner, expr);
@@ -198,7 +270,9 @@ fn resolve_maybe_upvar<'db>(
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use hir_def::{ModuleDefId, expr_store::Body, nameres::crate_def_map};
+    use hir_def::{
+        AssocItemId, DefWithBodyId, ModuleDefId, expr_store::Body, nameres::crate_def_map,
+    };
     use itertools::Itertools;
     use span::Edition;
     use test_fixture::WithFixture;
@@ -217,10 +291,18 @@ mod tests {
                     ModuleDefId::FunctionId(func) => Some(func),
                     _ => None,
                 })
+                .chain(def_map.modules().flat_map(|(_, module)| {
+                    module.scope.impls().flat_map(|impl_| &*impl_.impl_items(&db).items).filter_map(
+                        |&(_, item)| match item {
+                            AssocItemId::FunctionId(it) => Some(it),
+                            _ => None,
+                        },
+                    )
+                }))
                 .exactly_one()
                 .unwrap_or_else(|_| panic!("expected one function"));
             let (body, source_map) = Body::with_source_map(&db, func.into());
-            let Some(upvars) = upvars_mentioned(&db, func.into()) else {
+            let Some(upvars) = upvars_mentioned(&db, DefWithBodyId::from(func).into()) else {
                 expectation.assert_eq("");
                 return;
             };
@@ -314,6 +396,21 @@ fn foo() {
             expect![[r#"
                 30..116: a
                 49..110: a, b"#]],
+        );
+    }
+
+    #[test]
+    fn self_upvar() {
+        check(
+            r#"
+struct Foo(i32);
+impl Foo {
+    fn foo(&self) {
+        || self.0;
+    }
+}
+        "#,
+            expect!["56..65: self"],
         );
     }
 }

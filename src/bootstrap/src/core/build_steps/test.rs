@@ -2334,6 +2334,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--verbose");
         }
 
+        if builder.config.cmd.verbose_run_make_subprocess_output() {
+            cmd.arg("--verbose-run-make-subprocess-output");
+        }
+
         if builder.config.rustc_debug_assertions {
             cmd.arg("--with-rustc-debug-assertions");
         }

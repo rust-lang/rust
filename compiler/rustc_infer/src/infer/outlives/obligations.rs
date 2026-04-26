@@ -98,6 +98,17 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    pub fn register_region_eq_constraint(
+        &self,
+        ty::RegionEqPredicate(r_a, r_b): ty::RegionEqPredicate<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        let origin = SubregionOrigin::from_obligation_cause(cause, || {
+            SubregionOrigin::RelateRegionParamBound(cause.span, None)
+        });
+        self.equate_regions(origin, r_a, r_b);
+    }
+
     pub fn register_region_outlives_constraint(
         &self,
         ty::OutlivesPredicate(r_a, r_b): ty::RegionOutlivesPredicate<'tcx>,
@@ -474,7 +485,7 @@ where
             && (alias_ty.has_infer_regions() || matches!(kind, ty::Opaque { .. }))
         {
             debug!("no declared bounds");
-            let opt_variances = self.tcx.opt_alias_variances(kind, kind.def_id());
+            let opt_variances = self.tcx.opt_alias_variances(kind);
             self.args_must_outlive(alias_ty.args, origin, region, opt_variances);
             return;
         }

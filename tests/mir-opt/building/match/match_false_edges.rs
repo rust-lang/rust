@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 fn guard() -> bool {
     false
 }

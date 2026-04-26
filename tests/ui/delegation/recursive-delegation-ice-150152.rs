@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod first_example {
     mod to_reuse { pub fn foo() {} }

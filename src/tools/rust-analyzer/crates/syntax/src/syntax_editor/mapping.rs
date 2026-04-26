@@ -161,7 +161,7 @@ impl SyntaxMapping {
         // Try to follow the mapping tree, if it exists
         let input_mapping = self.upmap_node_single(input);
         let input_ancestor =
-            input.ancestors().find_map(|ancestor| self.upmap_node_single(&ancestor));
+            input.ancestors().find(|ancestor| self.upmap_node_single(ancestor).is_some());
 
         match (input_mapping, input_ancestor) {
             (Some(input_mapping), _) => {

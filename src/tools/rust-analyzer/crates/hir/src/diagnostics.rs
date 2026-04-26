@@ -282,7 +282,7 @@ pub struct MissingFields {
     pub file: HirFileId,
     pub field_list_parent: AstPtr<Either<ast::RecordExpr, ast::RecordPat>>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
-    pub missed_fields: Vec<Name>,
+    pub missed_fields: Vec<(Name, Field)>,
 }
 
 #[derive(Debug)]
@@ -476,7 +476,12 @@ impl<'db> AnyDiagnostic<'db> {
                 let variant_data = variant.fields(db);
                 let missed_fields = missed_fields
                     .into_iter()
-                    .map(|idx| variant_data.fields()[idx].name.clone())
+                    .map(|idx| {
+                        (
+                            variant_data.fields()[idx].name.clone(),
+                            Field { parent: variant.into(), id: idx },
+                        )
+                    })
                     .collect();
 
                 let record = match record {
@@ -486,35 +491,35 @@ impl<'db> AnyDiagnostic<'db> {
                 let file = record.file_id;
                 let root = record.file_syntax(db);
                 match record.value.to_node(&root) {
-                    Either::Left(ast::Expr::RecordExpr(record_expr)) => {
-                        if record_expr.record_expr_field_list().is_some() {
-                            let field_list_parent_path =
-                                record_expr.path().map(|path| AstPtr::new(&path));
-                            return Some(
-                                MissingFields {
-                                    file,
-                                    field_list_parent: AstPtr::new(&Either::Left(record_expr)),
-                                    field_list_parent_path,
-                                    missed_fields,
-                                }
-                                .into(),
-                            );
-                        }
+                    Either::Left(ast::Expr::RecordExpr(record_expr))
+                        if record_expr.record_expr_field_list().is_some() =>
+                    {
+                        let field_list_parent_path =
+                            record_expr.path().map(|path| AstPtr::new(&path));
+                        return Some(
+                            MissingFields {
+                                file,
+                                field_list_parent: AstPtr::new(&Either::Left(record_expr)),
+                                field_list_parent_path,
+                                missed_fields,
+                            }
+                            .into(),
+                        );
                     }
-                    Either::Right(ast::Pat::RecordPat(record_pat)) => {
-                        if record_pat.record_pat_field_list().is_some() {
-                            let field_list_parent_path =
-                                record_pat.path().map(|path| AstPtr::new(&path));
-                            return Some(
-                                MissingFields {
-                                    file,
-                                    field_list_parent: AstPtr::new(&Either::Right(record_pat)),
-                                    field_list_parent_path,
-                                    missed_fields,
-                                }
-                                .into(),
-                            );
-                        }
+                    Either::Right(ast::Pat::RecordPat(record_pat))
+                        if record_pat.record_pat_field_list().is_some() =>
+                    {
+                        let field_list_parent_path =
+                            record_pat.path().map(|path| AstPtr::new(&path));
+                        return Some(
+                            MissingFields {
+                                file,
+                                field_list_parent: AstPtr::new(&Either::Right(record_pat)),
+                                field_list_parent_path,
+                                missed_fields,
+                            }
+                            .into(),
+                        );
                     }
                     _ => {}
                 }

@@ -26,7 +26,9 @@ fn reg_to_abi_param(reg: Reg) -> AbiParam {
         (RegKind::Float, 4) => types::F32,
         (RegKind::Float, 8) => types::F64,
         (RegKind::Float, 16) => types::F128,
-        (RegKind::Vector, size) => types::I8.by(u32::try_from(size).unwrap()).unwrap(),
+        (RegKind::Vector { hint_vector_elem: _ }, size) => {
+            types::I8.by(u32::try_from(size).unwrap()).unwrap()
+        }
         _ => unreachable!("{:?}", reg),
     };
     AbiParam::new(clif_ty)

@@ -50,6 +50,7 @@ compiler-builtins = ["dep:core", "unmangled-names"]
 
 # Enable `no_mangle` symbols for memory-related intrinsics like memcpy. The
 # mangled versions are always available.
+mem = []
 
 # Enable `no_mangle` symbols so this crate gets used as the runtime intrinsic
 # implementation. Leave this disabled for testing to avoid conflicting with

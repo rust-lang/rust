@@ -335,6 +335,11 @@ impl<'a> Sugg<'a> {
         Sugg::NonParen(Cow::Owned(format!("{{ {self} }}")))
     }
 
+    /// Convenience method to wrap the expression in an `unsafe` block.
+    pub fn unsafeify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("unsafe {{ {self} }}")))
+    }
+
     /// Convenience method to prefix the expression with the `async` keyword.
     /// Can be used after `blockify` to create an async block.
     pub fn asyncify(self) -> Sugg<'static> {
@@ -891,7 +896,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
                     .cx
                     .typeck_results()
                     .type_dependent_def_id(parent_expr.hir_id)
-                    .map(|did| self.cx.tcx.fn_sig(did).instantiate_identity().skip_binder())
+                    .map(|did| self.cx.tcx.fn_sig(did).instantiate_identity().skip_norm_wip().skip_binder())
                 {
                     std::iter::once(receiver)
                         .chain(call_args.iter())

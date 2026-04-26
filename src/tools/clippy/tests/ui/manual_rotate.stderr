@@ -91,5 +91,17 @@ error: there is no need to manually implement bit rotation
 LL |     let _ = (x >> 9) | (x << (32 - 9));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x.rotate_right(9)`
 
-error: aborting due to 15 previous errors
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:77:13
+   |
+LL |     let _ = (test_expr!(x) << 3) | (test_expr!(x) >> 29);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `test_expr!(x).rotate_left(3)`
+
+error: there is no need to manually implement bit rotation
+  --> tests/ui/manual_rotate.rs:82:13
+   |
+LL |     let _ = (x.inner << test_expr!(y)) | (x.inner >> (32 - test_expr!(y)));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: this expression can be rewritten as: `x.inner.rotate_left(test_expr!(y))`
+
+error: aborting due to 17 previous errors
 

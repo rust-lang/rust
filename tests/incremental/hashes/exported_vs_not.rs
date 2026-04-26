@@ -1,10 +1,10 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ revisions: bpass1 bpass2 bpass3 bpass4 bpass5 bpass6
 //@ compile-flags: -Z query-dep-graph -O
-//@ [cfail1]compile-flags: -Zincremental-ignore-spans
-//@ [cfail2]compile-flags: -Zincremental-ignore-spans
-//@ [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ [bpass1]compile-flags: -Zincremental-ignore-spans
+//@ [bpass2]compile-flags: -Zincremental-ignore-spans
+//@ [bpass3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -14,16 +14,16 @@
 //         the hash of the opt_hir_owner_nodes node should change, but not the hash of
 //         either the hir_owner or the Metadata node.
 
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn body_not_exported_to_metadata() -> u32 {
     1
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 pub fn body_not_exported_to_metadata() -> u32 {
     2
 }
@@ -34,17 +34,17 @@ pub fn body_not_exported_to_metadata() -> u32 {
 //         marked as #[inline]. Only the hash of the hir_owner depnode should be
 //         unaffected by a change to the body.
 
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[inline]
 pub fn body_exported_to_metadata_because_of_inline() -> u32 {
     1
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[inline]
 pub fn body_exported_to_metadata_because_of_inline() -> u32 {
     2
@@ -56,17 +56,17 @@ pub fn body_exported_to_metadata_because_of_inline() -> u32 {
 //         generic. Only the hash of the hir_owner depnode should be
 //         unaffected by a change to the body.
 
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bpass1,bpass4))]
 #[inline]
 pub fn body_exported_to_metadata_because_of_generic() -> u32 {
     1
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 #[inline]
 pub fn body_exported_to_metadata_because_of_generic() -> u32 {
     2

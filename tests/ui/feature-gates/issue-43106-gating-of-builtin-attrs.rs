@@ -74,7 +74,7 @@
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
-#![link_section = "1800"]
+#![link_section = ",1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
@@ -616,66 +616,66 @@ mod link_name {
     //~| HELP remove the attribute
 }
 
-#[link_section = "1800"]
+#[link_section = ",1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
 //~| HELP remove the attribute
 mod link_section {
-    mod inner { #![link_section="1800"] }
+    mod inner { #![link_section=",1800"] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"] fn f() { }
+    #[link_section = ",1800"] fn f() { }
 
-    #[link_section = "1800"] struct S;
+    #[link_section = ",1800"] struct S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"] type T = S;
+    #[link_section = ",1800"] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"] impl S { }
+    #[link_section = ",1800"] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
 
-    #[link_section = "1800"]
+    #[link_section = ",1800"]
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
     //~| HELP remove the attribute
     trait Tr {
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         //~^ WARN attribute cannot be used on
         //~| WARN previously accepted
         //~| HELP can be applied to
         //~| HELP remove the attribute
         fn inside_tr_no_default(&self);
 
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         fn inside_tr_default(&self) { }
     }
 
     impl S {
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         fn inside_abc_123(&self) { }
     }
 
     impl Tr for S {
-        #[link_section = "1800"]
+        #[link_section = ",1800"]
         fn inside_tr_no_default(&self) { }
     }
 
-    #[link_section = "1800"]
+    #[link_section = ",1800"]
     fn should_always_link() { }
 }
 

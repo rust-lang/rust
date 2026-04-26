@@ -1166,10 +1166,10 @@ fn next_space_for_fn_after_call_site(expr: ast::CallableExpr) -> Option<Generate
             SyntaxKind::SOURCE_FILE => {
                 break;
             }
-            SyntaxKind::ITEM_LIST => {
-                if ancestors.peek().map(|a| a.kind()) == Some(SyntaxKind::MODULE) {
-                    break;
-                }
+            SyntaxKind::ITEM_LIST
+                if ancestors.peek().map(|a| a.kind()) == Some(SyntaxKind::MODULE) =>
+            {
+                break;
             }
             _ => {}
         }

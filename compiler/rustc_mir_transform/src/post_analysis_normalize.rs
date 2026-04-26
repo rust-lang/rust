@@ -4,7 +4,7 @@
 
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 
 pub(super) struct PostAnalysisNormalize;
 
@@ -63,7 +63,10 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(c) = self.tcx.try_normalize_erasing_regions(self.typing_env, constant.const_) {
+        if let Ok(c) = self
+            .tcx
+            .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(constant.const_))
+        {
             constant.const_ = c;
         }
         self.super_const_operand(constant, location);
@@ -74,7 +77,9 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        if let Ok(t) = self.tcx.try_normalize_erasing_regions(self.typing_env, *ty) {
+        if let Ok(t) =
+            self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(*ty))
+        {
             *ty = t;
         }
     }

@@ -1,7 +1,7 @@
 //! Renders a bit of code as HTML.
 
 use hir::Semantics;
-use ide_db::MiniCore;
+use ide_db::ra_fixture::RaFixtureConfig;
 use oorandom::Rand32;
 use stdx::format_to;
 use syntax::AstNode;
@@ -69,7 +69,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
             inject_doc_comment: true,
             macro_bang: true,
             syntactic_name_ref_highlighting: false,
-            minicore: MiniCore::default(),
+            ra_fixture: RaFixtureConfig::default(),
         },
         file_id,
         rainbow,
