@@ -12,8 +12,8 @@ use crate::concurrency::VClock;
 use crate::shims::files::{
     EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
+use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollEvents, EvalContextExt as _};
-use crate::shims::unix::{FileMetadata, UnixFileDescription};
 use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
@@ -83,15 +83,14 @@ impl FileDescription for VirtualSocket {
         }
     }
 
-    fn fstat<'tcx>(
+    fn metadata<'tcx>(
         &self,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
+    ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         let mode_name = match self.fd_type {
             VirtualSocketType::Socketpair => "S_IFSOCK",
             VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => "S_IFIFO",
         };
-        FileMetadata::synthetic(ecx, mode_name, 0)
+        interp_ok(Either::Right(mode_name))
     }
 
     fn destroy<'tcx>(

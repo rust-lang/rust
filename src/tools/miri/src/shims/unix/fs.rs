@@ -348,34 +348,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
-fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
-    #[cfg(unix)]
-    use std::os::unix::fs::FileTypeExt;
-
-    if file_type.is_file() {
-        "S_IFREG"
-    } else if file_type.is_dir() {
-        "S_IFDIR"
-    } else if file_type.is_symlink() {
-        "S_IFLNK"
-    } else {
-        // Certain file types are only available when the host is a Unix system.
-        #[cfg(unix)]
-        {
-            if file_type.is_socket() {
-                return "S_IFSOCK";
-            } else if file_type.is_fifo() {
-                return "S_IFIFO";
-            } else if file_type.is_char_device() {
-                return "S_IFCHR";
-            } else if file_type.is_block_device() {
-                return "S_IFBLK";
-            }
-        }
-        "S_IFREG"
-    }
-}
-
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn open(
@@ -1662,9 +1634,37 @@ fn extract_sec_and_nsec<'tcx>(
     }
 }
 
+fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
+    #[cfg(unix)]
+    use std::os::unix::fs::FileTypeExt;
+
+    if file_type.is_file() {
+        "S_IFREG"
+    } else if file_type.is_dir() {
+        "S_IFDIR"
+    } else if file_type.is_symlink() {
+        "S_IFLNK"
+    } else {
+        // Certain file types are only available when the host is a Unix system.
+        #[cfg(unix)]
+        {
+            if file_type.is_socket() {
+                return "S_IFSOCK";
+            } else if file_type.is_fifo() {
+                return "S_IFIFO";
+            } else if file_type.is_char_device() {
+                return "S_IFCHR";
+            } else if file_type.is_block_device() {
+                return "S_IFBLK";
+            }
+        }
+        "S_IFREG"
+    }
+}
+
 /// Stores a file's metadata in order to avoid code duplication in the different metadata related
 /// shims.
-pub struct FileMetadata {
+struct FileMetadata {
     mode: Scalar,
     size: u64,
     created: Option<(u64, u32)>,
@@ -1694,18 +1694,20 @@ impl FileMetadata {
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return interp_ok(Err(LibcError("EBADF")));
         };
-        fd.fstat(ecx)
+        match fd.metadata()? {
+            Either::Left(host) => Self::from_meta(ecx, host),
+            Either::Right(name) => Self::synthetic(ecx, name),
+        }
     }
 
-    pub(crate) fn synthetic<'tcx>(
+    fn synthetic<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         mode_name: &str,
-        size: u64,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
         let mode = ecx.eval_libc(mode_name);
         interp_ok(Ok(FileMetadata {
             mode,
-            size,
+            size: 0,
             created: None,
             accessed: None,
             modified: None,
@@ -1715,7 +1717,7 @@ impl FileMetadata {
         }))
     }
 
-    pub(crate) fn from_meta<'tcx>(
+    fn from_meta<'tcx>(
         ecx: &mut MiriInterpCx<'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Result<FileMetadata, IoError>> {
