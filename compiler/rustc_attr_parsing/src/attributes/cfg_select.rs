@@ -79,9 +79,7 @@ pub fn parse_cfg_select(
     let mut branch_attr_error: Option<ErrorGuaranteed> = None;
 
     while p.token != token::Eof {
-        if let Some(guar) = reject_branch_outer_attrs(p)? {
-            branch_attr_error.get_or_insert(guar);
-        }
+        reject_branch_outer_attrs(p, &mut branch_attr_error)?;
 
         if p.eat_keyword(exp!(Underscore)) {
             let underscore = p.prev_token;
@@ -154,19 +152,23 @@ pub fn parse_cfg_select(
 
 fn reject_branch_outer_attrs(
     p: &mut Parser<'_>,
-) -> Result<Option<ErrorGuaranteed>, ErrorGuaranteed> {
+    branch_attr_error: &mut Option<ErrorGuaranteed>,
+) -> Result<(), ErrorGuaranteed> {
     let Some(spans) = p.parse_cfg_select_branch_outer_attrs().map_err(|e| e.emit())? else {
-        return Ok(None);
+        return Ok(());
     };
 
-    Ok(Some(
-        p.dcx()
-            .struct_span_err(
-                MultiSpan::from_spans(spans),
-                "outer attributes are not allowed on `cfg_select` branches",
-            )
-            .emit(),
-    ))
+    for (spans, msg) in [
+        (spans.doc_comments, "doc comments are not allowed on `cfg_select` branches"),
+        (spans.attrs, "attributes are not allowed on `cfg_select` branches"),
+    ] {
+        if !spans.is_empty() {
+            branch_attr_error
+                .get_or_insert(p.dcx().struct_span_err(MultiSpan::from_spans(spans), msg).emit());
+        }
+    }
+
+    Ok(())
 }
 
 fn lint_unreachable(

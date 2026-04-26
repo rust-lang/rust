@@ -1,11 +1,17 @@
-use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
+use rustc_ast::{AttrKind, AttrStyle, token};
 use rustc_errors::PResult;
 use rustc_span::Span;
 
 use crate::exp;
 use crate::parser::{AttrWrapper, ForceCollect, Parser, Restrictions, Trailing, UsePreAttrPos};
+
+#[derive(Default)]
+pub struct CfgSelectBranchAttrSpans {
+    pub attrs: Vec<Span>,
+    pub doc_comments: Vec<Span>,
+}
 
 impl<'a> Parser<'a> {
     /// Parses a `TokenTree` consisting either of `{ /* ... */ }` optionally followed by a comma
@@ -39,12 +45,31 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses outer attributes before a `cfg_select!` branch for recovery.
-    pub fn parse_cfg_select_branch_outer_attrs(&mut self) -> PResult<'a, Option<Vec<Span>>> {
+    pub fn parse_cfg_select_branch_outer_attrs(
+        &mut self,
+    ) -> PResult<'a, Option<CfgSelectBranchAttrSpans>> {
+        let inner_doc_comment_span =
+            if let token::DocComment(_, AttrStyle::Inner, _) = self.token.kind {
+                Some(self.token.span)
+            } else {
+                None
+            };
         let attrs = self.parse_outer_attributes()?;
         if attrs.is_empty() {
             return Ok(None);
         }
 
-        Ok(Some(attrs.take_for_recovery(self.psess).into_iter().map(|attr| attr.span).collect()))
+        let mut spans = CfgSelectBranchAttrSpans::default();
+        for attr in attrs.take_for_recovery(self.psess) {
+            match attr.kind {
+                AttrKind::Normal(..) => spans.attrs.push(attr.span),
+                // `parse_outer_attributes` already emitted E0753 for this inner doc comment
+                // before recovering it as an outer doc-comment attribute.
+                AttrKind::DocComment(..) if Some(attr.span) == inner_doc_comment_span => {}
+                AttrKind::DocComment(..) => spans.doc_comments.push(attr.span),
+            }
+        }
+
+        Ok(Some(spans))
     }
 }

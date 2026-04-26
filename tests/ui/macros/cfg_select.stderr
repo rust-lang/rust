@@ -55,26 +55,48 @@ error: expected one of `(`, `::`, `=>`, or `=`, found `!`
 LL |     cfg!() => {}
    |        ^ expected one of `(`, `::`, `=>`, or `=`
 
-error: outer attributes are not allowed on `cfg_select` branches
+error: doc comments are not allowed on `cfg_select` branches
   --> $DIR/cfg_select.rs:208:5
    |
 LL |     /// doc comment
    |     ^^^^^^^^^^^^^^^
 
-error: outer attributes are not allowed on `cfg_select` branches
+error: doc comments are not allowed on `cfg_select` branches
   --> $DIR/cfg_select.rs:211:5
    |
 LL |     /// doc comment
    |     ^^^^^^^^^^^^^^^
 
-error: outer attributes are not allowed on `cfg_select` branches
+error: attributes are not allowed on `cfg_select` branches
   --> $DIR/cfg_select.rs:217:5
    |
 LL |     #[cfg(false)]
    |     ^^^^^^^^^^^^^
 
-error: outer attributes are not allowed on `cfg_select` branches
-  --> $DIR/cfg_select.rs:225:5
+error: an inner attribute is not permitted in this context
+  --> $DIR/cfg_select.rs:224:5
+   |
+LL |     #![cfg(false)]
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error[E0753]: expected outer doc comment
+  --> $DIR/cfg_select.rs:231:5
+   |
+LL |     //! inner doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+help: you might have meant to write a regular comment
+   |
+LL -     //! inner doc comment
+LL +     // inner doc comment
+   |
+
+error: doc comments are not allowed on `cfg_select` branches
+  --> $DIR/cfg_select.rs:239:5
    |
 LL |     /// line1
    |     ^^^^^^^^^
@@ -142,7 +164,7 @@ LL |     cfg!() => {}
    = help: to expect this configuration use `--check-cfg=cfg(cfg)`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
-error: aborting due to 13 previous errors; 7 warnings emitted
+error: aborting due to 15 previous errors; 7 warnings emitted
 
-Some errors have detailed explanations: E0537, E0539.
+Some errors have detailed explanations: E0537, E0539, E0753.
 For more information about an error, try `rustc --explain E0537`.
