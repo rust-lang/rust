@@ -21,7 +21,7 @@ use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
 };
 
-impl<'hir> LoweringContext<'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_inline_asm(
         &mut self,
         sp: Span,

@@ -20,7 +20,7 @@ use crate::{
     LifetimeRes, LoweringContext, ParamMode,
 };
 
-impl<'hir> LoweringContext<'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn lower_qpath(
         &mut self,

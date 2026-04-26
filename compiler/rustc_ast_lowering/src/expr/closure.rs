@@ -9,7 +9,7 @@ use super::{LoweringContext, MoveExprInitializerFinder, MoveExprState};
 use crate::FnDeclKind;
 use crate::diagnostics::{ClosureCannotBeStatic, CoroutineTooManyParameters};
 
-impl<'hir> LoweringContext<'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     // Entry point for `ExprKind::Closure`. Plain closures go through
     // `lower_expr_plain_closure_with_move_exprs`, which can wrap the lowered
     // closure in `let` initializers for `move(...)`. Coroutine closures keep the
