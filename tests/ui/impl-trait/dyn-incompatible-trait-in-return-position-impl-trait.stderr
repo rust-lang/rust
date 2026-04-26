@@ -21,6 +21,18 @@ LL |         return A;
 LL |     }
 LL |     B
    |     ^ expected `A`, found `B`
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL - fn cat() -> impl DynCompatible {
+LL + fn cat() -> Box<dyn DynCompatible> {
+   |
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         return Box::new(A);
+LL |     }
+LL ~     Box::new(B)
+   |
 
 error: aborting due to 2 previous errors
 
