@@ -107,6 +107,7 @@ use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 
 use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
+use crate::boxed::Box;
 
 // The 2 least-significant bits are used as tag.
 const TAG_MASK: usize = 0b11;
