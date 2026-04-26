@@ -1167,6 +1167,16 @@ impl FilePermissions {
             self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
         }
     }
+
+    pub fn file_attributes(&self) -> u32 {
+        self.attrs as u32
+    }
+}
+
+impl FromInner<u32> for FilePermissions {
+    fn from_inner(attrs: u32) -> FilePermissions {
+        FilePermissions { attrs }
+    }
 }
 
 impl FileTimes {
