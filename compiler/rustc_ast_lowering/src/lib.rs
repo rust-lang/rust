@@ -97,9 +97,9 @@ pub fn provide(providers: &mut Providers) {
     providers.lower_to_hir = lower_to_hir;
 }
 
-struct LoweringContext<'hir> {
+struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'hir ResolverAstLowering<'hir>,
+    resolver: &'a ResolverAstLowering<'hir>,
     current_disambiguator: PerParentDisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -132,7 +132,7 @@ struct LoweringContext<'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
-    owner: &'hir PerOwnerResolverData<'hir>,
+    owner: &'a PerOwnerResolverData<'hir>,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<&'hir [TraitCandidate<'hir>]>,
 
@@ -174,13 +174,8 @@ struct LoweringContext<'hir> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-impl<'hir> LoweringContext<'hir> {
-    fn new(
-        tcx: TyCtxt<'hir>,
-        resolver: &'hir ResolverAstLowering<'hir>,
-        owner: NodeId,
-        next_node_id: NodeId,
-    ) -> Self {
+impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>, owner: NodeId) -> Self {
         let current_ast_owner = &resolver.owners[&owner];
         let current_hir_id_owner = hir::OwnerId { def_id: current_ast_owner.def_id };
         let current_disambiguator = resolver
@@ -208,7 +203,7 @@ impl<'hir> LoweringContext<'hir> {
             #[cfg(debug_assertions)]
             node_id_to_local_id: [(owner, hir::ItemLocalId::ZERO)].into_iter().collect(),
             trait_map: Default::default(),
-            next_node_id,
+            next_node_id: resolver.next_node_id,
             node_id_to_def_id: NodeMap::default(),
             partial_res_overrides: NodeMap::default(),
 
@@ -457,7 +452,10 @@ enum TryBlockScope {
     Heterogeneous(HirId),
 }
 
-fn index_ast<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> (IndexVec<LocalDefId, Steal<AstOwner>>, NodeId) {
+fn index_ast<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (): (),
+) -> IndexVec<LocalDefId, Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -465,6 +463,7 @@ fn index_ast<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> (IndexVec<LocalDefId, Steal<Ast
     tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
 
     let (resolver, krate) = tcx.resolver_for_lowering();
+    let mut resolver = resolver.steal();
     let mut krate = krate.steal();
 
     let mut indexer = Indexer {
@@ -474,19 +473,24 @@ fn index_ast<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> (IndexVec<LocalDefId, Steal<Ast
     };
     indexer.visit_crate(&mut krate);
     indexer.insert(CRATE_NODE_ID, AstOwner::Crate(Box::new(krate)));
-    return (indexer.index, indexer.next_node_id);
+    resolver.next_node_id = indexer.next_node_id;
 
-    struct Indexer<'s, 'ast> {
-        owners: &'s NodeMap<PerOwnerResolverData<'ast>>,
-        index: IndexVec<LocalDefId, Steal<AstOwner>>,
+    let index = indexer.index;
+    let resolver = Arc::new(resolver);
+    let index = index.into_iter().map(|owner| Steal::new((Arc::clone(&resolver), owner))).collect();
+    return index;
+
+    struct Indexer<'s, 'hir> {
+        owners: &'s NodeMap<PerOwnerResolverData<'hir>>,
+        index: IndexVec<LocalDefId, AstOwner>,
         next_node_id: NodeId,
     }
 
     impl Indexer<'_, '_> {
         fn insert(&mut self, id: NodeId, node: AstOwner) {
             let def_id = self.owners[&id].def_id;
-            self.index.ensure_contains_elem(def_id, || Steal::new(AstOwner::NonOwner));
-            self.index[def_id] = Steal::new(node);
+            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
+            self.index[def_id] = node;
         }
 
         fn make_dummy<K>(
@@ -611,43 +615,46 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
     tcx.ensure_done().early_lint_checks(());
     tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
     tcx.ensure_done().get_lang_items(());
-    let (resolver, _) = tcx.resolver_for_lowering();
-    let (ast_index, next_node_id) = tcx.index_ast(());
-    let node = ast_index.get(def_id).map(Steal::steal);
+    let ast_index = tcx.index_ast(());
+    let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
-    let mut item_lowerer = item::ItemLowerer { tcx, resolver, next_node_id: *next_node_id };
+    let fallback_to_parent = |parent_id| {
+        // The item did not exist in the AST, it was created by its parent.
+        let mut parent_info = tcx.lower_to_hir(parent_id);
+        if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
+            parent_info = tcx.lower_to_hir(hir_id.owner);
+        }
 
-    // The item existed in the AST.
-    let parent_id = match node.as_ref() {
-        Some(AstOwner::Crate(c)) => return item_lowerer.lower_crate(&c),
-        Some(AstOwner::Item(item)) => return item_lowerer.lower_item(&item),
-        Some(AstOwner::TraitItem(item)) => {
-            return item_lowerer.lower_trait_item(&item);
-        }
-        Some(AstOwner::ImplItem(item)) => {
-            return item_lowerer.lower_impl_item(&item);
-        }
-        Some(AstOwner::ForeignItem(item)) => return item_lowerer.lower_foreign_item(&item),
-        Some(AstOwner::Synthetic(parent_id)) => *parent_id,
-        Some(AstOwner::NonOwner) | None => tcx.local_parent(def_id),
+        let parent_info = parent_info.unwrap();
+        *parent_info.children.get(&def_id).unwrap_or_else(|| {
+            panic!(
+                "{:?} does not appear in children of {:?}",
+                def_id,
+                parent_info.nodes.node().def_id()
+            )
+        })
+    };
+
+    let Some((resolver, node)) = resolver_and_node else {
+        return fallback_to_parent(tcx.local_parent(def_id));
+    };
+
+    let mut item_lowerer = item::ItemLowerer { tcx, resolver: &*resolver };
+
+    let item = match &node {
+        // The item existed in the AST.
+        AstOwner::Crate(c) => item_lowerer.lower_crate(&c),
+        AstOwner::Item(item) => item_lowerer.lower_item(&item),
+        AstOwner::TraitItem(item) => item_lowerer.lower_trait_item(&item),
+        AstOwner::ImplItem(item) => item_lowerer.lower_impl_item(&item),
+        AstOwner::ForeignItem(item) => item_lowerer.lower_foreign_item(&item),
+        AstOwner::Synthetic(parent_id) => fallback_to_parent(*parent_id),
+        AstOwner::NonOwner => fallback_to_parent(tcx.local_parent(def_id)),
     };
 
     tcx.sess.time("drop_ast", || std::mem::drop(node));
 
-    // The item did not exist in the AST, it was created by its parent.
-    let mut parent_info = tcx.lower_to_hir(parent_id);
-    if let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
-        parent_info = tcx.lower_to_hir(hir_id.owner);
-    }
-
-    let parent_info = parent_info.unwrap();
-    *parent_info.children.get(&def_id).unwrap_or_else(|| {
-        panic!(
-            "{:?} does not appear in children of {:?}",
-            def_id,
-            parent_info.nodes.node().def_id()
-        )
-    })
+    item
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -677,7 +684,7 @@ enum GenericArgsMode {
     Silence,
 }
 
-impl<'hir> LoweringContext<'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     fn create_def(
         &mut self,
         node_id: NodeId,
@@ -3129,7 +3136,7 @@ impl<'hir> GenericArgsCtor<'hir> {
             && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
-    fn into_generic_args(self, this: &LoweringContext<'hir>) -> &'hir hir::GenericArgs<'hir> {
+    fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
             args: this.arena.alloc_from_iter(self.args),
             constraints: self.constraints,
