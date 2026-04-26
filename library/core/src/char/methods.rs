@@ -493,6 +493,7 @@ impl char {
                 || self.is_private_use()
                 || self.is_whitespace()
                 || args.escape_grapheme_extender && self.is_grapheme_extender()
+                || self.is_default_ignorable()
                 || self.is_format_control()
                 || self.is_unassigned() =>
             {
@@ -1223,6 +1224,37 @@ impl char {
             | '\u{100000}'..='\u{10FFFD}' => false,
             _ => true,
         }
+    }
+
+    /// Returns `true` if this `char` has the `Default_Ignorable_Code_Point` property.
+    /// These characters [should be displayed as invisible in fallback rendering](https://www.unicode.org/faq/unsup_char#3).
+    ///
+    /// `Default_Ignorable_Code_Point` is [described] in Chapter 5 (Implementation Guidelines) of the Unicode Standard,
+    /// and [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
+    ///
+    /// [described]: https://www.unicode.org/versions/latest/core-spec/chapter-5/#G40120
+    /// [specified]: https://www.unicode.org/reports/tr44/#Default_Ignorable_Code_Point
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore(private)
+    /// assert!('\u{AD}'.is_default_ignorable()); // SOFT HYPHEN
+    /// assert!('\u{115F}'.is_default_ignorable()); // HANGUL CHOSEONG FILLER
+    /// assert!('\u{200B}'.is_default_ignorable()); // ZERO WIDTH SPACE
+    /// assert!('\u{E0041}'.is_default_ignorable()); // TAG LATIN CAPITAL LETTER A
+    /// assert!(!'۝'.is_default_ignorable()); // ARABIC END OF AYAH
+    /// assert!(!'𓐲'.is_default_ignorable()); // EGYPTIAN HIEROGLYPH INSERT AT TOP START
+    /// assert!(!' '.is_default_ignorable());
+    /// assert!(!'\n'.is_default_ignorable());
+    /// assert!(!'\0'.is_default_ignorable());
+    /// assert!(!'q'.is_default_ignorable());
+    #[must_use]
+    #[inline]
+    fn is_default_ignorable(self) -> bool {
+        self > '\u{AC}' && unicode::Default_Ignorable_Code_Point(self)
     }
 
     /// Returns `true` if this `char` has the `Grapheme_Extend` property.

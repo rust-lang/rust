@@ -93,6 +93,7 @@ static PROPERTIES: &[&str] = &[
     "Case_Ignorable",
     "Cf",
     "Cn_Planes_0_3",
+    "Default_Ignorable_Code_Point",
     "Grapheme_Extend",
     "Lowercase",
     "Lt",

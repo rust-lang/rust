@@ -73,6 +73,15 @@ fn cn_planes_0_3() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
+fn default_ignorable_code_point() {
+    test_boolean_property(
+        test_data::DEFAULT_IGNORABLE_CODE_POINT,
+        unicode_data::default_ignorable_code_point::lookup,
+    );
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn grapheme_extend() {
     test_boolean_property(test_data::GRAPHEME_EXTEND, unicode_data::grapheme_extend::lookup);
 }
