@@ -2,6 +2,20 @@
 
 use crate::fmt;
 
+/// The type of raw OS error codes.
+///
+/// This is an [`i32`] on all currently supported platforms, but platforms
+/// added in the future (such as UEFI) may use a different primitive type like
+/// [`usize`]. Use `as` or [`into`] conversions where applicable to ensure maximum
+/// portability.
+///
+/// [`into`]: Into::into
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub type RawOsError = cfg_select! {
+    target_os = "uefi" => usize,
+    _ => i32,
+};
+
 /// A list specifying general categories of I/O error.
 ///
 /// This list is intended to grow over time and it is not recommended to
