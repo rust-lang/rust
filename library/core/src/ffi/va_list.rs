@@ -251,6 +251,9 @@ impl VaList<'_> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Clone for VaList<'f> {
+    /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
+    ///
+    /// Corresponds to `va_copy` in C.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
@@ -263,8 +266,14 @@ impl<'f> const Clone for VaList<'f> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Drop for VaList<'f> {
+    /// Drop the [`VaList`].
+    ///
+    /// Corresponds to `va_end` in C.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn drop(&mut self) {
+        // Call the rust `va_end` intrinsic, which is a no-op and does not map to LLVM `va_end`.
+        // The rust intrinsic exists as a hook for Miri to check for UB.
+        //
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
     }
