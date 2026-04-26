@@ -297,7 +297,7 @@ pub fn return_slice(x: &[u16]) -> &[u16] {
     x
 }
 
-// CHECK: { i16, i16 } @enum_id_1(i16 noundef{{( range\(i16 0, 3\))?}} %x.0, i16 %x.1)
+// CHECK: { i16, i16 } @enum_id_1(i16 noundef{{( range\(i16 -1, 2\))?}} %x.0, i16 %x.1)
 #[no_mangle]
 pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
     x
