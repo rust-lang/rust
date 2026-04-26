@@ -48,7 +48,7 @@ fn try_reconstruct_aggregate_constant<'tcx>(
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
     /// This is not possible in const contexts unless `#![feature(const_cmp, const_trait_impl)]` are enabled,
-    /// because`PartialEq` is not const-stable.
+    /// because `PartialEq` is not const-stable.
     fn can_use_aggregate_eq(&self) -> bool {
         let const_partial_eq_enabled = {
             let features = self.tcx.features();
@@ -340,13 +340,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     for (subplace, subpat) in
                         prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
                     {
-                        MatchPairTree::for_pattern(
-                            subplace,
-                            subpat,
-                            cx,
-                            &mut subpairs,
-                            extra_data,
-                        );
+                        MatchPairTree::for_pattern(subplace, subpat, cx, &mut subpairs, extra_data);
                     }
 
                     if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
