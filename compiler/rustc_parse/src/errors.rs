@@ -1140,14 +1140,13 @@ pub(crate) struct InclusiveRangeMatchArrow {
     #[primary_span]
     pub arrow: Span,
     #[label("this is parsed as an inclusive range `..=`")]
-    pub span: Span,
     #[suggestion(
         "add a space between the pattern and `=>`",
         style = "verbose",
-        code = " ",
+        code = ".. =",
         applicability = "machine-applicable"
     )]
-    pub after_pat: Span,
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1155,14 +1154,13 @@ pub(crate) struct InclusiveRangeMatchArrow {
 #[note("inclusive ranges must be bounded at the end (`..=b` or `a..=b`)")]
 pub(crate) struct InclusiveRangeNoEnd {
     #[primary_span]
-    pub span: Span,
     #[suggestion(
         "use `..` instead",
-        code = "",
+        code = "..",
         applicability = "machine-applicable",
         style = "verbose"
     )]
-    pub suggestion: Span,
+    pub span: Span,
 }
 
 #[derive(Subdiagnostic)]
