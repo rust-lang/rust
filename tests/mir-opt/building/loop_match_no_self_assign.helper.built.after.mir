@@ -4,8 +4,8 @@ fn helper() -> u8 {
     let mut _0: u8;
     let mut _1: u8;
     let mut _2: !;
-    let mut _3: !;
-    let mut _4: u8;
+    let mut _3: u8;
+    let mut _4: !;
     scope 1 {
         debug state => _1;
     }
@@ -24,8 +24,7 @@ fn helper() -> u8 {
 
     bb2: {
         PlaceMention(_1);
-        _4 = copy _1;
-        _1 = copy _4;
+        _3 = copy _1;
         goto -> bb7;
     }
 
@@ -51,6 +50,7 @@ fn helper() -> u8 {
     }
 
     bb8: {
+        _1 = copy _3;
         goto -> bb1;
     }
 
