@@ -105,8 +105,9 @@ pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
-use rustc_log::tracing::{self, info, trace};
-use rustc_middle::{bug, span_bug};
+pub use rustc_data_structures::either::Either;
+pub use rustc_log::tracing::{self, info, trace};
+pub use rustc_middle::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
