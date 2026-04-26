@@ -122,10 +122,10 @@ impl Features {
 
 impl HashStable for Features {
     fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        // Unfortunately we cannot exhaustively list fields here, since the
-        // struct has private fields (to ensure its invariant is maintained)
-        self.enabled_lang_features().hash_stable(hcx, hasher);
-        self.enabled_lib_features().hash_stable(hcx, hasher);
+        // `enabled_features` is skipped because it's the sum of the lang and lib features.
+        let Features { enabled_lang_features, enabled_lib_features, enabled_features: _ } = self;
+        enabled_lang_features.hash_stable(hcx, hasher);
+        enabled_lib_features.hash_stable(hcx, hasher);
     }
 }
 
