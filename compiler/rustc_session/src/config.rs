@@ -1013,17 +1013,6 @@ pub enum Input {
 }
 
 impl Input {
-    pub fn filestem(&self) -> &str {
-        if let Input::File(ifile) = self {
-            // If for some reason getting the file stem as a UTF-8 string fails,
-            // then fallback to a fixed name.
-            if let Some(name) = ifile.file_stem().and_then(OsStr::to_str) {
-                return name;
-            }
-        }
-        "rust_out"
-    }
-
     pub fn file_name(&self, session: &Session) -> FileName {
         match *self {
             Input::File(ref ifile) => FileName::Real(
