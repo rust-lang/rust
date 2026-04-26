@@ -1,5 +1,5 @@
 use crate::iter::FusedIterator;
-use crate::mem::MaybeUninit;
+use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::{fmt, ptr};
 
 /// An iterator over the mapped windows of another iterator.
@@ -47,7 +47,7 @@ impl<I: Iterator, F, const N: usize> MapWindows<I, F, N> {
         assert!(N != 0, "array in `Iterator::map_windows` must contain more than 0 elements");
 
         // Only ZST arrays' length can be so large.
-        if size_of::<I::Item>() == 0 {
+        if I::Item::IS_ZST {
             assert!(
                 N.checked_mul(2).is_some(),
                 "array size of `Iterator::map_windows` is too large"

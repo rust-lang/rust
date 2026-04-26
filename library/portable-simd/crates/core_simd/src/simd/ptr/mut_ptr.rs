@@ -104,8 +104,9 @@ impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N> {
         // SimdElement currently requires zero-sized metadata, so this should never fail.
         // If this ever changes, `simd_cast_ptr` should produce a post-mono error.
         use core::ptr::Pointee;
-        assert_eq!(size_of::<<T as Pointee>::Metadata>(), 0);
-        assert_eq!(size_of::<<U as Pointee>::Metadata>(), 0);
+        use core::mem::SizedTypeProperties;
+        assert!(<<T as Pointee>::Metadata>::IS_ZST);
+        assert!(<<U as Pointee>::Metadata>::IS_ZST);
 
         // Safety: pointers can be cast
         unsafe { core::intrinsics::simd::simd_cast_ptr(self) }
