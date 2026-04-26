@@ -1,5 +1,5 @@
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:9:5
+  --> $DIR/feature-gate-impl-restriction.rs:8:5
    |
 LL | pub impl(crate) trait Bar {}
    |     ^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | pub impl(crate) trait Bar {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:10:5
+  --> $DIR/feature-gate-impl-restriction.rs:9:5
    |
 LL | pub impl(in crate) trait BarInCrate {}
    |     ^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | pub impl(in crate) trait BarInCrate {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:13:9
+  --> $DIR/feature-gate-impl-restriction.rs:12:9
    |
 LL |     pub impl(in crate::foo) trait Baz {}
    |         ^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     pub impl(in crate::foo) trait Baz {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:14:9
+  --> $DIR/feature-gate-impl-restriction.rs:13:9
    |
 LL |     pub impl(super) unsafe trait BazUnsafeSuper {}
    |         ^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     pub impl(super) unsafe trait BazUnsafeSuper {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:15:9
+  --> $DIR/feature-gate-impl-restriction.rs:14:9
    |
 LL |     pub impl(self) auto trait BazAutoSelf {}
    |         ^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     pub impl(self) auto trait BazAutoSelf {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:16:9
+  --> $DIR/feature-gate-impl-restriction.rs:15:9
    |
 LL |     pub impl(in self) const trait BazConst {}
    |         ^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL |     pub impl(in self) const trait BazConst {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:19:13
+  --> $DIR/feature-gate-impl-restriction.rs:18:13
    |
 LL |         pub impl(in crate::foo::foo_inner) trait Qux {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL |         pub impl(in crate::foo::foo_inner) trait Qux {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:20:13
+  --> $DIR/feature-gate-impl-restriction.rs:19:13
    |
 LL | ...   pub impl(in crate::foo::foo_inner) unsafe auto trait QuxAutoUnsafe {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL | ...   pub impl(in crate::foo::foo_inner) unsafe auto trait QuxAutoUnsafe {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:21:13
+  --> $DIR/feature-gate-impl-restriction.rs:20:13
    |
 LL | ...   pub impl(in crate::foo::foo_inner) const unsafe trait QuxConstUnsafe {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL | ...   pub impl(in crate::foo::foo_inner) const unsafe trait QuxConstUnsafe 
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:25:9
+  --> $DIR/feature-gate-impl-restriction.rs:24:9
    |
 LL |     pub impl(crate) trait Bar {}
    |         ^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL |     pub impl(crate) trait Bar {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:27:9
+  --> $DIR/feature-gate-impl-restriction.rs:26:9
    |
 LL |     pub impl(in crate) trait BarInCrate {}
    |         ^^^^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL |     pub impl(in crate) trait BarInCrate {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:29:9
+  --> $DIR/feature-gate-impl-restriction.rs:28:9
    |
 LL |     pub impl(self) unsafe trait BazUnsafeSelf {}
    |         ^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |     pub impl(self) unsafe trait BazUnsafeSelf {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:31:9
+  --> $DIR/feature-gate-impl-restriction.rs:30:9
    |
 LL |     pub impl(in super) auto trait BazAutoSuper {}
    |         ^^^^^^^^^^^^^^
@@ -129,7 +129,7 @@ LL |     pub impl(in super) auto trait BazAutoSuper {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:33:9
+  --> $DIR/feature-gate-impl-restriction.rs:32:9
    |
 LL |     pub impl(super) const trait BazConstSuper {}
    |         ^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL |     pub impl(super) const trait BazConstSuper {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:37:13
+  --> $DIR/feature-gate-impl-restriction.rs:36:13
    |
 LL |         pub impl(in crate::foo::cfged_out_foo) trait CfgedOutQux {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -149,7 +149,7 @@ LL |         pub impl(in crate::foo::cfged_out_foo) trait CfgedOutQux {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:38:13
+  --> $DIR/feature-gate-impl-restriction.rs:37:13
    |
 LL | ...   pub impl(in crate::foo::cfged_out_foo) unsafe auto trait CfgedOutQuxUnsafeAuto {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -159,7 +159,7 @@ LL | ...   pub impl(in crate::foo::cfged_out_foo) unsafe auto trait CfgedOutQuxU
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl` restrictions are experimental
-  --> $DIR/feature-gate-impl-restriction.rs:39:13
+  --> $DIR/feature-gate-impl-restriction.rs:38:13
    |
 LL | ...   pub impl(in crate::foo::cfged_out_foo) const unsafe trait CfgedOutQuxConstUnsafe {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

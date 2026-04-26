@@ -1,5 +1,4 @@
 #![feature(impl_restriction)]
-#![expect(incomplete_features)]
 
 pub impl(crate) trait TopLevel {}
 

@@ -549,7 +549,7 @@ declare_features! (
     /// Target features on hexagon.
     (unstable, hexagon_target_feature, "1.27.0", Some(150250)),
     /// Allows `impl(crate) trait Foo` restrictions.
-    (incomplete, impl_restriction, "1.96.0", Some(105077)),
+    (unstable, impl_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (unstable, impl_trait_in_assoc_type, "1.70.0", Some(63063)),
     /// Allows `impl Trait` in bindings (`let`).
