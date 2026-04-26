@@ -235,34 +235,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn deprecation_note(&self) -> Option<Ident> {
-        match &self.kind {
-            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
-                let meta = &normal.item;
-
-                // #[deprecated = "..."]
-                if let Some(s) = meta.value_str() {
-                    return Some(Ident { name: s, span: meta.span() });
-                }
-
-                // #[deprecated(note = "...")]
-                if let Some(list) = meta.meta_item_list() {
-                    for nested in list {
-                        if let Some(mi) = nested.meta_item()
-                            && mi.path == sym::note
-                            && let Some(s) = mi.value_str()
-                        {
-                            return Some(Ident { name: s, span: mi.span });
-                        }
-                    }
-                }
-
-                None
-            }
-            _ => None,
-        }
-    }
-
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
@@ -339,6 +311,34 @@ impl Attribute {
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
             )],
+        }
+    }
+
+    pub fn deprecation_note(&self) -> Option<Ident> {
+        match &self.kind {
+            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
+                let meta = &normal.item;
+
+                // #[deprecated = "..."]
+                if let Some(s) = meta.value_str() {
+                    return Some(Ident { name: s, span: meta.span() });
+                }
+
+                // #[deprecated(note = "...")]
+                if let Some(list) = meta.meta_item_list() {
+                    for nested in list {
+                        if let Some(mi) = nested.meta_item()
+                            && mi.path == sym::note
+                            && let Some(s) = mi.value_str()
+                        {
+                            return Some(Ident { name: s, span: mi.span });
+                        }
+                    }
+                }
+
+                None
+            }
+            _ => None,
         }
     }
 }
@@ -824,19 +824,19 @@ pub fn mk_attr_name_value_str(
     mk_attr(g, style, unsafety, path, args, span)
 }
 
-pub fn filter_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> impl Iterator<Item = &A> {
+pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
     attrs.iter().filter(move |attr| attr.has_name(name))
 }
 
-pub fn find_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> Option<&A> {
+pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     filter_by_name(attrs, name).next()
 }
 
-pub fn first_attr_value_str_by_name(attrs: &[impl AttributeExt], name: Symbol) -> Option<Symbol> {
+pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
     find_by_name(attrs, name).and_then(|attr| attr.value_str())
 }
 
-pub fn contains_name(attrs: &[impl AttributeExt], name: Symbol) -> bool {
+pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
     find_by_name(attrs, name).is_some()
 }
 
@@ -910,11 +910,6 @@ pub trait AttributeExt: Debug {
     /// * `#[doc = "doc"]` returns `Some("doc")`.
     /// * `#[doc(...)]` returns `None`.
     fn doc_str(&self) -> Option<Symbol>;
-
-    /// Returns the deprecation note if this is deprecation attribute.
-    /// * `#[deprecated = "note"]` returns `Some("note")`.
-    /// * `#[deprecated(note = "note", ...)]` returns `Some("note")`.
-    fn deprecation_note(&self) -> Option<Ident>;
 
     /// Returns whether this attribute is any of the proc macro attributes.
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
