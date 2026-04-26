@@ -48,11 +48,8 @@ error: layout_of(MissingPayloadField) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -68,43 +65,22 @@ error: layout_of(MissingPayloadField) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -168,11 +144,8 @@ error: layout_of(CommonPayloadField) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -189,28 +162,16 @@ error: layout_of(CommonPayloadField) = Layout {
                                valid_range: 0..=255,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -227,22 +188,13 @@ error: layout_of(CommonPayloadField) = Layout {
                                valid_range: 0..=255,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -305,11 +257,8 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -325,28 +274,16 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -362,22 +299,13 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                                ),
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
+                       field_offsets: [
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -444,11 +372,8 @@ error: layout_of(NicheFirst) = Layout {
                },
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -465,75 +390,33 @@ error: layout_of(NicheFirst) = Layout {
                                valid_range: 0..=255,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                               Size(1 bytes),
-                           ],
-                           in_memory_order: [
-                               0,
-                               1,
-                           ],
-                       },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=2,
-                           },
-                       ),
+                       field_offsets: [
+                           Size(0 bytes),
+                           Size(1 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           0,
+                           1,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
@@ -600,11 +483,8 @@ error: layout_of(NicheSecond) = Layout {
                },
                tag_field: 0,
                variants: [
-                   Layout {
+                   VariantLayout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
@@ -621,75 +501,33 @@ error: layout_of(NicheSecond) = Layout {
                                valid_range: 0..=255,
                            },
                        ),
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                               Size(0 bytes),
-                           ],
-                           in_memory_order: [
-                               1,
-                               0,
-                           ],
-                       },
-                       largest_niche: Some(
-                           Niche {
-                               offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=2,
-                           },
-                       ),
+                       field_offsets: [
+                           Size(1 bytes),
+                           Size(0 bytes),
+                       ],
+                       fields_in_memory_order: [
+                           1,
+                           0,
+                       ],
                        uninhabited: false,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 1,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
-                   Layout {
+                   VariantLayout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
                        backend_repr: Memory {
                            sized: true,
                        },
-                       fields: Arbitrary {
-                           offsets: [],
-                           in_memory_order: [],
-                       },
-                       largest_niche: None,
+                       field_offsets: [],
+                       fields_in_memory_order: [],
                        uninhabited: false,
-                       variants: Single {
-                           index: 2,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(1 bytes),
-                       randomization_seed: $SEED,
                    },
                ],
            },
