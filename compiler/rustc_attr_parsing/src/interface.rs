@@ -8,8 +8,8 @@ use rustc_errors::{Diag, DiagCtxtHandle, Level, MultiSpan};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
+use rustc_session::Session;
 use rustc_session::lint::LintId;
-use rustc_session::{Session, SessionAndCrateName};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
@@ -21,7 +21,7 @@ use crate::{Early, Late, OmitDoc, ShouldEmit};
 
 pub struct EmitAttribute(
     pub  Box<
-        dyn for<'a> Fn(DiagCtxtHandle<'a>, Level, &SessionAndCrateName<'_>) -> Diag<'a, ()>
+        dyn for<'a> Fn(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
             + DynSend
             + DynSync
             + 'static,

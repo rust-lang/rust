@@ -1,6 +1,6 @@
+use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::{Session, SessionAndCrateName};
-use rustc_span::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ExpnKind, Ident, Span, Symbol, sym};
 
@@ -87,32 +87,23 @@ fn rustc_macro_help(span: Span) -> Option<errors::UnexpectedCfgRustcMacroHelp> {
     }
 }
 
-fn cargo_macro_help(
-    crate_name: Option<&dyn Fn(CrateNum) -> Symbol>,
-    span: Span,
-) -> Option<errors::UnexpectedCfgCargoMacroHelp> {
+fn cargo_macro_help(span: Span) -> Option<errors::UnexpectedCfgCargoMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
-    if let Some(crate_name) = crate_name
-        && let Some(def_id) = oexpn.macro_def_id
+    if let Some(def_id) = oexpn.macro_def_id
         && def_id.krate != LOCAL_CRATE
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
     {
-        Some(errors::UnexpectedCfgCargoMacroHelp {
-            macro_kind: macro_kind.descr(),
-            macro_name,
-            crate_name: crate_name(def_id.krate),
-        })
+        Some(errors::UnexpectedCfgCargoMacroHelp { macro_kind: macro_kind.descr(), macro_name })
     } else {
         None
     }
 }
 
 pub(crate) fn unexpected_cfg_name(
-    sess_and_name: &SessionAndCrateName<'_>,
+    sess: &Session,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> errors::UnexpectedCfgName {
-    let sess = sess_and_name.sess;
     #[allow(rustc::potential_query_instability)]
     let possibilities: Vec<Symbol> = sess.psess.check_config.expecteds.keys().copied().collect();
 
@@ -276,7 +267,7 @@ pub(crate) fn unexpected_cfg_name(
         };
         errors::unexpected_cfg_name::InvocationHelp::Cargo {
             help,
-            macro_help: cargo_macro_help(sess_and_name.crate_name, name_span),
+            macro_help: cargo_macro_help(name_span),
         }
     } else {
         let help = errors::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
@@ -290,11 +281,10 @@ pub(crate) fn unexpected_cfg_name(
 }
 
 pub(crate) fn unexpected_cfg_value(
-    sess_and_name: &SessionAndCrateName<'_>,
+    sess: &Session,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> errors::UnexpectedCfgValue {
-    let sess = sess_and_name.sess;
     let Some(ExpectedValues::Some(values)) = &sess.psess.check_config.expecteds.get(&name) else {
         panic!(
             "it shouldn't be possible to have a diagnostic on a value whose name is not in values"
@@ -414,7 +404,7 @@ pub(crate) fn unexpected_cfg_value(
         };
         errors::unexpected_cfg_value::InvocationHelp::Cargo {
             help,
-            macro_help: cargo_macro_help(sess_and_name.crate_name, name_span),
+            macro_help: cargo_macro_help(name_span),
         }
     } else {
         let help = if can_suggest_adding_value {

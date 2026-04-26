@@ -1188,8 +1188,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     span,
                     callback: Box::new(move |dcx, level, sess: &dyn std::any::Any| {
                         let sess = sess
-                            .downcast_ref::<rustc_session::SessionAndCrateName<'_>>()
-                            .expect("expected `SessionAndCrateName`");
+                            .downcast_ref::<rustc_session::Session>()
+                            .expect("expected `Session`");
                         (kind.0)(dcx, level, sess)
                     }),
                 });

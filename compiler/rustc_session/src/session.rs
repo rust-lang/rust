@@ -22,7 +22,6 @@ use rustc_errors::{
 };
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
-use rustc_span::def_id::CrateNum;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -1462,10 +1461,4 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         }
     };
     emitter
-}
-
-#[derive(Clone, Copy)]
-pub struct SessionAndCrateName<'sess> {
-    pub sess: &'sess Session,
-    pub crate_name: Option<&'sess dyn Fn(CrateNum) -> Symbol>,
 }

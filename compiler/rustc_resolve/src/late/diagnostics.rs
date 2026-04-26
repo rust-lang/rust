@@ -23,7 +23,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, find_attr};
 use rustc_middle::ty;
-use rustc_session::{Session, SessionAndCrateName, lint};
+use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
@@ -3639,9 +3639,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             let suggestion = if let Some(deletion_span) = deletion_span {
                                 let (use_span, replace_lt) = if elidable {
                                     let use_span = sess
-                                        .downcast_ref::<SessionAndCrateName<'_>>()
+                                        .downcast_ref::<Session>()
                                         .expect("expected a `Session`")
-                                        .sess
                                         .source_map()
                                         .span_extend_while_whitespace(use_span);
                                     (use_span, String::new())

@@ -42,7 +42,6 @@ use rustc_session::cstore::Untracked;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
-use rustc_span::def_id::CrateNum;
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
@@ -97,7 +96,6 @@ fn pre_expansion_lint<'a>(
         || {
             rustc_lint::check_ast_node(
                 sess,
-                None,
                 features,
                 true,
                 lint_store,
@@ -470,7 +468,6 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
-        Some(tcx),
         tcx.features(),
         false,
         lint_store,
@@ -1032,16 +1029,12 @@ struct DiagCallback<'a, 'tcx> {
     callback: &'a Box<
         dyn for<'b> Fn(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + DynSync,
     >,
-    info: rustc_session::SessionAndCrateName<'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
 impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for DiagCallback<'b, 'tcx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        let Self { callback, info } = self;
-        // FIXME: remove this transmute once lifetime coercion blocker is solved.
-        let info: rustc_session::SessionAndCrateName<'static> =
-            unsafe { std::mem::transmute(info) };
-        (callback)(dcx, level, &info)
+        (self.callback)(dcx, level, self.tcx.sess)
     }
 }
 
@@ -1049,15 +1042,11 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
             for lint in delayed_lints {
-                let info = rustc_session::SessionAndCrateName {
-                    sess: tcx.sess,
-                    crate_name: Some(&move |crate_num: CrateNum| tcx.crate_name(crate_num)),
-                };
                 tcx.emit_node_span_lint(
                     lint.lint_id.lint,
                     lint.id,
                     lint.span.clone(),
-                    DiagCallback { callback: &lint.callback, info },
+                    DiagCallback { callback: &lint.callback, tcx },
                 );
             }
         }

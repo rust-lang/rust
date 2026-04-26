@@ -485,13 +485,9 @@ pub(crate) struct UnexpectedCfgRustcMacroHelp {
     "using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate"
 )]
 #[help("try referring to `{$macro_name}` crate for guidance on how handle this unexpected cfg")]
-#[help(
-    "the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`"
-)]
 pub(crate) struct UnexpectedCfgCargoMacroHelp {
     pub macro_kind: &'static str,
     pub macro_name: Symbol,
-    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

@@ -479,11 +479,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     }
 
     pub(crate) fn emit_dyn_lint_with_sess<
-        F: for<'a> Fn(
-                DiagCtxtHandle<'a>,
-                Level,
-                &rustc_session::SessionAndCrateName<'_>,
-            ) -> Diag<'a, ()>
+        F: for<'a> Fn(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
             + DynSend
             + DynSync
             + 'static,
