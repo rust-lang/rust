@@ -2811,6 +2811,7 @@ fn add_without_unwanted_attributes<'hir>(
                     rust_logo: _,
                     test_attrs: _,
                     no_crate_inject: _,
+                    syntax: _,
                 } = d;
                 let mut attr = DocAttribute::default();
                 if is_inline {

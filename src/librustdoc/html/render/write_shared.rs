@@ -13,7 +13,7 @@
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
 //!    or contains "invocation-specific".
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
@@ -421,7 +421,7 @@ impl CratesIndexPart {
             </div>\
             <ul class=\"all-items\">{DELIMITER}</ul>"
         );
-        let template = layout::render(layout, &page, "", content, style_files);
+        let template = layout::render(layout, &page, "", content, style_files, &Cell::new(false));
         SortedTemplate::from_template(&template, DELIMITER)
             .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")
     }

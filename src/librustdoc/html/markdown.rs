@@ -5,8 +5,11 @@
 //! ```
 //! #![feature(rustc_private)]
 //!
+//! extern crate rustc_hir;
 //! extern crate rustc_span;
 //!
+//! use std::cell::Cell;
+//! use rustc_hir::attrs::DocAttributeSyntax;
 //! use rustc_span::edition::Edition;
 //! use rustdoc::html::markdown::{HeadingOffset, IdMap, Markdown, ErrorCodes};
 //!
@@ -16,6 +19,8 @@
 //!     content: s,
 //!     links: &[],
 //!     ids: &mut id_map,
+//!     contains_mathml: &Cell::new(false),
+//!     doc_syntax: None,
 //!     error_codes: ErrorCodes::Yes,
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
@@ -27,6 +32,7 @@
 //! ```
 
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::fmt::{self, Write};
 use std::iter::Peekable;
@@ -38,6 +44,7 @@ use std::sync::{Arc, Weak};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
+use rustc_hir::attrs::DocAttributeSyntax;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -45,6 +52,7 @@ use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_resolve::rustdoc::pulldown_cmark::{
     self, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use tracing::{debug, trace};
@@ -65,12 +73,17 @@ mod tests;
 const MAX_HEADER_LEVEL: u32 = 6;
 
 /// Options for rendering Markdown in summaries (e.g., in search results).
-pub(crate) fn summary_opts() -> Options {
+pub(crate) fn summary_opts(doc_syntax: Option<&DocAttributeSyntax>) -> Options {
     Options::ENABLE_TABLES
         | Options::ENABLE_FOOTNOTES
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_SMART_PUNCTUATION
+        | (if let Some(DocAttributeSyntax { tex_math_dollars: true, .. }) = doc_syntax {
+            Options::ENABLE_MATH
+        } else {
+            Options::empty()
+        })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -91,6 +104,10 @@ pub struct Markdown<'a> {
     pub links: &'a [RenderedLink],
     /// The current list of used header IDs.
     pub ids: &'a mut IdMap,
+    /// Set to `true` if a `$\TeX$` span is found.
+    pub contains_mathml: &'a Cell<bool>,
+    /// If `$\TeX$` syntax is enabled, this is set.
+    pub doc_syntax: Option<&'a DocAttributeSyntax>,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
     pub error_codes: ErrorCodes,
     /// Default edition to use when parsing doctests (to add a `fn main`).
@@ -105,6 +122,10 @@ pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) content: &'a str,
     pub(crate) links: &'a [RenderedLink],
     pub(crate) ids: &'a mut IdMap,
+    /// Set to `true` if a `$\TeX$` span is found.
+    pub(crate) contains_mathml: &'a Cell<bool>,
+    /// If `$\TeX$` syntax is enabled, this is set.
+    pub(crate) doc_syntax: Option<&'a DocAttributeSyntax>,
     pub(crate) error_codes: ErrorCodes,
     pub(crate) edition: Edition,
     pub(crate) playground: &'a Option<Playground>,
@@ -116,10 +137,19 @@ pub(crate) struct MarkdownItemInfo<'a> {
     pub(crate) content: &'a str,
     pub(crate) links: &'a [RenderedLink],
     pub(crate) ids: &'a mut IdMap,
+    /// Set to `true` if a `$\TeX$` span is found.
+    pub(crate) contains_mathml: &'a Cell<bool>,
+    /// If `$\TeX$` syntax is enabled, this is set.
+    pub(crate) doc_syntax: Option<&'a DocAttributeSyntax>,
 }
 
 /// A tuple struct like `Markdown` that renders only the first paragraph.
-pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
+pub(crate) struct MarkdownSummaryLine<'a> {
+    pub md: &'a str,
+    pub links: &'a [RenderedLink],
+    pub contains_mathml: &'a Cell<bool>,
+    pub doc_syntax: Option<&'a DocAttributeSyntax>,
+}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ErrorCodes {
@@ -628,7 +658,7 @@ fn check_if_allowed_tag(t: &TagEnd) -> bool {
             | TagEnd::Strong
             | TagEnd::Strikethrough
             | TagEnd::Link
-            | TagEnd::BlockQuote
+            | TagEnd::BlockQuote(_)
     )
 }
 
@@ -697,6 +727,22 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     }
 }
 
+struct MathDetector<'c, I> {
+    p: I,
+    contains_mathml: &'c Cell<bool>,
+}
+
+impl<'a, 'c, I: Iterator<Item = Event<'a>>> Iterator for MathDetector<'c, I> {
+    type Item = Event<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = self.p.next();
+        if matches!(event, Some(Event::InlineMath(_) | Event::DisplayMath(_))) {
+            self.contains_mathml.set(true);
+        }
+        event
+    }
+}
+
 /// A newtype that represents a relative line number in Markdown.
 ///
 /// In other words, this represents an offset from the first line of Markdown
@@ -735,7 +781,7 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     extra_info: Option<&ExtraInfo<'_>>,
     include_non_rust: bool,
 ) {
-    let mut parser = Parser::new_ext(doc, main_body_opts()).into_offset_iter();
+    let mut parser = Parser::new_ext(doc, main_body_opts(None)).into_offset_iter();
     let mut prev_offset = 0;
     let mut nb_lines = 0;
     let mut register_header = None;
@@ -1345,6 +1391,8 @@ impl<'a> Markdown<'a> {
             content: md,
             links,
             ids,
+            contains_mathml,
+            doc_syntax,
             error_codes: codes,
             edition,
             playground,
@@ -1358,7 +1406,8 @@ impl<'a> Markdown<'a> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
+        let p =
+            Parser::new_with_broken_link_callback(md, main_body_opts(doc_syntax), Some(replacer));
         let p = p.into_offset_iter();
 
         ids.handle_footnotes(|ids, existing_footnotes| {
@@ -1366,6 +1415,7 @@ impl<'a> Markdown<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            let p = MathDetector { p, contains_mathml };
             CodeBlocks::new(p, codes, edition, playground)
         })
     }
@@ -1422,8 +1472,16 @@ impl<'a> Markdown<'a> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_parts(self) -> (Toc, String) {
-        let MarkdownWithToc { content: md, links, ids, error_codes: codes, edition, playground } =
-            self;
+        let MarkdownWithToc {
+            content: md,
+            links,
+            ids,
+            error_codes: codes,
+            edition,
+            playground,
+            contains_mathml,
+            doc_syntax,
+        } = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1436,7 +1494,11 @@ impl MarkdownWithToc<'_> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(
+            md,
+            main_body_opts(doc_syntax),
+            Some(&mut replacer),
+        );
         let p = p.into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
@@ -1448,6 +1510,7 @@ impl MarkdownWithToc<'_> {
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
+            let p = MathDetector { p, contains_mathml };
             html::push_html(&mut s, p);
         });
 
@@ -1461,12 +1524,18 @@ impl MarkdownWithToc<'_> {
 }
 
 impl<'a> MarkdownItemInfo<'a> {
-    pub(crate) fn new(content: &'a str, links: &'a [RenderedLink], ids: &'a mut IdMap) -> Self {
-        Self { content, links, ids }
+    pub(crate) fn new(
+        content: &'a str,
+        links: &'a [RenderedLink],
+        ids: &'a mut IdMap,
+        contains_mathml: &'a Cell<bool>,
+        doc_syntax: Option<&'a DocAttributeSyntax>,
+    ) -> Self {
+        Self { content, links, ids, contains_mathml, doc_syntax }
     }
 
     pub(crate) fn write_into(self, mut f: impl fmt::Write) -> fmt::Result {
-        let MarkdownItemInfo { content: md, links, ids } = self;
+        let MarkdownItemInfo { content: md, links, ids, contains_mathml, doc_syntax } = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1480,7 +1549,8 @@ impl<'a> MarkdownItemInfo<'a> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
+        let p =
+            Parser::new_with_broken_link_callback(md, main_body_opts(doc_syntax), Some(replacer));
         let p = p.into_offset_iter();
 
         // Treat inline HTML as plain text.
@@ -1494,6 +1564,7 @@ impl<'a> MarkdownItemInfo<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            let p = MathDetector { p, contains_mathml };
             // in legacy wrap mode, strip <p> elements to avoid them inserting newlines
             html::write_html_fmt(&mut f, p)?;
 
@@ -1504,7 +1575,7 @@ impl<'a> MarkdownItemInfo<'a> {
 
 impl MarkdownSummaryLine<'_> {
     pub(crate) fn into_string_with_has_more_content(self) -> (String, bool) {
-        let MarkdownSummaryLine(md, links) = self;
+        let MarkdownSummaryLine { md, links, contains_mathml, doc_syntax } = self;
         // This is actually common enough to special-case
         if md.is_empty() {
             return (String::new(), false);
@@ -1517,8 +1588,12 @@ impl MarkdownSummaryLine<'_> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
-            .peekable();
+        let p = Parser::new_with_broken_link_callback(
+            md,
+            summary_opts(doc_syntax),
+            Some(&mut replacer),
+        )
+        .peekable();
         let mut summary = SummaryLine::new(p);
 
         let mut s = String::new();
@@ -1527,7 +1602,7 @@ impl MarkdownSummaryLine<'_> {
             !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
         });
 
-        html::push_html(&mut s, without_paragraphs);
+        html::push_html(&mut s, MathDetector { p: without_paragraphs, contains_mathml });
 
         let has_more_content =
             matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
@@ -1564,7 +1639,7 @@ fn markdown_summary_with_limit(
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
-    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+    let p = Parser::new_with_broken_link_callback(md, summary_opts(None), Some(&mut replacer));
     let mut p = LinkReplacer::new(p, link_names);
 
     let mut buf = HtmlWithLimit::new(length_limit);
@@ -1645,7 +1720,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
-    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+    let p = Parser::new_with_broken_link_callback(md, summary_opts(None), Some(&mut replacer));
 
     plain_text_from_events(p, &mut s);
 
@@ -1725,6 +1800,7 @@ impl MarkdownLinkRange {
 
 pub(crate) fn markdown_links<'md, R>(
     md: &'md str,
+    doc_syntax: Option<&DocAttributeSyntax>,
     preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
 ) -> Vec<R> {
     use itertools::Itertools;
@@ -1879,7 +1955,7 @@ pub(crate) fn markdown_links<'md, R>(
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
     let event_iter = Parser::new_with_broken_link_callback(
         md,
-        main_body_opts(),
+        main_body_opts(doc_syntax),
         Some(&mut broken_link_callback),
     )
     .into_offset_iter();
@@ -1911,7 +1987,9 @@ pub(crate) fn markdown_links<'md, R>(
                             span_for_link(&dest_url, span)
                         }
                     }
-                    LinkType::Autolink | LinkType::Email => unreachable!(),
+                    LinkType::Autolink | LinkType::Email | LinkType::WikiLink { .. } => {
+                        unreachable!()
+                    }
                 };
 
                 if let Some(link) = preprocess_link(MarkdownLink {
@@ -1961,7 +2039,11 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
         return code_blocks;
     }
 
-    let mut p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
+    let mut p = Parser::new_ext(
+        md,
+        main_body_opts(extra_info.tcx.doc_attribute_syntax(LOCAL_CRATE.as_def_id())),
+    )
+    .into_offset_iter();
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {

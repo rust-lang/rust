@@ -5417,7 +5417,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
 
         let mut need_traits_in_scope = false;
-        for path_str in rustdoc::attrs_to_preprocessed_links(attrs) {
+        for path_str in rustdoc::attrs_to_preprocessed_links(self.r.tcx, attrs) {
             // Resolve all namespaces due to no disambiguator or for diagnostics.
             let mut any_resolved = false;
             let mut need_assoc = false;

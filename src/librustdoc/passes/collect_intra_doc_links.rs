@@ -11,7 +11,7 @@ use rustc_ast::util::comments::may_have_doc_links;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, DocAttributeSyntax};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
@@ -1060,8 +1060,11 @@ fn preprocess_link(
     }))
 }
 
-fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
-    markdown_links(s, |link| {
+fn preprocessed_markdown_links(
+    s: &str,
+    doc_syntax: Option<&DocAttributeSyntax>,
+) -> Vec<PreprocessedMarkdownLink> {
+    markdown_links(s, doc_syntax, |link| {
         preprocess_link(&link, s).map(|pp_link| PreprocessedMarkdownLink(pp_link, link))
     })
 }
@@ -1095,7 +1098,8 @@ impl LinkCollector<'_, '_> {
                 DefKind::Mod if item.inner_docs(tcx) => item_id,
                 _ => find_nearest_parent_module(tcx, item_id).unwrap(),
             };
-            for md_link in preprocessed_markdown_links(&doc) {
+            let doc_syntax = tcx.doc_attribute_syntax(item_id);
+            for md_link in preprocessed_markdown_links(&doc, doc_syntax) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
                     self.cx

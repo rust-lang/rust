@@ -447,8 +447,15 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         };
                         let visibility_and_hidden = visibility_and_hidden(myitem);
 
-                        let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
-                            .into_string();
+                        let docs = MarkdownSummaryLine {
+                            md: &myitem.doc_value(),
+                            links: &myitem.links(cx),
+                            doc_syntax: cx
+                                .tcx()
+                                .doc_attribute_syntax(myitem.item_id.expect_def_id()),
+                            contains_mathml: &cx.contains_mathml,
+                        }
+                        .into_string();
                         let (docs_before, docs_after) =
                             if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
                         let deprecation_attr = deprecation_class_attr(myitem.is_deprecated(tcx));

@@ -662,7 +662,7 @@ dependencies = [
  "declare_clippy_lint",
  "filetime",
  "itertools",
- "pulldown-cmark",
+ "pulldown-cmark 0.11.3",
  "regex",
  "rustc_tools_util 0.4.2",
  "serde",
@@ -3094,6 +3094,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pulldown-cmark"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c3a14896dfa883796f1cb410461aef38810ea05f2b2c33c5aded3649095fdad"
+dependencies = [
+ "bitflags",
+ "memchr",
+ "pulldown-cmark-escape",
+ "unicase",
+]
+
+[[package]]
 name = "pulldown-cmark-escape"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4548,7 +4560,7 @@ version = "0.0.0"
 dependencies = [
  "indexmap",
  "itertools",
- "pulldown-cmark",
+ "pulldown-cmark 0.13.3",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",

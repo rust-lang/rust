@@ -2007,6 +2007,7 @@ symbols! {
         sve_tuple_set,
         sym,
         sync,
+        syntax,
         synthetic,
         t32,
         target,

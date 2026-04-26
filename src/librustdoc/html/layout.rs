@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -70,6 +71,7 @@ struct PageLayout<'a> {
     display_krate_with_trailing_slash: String,
     display_krate_version_number: &'a str,
     display_krate_version_extra: &'a str,
+    contains_mathml: bool,
 }
 
 impl PageLayout<'_> {
@@ -87,6 +89,7 @@ pub(crate) fn render<T: Display, S: Display>(
     sidebar: S,
     t: T,
     style_files: &[StylePath],
+    contains_mathml: &Cell<bool>,
 ) -> String {
     let rustdoc_version = rustc_interface::util::version_str!().unwrap_or("unknown version");
 
@@ -110,6 +113,7 @@ pub(crate) fn render<T: Display, S: Display>(
 
     let content = t.to_string(); // Note: This must happen before making the sidebar.
     let sidebar = sidebar.to_string();
+    let contains_mathml = contains_mathml.get();
     PageLayout {
         static_root_path,
         page,
@@ -124,6 +128,7 @@ pub(crate) fn render<T: Display, S: Display>(
         display_krate_version_extra,
         rust_channel: *crate::clean::utils::RUSTDOC_VERSION,
         rustdoc_version,
+        contains_mathml,
     }
     .render()
     .unwrap()
