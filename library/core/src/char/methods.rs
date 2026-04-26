@@ -970,6 +970,50 @@ impl char {
         }
     }
 
+    /// Returns `true` if this `char` has one of the general categories for numbers.
+    ///
+    /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
+    /// characters, and `No` for other numeric characters) are [specified] in the Unicode Character
+    /// Database [`UnicodeData.txt`].
+    ///
+    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
+    /// If you want everything including characters with overlapping purposes, then you might want to use
+    /// a Unicode or language-processing library that exposes the appropriate character properties
+    /// (e.g. [`Numeric_Type`]) instead of looking at the Unicode categories.
+    ///
+    /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
+    /// `is_ascii_digit` or `is_digit` instead.
+    ///
+    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
+    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
+    /// [`Numeric_Type`]: https://www.unicode.org/reports/tr44/#Numeric_Type
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert!('٣'.is_numeric());
+    /// assert!('7'.is_numeric());
+    /// assert!('৬'.is_numeric());
+    /// assert!('¾'.is_numeric());
+    /// assert!('①'.is_numeric());
+    /// assert!(!'K'.is_numeric());
+    /// assert!(!'و'.is_numeric());
+    /// assert!(!'藏'.is_numeric());
+    /// assert!(!'三'.is_numeric());
+    /// ```
+    #[must_use]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn is_numeric(self) -> bool {
+        match self {
+            '0'..='9' => true,
+            '\0'..='\u{B1}' => false,
+            _ => unicode::N(self),
+        }
+    }
+
     /// Returns `true` if this `char` satisfies either [`is_alphabetic()`] or [`is_numeric()`].
     ///
     /// [`is_alphabetic()`]: Self::is_alphabetic
@@ -1099,50 +1143,6 @@ impl char {
             matches!(self, '\'' | '.' | ':' | '^' | '`')
         } else {
             unicode::Case_Ignorable(self)
-        }
-    }
-
-    /// Returns `true` if this `char` has one of the general categories for numbers.
-    ///
-    /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
-    /// characters, and `No` for other numeric characters) are [specified] in the Unicode Character
-    /// Database [`UnicodeData.txt`].
-    ///
-    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
-    /// If you want everything including characters with overlapping purposes, then you might want to use
-    /// a Unicode or language-processing library that exposes the appropriate character properties
-    /// (e.g. [`Numeric_Type`]) instead of looking at the Unicode categories.
-    ///
-    /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
-    /// `is_ascii_digit` or `is_digit` instead.
-    ///
-    /// [specified]: https://www.unicode.org/reports/tr44/#GC_Values_Table
-    /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
-    /// [`Numeric_Type`]: https://www.unicode.org/reports/tr44/#Numeric_Type
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// assert!('٣'.is_numeric());
-    /// assert!('7'.is_numeric());
-    /// assert!('৬'.is_numeric());
-    /// assert!('¾'.is_numeric());
-    /// assert!('①'.is_numeric());
-    /// assert!(!'K'.is_numeric());
-    /// assert!(!'و'.is_numeric());
-    /// assert!(!'藏'.is_numeric());
-    /// assert!(!'三'.is_numeric());
-    /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub fn is_numeric(self) -> bool {
-        match self {
-            '0'..='9' => true,
-            '\0'..='\u{B1}' => false,
-            _ => unicode::N(self),
         }
     }
 
