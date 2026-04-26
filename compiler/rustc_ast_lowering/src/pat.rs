@@ -14,7 +14,7 @@ use super::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
 };
 
-impl<'hir> LoweringContext<'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }

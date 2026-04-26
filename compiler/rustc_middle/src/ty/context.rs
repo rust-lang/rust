@@ -2833,7 +2833,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn resolver_for_lowering(
         self,
-    ) -> (&'tcx ty::ResolverAstLowering<'tcx>, &'tcx Steal<ast::Crate>) {
+    ) -> (&'tcx Steal<ty::ResolverAstLowering<'tcx>>, &'tcx Steal<ast::Crate>) {
         let (resolver, krate, _) = self.resolver_for_lowering_raw(());
         (resolver, krate)
     }

@@ -31,13 +31,14 @@ macro_rules! arena_types {
                 rustc_hir::def_id::LocalDefId,
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
             >,
-            [] resolver: rustc_middle::ty::ResolverAstLowering<'tcx>,
-            [] index_ast: (
-                rustc_index::IndexVec<rustc_span::def_id::LocalDefId,
-                    rustc_data_structures::steal::Steal<rustc_ast::AstOwner>
-                >,
-                rustc_ast::NodeId,
-            ),
+            [] resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering<'tcx>>,
+            [] index_ast: rustc_index::IndexVec<
+                rustc_span::def_id::LocalDefId,
+                rustc_data_structures::steal::Steal<(
+                    std::sync::Arc<rustc_middle::ty::ResolverAstLowering<'tcx>>,
+                    rustc_ast::AstOwner
+                )>
+            >,
             [] crate_alone: rustc_data_structures::steal::Steal<rustc_ast::Crate>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,

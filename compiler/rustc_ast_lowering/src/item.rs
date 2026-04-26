@@ -26,10 +26,9 @@ use super::{
     RelaxedBoundForbiddenReason, RelaxedBoundPolicy, ResolverAstLoweringExt,
 };
 
-pub(super) struct ItemLowerer<'hir> {
+pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
-    pub(super) resolver: &'hir ResolverAstLowering<'hir>,
-    pub(super) next_node_id: NodeId,
+    pub(super) resolver: &'a ResolverAstLowering<'hir>,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -51,13 +50,13 @@ fn add_ty_alias_where_clause(
         if before.0 || !after.0 { before } else { after };
 }
 
-impl<'hir> ItemLowerer<'hir> {
+impl<'hir> ItemLowerer<'_, 'hir> {
     fn with_lctx(
         &mut self,
         owner: NodeId,
-        f: impl FnOnce(&mut LoweringContext<'hir>) -> hir::OwnerNode<'hir>,
+        f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) -> hir::MaybeOwner<'hir> {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner, self.next_node_id);
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver, owner);
 
         let item = f(&mut lctx);
         debug_assert_eq!(lctx.current_hir_id_owner, item.def_id());
@@ -95,7 +94,7 @@ impl<'hir> ItemLowerer<'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(
         &mut self,
         items: &[Box<Item>],
@@ -1478,7 +1477,7 @@ impl<'hir> LoweringContext<'hir> {
     pub(crate) fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        lower_body: impl FnOnce(&mut LoweringContext<'hir>) -> hir::Expr<'hir>,
+        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
         fn_decl_span: Span,
         body_span: Span,
         coroutine_kind: CoroutineKind,
@@ -1615,7 +1614,7 @@ impl<'hir> LoweringContext<'hir> {
             parameters.push(new_parameter);
         }
 
-        let mkbody = |this: &mut LoweringContext<'hir>| {
+        let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
             // Create a block from the user's function body:
             let user_body = lower_body(this);
 

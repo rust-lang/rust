@@ -402,6 +402,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let sess = tcx.sess;
     let (resolver, krate) = tcx.resolver_for_lowering();
+    let resolver = &*resolver.borrow();
     let krate = &*krate.borrow();
     let mut lint_buffer = resolver.lint_buffer.steal();
 
@@ -785,7 +786,11 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx ty::ResolverAstLowering<'tcx>, &'tcx Steal<ast::Crate>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (
+    &'tcx Steal<ty::ResolverAstLowering<'tcx>>,
+    &'tcx Steal<ast::Crate>,
+    &'tcx ty::ResolverGlobalCtxt,
+) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -807,7 +812,7 @@ fn resolver_for_lowering_raw<'tcx>(
     } = resolver.into_outputs();
 
     (
-        tcx.arena.alloc(untracked_resolver_for_lowering),
+        tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)),
         tcx.arena.alloc(Steal::new(krate)),
         tcx.arena.alloc(untracked_resolutions),
     )
