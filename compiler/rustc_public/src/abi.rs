@@ -458,6 +458,8 @@ pub enum CallConvention {
 
     Custom,
 
+    Swift,
+
     // Target-specific calling conventions.
     ArmAapcs,
     CCmseNonSecureCall,

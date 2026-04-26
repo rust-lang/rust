@@ -92,6 +92,8 @@ impl AbiMap {
 
             (ExternAbi::Custom, _) => CanonAbi::Custom,
 
+            (ExternAbi::Swift, _) => CanonAbi::Swift,
+
             (ExternAbi::System { .. }, ArchKind::X86)
                 if os == OsKind::Windows && !has_c_varargs =>
             {
