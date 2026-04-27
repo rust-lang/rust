@@ -171,6 +171,159 @@ static Error writeFile(StringRef Filename, StringRef Data) {
   return Error::success();
 }
 
+// Get a map containing all the arguments for the image. Repeated arguments will
+// be placed in a comma separated list.
+static DenseMap<StringRef, StringRef> getImageArguments(StringRef Image,
+                                                        StringSaver &Saver) {
+  DenseMap<StringRef, StringRef> Args;
+  for (StringRef Arg : llvm::split(Image, ",")) {
+    auto [Key, Value] = Arg.split("=");
+    auto [It, Inserted] = Args.try_emplace(Key, Value);
+    if (!Inserted)
+      It->second = Saver.save(It->second + "," + Value);
+  }
+
+  return Args;
+}
+
+#include "llvm/Support/WithColor.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Frontend/Offloading/OffloadWrapper.h"
+#include "llvm/Frontend/Offloading/Utility.h"
+#include "llvm/Object/OffloadBinary.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FileOutputBuffer.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/Signals.h"
+#include "llvm/Support/StringSaver.h"
+#include "llvm/Support/WithColor.h"
+#include "llvm/TargetParser/Host.h"
+extern "C" bool LLVMRustWrapImages(LLVMModuleRef MRef) {
+  //LLVMContext Context;
+  //Module M("offload.wrapper.module", Context);
+  //M.setTargetTriple(llvm::Triple("x86_64-unknown-linux"));
+  if (!MRef) return false;
+  Module &M = *unwrap(MRef);
+  SmallVector<std::unique_ptr<MemoryBuffer>> Buffers;
+  SmallVector<ArrayRef<char>> BuffersToWrap;
+  StringRef Input = "/p/lustre1/drehwald1/prog/offload/r/image";
+  //for (StringRef Input : InputFiles) {
+    ErrorOr<std::unique_ptr<MemoryBuffer>> BufferOrErr =
+        MemoryBuffer::getFileOrSTDIN(Input);
+    if (std::error_code EC = BufferOrErr.getError())
+      return false;
+    std::unique_ptr<MemoryBuffer> &Buffer =
+        Buffers.emplace_back(std::move(*BufferOrErr));
+    BuffersToWrap.emplace_back(
+        ArrayRef<char>(Buffer->getBufferStart(), Buffer->getBufferSize()));
+  //}
+  //static const char ImagePath[] = "/p/lustre1/drehwald1/prog/offload/r/image";
+
+  //ArrayRef<char> Buf(ImagePath, std::strlen(ImagePath));
+  //ArrayRef<ArrayRef<char>> BuffersToWrap(Buf);
+  llvm::errs() << "wraping\n";
+
+  if (Error Err = offloading::wrapOpenMPBinaries(
+          M, BuffersToWrap, offloading::getOffloadEntryArray(M),
+          /*Suffix=*/"", /*Relocatable=*/false))
+    return false;
+  llvm::errs() << "wraping\n";
+
+  int FD = -1;
+  std::string OutputFile = "/p/lustre1/drehwald1/prog/offload/r/out.bc";
+  if (std::error_code EC = sys::fs::openFileForWrite(OutputFile, FD))
+    return false;
+  llvm::raw_fd_ostream OS(FD, true);
+  WriteBitcodeToFile(M, OS);
+  llvm::errs() << "wraping\n";
+
+  return true;
+}
+static Error unbundleImages(StringRef Image, StringRef InputFile) {
+  llvm::errs() << "start\n";
+  ErrorOr<std::unique_ptr<MemoryBuffer>> BufferOrErr =
+      MemoryBuffer::getFileOrSTDIN(InputFile);
+  if (std::error_code EC = BufferOrErr.getError())
+    return createFileError(InputFile, EC);
+  std::unique_ptr<MemoryBuffer> Buffer = std::move(*BufferOrErr);
+  llvm::errs() << "got file\n";
+
+  // This data can be misaligned if extracted from an archive.
+  if (!isAddrAligned(Align(OffloadBinary::getAlignment()),
+                     Buffer->getBufferStart()))
+    Buffer = MemoryBuffer::getMemBufferCopy(Buffer->getBuffer(),
+                                            Buffer->getBufferIdentifier());
+  llvm::errs() << "got buffer\n";
+
+  SmallVector<OffloadFile> Binaries;
+  if (Error Err = extractOffloadBinaries(*Buffer, Binaries))
+    return Err;
+  llvm::errs() << "got Binary\n";
+
+  // Try to extract each device image specified by the user from the input file.
+    BumpPtrAllocator Alloc;
+    StringSaver Saver(Alloc);
+    auto Args = getImageArguments(Image, Saver);
+
+    SmallVector<const OffloadBinary *> Extracted;
+    for (const OffloadFile &File : Binaries) {
+      const auto *Binary = File.getBinary();
+      // We handle the 'file' and 'kind' identifiers differently.
+      bool Match = llvm::all_of(Args, [&](auto &Arg) {
+        const auto [Key, Value] = Arg;
+        if (Key == "file")
+          return true;
+        if (Key == "kind")
+          return Binary->getOffloadKind() == getOffloadKind(Value);
+        return Binary->getString(Key) == Value;
+      });
+      if (Match)
+        Extracted.push_back(Binary);
+    }
+    llvm::errs() << "before I extracted\n";
+
+    if (Extracted.empty()) {
+      llvm::errs() << "Didn't extract anything!\n";
+      return createStringError(inconvertibleErrorCode(),
+                                 "Offload binary has invalid size alignment");
+    }
+    llvm::errs() << "extracted!\n";
+
+    if (auto It = Args.find("file"); It != Args.end()) {
+      if (Extracted.size() > 1) {
+        llvm::errs() << "panic!\n";
+      }
+      if (Error E = writeFile(It->second, Extracted.back()->getImage()))
+        return E;
+    } else {
+      uint64_t Idx = 0;
+      for (const OffloadBinary *Binary : Extracted) {
+        StringRef Filename =
+            Saver.save(sys::path::stem(InputFile) + "-" + Binary->getTriple() +
+                       "-" + Binary->getArch() + "." + std::to_string(Idx++) +
+                       "." + getImageKindName(Binary->getImageKind()));
+        if (Error E = writeFile(Filename, Binary->getImage()))
+          return E;
+      }
+    }
+
+  return Error::success();
+}
+
+extern "C" bool LLVMRustUnbundleImages(const char *HostOutPath, size_t PathLen) {
+  StringRef file = StringRef(HostOutPath, PathLen);
+  llvm::errs() << "file: " << file <<"\n";
+  auto image = "file=dev.o,arch=gfx90a";
+  if (Error E = unbundleImages(image, file)) {
+    return false;
+  }
+  return true;
+}
+
 // This is the first of many steps in creating a binary using llvm offload,
 // to run code on the gpu. Concrete, it replaces the following binary use:
 // clang-offload-packager -o host.out

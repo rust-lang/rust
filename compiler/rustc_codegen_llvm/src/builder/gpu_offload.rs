@@ -64,71 +64,8 @@ impl<'ll> OffloadGlobals<'ll> {
 // which we copy from clang, is to just have those two calls once, in the global ctor/dtor section
 // of the final binary.
 pub(crate) fn register_offload<'ll>(cx: &CodegenCx<'ll, '_>) {
-    // First we check quickly whether we already have done our setup, in which case we return early.
-    // Shouldn't be needed for correctness.
-    let register_lib_name = "__tgt_register_lib";
-    if cx.get_function(register_lib_name).is_some() {
-        return;
-    }
-
-    let reg_lib_decl = cx.type_func(&[cx.type_ptr()], cx.type_void());
-    let register_lib = declare_offload_fn(&cx, register_lib_name, reg_lib_decl);
-    let unregister_lib = declare_offload_fn(&cx, "__tgt_unregister_lib", reg_lib_decl);
-
-    let ptr_null = cx.const_null(cx.type_ptr());
-    let const_struct = cx.const_struct(&[cx.get_const_i32(0), ptr_null, ptr_null, ptr_null], false);
-    let omp_descriptor =
-        add_global(cx, ".omp_offloading.descriptor", const_struct, InternalLinkage);
-    // @.omp_offloading.descriptor = internal constant %__tgt_bin_desc { i32 1, ptr @.omp_offloading.device_images, ptr @__start_llvm_offload_entries, ptr @__stop_llvm_offload_entries }
-    // @.omp_offloading.descriptor = internal constant %__tgt_bin_desc { i32 0, ptr null, ptr null, ptr null }
-
-    let atexit = cx.type_func(&[cx.type_ptr()], cx.type_i32());
-    let atexit_fn = declare_offload_fn(cx, "atexit", atexit);
-
-    // FIXME(offload): Drop this, once we fully automated our offload compilation pipeline, since
-    // LLVM will initialize them for us if it sees gpu kernels being registered.
-    let init_ty = cx.type_func(&[], cx.type_void());
-    let init_rtls = declare_offload_fn(cx, "__tgt_init_all_rtls", init_ty);
-
-    let desc_ty = cx.type_func(&[], cx.type_void());
-    let reg_name = ".omp_offloading.descriptor_reg";
-    let unreg_name = ".omp_offloading.descriptor_unreg";
-    let desc_reg_fn = declare_offload_fn(cx, reg_name, desc_ty);
-    let desc_unreg_fn = declare_offload_fn(cx, unreg_name, desc_ty);
-    llvm::set_linkage(desc_reg_fn, InternalLinkage);
-    llvm::set_linkage(desc_unreg_fn, InternalLinkage);
-    llvm::set_section(desc_reg_fn, c".text.startup");
-    llvm::set_section(desc_unreg_fn, c".text.startup");
-
-    // define internal void @.omp_offloading.descriptor_reg() section ".text.startup" {
-    // entry:
-    //   call void @__tgt_register_lib(ptr @.omp_offloading.descriptor)
-    //   call void @__tgt_init_all_rtls()
-    //   %0 = call i32 @atexit(ptr @.omp_offloading.descriptor_unreg)
-    //   ret void
-    // }
-    let bb = Builder::append_block(cx, desc_reg_fn, "entry");
-    let mut a = Builder::build(cx, bb);
-    a.call(reg_lib_decl, None, None, register_lib, &[omp_descriptor], None, None);
-    a.call(init_ty, None, None, init_rtls, &[], None, None);
-    a.call(atexit, None, None, atexit_fn, &[desc_unreg_fn], None, None);
-    a.ret_void();
-
-    // define internal void @.omp_offloading.descriptor_unreg() section ".text.startup" {
-    // entry:
-    //   call void @__tgt_unregister_lib(ptr @.omp_offloading.descriptor)
-    //   ret void
-    // }
-    let bb = Builder::append_block(cx, desc_unreg_fn, "entry");
-    let mut a = Builder::build(cx, bb);
-    a.call(reg_lib_decl, None, None, unregister_lib, &[omp_descriptor], None, None);
-    a.ret_void();
-
-    // @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 101, ptr @.omp_offloading.descriptor_reg, ptr null }]
-    let args = vec![cx.get_const_i32(101), desc_reg_fn, ptr_null];
-    let const_struct = cx.const_struct(&args, false);
-    let arr = cx.const_array(cx.val_ty(const_struct), &[const_struct]);
-    add_global(cx, "llvm.global_ctors", arr, AppendingLinkage);
+    // Let LLVM handle it for us
+    return;
 }
 
 pub(crate) struct OffloadKernelDims<'ll> {
