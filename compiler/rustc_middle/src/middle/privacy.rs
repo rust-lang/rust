@@ -243,8 +243,11 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
                 if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
                     && level != l)
                 {
-                    // FIXME: figure out why unordered visibilities occur here,
-                    // and what the behavior for them should be.
+                    // Restricted visibilities form a tree, so restrictions to sibling modules
+                    // are unordered. That can happen here when effective visibility is inherited
+                    // through one module, but the nominal visibility limit comes from another.
+                    // There is no single `Visibility` that represents their intersection, so
+                    // preserve the inherited visibility instead of applying the limit.
                     calculated_effective_vis = if let Some(max_vis) = max_vis
                         && inherited_effective_vis_at_level.partial_cmp(max_vis, tcx)
                             == Some(Ordering::Greater)
