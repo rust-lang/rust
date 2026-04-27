@@ -67,6 +67,7 @@ use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
@@ -82,6 +83,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
+use crate::dep_graph::DepNode;
 use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -196,6 +198,23 @@ rustc_queries! {
         // Accesses untracked data
         eval_always
         desc { "getting the source span" }
+    }
+
+    /// Create a new definition.
+    query create_def_raw(key: (
+        LocalDefId, // parent
+        DefPathData, // def_path_data
+        DepNode, // caller query
+        usize, // counter of calls to `create_def_raw` by the caller query
+    )) -> LocalDefId {
+        // Accesses untracked data
+        eval_always
+        desc {
+            "create a new definition for `{}::{:?}`, {}th call",
+            tcx.def_path_str(key.0),
+            key.1,
+            key.3,
+        }
     }
 
     /// Represents crate as a whole (as distinct from the top-level crate module).

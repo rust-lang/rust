@@ -51,7 +51,7 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable, HashStable};
@@ -59,6 +59,7 @@ use rustc_span::Symbol;
 
 use super::{KeyFingerprintStyle, SerializedDepNodeIndex};
 use crate::dep_graph::DepNodeKey;
+use crate::ich::StableHashingContext;
 use crate::mono::MonoItem;
 use crate::ty::{TyCtxt, tls};
 
@@ -149,6 +150,14 @@ impl fmt::Debug for DepNode {
             }
             Ok(())
         })
+    }
+}
+
+impl HashStable<StableHashingContext<'_>> for DepNode {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'_>, hasher: &mut StableHasher) {
+        let DepNode { kind, key_fingerprint } = self;
+        kind.hash_stable(hcx, hasher);
+        Fingerprint::from(*key_fingerprint).hash_stable(hcx, hasher);
     }
 }
 
@@ -269,7 +278,7 @@ macro_rules! define_dep_nodes {
         // encoding. The derived Encodable/Decodable uses leb128 encoding which is
         // dense when only considering this enum. But DepKind is encoded in a larger
         // struct, and there we can take advantage of the unused bits in the u16.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, HashStable)]
         #[allow(non_camel_case_types)]
         #[repr(u16)] // Must be kept in sync with the rest of `DepKind`.
         pub enum DepKind {

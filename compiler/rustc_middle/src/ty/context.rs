@@ -27,12 +27,17 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
+    self, AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, FreezeReadGuard, Lock, RwLock,
+    WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
+use rustc_hir::def_id::{
+    CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateIdMap,
+};
+use rustc_hir::definitions::{
+    DefPathData, Definitions, PerParentDisambiguatorState, PerParentDisambiguatorsMap,
+};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
@@ -54,7 +59,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
-use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepKindVTable, DepNode, TaskDepsRef};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -856,6 +861,9 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) hooks: crate::hooks::Providers,
 
     untracked: Untracked,
+    /// This is shared untracked state for creating new definitions.
+    /// It should only be accessed by the `create_def_raw` query.
+    untracked_disambiguator_state: Lock<LocalDefIdMap<PerParentDisambiguatorState>>,
 
     pub query_system: QuerySystem<'tcx>,
     pub(crate) dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
@@ -1075,7 +1083,7 @@ impl<'tcx> TyCtxt<'tcx> {
         stable_crate_id: StableCrateId,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked: Untracked,
+        cstore: Box<CrateStoreDyn>,
         dep_graph: DepGraph,
         dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
         query_system: QuerySystem<'tcx>,
@@ -1084,6 +1092,17 @@ impl<'tcx> TyCtxt<'tcx> {
         jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
+        let cstore = FreezeLock::new(cstore);
+        let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
+
+        let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
+        let untracked = Untracked {
+            cstore,
+            source_span: AppendOnlyIndexVec::new(),
+            definitions,
+            stable_crate_ids,
+        };
+
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.dcx().emit_fatal(err);
         });
@@ -1106,6 +1125,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
+            untracked_disambiguator_state: Lock::new(Default::default()),
             query_system,
             dep_kind_vtables,
             ty_rcache: Default::default(),
@@ -1408,6 +1428,34 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
+fn create_def_raw_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (parent, data, query, index): (LocalDefId, DefPathData, DepNode, usize),
+) -> LocalDefId {
+    // `query` and `index` are guaranteed to change for each successive call to
+    // `create_def_raw`, but in a predictable manner.
+    let _ = (query, index);
+
+    // This query is `eval_always`, so we can access untracked data.
+    let mut disambiguator_state = tcx.untracked_disambiguator_state.lock();
+
+    // The following call has the side effect of modifying the tables inside `definitions`.
+    // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
+    // decode the on-disk cache.
+    //
+    // Any LocalDefId which is used within queries, either as key or result, either:
+    // - has been created before the construction of the TyCtxt;
+    // - has been created by this call to `create_def`.
+    // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
+    // comp. engine itself.
+    tcx.untracked.definitions.write().create_def(
+        parent,
+        data,
+        disambiguator_state.get_or_create(parent),
+    )
+}
+
 impl<'tcx> TyCtxtAt<'tcx> {
     /// Create a new definition within the incr. comp. engine.
     pub fn create_def(
@@ -1416,11 +1464,8 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let feed =
-            self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
-
+        let feed = self.tcx.create_def(parent, name, def_kind, override_def_path_data);
         feed.def_span(self.span);
         feed
     }
@@ -1434,28 +1479,37 @@ impl<'tcx> TyCtxt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
-        // The following call has the side effect of modifying the tables inside `definitions`.
-        // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
-        // decode the on-disk cache.
-        //
-        // Any LocalDefId which is used within queries, either as key or result, either:
-        // - has been created before the construction of the TyCtxt;
-        // - has been created by this call to `create_def`.
-        // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
-        // comp. engine itself.
-        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
 
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        let def_id = ty::tls::with_context(|icx| match icx.task_deps {
+            // `create_def_raw` is a query, so it can be replayed by the dep-graph engine.
+            // However, we may invoke it multiple times with the same `(parent, data)` pair,
+            // and we expect to create *different* definitions from them.
+            //
+            // In order to make this compatible with the general model of queries, we add
+            // additional information which must change at each call.
+            TaskDepsRef::Allow(deps) => {
+                let opt_dep_node_and_index = deps.lock().next_query_local_index();
+                let Some((dep_node, index)) = opt_dep_node_and_index else {
+                    // No idea how to support this for now...
+                    bug!("trying to create a definition from an anonymous query")
+                };
+                self.create_def_raw((parent, data, dep_node, index))
+            }
+
+            // If we are not tracking dependencies, we can use global mutable state.
+            TaskDepsRef::EvalAlways | TaskDepsRef::Forbid | TaskDepsRef::Ignore => {
+                // This query is `eval_always`, so we can access untracked data.
+                let mut disambiguator_state = self.untracked_disambiguator_state.lock();
+                let disambiguator = disambiguator_state.get_or_create(parent);
+                self.untracked.definitions.write().create_def(parent, data, disambiguator)
+            }
+        });
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
+
         // Unique types created for closures participate in type privacy checking.
         // They have visibilities inherited from the module they are defined in.
         // Visibilities for opaque types are meaningless, but still provided
@@ -2893,4 +2947,5 @@ pub fn provide(providers: &mut Providers) {
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
+    providers.create_def_raw = create_def_raw_provider;
 }

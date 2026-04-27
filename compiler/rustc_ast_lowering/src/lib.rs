@@ -51,7 +51,6 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::{AttributeLint, DelayedLint, DynAttribute};
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
@@ -94,7 +93,6 @@ pub mod stability;
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
     resolver: &'a ResolverAstLowering<'hir>,
-    current_disambiguator: PerParentDisambiguatorState,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -169,7 +167,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Self {
             tcx,
             resolver,
-            current_disambiguator: Default::default(),
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -641,11 +638,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.tcx.hir_def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self
-            .tcx
-            .at(span)
-            .create_def(parent, name, def_kind, None, &mut self.current_disambiguator)
-            .def_id();
+        let def_id = self.tcx.at(span).create_def(parent, name, def_kind, None).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.node_id_to_def_id.insert(node_id, def_id);
@@ -697,16 +690,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
     ) {
         let owner_id = self.owner_id(owner);
-        let def_id = owner_id.def_id;
 
-        let new_disambig = self
-            .resolver
-            .disambiguators
-            .get(&def_id)
-            .map(|s| s.steal())
-            .unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
-
-        let disambiguator = std::mem::replace(&mut self.current_disambiguator, new_disambig);
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
@@ -741,7 +725,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assert!(self.impl_trait_bounds.is_empty());
         let info = self.make_owner_info(item);
 
-        self.current_disambiguator = disambiguator;
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.define_opaque = current_define_opaque;
