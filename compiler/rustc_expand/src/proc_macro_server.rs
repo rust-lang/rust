@@ -293,6 +293,8 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                         span: DelimSpan::from_single(span),
                     }));
                 }
+                // FIXME: would it be safe to put an `unreachable!()` here?
+                Comment(..) => {}
 
                 OpenParen | CloseParen | OpenBrace | CloseBrace | OpenBracket | CloseBracket
                 | OpenInvisible(_) | CloseInvisible(_) | Eof => unreachable!(),

@@ -64,6 +64,10 @@ fn validate_asm_args<'a>(
 
     for arg in args {
         for attr in arg.attributes.0.iter() {
+            // FIXME: can we simply skip them?
+            if attr.is_comment() {
+                continue;
+            }
             if !matches!(attr.name(), Some(sym::cfg | sym::cfg_attr)) {
                 ecx.dcx().emit_err(errors::AsmAttributeNotSupported { span: attr.span() });
             }

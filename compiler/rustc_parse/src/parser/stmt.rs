@@ -273,14 +273,21 @@ impl<'a> Parser<'a> {
     /// Also error if the previous token was a doc comment.
     fn error_outer_attrs(&self, attrs: AttrWrapper) {
         if !attrs.is_empty()
-            && let attrs @ [.., last] = &*attrs.take_for_recovery(self.psess)
+            && !attrs.is_all_comments()
+            && let attrs @ [.., _last] = &*attrs.take_for_recovery(self.psess)
         {
+            // Filter to non-comment attrs for the real checks.
+            let real_attrs: Vec<_> = attrs.iter().filter(|a| !a.is_comment()).collect();
+            if real_attrs.is_empty() {
+                return;
+            }
+            let last = real_attrs.last().unwrap();
             if last.is_doc_comment() {
                 self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
                     span: last.span,
                     missing_comma: None,
                 });
-            } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
+            } else if real_attrs.iter().any(|a| a.style == AttrStyle::Outer) {
                 self.dcx().emit_err(errors::ExpectedStatementAfterOuterAttr { span: last.span });
             }
         }
@@ -782,6 +789,19 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
+        if !self.prev_token.span.is_dummy() {
+            let closing_brace_lo = self.prev_token.span.lo();
+            let from = stmts.last().map_or(lo.hi(), |s| s.span.hi());
+            if from < closing_brace_lo {
+                let trailing =
+                    self.collect_comments_in_range(from, closing_brace_lo, self.prev_token.span);
+                if !trailing.is_empty() {
+                    if let Some(last_stmt) = stmts.last_mut() {
+                        last_stmt.visit_attrs(|attrs| attrs.extend(trailing));
+                    }
+                }
+            }
+        }
         Ok(self.mk_block(stmts, s, lo.to(self.prev_token.span)))
     }
 
@@ -972,7 +992,7 @@ impl<'a> Parser<'a> {
             // Expression without semicolon.
             StmtKind::Expr(expr)
                 if classify::expr_requires_semi_to_be_stmt(expr)
-                    && !expr.attrs.is_empty()
+                    && expr.attrs.iter().any(|a| !a.is_comment())
                     && !matches!(self.token.kind, token::Eof | token::Semi | token::CloseBrace) =>
             {
                 // The user has written `#[attr] expr` which is unsupported. (#106020)

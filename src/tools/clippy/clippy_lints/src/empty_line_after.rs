@@ -214,11 +214,18 @@ impl Stop {
         let SpanData { lo, hi, .. } = attr.span.data();
         let file = cx.sess().source_map().lookup_source_file(lo);
 
+        // Regular comments are not doc comments and should not trigger
+        // neither the doc-comment nor outer-attribute empty-line lints.
+        if matches!(attr.kind, AttrKind::Comment(..)) {
+            return None;
+        }
+
         Some(Self {
             span: attr.span,
             kind: match attr.kind {
                 AttrKind::Normal(_) => StopKind::Attr,
                 AttrKind::DocComment(comment_kind, _) => StopKind::Doc(comment_kind),
+                AttrKind::Comment(..) => unreachable!(""),
             },
             first: file.lookup_line(file.relative_position(lo))?,
             last: file.lookup_line(file.relative_position(hi))?,

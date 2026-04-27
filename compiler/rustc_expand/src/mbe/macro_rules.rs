@@ -950,10 +950,10 @@ fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
         while let Some(tt) = iter.next() {
             match tt {
                 mbe::TokenTree::MetaVarDecl { kind: NonterminalKind::Vis, .. } => {}
-                mbe::TokenTree::Token(t @ Token { kind: DocComment(..), .. }) => {
+                mbe::TokenTree::Token(t @ Token { kind: DocComment(..) | Comment(..), .. }) => {
                     let mut now = t;
                     while let Some(&mbe::TokenTree::Token(
-                        next @ Token { kind: DocComment(..), .. },
+                        next @ Token { kind: DocComment(..) | Comment(..), .. },
                     )) = iter.peek()
                     {
                         now = next;

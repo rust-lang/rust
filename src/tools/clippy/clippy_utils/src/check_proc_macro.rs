@@ -379,6 +379,8 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
                 (Pat::Str("/*!"), Pat::Str("*/"))
             }
         },
+        AttrKind::Comment(CommentKind::Line, ..) => (Pat::Str("//"), Pat::Str("")),
+        AttrKind::Comment(CommentKind::Block, ..) => (Pat::Str("/*"), Pat::Str("*/")),
     }
 }
 
