@@ -756,9 +756,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
             mir::StatementKind::Assign(box (lhs, rhs)) => {
                 self.kill_pins_on_place(state, *lhs);
 
-                // Check if this is a pinned borrow
-                if let mir::Rvalue::Ref(_, mir::BorrowKind::Pinned(_), place) = rhs {
-                    // Generate the pin
+                // Only user-written `&pin` borrows create long-lived pin facts.
+                if let mir::Rvalue::Ref(_, mir::BorrowKind::Pinned(_, kind), place) = rhs
+                    && matches!(*kind, mir::PinBorrowKind::Persistent)
+                {
                     self.gen_pins_on_place(state, *place);
                 }
             }

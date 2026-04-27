@@ -1764,9 +1764,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             (
                 BorrowKind::Shared
                 | BorrowKind::Fake(FakeBorrowKind::Deep)
-                | BorrowKind::Pinned(mir::Mutability::Not),
+                | BorrowKind::Pinned(mir::Mutability::Not, _),
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
-                | BorrowKind::Pinned(mir::Mutability::Mut),
+                | BorrowKind::Pinned(mir::Mutability::Mut, _),
             ) => {
                 first_borrow_desc = "mutable ";
                 let mut err = self.cannot_reborrow_already_borrowed(
@@ -1791,10 +1791,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
             (
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
-                | BorrowKind::Pinned(mir::Mutability::Mut),
+                | BorrowKind::Pinned(mir::Mutability::Mut, _),
                 BorrowKind::Shared
                 | BorrowKind::Fake(FakeBorrowKind::Deep)
-                | BorrowKind::Pinned(mir::Mutability::Not),
+                | BorrowKind::Pinned(mir::Mutability::Not, _),
             ) => {
                 first_borrow_desc = "immutable ";
                 let mut err = self.cannot_reborrow_already_borrowed(
@@ -1826,9 +1826,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             (
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
-                | BorrowKind::Pinned(mir::Mutability::Mut),
+                | BorrowKind::Pinned(mir::Mutability::Mut, _),
                 BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
-                | BorrowKind::Pinned(mir::Mutability::Mut),
+                | BorrowKind::Pinned(mir::Mutability::Mut, _),
             ) => {
                 first_borrow_desc = "first ";
                 let mut err = self.cannot_mutably_borrow_multiply(
@@ -1868,7 +1868,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             (
-                BorrowKind::Mut { .. } | BorrowKind::Pinned(mir::Mutability::Mut),
+                BorrowKind::Mut { .. } | BorrowKind::Pinned(mir::Mutability::Mut, _),
                 BorrowKind::Fake(FakeBorrowKind::Shallow),
             ) => {
                 if let Some(immutable_section_description) =
@@ -1935,7 +1935,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             (
                 BorrowKind::Shared
                 | BorrowKind::Fake(FakeBorrowKind::Deep)
-                | BorrowKind::Pinned(mir::Mutability::Not),
+                | BorrowKind::Pinned(mir::Mutability::Not, _),
                 BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
             ) => {
                 first_borrow_desc = "first ";
@@ -1953,7 +1953,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             (
-                BorrowKind::Mut { .. } | BorrowKind::Pinned(mir::Mutability::Mut),
+                BorrowKind::Mut { .. } | BorrowKind::Pinned(mir::Mutability::Mut, _),
                 BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
             ) => {
                 first_borrow_desc = "first ";
@@ -1973,15 +1973,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             (
                 BorrowKind::Shared
                 | BorrowKind::Fake(FakeBorrowKind::Deep)
-                | BorrowKind::Pinned(mir::Mutability::Not),
-                BorrowKind::Shared | BorrowKind::Fake(_) | BorrowKind::Pinned(mir::Mutability::Not),
+                | BorrowKind::Pinned(mir::Mutability::Not, _),
+                BorrowKind::Shared
+                | BorrowKind::Fake(_)
+                | BorrowKind::Pinned(mir::Mutability::Not, _),
             )
             | (
                 BorrowKind::Fake(FakeBorrowKind::Shallow),
                 BorrowKind::Mut { .. }
                 | BorrowKind::Shared
                 | BorrowKind::Fake(_)
-                | BorrowKind::Pinned(_),
+                | BorrowKind::Pinned(..),
             ) => {
                 unreachable!()
             }

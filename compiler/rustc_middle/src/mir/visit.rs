@@ -714,8 +714,8 @@ macro_rules! make_mir_visitor {
                             ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
-                            BorrowKind::Pinned(Mutability::Not) => PlaceContext::NonMutatingUse(NonMutatingUseContext::PinnedBorrow),
-                            BorrowKind::Pinned(Mutability::Mut) => PlaceContext::MutatingUse(MutatingUseContext::PinnedBorrow),
+                            BorrowKind::Pinned(Mutability::Not, _) => PlaceContext::NonMutatingUse(NonMutatingUseContext::PinnedBorrow),
+                            BorrowKind::Pinned(Mutability::Mut, _) => PlaceContext::MutatingUse(MutatingUseContext::PinnedBorrow),
                         };
                         self.visit_place(path, ctx, location);
                     }

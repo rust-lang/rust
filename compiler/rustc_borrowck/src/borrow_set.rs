@@ -125,8 +125,8 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Mut {
                 kind: mir::MutBorrowKind::Default | mir::MutBorrowKind::TwoPhaseBorrow,
             } => "mut ",
-            mir::BorrowKind::Pinned(mir::Mutability::Not) => "pin const ",
-            mir::BorrowKind::Pinned(mir::Mutability::Mut) => "pin mut ",
+            mir::BorrowKind::Pinned(mir::Mutability::Not, _) => "pin const ",
+            mir::BorrowKind::Pinned(mir::Mutability::Mut, _) => "pin mut ",
         };
         write!(w, "&{:?} {}{:?}", self.region, kind, self.borrowed_place)
     }

@@ -285,8 +285,8 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
             Shared => crate::mir::BorrowKind::Shared,
             Fake(kind) => crate::mir::BorrowKind::Fake(kind.stable(tables, cx)),
             Mut { kind } => crate::mir::BorrowKind::Mut { kind: kind.stable(tables, cx) },
-            Pinned(mir::Mutability::Not) => crate::mir::BorrowKind::Shared,
-            Pinned(mir::Mutability::Mut) => {
+            Pinned(mir::Mutability::Not, _) => crate::mir::BorrowKind::Shared,
+            Pinned(mir::Mutability::Mut, _) => {
                 crate::mir::BorrowKind::Mut { kind: crate::mir::MutBorrowKind::Default }
             }
         }

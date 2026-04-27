@@ -10,7 +10,7 @@ use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
+use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, PinBorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,
@@ -191,8 +191,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
             Adjust::Borrow(AutoBorrow::Pin(mutbl)) => {
-                // expr = &pin (mut|const|) arget
-                let borrow_kind = BorrowKind::Pinned(mutbl);
+                // Build the transient `&pin` borrow needed by this adjustment.
+                let borrow_kind = BorrowKind::Pinned(mutbl, PinBorrowKind::Transient);
                 let new_pin_target =
                     Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, expr.ty, mutbl);
                 let arg = self.thir.exprs.push(expr);
@@ -460,7 +460,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         temp_scope_id: expr.hir_id.local_id,
                         ty,
                         span: expr.span,
-                        kind: ExprKind::Borrow { borrow_kind: BorrowKind::Pinned(mutability), arg },
+                        kind: ExprKind::Borrow {
+                            borrow_kind: BorrowKind::Pinned(mutability, PinBorrowKind::Persistent),
+                            arg,
+                        },
                     });
                     ExprKind::Adt(Box::new(AdtExpr {
                         adt_def,

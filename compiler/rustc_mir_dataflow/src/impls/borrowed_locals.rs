@@ -80,7 +80,7 @@ where
             Rvalue::RawPtr(_, borrowed_place)
             | Rvalue::Ref(
                 _,
-                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Pinned(_),
+                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Pinned(..),
                 borrowed_place,
             )
             | Rvalue::Reborrow(_, _, borrowed_place) => {
