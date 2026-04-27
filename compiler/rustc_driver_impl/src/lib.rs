@@ -64,37 +64,41 @@ use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
 
 #[cfg(feature = "jemalloc")]
-mod jemalloc {
+pub mod jemalloc {
     use std::os::raw::{c_int, c_void};
 
-#[global_allocator]
-static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+    #[global_allocator]
+    static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-unsafe extern "C" fn calloc(items: usize, size: usize) -> *mut c_void {
-    unsafe { tikv_jemalloc_sys::calloc(items, size) }
-}
-
-unsafe extern "C" fn posix_memalign(ptr: *mut *mut c_void, size: usize, align: usize) -> c_int {
-    unsafe { tikv_jemalloc_sys::posix_memalign(ptr, size, align) }
-}
-
-unsafe extern "C" fn aligned_alloc(size: usize, align: usize) -> *mut c_void {
-    unsafe { tikv_jemalloc_sys::aligned_alloc(size, align) }
-}
-
-unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
-    unsafe { tikv_jemalloc_sys::malloc(size) }
-}
-
-unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
-    unsafe { tikv_jemalloc_sys::realloc(ptr, size) }
-}
-
-unsafe extern "C" fn free(ptr: *mut c_void) {
-    unsafe {
-        tikv_jemalloc_sys::free(ptr);
+    pub unsafe extern "C" fn calloc(items: usize, size: usize) -> *mut c_void {
+        unsafe { tikv_jemalloc_sys::calloc(items, size) }
     }
-}
+
+    pub unsafe extern "C" fn posix_memalign(
+        ptr: *mut *mut c_void,
+        size: usize,
+        align: usize,
+    ) -> c_int {
+        unsafe { tikv_jemalloc_sys::posix_memalign(ptr, size, align) }
+    }
+
+    pub unsafe extern "C" fn aligned_alloc(size: usize, align: usize) -> *mut c_void {
+        unsafe { tikv_jemalloc_sys::aligned_alloc(size, align) }
+    }
+
+    pub unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
+        unsafe { tikv_jemalloc_sys::malloc(size) }
+    }
+
+    pub unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
+        unsafe { tikv_jemalloc_sys::realloc(ptr, size) }
+    }
+
+    pub unsafe extern "C" fn free(ptr: *mut c_void) {
+        unsafe {
+            tikv_jemalloc_sys::free(ptr);
+        }
+    }
 }
 
 #[allow(unused_macros)]
