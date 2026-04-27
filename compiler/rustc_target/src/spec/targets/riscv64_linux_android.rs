@@ -1,8 +1,5 @@
-use std::borrow::Cow;
-
 use crate::spec::{
-    Arch, CodeModel, LlvmAbi, SanitizerSet, SplitDebuginfo, Target, TargetMetadata, TargetOptions,
-    base,
+    Arch, CodeModel, LlvmAbi, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -24,7 +21,6 @@ pub(crate) fn target() -> Target {
             llvm_abiname: LlvmAbi::Lp64d,
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
-            supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             ..base::android::opts()
         },
     }
