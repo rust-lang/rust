@@ -19,6 +19,7 @@ pub mod vec_deque;
 pub mod btree_map {
     //! An ordered map based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(not(test))]
     pub use super::btree::map::*;
 }
 

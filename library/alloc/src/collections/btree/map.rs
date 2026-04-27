@@ -1059,7 +1059,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a mutable reference to the value in the entry.
     ///
     /// If the map already had this key present, nothing is updated, and
-    /// an error containing the occupied entry and the value is returned.
+    /// an error containing the occupied entry, key, and the value is returned.
     ///
     /// # Examples
     ///
@@ -1074,6 +1074,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// let err = map.try_insert(37, "b").unwrap_err();
     /// assert_eq!(err.entry.key(), &37);
     /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.key, 37);
     /// assert_eq!(err.value, "b");
     /// ```
     #[unstable(feature = "map_try_insert", issue = "82766")]
@@ -1081,10 +1082,30 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     where
         K: Ord,
     {
-        match self.entry(key) {
-            Occupied(entry) => Err(OccupiedError { entry, value }),
-            Vacant(entry) => Ok(entry.insert(value)),
-        }
+        let (map, dormant_map) = DormantMutRef::new(self);
+        let handle = match map.root {
+            Some(ref mut root) => match root.borrow_mut().search_tree(&key) {
+                Found(handle) => {
+                    let entry = OccupiedEntry {
+                        handle,
+                        dormant_map,
+                        alloc: (*map.alloc).clone(),
+                        _marker: PhantomData,
+                    };
+                    return Err(OccupiedError { entry, key, value });
+                }
+                GoDown(handle) => Some(handle),
+            },
+            None => None,
+        };
+        let entry = VacantEntry {
+            key,
+            handle,
+            dormant_map,
+            alloc: (*map.alloc).clone(),
+            _marker: PhantomData,
+        };
+        Ok(entry.insert(value))
     }
 
     /// Removes a key from the map, returning the value at the key if the key
