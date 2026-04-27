@@ -66,7 +66,7 @@ pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
     // CHECK-NEXT: br i1 %[[EQ01]], label %{{.+}}, label %[[EXIT_U]]
 
     // CHECK: [[DONE]]:
-    // CHECK: %[[RET:.+]] = phi i1 [ %{{.+}}, %[[EXIT_S]] ], [ %{{.+}}, %[[EXIT_U]] ], [ true, %[[L11]] ]
+    // CHECK: %[[RET:.+]] = phi i1 [ true, %[[L11]] ], [ %{{.+}}, %[[EXIT_S]] ], [ %{{.+}}, %[[EXIT_U]] ]
     // CHECK: ret i1 %[[RET]]
 
     a <= b

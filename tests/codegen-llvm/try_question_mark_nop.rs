@@ -211,10 +211,22 @@ pub fn control_flow_nop_traits_128(x: ControlFlow<i128, u128>) -> ControlFlow<i1
 // CHECK-LABEL: @result_nop_match_ptr
 #[no_mangle]
 pub fn result_nop_match_ptr(x: Result<usize, Box<()>>) -> Result<usize, Box<()>> {
+    // The check here is a bit more involved as it does get a check, but the check
+    // is only there for the assume -- the actual pair is still a pass-through.
+
     // CHECK: start:
-    // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
-    // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
-    // CHECK-NEXT: ret
+    // CHECK-NEXT: [[IS_ERR:%.+]] = trunc nuw [[USIZE:i32|i64]] %x.0 to i1
+    // CHECK-NEXT: br i1 [[IS_ERR]], label %[[ERR_BLOCK:.+]], label %[[RET_BLOCK:.+]]
+    //
+    // CHECK: [[ERR_BLOCK]]:
+    // CHECK-NEXT: [[NOT_NULL:%.+]] = icmp ne ptr %x.1, null
+    // CHECK-NEXT: tail call void @llvm.assume(i1 [[NOT_NULL]])
+    // CHECK-NEXT: br label %[[RET_BLOCK]]
+    //
+    // CHECK: [[RET_BLOCK]]:
+    // CHECK-NEXT: [[PAIR0:%.+]] = insertvalue { i64, ptr } poison, i64 %x.0, 0
+    // CHECK-NEXT: [[PAIR1:%.+]] = insertvalue { i64, ptr } [[PAIR0]], ptr %x.1, 1
+    // CHECK-NEXT: ret { [[USIZE]], ptr } [[PAIR1]]
     match x {
         Ok(x) => Ok(x),
         Err(x) => Err(x),
