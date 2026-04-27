@@ -120,11 +120,12 @@ impl<'tcx> QueryLatch<'tcx> {
     fn set(&self) {
         let mut waiters_guard = self.waiters.lock();
         let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
-        let registry = rustc_thread_pool::Registry::current();
-        for waiter in waiters {
-            rustc_thread_pool::mark_unblocked(&registry);
-            waiter.condvar.notify_one();
-        }
+        rustc_thread_pool::Registry::current(|registry| {
+            for waiter in waiters {
+                rustc_thread_pool::mark_unblocked(registry);
+                waiter.condvar.notify_one();
+            }
+        });
     }
 
     /// Removes a single waiter from the list of waiters.

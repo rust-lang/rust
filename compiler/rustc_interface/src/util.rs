@@ -222,7 +222,7 @@ pub(crate) fn run_in_thread_pool_with_globals<
             // locals to it. The new thread runs the deadlock handler.
 
             let current_gcx2 = current_gcx2.clone();
-            let registry = rustc_thread_pool::Registry::current();
+            let registry = rustc_thread_pool::Registry::current_cloned();
             let session_globals = rustc_span::with_session_globals(|session_globals| {
                 session_globals as *const SessionGlobals as usize
             });
