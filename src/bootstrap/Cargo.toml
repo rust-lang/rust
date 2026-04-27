@@ -35,7 +35,7 @@ test = false
 cc = "=1.2.28"
 cmake = "=0.1.54"
 
-build_helper = { path = "../build_helper" }
+build_helper = { path = "../build_helper", features = ["metrics"] }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
 clap_complete = "4.4"
 home = "0.5"

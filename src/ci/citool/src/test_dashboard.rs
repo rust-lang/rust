@@ -77,7 +77,7 @@ fn gather_test_suites(job_metrics: &HashMap<JobName, JobMetrics>) -> TestSuites<
                     TestOutcome::Passed => {
                         variant_entry.passed.push(test_metadata);
                     }
-                    TestOutcome::Ignored { ignore_reason: _ } => {
+                    TestOutcome::Ignored { ignore_reason: _ } | TestOutcome::FilteredOut => {
                         variant_entry.ignored.push(test_metadata);
                     }
                     TestOutcome::Failed => {

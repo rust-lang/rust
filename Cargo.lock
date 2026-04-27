@@ -843,6 +843,8 @@ name = "compiletest"
 version = "0.0.0"
 dependencies = [
  "anstyle-svg",
+ "assert_cmd",
+ "bstr",
  "build_helper",
  "camino",
  "colored",
@@ -854,11 +856,14 @@ dependencies = [
  "libc",
  "miow",
  "miropt-test-tools",
+ "predicates",
+ "rand 0.9.2",
  "rayon",
  "regex",
  "rustfix",
  "semver",
  "serde",
+ "serde_derive",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -1404,6 +1409,15 @@ dependencies = [
  "crc32fast",
  "miniz_oxide",
  "zlib-rs",
+]
+
+[[package]]
+name = "float-cmp"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b09cf3155332e944990140d967ff5eceb70df778b34f77d8075db46e4704e6d8"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
@@ -2525,6 +2539,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "normalize-line-endings"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
+
+[[package]]
 name = "normpath"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3008,7 +3028,10 @@ checksum = "a5d19ee57562043d37e82899fade9a22ebab7be9cef5026b07fda9cdd4293573"
 dependencies = [
  "anstyle",
  "difflib",
+ "float-cmp",
+ "normalize-line-endings",
  "predicates-core",
+ "regex",
 ]
 
 [[package]]
