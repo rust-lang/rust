@@ -112,6 +112,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         }
         auto_trait::AutoTraitResult::ExplicitImpl => return None,
     };
+    cx.generated_auto_trait_impls.insert((ty, trait_def_id), polarity);
 
     Some(clean::Item {
         inner: Box::new(clean::ItemInner {

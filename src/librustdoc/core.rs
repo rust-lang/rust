@@ -59,6 +59,8 @@ pub(crate) struct DocContext<'tcx> {
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
+    /// Polarity of synthesized auto-trait impls processed so far.
+    pub(crate) generated_auto_trait_impls: FxHashMap<(Ty<'tcx>, DefId), ty::ImplPolarity>,
     pub(crate) auto_traits: Vec<DefId>,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     pub(crate) cache: Cache,
@@ -370,6 +372,7 @@ pub(crate) fn run_global_ctxt(
         current_type_aliases: Default::default(),
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
+        generated_auto_trait_impls: Default::default(),
         auto_traits,
         cache: Cache::new(render_options.document_private, render_options.document_hidden),
         inlined: FxHashSet::default(),
