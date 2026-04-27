@@ -402,11 +402,46 @@ impl<T> const From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
+    /// Converts from a legacy range to a non-legacy range, potentially panicking.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the legacy range iterator has been exhausted.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use core::range::legacy;
+    /// use core::range::RangeInclusive;
+    ///
+    /// let single: legacy::RangeInclusive<i32> = 0..=1;
+    /// let single = RangeInclusive::from(single);
+    /// assert_eq!((single.start, single.end), (0, 1));
+    ///
+    /// let empty: legacy::RangeInclusive<i32> = 0..=0;
+    /// let empty = RangeInclusive::from(empty);
+    /// assert_eq!((empty.start, empty.end), (0, 0));
+    /// ```
+    ///
+    /// ```should_panic
+    /// use core::range::legacy;
+    /// use core::range::RangeInclusive;
+    ///
+    /// let mut exhausted: legacy::RangeInclusive<i32> = 0..=0;
+    /// exhausted.next();
+    /// # if exhausted.empty() {
+    /// # // assert!s don't work correctly in `should_panic` doctests since you
+    /// # // can't assert the panic message. Skip the rest of the test instead,
+    /// # // so that the expected panic doesn't happen and the test fails.
+    /// assert!(exhausted.is_empty());
+    /// let _ = RangeInclusive::from(exhausted); // this panics
+    /// # }
+    /// ```
     #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
         assert!(
             !value.exhausted,
-            "attempted to convert from an exhausted `legacy::RangeInclusive` (unspecified behavior)"
+            "attempted to convert from an exhausted `legacy::RangeInclusive`"
         );
 
         let (start, last) = value.into_inner();
