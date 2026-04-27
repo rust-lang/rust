@@ -94,6 +94,16 @@ use crate::panic::UnwindSafe;
 use crate::sync::LazyLock;
 use crate::sync::atomic::Ordering::Relaxed;
 use crate::sync::atomic::{Atomic, AtomicU8};
+#[unstable(
+    feature = "short_backtrace_controls",
+    reason = "to control abbreviation of backtraces",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub use crate::sys::backtrace::{
+    __rust_begin_short_backtrace as resume_short_backtrace,
+    __rust_end_short_backtrace as pause_short_backtrace,
+};
 use crate::sys::backtrace::{lock, output_filename, set_image_base};
 use crate::{env, fmt};
 
