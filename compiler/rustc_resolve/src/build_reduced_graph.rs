@@ -13,6 +13,7 @@ use rustc_ast::{
     ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias, TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ResolverExpand;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
@@ -551,6 +552,52 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
+    /// Extracts `#[doc(alias = "...")]` and `#[doc(alias(...))]` from attributes.
+    ///
+    /// Uses a lightweight, ad-hoc approach instead of the full attribute parsing
+    /// machinery to collect aliases for later use in diagnostics.
+    fn parse_doc_aliases(&self, attrs: &[ast::Attribute]) -> FxHashSet<Symbol> {
+        let mut aliases = FxHashSet::default();
+
+        for attr in attrs {
+            if !attr.has_name(sym::doc) {
+                continue;
+            }
+
+            // Get #[doc(...)] list
+            let Some(items) = attr.meta_item_list() else {
+                continue;
+            };
+
+            for item in items {
+                let Some(meta) = item.meta_item() else {
+                    continue;
+                };
+
+                if !meta.has_name(sym::alias) {
+                    continue;
+                }
+
+                // Case 1: #[doc(alias = "foo")]
+                if let Some(value) = meta.value_str() {
+                    aliases.insert(value);
+                    continue;
+                }
+
+                // Case 2: #[doc(alias("foo", "bar"))]
+                if let Some(nested) = meta.meta_item_list() {
+                    for nested_item in nested {
+                        if let Some(lit) = nested_item.lit() {
+                            aliases.insert(lit.symbol);
+                        }
+                    }
+                }
+            }
+        }
+
+        aliases
+    }
+
     fn build_reduced_graph_for_use_tree(
         &mut self,
         // This particular use tree
@@ -867,6 +914,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Fn(box Fn { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
 
+                if !item.attrs.is_empty() {
+                    // for better error reporting in doc alias for function
+                    let aliases = self.parse_doc_aliases(&item.attrs);
+                    self.r.doc_aliases.insert(local_def_id, aliases);
+                }
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
                 self.define_macro(item, feed);
