@@ -956,3 +956,27 @@ fn test_str_concat() {
     let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
 }
+
+#[test]
+fn test_const_deref() {
+    const fn f(s: &String) -> &str {
+        &*s
+    }
+
+    let s = String::new();
+    let t = f(&s);
+
+    assert_eq!(s.as_str(), t);
+}
+
+#[test]
+fn test_const_deref_mut() {
+    const fn f(s: &mut String) -> &str {
+        &mut *s
+    }
+
+    let mut s = String::new();
+    let t = f(&mut s);
+
+    assert_eq!(t, "");
+}
