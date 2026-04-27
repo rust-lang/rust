@@ -525,6 +525,38 @@ fn link_staticlib(
         sess.dcx().emit_fatal(e);
     }
 
+    if sess.opts.unstable_opts.staticlib_hide_internal_symbols {
+        if !matches!(&*sess.target.archive_format, "gnu" | "bsd") {
+            sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                archive_format: sess.target.archive_format.to_string(),
+            });
+        } else if let Some(symbols) = crate_info.exported_symbols.get(&CrateType::StaticLib) {
+            use rustc_data_structures::fx::FxHashSet;
+            let keep: FxHashSet<String> = symbols.iter().map(|(s, _)| s.clone()).collect();
+            ab.set_hide_symbols(keep);
+        }
+    }
+
+    if sess.opts.unstable_opts.staticlib_rename_internal_symbols {
+        if !matches!(&*sess.target.archive_format, "gnu" | "bsd") {
+            sess.dcx().emit_warn(errors::StaticlibRenameInternalSymbolsUnsupported {
+                archive_format: sess.target.archive_format.to_string(),
+            });
+        } else if let Some(symbols) = crate_info.exported_symbols.get(&CrateType::StaticLib) {
+            use rustc_data_structures::fx::FxHashSet;
+            let keep: FxHashSet<String> = symbols.iter().map(|(s, _)| s.clone()).collect();
+            // Generate a unique suffix from the crate name and a short hash
+            // extracted from the metadata symbol (format: rust_metadata_{name}_{hash:08x}).
+            let short_hash = crate_info
+                .metadata_symbol
+                .rsplit_once('_')
+                .map(|(_, hash)| hash.to_string())
+                .unwrap_or_else(|| format!("{:08x}", crate_info.local_crate_name.as_u32()));
+            let suffix = format!("_rs{}", short_hash);
+            ab.set_rename_symbols(keep, suffix);
+        }
+    }
+
     ab.build(out_filename);
 
     let crates = crate_info.used_crates.iter();

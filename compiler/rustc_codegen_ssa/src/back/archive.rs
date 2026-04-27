@@ -9,9 +9,10 @@ use ar_archive_writer::{
     ArchiveKind, COFFShortExport, MachineTypes, NewArchiveMember, write_archive_to_stream,
 };
 pub use ar_archive_writer::{DEFAULT_OBJECT_READER, ObjectReader};
+use object::Endianness;
 use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_fs_util::TempDirBuilder;
 use rustc_metadata::EncodedMetadata;
@@ -318,6 +319,10 @@ pub trait ArchiveBuilder {
     ) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
+
+    fn set_hide_symbols(&mut self, keep: FxHashSet<String>);
+
+    fn set_rename_symbols(&mut self, keep: FxHashSet<String>, suffix: String);
 }
 
 pub struct ArArchiveBuilderBuilder;
@@ -337,6 +342,8 @@ pub struct ArArchiveBuilder<'a> {
     // Don't use an `HashMap` here, as the order is important. `lib.rmeta` needs
     // to be at the end of an archive in some cases for linkers to not get confused.
     entries: Vec<(Vec<u8>, ArchiveEntry)>,
+    hide_symbols: Option<FxHashSet<String>>,
+    rename_symbols: Option<(FxHashSet<String>, String)>,
 }
 
 #[derive(Debug)]
@@ -347,7 +354,22 @@ enum ArchiveEntry {
 
 impl<'a> ArArchiveBuilder<'a> {
     pub fn new(sess: &'a Session, object_reader: &'static ObjectReader) -> ArArchiveBuilder<'a> {
-        ArArchiveBuilder { sess, object_reader, src_archives: vec![], entries: vec![] }
+        ArArchiveBuilder {
+            sess,
+            object_reader,
+            src_archives: vec![],
+            entries: vec![],
+            hide_symbols: None,
+            rename_symbols: None,
+        }
+    }
+
+    pub fn set_hide_symbols(&mut self, keep: FxHashSet<String>) {
+        self.hide_symbols = Some(keep);
+    }
+
+    pub fn set_rename_symbols(&mut self, keep: FxHashSet<String>, suffix: String) {
+        self.rename_symbols = Some((keep, suffix));
     }
 }
 
@@ -460,6 +482,14 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             }
         }
     }
+
+    fn set_hide_symbols(&mut self, keep: FxHashSet<String>) {
+        self.hide_symbols = Some(keep);
+    }
+
+    fn set_rename_symbols(&mut self, keep: FxHashSet<String>, suffix: String) {
+        self.rename_symbols = Some((keep, suffix));
+    }
 }
 
 impl<'a> ArArchiveBuilder<'a> {
@@ -477,8 +507,55 @@ impl<'a> ArArchiveBuilder<'a> {
 
         let mut entries = Vec::new();
 
+        // When hiding or renaming symbols, we need a global two-pass approach:
+        // 1: collect all non-exported defined symbol names across ALL .o files
+        // 2: apply hide/rename to each .o file
+        // For rename, this ensures cross-object-file references remain consistent.
+        let should_hide = self.hide_symbols.is_some();
+        let should_rename = self.rename_symbols.is_some();
+
+        // Collect the internal symbol set in a dedicated scope so the borrow on
+        // self.hide_symbols / self.rename_symbols is released before the application loop.
+        let (global_internal_set, rename_suffix): (Option<FxHashSet<String>>, Option<String>) = {
+            if !should_hide && !should_rename {
+                (None, None)
+            } else {
+                let keep: &FxHashSet<String> = self
+                    .rename_symbols
+                    .as_ref()
+                    .map(|(k, _)| k)
+                    .or(self.hide_symbols.as_ref())
+                    .unwrap();
+                let suffix = self.rename_symbols.as_ref().map(|(_, s)| s.clone());
+                let mut all_names: FxHashSet<String> = FxHashSet::default();
+                for (_, entry) in &self.entries {
+                    let data: Option<Box<dyn AsRef<[u8]>>> = match entry {
+                        ArchiveEntry::FromArchive { archive_index, file_range } => {
+                            let src_archive = &self.src_archives[*archive_index];
+                            let d = &src_archive.1[file_range.0 as usize
+                                ..file_range.0 as usize + file_range.1 as usize];
+                            Some(Box::new(d) as Box<dyn AsRef<[u8]>>)
+                        }
+                        ArchiveEntry::File(file) => {
+                            let file = File::open(file);
+                            match file {
+                                Ok(f) => unsafe {
+                                    Mmap::map(f).ok().map(|m| Box::new(m) as Box<dyn AsRef<[u8]>>)
+                                },
+                                Err(_) => None,
+                            }
+                        }
+                    };
+                    if let Some(data) = data {
+                        elf_collect_rename_set(data.as_ref().as_ref(), keep, &mut all_names);
+                    }
+                }
+                (Some(all_names), suffix)
+            }
+        };
+
         for (entry_name, entry) in self.entries {
-            let data =
+            let data: Box<dyn AsRef<[u8]>> =
                 match entry {
                     ArchiveEntry::FromArchive { archive_index, file_range } => {
                         let src_archive = &self.src_archives[archive_index];
@@ -497,6 +574,31 @@ impl<'a> ArArchiveBuilder<'a> {
                         ) as Box<dyn AsRef<[u8]>>
                     },
                 };
+
+            let data: Box<dyn AsRef<[u8]>> = if let Some(ref internal_set) = global_internal_set {
+                if should_rename {
+                    // rename (+ optionally hide)
+                    if let Some(renamed) = elf_apply_rename(
+                        data.as_ref().as_ref(),
+                        internal_set,
+                        rename_suffix.as_ref().unwrap(),
+                        should_hide,
+                    ) {
+                        Box::new(renamed)
+                    } else {
+                        data
+                    }
+                } else {
+                    // hide only (zero-overhead in-place modification)
+                    if let Some(hidden) = elf_apply_hide(data.as_ref().as_ref(), internal_set) {
+                        Box::new(hidden)
+                    } else {
+                        data
+                    }
+                }
+            } else {
+                data
+            };
 
             entries.push(NewArchiveMember {
                 buf: data,
@@ -556,4 +658,347 @@ impl<'a> ArArchiveBuilder<'a> {
 
 fn io_error_context(context: &str, err: io::Error) -> io::Error {
     io::Error::new(io::ErrorKind::Other, format!("{context}: {err}"))
+}
+
+/// Layout constants that differ between ELF32 and ELF64 symbol table entries.
+struct ElfSymLayout {
+    sym_entry_size: usize,
+    st_info_offset: usize,
+    st_other_offset: usize,
+    is_64: bool,
+}
+
+impl ElfSymLayout {
+    const ELF64: ElfSymLayout =
+        ElfSymLayout { sym_entry_size: 24, st_info_offset: 4, st_other_offset: 5, is_64: true };
+    const ELF32: ElfSymLayout =
+        ElfSymLayout { sym_entry_size: 16, st_info_offset: 12, st_other_offset: 13, is_64: false };
+}
+
+/// Parsed ELF symbol table information, ready for symbol iteration.
+struct ElfSymtab<'a> {
+    endian: Endianness,
+    sym_offset: usize,
+    sym_count: usize,
+    strtab_data: &'a [u8],
+    layout: &'static ElfSymLayout,
+    /// File offset of section header table.
+    e_shoff: usize,
+    /// Number of section headers.
+    e_shnum: usize,
+    /// Section header index of the strtab linked to the symtab.
+    strtab_section_index: usize,
+}
+
+impl<'a> ElfSymtab<'a> {
+    fn sym_off(&self, i: usize) -> usize {
+        self.sym_offset + i * self.layout.sym_entry_size
+    }
+
+    fn binding(&self, data: &[u8], i: usize) -> u8 {
+        let off = self.sym_off(i);
+        data[off + self.layout.st_info_offset] >> 4
+    }
+
+    fn is_defined(&self, data: &[u8], i: usize) -> bool {
+        use object::elf;
+        let off = self.sym_off(i) + self.layout.st_other_offset + 1;
+        let bytes: [u8; 2] = data[off..off + 2].try_into().unwrap_or([0, 0]);
+        let shndx = match self.endian {
+            Endianness::Little => u16::from_le_bytes(bytes),
+            Endianness::Big => u16::from_be_bytes(bytes),
+        };
+        shndx != elf::SHN_UNDEF as u16
+    }
+
+    /// Read the symbol name from the linked strtab.
+    fn read_name(&self, data: &[u8], i: usize) -> Option<String> {
+        let off = self.sym_off(i);
+        let name_bytes: [u8; 4] = data[off..off + 4].try_into().ok()?;
+        let name_off: usize = match self.endian {
+            Endianness::Little => u32::from_le_bytes(name_bytes),
+            Endianness::Big => u32::from_be_bytes(name_bytes),
+        } as usize;
+        if name_off >= self.strtab_data.len() {
+            return None;
+        }
+        let end = self.strtab_data[name_off..]
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.strtab_data.len() - name_off);
+        let name = std::str::from_utf8(&self.strtab_data[name_off..name_off + end]).ok()?;
+        Some(name.to_string())
+    }
+}
+
+/// Internal helper: parse ELF symtab using the generic `FileHeader` API.
+fn elf_parse_symtab<'data, Elf: object::read::elf::FileHeader<Endian = Endianness>>(
+    data: &'data [u8],
+    layout: &'static ElfSymLayout,
+) -> Option<ElfSymtab<'data>>
+where
+    u64: From<Elf::Word>,
+{
+    use object::elf;
+    use object::read::elf::SectionHeader as _;
+
+    let endian = match Elf::parse(data) {
+        Ok(h) => match h.endian() {
+            Ok(e) => e,
+            Err(_) => return None,
+        },
+        Err(_) => return None,
+    };
+
+    let header = Elf::parse(data).unwrap();
+    let sections = match header.sections(endian, data) {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+    let e_shoff = u64::from(header.e_shoff(endian)) as usize;
+    let e_shnum = sections.len();
+
+    for section in sections.iter() {
+        if section.sh_type(endian) != elf::SHT_SYMTAB {
+            continue;
+        }
+        let strtab_index = section.sh_link(endian) as usize;
+        let strtab_section = match sections.section(object::SectionIndex(strtab_index)) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let strtab_data = match strtab_section.data(endian, data) {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+        let sym_offset = u64::from(section.sh_offset(endian)) as usize;
+        let sym_size = u64::from(section.sh_size(endian)) as usize;
+        let sym_count = sym_size / layout.sym_entry_size;
+        return Some(ElfSymtab {
+            endian,
+            sym_offset,
+            sym_count,
+            strtab_data,
+            layout,
+            e_shoff,
+            e_shnum,
+            strtab_section_index: strtab_index,
+        });
+    }
+    None
+}
+
+/// Detect ELF class and parse symtab.
+fn elf_symtab_info(data: &[u8]) -> Option<ElfSymtab<'_>> {
+    use object::elf;
+    if data.len() < 16 || &data[0..4] != elf::ELFMAG {
+        return None;
+    }
+    match data[4] {
+        elf::ELFCLASS64 => {
+            elf_parse_symtab::<elf::FileHeader64<Endianness>>(data, &ElfSymLayout::ELF64)
+        }
+        elf::ELFCLASS32 => {
+            elf_parse_symtab::<elf::FileHeader32<Endianness>>(data, &ElfSymLayout::ELF32)
+        }
+        _ => None,
+    }
+}
+
+/// Collect defined GLOBAL/WEAK symbol names from an ELF object that are NOT in
+/// `keep_symbols`. These are the names that should be renamed.
+fn elf_collect_rename_set(
+    data: &[u8],
+    keep_symbols: &FxHashSet<String>,
+    out_set: &mut FxHashSet<String>,
+) {
+    use object::elf;
+    let Some(tab) = elf_symtab_info(data) else { return };
+    for i in 1..tab.sym_count {
+        let off = tab.sym_off(i);
+        if off + tab.layout.sym_entry_size > data.len() {
+            break;
+        }
+        let binding = tab.binding(data, i);
+        if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
+            continue;
+        }
+        if !tab.is_defined(data, i) {
+            continue;
+        }
+        if let Some(name) = tab.read_name(data, i) {
+            if !keep_symbols.contains(&name) {
+                out_set.insert(name);
+            }
+        }
+    }
+}
+
+/// For ELF object files, hide GLOBAL/WEAK symbols whose names are in
+/// `hide_set` by setting their visibility to `STV_HIDDEN`.
+fn elf_apply_hide(data: &[u8], hide_set: &FxHashSet<String>) -> Option<Vec<u8>> {
+    use object::elf;
+
+    let tab = elf_symtab_info(data)?;
+    if tab.sym_count <= 1 {
+        return None;
+    }
+
+    let mut result: Option<Vec<u8>> = None;
+    for i in 1..tab.sym_count {
+        let off = tab.sym_off(i);
+        if off + tab.layout.sym_entry_size > data.len() {
+            break;
+        }
+        let binding = tab.binding(data, i);
+        if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
+            continue;
+        }
+        if !tab.is_defined(data, i) {
+            continue;
+        }
+        if let Some(name) = tab.read_name(data, i) {
+            if hide_set.contains(&name) {
+                let buf = result.get_or_insert_with(|| data.to_vec());
+                buf[off + tab.layout.st_other_offset] = elf::STV_HIDDEN;
+            }
+        }
+    }
+    result
+}
+
+/// For ELF object files, rename GLOBAL/WEAK symbols whose names are in
+/// `rename_set` by appending `suffix`, and set their visibility to `STV_HIDDEN`.
+///
+/// move strtab to end: builds a new strtab with renamed
+/// names appended, places it at the end of the file, and patches the strtab
+/// section header + ELF header. No other section offsets change.
+fn elf_apply_rename(
+    data: &[u8],
+    rename_set: &FxHashSet<String>,
+    suffix: &str,
+    hide: bool,
+) -> Option<Vec<u8>> {
+    use object::elf;
+
+    let tab = elf_symtab_info(data)?;
+    if tab.sym_count <= 1 {
+        return None;
+    }
+
+    // collect matching symbol names from this file
+    let mut matched_names: FxHashSet<String> = FxHashSet::default();
+    for i in 1..tab.sym_count {
+        let off = tab.sym_off(i);
+        if off + tab.layout.sym_entry_size > data.len() {
+            break;
+        }
+        let binding = tab.binding(data, i);
+        if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
+            continue;
+        }
+        if let Some(name) = tab.read_name(data, i) {
+            if rename_set.contains(&name) {
+                matched_names.insert(name);
+            }
+        }
+    }
+    if matched_names.is_empty() {
+        return None;
+    }
+
+    let mut new_strtab: Vec<u8> = tab.strtab_data.to_vec();
+    let mut rename_map: FxHashMap<String, u32> = FxHashMap::default();
+
+    #[allow(rustc::potential_query_instability)]
+    let mut sorted_names: Vec<String> = matched_names.into_iter().collect();
+    sorted_names.sort();
+
+    for name in &sorted_names {
+        let new_offset = new_strtab.len() as u32;
+        new_strtab.extend_from_slice(name.as_bytes());
+        new_strtab.extend_from_slice(suffix.as_bytes());
+        new_strtab.push(0);
+        rename_map.insert(name.clone(), new_offset);
+    }
+
+    let new_strtab_size = new_strtab.len();
+
+    // [original data] [new strtab] [padding] [section headers]
+    let is_64 = tab.layout.is_64;
+    let e_shentsize = if is_64 { 64usize } else { 40 };
+    let e_shoff = tab.e_shoff;
+    let e_shnum = tab.e_shnum;
+    let section_headers_size = e_shentsize * e_shnum;
+    let strtab_si = tab.strtab_section_index;
+
+    let new_strtab_file_off = data.len();
+    let new_e_shoff_raw = new_strtab_file_off + new_strtab_size;
+    let new_e_shoff = (new_e_shoff_raw + 3) & !3;
+    let padding_after_strtab = new_e_shoff - new_e_shoff_raw;
+
+    let result_size = new_e_shoff + section_headers_size;
+    let mut result = Vec::with_capacity(result_size);
+
+    result.extend_from_slice(data);
+    result.extend_from_slice(&new_strtab);
+    result.resize(result.len() + padding_after_strtab, 0);
+    if e_shoff + section_headers_size <= data.len() {
+        result.extend_from_slice(&data[e_shoff..e_shoff + section_headers_size]);
+    } else {
+        return None;
+    }
+
+    let strtab_shdr_offset = new_e_shoff + strtab_si * e_shentsize;
+    if is_64 {
+        write_u64_at(&mut result, strtab_shdr_offset + 24, new_strtab_file_off as u64, tab.endian);
+        write_u64_at(&mut result, strtab_shdr_offset + 32, new_strtab_size as u64, tab.endian);
+    } else {
+        write_u32_at(&mut result, strtab_shdr_offset + 16, new_strtab_file_off as u32, tab.endian);
+        write_u32_at(&mut result, strtab_shdr_offset + 20, new_strtab_size as u32, tab.endian);
+    }
+
+    if is_64 {
+        write_u64_at(&mut result, 40, new_e_shoff as u64, tab.endian);
+    } else {
+        write_u32_at(&mut result, 32, new_e_shoff as u32, tab.endian);
+    }
+
+    let sym_offset = tab.sym_offset;
+    for i in 1..tab.sym_count {
+        let off = sym_offset + i * tab.layout.sym_entry_size;
+        if off + tab.layout.sym_entry_size > result.len() {
+            break;
+        }
+        let binding = tab.binding(&result, i);
+        if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
+            continue;
+        }
+        if let Some(name) = tab.read_name(&result, i) {
+            if let Some(&new_st_name) = rename_map.get(&name) {
+                write_u32_at(&mut result, off, new_st_name, tab.endian);
+                if hide {
+                    result[off + tab.layout.st_other_offset] = elf::STV_HIDDEN;
+                }
+            }
+        }
+    }
+
+    Some(result)
+}
+
+fn write_u32_at(buf: &mut [u8], offset: usize, value: u32, endian: Endianness) {
+    let bytes = match endian {
+        Endianness::Little => value.to_le_bytes(),
+        Endianness::Big => value.to_be_bytes(),
+    };
+    buf[offset..offset + 4].copy_from_slice(&bytes);
+}
+
+fn write_u64_at(buf: &mut [u8], offset: usize, value: u64, endian: Endianness) {
+    let bytes = match endian {
+        Endianness::Little => value.to_le_bytes(),
+        Endianness::Big => value.to_be_bytes(),
+    };
+    buf[offset..offset + 8].copy_from_slice(&bytes);
 }
