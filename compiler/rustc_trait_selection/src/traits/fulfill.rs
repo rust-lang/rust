@@ -16,7 +16,6 @@ use rustc_middle::ty::{
     self, Binder, Const, GenericArgsRef, TypeVisitable, TypeVisitableExt, TypingMode,
     may_use_unstable_feature,
 };
-use rustc_span::DUMMY_SP;
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, debug_span, instrument};
 
@@ -29,7 +28,7 @@ use super::{
 };
 use crate::error_reporting::InferCtxtErrorExt;
 use crate::infer::{InferCtxt, TyOrConstInferVar};
-use crate::solve::StalledOnCoroutines;
+use crate::solve::HasStalledCoroutineVisitor;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -209,9 +208,8 @@ where
             fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
                 self.infcx
                     .resolve_vars_if_possible(pending_obligation.obligation.predicate)
-                    .visit_with(&mut StalledOnCoroutines {
+                    .visit_with(&mut HasStalledCoroutineVisitor {
                         stalled_coroutines: self.stalled_coroutines,
-                        span: DUMMY_SP,
                         cache: Default::default(),
                     })
                     .is_break()

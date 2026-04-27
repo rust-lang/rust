@@ -21,10 +21,15 @@ mod project_goals;
 mod search_graph;
 mod trait_goals;
 
+use std::ops::ControlFlow;
+
 use derive_where::derive_where;
+use rustc_type_ir::data_structures::DelayedSet;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
+use rustc_type_ir::{
+    self as ty, Interner, TyVid, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -161,6 +166,7 @@ where
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe {
                 cause: MaybeCause::Ambiguity,
                 opaque_types_jank: OpaqueTypesJank::AllGood,
+                stalled_on_coroutines: StalledOnCoroutines::No,
             })
         }
     }
@@ -279,21 +285,21 @@ where
 
     fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
         debug_assert!(candidates.len() > 1);
-        let (cause, opaque_types_jank) = candidates.iter().fold(
-            (MaybeCause::Ambiguity, OpaqueTypesJank::AllGood),
-            |(c, jank), candidates| {
+        let (cause, opaque_types_jank, stalled_on_coroutines) = candidates.iter().fold(
+            (MaybeCause::Ambiguity, OpaqueTypesJank::AllGood, StalledOnCoroutines::No),
+            |(c, jank, stalled), candidates| {
                 // We pull down the certainty of `Certainty::Yes` to ambiguity when combining
                 // these responses, b/c we're combining more than one response and this we
                 // don't know which one applies.
                 match candidates.result.value.certainty {
-                    Certainty::Yes => (c, jank),
-                    Certainty::Maybe { cause, opaque_types_jank } => {
-                        (c.or(cause), jank.or(opaque_types_jank))
+                    Certainty::Yes => (c, jank, stalled),
+                    Certainty::Maybe { cause, opaque_types_jank, stalled_on_coroutines } => {
+                        (c.or(cause), jank.or(opaque_types_jank), stalled.or(stalled_on_coroutines))
                     }
                 }
             },
         );
-        self.make_ambiguous_response_no_constraints(cause, opaque_types_jank)
+        self.make_ambiguous_response_no_constraints(cause, opaque_types_jank, stalled_on_coroutines)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
@@ -416,4 +422,29 @@ pub struct GoalStalledOn<I: Interner> {
     /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_certainty: Certainty,
+}
+
+pub struct HasStalledCoroutineVisitor<I: Interner> {
+    pub stalled_coroutines: I::LocalDefIds,
+    pub cache: DelayedSet<I::Ty>,
+}
+
+impl<I: Interner> TypeVisitor<I> for HasStalledCoroutineVisitor<I> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+        if !self.cache.insert(ty) {
+            return ControlFlow::Continue(());
+        }
+
+        if let ty::Coroutine(def_id, _) = ty.kind()
+            && def_id.as_local().is_some_and(|def_id| self.stalled_coroutines.contains(&def_id))
+        {
+            ControlFlow::Break(())
+        } else if ty.has_coroutines() {
+            ty.super_visit_with(self)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
 }

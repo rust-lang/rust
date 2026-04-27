@@ -289,7 +289,11 @@ impl<I: Interner> NestedNormalizationGoals<I> {
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum Certainty {
     Yes,
-    Maybe { cause: MaybeCause, opaque_types_jank: OpaqueTypesJank },
+    Maybe {
+        cause: MaybeCause,
+        opaque_types_jank: OpaqueTypesJank,
+        stalled_on_coroutines: StalledOnCoroutines,
+    },
 }
 
 /// Supporting not-yet-defined opaque types in HIR typeck is somewhat
@@ -348,10 +352,36 @@ impl OpaqueTypesJank {
     }
 }
 
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+pub enum StalledOnCoroutines {
+    Yes,
+    No,
+}
+
+impl StalledOnCoroutines {
+    fn and(self, other: StalledOnCoroutines) -> StalledOnCoroutines {
+        match (self, other) {
+            (StalledOnCoroutines::No, StalledOnCoroutines::No) => StalledOnCoroutines::No,
+            (StalledOnCoroutines::Yes, _) | (_, StalledOnCoroutines::Yes) => {
+                StalledOnCoroutines::Yes
+            }
+        }
+    }
+
+    pub fn or(self, other: StalledOnCoroutines) -> StalledOnCoroutines {
+        // `StalledOnCoroutines::Yes` is contagious: obtaining `Certainty::Maybe`
+        // while a candidate is stalled on a coroutine might have been
+        // `Certainty::Yes` or `NoSolution` if it were not stalled.
+        StalledOnCoroutines::and(self, other)
+    }
+}
+
 impl Certainty {
     pub const AMBIGUOUS: Certainty = Certainty::Maybe {
         cause: MaybeCause::Ambiguity,
         opaque_types_jank: OpaqueTypesJank::AllGood,
+        stalled_on_coroutines: StalledOnCoroutines::No,
     };
 
     /// Use this function to merge the certainty of multiple nested subgoals.
@@ -372,11 +402,20 @@ impl Certainty {
             (Certainty::Yes, Certainty::Maybe { .. }) => other,
             (Certainty::Maybe { .. }, Certainty::Yes) => self,
             (
-                Certainty::Maybe { cause: a_cause, opaque_types_jank: a_jank },
-                Certainty::Maybe { cause: b_cause, opaque_types_jank: b_jank },
+                Certainty::Maybe {
+                    cause: a_cause,
+                    opaque_types_jank: a_jank,
+                    stalled_on_coroutines: a_stalled,
+                },
+                Certainty::Maybe {
+                    cause: b_cause,
+                    opaque_types_jank: b_jank,
+                    stalled_on_coroutines: b_stalled,
+                },
             ) => Certainty::Maybe {
                 cause: a_cause.and(b_cause),
                 opaque_types_jank: a_jank.and(b_jank),
+                stalled_on_coroutines: a_stalled.and(b_stalled),
             },
         }
     }
@@ -385,6 +424,7 @@ impl Certainty {
         Certainty::Maybe {
             cause: MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false },
             opaque_types_jank: OpaqueTypesJank::AllGood,
+            stalled_on_coroutines: StalledOnCoroutines::No,
         }
     }
 }
