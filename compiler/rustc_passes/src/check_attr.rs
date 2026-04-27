@@ -198,6 +198,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ConstContinue(attr_span) => {
                 self.check_const_continue(hir_id, *attr_span, target)
             }
+            AttributeKind::IndirectBranch(attr_span) => {
+                self.check_indirect_branch(hir_id, *attr_span, target)
+            }
             AttributeKind::AllowInternalUnsafe(attr_span)
             | AttributeKind::AllowInternalUnstable(.., attr_span) => {
                 self.check_macro_only_attr(*attr_span, span, target, attrs)
@@ -1748,6 +1751,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
             self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
+        };
+    }
+
+    fn check_indirect_branch(&self, hir_id: HirId, _attr_span: Span, target: Target) {
+        let _node_span = self.tcx.hir_span(hir_id);
+
+        if !matches!(target, Target::Expression) {
+            return; // Handled in target checking during attr parse
+        }
+
+        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Match(..)) {
+            todo!()
         };
     }
 }

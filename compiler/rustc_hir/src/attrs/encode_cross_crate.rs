@@ -48,6 +48,7 @@ impl AttributeKind {
             FfiPure(..) => No,
             Fundamental { .. } => Yes,
             Ignore { .. } => No,
+            IndirectBranch(..) => No,
             Inline(..) => No,
             InstructionSet(..) => No,
             Lang(..) => Yes,

@@ -13,3 +13,10 @@ impl NoArgsAttributeParser for ConstContinueParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Expression)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstContinue;
 }
+
+pub(crate) struct IndirectBranchParser;
+impl NoArgsAttributeParser for IndirectBranchParser {
+    const PATH: &[Symbol] = &[sym::indirect_branch];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Expression)]);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::IndirectBranch;
+}

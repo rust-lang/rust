@@ -1096,6 +1096,7 @@ symbols! {
         incomplete_features,
         index,
         index_mut,
+        indirect_branch,
         infer_outlives_requirements,
         infer_static_outlives_requirements,
         inherent_associated_types,
