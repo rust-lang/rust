@@ -4076,6 +4076,7 @@ impl FnDeclFlags {
     }
 
     /// Returns `true` if the given input contains a `#[splat]` attribute in `attrs`.
+    #[inline]
     pub fn is_splatted_arg<'hir>(
         &self,
         input: &'hir Ty<'hir>,
@@ -4086,6 +4087,7 @@ impl FnDeclFlags {
 
     /// Searches `inputs` and `attrs` for the index of the splatted argument. Returns `None` if
     /// there is no splatted argument.
+    #[inline]
     pub fn splatted_arg_index<'hir>(
         &self,
         inputs: &'hir [Ty<'hir>],
@@ -4156,6 +4158,7 @@ impl<'hir> FnDecl<'hir> {
     }
 
     /// Returns `true` if the given argument `index` contains a `#[splat]` attribute in `attrs`.
+    #[inline]
     pub fn is_splatted_arg(
         &self,
         index: usize,
@@ -4166,6 +4169,7 @@ impl<'hir> FnDecl<'hir> {
 
     /// Searches `self.inputs` and `attrs` for the index of the splatted argument. Returns `None`
     /// if there is no splatted argument.
+    #[inline]
     pub fn splatted_arg_index(
         &self,
         attrs: &'hir dyn Fn(HirId) -> &'hir [Attribute],
@@ -4173,6 +4177,9 @@ impl<'hir> FnDecl<'hir> {
         self.fn_decl_kind.splatted_arg_index(self.inputs, attrs)
     }
 
+    /// Returns a dummy FnDecl with the given span, no inputs, no output, and lifetime elision
+    /// allowed.
+    #[inline]
     pub fn dummy(span: Span) -> Self {
         Self {
             inputs: &[],
