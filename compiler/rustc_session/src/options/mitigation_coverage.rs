@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
-use rustc_macros::{BlobDecodable, Encodable};
+use rustc_macros::{BlobDecodable, Encodable, StableHash};
 use rustc_span::edition::Edition;
 use rustc_target::spec::StackProtector;
 
@@ -9,7 +9,8 @@ use crate::Session;
 use crate::config::Options;
 use crate::options::CFGuard;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Encodable, BlobDecodable, StableHash)]
 pub enum DeniedPartialMitigationLevel {
     // Enabled(false) should be the bottom of the Ord hierarchy
     Enabled(bool),
@@ -133,7 +134,8 @@ macro_rules! intersperse {
 
 macro_rules! denied_partial_mitigations {
     ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
-        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        #[derive(Encodable, BlobDecodable, StableHash)]
         pub enum DeniedPartialMitigationKind {
             $($name),*
         }
@@ -211,7 +213,8 @@ denied_partial_mitigations! {
 /// A mitigation that cannot be partially enabled (see
 /// [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)), but are currently enabled for this
 /// crate.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Encodable, BlobDecodable, StableHash)]
 pub struct DeniedPartialMitigation {
     pub kind: DeniedPartialMitigationKind,
     pub level: DeniedPartialMitigationLevel,
