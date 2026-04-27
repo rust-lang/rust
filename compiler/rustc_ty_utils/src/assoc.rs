@@ -23,7 +23,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
     let item = tcx.hir_expect_item(def_id);
     match item.kind {
-        hir::ItemKind::Trait(.., trait_item_refs) => {
+        hir::ItemKind::Trait { items: trait_item_refs, .. } => {
             // We collect RPITITs for each trait method's return type and create a corresponding
             // associated item using the associated_types_for_impl_traits_in_trait_or_impl
             // query.
@@ -151,7 +151,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
     let item = tcx.hir_expect_item(def_id);
     let disambiguator = &mut PerParentDisambiguatorState::new(def_id);
     match item.kind {
-        ItemKind::Trait(.., trait_item_refs) => trait_item_refs
+        ItemKind::Trait { items: trait_item_refs, .. } => trait_item_refs
             .iter()
             .filter_map(move |item| {
                 if !matches!(tcx.def_kind(item.owner_id), DefKind::AssocFn) {

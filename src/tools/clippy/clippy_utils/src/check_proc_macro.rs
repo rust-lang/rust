@@ -265,15 +265,15 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Struct(_, _, VariantData::Struct { .. }) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
-        ItemKind::Trait(_, _, _, Safety::Unsafe, ..)
+        ItemKind::Trait { safety: Safety::Unsafe, .. }
         | ItemKind::Impl(Impl {
             of_trait: Some(TraitImplHeader {
                 safety: Safety::Unsafe, ..
             }),
             ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
-        ItemKind::Trait(_, _, IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
-        ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
+        ItemKind::Trait { is_auto: IsAuto::Yes, .. } => (Pat::Str("auto"), Pat::Str("}")),
+        ItemKind::Trait { .. } => (Pat::Str("trait"), Pat::Str("}")),
         ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
         ItemKind::Mod(..) => (Pat::Str("mod"), Pat::Str("")),
         ItemKind::Macro(_, def, _) => (

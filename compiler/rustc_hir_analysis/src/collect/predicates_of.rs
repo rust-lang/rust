@@ -172,7 +172,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     ));
                 }
             }
-            ItemKind::Trait(_, _, _, _, _, _, self_bounds, ..)
+            ItemKind::Trait { bounds: self_bounds, .. }
             | ItemKind::TraitAlias(_, _, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
             }
@@ -669,7 +669,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     };
 
     let (generics, superbounds) = match item.kind {
-        hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
+        hir::ItemKind::Trait { generics, bounds: supertraits, .. } => (generics, supertraits),
         hir::ItemKind::TraitAlias(_, _, generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
     };
@@ -934,7 +934,7 @@ pub(super) fn type_param_predicates<'tcx>(
     };
 
     if let Node::Item(item) = hir_node
-        && let hir::ItemKind::Trait(..) = item.kind
+        && let hir::ItemKind::Trait { .. } = item.kind
         // Implied `Self: Trait` and supertrait bounds.
         && param_id == item_hir_id
     {
@@ -1073,7 +1073,7 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::Trait(_, _, _, _, _, generics, supertraits, _) => {
+            hir::ItemKind::Trait { generics, bounds: supertraits, .. } => {
                 (generics, Some((Some(item.owner_id.def_id), supertraits)), false)
             }
             hir::ItemKind::TraitAlias(_, _, generics, supertraits) => {
@@ -1194,7 +1194,7 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
         }
         None => match tcx.hir_node_by_def_id(def_id) {
             Node::Item(hir::Item {
-                kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                kind: hir::ItemKind::Trait { .. } | hir::ItemKind::TraitAlias(..),
                 ..
             }) => implied_predicates_with_filter(
                 tcx,

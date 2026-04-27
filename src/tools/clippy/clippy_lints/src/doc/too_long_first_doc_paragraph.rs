@@ -33,7 +33,7 @@ pub(super) fn check(
                 | ItemKind::Enum(..)
                 | ItemKind::Struct(..)
                 | ItemKind::Union(..)
-                | ItemKind::Trait(..)
+                | ItemKind::Trait { .. }
                 | ItemKind::TraitAlias(..)
         )
     {

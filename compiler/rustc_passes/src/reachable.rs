@@ -256,7 +256,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }
-                    | hir::ItemKind::Trait(..)
+                    | hir::ItemKind::Trait { .. }
                     | hir::ItemKind::TraitAlias(..)
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)

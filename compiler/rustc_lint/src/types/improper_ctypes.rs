@@ -1145,7 +1145,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             // Doesn't define something that can contain a external type to be checked.
             hir::ItemKind::Impl(..)
             | hir::ItemKind::TraitAlias(..)
-            | hir::ItemKind::Trait(..)
+            | hir::ItemKind::Trait { .. }
             | hir::ItemKind::GlobalAsm { .. }
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Mod(..)

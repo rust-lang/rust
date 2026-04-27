@@ -618,16 +618,16 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_variant_data(struct_definition));
         }
-        ItemKind::Trait(
-            ref impl_restriction,
-            _constness,
-            _is_auto,
-            _safety,
+        ItemKind::Trait {
+            impl_restriction,
+            constness: _,
+            is_auto: _,
+            safety: _,
             ident,
-            ref generics,
+            generics,
             bounds,
-            trait_item_refs,
-        ) => {
+            items: trait_item_refs,
+        } => {
             if let RestrictionKind::Restricted(path) = &impl_restriction.kind {
                 walk_list!(visitor, visit_path_segment, path.segments);
             }

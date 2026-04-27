@@ -267,7 +267,7 @@ impl<'tcx> CleanVisitor<'tcx> {
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
-                    HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
+                    HirItem::Trait { .. } => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),

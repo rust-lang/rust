@@ -141,7 +141,7 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
     tcx.hir_get_if_local(trait_def_id)
         .and_then(|node| match node {
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Trait(.., generics, bounds, _),
+                kind: hir::ItemKind::Trait { generics, bounds, .. },
                 ..
             }) => Some(
                 generics
