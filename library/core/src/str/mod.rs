@@ -3124,7 +3124,6 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// #![feature(substr_range)]
     /// use core::range::Range;
     ///
     /// let data = "a, b, b, a";
@@ -3136,7 +3135,7 @@ impl str {
     /// assert_eq!(iter.next(), Some(Range { start: 9, end: 10 }));
     /// ```
     #[must_use]
-    #[unstable(feature = "substr_range", issue = "126769")]
+    #[stable(feature = "substr_range", since = "CURRENT_RUSTC_VERSION")]
     pub fn substr_range(&self, substr: &str) -> Option<Range<usize>> {
         self.as_bytes().subslice_range(substr.as_bytes())
     }
