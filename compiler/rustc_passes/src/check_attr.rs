@@ -1027,6 +1027,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// [`check_doc_inline`]: Self::check_doc_inline
     fn check_doc_attrs(&self, attr: &DocAttribute, hir_id: HirId, target: Target) {
         let DocAttribute {
+            first_span: _,
             aliases,
             // valid pretty much anywhere, not checked here?
             // FIXME: should we?
