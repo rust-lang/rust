@@ -137,36 +137,36 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx, Arc<Proxy>) -> R + Send, R: 
     extra_symbols: &[&'static str],
     f: F,
 ) -> R {
-    // The "thread pool" is a single spawned thread in the non-parallel
-    // compiler. We run on a spawned thread instead of the main thread (a) to
+    // For `WorkerLocal` to function properly we need to create a thread pool.
+    // Also we run on a spawned thread instead of the main thread (a) to
     // provide control over the stack size, and (b) to increase similarity with
     // the parallel compiler, in particular to ensure there is no accidental
     // sharing of data between the main thread and the compilation thread
     // (which might cause problems for the parallel compiler).
-    let builder = thread::Builder::new().name("rustc".to_string()).stack_size(thread_stack_size);
+    let builder = rustc_thread_pool::ThreadPoolBuilder::new()
+        .thread_name(|_| "rustc".to_string())
+        .num_threads(1)
+        .stack_size(thread_stack_size);
 
     // We build the session globals and run `f` on the spawned thread, because
     // `SessionGlobals` does not impl `Send` in the non-parallel compiler.
-    thread::scope(|s| {
-        // `unwrap` is ok here because `spawn_scoped` only panics if the thread
-        // name contains null bytes.
-        let r = builder
-            .spawn_scoped(s, move || {
-                rustc_span::create_session_globals_then(
-                    edition,
-                    extra_symbols,
-                    Some(sm_inputs),
-                    || f(CurrentGcx::new(), Proxy::new()),
-                )
-            })
-            .unwrap()
-            .join();
-
-        match r {
-            Ok(v) => v,
-            Err(e) => std::panic::resume_unwind(e),
-        }
-    })
+    // `unwrap` is ok here because `build_scoped` just as `std::thread`
+    // only panics if the thread name contains null bytes.
+    builder
+        .build_scoped(
+            |thread| thread.run(),
+            move |pool| {
+                pool.install(|| {
+                    rustc_span::create_session_globals_then(
+                        edition,
+                        extra_symbols,
+                        Some(sm_inputs),
+                        || f(CurrentGcx::new(), Proxy::new()),
+                    )
+                })
+            },
+        )
+        .unwrap()
 }
 
 pub(crate) fn run_in_thread_pool_with_globals<
@@ -188,21 +188,8 @@ pub(crate) fn run_in_thread_pool_with_globals<
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
-
     let Some(proof) = sync::check_dyn_thread_safe() else {
-        return run_in_thread_with_globals(
-            thread_stack_size,
-            edition,
-            sm_inputs,
-            extra_symbols,
-            |current_gcx, jobserver_proxy| {
-                // Register the thread for use with the `WorkerLocal` type.
-                registry.register();
-
-                f(current_gcx, jobserver_proxy)
-            },
-        );
+        return run_in_thread_with_globals(thread_stack_size, edition, sm_inputs, extra_symbols, f);
     };
 
     let current_gcx = proof.derive(CurrentGcx::new());
@@ -282,9 +269,6 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                 .build_scoped(
                     // Initialize each new worker thread when created.
                     move |thread: rustc_thread_pool::ThreadBuilder| {
-                        // Register the thread for use with the `WorkerLocal` type.
-                        registry.register();
-
                         rustc_span::set_session_globals_then(session_globals.into_inner(), || {
                             thread.run()
                         })
