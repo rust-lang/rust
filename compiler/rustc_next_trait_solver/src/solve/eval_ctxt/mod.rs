@@ -280,18 +280,10 @@ where
                 // We currently only consider a cycle coinductive if it steps
                 // into a where-clause of a coinductive trait.
                 CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
-                // While normalizing via an impl does step into a where-clause of
-                // an impl, accessing the associated item immediately steps out of
-                // it again. This means cycles/recursive calls are not guarded
-                // by impls used for normalization.
-                //
-                // See tests/ui/traits/next-solver/cycles/normalizes-to-is-not-productive.rs
-                // for how this can go wrong.
-                CurrentGoalKind::NormalizesTo => PathKind::Inductive,
                 // We probably want to make all traits coinductive in the future,
                 // so we treat cycles involving where-clauses of not-yet coinductive
                 // traits as ambiguous for now.
-                CurrentGoalKind::Misc => PathKind::Unknown,
+                CurrentGoalKind::Misc | CurrentGoalKind::NormalizesTo => PathKind::Unknown,
             },
             // Relating types is always unproductive. If we were to map proof trees to
             // corecursive functions as explained in #136824, relating types never
