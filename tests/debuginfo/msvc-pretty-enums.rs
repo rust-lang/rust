@@ -270,10 +270,10 @@ enum NicheLayoutWithFields3 {
     F,
 }
 
-#[rustc_layout_scalar_valid_range_start(340282366920938463463374607431768211454)]
-#[rustc_layout_scalar_valid_range_end(1)]
 #[repr(transparent)]
-struct Wrapping128(u128);
+struct Wrapping128(
+    pattern_type!(u128 is 340282366920938463463374607431768211454..=u128::MAX | 0..=1),
+);
 
 enum Wrapping128Niche {
     X(Wrapping128),
@@ -325,8 +325,11 @@ fn main() {
     let niche128_some = NonZero::new(123456i128);
     let niche128_none: Option<NonZero<i128>> = None;
 
-    let wrapping_niche128_untagged =
-        unsafe { Wrapping128Niche::X(Wrapping128(340282366920938463463374607431768211454)) };
+    let wrapping_niche128_untagged = unsafe {
+        Wrapping128Niche::X(Wrapping128(unsafe {
+            std::mem::transmute(340282366920938463463374607431768211454)
+        }))
+    };
     let wrapping_niche128_none1 = Wrapping128Niche::Y;
     let wrapping_niche128_none2 = Wrapping128Niche::Z;
 

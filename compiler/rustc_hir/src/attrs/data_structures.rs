@@ -1451,12 +1451,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_intrinsic_const_stable_indirect]`
     RustcIntrinsicConstStableIndirect,
 
-    /// Represents `#[rustc_layout_scalar_valid_range_end]`.
-    RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
-
-    /// Represents `#[rustc_layout_scalar_valid_range_start]`.
-    RustcLayoutScalarValidRangeStart(Box<u128>, Span),
-
     /// Represents `#[rustc_legacy_const_generics]`
     RustcLegacyConstGenerics {
         fn_indexes: ThinVec<(usize, Span)>,

@@ -4,10 +4,10 @@
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |__ |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ dont-require-annotations: NOTE
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
-#![feature(rustc_attrs)]
+#![feature(pattern_types, pattern_type_macro)]
 #![allow(invalid_value)]
 //@ ignore-parallel-frontend different alloc ids
-use std::mem;
+use std::{mem, pat::pattern_type};
 
 #[repr(C)]
 union MaybeUninit<T: Copy> {
@@ -75,14 +75,15 @@ const UNALIGNED_READ: () = unsafe {
     ptr.read(); //~ ERROR accessing memory
 };
 
-// Check the general case of a pointer value not falling into the scalar valid range.
-#[rustc_layout_scalar_valid_range_start(1000)]
+/*
+FIXME(pattern_types): allow for other integer range restricitons on raw pointers?
 pub struct High {
-    pointer: *const (),
+    pointer: pattern_type!(*const () is 1000..),
 }
 static S: u32 = 0; // just a static to construct a pointer with unknown absolute address
 const INVALID_VALUE_PTR: High = unsafe { mem::transmute(&S) };
-//~^ ERROR invalid value
+//^ ERROR invalid value
+*/
 
 
 fn main() {}

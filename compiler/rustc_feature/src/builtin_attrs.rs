@@ -574,16 +574,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(
-        rustc_layout_scalar_valid_range_start,
-        "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
-        niche optimizations in the standard library",
-    ),
-    rustc_attr!(
-        rustc_layout_scalar_valid_range_end,
-        "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
-        niche optimizations in the standard library",
-    ),
-    rustc_attr!(
         rustc_simd_monomorphize_lane_limit,
         "the `#[rustc_simd_monomorphize_lane_limit]` attribute is just used by std::simd \
         for better error messages",

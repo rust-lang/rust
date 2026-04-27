@@ -238,10 +238,6 @@ struct VecDummy {
     len: usize,
 }
 
-#[rustc_layout_scalar_valid_range_start(1)]
-#[rustc_layout_scalar_valid_range_end(100)]
-struct PointerWithRange(#[allow(dead_code)] *const u8);
-
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -357,8 +353,4 @@ pub fn main() {
     // the end which means the 8-sized field shouldn't be alignment-promoted before the 4-sized one.
     let v = ReorderEndNiche { a: EndNiche8([0; 7], false), b: MiddleNiche4(0, 0, false, 0) };
     assert!(ptr::from_ref(&v.a).addr() > ptr::from_ref(&v.b).addr());
-
-
-    assert_eq!(size_of::<Option<PointerWithRange>>(), size_of::<PointerWithRange>());
-    assert_eq!(size_of::<Option<Option<PointerWithRange>>>(), size_of::<PointerWithRange>());
 }

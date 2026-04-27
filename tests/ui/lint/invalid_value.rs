@@ -2,11 +2,12 @@
 // in a lint.
 #![allow(deprecated)]
 #![deny(invalid_value)]
-#![feature(never_type, rustc_attrs)]
+#![feature(never_type, rustc_attrs, pattern_types, pattern_type_macro)]
 
 use std::mem::{self, MaybeUninit};
 use std::ptr::NonNull;
 use std::num::NonZero;
+use std::pat::pattern_type;
 
 enum Void {}
 
@@ -16,10 +17,8 @@ struct RefPair((&'static i32, i32));
 struct Wrap<T> { wrapped: T }
 enum WrapEnum<T> { Wrapped(T) }
 
-#[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(128)]
 #[repr(transparent)]
-pub(crate) struct NonBig(u64);
+pub(crate) struct NonBig(pattern_type!(u64 is 0..=128));
 
 /// A two-variant enum, thus needs a tag and may not remain uninitialized.
 enum Fruit {
@@ -43,9 +42,7 @@ enum TwoUninhabited {
     B(Void),
 }
 
-#[rustc_layout_scalar_valid_range_start(254)]
-#[rustc_layout_scalar_valid_range_end(1)]
-pub(crate) struct WrapAroundRange(u8);
+pub(crate) struct WrapAroundRange(pattern_type!(i8 is -1..=1));
 
 #[allow(unused)]
 fn generic<T: 'static>() {

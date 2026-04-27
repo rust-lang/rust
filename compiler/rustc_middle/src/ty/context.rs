@@ -11,7 +11,7 @@ use std::env::VarError;
 use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::{PhantomData, PointeeSized};
-use std::ops::{Bound, Deref};
+use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
@@ -1045,17 +1045,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
         matches!(self.as_lang_item(def_id), Some(LangItem::Sized | LangItem::MetaSized))
-    }
-
-    /// Returns a range of the start/end indices specified with the
-    /// `rustc_layout_scalar_valid_range` attribute.
-    // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
-    pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
-        let start = find_attr!(self, def_id, RustcLayoutScalarValidRangeStart(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
-        let end =
-            find_attr!(self, def_id, RustcLayoutScalarValidRangeEnd(n, _) => Bound::Included(**n))
-                .unwrap_or(Bound::Unbounded);
-        (start, end)
     }
 
     pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted> {

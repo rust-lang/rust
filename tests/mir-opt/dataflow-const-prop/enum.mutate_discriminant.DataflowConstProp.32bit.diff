@@ -4,13 +4,17 @@
   fn mutate_discriminant() -> u8 {
       let mut _0: u8;
       let mut _1: std::option::Option<NonZeroUsize>;
-      let mut _2: isize;
+      let mut _2: (usize) is 1..;
+      let mut _3: isize;
   
       bb0: {
           discriminant(_1) = 1;
-          (((_1 as variant#1).0: NonZeroUsize).0: usize) = const 0_usize;
-          _2 = discriminant(_1);
-          switchInt(copy _2) -> [0: bb1, otherwise: bb2];
+-         _2 = const 0_usize as (usize) is 1.. (Transmute);
+-         (((_1 as variant#1).0: NonZeroUsize).0: (usize) is 1..=usize::MAX) = copy _2;
++         _2 = const {transmute(0x00000000): (usize) is 1..};
++         (((_1 as variant#1).0: NonZeroUsize).0: (usize) is 1..=usize::MAX) = const {transmute(0x00000000): (usize) is 1..=usize::MAX};
+          _3 = discriminant(_1);
+          switchInt(copy _3) -> [0: bb1, otherwise: bb2];
       }
   
       bb1: {
