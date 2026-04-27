@@ -204,7 +204,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
             }
 
             PlaceContext::NonUse(_)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention )
             | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
             PlaceContext::NonMutatingUse(
@@ -233,13 +233,15 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::RawBorrow
-                | MutatingUseContext::Projection,
+                | MutatingUseContext::Projection
+                | MutatingUseContext::PinnedBorrow,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::RawBorrow
-                | NonMutatingUseContext::Projection,
+                | NonMutatingUseContext::Projection
+                | NonMutatingUseContext::PinnedBorrow,
             ) => {
                 self.locals[local] = LocalKind::Memory;
             }

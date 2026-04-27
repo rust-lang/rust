@@ -1764,8 +1764,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let first_borrow_desc;
         let mut err = match (gen_borrow_kind, issued_borrow.kind) {
             (
-                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
-                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
+                BorrowKind::Shared
+                | BorrowKind::Fake(FakeBorrowKind::Deep)
+                | BorrowKind::Pinned(mir::Mutability::Not),
+                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
+                | BorrowKind::Pinned(mir::Mutability::Mut),
             ) => {
                 first_borrow_desc = "mutable ";
                 let mut err = self.cannot_reborrow_already_borrowed(
@@ -1789,8 +1792,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 err
             }
             (
-                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
-                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
+                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
+                | BorrowKind::Pinned(mir::Mutability::Mut),
+                BorrowKind::Shared
+                | BorrowKind::Fake(FakeBorrowKind::Deep)
+                | BorrowKind::Pinned(mir::Mutability::Not),
             ) => {
                 first_borrow_desc = "immutable ";
                 let mut err = self.cannot_reborrow_already_borrowed(
@@ -1821,8 +1827,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             (
-                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
-                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow },
+                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
+                | BorrowKind::Pinned(mir::Mutability::Mut),
+                BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
+                | BorrowKind::Pinned(mir::Mutability::Mut),
             ) => {
                 first_borrow_desc = "first ";
                 let mut err = self.cannot_mutably_borrow_multiply(
@@ -1861,7 +1869,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.cannot_uniquely_borrow_by_two_closures(span, &desc_place, issued_span, None)
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Fake(FakeBorrowKind::Shallow)) => {
+            (
+                BorrowKind::Mut { .. } | BorrowKind::Pinned(mir::Mutability::Mut),
+                BorrowKind::Fake(FakeBorrowKind::Shallow),
+            ) => {
                 if let Some(immutable_section_description) =
                     self.classify_immutable_section(issued_borrow.assigned_place)
                 {
@@ -1924,7 +1935,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             (
-                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
+                BorrowKind::Shared
+                | BorrowKind::Fake(FakeBorrowKind::Deep)
+                | BorrowKind::Pinned(mir::Mutability::Not),
                 BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
             ) => {
                 first_borrow_desc = "first ";
@@ -1941,7 +1954,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture }) => {
+            (
+                BorrowKind::Mut { .. } | BorrowKind::Pinned(mir::Mutability::Mut),
+                BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
+            ) => {
                 first_borrow_desc = "first ";
                 self.cannot_reborrow_already_uniquely_borrowed(
                     span,
@@ -1957,12 +1973,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             (
-                BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep),
-                BorrowKind::Shared | BorrowKind::Fake(_),
+                BorrowKind::Shared
+                | BorrowKind::Fake(FakeBorrowKind::Deep)
+                | BorrowKind::Pinned(mir::Mutability::Not),
+                BorrowKind::Shared | BorrowKind::Fake(_) | BorrowKind::Pinned(mir::Mutability::Not),
             )
             | (
                 BorrowKind::Fake(FakeBorrowKind::Shallow),
-                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake(_),
+                BorrowKind::Mut { .. }
+                | BorrowKind::Shared
+                | BorrowKind::Fake(_)
+                | BorrowKind::Pinned(_),
             ) => {
                 unreachable!()
             }
@@ -2029,6 +2050,60 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
 
         err
+    }
+
+    pub(crate) fn report_move_after_pinned(
+        &mut self,
+        location: Location,
+        (place, span): (Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        debug!(
+            "report_move_after_pinned: location={:?} place={:?} span={:?} borrow={:?}",
+            location, place, span, borrow
+        );
+
+        let value_msg = self.describe_any_place(place.as_ref());
+        let borrow_msg = self.describe_any_place(borrow.borrowed_place.as_ref());
+
+        let borrow_spans = self.retrieve_borrow_spans(borrow);
+        let borrow_span = borrow_spans.args_or_use();
+
+        let move_spans = self.move_spans(place.as_ref(), location);
+        let span = move_spans.args_or_use();
+
+        let err = self.cannot_move_out_while_pinned(
+            span,
+            borrow_span,
+            &self.describe_any_place(place.as_ref()),
+            &borrow_msg,
+            &value_msg,
+        );
+        self.buffer_error(err);
+    }
+
+    pub(crate) fn report_mutably_borrow_after_pinned(
+        &mut self,
+        location: Location,
+        (place, span): (Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        debug!(
+            "report_mutably_borrow_after_pinned: location={:?} place={:?} span={:?} borrow={:?}",
+            location, place, span, borrow
+        );
+
+        let borrow_spans = self.borrow_spans(span, location);
+        let span = borrow_spans.args_or_use();
+
+        let pin_spans = self.retrieve_borrow_spans(borrow);
+        let pin_span = pin_spans.args_or_use();
+
+        let value_msg = self.describe_any_place(place.as_ref());
+        let pin_msg = self.describe_any_place(borrow.borrowed_place.as_ref());
+
+        let err = self.cannot_mutably_borrow_pinned(span, pin_span, &value_msg, &pin_msg);
+        self.buffer_error(err);
     }
 
     fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'infcx>, place: Place<'tcx>) {

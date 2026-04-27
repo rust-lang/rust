@@ -1117,6 +1117,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     BorrowKind::Fake(FakeBorrowKind::Deep) => "fake ",
                     BorrowKind::Fake(FakeBorrowKind::Shallow) => "fake shallow ",
                     BorrowKind::Mut { .. } => "mut ",
+                    BorrowKind::Pinned(Mutability::Not) => "pin ",
+                    BorrowKind::Pinned(Mutability::Mut) => "pin mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.

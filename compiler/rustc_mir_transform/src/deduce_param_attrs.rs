@@ -65,7 +65,8 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
                 | MutatingUseContext::Yield
                 | MutatingUseContext::Drop
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::RawBorrow) => {
+                | MutatingUseContext::RawBorrow
+                | MutatingUseContext::PinnedBorrow) => {
                 self.usage[i] |= UsageSummary::MUTATE;
                 self.usage[i] |= UsageSummary::CAPTURE;
             }
@@ -83,7 +84,7 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
                 self.usage[i] |= UsageSummary::MUTATE;
                 self.usage[i] |= UsageSummary::CAPTURE;
             }
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) => {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::PinnedBorrow) => {
                 // Not mutating if the parameter is `Freeze`.
                 self.usage[i] |= UsageSummary::SHARED_BORROW;
                 self.usage[i] |= UsageSummary::CAPTURE;
@@ -95,7 +96,8 @@ impl<'tcx> Visitor<'tcx> for DeduceParamAttrs {
                 | NonMutatingUseContext::Move
                 | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::PlaceMention
-                | NonMutatingUseContext::Projection) => {}
+                | NonMutatingUseContext::Projection
+                ) => {}
         }
     }
 

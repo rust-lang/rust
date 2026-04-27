@@ -676,15 +676,19 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 visit::walk_expr(&mut visitor, expr);
                 if visitor.found {
                     match borrow_kind {
-                        BorrowKind::Fake(_) | BorrowKind::Shared
+                        BorrowKind::Fake(_)
+                        | BorrowKind::Shared
+                        | BorrowKind::Pinned(hir::Mutability::Not)
                             if !self.thir[arg].ty.is_freeze(self.tcx, self.typing_env) =>
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
-                        BorrowKind::Mut { .. } => {
+                        BorrowKind::Mut { .. } | BorrowKind::Pinned(hir::Mutability::Mut) => {
                             self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField)
                         }
-                        BorrowKind::Fake(_) | BorrowKind::Shared => {}
+                        BorrowKind::Fake(_)
+                        | BorrowKind::Shared
+                        | BorrowKind::Pinned(hir::Mutability::Not) => {}
                     }
                 }
             }

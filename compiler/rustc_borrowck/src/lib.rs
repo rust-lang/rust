@@ -53,7 +53,7 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, RustcFacts};
-use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
+use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows, Pins};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
@@ -602,13 +602,14 @@ fn get_flow_results<'a, 'tcx>(
     borrow_set: &'a BorrowSet<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
-    // We compute these three analyses individually, but them combine them into
+    // We compute these four analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
     );
+    let pins = Pins::new(tcx, body, borrow_set).iterate_to_fixpoint(tcx, body, Some("borrowck"));
     let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
         tcx,
         body,
@@ -622,16 +623,27 @@ fn get_flow_results<'a, 'tcx>(
 
     let analysis = Borrowck {
         borrows: borrows.analysis,
+        pins: pins.analysis,
         uninits: uninits.analysis,
         ever_inits: ever_inits.analysis,
     };
 
+    assert_eq!(borrows.entry_states.len(), pins.entry_states.len());
     assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
     assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
-    let entry_states: EntryStates<_> =
-        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
-            .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
-            .collect();
+    let entry_states: EntryStates<_> = itertools::izip!(
+        borrows.entry_states,
+        pins.entry_states,
+        uninits.entry_states,
+        ever_inits.entry_states
+    )
+    .map(|(borrows, pinned_borrows, uninits, ever_inits)| BorrowckDomain {
+        borrows,
+        pinned_borrows,
+        uninits,
+        ever_inits,
+    })
+    .collect();
 
     Results { analysis, entry_states }
 }
@@ -1254,6 +1266,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
+    fn pinned_borrows<'s>(
+        &self,
+        state: &'s BorrowckDomain,
+    ) -> Option<&'s MixedBitSet<BorrowIndex>> {
+        // FIXME(pin_ergonomics): borrowck behaviors depend on a safe trait
+        // which should not contain any safety invariants.
+        // if place
+        //     .ty(self.body, self.infcx.tcx)
+        //     .ty
+        //     .is_unpin(self.infcx.tcx, self.body.typing_env(self.infcx.tcx))
+        // {
+        //     None
+        // } else {
+        Some(&state.pinned_borrows)
+        // }
+    }
+
     #[instrument(level = "debug", skip(self, state))]
     fn check_access_for_conflict(
         &mut self,
@@ -1266,6 +1295,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
+        let pinned_borrows = self.pinned_borrows(state);
 
         each_borrow_involving_path(
             self,
@@ -1273,7 +1303,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             self.body,
             (sd, place_span.0),
             self.borrow_set,
-            |borrow_index| borrows_in_scope.contains(borrow_index),
+            |borrow_index| {
+                borrows_in_scope.contains(borrow_index)
+                    || pinned_borrows.is_some_and(|p| p.contains(borrow_index))
+            },
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same
@@ -1293,13 +1326,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     ControlFlow::Continue(())
                 }
 
-                (Read(_), BorrowKind::Shared | BorrowKind::Fake(_))
+                (
+                    Read(_),
+                    BorrowKind::Shared | BorrowKind::Fake(_) | BorrowKind::Pinned(Mutability::Not),
+                )
                 | (
                     Read(ReadKind::Borrow(BorrowKind::Fake(FakeBorrowKind::Shallow))),
-                    BorrowKind::Mut { .. },
+                    BorrowKind::Mut { .. } | BorrowKind::Pinned(Mutability::Mut),
                 ) => ControlFlow::Continue(()),
 
-                (Reservation(_), BorrowKind::Fake(_) | BorrowKind::Shared) => {
+                (
+                    Reservation(_),
+                    BorrowKind::Fake(_) | BorrowKind::Shared | BorrowKind::Pinned(Mutability::Not),
+                ) => {
                     // This used to be a future compatibility warning (to be
                     // disallowed on NLL). See rust-lang/rust#56254
                     ControlFlow::Continue(())
@@ -1310,7 +1349,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     ControlFlow::Continue(())
                 }
 
-                (Read(kind), BorrowKind::Mut { .. }) => {
+                // Ignore the expired borrow (pinnedness never conflicts with a read)
+                (Read(_), BorrowKind::Mut { .. } | BorrowKind::Pinned(Mutability::Mut))
+                    if !borrows_in_scope.contains(borrow_index) =>
+                {
+                    ControlFlow::Continue(())
+                }
+
+                (Read(kind), BorrowKind::Mut { .. } | BorrowKind::Pinned(Mutability::Mut)) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(this.dominators(), borrow, location) {
                         assert!(borrow.kind.is_two_phase_borrow());
@@ -1331,6 +1377,37 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         }
                     }
                     ControlFlow::Break(())
+                }
+
+                // Handle the expired borrows (only pinned borrows)
+                (Reservation(kind) | Activation(kind, _) | Write(kind), _)
+                    if !borrows_in_scope.contains(borrow_index) =>
+                {
+                    debug_assert!(
+                        pinned_borrows.is_none_or(|p| p.contains(borrow_index)),
+                        "unexpected expired but non-pinned borrow {borrow_index:?}: {borrow:?}",
+                    );
+                    match kind {
+                        // Pinnedness doesn't conflict with a drop or write
+                        WriteKind::StorageDeadOrDrop | WriteKind::Mutate | WriteKind::Replace => {
+                            ControlFlow::Continue(())
+                        }
+                        // Mutable (pinned) borrow doesn't conflict with an expired borrow
+                        WriteKind::MutableBorrow(BorrowKind::Pinned(Mutability::Mut)) => {
+                            ControlFlow::Continue(())
+                        }
+                        // Mutable (but non-pinned) borrow conflicts with an earlier pinned borrow
+                        WriteKind::MutableBorrow(_) => {
+                            this.report_mutably_borrow_after_pinned(location, place_span, borrow);
+                            error_reported = true;
+                            ControlFlow::Break(())
+                        }
+                        WriteKind::Move => {
+                            this.report_move_after_pinned(location, place_span, borrow);
+                            error_reported = true;
+                            ControlFlow::Break(())
+                        }
+                    }
                 }
 
                 (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {
@@ -1473,6 +1550,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     BorrowKind::Fake(FakeBorrowKind::Shallow) => {
                         (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
                     }
+                    BorrowKind::Pinned(Mutability::Not) => {
+                        (Shallow(None), Read(ReadKind::Borrow(BorrowKind::Pinned(Mutability::Not))))
+                    }
+                    BorrowKind::Pinned(Mutability::Mut) => (
+                        Shallow(None),
+                        Write(WriteKind::MutableBorrow(BorrowKind::Pinned(Mutability::Mut))),
+                    ),
                     BorrowKind::Shared | BorrowKind::Fake(FakeBorrowKind::Deep) => {
                         (Deep, Read(ReadKind::Borrow(bk)))
                     }
@@ -1838,8 +1922,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Fake(_) => false,
-                BorrowKind::Mut { .. } => true,
+                BorrowKind::Shared | BorrowKind::Fake(_) | BorrowKind::Pinned(Mutability::Not) =>
+                    false,
+                BorrowKind::Mut { .. } | BorrowKind::Pinned(Mutability::Mut) => true,
             });
 
             self.access_place(
@@ -2415,7 +2500,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Fake(_)),
+                | WriteKind::MutableBorrow(BorrowKind::Fake(_))
+                | WriteKind::MutableBorrow(BorrowKind::Pinned(Mutability::Mut)),
             ) => {
                 if self.is_mutable(place.as_ref(), is_local_mutation_allowed).is_err()
                     && !self.has_buffered_diags()
@@ -2439,11 +2525,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 return false;
             }
             Read(
-                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake(_))
+                ReadKind::Borrow(
+                    BorrowKind::Mut { .. }
+                    | BorrowKind::Shared
+                    | BorrowKind::Fake(_)
+                    | BorrowKind::Pinned(Mutability::Not),
+                )
                 | ReadKind::Copy,
             ) => {
                 // Access authorized
                 return false;
+            }
+            Reservation(WriteKind::MutableBorrow(BorrowKind::Pinned(_))) => {
+                span_bug!(span, "invalid reservation with a pinned borrow kind: {:?}", kind);
+            }
+            Write(WriteKind::MutableBorrow(BorrowKind::Pinned(Mutability::Not)))
+            | Read(ReadKind::Borrow(BorrowKind::Pinned(Mutability::Mut))) => {
+                span_bug!(
+                    span,
+                    "invalid read with a pinned mutable borrow kind or write with an immutable pinned borrow kind: {:?}",
+                    kind
+                );
             }
         }
 

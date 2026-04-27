@@ -583,7 +583,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
+            Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Pinned(Mutability::Mut), place)
             | Rvalue::RawPtr(RawPtrKind::Mut, place) => {
                 // Inside mutable statics, we allow arbitrary mutable references.
                 // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
@@ -597,7 +597,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake(_), place)
+            Rvalue::Ref(
+                _,
+                BorrowKind::Shared | BorrowKind::Fake(_) | BorrowKind::Pinned(Mutability::Not),
+                place,
+            )
             | Rvalue::RawPtr(RawPtrKind::Const, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
