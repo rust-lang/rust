@@ -399,6 +399,9 @@ impl<T> const From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
         Self::new(value.start, value.last)
     }
 }
+/// It is unspecified what will happen if this `From` conversion is done
+/// on a `legacy::RangeInclusive` iterator that has already been exhausted.
+/// Currently, doing so will cause a panic, but this may change in the future.
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
