@@ -11,6 +11,10 @@ use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
 pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(Diagnostic)]
+#[diag("usage of `$crate` in matcher")]
+pub(crate) struct DollarCrateInMatcher;
+
+#[derive(Diagnostic)]
 #[diag(
     "attempted to repeat an expression containing no syntax variables matched as repeating at this depth"
 )]
