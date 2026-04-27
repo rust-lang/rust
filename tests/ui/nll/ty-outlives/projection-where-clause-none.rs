@@ -11,7 +11,7 @@ fn foo<'a, T>() -> &'a ()
 where
     T: MyTrait<'a>,
 {
-    bar::<T::Output>() //~ ERROR the parameter type `T` may not live long enough
+    bar::<T::Output>() //~ ERROR the associated type `<T as MyTrait<'a>>::Output` may not live long enough
 }
 
 fn bar<'a, T>() -> &'a ()

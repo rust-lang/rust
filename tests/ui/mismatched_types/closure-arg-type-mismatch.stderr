@@ -69,8 +69,8 @@ error: implementation of `Fn` is not general enough
 LL |     baz(f);
    |     ^^^^^^ implementation of `Fn` is not general enough
    |
-   = note: `fn(*mut &'2 u32)` must implement `Fn<(*mut &'1 u32,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `Fn<(*mut &'2 u32,)>`, for some specific lifetime `'2`
+   = note: `fn(*mut &'0 u32)` must implement `Fn<(*mut &'1 u32,)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `Fn<(*mut &u32,)>`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/closure-arg-type-mismatch.rs:10:5
@@ -78,8 +78,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     baz(f);
    |     ^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: `fn(*mut &'2 u32)` must implement `FnOnce<(*mut &'1 u32,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(*mut &'2 u32,)>`, for some specific lifetime `'2`
+   = note: `fn(*mut &'0 u32)` must implement `FnOnce<(*mut &'1 u32,)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(*mut &u32,)>`
 
 error: aborting due to 6 previous errors
 
