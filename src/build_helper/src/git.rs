@@ -49,8 +49,9 @@ pub enum PathFreshness {
 /// It can be used to figure out if we should download artifacts from CI or rather
 /// build them locally.
 ///
-/// The function assumes that at least a single upstream bors merge commit is in the
-/// local git history.
+/// If no upstream bors merge commit can be found in the available local git history,
+/// the function returns `MissingUpstream` so callers can conservatively avoid using
+/// CI artifacts.
 ///
 /// `target_paths` should be a non-empty slice of paths (git `pathspec`s) relative to `git_dir`
 /// whose modifications would invalidate the artifact.
@@ -70,14 +71,11 @@ pub enum PathFreshness {
 ///   were not modified upstream in the meantime. In that case we would be redownloading CI
 ///   artifacts unnecessarily.
 ///
-/// - In CI, we use a shallow clone of depth 2, i.e., we fetch only a single parent commit
-///   (which will be the most recent bors merge commit) and do not have access
-///   to the full git history. Luckily, we only need to distinguish between two situations:
-///   1) The current PR made modifications to `target_paths`.
-///      In that case, a build is typically necessary.
-///   2) The current PR did not make modifications to `target_paths`.
-///      In that case we simply take the latest upstream commit, because on CI there is no need to avoid
-///      redownloading.
+/// - In CI, we prefer a shallow merge-parent fast path when `HEAD` is a CI-generated merge
+///   commit. However, fork push workflows can also run in shallow clones where `HEAD` is just the
+///   branch tip, so blindly using `HEAD^1` there would pick a fork commit instead of the upstream
+///   base. In those cases we fall back to the fetched nightly branch ref, and only then to the
+///   normal upstream search logic.
 pub fn check_path_modifications(
     git_dir: &Path,
     config: &GitConfig<'_>,
@@ -90,28 +88,12 @@ pub fn check_path_modifications(
     }
 
     let upstream_sha = if matches!(ci_env, CiEnv::GitHubActions) {
-        // Here the situation is different for PR CI and try/auto CI.
-        // For PR CI, we have the following history:
-        // <merge commit made by GitHub>
-        // 1-N PR commits
-        // upstream merge commit made by bors
-        //
-        // For try/auto CI, we have the following history:
-        // <**non-upstream** merge commit made by bors>
-        // 1-N PR commits
-        // upstream merge commit made by bors
-        //
-        // But on both cases, HEAD should be a merge commit.
-        // So if HEAD contains modifications of `target_paths`, our PR has modified
-        // them. If not, we can use the only available upstream commit for downloading
-        // artifacts.
-
-        // Do not include HEAD, as it is never an upstream commit
-        // If we do not find an upstream commit in CI, something is seriously wrong.
-        Some(
-            get_closest_upstream_commit(Some(git_dir), config, ci_env)?
-                .expect("No upstream commit was found on CI"),
-        )
+        // CI may be running on a synthetic merge ref or a shallow fork push ref.
+        // `get_closest_upstream_commit` handles the trusted merge-parent fast path and falls back
+        // to the fetched nightly branch ref when the merge-parent assumption is not valid. If a
+        // fork push clone does not have that ref either, conservatively report `MissingUpstream`
+        // so callers disable CI downloads and build locally instead of panicking.
+        get_closest_upstream_commit(Some(git_dir), config, ci_env)?
     } else {
         // Outside CI, we want to find the most recent upstream commit that
         // modified the set of paths, to have an upstream reference that does not change
@@ -224,23 +206,45 @@ fn get_latest_upstream_commit_that_modified_files(
 /// Returns the most recent (ordered chronologically) commit found in the local history that
 /// should exist upstream. We identify upstream commits by the e-mail of the commit
 /// author.
-///
-/// If we are in CI, we simply return our first parent.
 pub fn get_closest_upstream_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
     env: CiEnv,
 ) -> Result<Option<String>, String> {
-    let base = match env {
-        CiEnv::None => "HEAD",
+    match env {
+        CiEnv::None => get_closest_upstream_commit_from_ref(git_dir, config, "HEAD"),
         CiEnv::GitHubActions => {
-            // On CI, we should always have a non-upstream merge commit at the tip,
-            // and our first parent should be the most recently merged upstream commit.
-            // We thus simply return our first parent.
-            return resolve_commit_sha(git_dir, "HEAD^1").map(Some);
-        }
-    };
+            // CI-generated PR and auto-merge refs put a synthetic merge commit at HEAD, so the
+            // first parent is usually the most recent upstream merge commit. Fork push workflows
+            // do not have that shape, though, and in shallow clones `HEAD^1` can just be the
+            // previous fork commit. Only trust the fast path when it points at an actual upstream
+            // merge-bot commit, otherwise fall back to the fetched nightly branch.
+            if is_merge_commit(git_dir, "HEAD")? {
+                let parent = resolve_commit_sha(git_dir, "HEAD^1")?;
+                if is_upstream_merge_commit(git_dir, &parent, config)? {
+                    return Ok(Some(parent));
+                }
+            }
 
+            let nightly_ref = format!("refs/remotes/origin/{}", config.nightly_branch);
+            if git_ref_exists(git_dir, &nightly_ref)? {
+                if let Some(upstream) =
+                    get_closest_upstream_commit_from_ref(git_dir, config, &nightly_ref)?
+                {
+                    return Ok(Some(upstream));
+                }
+            }
+
+            get_closest_upstream_commit_from_ref(git_dir, config, "HEAD")
+        }
+    }
+}
+
+fn get_closest_upstream_commit_from_ref(
+    git_dir: Option<&Path>,
+    config: &GitConfig<'_>,
+    base: &str,
+) -> Result<Option<String>, String> {
     let mut git = Command::new("git");
 
     if let Some(git_dir) = git_dir {
@@ -270,6 +274,60 @@ pub fn get_closest_upstream_commit(
 
     let output = output_result(&mut git)?.trim().to_owned();
     if output.is_empty() { Ok(None) } else { Ok(Some(output)) }
+}
+
+fn is_merge_commit(git_dir: Option<&Path>, commit_ref: &str) -> Result<bool, String> {
+    let mut git = Command::new("git");
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    let output = git
+        .args(["rev-parse", "--verify", "--quiet", &format!("{commit_ref}^2")])
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+        .map_err(|e| format!("failed to run command: {git:?}: {e}"))?;
+    Ok(output.success())
+}
+
+fn git_ref_exists(git_dir: Option<&Path>, refname: &str) -> Result<bool, String> {
+    let mut git = Command::new("git");
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    let output = git
+        .args(["rev-parse", "--verify", "--quiet", refname])
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+        .map_err(|e| format!("failed to run command: {git:?}: {e}"))?;
+    Ok(output.success())
+}
+
+fn is_upstream_merge_commit(
+    git_dir: Option<&Path>,
+    commit_ref: &str,
+    config: &GitConfig<'_>,
+) -> Result<bool, String> {
+    let mut git = Command::new("git");
+    if let Some(git_dir) = git_dir {
+        git.current_dir(git_dir);
+    }
+
+    git.args(["show", "-s", "--format=%ae", commit_ref]);
+    let author_email = output_result(&mut git)?.trim().to_owned();
+    let merge_bot_email = extract_author_email(config.git_merge_commit_email);
+    Ok(author_email == merge_bot_email || author_email == TEMPORARY_BORS_EMAIL)
+}
+
+fn extract_author_email(author: &str) -> &str {
+    author
+        .split_once('<')
+        .and_then(|(_, email)| email.trim().strip_suffix('>'))
+        .map(str::trim)
+        .unwrap_or_else(|| author.trim())
 }
 
 /// Resolve the commit SHA of `commit_ref`.

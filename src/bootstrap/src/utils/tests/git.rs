@@ -74,6 +74,15 @@ impl GitCtx {
         self.run_git(&["rev-parse", "--abbrev-ref", "HEAD"])
     }
 
+    pub fn set_origin_branch_ref(&self, branch: &str, commit: &str) {
+        let refname = format!("refs/remotes/origin/{branch}");
+        self.run_git(&["update-ref", &refname, commit]);
+    }
+
+    pub fn set_origin_nightly_ref(&self, commit: &str) {
+        self.set_origin_branch_ref(&self.nightly_branch, commit);
+    }
+
     pub fn merge(&self, branch: &str, author: &str) {
         self.run_git(&["merge", "--no-commit", "--no-ff", branch]);
         self.run_git(&[
