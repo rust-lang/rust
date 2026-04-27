@@ -11,10 +11,12 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
+use rustc_data_structures::sync::{
+    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
+};
 use rustc_data_structures::thousands;
-use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -22,12 +24,9 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
-use rustc_hir::lints::DelayedLint;
 use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{
-    BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
-};
+use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -97,7 +96,6 @@ fn pre_expansion_lint<'a>(
         || {
             rustc_lint::check_ast_node(
                 sess,
-                None,
                 features,
                 true,
                 lint_store,
@@ -141,7 +139,7 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(tcx.sess);
+    let lint_store = unerased_lint_store(sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
     pre_expansion_lint(
@@ -470,7 +468,6 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
-        Some(tcx),
         tcx.features(),
         false,
         lint_store,
@@ -1028,30 +1025,29 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     )
 }
 
+struct DiagCallback<'a, 'tcx> {
+    callback: &'a Box<
+        dyn for<'b> Fn(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + DynSync,
+    >,
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for DiagCallback<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        (self.callback)(dcx, level, self.tcx.sess)
+    }
+}
+
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
             for lint in delayed_lints {
-                match lint {
-                    DelayedLint::AttributeParsing(attribute_lint) => {
-                        tcx.emit_node_span_lint(
-                            attribute_lint.lint_id.lint,
-                            attribute_lint.id,
-                            attribute_lint.span.clone(),
-                            DecorateAttrLint {
-                                sess: tcx.sess,
-                                tcx: Some(tcx),
-                                diagnostic: &attribute_lint.kind,
-                            },
-                        );
-                    }
-                    DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
-                        attribute_lint.lint_id.lint,
-                        attribute_lint.id,
-                        attribute_lint.span.clone(),
-                        DiagCallback(&attribute_lint.callback),
-                    ),
-                }
+                tcx.emit_node_span_lint(
+                    lint.lint_id.lint,
+                    lint.id,
+                    lint.span.clone(),
+                    DiagCallback { callback: &lint.callback, tcx },
+                );
             }
         }
     }

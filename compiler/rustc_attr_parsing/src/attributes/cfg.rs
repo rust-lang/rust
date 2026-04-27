@@ -3,12 +3,11 @@ use std::convert::identity;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
-use rustc_errors::{Applicability, PResult, msg};
+use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
 };
 use rustc_hir::attrs::CfgEntry;
-use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, RustcVersion, Target};
 use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
@@ -20,6 +19,7 @@ use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::AttributeSafety;
+use crate::attributes::diagnostic::check_cfg;
 use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{
     AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
@@ -224,14 +224,19 @@ pub(crate) fn parse_name_value<S: Stage>(
 
     match cx.sess.psess.check_config.expecteds.get(&name) {
         Some(ExpectedValues::Some(values)) if !values.contains(&value.map(|(v, _)| v)) => cx
-            .emit_lint(
+            .emit_dyn_lint_with_sess(
                 UNEXPECTED_CFGS,
-                AttributeLintKind::UnexpectedCfgValue((name, name_span), value),
+                move |dcx, level, sess| {
+                    check_cfg::unexpected_cfg_value(sess, (name, name_span), value)
+                        .into_diag(dcx, level)
+                },
                 span,
             ),
-        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_lint(
+        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_dyn_lint_with_sess(
             UNEXPECTED_CFGS,
-            AttributeLintKind::UnexpectedCfgName((name, name_span), value),
+            move |dcx, level, sess| {
+                check_cfg::unexpected_cfg_name(sess, (name, name_span), value).into_diag(dcx, level)
+            },
             span,
         ),
         _ => { /* not unexpected */ }

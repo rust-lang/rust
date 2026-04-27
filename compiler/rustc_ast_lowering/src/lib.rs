@@ -41,7 +41,7 @@ use std::sync::Arc;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, *};
-use rustc_attr_parsing::{AttributeParser, EmitAttribute, Late, OmitDoc};
+use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -52,7 +52,7 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::PerParentDisambiguatorState;
-use rustc_hir::lints::{AttributeLint, DelayedLint, DynAttribute};
+use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
     LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
@@ -1098,23 +1098,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             target,
             OmitDoc::Lower,
             |s| l.lower(s),
-            |lint_id, span, kind| match kind {
-                EmitAttribute::Static(attr_kind) => {
-                    self.delayed_lints.push(DelayedLint::AttributeParsing(AttributeLint {
-                        lint_id,
-                        id: target_hir_id,
-                        span,
-                        kind: attr_kind,
-                    }));
-                }
-                EmitAttribute::Dynamic(callback) => {
-                    self.delayed_lints.push(DelayedLint::Dynamic(DynAttribute {
-                        lint_id,
-                        id: target_hir_id,
-                        span,
-                        callback,
-                    }));
-                }
+            |lint_id, span, kind| {
+                self.delayed_lints.push(DelayedLint {
+                    lint_id,
+                    id: target_hir_id,
+                    span,
+                    callback: Box::new(move |dcx, level, sess: &dyn std::any::Any| {
+                        let sess = sess
+                            .downcast_ref::<rustc_session::Session>()
+                            .expect("expected `Session`");
+                        (kind.0)(dcx, level, sess)
+                    }),
+                });
             },
         )
     }
