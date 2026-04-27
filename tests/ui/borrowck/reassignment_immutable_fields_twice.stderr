@@ -9,6 +9,16 @@ help: consider changing this to be mutable
 LL |     let mut x: (u32, u32);
    |         +++
 
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/reassignment_immutable_fields_twice.rs:12:5
+   |
+LL |     x.0 = 1;
+   |     ^^^^^^^
+   |
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0381]: partially assigned binding `x` isn't fully initialized
   --> $DIR/reassignment_immutable_fields_twice.rs:12:5
    |
@@ -19,7 +29,7 @@ LL |     x.0 = 1;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0381, E0594.
+Some errors have detailed explanations: E0381, E0594, E0658.
 For more information about an error, try `rustc --explain E0381`.

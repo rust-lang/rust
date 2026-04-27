@@ -640,6 +640,8 @@ declare_features! (
     (unstable, offset_of_slice, "1.81.0", Some(126151)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
+    /// Allows partial initialisation of no-Drop `struct`s and tuples.
+    (unstable, partial_init_locals, "CURRENT_RUSTC_VERSION", Some(153699)),
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Experimental features that make `Pin` more ergonomic.

@@ -1177,6 +1177,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     /// access.
     ///
     /// Returns `true` if an error is reported.
+    #[instrument(level = "debug", skip(self, state))]
     fn access_place(
         &mut self,
         location: Location,
@@ -2000,9 +2001,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         //
         // 1. Move of `a.b.c`, use of `a.b.c`
         // 2. Move of `a.b.c`, use of `a.b.c.d` (without first reinitializing `a.b.c.d`)
-        // 3. Uninitialized `(a.b.c: &_)`, use of `*a.b.c`; note that with
-        //    partial initialization support, one might have `a.x`
-        //    initialized but not `a.b`.
+        // 3. Uninitialized `(a.b.c: &_)`, use of `*a.b.c`
         //
         // OK scenarios:
         //
@@ -2201,6 +2200,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         debug!("check_if_assigned_path_is_moved place: {:?}", place);
 
         // None case => assigning to `x` does not require `x` be initialized.
+        let tcx = self.infcx.tcx;
+        let partial_init_locals = tcx.features().partial_init_locals();
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
@@ -2235,7 +2236,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     // if type of `P` has a dtor, then
                     // assigning to `P.f` requires `P` itself
                     // be already initialized
-                    let tcx = self.infcx.tcx;
                     let base_ty = place_base.ty(self.body(), tcx).ty;
                     match base_ty.kind() {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
@@ -2247,6 +2247,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             // recur further)
                             break;
                         }
+
+                        ty::Adt(def, _) if partial_init_locals && !def.has_dtor(tcx) => {}
+                        ty::Tuple(..) if partial_init_locals => {}
 
                         // Once `let s; s.x = V; read(s.x);`,
                         // is allowed, remove this match arm.
@@ -2351,6 +2354,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     /// Checks the permissions for the given place and read or write kind
     ///
     /// Returns `true` if an error is reported.
+    #[instrument(level = "debug", skip(self, state))]
     fn check_access_permissions(
         &mut self,
         (place, span): (Place<'tcx>, Span),
@@ -2359,11 +2363,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         state: &BorrowckDomain,
         location: Location,
     ) -> bool {
-        debug!(
-            "check_access_permissions({:?}, {:?}, is_local_mutation_allowed: {:?})",
-            place, kind, is_local_mutation_allowed
-        );
-
         let error_access;
         let the_place_err;
 
@@ -2451,23 +2450,29 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
         // to do a partial initialization).
-        let previously_initialized = self.is_local_ever_initialized(place.local, state);
-
-        // at this point, we have set up the error reporting state.
-        if let Some(init_index) = previously_initialized {
-            if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
-                // If this is a mutate access to an immutable local variable with no projections
-                // report the error as an illegal reassignment
-                let init = &self.move_data.inits[init_index];
-                let assigned_span = init.span(self.body);
-                self.report_illegal_reassignment((place, span), assigned_span, place);
-            } else {
-                self.report_mutability_error(place, span, the_place_err, error_access, location)
-            }
-            true
-        } else {
-            false
+        let Some(init_index) = self.is_local_ever_initialized(place.local, state) else {
+            return false;
+        };
+        // NOTE(partial_init_locals): now we need to check again if the local is possibly uninitialised.
+        if self.root_cx.tcx.features().partial_init_locals()
+            && let Some(mpi) = self.move_path_for_place(Place::from(place.local).as_ref())
+            && state.uninits.contains(mpi)
+        {
+            // Partial init is still in progress, so mutable access on the local is not required.
+            return false;
         }
+
+        // At this point, we have set up the error reporting state.
+        if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
+            // If this is a mutate access to an immutable local variable with no projections
+            // report the error as an illegal reassignment
+            let init = &self.move_data.inits[init_index];
+            let assigned_span = init.span(self.body);
+            self.report_illegal_reassignment((place, span), assigned_span, place);
+        } else {
+            self.report_mutability_error(place, span, the_place_err, error_access, location)
+        }
+        true
     }
 
     fn is_local_ever_initialized(&self, local: Local, state: &BorrowckDomain) -> Option<InitIndex> {
@@ -2511,12 +2516,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
     /// Whether this value can be written or borrowed mutably.
     /// Returns the root place if the place passed in is a projection.
+    #[instrument(level = "debug", skip(self), ret)]
     fn is_mutable(
         &self,
         place: PlaceRef<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
     ) -> Result<RootPlace<'tcx>, PlaceRef<'tcx>> {
-        debug!("is_mutable: place={:?}, is_local...={:?}", place, is_local_mutation_allowed);
         match place.last_projection() {
             None => {
                 let local = &self.body.local_decls[place.local];
