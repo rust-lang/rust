@@ -3589,3 +3589,16 @@ pub const fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
 pub const unsafe fn va_end(ap: &mut VaList<'_>) {
     /* deliberately does nothing */
 }
+
+/// Returns the return address of the caller function (after inlining) in a best-effort manner or a null pointer if it is not supported on the current backend.
+/// Returning an accurate value is a quality-of-implementation concern, but no hard guarantees are
+/// made about the return value: formally, the intrinsic non-deterministically returns
+/// an arbitrary pointer without provenance.
+///
+/// Note that unlike most intrinsics, this is safe to call. This is because it only finds the return address of the immediate caller, which is guaranteed to be possible.
+/// Other forms of the corresponding gcc or llvm intrinsic (which can have wildly unpredictable results or even crash at runtime) are not exposed.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn return_address() -> *const () {
+    core::ptr::null()
+}
