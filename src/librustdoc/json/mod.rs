@@ -362,6 +362,6 @@ mod size_asserts {
     // tidy-alphabetical-end
 
     // These contains a `PathBuf`, which is different sizes on different OSes.
-    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
+    static_assert_size!(Item, 560 + size_of::<std::path::PathBuf>());
     static_assert_size!(ExternalCrate, 48 + size_of::<std::path::PathBuf>());
 }

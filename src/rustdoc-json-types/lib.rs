@@ -114,8 +114,8 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // will instead cause conflicts. See #94591 for more. (This paragraph and the "Latest feature" line
 // are deliberately not in a doc comment, because they need not be in public docs.)
 //
-// Latest feature: Add `ExternCrate::path`.
-pub const FORMAT_VERSION: u32 = 57;
+// Latest feature: Add `Item::stability`.
+pub const FORMAT_VERSION: u32 = 58;
 
 /// The root of the emitted JSON blob.
 ///
@@ -294,8 +294,28 @@ pub struct Item {
     pub attrs: Vec<Attribute>,
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,
+
+    pub stability: Option<Stability>,
+
     /// The type-specific fields describing this item.
     pub inner: ItemEnum,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+pub struct Stability {
+    pub feature: String,
+    pub level: StabilityLevel,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "rkyv_0_8", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+#[cfg_attr(feature = "rkyv_0_8", rkyv(derive(Debug)))]
+#[serde(rename_all = "snake_case")]
+pub enum StabilityLevel {
+    Stable,
+    Unstable,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
