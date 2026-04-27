@@ -9,7 +9,7 @@ use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
 fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 
@@ -2663,16 +2663,12 @@ pub const trait Iterator {
     #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn fold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized + [const] Destruct,
         F: [const] FnMut(B, Self::Item) -> B + [const] Destruct,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
-        }
-        accum
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 
     /// Reduces the elements to a single one, by repeatedly applying a reducing
