@@ -4,19 +4,18 @@
 
 fn main() {
     gimme_send(foo());
-    //~^ ERROR cannot be sent between threads safely
-    //~| NOTE cannot be sent
-    //~| NOTE bound introduced by
-    //~| NOTE appears within the type
+    //~^ ERROR future cannot be sent between threads safely
+    //~| NOTE future returned by `foo` is not `Send`
 }
 
 fn gimme_send<T: Send>(t: T) {
-    //~^ NOTE required by this bound
-    //~| NOTE required by a bound
+    //~^ NOTE required by this bound in `gimme_send`
+    //~| NOTE required by a bound in `gimme_send`
     drop(t);
 }
 
 struct NotSend {}
+//~^ HELP within `impl Future<Output = ()>`, the trait `Send` is not implemented for `NotSend`
 
 impl Drop for NotSend {
     fn drop(&mut self) {}
@@ -25,12 +24,14 @@ impl Drop for NotSend {
 impl !Send for NotSend {}
 
 async fn foo() {
-    //~^ NOTE used within this `async` fn body
-    //~| NOTE within this `impl Future
     let mut x = (NotSend {},);
+    //~^ NOTE has type `UnsafePinned<(NotSend,)>` which is not `Send`
     drop(x.0);
     x.0 = NotSend {};
     bar().await;
+    //~^ NOTE future is not `Send` as this value is used across an await
+    //~| NOTE await occurs here, with `mut x` maybe used later
+    //~| NOTE in this expansion of desugaring of `await` expression
 }
 
 async fn bar() {}

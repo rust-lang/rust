@@ -1,4 +1,4 @@
-error: `No` held across a suspend point, but should not be
+error: boxed `No` held across a suspend point, but should not be
   --> $DIR/dedup.rs:16:9
    |
 LL |     let no = No {};
