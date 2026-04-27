@@ -776,6 +776,13 @@ impl<'db> InferenceContext<'_, 'db> {
                         GenericArgs::new_from_slice(&[GenericArg::from(ty)]),
                     )
                 };
+                let two_arg_adt = |adt, ty: Ty<'db>, ty2: Ty<'db>| {
+                    Ty::new_adt(
+                        self.interner(),
+                        adt,
+                        GenericArgs::new_from_slice(&[GenericArg::from(ty), GenericArg::from(ty2)]),
+                    )
+                };
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
                         Some(adt) => {
@@ -793,13 +800,15 @@ impl<'db> InferenceContext<'_, 'db> {
                             None => self.err_ty(),
                         }
                     }
-                    (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => single_arg_adt(adt, ty),
+                    (RangeOp::Exclusive, Some(ty), Some(ty2)) => match self.resolve_range() {
+                        Some(adt) if self.has_new_range_feature() => two_arg_adt(adt, ty, ty2),
+                        Some(adt) => single_arg_adt(adt, ty2),
                         None => self.err_ty(),
                     },
-                    (RangeOp::Inclusive, Some(_), Some(ty)) => {
+                    (RangeOp::Inclusive, Some(ty), Some(ty2)) => {
                         match self.resolve_range_inclusive() {
-                            Some(adt) => single_arg_adt(adt, ty),
+                            Some(adt) if self.has_new_range_feature() => two_arg_adt(adt, ty, ty2),
+                            Some(adt) => single_arg_adt(adt, ty2),
                             None => self.err_ty(),
                         }
                     }
