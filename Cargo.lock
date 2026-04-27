@@ -286,9 +286,9 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "2.10.0"
+version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
+checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
 name = "blake3"
@@ -1394,6 +1394,16 @@ name = "find-msvc-tools"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a3076410a55c90011c298b04d0cfa770b00fa04e1e3c97d3f6c9de105a03844"
+
+[[package]]
+name = "fjall"
+version = "0.1.0"
+source = "git+https://github.com/Zoxc/fjall.git#955dd1c4bc0a8139ab55ce5a070d1fc2a43a6f19"
+dependencies = [
+ "bitflags",
+ "libc",
+ "windows-sys 0.52.0",
+]
 
 [[package]]
 name = "flate2"
@@ -3422,6 +3432,7 @@ checksum = "8be87abb9e40db7466e0681dc8ecd9dcfd40360cb10b4c8fe24a7c4c3669b198"
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "fjall",
  "getrandom 0.3.3",
  "rustc_codegen_ssa",
  "rustc_driver",
@@ -3429,7 +3440,6 @@ dependencies = [
  "rustc_public",
  "rustc_public_bridge",
  "rustc_windows_rc",
- "tikv-jemalloc-sys",
  "wasi 0.14.2+wasi-0.2.4",
 ]
 
@@ -3796,6 +3806,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
+ "fjall",
  "rustc_driver_impl",
  "rustc_windows_rc",
 ]
@@ -5542,16 +5553,6 @@ name = "tier-check"
 version = "0.1.0"
 
 [[package]]
-name = "tikv-jemalloc-sys"
-version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "tinystr"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6502,6 +6503,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091"
 dependencies = [
  "windows-link 0.2.1",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
+dependencies = [
+ "windows-targets",
 ]
 
 [[package]]

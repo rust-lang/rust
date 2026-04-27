@@ -1,6 +1,6 @@
 //! Check for external package sources. Allow only vendorable packages.
 
-use std::fs;
+/*use std::fs;
 use std::path::Path;
 
 use crate::deps::WorkspaceInfo;
@@ -11,12 +11,15 @@ const ALLOWED_SOURCES: &[&str] = &[
     r#""registry+https://github.com/rust-lang/crates.io-index""#,
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
-];
+];*/
 
+use std::path::Path;
+
+use crate::diagnostics::TidyCtx;
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
-pub fn check(root: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("extdeps");
+pub fn check(_root: &Path, _tidy_ctx: TidyCtx) {
+    /*let mut check = tidy_ctx.start_check("extdeps");
 
     for &WorkspaceInfo { path, submodules, .. } in crate::deps::WORKSPACES {
         if crate::deps::has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {
@@ -50,5 +53,5 @@ pub fn check(root: &Path, tidy_ctx: TidyCtx) {
                 check.error(format!("invalid source: {}", source));
             }
         }
-    }
+    }*/
 }

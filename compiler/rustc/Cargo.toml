@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 
+fjall = { git = "https://github.com/Zoxc/fjall.git" }
+
 # Make sure rustc_codegen_ssa ends up in the sysroot, because this
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
@@ -27,15 +29,10 @@ getrandom = "=0.3.3"
 wasi = "=0.14.2"
 
 
-[dependencies.tikv-jemalloc-sys]
-version = "0.6.1"
-optional = true
-features = ['override_allocator_on_supported_platforms']
-
 [features]
 # tidy-alphabetical-start
 check_only = ['rustc_driver_impl/check_only']
-jemalloc = ['dep:tikv-jemalloc-sys']
+jemalloc = []
 llvm = ['rustc_driver_impl/llvm']
 llvm_enzyme = ['rustc_driver_impl/llvm_enzyme']
 llvm_offload = ['rustc_driver_impl/llvm_offload']
