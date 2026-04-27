@@ -604,7 +604,7 @@ impl AsRef<Path> for Component<'_> {
 /// ```
 ///
 /// [`components`]: Path::components
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -1089,22 +1089,6 @@ fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cm
     Iterator::cmp(left, right)
 }
 
-/// This is what the first component of our path is
-///
-/// In previous stable versions of Ancestors<'_>
-/// the last component of relative paths produces
-/// an "" at the end, so we must preserve that behavior
-#[derive(Copy, Clone, Debug)]
-enum FirstComponent {
-    /// For all paths starting with `/`
-    AbsolutePath,
-    /// For paths without root path like `.`, `..`, `a/`
-    RelativePath,
-    /// For Window specific paths like (`C:`, `\\?\UNC\server\share`,
-    /// `\\.\COM42`, etc.)
-    Prefix,
-}
-
 /// An iterator over [`Path`] and its ancestors.
 ///
 /// This `struct` is created by the [`ancestors`] method on [`Path`].
@@ -1128,223 +1112,11 @@ enum FirstComponent {
 #[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
     path: &'a [u8],
-    front: usize,
-    back: usize,
+    components: Components<'a>,
+    front_bytes: usize,
+    back_bytes: usize,
     trailing_seps: usize,
-    first_comp: Option<FirstComponent>,
-}
-
-impl<'a> Ancestors<'a> {
-    /// This is a helper function for consuming the  physical first component in
-    /// either `Ancestors<'_>` `.next()` or `.next_back()`.
-    ///
-    /// There are four cases we can have here:
-    /// - We have an unconsumed absolute component (`/`). We should just output `/`
-    ///   in this case (with trailing separators if this is our original path).
-    /// - In previous implementations of `Ancestors<'_>`, our last component
-    ///   produced is `""`. We also need to ensure that the first component of the
-    ///   reverse ancestor returns `""` for symmetry as well.
-    /// - We have an unconsumed prefix component (Windows specific, e.g. `C:`).
-    ///   We should just return that prefix component (with trailing separators
-    ///   if this is our original path).
-    /// - We don't have a start component (frequent case), which means we just
-    ///   return `None`.
-    #[inline]
-    fn consume_first_component(&mut self, dir_front: bool) -> Option<&'a Path> {
-        match self.first_comp {
-            Some(first_comp) => {
-                let sliced_path: &Path;
-                let path_len = self.path.len();
-                match first_comp {
-                    FirstComponent::AbsolutePath => {
-                        sliced_path = if dir_front {
-                            self.advance_through_trailing_sep_front();
-                            // This won't overflow because advance_through_trailing_sep_front()
-                            // stops where `self.back` is at (and we know `self.back` max value is
-                            // `path_len` - `self.trailing_seps`)
-                            if self.front + self.trailing_seps == path_len {
-                                // SAFETY: This contains the whole original path
-                                unsafe { Path::from_u8_slice(&self.path[0..path_len]) }
-                            } else {
-                                Path::new("/")
-                            }
-                        } else {
-                            if self.back + self.trailing_seps == path_len {
-                                // SAFETY: This contains the whole original path
-                                unsafe { Path::from_u8_slice(&self.path[0..path_len]) }
-                            } else {
-                                Path::new("/")
-                            }
-                        };
-                    }
-                    FirstComponent::RelativePath => {
-                        sliced_path = Path::new("");
-                    }
-                    FirstComponent::Prefix => {
-                        if dir_front {
-                            let curr_front = self.front;
-                            self.advance_through_trailing_sep_front();
-                            // SAFETY: We either get the original path
-                            // or slice at an ascii separator byte
-                            sliced_path = unsafe {
-                                if self.front + self.trailing_seps == path_len {
-                                    Path::from_u8_slice(&self.path[0..path_len])
-                                } else {
-                                    Path::from_u8_slice(&self.path[0..curr_front])
-                                }
-                            };
-                        } else {
-                            sliced_path = unsafe {
-                                if self.back + self.trailing_seps == path_len {
-                                    Path::from_u8_slice(&self.path[0..path_len])
-                                } else {
-                                    Path::from_u8_slice(&self.path[0..self.back])
-                                }
-                            };
-                        }
-                    }
-                }
-                self.first_comp = None;
-                return Some(Path::new(sliced_path));
-            }
-            None => return None,
-        }
-    }
-
-    /// Normalizes away trailing separators and current directory ('.') components
-    /// in the forward direction.
-    #[inline]
-    fn advance_through_trailing_sep_front(&mut self) {
-        // `Some(false)` is used to denote that
-        // we haven't seen a '.' component *yet*,
-        // `Some(true)` means we have seen a '.' component,
-        // and `None` means that the component is not '.'
-        let mut curr_dir = Some(false);
-        // We rebound to the original index for path components
-        // like '..' or 'abc.'
-        let mut rebound_ind: Option<usize> = None;
-        loop {
-            if self.front == self.back {
-                if let Some(front_ind) = rebound_ind {
-                    self.front = front_ind;
-                }
-                break;
-            }
-
-            if is_sep_byte(self.path[self.front]) {
-                if let Some(curr_dir_present) = curr_dir
-                    && curr_dir_present
-                {
-                    curr_dir = Some(false);
-                    rebound_ind = None;
-                }
-            } else {
-                if self.path[self.front] == b'.' {
-                    if let Some(curr_dir_present) = curr_dir {
-                        if !curr_dir_present {
-                            curr_dir = Some(true);
-                            rebound_ind = Some(self.front);
-                        } else {
-                            curr_dir = None;
-                        }
-                    } else {
-                        if let Some(front_ind) = rebound_ind {
-                            self.front = front_ind;
-                        }
-                        break;
-                    }
-                } else {
-                    if let Some(front_ind) = rebound_ind {
-                        self.front = front_ind;
-                    }
-                    break;
-                }
-            }
-
-            self.front += 1;
-        }
-    }
-
-    /// Normalizes away trailing separators and current directory ('.') components
-    /// in the backward direction
-    #[inline]
-    fn advance_through_trailing_sep_back(&mut self) {
-        // `Some(false)` is used to denote that
-        // we haven't seen a '.' component *yet*,
-        // `Some(true)` means we have seen a '.' component,
-        // and `None` means that the component is not '.'
-        let mut curr_dir = Some(false);
-        // We rebound to the original index for path components
-        // like '..' or 'abc.'
-        let mut rebound_ind: Option<usize> = None;
-        loop {
-            if self.back == self.front {
-                if let Some(back_ind) = rebound_ind {
-                    self.back = back_ind;
-                }
-                break;
-            }
-
-            if is_sep_byte(self.path[self.back - 1]) {
-                if let Some(curr_dir_present) = curr_dir
-                    && curr_dir_present
-                {
-                    curr_dir = Some(false);
-                    rebound_ind = None;
-                }
-            } else {
-                if self.path[self.back - 1] == b'.' {
-                    if let Some(curr_dir_present) = curr_dir {
-                        if !curr_dir_present {
-                            curr_dir = Some(true);
-                            rebound_ind = Some(self.back);
-                        } else {
-                            curr_dir = None;
-                        }
-                    } else {
-                        if let Some(back_ind) = rebound_ind {
-                            self.back = back_ind;
-                        }
-                        break;
-                    }
-                } else {
-                    if let Some(back_ind) = rebound_ind {
-                        self.back = back_ind;
-                    }
-                    break;
-                }
-            }
-            self.back -= 1;
-        }
-    }
-
-    /// Increments our front pointer until we find the
-    /// next separator byte or have reached the component
-    /// that back index is pointing at.
-    #[inline]
-    fn find_next_separator_front(&mut self) {
-        while self.front < self.back {
-            if is_sep_byte(self.path[self.front]) {
-                self.front += 1;
-                break;
-            }
-            self.front += 1;
-        }
-    }
-
-    /// Decrements our back pointer until we find the
-    /// next separator byte or have reached the component
-    /// that front index is pointing to.
-    #[inline]
-    fn find_next_separator_back(&mut self) {
-        while self.back > self.front {
-            if is_sep_byte(self.path[self.back - 1]) {
-                self.back -= 1;
-                break;
-            }
-            self.back -= 1;
-        }
-    }
+    is_relative: bool,
 }
 
 #[stable(feature = "path_ancestors", since = "1.28.0")]
@@ -1353,38 +1125,42 @@ impl<'a> Iterator for Ancestors<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        let path_len = self.path.len();
         // We reach here when we no longer have anymore paths
         // to consume, we're dealing with relative paths and
-        // need to output "", or we need to output Prefix component
-        if self.back <= self.front {
-            return self.consume_first_component(false);
+        // need to output ""
+        if self.front_bytes + self.back_bytes >= path_len - self.trailing_seps {
+            if self.is_relative {
+                self.is_relative = false;
+                return Some(Path::new(""));
+            }
+            return None;
         }
 
-        let path_len = self.path.len();
-        // Our current `self.back` index at this point encompasses
-        // the parent path
-        let curr_back = self.back;
+        // `Ancestors::next` presents the current path
+        let curr_back_bytes = self.back_bytes;
+        let curr_path_bytes = self.components.as_path().as_u8_slice();
 
-        // We trace our `self.back` idx up the path until we reach a
-        // separator byte. This prepares the path we return on the next
-        // call to this function.
-        self.find_next_separator_back();
-        // Normalizes trailing seps and curr dirs in preparation for
-        // next front component
-        self.advance_through_trailing_sep_back();
+        // Consume back component
+        self.components.next_back();
+        let next_path_bytes = self.components.as_path().as_u8_slice();
+        self.back_bytes += curr_path_bytes.len() - next_path_bytes.len();
 
-        // The first path our back pointer must return is the original path
-        if curr_back + self.trailing_seps == path_len {
+        // `Ancestors::next` first path to present will always be the entire
+        // path untrimmed
+        if curr_back_bytes == 0 {
             // SAFETY: This contains the whole original path
             let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..path_len]) };
             return Some(Path::new(sliced_path));
         }
 
-        // SAFETY: Our curr_back index is always stationed at an ascii separator byte
-        // so our u8 slice will always contain a valid path
-        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..curr_back]) };
-        // We don't have to trim separator here because it's excluded by 0..curr_back
-        Some(Path::new(sliced_path))
+        let back_ind = path_len - self.trailing_seps - curr_back_bytes;
+        // SAFETY: Traversing through component should stop at a valid separator byte
+        // so this should always be a valid u8 slice
+        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..back_ind]) };
+        // we use `Path::components` here instead of `Path::trim_trailing_seps` because
+        // the latter method does not normalize curr dir components (i.e. "/foo////.////bar")
+        Some(Path::components(sliced_path).as_path())
     }
 }
 
@@ -1392,40 +1168,52 @@ impl<'a> Iterator for Ancestors<'a> {
 impl<'a> DoubleEndedIterator for Ancestors<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        // We reach this case when we no longer have anymore paths
-        // to consume (return `None`), or if our front idx was initially
-        // equal to back idx (e.g. if we had `C:`, `.`, `/`)
-        if self.front >= self.back {
-            return self.consume_first_component(true);
-        }
-
-        // Consume our first component if we haven't already.
-        if let Some(sliced_path) = self.consume_first_component(true) {
-            return Some(sliced_path);
-        }
-
         let path_len = self.path.len();
-        // We trace our `self.front` idx down the path until
-        // we hit a separator.
-        self.find_next_separator_front();
-        // In case paths like "././././a", we just want the first
-        // '.' path and normalize the rest away
-        let curr_front = self.front;
-        // Normalizes trailing seps and curr dirs in preparation for
-        // next front component
-        self.advance_through_trailing_sep_front();
+        // We reach here when we no longer have anymore paths
+        // to consume, we're dealing with relative paths and
+        // need to output ""
+        if self.front_bytes + self.back_bytes >= path_len - self.trailing_seps {
+            // This is needed for mixing `Ancestors::next`/`Ancestors::next_back`
+            // on "." directory
+            if self.is_relative {
+                self.is_relative = false;
+                return Some(Path::new(""));
+            }
+            return None;
+        }
 
-        // The last path front must return is the original path
-        if self.front + self.trailing_seps == path_len {
+        // If path is relative, the first path that `Ancestors::next_back`
+        // produce is an empty path
+        if self.is_relative {
+            self.is_relative = false;
+            return Some(Path::new(""));
+        }
+
+        // `Ancestors::next_back` presents the path given by the next consumed
+        // components
+        let curr_path_bytes = self.components.as_path().as_u8_slice();
+        // Consume front component
+        self.components.next();
+        let next_path_bytes = self.components.as_path().as_u8_slice();
+
+        // We add up how many bytes we have read between curr_path_bytes and
+        // next_path_bytes to check if our `Ancestors::next_back` is presenting
+        // the last path component (in which case we need to present the whole
+        // path untrimmed)
+        self.front_bytes += curr_path_bytes.len() - next_path_bytes.len();
+        if self.front_bytes == path_len - self.trailing_seps {
+            self.front_bytes += self.trailing_seps;
             // SAFETY: This contains the whole original path
             let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..path_len]) };
             return Some(Path::new(sliced_path));
         }
 
-        // SAFETY: Our front index always stops at an ascii separator byte
-        // so our u8 slice will always contain a valid path
-        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..curr_front]) };
-        Some(Path::new(sliced_path).trim_trailing_sep())
+        // SAFETY: Traversing through component should stop at a valid separator byte
+        // so this should always be a valid u8 slice
+        let sliced_path = unsafe { Path::from_u8_slice(&self.path[0..self.front_bytes]) };
+        // we use `Path::components` here instead of `Path::trim_trailing_seps` because
+        // the latter method does not normalize curr dir components (i.e. "/foo////.////bar")
+        Some(Path::components(sliced_path).as_path())
     }
 }
 
@@ -2966,86 +2754,17 @@ impl Path {
     #[stable(feature = "path_ancestors", since = "1.28.0")]
     #[inline]
     pub fn ancestors(&self) -> Ancestors<'_> {
-        /// Normalizes the trailing portion of given path
-        /// and returns the number of bytes that it occupied
-        #[inline]
-        fn trailing_path_length(path_bytes: &[u8]) -> usize {
-            let path_len = path_bytes.len();
-            // this won't panic because "" does not have
-            // a trailing separator
-            let mut idx = path_len;
-
-            // `Some(false)` is used to denote that
-            // we haven't seen a '.' component *yet*,
-            // `Some(true)` means we have seen a '.' component,
-            // and `None` means that the component is not '.'
-            let mut curr_dir = false;
-            // We rebound to the original index for path components
-            // like '..' or 'abc.'
-            let mut rebound_idx: Option<usize> = None;
-            while idx > 0 {
-                if is_sep_byte(path_bytes[idx - 1]) {
-                    if curr_dir {
-                        rebound_idx = None;
-                        curr_dir = false;
-                    }
-                } else {
-                    if path_bytes[idx - 1] == b'.' {
-                        if !curr_dir {
-                            rebound_idx = Some(idx);
-                            curr_dir = true;
-                        } else {
-                            if let Some(r_idx) = rebound_idx {
-                                curr_dir = false;
-                                idx = r_idx;
-                            }
-                            break;
-                        }
-                    } else {
-                        if let Some(r_idx) = rebound_idx {
-                            curr_dir = false;
-                            idx = r_idx;
-                        }
-                        break;
-                    }
-                }
-                idx -= 1;
-            }
-
-            // If our path is `./a/b/c`, this `.` is not normalized
-            // away because it's treated as its own component
-            if curr_dir {
-                idx += 1;
-            }
-            path_len - idx
+        let path = self.as_os_str().as_encoded_bytes();
+        let trailing_seps = path.len() - self.components().as_path().as_u8_slice().len();
+        let is_relative = self.is_relative();
+        Ancestors {
+            path,
+            components: self.components(),
+            front_bytes: 0,
+            back_bytes: 0,
+            trailing_seps,
+            is_relative,
         }
-
-        let os_str_path = self.as_os_str();
-        let path_bytes = os_str_path.as_encoded_bytes();
-        let trailing_seps = trailing_path_length(path_bytes);
-
-        // Windows specific component
-        let prefix = parse_prefix(os_str_path);
-        let prefix_exist = prefix.map(|_| true).unwrap_or(false);
-
-        // Parse what our start component, which is needed in cases where
-        // `self.front` == `self.back`, or we're dealing with symmetry with
-        // relative path on returning `""` at the start/end of an iterator
-        let first_comp = if prefix_exist {
-            Some(FirstComponent::Prefix)
-        } else if self.is_relative() {
-            Some(FirstComponent::RelativePath)
-        } else {
-            Some(FirstComponent::AbsolutePath)
-        };
-
-        // If we have a prefix, we encode that index into front
-        let front = prefix.map(|prefix| prefix.len()).unwrap_or(0);
-        // Set our back pointer to the last separator byte (without trailing)
-        // or last byte
-        let back = path_bytes.len() - trailing_seps;
-
-        Ancestors { path: path_bytes, front, back, trailing_seps, first_comp }
     }
 
     /// Returns the final component of the `Path`, if there is one.
