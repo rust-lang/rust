@@ -53,20 +53,18 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb0: {
-        StorageLive(_2);
-        StorageLive(_3);
-        StorageLive(_10);
         StorageLive(_11);
-        StorageLive(_4);
-        StorageLive(_13);
         StorageLive(_5);
+        StorageLive(_2);
         _2 = copy ((*_1).0: std::ptr::NonNull<T>);
+        StorageLive(_3);
         _3 = copy ((*_1).1: *const T);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb4];
     }
 
     bb1: {
         StorageLive(_7);
+        StorageLive(_4);
         _4 = copy _3 as std::ptr::NonNull<T> (Transmute);
         _5 = copy _2 as *mut T (Transmute);
         StorageLive(_6);
@@ -77,6 +75,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb2: {
+        StorageDead(_4);
         StorageDead(_7);
         StorageLive(_9);
         StorageLive(_8);
@@ -85,48 +84,57 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         StorageDead(_8);
         ((*_1).0: std::ptr::NonNull<T>) = move _9;
         StorageDead(_9);
-        goto -> bb7;
-    }
-
-    bb3: {
-        _0 = const {transmute(0x0000000000000000): Option<&T>};
-        StorageDead(_7);
         goto -> bb8;
     }
 
+    bb3: {
+        StorageDead(_4);
+        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        StorageDead(_7);
+        goto -> bb6;
+    }
+
     bb4: {
+        StorageLive(_10);
         _10 = copy _3 as usize (Transmute);
-        switchInt(copy _10) -> [0: bb5, otherwise: bb6];
+        switchInt(copy _10) -> [0: bb5, otherwise: bb7];
     }
 
     bb5: {
         _0 = const {transmute(0x0000000000000000): Option<&T>};
-        goto -> bb8;
+        StorageDead(_10);
+        goto -> bb6;
     }
 
     bb6: {
-        _11 = SubUnchecked(copy _10, const 1_usize);
-        ((*_1).1: *const T) = copy _11 as *const T (Transmute);
-        goto -> bb7;
+        StorageDead(_3);
+        StorageDead(_2);
+        goto -> bb9;
     }
 
     bb7: {
+        _11 = SubUnchecked(copy _10, const 1_usize);
+        ((*_1).1: *const T) = copy _11 as *const T (Transmute);
+        StorageDead(_10);
+        goto -> bb8;
+    }
+
+    bb8: {
+        StorageLive(_13);
         StorageLive(_12);
         _12 = copy _2 as *const T (Transmute);
         _13 = &(*_12);
         StorageDead(_12);
         _0 = Option::<&T>::Some(copy _13);
-        goto -> bb8;
-    }
-
-    bb8: {
-        StorageDead(_5);
         StorageDead(_13);
-        StorageDead(_4);
-        StorageDead(_11);
-        StorageDead(_10);
         StorageDead(_3);
         StorageDead(_2);
+        goto -> bb9;
+    }
+
+    bb9: {
+        StorageDead(_5);
+        StorageDead(_11);
         return;
     }
 }

@@ -6,6 +6,10 @@ LL | const _: [String; 0] = [String::new(); 0];
    |                        ||
    |                        |the destructor for this type cannot be evaluated in constants
    |                        value is dropped here
+   |
+   = note: see issue #133214 <https://github.com/rust-lang/rust/issues/133214> for more information
+   = help: add `#![feature(const_destruct)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/repeat-drop-2.rs:4:17

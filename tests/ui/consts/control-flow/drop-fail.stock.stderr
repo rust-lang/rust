@@ -1,32 +1,32 @@
-error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:9:9
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:16:9
    |
-LL |     let x = Some(Vec::new());
+LL |     let x = Some(NotConstDestruct);
    |         ^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here
 
-error[E0493]: destructor of `(Vec<i32>,)` cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:22:9
+error[E0493]: destructor of `(NotConstDestruct,)` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:29:9
    |
-LL |     let vec_tuple = (Vec::new(),);
+LL |     let vec_tuple = (NotConstDestruct,);
    |         ^^^^^^^^^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here
 
-error[E0493]: destructor of `Result<Vec<i32>, Vec<i32>>` cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:30:9
+error[E0493]: destructor of `Result<NotConstDestruct, NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:37:9
    |
-LL |     let x: Result<_, Vec<i32>> = Ok(Vec::new());
+LL |     let x: Result<_, NotConstDestruct> = Ok(NotConstDestruct);
    |         ^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here
 
-error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
-  --> $DIR/drop-fail.rs:40:9
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:47:9
    |
 LL |     let mut tmp = None;
    |         ^^^^^^^ the destructor for this type cannot be evaluated in constants

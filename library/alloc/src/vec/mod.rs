@@ -79,9 +79,7 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-#[cfg(not(no_global_oom_handling))]
-use core::marker::Destruct;
-use core::marker::{Freeze, PhantomData};
+use core::marker::{Destruct, Freeze, PhantomData};
 use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, TransmuteFrom};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -2184,7 +2182,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`spare_capacity_mut()`]: Vec::spare_capacity_mut
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn set_len(&mut self, new_len: usize) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const unsafe fn set_len(&mut self, new_len: usize) {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
             "Vec::set_len requires that new_len <= capacity()",
@@ -4245,7 +4244,8 @@ impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+unsafe impl<#[may_dangle] T: [const] Destruct, A: Allocator> const Drop for Vec<T, A> {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
@@ -4464,7 +4464,10 @@ impl From<&str> for Vec<u8> {
 }
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
-impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T: [const] Destruct, A: [const] Allocator + [const] Destruct, const N: usize> const
+    TryFrom<Vec<T, A>> for [T; N]
+{
     type Error = Vec<T, A>;
 
     /// Gets the entire contents of the `Vec<T>` as an array,
