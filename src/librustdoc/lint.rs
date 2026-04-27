@@ -159,7 +159,8 @@ declare_rustdoc_lint! {
     /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_math
     INVALID_MATH,
     Warn,
-    "detects invalid LaTeX math syntax in doc comments"
+    "detects invalid LaTeX math syntax in doc comments",
+    @feature_gate = rustdoc_texmath;
 }
 
 declare_rustdoc_lint! {

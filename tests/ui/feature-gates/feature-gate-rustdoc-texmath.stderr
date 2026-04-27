@@ -1,0 +1,12 @@
+error[E0658]: the `#[doc(math_syntax)]` attribute is unstable
+  --> $DIR/feature-gate-rustdoc-texmath.rs:1:8
+   |
+LL | #![doc(math_syntax)]
+   |        ^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustdoc_texmath)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.
