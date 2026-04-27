@@ -913,24 +913,9 @@ pub const fn take<T: [const] Default>(dest: &mut T) -> T {
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
 #[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
 #[rustc_diagnostic_item = "mem_replace"]
-pub const fn replace<T>(dest: &mut T, src: T) -> T {
-    // It may be tempting to use `swap` to avoid `unsafe` here. Don't!
-    // The compiler optimizes the implementation below to two `memcpy`s
-    // while `swap` would require at least three. See PR#83022 for details.
-
-    // SAFETY: We read from `dest` but directly write `src` into it afterwards,
-    // such that the old value is not duplicated. Nothing is dropped and
-    // nothing here can panic.
-    unsafe {
-        // Ideally we wouldn't use the intrinsics here, but going through the
-        // `ptr` methods introduces two unnecessary UbChecks, so until we can
-        // remove those for pointers that come from references, this uses the
-        // intrinsics instead so this stays very cheap in MIR (and debug).
-
-        let result = crate::intrinsics::read_via_copy(dest);
-        crate::intrinsics::write_via_move(dest, src);
-        result
-    }
+pub const fn replace<T>(dest: &mut T, mut src: T) -> T {
+    swap(dest, &mut src);
+    src
 }
 
 /// Disposes of a value.

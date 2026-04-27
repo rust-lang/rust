@@ -67,13 +67,17 @@
 +                             scope 17 (inlined Option::<()>::take) {
 +                                 let mut _42: std::option::Option<()>;
 +                                 scope 18 (inlined std::mem::replace::<Option<()>>) {
-+                                     scope 19 {
++                                     let _43: ();
++                                     let mut _44: &mut std::option::Option<()>;
++                                     scope 19 (inlined std::mem::swap::<Option<()>>) {
++                                         let mut _45: *mut std::option::Option<()>;
++                                         let mut _46: *mut std::option::Option<()>;
 +                                     }
 +                                 }
 +                             }
 +                             scope 20 (inlined #[track_caller] Option::<()>::expect) {
-+                                 let mut _43: isize;
-+                                 let mut _44: !;
++                                 let mut _47: isize;
++                                 let mut _48: !;
 +                                 scope 21 {
 +                                 }
 +                             }
@@ -202,7 +206,8 @@
 +         StorageDead(_24);
 +         StorageLive(_37);
 +         StorageLive(_39);
-+         StorageLive(_44);
++         StorageLive(_43);
++         StorageLive(_48);
 +         StorageLive(_34);
 +         StorageLive(_35);
 +         StorageLive(_40);
@@ -212,12 +217,11 @@
 +         _37 = copy ((*_39).0: &mut std::future::Ready<()>);
 +         StorageLive(_42);
 +         _42 = Option::<()>::None;
-+         _35 = copy ((*_37).0: std::option::Option<()>);
-+         ((*_37).0: std::option::Option<()>) = move _42;
-+         StorageDead(_42);
-+         StorageLive(_43);
-+         _43 = discriminant(_35);
-+         switchInt(move _43) -> [0: bb16, 1: bb17, otherwise: bb7];
++         StorageLive(_45);
++         _45 = &raw mut ((*_37).0: std::option::Option<()>);
++         StorageLive(_46);
++         _46 = &raw mut _42;
++         _43 = typed_swap_nonoverlapping::<Option<()>>(move _45, move _46) -> [return: bb16, unwind unreachable];
       }
   
 -     bb6 (cleanup): {
@@ -299,16 +303,27 @@
 +     }
 + 
 +     bb16: {
-+         _44 = option::expect_failed(const "`Ready` polled after completion") -> bb11;
++         StorageDead(_46);
++         StorageDead(_45);
++         _35 = move _42;
++         StorageDead(_42);
++         StorageLive(_47);
++         _47 = discriminant(_35);
++         switchInt(move _47) -> [0: bb17, 1: bb18, otherwise: bb7];
 +     }
 + 
 +     bb17: {
++         _48 = option::expect_failed(const "`Ready` polled after completion") -> bb11;
++     }
++ 
++     bb18: {
 +         _34 = move ((_35 as Some).0: ());
-+         StorageDead(_43);
++         StorageDead(_47);
 +         StorageDead(_35);
 +         _18 = Poll::<()>::Ready(move _34);
 +         StorageDead(_34);
-+         StorageDead(_44);
++         StorageDead(_48);
++         StorageDead(_43);
 +         StorageDead(_39);
 +         StorageDead(_37);
 +         StorageDead(_22);
