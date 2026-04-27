@@ -28,31 +28,16 @@ use crate::passes::{self, Condition};
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::{html, opts, theme};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum OutputFormat {
-    Json,
-    #[default]
+    /// `--output-format=json` without `--show-coverage`.
+    ///
+    /// JSON description of crate API.
+    IrJson,
+    /// `--output-format=json` with `--show-coverage`.
+    CoverageJson,
     Html,
     Doctest,
-}
-
-impl OutputFormat {
-    pub(crate) fn is_json(&self) -> bool {
-        matches!(self, OutputFormat::Json)
-    }
-}
-
-impl TryFrom<&str> for OutputFormat {
-    type Error = String;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "json" => Ok(OutputFormat::Json),
-            "html" => Ok(OutputFormat::Html),
-            "doctest" => Ok(OutputFormat::Doctest),
-            _ => Err(format!("unknown output format `{value}`")),
-        }
-    }
 }
 
 /// Either an input crate, markdown file, or nothing (--merge=finalize).
@@ -491,39 +476,47 @@ impl Options {
 
         let show_coverage = matches.opt_present("show-coverage");
         let output_format_s = matches.opt_str("output-format");
-        let output_format = match output_format_s {
-            Some(ref s) => match OutputFormat::try_from(s.as_str()) {
-                Ok(out_fmt) => out_fmt,
-                Err(e) => dcx.fatal(e),
-            },
-            None => OutputFormat::default(),
+        let output_format = match output_format_s.as_deref() {
+            None | Some("html") => OutputFormat::Html,
+            Some("json") => {
+                if show_coverage {
+                    OutputFormat::CoverageJson
+                } else {
+                    OutputFormat::IrJson
+                }
+            }
+            Some("doctest") => OutputFormat::Doctest,
+            Some(other) => dcx.fatal(format!("unknown output format `{other}`")),
         };
 
-        // check for `--output-format=json`
+        // check for `--output-format` stability, and compatibility with `--show-coverage`
         match (
             output_format_s.as_ref().map(|_| output_format),
             show_coverage,
             nightly_options::is_unstable_enabled(matches),
         ) {
-            (None | Some(OutputFormat::Json), true, _) => {}
+            (None | Some(OutputFormat::CoverageJson), true, _) => {}
             (_, true, _) => {
                 dcx.fatal(format!(
                     "`--output-format={}` is not supported for the `--show-coverage` option",
-                    output_format_s.unwrap_or_default(),
+                    output_format_s.expect("checked for none above"),
                 ));
             }
             // If `-Zunstable-options` is used, nothing to check after this point.
             (_, false, true) => {}
             (None | Some(OutputFormat::Html), false, _) => {}
-            (Some(OutputFormat::Json), false, false) => {
+            (Some(OutputFormat::IrJson), false, false) => {
                 dcx.fatal(
-                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
+                    "the -Z unstable-options flag must be passed to enable --output-format=json for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
                 );
             }
             (Some(OutputFormat::Doctest), false, false) => {
                 dcx.fatal(
-                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/134529)",
+                    "the -Z unstable-options flag must be passed to enable --output-format=doctest (see https://github.com/rust-lang/rust/issues/134529)",
                 );
+            }
+            (Some(OutputFormat::CoverageJson), false, _) => {
+                unreachable!("CoverageJson is only possible when show_coverage is true")
             }
         }
 
