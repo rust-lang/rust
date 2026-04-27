@@ -10,7 +10,7 @@ note: found an item that was configured out
 LL | test!(a,
    |       ^
 LL |       #[cfg(false)],
-   |             ----- the item is gated here
+   |             ----- the item is disabled
 help: there is a crate or module with a similar name
    |
 LL -     a::bar();
