@@ -9,7 +9,7 @@ use ar_archive_writer::{
     ArchiveKind, COFFShortExport, MachineTypes, NewArchiveMember, write_archive_to_stream,
 };
 pub use ar_archive_writer::{DEFAULT_OBJECT_READER, ObjectReader};
-use object::read::archive::ArchiveFile;
+use object::read::archive::{ArchiveFile, ArchiveKind as ObjectArchiveKind};
 use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
@@ -320,6 +320,49 @@ pub trait ArchiveBuilder {
     fn build(self: Box<Self>, output: &Path) -> bool;
 }
 
+fn target_archive_format_to_object_kind(format: &str) -> Option<ObjectArchiveKind> {
+    match format {
+        "gnu" => Some(ObjectArchiveKind::Gnu),
+        "bsd" => Some(ObjectArchiveKind::Bsd),
+        "darwin" => Some(ObjectArchiveKind::Bsd64),
+        "coff" => Some(ObjectArchiveKind::Coff),
+        "aix_big" => Some(ObjectArchiveKind::AixBig),
+        _ => None,
+    }
+}
+
+fn archive_kinds_compatible(actual: ObjectArchiveKind, expected: ObjectArchiveKind) -> bool {
+    if actual == expected {
+        return true;
+    }
+    matches!(
+        (actual, expected),
+        // An archive without long filenames or symbol table is detected as Unknown;
+        // this is compatible with any target format.
+        (ObjectArchiveKind::Unknown, _)
+        // 64-bit symbol table variants are compatible with their 32-bit counterparts
+        | (ObjectArchiveKind::Gnu64, ObjectArchiveKind::Gnu)
+        | (ObjectArchiveKind::Bsd64, ObjectArchiveKind::Bsd)
+        | (ObjectArchiveKind::Bsd, ObjectArchiveKind::Bsd64)
+        // GNU and COFF archives share the same magic and member header format;
+        // only the symbol table layout differs.
+        | (ObjectArchiveKind::Gnu, ObjectArchiveKind::Coff)
+        | (ObjectArchiveKind::Coff, ObjectArchiveKind::Gnu)
+        | (ObjectArchiveKind::Gnu64, ObjectArchiveKind::Coff)
+    )
+}
+
+fn archive_format_display_name(format: &str) -> String {
+    match format {
+        "gnu" | "Gnu" | "Gnu64" => "GNU".to_string(),
+        "bsd" | "Bsd" => "BSD".to_string(),
+        "darwin" | "Bsd64" => "Darwin".to_string(),
+        "coff" | "Coff" => "COFF".to_string(),
+        "aix_big" | "AixBig" => "AIX big".to_string(),
+        other => other.to_string(),
+    }
+}
+
 pub struct ArArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
@@ -420,6 +463,19 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
         let archive_index = self.src_archives.len();
 
+        if let Some(expected_kind) =
+            target_archive_format_to_object_kind(&self.sess.target.archive_format)
+        {
+            let actual_kind = archive.kind();
+            if !archive_kinds_compatible(actual_kind, expected_kind) {
+                self.sess.dcx().emit_warn(crate::errors::IncompatibleArchiveFormat {
+                    path: archive_path.clone(),
+                    actual: archive_format_display_name(&format!("{actual_kind:?}")),
+                    expected: archive_format_display_name(&self.sess.target.archive_format),
+                });
+            }
+        }
+
         for entry in archive.members() {
             let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             let file_name = String::from_utf8(entry.name().to_vec())
@@ -482,9 +538,25 @@ impl<'a> ArArchiveBuilder<'a> {
                 match entry {
                     ArchiveEntry::FromArchive { archive_index, file_range } => {
                         let src_archive = &self.src_archives[archive_index];
-
-                        let data = &src_archive.1
-                            [file_range.0 as usize..file_range.0 as usize + file_range.1 as usize];
+                        let archive_data = &src_archive.1;
+                        let start = file_range.0 as usize;
+                        let end = start + file_range.1 as usize;
+                        if end > archive_data.len() {
+                            return Err(io_error_context(
+                                "invalid archive member",
+                                io::Error::new(
+                                    io::ErrorKind::InvalidData,
+                                    format!(
+                                        "archive member at offset {start} with size {} \
+                                         exceeds archive size {} in `{}`",
+                                        file_range.1,
+                                        archive_data.len(),
+                                        src_archive.0.display(),
+                                    ),
+                                ),
+                            ));
+                        }
+                        let data = &archive_data[start..end];
 
                         Box::new(data) as Box<dyn AsRef<[u8]>>
                     }
