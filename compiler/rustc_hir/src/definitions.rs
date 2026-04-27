@@ -303,6 +303,8 @@ pub enum DefPathData {
     LifetimeNs(Symbol),
     /// A closure expression.
     Closure,
+    /// A closure expression created during AST->HIR lowering.
+    LateClosure,
 
     // Subportions of items:
     /// Implicit constructor for a unit or tuple-like struct or enum variant.
@@ -474,6 +476,7 @@ impl DefPathData {
             | Use
             | GlobalAsm
             | Closure
+            | LateClosure
             | Ctor
             | AnonConst
             | OpaqueTy
@@ -495,6 +498,7 @@ impl DefPathData {
             | Use
             | GlobalAsm
             | Closure
+            | LateClosure
             | Ctor
             | AnonConst
             | OpaqueTy
@@ -514,7 +518,7 @@ impl DefPathData {
             ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
             Use => DefPathDataName::Anon { namespace: kw::Use },
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
-            Closure => DefPathDataName::Anon { namespace: sym::closure },
+            Closure | LateClosure => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },

@@ -894,7 +894,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
-            DefPathData::Closure => 'C',
+            DefPathData::Closure | DefPathData::LateClosure => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'K',
             DefPathData::OpaqueTy => 'i',
