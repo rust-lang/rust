@@ -717,23 +717,6 @@ impl<'tcx> Pat<'tcx> {
             true
         })
     }
-
-    /// Whether this a never pattern.
-    pub fn is_never_pattern(&self) -> bool {
-        let mut is_never_pattern = false;
-        self.walk(|pat| match &pat.kind {
-            PatKind::Never => {
-                is_never_pattern = true;
-                false
-            }
-            PatKind::Or { pats } => {
-                is_never_pattern = pats.iter().all(|p| p.is_never_pattern());
-                false
-            }
-            _ => true,
-        });
-        is_never_pattern
-    }
 }
 
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
