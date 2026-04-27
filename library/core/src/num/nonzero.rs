@@ -1,6 +1,6 @@
 //! Definitions of integer that is known not to equal zero.
 
-use super::{IntErrorKind, ParseIntError};
+use super::{IntErrorKind, ParseIntError, TryFromIntError};
 use crate::clone::{TrivialClone, UseCloned};
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
@@ -9,7 +9,7 @@ use crate::num::imp;
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::str::FromStr;
-use crate::{fmt, intrinsics, ptr, ub_checks};
+use crate::{fmt, intrinsics, ptr, slice, ub_checks};
 
 /// A marker trait for primitive types which can be zero.
 ///
@@ -321,6 +321,114 @@ where
     }
 }
 
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> From<&'a NonZero<T>> for &'a T
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: &'a NonZero<T>) -> &'a T {
+        nonzero.as_ref()
+    }
+}
+
+// FIXME: see library/std/tests/slice-from-array-issue-113238.rs
+/*
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> From<&'a [NonZero<T>]> for &'a [T]
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: &'a [NonZero<T>]) -> &'a [T] {
+        nonzero.as_zeroable()
+    }
+}
+impl<T> [NonZero<T>]
+where
+    T: ZeroablePrimitive,
+{
+    /// Implementation of `From<&[NonZero<T>]> for &[T]`.
+    #[must_use]
+    #[inline]
+    fn as_zeroable(&self) -> &[T] {
+        // SAFETY: `repr(transparent)` ensures that `NonZero<T>` has same layout as `T`, and thus
+        //   `[NonZero<T>]` has same layout as `[T]`
+        unsafe { &*(slice::from_raw_parts(self.as_ptr().cast::<T>(), self.len())) }
+    }
+}
+*/
+
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> From<[NonZero<T>; N]> for [T; N]
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: [NonZero<T>; N]) -> [T; N] {
+        nonzero.into_zeroable()
+    }
+}
+
+// FIXME: can't detect that ZeroablePrimitive is a sealed trait
+macro_rules! impl_ref_try_from {
+    ($($t:ty),* $(,)?) => {
+        $(
+            #[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+            impl<'a> TryFrom<&'a $t> for &'a NonZero<$t> {
+                type Error = TryFromIntError;
+
+                #[inline]
+                fn try_from(zeroable: &'a $t) -> Result<&'a NonZero<$t>, TryFromIntError> {
+                    NonZero::from_ref(zeroable).ok_or(TryFromIntError(()))
+                }
+            }
+        )*
+    }
+}
+
+impl_ref_try_from! {
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    usize,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    isize,
+    char,
+}
+
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> TryFrom<&'a [T]> for &'a [NonZero<T>]
+where
+    T: ZeroablePrimitive,
+{
+    type Error = TryFromIntError;
+
+    #[inline]
+    fn try_from(zeroable: &'a [T]) -> Result<&'a [NonZero<T>], TryFromIntError> {
+        NonZero::from_slice(zeroable).ok_or(TryFromIntError(()))
+    }
+}
+
+#[stable(feature = "more_from_nonzero", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> TryFrom<[T; N]> for [NonZero<T>; N]
+where
+    T: ZeroablePrimitive,
+{
+    type Error = TryFromIntError;
+
+    #[inline]
+    fn try_from(zeroable: [T; N]) -> Result<[NonZero<T>; N], TryFromIntError> {
+        NonZero::from_array(zeroable).ok_or(TryFromIntError(()))
+    }
+}
+
 #[stable(feature = "nonzero_bitor", since = "1.45.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 impl<T> const BitOr for NonZero<T>
@@ -476,6 +584,45 @@ where
         }
     }
 
+    /// Implementation of `From<&NonZero<T>> for &T`.
+    #[must_use]
+    #[inline]
+    fn as_ref(&self) -> &T {
+        // SAFETY: `repr(transparent)` ensures that `NonZero<T>` has same layout as `T`
+        unsafe { &*(ptr::from_ref(self).cast::<T>()) }
+    }
+
+    /// Implementation of `TryFrom<&T> for &NonZero<T>`.
+    #[must_use]
+    #[inline]
+    fn from_ref(n: &T) -> Option<&Self> {
+        // SAFETY: Memory layout optimization guarantees that `Option<NonZero<T>>` has
+        //         the same layout and size as `T`, with `0` representing `None`.
+        let opt_n = unsafe { &*(ptr::from_ref(n).cast::<Option<Self>>()) };
+
+        opt_n.as_ref()
+    }
+
+    /// Implementation of `TryFrom<&[T]> for &[NonZero<T>]`.
+    #[must_use]
+    #[inline]
+    fn from_slice(n: &[T]) -> Option<&[Self]> {
+        if n.iter().all(|x| NonZero::new(*x).is_some()) {
+            // SAFETY: We explicitly checked that all elements are nonzero, and because of `repr(transparent)`
+            //   the layout remains unchanged
+            Some(unsafe { &*(slice::from_raw_parts(n.as_ptr().cast::<NonZero<T>>(), n.len())) })
+        } else {
+            None
+        }
+    }
+
+    /// Implementation of `TryFrom<[T; N]> for [NonZero<T>; N]`.
+    #[must_use]
+    #[inline]
+    fn from_array<const N: usize>(n: [T; N]) -> Option<[Self; N]> {
+        n.try_map(NonZero::new)
+    }
+
     /// Returns the contained value as a primitive type.
     #[stable(feature = "nonzero", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
@@ -500,6 +647,18 @@ where
         // SAFETY: `ZeroablePrimitive` guarantees that the size and bit validity
         // of `.0` is such that this transmute is sound.
         unsafe { intrinsics::transmute_unchecked(self) }
+    }
+}
+
+impl<T, const N: usize> [NonZero<T>; N]
+where
+    T: ZeroablePrimitive,
+{
+    /// Implementation of `From<[NonZero<T>; N]> for [T; N]`.
+    #[must_use]
+    #[inline]
+    fn into_zeroable(self) -> [T; N] {
+        self.map(NonZero::get)
     }
 }
 
