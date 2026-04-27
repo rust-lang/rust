@@ -131,6 +131,52 @@ impl<'a> TritonCodegen<'a> {
         self.codegen_add(tcx, location, lhs, rhs, mlir_block)
     }
 
+    pub fn codegen_and_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 2, "TritonCodegen::codegen_and_call: args length must be 2");
+        let lhs = self.codegen_operand(tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state)?;
+        let rhs = self.codegen_operand(tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state)?;
+        self.codegen_and(tcx, location, lhs, rhs, mlir_block)
+    }
+
+    pub fn codegen_or_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 2, "TritonCodegen::codegen_or_call: args length must be 2");
+        let lhs = self.codegen_operand(tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state)?;
+        let rhs = self.codegen_operand(tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state)?;
+        self.codegen_or(tcx, location, lhs, rhs, mlir_block)
+    }
+
     pub fn codegen_sub_call<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -870,17 +916,30 @@ impl<'a> TritonCodegen<'a> {
 
     pub fn codegen_and<'tcx>(
         &self,
-        _tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         location: Location<'a>,
         lhs: Value<'a, 'a>,
         rhs: Value<'a, 'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_is_tensor = lhs.r#type().is_tensor();
+        let rhs_is_tensor = rhs.r#type().is_tensor();
+        let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
+            (true, true) => (lhs, rhs),
+            (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
+            (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
+            (false, false) => (lhs, rhs),
+        };
         let lhs_ty = lhs.r#type();
-        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
-            todo!("TritonCodegen::codegen_and tensor not yet supported")
-        }
-        if lhs_ty.is_integer() {
+        let is_int = if lhs_ty.is_tensor() {
+            RankedTensorType::try_from(lhs_ty)
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?
+                .element()
+                .is_integer()
+        } else {
+            lhs_ty.is_integer()
+        };
+        if is_int {
             let op: Operation<'a> =
                 create_andi(self.module.context(), location, lhs, rhs)
                     .map_err(|e| MlirError::CreateOperation { err: e })?;
@@ -893,17 +952,30 @@ impl<'a> TritonCodegen<'a> {
 
     pub fn codegen_or<'tcx>(
         &self,
-        _tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         location: Location<'a>,
         lhs: Value<'a, 'a>,
         rhs: Value<'a, 'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_is_tensor = lhs.r#type().is_tensor();
+        let rhs_is_tensor = rhs.r#type().is_tensor();
+        let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
+            (true, true) => (lhs, rhs),
+            (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
+            (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
+            (false, false) => (lhs, rhs),
+        };
         let lhs_ty = lhs.r#type();
-        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
-            todo!("TritonCodegen::codegen_or tensor not yet supported")
-        }
-        if lhs_ty.is_integer() {
+        let is_int = if lhs_ty.is_tensor() {
+            RankedTensorType::try_from(lhs_ty)
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?
+                .element()
+                .is_integer()
+        } else {
+            lhs_ty.is_integer()
+        };
+        if is_int {
             let op: Operation<'a> =
                 create_ori(self.module.context(), location, lhs, rhs)
                     .map_err(|e| MlirError::CreateOperation { err: e })?;

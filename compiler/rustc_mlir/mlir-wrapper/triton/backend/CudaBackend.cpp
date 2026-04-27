@@ -27,6 +27,7 @@
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
@@ -42,6 +43,7 @@
 
 #include "CudaBackend.h"
 
+#include <cstdlib>
 #include <regex>
 
 using namespace mlir;
@@ -119,13 +121,47 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
     llvmMod->addModuleFlag(llvm::Module::Override, "nvvm-reflect-ftz", 1u);
   }
 
-  // Link extern libs from options when the module has undefined symbols
-  if (m_options.extern_libs_len > 0) {
-    std::vector<std::string> libPaths;
-    for (size_t i = 0; i < m_options.extern_libs_len; ++i) {
-      libPaths.push_back(m_options.extern_lib_values[i]);
-    }
+  // Collect user-specified extern libs.
+  std::vector<std::string> libPaths;
+  for (size_t i = 0; i < m_options.extern_libs_len; ++i) {
+    libPaths.push_back(m_options.extern_lib_values[i]);
+  }
 
+  // Auto-link libdevice when the module references any __nv_* device functions.
+  // MLIR lowers math.sqrt / math.rsqrt etc. to __nv_sqrtf / __nv_rsqrtf
+  // declarations; the PTX JIT cannot resolve these without libdevice linked at
+  // LLVM IR level.
+  auto needsLibdevice = [&]() -> bool {
+    for (const auto &F : llvmMod->functions()) {
+      if (F.isDeclaration() && F.getName().starts_with("__nv_")) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (needsLibdevice()) {
+    // Prefer the env-var override, then the standard CUDA toolkit path.
+    static const char *candidates[] = {
+        std::getenv("CUDA_LIBDEVICE_PATH"),
+        "/usr/local/cuda/nvvm/libdevice/libdevice.10.bc",
+    };
+    bool found = false;
+    for (const char *path : candidates) {
+      if (path && llvm::sys::fs::exists(path)) {
+        libPaths.push_back(path);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      llvm::errs() << "Warning: module references __nv_* device functions but "
+                      "libdevice.10.bc was not found; PTX JIT will likely fail. "
+                      "Set CUDA_LIBDEVICE_PATH to override.\n";
+    }
+  }
+
+  if (!libPaths.empty()) {
     auto result = linkExternLibs(llvmContext, *llvmMod, libPaths);
     if (failed(result)) {
       return result;
