@@ -1164,6 +1164,22 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
   return wrap(Sub);
 }
 
+// Wraps DIBuilder::createGlobalVariableExpression. Unlike the LLVM-C API
+// (LLVMDIBuilderCreateGlobalVariableExpression), this exposes the IsDefined
+// parameter instead of hard-coding it to true.
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateGlobalVariableExpression(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, const char *Linkage, size_t LinkLen, LLVMMetadataRef File,
+    unsigned LineNo, LLVMMetadataRef Ty, LLVMBool LocalToUnit,
+    LLVMBool IsDefined, LLVMMetadataRef Expr, LLVMMetadataRef Decl,
+    uint32_t AlignInBits) {
+  return wrap(unwrap(Builder)->createGlobalVariableExpression(
+      unwrapDI<DIScope>(Scope), {Name, NameLen}, {Linkage, LinkLen},
+      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), LocalToUnit,
+      IsDefined, unwrap<DIExpression>(Expr), unwrapDI<MDNode>(Decl), nullptr,
+      AlignInBits));
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
