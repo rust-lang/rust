@@ -229,6 +229,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::AArch64 | InlineAsmArch::Arm64EC | InlineAsmArch::Arm => {
                     constraints.push("~{cc}".to_string());
                 }
+                InlineAsmArch::Amdgpu => {}
                 InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
                     constraints.extend_from_slice(&[
                         "~{dirflag}".to_string(),
@@ -698,6 +699,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | Arm(ArmInlineAsmRegClass::dreg_low8)
             | Arm(ArmInlineAsmRegClass::qreg_low4) => "x",
             Arm(ArmInlineAsmRegClass::dreg) | Arm(ArmInlineAsmRegClass::qreg) => "w",
+            Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "s",
+            Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(_)) => "v",
             Hexagon(HexagonInlineAsmRegClass::reg) => "r",
             Hexagon(HexagonInlineAsmRegClass::reg_pair) => "r",
             Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
@@ -803,6 +806,7 @@ fn modifier_to_llvm(
                 modifier
             }
         }
+        Amdgpu(_) => None,
         Hexagon(_) => None,
         LoongArch(_) => None,
         Mips(_) => None,
@@ -883,6 +887,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         Arm(ArmInlineAsmRegClass::qreg)
         | Arm(ArmInlineAsmRegClass::qreg_low8)
         | Arm(ArmInlineAsmRegClass::qreg_low4) => cx.type_vector(cx.type_i64(), 2),
+        Amdgpu(_) => cx.type_i32(),
         Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
         Hexagon(HexagonInlineAsmRegClass::reg_pair) => cx.type_i64(),
         Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
