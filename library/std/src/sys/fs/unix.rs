@@ -28,6 +28,7 @@ use libc::fstatat64;
     target_os = "fuchsia",
     target_os = "illumos",
     target_os = "nto",
+    target_os = "qurt",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -45,6 +46,7 @@ use libc::readdir as readdir64;
     target_os = "l4re",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qurt",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -66,10 +68,17 @@ use libc::{
     target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
+    target_os = "qurt",
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+};
+// QuRT doesn't have lstat - use stat instead
+#[cfg(target_os = "qurt")]
+use libc::{
+    dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+    off_t as off64_t, open as open64, stat as stat64, stat as lstat64,
 };
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -98,6 +107,7 @@ use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, cvt_r};
+#[cfg_attr(target_os = "qurt", allow(unused_imports))]
 use crate::{mem, ptr};
 
 pub struct File(FileDesc);
@@ -280,6 +290,7 @@ cfg_select! {
         target_os = "redox",
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "nto",
         target_os = "vxworks",
@@ -410,6 +421,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     target_os = "illumos",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qurt",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -436,6 +448,7 @@ pub struct DirEntry {
     target_os = "illumos",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qurt",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -448,6 +461,7 @@ struct dirent64_min {
         target_os = "illumos",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "vita",
     )))]
     d_type: u8,
@@ -462,6 +476,7 @@ struct dirent64_min {
     target_os = "illumos",
     target_os = "linux",
     target_os = "nto",
+    target_os = "qurt",
     target_os = "redox",
     target_os = "solaris",
     target_os = "vita",
@@ -619,6 +634,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "qurt",
         target_os = "rtems",
         target_os = "nuttx",
     )))]
@@ -636,6 +652,7 @@ impl FileAttr {
     #[cfg(any(
         all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "rtems",
     ))]
@@ -659,6 +676,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "vita",
         target_os = "hurd",
+        target_os = "qurt",
         target_os = "rtems",
         target_os = "nuttx",
     )))]
@@ -676,6 +694,7 @@ impl FileAttr {
     #[cfg(any(
         all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "rtems"
     ))]
@@ -854,6 +873,7 @@ impl Iterator for ReadDir {
         target_os = "illumos",
         target_os = "linux",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "redox",
         target_os = "solaris",
         target_os = "vita",
@@ -927,6 +947,7 @@ impl Iterator for ReadDir {
                         target_os = "illumos",
                         target_os = "aix",
                         target_os = "nto",
+                        target_os = "qurt",
                     )))]
                     d_type: (*entry_ptr).d_type as u8,
                 };
@@ -952,6 +973,7 @@ impl Iterator for ReadDir {
         target_os = "illumos",
         target_os = "linux",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "redox",
         target_os = "solaris",
         target_os = "vita",
@@ -997,6 +1019,7 @@ impl Iterator for ReadDir {
 /// So we check file flags instead which live on the file descriptor and not the underlying file.
 /// The downside is that it costs an extra syscall, so we only do it for debug.
 #[inline]
+#[cfg_attr(target_os = "qurt", allow(dead_code))]
 pub(crate) fn debug_assert_fd_is_open(fd: RawFd) {
     use crate::sys::io::errno;
 
@@ -1015,6 +1038,7 @@ impl Drop for DirStream {
             miri,
             target_os = "redox",
             target_os = "nto",
+            target_os = "qurt",
             target_os = "vita",
             target_os = "hurd",
             target_os = "espidf",
@@ -1103,6 +1127,7 @@ impl DirEntry {
         target_os = "vxworks",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "vita",
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -1116,6 +1141,7 @@ impl DirEntry {
         target_os = "vxworks",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "vita",
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -1146,6 +1172,7 @@ impl DirEntry {
         target_os = "l4re",
         target_os = "linux",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "redox",
         target_os = "rtems",
         target_os = "solaris",
@@ -1205,6 +1232,7 @@ impl DirEntry {
         target_os = "redox",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "hurd",
         target_os = "wasi",
@@ -1222,6 +1250,7 @@ impl DirEntry {
         target_os = "redox",
         target_os = "aix",
         target_os = "nto",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "hurd",
         target_os = "wasi",
@@ -1388,6 +1417,7 @@ impl File {
         Ok(FileAttr::from_stat64(stat))
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn fsync(&self) -> io::Result<()> {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
@@ -1402,6 +1432,12 @@ impl File {
         }
     }
 
+    #[cfg(target_os = "qurt")]
+    pub fn fsync(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "fsync not supported on QuRT"))
+    }
+
+    #[cfg(not(target_os = "qurt"))]
     pub fn datasync(&self) -> io::Result<()> {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
@@ -1439,6 +1475,11 @@ impl File {
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
+    }
+
+    #[cfg(target_os = "qurt")]
+    pub fn datasync(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "datasync not supported on QuRT"))
     }
 
     #[cfg(any(
@@ -1784,16 +1825,22 @@ impl File {
         self.0.duplicate().map(File)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode) })?;
         Ok(())
     }
 
+    #[cfg(target_os = "qurt")]
+    pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "fchmod not supported on QuRT"))
+    }
+
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_select! {
-            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
+            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "qurt") => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
-                // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
+                // ESP-IDF, HorizonOS, and QuRT do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
                 let _ = times;
                 Err(io::const_error!(
@@ -1860,6 +1907,7 @@ impl File {
     target_os = "espidf",
     target_os = "horizon",
     target_os = "nuttx",
+    target_os = "qurt",
 )))]
 fn file_time_to_timespec(time: Option<SystemTime>) -> io::Result<libc::timespec> {
     match time {
@@ -2096,14 +2144,21 @@ pub fn rename(old: &CStr, new: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) }).map(|_| ())
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
+}
+
+#[cfg(target_os = "qurt")]
+pub fn set_perm(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "chmod not supported on QuRT"))
 }
 
 pub fn rmdir(p: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ())
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub fn readlink(c_path: &CStr) -> io::Result<PathBuf> {
     let p = c_path.as_ptr();
 
@@ -2130,12 +2185,28 @@ pub fn readlink(c_path: &CStr) -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(target_os = "qurt")]
+pub fn readlink(_c_path: &CStr) -> io::Result<PathBuf> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "readlink not supported on QuRT"))
+}
+
+#[cfg(not(target_os = "qurt"))]
 pub fn symlink(original: &CStr, link: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) }).map(|_| ())
 }
 
+#[cfg(target_os = "qurt")]
+pub fn symlink(_original: &CStr, _link: &CStr) -> io::Result<()> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "symlink not supported on QuRT"))
+}
+
 pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
     cfg_select! {
+        target_os = "qurt" => {
+            // QuRT doesn't support hard links
+            let _ = (original, link);
+            Err(io::const_error!(io::ErrorKind::Unsupported, "link not supported on QuRT"))
+        }
         any(
             // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead.
             // POSIX leaves it implementation-defined whether `link` follows
@@ -2153,14 +2224,15 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             target_env = "nto70",
         ) => {
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
+            Ok(())
         }
         _ => {
             // Where we can, use `linkat` instead of `link`; see the comment above
             // this one for details on why.
             cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
+            Ok(())
         }
     }
-    Ok(())
 }
 
 pub fn stat(p: &CStr) -> io::Result<FileAttr> {
@@ -2197,6 +2269,7 @@ pub fn lstat(p: &CStr) -> io::Result<FileAttr> {
     Ok(FileAttr::from_stat64(stat))
 }
 
+#[cfg(not(target_os = "qurt"))]
 pub fn canonicalize(path: &CStr) -> io::Result<PathBuf> {
     let r = unsafe { libc::realpath(path.as_ptr(), ptr::null_mut()) };
     if r.is_null() {
@@ -2207,6 +2280,11 @@ pub fn canonicalize(path: &CStr) -> io::Result<PathBuf> {
         libc::free(r as *mut _);
         buf
     })))
+}
+
+#[cfg(target_os = "qurt")]
+pub fn canonicalize(_path: &CStr) -> io::Result<PathBuf> {
+    Err(io::const_error!(io::ErrorKind::Unsupported, "realpath not supported on QuRT"))
 }
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
@@ -2223,7 +2301,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 
 fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Result<()> {
     cfg_select! {
-       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita", target_os = "rtems") => {
+       any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx", target_os = "vita", target_os = "rtems", target_os = "qurt") => {
             let _ = (p, times, follow_symlinks);
             Err(io::const_error!(
                 io::ErrorKind::Unsupported,
@@ -2461,7 +2539,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(bytes_copied as u64)
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
 pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::chown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2469,13 +2547,13 @@ pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     })
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
 pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
     cvt(unsafe { libc::fchown(fd, uid as libc::uid_t, gid as libc::gid_t) })?;
     Ok(())
 }
 
-#[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
+#[cfg(not(any(target_os = "vxworks", target_os = "wasi", target_os = "qurt")))]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
@@ -2484,23 +2562,26 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
 }
 
 #[cfg(target_os = "vxworks")]
-pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
-    let (_, _, _) = (path, uid, gid);
+pub fn lchown(_path: &Path, _uid: u32, _gid: u32) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
-#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks", target_os = "wasi")))]
+#[cfg(not(any(
+    target_os = "fuchsia",
+    target_os = "vxworks",
+    target_os = "wasi",
+    target_os = "qurt"
+)))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     run_path_with_cstr(dir, &|dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
 }
 
 #[cfg(target_os = "vxworks")]
-pub fn chroot(dir: &Path) -> io::Result<()> {
-    let _ = dir;
+pub fn chroot(_dir: &Path) -> io::Result<()> {
     Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
-#[cfg(not(target_os = "wasi"))]
+#[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
 pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
     run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::mkfifo(path.as_ptr(), mode.try_into().unwrap()) }).map(|_| ())
@@ -2509,11 +2590,12 @@ pub fn mkfifo(path: &Path, mode: u32) -> io::Result<()> {
 
 pub use remove_dir_impl::remove_dir_all;
 
-// Fallback for REDOX, ESP-ID, Horizon, Vita, Vxworks and Miri
+// Fallback for REDOX, ESP-ID, Horizon, QuRT, Vita, Vxworks and Miri
 #[cfg(any(
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
+    target_os = "qurt",
     target_os = "vita",
     target_os = "nto",
     target_os = "vxworks",
@@ -2528,6 +2610,7 @@ mod remove_dir_impl {
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
+    target_os = "qurt",
     target_os = "vita",
     target_os = "nto",
     target_os = "vxworks",

@@ -4,7 +4,13 @@ mod error;
 
 mod io_slice {
     cfg_select! {
-        any(target_family = "unix", target_os = "hermit", target_os = "solid_asp3", target_os = "trusty", target_os = "wasi") => {
+        any(
+            all(target_family = "unix", not(target_os = "qurt")),
+            target_os = "hermit",
+            target_os = "solid_asp3",
+            target_os = "trusty",
+            target_os = "wasi"
+        ) => {
             mod iovec;
             pub use iovec::*;
         }
@@ -25,7 +31,7 @@ mod io_slice {
 
 mod is_terminal {
     cfg_select! {
-        any(target_family = "unix", target_os = "wasi") => {
+        any(all(target_family = "unix", not(target_os = "qurt")), target_os = "wasi") => {
             mod isatty;
             pub use isatty::*;
         }

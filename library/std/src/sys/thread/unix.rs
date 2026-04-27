@@ -421,7 +421,7 @@ pub fn set_name(name: &CStr) {
     target_os = "freebsd",
     target_os = "dragonfly",
     target_os = "nuttx",
-    target_os = "cygwin"
+    target_os = "cygwin",
 ))]
 pub fn set_name(name: &CStr) {
     unsafe {
@@ -518,6 +518,11 @@ pub fn set_name(name: &CStr) {
     let mut name = truncate_cstr::<{ (libc::VX_TASK_RENAME_LENGTH - 1) as usize }>(name);
     let res = unsafe { libc::taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
     debug_assert_eq!(res, libc::OK);
+}
+
+#[cfg(target_os = "qurt")]
+pub fn set_name(_name: &CStr) {
+    // QuRT doesn't support pthread_setname_np
 }
 
 #[cfg(not(target_os = "espidf"))]
