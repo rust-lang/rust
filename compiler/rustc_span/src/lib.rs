@@ -21,6 +21,7 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
+#![feature(normalize_lexically)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
 // tidy-alphabetical-end
@@ -496,6 +497,15 @@ impl RealFileName {
                 .file_name()
                 .map_or_else(|| "".into(), |f| f.to_string_lossy()),
             FileNameDisplayPreference::Scope(scope) => self.path(scope).to_string_lossy(),
+            FileNameDisplayPreference::Diagnostics(scope) => {
+                let path = self.path(scope);
+                match path.normalize_lexically() {
+                    Ok(normalized) => {
+                        Cow::Owned(normalized.into_os_string().to_string_lossy().into_owned())
+                    }
+                    Err(_) => path.to_string_lossy(),
+                }
+            }
         }
     }
 }
@@ -533,15 +543,23 @@ enum FileNameDisplayPreference {
     Local,
     Short,
     Scope(RemapPathScopeComponents),
+    Diagnostics(RemapPathScopeComponents),
+}
+
+impl<'a> FileNameDisplay<'a> {
+    pub fn to_string_lossy(&self) -> Cow<'a, str> {
+        match self.inner {
+            FileName::Real(inner) => inner.to_string_lossy(self.display_pref),
+            _ => Cow::from(self.to_string()),
+        }
+    }
 }
 
 impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self.inner {
-            Real(ref name) => {
-                write!(fmt, "{}", name.to_string_lossy(self.display_pref))
-            }
+            Real(ref name) => write!(fmt, "{}", name.to_string_lossy(self.display_pref)),
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
@@ -550,15 +568,6 @@ impl fmt::Display for FileNameDisplay<'_> {
             Custom(ref s) => write!(fmt, "<{s}>"),
             DocTest(ref path, _) => write!(fmt, "{}", path.display()),
             InlineAsm(_) => write!(fmt, "<inline asm>"),
-        }
-    }
-}
-
-impl<'a> FileNameDisplay<'a> {
-    pub fn to_string_lossy(&self) -> Cow<'a, str> {
-        match self.inner {
-            FileName::Real(inner) => inner.to_string_lossy(self.display_pref),
-            _ => Cow::from(self.to_string()),
         }
     }
 }
@@ -607,6 +616,12 @@ impl FileName {
     #[inline]
     pub fn display(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Scope(scope) }
+    }
+
+    /// Like `display`, but with `.` and `..` resolved lexically. See #51349.
+    #[inline]
+    pub fn display_normalized(&self, scope: RemapPathScopeComponents) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Diagnostics(scope) }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {
