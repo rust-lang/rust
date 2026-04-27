@@ -13,6 +13,7 @@ use std::iter;
 
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
+use rustc_type_ir::error::TypeError;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
@@ -229,6 +230,28 @@ where
 /// from the solver we assume that the solver correctly handled aliases and therefore
 /// always relate them structurally here.
 #[instrument(level = "trace", skip(delegate))]
+fn try_unify_query_var_values<D, I>(
+    delegate: &D,
+    param_env: I::ParamEnv,
+    original_values: &[I::GenericArg],
+    var_values: CanonicalVarValues<I>,
+    span: I::Span,
+) -> Result<(), TypeError<I>>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    assert_eq!(original_values.len(), var_values.len());
+
+    for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
+        let goals = delegate.eq_structurally_relating_aliases(param_env, orig, response, span)?;
+        assert!(goals.is_empty());
+    }
+
+    Ok(())
+}
+
+#[instrument(level = "trace", skip(delegate))]
 fn unify_query_var_values<D, I>(
     delegate: &D,
     param_env: I::ParamEnv,
@@ -239,13 +262,7 @@ fn unify_query_var_values<D, I>(
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    assert_eq!(original_values.len(), var_values.len());
-
-    for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
-        let goals =
-            delegate.eq_structurally_relating_aliases(param_env, orig, response, span).unwrap();
-        assert!(goals.is_empty());
-    }
+    try_unify_query_var_values(delegate, param_env, original_values, var_values, span).unwrap();
 }
 
 fn register_region_constraints<D, I>(
@@ -328,6 +345,23 @@ where
     I: Interner,
     T: TypeFoldable<I>,
 {
+    try_instantiate_canonical_state(delegate, span, param_env, orig_values, state).unwrap()
+}
+
+// FIXME: needs to be pub to be accessed by downstream
+// `rustc_trait_selection::solve::inspect::analyse`.
+pub fn try_instantiate_canonical_state<D, I, T>(
+    delegate: &D,
+    span: I::Span,
+    param_env: I::ParamEnv,
+    orig_values: &mut Vec<I::GenericArg>,
+    state: inspect::CanonicalState<I, T>,
+) -> Result<T, TypeError<I>>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+    T: TypeFoldable<I>,
+{
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
     orig_values.extend(
@@ -341,8 +375,8 @@ where
 
     let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 
-    unify_query_var_values(delegate, param_env, orig_values, var_values, span);
-    data
+    try_unify_query_var_values(delegate, param_env, orig_values, var_values, span)?;
+    Ok(data)
 }
 
 pub fn response_no_constraints_raw<I: Interner>(
