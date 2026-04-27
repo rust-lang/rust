@@ -829,18 +829,18 @@ static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("32s", Unstable(sym::loongarch_target_feature), &[]),
     ("d", Stable, &["f"]),
-    ("div32", Unstable(sym::loongarch_target_feature), &[]),
+    ("div32", Stable, &[]),
     ("f", Stable, &[]),
     ("frecipe", Stable, &[]),
-    ("lam-bh", Unstable(sym::loongarch_target_feature), &[]),
-    ("lamcas", Unstable(sym::loongarch_target_feature), &[]),
+    ("lam-bh", Stable, &[]),
+    ("lamcas", Stable, &[]),
     ("lasx", Stable, &["lsx"]),
     ("lbt", Stable, &[]),
-    ("ld-seq-sa", Unstable(sym::loongarch_target_feature), &[]),
+    ("ld-seq-sa", Stable, &[]),
     ("lsx", Stable, &["d"]),
     ("lvz", Stable, &[]),
     ("relax", Unstable(sym::loongarch_target_feature), &[]),
-    ("scq", Unstable(sym::loongarch_target_feature), &[]),
+    ("scq", Stable, &[]),
     ("ual", Unstable(sym::loongarch_target_feature), &[]),
     // tidy-alphabetical-end
 ];
