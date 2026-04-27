@@ -589,7 +589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_type_tests(
         &self,
         infcx: &InferCtxt<'tcx>,
-        mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         let tcx = infcx.tcx;
@@ -598,6 +598,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // result in basically the exact same error being reported to
         // the user. Avoid that.
         let mut deduplicate_errors = FxIndexSet::default();
+
+        let mut conjunctive_propagated_outlives_requirements =
+            propagated_outlives_requirements.is_some().then_some(vec![]);
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
@@ -612,8 +615,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements
-                && self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements)
+            if let Some(conjunctive_propagated_outlives_requirements) =
+                &mut conjunctive_propagated_outlives_requirements
+                && self.try_promote_type_test(
+                    infcx,
+                    type_test,
+                    conjunctive_propagated_outlives_requirements,
+                )
             {
                 continue;
             }
@@ -636,6 +644,69 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 errors_buffer.push(RegionErrorKind::TypeTestError { type_test: type_test.clone() });
             }
+        }
+
+        if let Some(mut conjunctive_requirements) = conjunctive_propagated_outlives_requirements
+            && !conjunctive_requirements.is_empty()
+        {
+            // We can simplify this list of list of requirements.
+            //
+            // Say we did some number of type tests and it results in following requirements:
+            //
+            // R1: (T: 'a OR T: 'b)
+            // R2: (T: 'a)
+            //
+            // * See `try_promote_type_test` below on why we obtain OR requirements implicitly.
+            //
+            // Full requirement is then: R1 AND R2. *BUT*, we can remove R1 entirely, because we already
+            // require `T: 'a`, which implies `T:'a OR T: 'b`, making R1 redundant.
+            //
+            // The requirements can be seen as a boolean conjunctive normal form expression:
+            // Treat a requirement `T: 'region` as a boolean value, then this problem is (almost)
+            // equivalent to "Unit Propagation". However, this problem we are trying to solve is much
+            // simpler: Unit Propagation considers any form of subexpression, even containing negation
+            // of values, making it a multi-pass algorithm. The only subexpressions we encounter are of
+            // the form (R1 OR ... OR RN), thus if even on R is required on their own (a unit), this
+            // whole subexpression can be removed.
+            //
+            // So we can filter redundant OR requirements with the following algorithm:
+            // Collect every Unit requirement. Then for every other requirement, if one of the units is
+            // contained within them we can remove the entire requirement from the list.
+
+            fn requirement_key<'a>(subject: ClosureOutlivesRequirement<'a>) -> (Ty<'a>, RegionVid) {
+                let ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy { inner: ty }) =
+                    subject.subject
+                else {
+                    unreachable!("ClosureOutliveSubject of a type test is always a Ty");
+                };
+                (ty, subject.outlived_free_region)
+            }
+
+            let units: Vec<_> = conjunctive_requirements
+                .iter()
+                .filter_map(|r| {
+                    let [r] = r.as_slice() else { return None };
+                    Some(requirement_key(*r))
+                })
+                .collect();
+
+            // Remove the `or_requirement`s that contain any of the unit requirements.
+            conjunctive_requirements.retain(|or_requirement| {
+                or_requirement.len() == 1
+                    || !or_requirement.iter().any(|r| {
+                        let key = requirement_key(*r);
+                        units.contains(&key)
+                    })
+            });
+
+            assert!(
+                !conjunctive_requirements.is_empty(),
+                "It should not be possible to remove every requirement."
+            );
+            // Propagate all requirements as is.
+            propagated_outlives_requirements
+                .expect("conjunctive_requirements is `Some`, so this should be as well")
+                .extend(conjunctive_requirements.into_iter().flatten());
         }
     }
 
@@ -668,7 +739,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         type_test: &TypeTest<'tcx>,
-        propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
+        propagated_outlives_requirements: &mut Vec<Vec<ClosureOutlivesRequirement<'tcx>>>,
     ) -> bool {
         let tcx = infcx.tcx;
         let TypeTest { generic_kind, lower_bound, span: blame_span, verify_bound: _ } = *type_test;
@@ -694,23 +765,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let Some(p) = self.scc_values.placeholders_contained_in(r_scc).next() {
             debug!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
             let static_r = self.universal_regions().fr_static;
-            propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+            propagated_outlives_requirements.push(vec![ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: static_r,
                 blame_span,
                 category: ConstraintCategory::Boring,
-            });
+            }]);
 
             // we can return here -- the code below might push add'l constraints
             // but they would all be weaker than this one.
             return true;
         }
 
-        // For each region outlived by lower_bound find a non-local,
-        // universal region (it may be the same region) and add it to
-        // `ClosureOutlivesRequirement`.
+        let universal_regions: Vec<_> =
+            self.scc_values.universal_regions_outlived_by(r_scc).collect();
+        debug!(?universal_regions);
+
+        // Filter to only the "minimal" universal regions:
+        // Drop any region `a` that strictly outlives another region `b`.
+        let minimal_universal_regions: Vec<_> = universal_regions
+            .iter()
+            .copied()
+            .filter(|&a| {
+                !universal_regions.iter().copied().any(|b| {
+                    !self.universal_region_relations.outlives(a, b)
+                        && self.universal_region_relations.outlives(b, a)
+                })
+            })
+            .collect();
+
+        assert!(
+            !minimal_universal_regions.is_empty(),
+            "There should always be at least 1 minimal region"
+        );
+
         let mut found_outlived_universal_region = false;
-        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+        for ur in minimal_universal_regions {
             found_outlived_universal_region = true;
             debug!("universal_region_outlived_by ur={:?}", ur);
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
@@ -720,6 +810,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
             // avoid potential non-determinism we approximate this by requiring
             // T: '1 and T: '2.
+            let mut or_requirements = Vec::with_capacity(non_local_ub.len());
             for upper_bound in non_local_ub {
                 debug_assert!(self.universal_regions().is_universal_region(upper_bound));
                 debug_assert!(!self.universal_regions().is_local_free_region(upper_bound));
@@ -731,8 +822,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     category: ConstraintCategory::Boring,
                 };
                 debug!(?requirement, "adding closure requirement");
-                propagated_outlives_requirements.push(requirement);
+                or_requirements.push(requirement);
             }
+            propagated_outlives_requirements.push(or_requirements);
         }
         // If we succeed to promote the subject, i.e. it only contains non-local regions,
         // and fail to prove the type test inside of the closure, the `lower_bound` has to
