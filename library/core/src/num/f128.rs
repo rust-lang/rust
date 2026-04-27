@@ -158,8 +158,7 @@ impl f128 {
     pub const RADIX: u32 = 2;
 
     /// The size of this float type in bits.
-    // #[unstable(feature = "f128", issue = "116909")]
-    #[unstable(feature = "float_bits_const", issue = "151073")]
+    #[unstable(feature = "f128", issue = "116909")]
     pub const BITS: u32 = 128;
 
     /// Number of significant digits in base 2.

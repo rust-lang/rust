@@ -400,7 +400,7 @@ impl f32 {
     pub const RADIX: u32 = 2;
 
     /// The size of this float type in bits.
-    #[unstable(feature = "float_bits_const", issue = "151073")]
+    #[stable(feature = "float_bits_const", since = "CURRENT_RUSTC_VERSION")]
     pub const BITS: u32 = 32;
 
     /// Number of significant digits in base 2.
