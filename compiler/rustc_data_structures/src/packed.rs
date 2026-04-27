@@ -3,7 +3,7 @@ use std::fmt;
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{HashStable, HashStableContext, StableHasher};
 
 /// A packed 128-bit integer. Useful for reducing the size of structures in
 /// some cases.
@@ -60,9 +60,9 @@ impl fmt::UpperHex for Pu128 {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for Pu128 {
+impl HashStable for Pu128 {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         { self.0 }.hash_stable(hcx, hasher)
     }
 }

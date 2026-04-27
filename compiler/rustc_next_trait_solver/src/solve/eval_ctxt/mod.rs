@@ -2,7 +2,7 @@ use std::mem;
 use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
-use rustc_macros::HashStable_NoContext;
+use rustc_macros::HashStable;
 use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
@@ -137,7 +137,7 @@ where
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 pub enum GenerateProofTree {
     Yes,
     No,

@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{Dominators, dominators};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -171,7 +171,7 @@ impl<D: Decoder> Decodable<D> for Cache {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for Cache {
+impl HashStable for Cache {
     #[inline]
-    fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {}
+    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {}
 }

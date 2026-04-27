@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use rustc_span::{Symbol, sym};
 
-use crate::expand::{Decodable, Encodable, HashStable_Generic};
+use crate::expand::{Decodable, Encodable, HashStable};
 use crate::{Ty, TyKind};
 
 /// Forward and Reverse Mode are well known names for automatic differentiation implementations.
@@ -20,7 +20,7 @@ use crate::{Ty, TyKind};
 ///
 /// Documentation for using [reverse](https://enzyme.mit.edu/rust/rev.html) and
 /// [forward](https://enzyme.mit.edu/rust/fwd.html) mode is available online.
-#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
 pub enum DiffMode {
     /// No autodiff is applied (used during error handling).
     Error,
@@ -42,7 +42,7 @@ impl DiffMode {
 /// However, under forward mode we overwrite the previous shadow value, while for reverse mode
 /// we add to the previous shadow value. To not surprise users, we picked different names.
 /// Dual numbers is also a quite well known name for forward mode AD types.
-#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
 pub enum DiffActivity {
     /// Implicit or Explicit () return type, so a special case of Const.
     None,

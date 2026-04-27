@@ -123,7 +123,7 @@ pub struct DepGraphData {
 
 pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
 where
-    R: for<'a> HashStable<StableHashingContext<'a>>,
+    R: HashStable,
 {
     let mut stable_hasher = StableHasher::new();
     result.hash_stable(hcx, &mut stable_hasher);

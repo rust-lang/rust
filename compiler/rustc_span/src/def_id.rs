@@ -3,14 +3,17 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, RawDefId, RawDefPathHash, StableHasher, StableOrd,
+    ToStableHashKey,
+};
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
-use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable};
 use rustc_serialize::{Decodable, Encodable};
 
-use crate::{HashStableContext, SpanDecoder, SpanEncoder, Symbol};
+use crate::{SpanDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
@@ -91,7 +94,7 @@ impl fmt::Display for CrateNum {
 /// collision occurring. For a big crate graph with 1000 crates in it, there is
 /// a probability of 1 in 36,890,000,000,000 of a `StableCrateId` collision.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(HashStable, Encodable, Decodable)]
 pub struct DefPathHash(pub Fingerprint);
 
 impl DefPathHash {
@@ -113,6 +116,16 @@ impl DefPathHash {
     #[inline]
     pub fn new(stable_crate_id: StableCrateId, local_hash: Hash64) -> DefPathHash {
         DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
+    }
+
+    #[inline]
+    pub fn to_raw_def_path_hash(self) -> RawDefPathHash {
+        RawDefPathHash(self.0.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn from_raw_def_path_hash(RawDefPathHash(a): RawDefPathHash) -> DefPathHash {
+        DefPathHash(Fingerprint::from_le_bytes(a))
     }
 }
 
@@ -141,7 +154,7 @@ impl StableOrd for DefPathHash {
 /// For more information on the possibility of hash collisions in rustc,
 /// see the discussion in [`DefId`].
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[derive(Hash, HashStable_Generic, Encodable, BlobDecodable)]
+#[derive(Hash, HashStable, Encodable, BlobDecodable)]
 pub struct StableCrateId(pub(crate) Hash64);
 
 impl StableCrateId {
@@ -312,6 +325,18 @@ impl DefId {
     pub fn is_top_level_module(self) -> bool {
         self.is_local() && self.is_crate_root()
     }
+
+    #[inline]
+    pub fn to_raw_def_id(self) -> RawDefId {
+        // Field order must match `from_raw_def_id`.
+        RawDefId(self.krate.as_u32(), self.index.as_u32())
+    }
+
+    #[inline]
+    pub fn from_raw_def_id(RawDefId(a, b): RawDefId) -> DefId {
+        // Field order must match `to_raw_def_id`.
+        DefId { krate: a.into(), index: b.into() }
+    }
 }
 
 impl From<LocalDefId> for DefId {
@@ -402,66 +427,66 @@ rustc_data_structures::define_id_collections!(
     LocalDefId
 );
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for DefId {
+impl HashStable for DefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        hcx.def_path_hash(*self).hash_stable(hcx, hasher);
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for LocalDefId {
+impl HashStable for LocalDefId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        hcx.def_path_hash(self.to_def_id()).local_hash().hash_stable(hcx, hasher);
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).local_hash().hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for CrateNum {
+impl HashStable for CrateNum {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefId {
+impl ToStableHashKey for DefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(*self)
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
+        DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LocalDefId {
+impl ToStableHashKey for LocalDefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
-        hcx.def_path_hash(self.to_def_id())
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
+        self.to_def_id().to_stable_hash_key(hcx)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for CrateNum {
+impl ToStableHashKey for CrateNum {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for DefPathHash {
+impl ToStableHashKey for DefPathHash {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> DefPathHash {
         *self
     }
 }
 
 macro_rules! typed_def_id {
     ($Name:ident, $LocalName:ident) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
         pub struct $Name(DefId);
 
         impl $Name {
@@ -500,7 +525,7 @@ macro_rules! typed_def_id {
             }
         }
 
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
         pub struct $LocalName(LocalDefId);
 
         impl !Ord for $LocalName {}

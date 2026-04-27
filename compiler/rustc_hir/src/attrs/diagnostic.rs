@@ -3,14 +3,14 @@ use std::fmt;
 use std::fmt::Debug;
 
 pub use rustc_ast::attr::data_structures::*;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_macros::{Decodable, Encodable, HashStable, PrintAttribute};
 use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::attrs::PrintAttribute;
 
-#[derive(Clone, Default, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Default, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub struct Directive {
     pub is_rustc_attr: bool,
     pub condition: Option<OnUnimplementedCondition>,
@@ -123,7 +123,7 @@ pub struct CustomDiagnostic {
 
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
 /// either as string pieces or dynamic arguments.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub struct FormatString {
     pub input: Symbol,
     pub span: Span,
@@ -225,13 +225,13 @@ pub struct FormatArgs {
     pub generic_args: Vec<(Symbol, String)> = Vec::new(),
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub enum Piece {
     Lit(Symbol),
     Arg(FormatArg),
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub enum FormatArg {
     // A generic parameter, like `{T}` if we're on the `From<T>` trait.
     GenericParam {
@@ -251,7 +251,7 @@ pub enum FormatArg {
 }
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub struct OnUnimplementedCondition {
     pub span: Span,
     pub pred: Predicate,
@@ -276,7 +276,7 @@ impl OnUnimplementedCondition {
 ///
 /// It is similar to the predicate in the `cfg` attribute,
 /// and may contain nested predicates.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub enum Predicate {
     /// A condition like `on(crate_local)`.
     Flag(Flag),
@@ -314,7 +314,7 @@ impl Predicate {
 }
 
 /// Represents a `MetaWord` in an `on`-filter.
-#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Copy, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub enum Flag {
     /// Whether the code causing the trait bound to not be fulfilled
     /// is part of the user's crate.
@@ -329,7 +329,7 @@ pub enum Flag {
 /// A `MetaNameValueStr` in an `on`-filter.
 ///
 /// For example, `#[rustc_on_unimplemented(on(name = "value", message = "hello"))]`.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub struct NameValue {
     pub name: Name,
     /// Something like `"&str"` or `"alloc::string::String"`,
@@ -348,7 +348,7 @@ impl NameValue {
 }
 
 /// The valid names of the `on` filter.
-#[derive(Clone, Copy, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Copy, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub enum Name {
     Cause,
     FromDesugaring,
@@ -368,7 +368,7 @@ pub enum FlagOrNv<'p> {
 /// If it is a simple literal like this then `pieces` will be `[LitOrArg::Lit("value")]`.
 /// The `Arg` variant is used when it contains formatting like
 /// `#[rustc_on_unimplemented(on(Self = "&[{A}]", message = "hello"))]`.
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub struct FilterFormatString {
     pub pieces: ThinVec<LitOrArg>,
 }
@@ -400,7 +400,7 @@ impl FilterFormatString {
     }
 }
 
-#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub enum LitOrArg {
     Lit(Symbol),
     Arg(Symbol),

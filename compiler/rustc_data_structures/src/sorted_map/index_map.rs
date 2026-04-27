@@ -3,7 +3,7 @@
 use std::hash::{Hash, Hasher};
 
 use rustc_index::{Idx, IndexVec};
-use rustc_macros::HashStable_NoContext;
+use rustc_macros::HashStable;
 
 /// An indexed multi-map that preserves insertion order while permitting both *O*(log *n*) lookup of
 /// an item by key and *O*(1) lookup by index.
@@ -23,7 +23,7 @@ use rustc_macros::HashStable_NoContext;
 /// in-place.
 ///
 /// [`SortedMap`]: super::SortedMap
-#[derive(Clone, Debug, HashStable_NoContext)]
+#[derive(Clone, Debug, HashStable)]
 pub struct SortedIndexMultiMap<I: Idx, K, V> {
     /// The elements of the map in insertion order.
     items: IndexVec<I, (K, V)>,

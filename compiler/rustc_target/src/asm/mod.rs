@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::Symbol;
 
 use crate::spec::{Arch, CfgAbi, RelocModel, Target};
@@ -25,7 +25,7 @@ macro_rules! def_reg_class {
             $class:ident,
         )*
     }) => {
-        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable_Generic)]
+        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable)]
         #[allow(non_camel_case_types)]
         pub enum $arch_regclass {
             $($class,)*
@@ -74,7 +74,7 @@ macro_rules! def_regs {
         )*
     }) => {
         #[allow(unreachable_code)]
-        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable_Generic)]
+        #[derive(Copy, Clone, rustc_macros::Encodable, rustc_macros::Decodable, Debug, Eq, PartialEq, PartialOrd, Hash, rustc_macros::HashStable)]
         #[allow(non_camel_case_types)]
         pub enum $arch_reg {
             $($reg,)*
@@ -279,7 +279,7 @@ impl InlineAsmArch {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(HashStable, Encodable, Decodable)]
 pub enum InlineAsmReg {
     X86(X86InlineAsmReg),
     Arm(ArmInlineAsmReg),
@@ -467,7 +467,7 @@ impl InlineAsmReg {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(HashStable, Encodable, Decodable)]
 pub enum InlineAsmRegClass {
     X86(X86InlineAsmRegClass),
     Arm(ArmInlineAsmRegClass),
@@ -712,7 +712,7 @@ impl InlineAsmRegClass {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(HashStable, Encodable, Decodable)]
 pub enum InlineAsmRegOrRegClass {
     Reg(InlineAsmReg),
     RegClass(InlineAsmRegClass),
@@ -922,7 +922,7 @@ pub fn allocatable_registers(
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Hash)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(HashStable, Encodable, Decodable)]
 pub enum InlineAsmClobberAbi {
     X86,
     X86_64Win,

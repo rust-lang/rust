@@ -11,7 +11,6 @@ use rustc_hir::hir_id::OwnerId;
 use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 
 use crate::dep_graph::DepNodeIndex;
-use crate::ich::StableHashingContext;
 use crate::infer::canonical::CanonicalQueryInput;
 use crate::mono::CollectionMode;
 use crate::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
@@ -24,7 +23,7 @@ use crate::{mir, traits};
 #[derive(Copy, Clone, Debug)]
 pub struct LocalCrate;
 
-pub trait QueryKeyBounds = Copy + Debug + Eq + Hash + for<'a> HashStable<StableHashingContext<'a>>;
+pub trait QueryKeyBounds = Copy + Debug + Eq + Hash + HashStable;
 
 /// Controls what types can legally be used as the key for a query.
 pub trait QueryKey: Sized + QueryKeyBounds {

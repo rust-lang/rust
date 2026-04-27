@@ -5,7 +5,9 @@ use std::hash::Hash;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
@@ -19,7 +21,6 @@ use tracing::debug;
 
 use crate::dep_graph::dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
 
@@ -325,10 +326,10 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
     }
 }
 
-impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
+impl ToStableHashKey for MonoItem<'_> {
     type KeyType = Fingerprint;
 
-    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'_>) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Self::KeyType {
         let mut hasher = StableHasher::new();
         self.hash_stable(hcx, &mut hasher);
         hasher.finish()
@@ -581,10 +582,10 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 }
 
-impl ToStableHashKey<StableHashingContext<'_>> for CodegenUnit<'_> {
+impl ToStableHashKey for CodegenUnit<'_> {
     type KeyType = String;
 
-    fn to_stable_hash_key(&self, _: &mut StableHashingContext<'_>) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Self::KeyType {
         // Codegen unit names are conceptually required to be stable across
         // compilation session so that object file names match up.
         self.name.to_string()
