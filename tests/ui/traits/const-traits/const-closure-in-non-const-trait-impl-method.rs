@@ -11,6 +11,7 @@ impl<T: Foo> Foo for &mut T {
     const fn test() -> impl [const] Fn() {
         //~^ ERROR functions in trait impls cannot be declared const
         const move || {}
+        //~^ ERROR: cannot use `const` closures outside of const contexts
     }
 }
 

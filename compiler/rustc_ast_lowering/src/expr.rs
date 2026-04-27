@@ -1052,7 +1052,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
-        mut constness: Const,
+        constness: Const,
         movability: Movability,
         decl: &FnDecl,
         body: &Expr,
@@ -1062,18 +1062,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        if let Const::Yes(span) = constness {
-            if !self.is_in_const_context {
-                self.dcx().span_err(span, "cannot use `const` closures outside of const contexts");
-                constness = Const::No;
-            }
-        }
-
         let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
             let mut coroutine_kind = find_attr!(attrs, Coroutine(_) => hir::CoroutineKind::Coroutine(Movability::Movable));
 
             // FIXME(contracts): Support contracts on closures?
-            let body_id = this.lower_fn_body(decl, None, constness, |this| {
+            let body_id = this.lower_fn_body(decl, None, |this| {
                 this.coroutine_kind = coroutine_kind;
                 let e = this.lower_expr_mut(body);
                 coroutine_kind = this.coroutine_kind;
