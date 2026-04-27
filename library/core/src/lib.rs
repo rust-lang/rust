@@ -159,6 +159,7 @@
 #![feature(pattern_types)]
 #![feature(pin_macro_internals)]
 #![feature(prelude_import)]
+#![feature(register_tool)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
@@ -193,6 +194,9 @@
 #![feature(wasm_target_feature)]
 #![feature(x86_amx_intrinsics)]
 // tidy-alphabetical-end
+
+// Inert attributes for rustdoc `inject-safety-docs` (`--safety-spec`); see `safety::requires`.
+#![register_tool(safety)]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]

@@ -813,6 +813,15 @@ fn doc_std(
         .rustdocflag("--extern-html-root-takes-precedence")
         .rustdocflag("--resource-suffix")
         .rustdocflag(&builder.version);
+    let safety_spec_in_rustdocflags =
+        env::var("RUSTDOCFLAGS").map(|s| s.contains("--safety-spec")).unwrap_or(false);
+    // If `--safety-spec` is not set in `RUSTDOCFLAGS`, set it to the default spec file.
+    if !safety_spec_in_rustdocflags {
+        let safety_spec_path = builder.src.join("src/librustdoc/assets/sp-core.toml");
+        if let Some(p) = safety_spec_path.to_str() {
+            cargo.rustdocflag("--safety-spec").rustdocflag(p);
+        }
+    }
     for arg in extra_args {
         cargo.rustdocflag(arg);
     }
