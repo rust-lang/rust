@@ -587,6 +587,8 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
+    /// Allows using `$$crate`.
+    (incomplete, macro_metavar_expr_dollar_dollar_crate, "CURRENT_RUSTC_VERSION", Some(155111)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Enable mgca `type const` syntax before expansion.
