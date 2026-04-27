@@ -391,10 +391,24 @@ impl<'f> VaList<'f> {
     /// # Safety
     ///
     /// This function is only sound to call when there is another argument to read, and that
-    /// argument is a properly initialized value of the type `T`.
+    /// argument is a properly initialized value compatible with the type `T`.
     ///
     /// Calling this function with an incompatible type, an invalid value, or when there
     /// are no more variable arguments, is unsound.
+    ///
+    /// Types `T` and `U` are compatible when:
+    ///
+    /// - `T` and `U` are the same type.
+    /// - `T` is a signed integer and `U` the corresponding unsigned integer,
+    /// - `T` is an unsigned integer and `U` the corresponding signed integer,
+    /// - `T` and `U` are both pointers, and their target types are compatible.
+    /// - `T` is a pointer to [`c_void`] and `U` is a pointer to [`i8]` or [`u8`].
+    /// - `T` is a pointer to [`i8]` or [`u8`] and `U` is a pointer to [`c_void`].
+    ///
+    /// When `T` and `U` are both integer types, the value that the caller passes must be
+    /// representable by `U`.
+    ///
+    /// [`c_void`]: core::ffi::c_void
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
     pub const unsafe fn next_arg<T: VaArgSafe>(&mut self) -> T {

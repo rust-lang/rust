@@ -8,6 +8,7 @@ use std::assert_matches;
 
 use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_ast::{IntTy, UintTy};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -21,9 +22,9 @@ use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
     PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format, err_unsup_format, interp_ok,
-    throw_inval, throw_ub, throw_ub_format, throw_unsup_format,
+    throw_inval, throw_ub, throw_ub_format,
 };
-use crate::interpret::Writeable;
+use crate::interpret::{MPlaceTy, Writeable};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -54,6 +55,14 @@ pub(crate) enum MinMax {
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
     /// and if one argument is NaN (quiet or signaling), the other one is returned.
     MaximumNumberNsz,
+}
+
+enum VarArgCompatible {
+    Identical,
+    Incompatible,
+    CastSignedToUnsigned(IntTy),
+    CastUnsignedToSigned(UintTy),
+    ValidPtrCast,
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -739,18 +748,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     throw_ub!(VaArgOutOfBounds);
                 };
 
-                // NOTE: In C some type conversions are allowed (e.g. casting between signed and
-                // unsigned integers). For now we require c-variadic arguments to be read with the
-                // exact type they were passed as.
-                if arg_mplace.layout.ty != dest.layout.ty {
-                    throw_unsup_format!(
-                        "va_arg type mismatch: requested `{}`, but next argument is `{}`",
-                        dest.layout.ty,
-                        arg_mplace.layout.ty
-                    );
-                }
-                // Copy the argument.
-                self.copy_op(&arg_mplace, dest)?;
+                // Error when the caller's argument is not c-variadic compatible with the type
+                // requested by the callee.
+                self.validate_c_variadic_compatible(&arg_mplace, dest.layout)?;
+
+                // Copy the argument, allowing a transmute and relying on the compatibility check
+                // rejecting conversions between types of different size.
+                self.copy_op_allow_transmute(&arg_mplace, dest)?;
 
                 // Update the VaList pointer.
                 let new_key = self.va_list_ptr(varargs);
@@ -764,6 +768,149 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("{:?}", self.dump_place(&dest.clone().into()));
         self.return_to_block(ret)?;
         interp_ok(true)
+    }
+
+    /// Validate whether the value and type passed by the caller are compatible with the type
+    /// requested by the callee. Based on section 7.16.1.1 of the C23 specification.
+    ///
+    /// The caller requesting a value of a type is valid when that type is compatible with the type
+    /// provided by the caller (see `validate_c_variadic_compatible_ty`) and, if both types are
+    /// integers of different signedness, the passed value must be representable in both types.
+    fn validate_c_variadic_compatible(
+        &mut self,
+        arg_mplace: &MPlaceTy<'tcx, M::Provenance>,
+        callee_type: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx> {
+        // Identical types are clearly compatible.
+        if arg_mplace.layout.ty == callee_type.ty {
+            return interp_ok(());
+        }
+
+        // Types of different sizes can never be compatible.
+        if arg_mplace.layout.size != callee_type.size {
+            throw_ub_format!(
+                "va_arg type mismatch: requested `{}` is incompatible with next argument of type `{}`",
+                callee_type.ty,
+                arg_mplace.layout.ty,
+            )
+        }
+
+        fn validate_cast<'tcx, T, U>(x: T, target_ty: Ty<'tcx>) -> InterpResult<'tcx>
+        where
+            T: std::fmt::Display + Copy,
+            U: std::fmt::Display + TryFrom<T>,
+        {
+            if U::try_from(x).is_ok() {
+                return interp_ok(());
+            }
+
+            throw_ub_format!(
+                "va_arg value mismatch: value `{x}` cannot be represented by type {target_ty}",
+            )
+        }
+
+        match self.validate_c_variadic_compatible_ty(arg_mplace.layout.ty, callee_type.ty) {
+            VarArgCompatible::Identical => interp_ok(()),
+            VarArgCompatible::ValidPtrCast => interp_ok(()),
+            VarArgCompatible::Incompatible => throw_ub_format!(
+                "va_arg type mismatch: requested `{}` is incompatible with next argument of type `{}`",
+                callee_type.ty,
+                arg_mplace.layout.ty,
+            ),
+            VarArgCompatible::CastSignedToUnsigned(int_ty) => {
+                // Check that the value can be represented in the target type.
+                let callee_ty = callee_type.ty;
+                let scalar = self.read_scalar(arg_mplace)?;
+                match int_ty {
+                    IntTy::Isize => match self.data_layout().pointer_size().bits() {
+                        16 => validate_cast::<i16, u16>(scalar.to_i16()?, callee_ty)?,
+                        32 => validate_cast::<i32, u32>(scalar.to_i32()?, callee_ty)?,
+                        64 => validate_cast::<i64, u64>(scalar.to_i64()?, callee_ty)?,
+                        _ => unreachable!("unexpected pointer size"),
+                    },
+                    IntTy::I8 => validate_cast::<i8, u8>(scalar.to_i8()?, callee_ty)?,
+                    IntTy::I16 => validate_cast::<i16, u16>(scalar.to_i16()?, callee_ty)?,
+                    IntTy::I32 => validate_cast::<i32, u32>(scalar.to_i32()?, callee_ty)?,
+                    IntTy::I64 => validate_cast::<i64, u64>(scalar.to_i64()?, callee_ty)?,
+                    IntTy::I128 => validate_cast::<i128, u128>(scalar.to_i128()?, callee_ty)?,
+                };
+
+                interp_ok(())
+            }
+            VarArgCompatible::CastUnsignedToSigned(uint_ty) => {
+                // Check that the value can be represented in the target type.
+                let callee_ty = callee_type.ty;
+                let scalar = self.read_scalar(arg_mplace)?;
+                match uint_ty {
+                    UintTy::Usize => match self.data_layout().pointer_size().bits() {
+                        16 => validate_cast::<u16, i16>(scalar.to_u16()?, callee_ty)?,
+                        32 => validate_cast::<u32, i32>(scalar.to_u32()?, callee_ty)?,
+                        64 => validate_cast::<u64, i64>(scalar.to_u64()?, callee_ty)?,
+                        _ => unreachable!("unexpected pointer size"),
+                    },
+                    UintTy::U8 => validate_cast::<u8, i8>(scalar.to_u8()?, callee_ty)?,
+                    UintTy::U16 => validate_cast::<u16, i16>(scalar.to_u16()?, callee_ty)?,
+                    UintTy::U32 => validate_cast::<u32, i32>(scalar.to_u32()?, callee_ty)?,
+                    UintTy::U64 => validate_cast::<u64, i64>(scalar.to_u64()?, callee_ty)?,
+                    UintTy::U128 => validate_cast::<u128, i128>(scalar.to_u128()?, callee_ty)?,
+                };
+
+                interp_ok(())
+            }
+        }
+    }
+
+    /// Check whether the caller and callee type are compatible for c-variadic calls. Further
+    /// validation of the argument value may be needed to detect all UB.
+    ///
+    /// Types `T` and `U` are compatible when:
+    ///
+    /// - `T` and `U` are the same type.
+    /// - `T` is a signed integer and `U` the corresponding unsigned integer,
+    /// - `T` is an unsigned integer and `U` the corresponding signed integer,
+    /// - `T` and `U` are both pointers, and their target types are compatible.
+    /// - `T` is a pointer to `c_void` and `U` is a pointer to `i8` or `u8`.
+    /// - `T` is a pointer to `i8` or `u8` and `U` is a pointer to `c_void`.
+    fn validate_c_variadic_compatible_ty(
+        &mut self,
+        caller_type: Ty<'tcx>,
+        callee_type: Ty<'tcx>,
+    ) -> VarArgCompatible {
+        if caller_type == callee_type {
+            return VarArgCompatible::Identical;
+        }
+
+        // The signedness of c_char is irrelevant here.
+        let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
+
+        match (caller_type.kind(), callee_type.kind()) {
+            (ty::RawPtr(caller_target_ty, _), ty::RawPtr(callee_target_ty, _)) => {
+                // Accept the cast if one type is pointer to qualified or unqualified void,
+                // and the other is a pointer to a qualified or unqualified character type.
+                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*callee_target_ty) {
+                    return VarArgCompatible::ValidPtrCast;
+                }
+                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*caller_target_ty) {
+                    return VarArgCompatible::ValidPtrCast;
+                }
+
+                // Accept the cast if both types are pointers to qualified or unqualified versions
+                // of compatible types.
+                match self.validate_c_variadic_compatible_ty(*caller_target_ty, *callee_target_ty) {
+                    VarArgCompatible::Incompatible => VarArgCompatible::Incompatible,
+                    _ => VarArgCompatible::ValidPtrCast,
+                }
+            }
+            (ty::Int(int_ty), ty::Uint(uint_ty)) => {
+                assert_eq!(int_ty.bit_width(), uint_ty.bit_width());
+                VarArgCompatible::CastSignedToUnsigned(*int_ty)
+            }
+            (ty::Uint(uint_ty), ty::Int(int_ty)) => {
+                assert_eq!(uint_ty.bit_width(), int_ty.bit_width());
+                VarArgCompatible::CastUnsignedToSigned(*uint_ty)
+            }
+            _ => VarArgCompatible::Incompatible,
+        }
     }
 
     pub(super) fn eval_nondiverging_intrinsic(
