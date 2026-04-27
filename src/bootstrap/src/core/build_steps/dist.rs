@@ -726,11 +726,6 @@ impl Step for DebuggerScripts {
                 &sysroot.join("bin"),
                 FileType::Script,
             );
-
-            cp_debugger_script("natvis/intrinsic.natvis");
-            cp_debugger_script("natvis/liballoc.natvis");
-            cp_debugger_script("natvis/libcore.natvis");
-            cp_debugger_script("natvis/libstd.natvis");
         }
 
         cp_debugger_script("rust_types.py");
