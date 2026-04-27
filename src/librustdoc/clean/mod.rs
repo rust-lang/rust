@@ -2780,6 +2780,7 @@ fn add_without_unwanted_attributes<'hir>(
             hir::Attribute::Parsed(AttributeKind::Doc(box d)) => {
                 // Remove attributes from `normal` that should not be inherited by `use` re-export.
                 let DocAttribute {
+                    first_span: _,
                     aliases,
                     hidden,
                     inline,

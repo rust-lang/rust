@@ -701,6 +701,9 @@ impl DocParser {
                 for i in items.mixed() {
                     match i {
                         MetaItemOrLitParser::MetaItemParser(mip) => {
+                            if self.nb_doc_attrs == 0 {
+                                self.attribute.first_span = cx.attr_span;
+                            }
                             self.nb_doc_attrs += 1;
                             self.parse_single_doc_attr_item(cx, mip);
                         }

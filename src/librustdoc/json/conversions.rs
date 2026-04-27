@@ -960,6 +960,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             }
 
             let DocAttribute {
+                first_span: _,
                 aliases,
                 hidden,
                 inline,
