@@ -126,10 +126,9 @@ fn partition_at_index_loop<'a, T, F>(
 
         // Split the slice into `left`, `pivot`, and `right`.
         let (left, right) = v.split_at_mut(mid);
-        let (pivot, right) = right.split_at_mut(1);
-        let pivot = &pivot[0];
 
         if mid < index {
+            let (pivot, right) = right.split_first_mut().unwrap();
             v = right;
             index = index - mid - 1;
             ancestor_pivot = Some(pivot);
