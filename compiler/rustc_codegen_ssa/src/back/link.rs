@@ -1973,11 +1973,11 @@ fn add_post_link_objects(
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    cmd.verbatim_args(&sess.opts.unstable_opts.pre_link_args);
+
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
-
-    cmd.verbatim_args(&sess.opts.unstable_opts.pre_link_args);
 }
 
 /// Add a link script embedded in the target, if applicable.
@@ -2409,18 +2409,18 @@ fn linker_with_args(
 
     // ------------ Early order-dependent options ------------
 
+    // Can be used for adding custom CRT objects or overriding order-dependent options above.
+    // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
+    // introduce a target spec option for order-independent linker options and migrate built-in
+    // specs to it.
+    add_pre_link_args(cmd, sess, flavor);
+
     // If we're building something like a dynamic library then some platforms
     // need to make sure that all symbols are exported correctly from the
     // dynamic library.
     // Must be passed before any libraries to prevent the symbols to export from being thrown away,
     // at least on some platforms (e.g. windows-gnu).
     cmd.export_symbols(tmpdir, crate_type, &export_symbols);
-
-    // Can be used for adding custom CRT objects or overriding order-dependent options above.
-    // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
-    // introduce a target spec option for order-independent linker options and migrate built-in
-    // specs to it.
-    add_pre_link_args(cmd, sess, flavor);
 
     // ------------ Object code and libraries, order-dependent ------------
 
