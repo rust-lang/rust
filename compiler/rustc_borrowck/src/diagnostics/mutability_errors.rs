@@ -668,7 +668,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 err: &'a mut Diag<'infcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
+                infcx: &'a rustc_infer::infer::InferCtxt<'tcx>,
             }
+
             impl<'a, 'infcx, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
                 fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
@@ -679,23 +681,76 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             return;
                         }
                     };
+
+                    // Because of TypeChecking and indexing, we know: index is &Q
+                    // with K: Eq + Hash + Borrow<Q>,
+                    // with Q: Eq + Hash + ?Sized,
+                    //
+                    //
+                    //
+                    // There is no other constraint on the types, therefore we need to look at the
+                    // constraints of the suggestions:
+                    // pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
+                    // where
+                    //     K: Borrow<Q>,
+                    //     Q: Hash + Eq + ?Sized,
+                    //
+                    // pub fn insert(&mut self, k: K, v: V) -> Option<V>
+                    // pub fn entry(&mut self, key: K) -> Entry<'_, K, V>
+                    //
+                    // But let's note that there could be also, if imported from hashbrown:
+                    // pub fn entry_ref<'a, 'b, Q>(
+                    //     &'a mut self,
+                    //     key: &'b Q,
+                    // ) -> EntryRef<'a, 'b, K, Q, V, S, A>
+                    // where
+                    //     Q: Hash + Equivalent<K> + ?Sized,
+
+                    /// Testing if index AND key are &Q. We cannot simply test equality because the
+                    /// lifetimes differ.
+                    fn index_and_key_are_same_borrowed_type<'tcx>(
+                        index: Ty<'tcx>,
+                        key: Ty<'tcx>,
+                    ) -> bool {
+                        if let (ty::Ref(_, index_inner_ty, _), ty::Ref(_, key_inner_ty, _)) =
+                            (index.kind(), key.kind())
+                        {
+                            *index_inner_ty == *key_inner_ty
+                        } else {
+                            false
+                        }
+                    }
+                    /// Testing if index is &K:
+                    fn index_is_borrowed_key<'tcx>(index: Ty<'tcx>, key: Ty<'tcx>) -> bool {
+                        if let ty::Ref(_, inner_ty, _) = index.kind() {
+                            *inner_ty == key
+                        } else {
+                            false
+                        }
+                    }
+
+                    // we know ty is a map, with a key type at walk distance 2.
+                    let key_type = self.ty.walk().nth(1).unwrap().expect_ty();
+
                     if let hir::ExprKind::Assign(place, rv, _sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = place.kind
                         && (expr.span == self.assign_span || place.span == self.assign_span)
                     {
-                        // val[index] = rv;
-                        // ---------- place
-                        self.err.multipart_suggestions(
-                            format!(
-                                "use `.insert()` to insert a value into a `{}`, `.get_mut()` \
-                                to modify it, or the entry API for more flexibility",
-                                self.ty,
-                            ),
-                            vec![
+                        let index_ty =
+                            self.infcx.tcx.typeck(val.hir_id.owner.def_id).expr_ty(index);
+                        // only suggest `insert` and `entry` if index is of type K or &K.
+                        let index_is_borrowed_key = index_is_borrowed_key(index_ty, key_type);
+                        if index_is_borrowed_key
+                            || index_and_key_are_same_borrowed_type(index_ty, key_type)
+                        {
+                            let offset = BytePos(index_is_borrowed_key as u32);
+                            self.err.multipart_suggestion(
+                                format!("use `.insert()` to insert a value into a `{}`", self.ty),
                                 vec![
                                     // val.insert(index, rv);
                                     (
-                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                        val.span.shrink_to_hi().with_hi(index.span.lo() + offset), //remove the
+                                        //leading &
                                         ".insert(".to_string(),
                                     ),
                                     (
@@ -704,35 +759,55 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     ),
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            self.err.multipart_suggestion(
+                                format!(
+                                    "use the entry API to modify a `{}` for more flexibility",
+                                    self.ty
+                                ),
                                 vec![
-                                    // if let Some(v) = val.get_mut(index) { *v = rv; }
-                                    (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
-                                    (
-                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
-                                        ".get_mut(".to_string(),
-                                    ),
-                                    (
-                                        index.span.shrink_to_hi().with_hi(place.span.hi()),
-                                        ") { *val".to_string(),
-                                    ),
-                                    (rv.span.shrink_to_hi(), "; }".to_string()),
-                                ],
-                                vec![
-                                    // let x = val.entry(index).or_insert(rv);
+                                    // let x = val.entry(index).insert_entry(rv);
                                     (val.span.shrink_to_lo(), "let val = ".to_string()),
                                     (
-                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                        val.span.shrink_to_hi().with_hi(index.span.lo() + offset), //remove the
+                                        //leading &
                                         ".entry(".to_string(),
                                     ),
                                     (
                                         index.span.shrink_to_hi().with_hi(rv.span.lo()),
-                                        ").or_insert(".to_string(),
+                                        ").insert_entry(".to_string(),
                                     ),
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        // in all cases, suggest get_mut because K:Borrow<K> or Q:Borrow<K> as a
+                        // requirement of indexing.
+                        self.err.multipart_suggestion(
+                            format!(
+                                "use `.get_mut()` to modify an existing key in a `{}`",
+                                self.ty,
+                            ),
+                            vec![
+                                // if let Some(v) = val.get_mut(index) { *v = rv; }
+                                (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
+                                (
+                                    val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                    ".get_mut(".to_string(),
+                                ),
+                                (
+                                    index.span.shrink_to_hi().with_hi(place.span.hi()),
+                                    ") { *val".to_string(),
+                                ),
+                                (rv.span.shrink_to_hi(), "; }".to_string()),
                             ],
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
+                        //FIXME: in the future, include the ref_entry suggestion here if it is added
+                        //to std.
+
                         self.suggested = true;
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = receiver.kind
@@ -768,6 +843,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 err,
                 ty,
                 suggested: false,
+                infcx: self.infcx,
             };
             v.visit_body(&body);
             if !v.suggested {
