@@ -7,11 +7,11 @@
 //@ revisions: with-diag-scope with-macro-scope with-debuginfo-scope with-doc-scope
 //@ revisions: without-scopes without-remap
 
-//@[with-diag-scope] compile-flags: -Zunstable-options --remap-path-prefix={{src-base}}=remapped
-//@[with-macro-scope] compile-flags: -Zunstable-options --remap-path-prefix={{src-base}}=remapped
-//@[with-debuginfo-scope] compile-flags: -Zunstable-options --remap-path-prefix={{src-base}}=remapped
-//@[with-doc-scope] compile-flags: -Zunstable-options --remap-path-prefix={{src-base}}=remapped
-//@[without-scopes] compile-flags: -Zunstable-options --remap-path-prefix={{src-base}}=remapped
+//@[with-diag-scope] compile-flags: --remap-path-prefix={{src-base}}=remapped
+//@[with-macro-scope] compile-flags: --remap-path-prefix={{src-base}}=remapped
+//@[with-debuginfo-scope] compile-flags: --remap-path-prefix={{src-base}}=remapped
+//@[with-doc-scope] compile-flags: --remap-path-prefix={{src-base}}=remapped
+//@[without-scopes] compile-flags: --remap-path-prefix={{src-base}}=remapped
 
 //@[with-diag-scope] compile-flags: -Zunstable-options --remap-path-scope=diagnostics
 //@[with-macro-scope] compile-flags: -Zunstable-options --remap-path-scope=macro
