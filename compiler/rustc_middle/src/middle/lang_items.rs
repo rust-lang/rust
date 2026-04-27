@@ -55,6 +55,16 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Given a [`DefId`] of one of the `Fn`/`FnMut`/`FnOnce` or
+    /// `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce` traits, returns the corresponding
+    /// [`ty::ClosureKind`].
+    ///
+    /// These built-in callable traits all model their inputs using the
+    /// `rust-call` ABI, which is tupled at the type level.
+    pub fn callable_trait_kind_from_def_id(self, id: DefId) -> Option<ty::ClosureKind> {
+        self.fn_trait_kind_from_def_id(id).or_else(|| self.async_fn_trait_kind_from_def_id(id))
+    }
+
     /// Given a [`ty::ClosureKind`], get the [`DefId`] of its corresponding `Fn`-family
     /// trait, if it is defined.
     pub fn fn_trait_kind_to_def_id(self, kind: ty::ClosureKind) -> Option<DefId> {
