@@ -3,6 +3,8 @@ error[E0603]: module `bar` is private
    |
 LL | use foo::bar::{
    |          ^^^ private module
+LL |     self
+   |     ---- module `self` is not publicly re-exported
    |
 note: the module `bar` is defined here
   --> $DIR/use-mod-3.rs:9:5

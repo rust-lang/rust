@@ -386,9 +386,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut suggestion = None;
         let mut span = binding_span;
         match import.kind {
-            ImportKind::Single { type_ns_only: true, .. } => {
-                suggestion = Some(format!("self as {suggested_name}"))
-            }
             ImportKind::Single { source, .. } => {
                 if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span)
@@ -911,29 +908,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sub_reachable,
                     sub_reachable_suggestion,
                     sub_unreachable,
-                })
-            }
-            ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
-                // None of the suggestions below would help with a case like `use self`.
-                let (suggestion, mpart_suggestion) = if root {
-                    (None, None)
-                } else {
-                    // use foo::bar::self        -> foo::bar
-                    // use foo::bar::self as abc -> foo::bar as abc
-                    let suggestion = errs::SelfImportsOnlyAllowedWithinSuggestion { span };
-
-                    // use foo::bar::self        -> foo::bar::{self}
-                    // use foo::bar::self as abc -> foo::bar::{self as abc}
-                    let mpart_suggestion = errs::SelfImportsOnlyAllowedWithinMultipartSuggestion {
-                        multipart_start: span_with_rename.shrink_to_lo(),
-                        multipart_end: span_with_rename.shrink_to_hi(),
-                    };
-                    (Some(suggestion), Some(mpart_suggestion))
-                };
-                self.dcx().create_err(errs::SelfImportsOnlyAllowedWithin {
-                    span,
-                    suggestion,
-                    mpart_suggestion,
                 })
             }
             ResolutionError::FailedToResolve { segment, label, suggestion, module, message } => {

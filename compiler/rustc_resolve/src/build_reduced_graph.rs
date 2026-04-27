@@ -37,7 +37,7 @@ use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, ExternModule, ExternPreludeEntry, Finalize, IdentKey,
     LocalModule, MacroData, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
-    ResolutionError, Resolver, Segment, Used, VisResolutionError, errors,
+    Resolver, Segment, Used, VisResolutionError, errors,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -531,18 +531,16 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         self.r.indeterminate_imports.push(import);
         match import.kind {
-            ImportKind::Single { target, type_ns_only, .. } => {
+            ImportKind::Single { target, .. } => {
                 // Don't add underscore imports to `single_imports`
                 // because they cannot define any usable names.
                 if target.name != kw::Underscore {
                     self.r.per_ns(|this, ns| {
-                        if !type_ns_only || ns == TypeNS {
-                            let key = BindingKey::new(IdentKey::new(target), ns);
-                            this.resolution_or_default(current_module, key, target.span)
-                                .borrow_mut(this)
-                                .single_imports
-                                .insert(import);
-                        }
+                        let key = BindingKey::new(IdentKey::new(target), ns);
+                        this.resolution_or_default(current_module, key, target.span)
+                            .borrow_mut(this)
+                            .single_imports
+                            .insert(import);
                     });
                 }
             }
@@ -612,30 +610,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 let mut module_path = prefix;
                 let source = module_path.pop().unwrap();
 
-                // `true` for `...::{self [as target]}` imports, `false` otherwise.
-                let type_ns_only = nested && source.ident.name == kw::SelfLower;
-
-                // Suggest `use prefix::{self};` for `use prefix::self;`
-                if source.ident.name == kw::SelfLower
-                    && let Some(parent) = module_path.last()
-                    && !type_ns_only
-                    && (parent.ident.name != kw::PathRoot
-                        || self.r.path_root_is_crate_root(parent.ident))
-                {
-                    let span_with_rename = match rename {
-                        Some(rename) => source.ident.span.to(rename.span),
-                        None => source.ident.span,
-                    };
-
-                    self.r.report_error(
-                        parent.ident.span.shrink_to_hi().to(source.ident.span),
-                        ResolutionError::SelfImportsOnlyAllowedWithin {
-                            root: parent.ident.name == kw::PathRoot,
-                            span_with_rename,
-                        },
-                    );
-                }
-
+                // If the identifier is `self` without a rename,
+                // then it is replaced with the parent identifier.
                 let ident = if source.ident.name == kw::SelfLower
                     && rename.is_none()
                     && let Some(parent) = module_path.last()
@@ -689,22 +665,29 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         self.r.dcx().span_err(use_tree.span(), "extern prelude cannot be imported");
                         return;
                     }
-                    _ => {}
+                    _ => (),
+                }
+
+                // Deny `use ...::self::source [as target];` or `use ...::self::self [as target];`,
+                // but allow `use self::source [as target];` and `use self::self as target;`.
+                if let Some(parent) = module_path.last()
+                    && parent.ident.name == kw::SelfLower
+                    && module_path.len() > 1
+                {
+                    self.r.dcx().span_err(
+                        parent.ident.span,
+                        "`self` in paths can only be used in start position or last position",
+                    );
+                    return;
                 }
 
                 // Deny importing path-kw without renaming
                 if rename.is_none() && ident.is_path_segment_keyword() {
                     let ident = use_tree.ident();
-
-                    // Don't suggest `use xx::self as name;` for `use xx::self;`
-                    // But it's OK to suggest `use xx::{self as name};` for `use xx::{self};`
-                    let sugg = if !type_ns_only && ident.name == kw::SelfLower {
-                        None
-                    } else {
-                        Some(errors::UnnamedImportSugg { span: ident.span, ident })
-                    };
-
-                    self.r.dcx().emit_err(errors::UnnamedImport { span: ident.span, sugg });
+                    self.r.dcx().emit_err(errors::UnnamedImport {
+                        span: ident.span,
+                        sugg: errors::UnnamedImportSugg { span: ident.span, ident },
+                    });
                     return;
                 }
 
@@ -712,7 +695,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     source: source.ident,
                     target: ident,
                     decls: Default::default(),
-                    type_ns_only,
                     nested,
                     id,
                 };
