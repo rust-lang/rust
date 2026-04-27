@@ -928,7 +928,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return Ty::new_error(self, guar);
             }
 
-            ty = self.type_of(def_id).instantiate(self, args).skip_norm_wip();
+            ty = self.type_of(def_id).instantiate(self, args).skip_normalization();
             depth += 1;
         }
 
@@ -990,7 +990,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_norm_wip();
+                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_normalization();
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, args), expanded_ty);
                     expanded_ty
@@ -1070,7 +1070,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
 
         self.depth += 1;
         let ty = ensure_sufficient_stack(|| {
-            self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().fold_with(self)
+            self.tcx
+                .type_of(def_id)
+                .instantiate(self.tcx, args)
+                .skip_normalization()
+                .fold_with(self)
         });
         self.depth -= 1;
         ty

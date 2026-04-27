@@ -79,9 +79,6 @@ pub(crate) fn add_constraints_from_crate<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => constraint_cx.build_constraints_for_item(def_id),
-            DefKind::TyAlias if tcx.type_alias_is_lazy(def_id) => {
-                constraint_cx.build_constraints_for_item(def_id)
-            }
             _ => {}
         }
     }
@@ -106,15 +103,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let inferred_start = self.terms_cx.inferred_starts[&def_id];
         let current_item = &CurrentItem { inferred_start };
         let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
-
-        // The type as returned by `type_of` is the underlying type and generally not a free alias.
-        // Therefore we need to check the `DefKind` first.
-        if let DefKind::TyAlias = tcx.def_kind(def_id)
-            && tcx.type_alias_is_lazy(def_id)
-        {
-            self.add_constraints_from_ty(current_item, ty, self.covariant);
-            return;
-        }
 
         match ty.kind() {
             ty::Adt(def, _) => {
@@ -216,14 +204,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for an instance of `ty` appearing
     /// in a context with the generics defined in `generics` and
     /// ambient variance `variance`
+    #[instrument(level = "debug", skip(self, current))]
     fn add_constraints_from_ty(
         &mut self,
         current: &CurrentItem,
         ty: Ty<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
-        debug!("add_constraints_from_ty(ty={:?}, variance={:?})", ty, variance);
-
         match *ty.kind() {
             ty::Bool
             | ty::Char
@@ -282,7 +269,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
-                self.add_constraints_from_args(current, def_id, args, variance);
+                // For performance reasons, we can't just call
+                // `expand_free_alias_tys` at the start of this function.
+                let ty =
+                    self.tcx().type_of(def_id).instantiate(self.tcx(), args).skip_normalization();
+                self.add_constraints_from_ty(current, ty, variance);
             }
 
             ty::Dynamic(data, r) => {

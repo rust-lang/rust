@@ -1,0 +1,54 @@
+error[E0277]: cannot multiply `T` by `T`
+  --> $DIR/def-site-body-wf.rs:6:14
+   |
+LL | type _A<T> = <T as std::ops::Mul>::Output;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T * T`
+   |
+help: consider restricting type parameter `T` with trait `Mul`
+   |
+LL | type _A<T: std::ops::Mul> = <T as std::ops::Mul>::Output;
+   |          +++++++++++++++
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/def-site-body-wf.rs:7:11
+   |
+LL | type _B = Vec<str>;
+   |           ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0491]: in type `&'static &'a ()`, reference has a longer lifetime than the data it references
+  --> $DIR/def-site-body-wf.rs:10:1
+   |
+LL | type _C<'a> = &'static &'a ();
+   | ^^^^^^^^^^^
+   |
+   = note: the pointer is valid for the static lifetime
+note: but the referenced data is only valid for the lifetime `'a` as defined here
+  --> $DIR/def-site-body-wf.rs:10:9
+   |
+LL | type _C<'a> = &'static &'a ();
+   |         ^^
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/def-site-body-wf.rs:13:16
+   |
+LL | type _D = [(); panic!()];
+   |                ^^^^^^^^ evaluation of `_D::{constant#0}` failed here
+
+error[E0038]: the trait `Sized` is not dyn compatible
+  --> $DIR/def-site-body-wf.rs:16:11
+   |
+LL | type _E = dyn Sized;
+   |           ^^^^^^^^^ `Sized` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0038, E0080, E0277, E0491.
+For more information about an error, try `rustc --explain E0038`.
