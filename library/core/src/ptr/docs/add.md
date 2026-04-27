@@ -15,7 +15,7 @@ If any of the following conditions are violated, the result is Undefined Behavio
 "wrapping around"), must fit in an `isize`.
 
 * If the computed offset is non-zero, then `self` must be [derived from][crate::ptr#provenance] a pointer to some
-[allocation], and the entire memory range between `self` and the result must be in
+[allocation], and the entire memory range between `self` and the result (not including result) must be in
 bounds of that allocation. In particular, this range must not "wrap around" the edge
 of the address space.
 
