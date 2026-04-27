@@ -139,14 +139,7 @@ pub(crate) struct PanicNonStrErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    r#"function pointer calls are not allowed in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#
-)]
+#[diag(r#"function pointer calls are not allowed in {$kind}s"#)]
 pub(crate) struct UnallowedFnPointerCall {
     #[primary_span]
     pub span: Span,
@@ -224,12 +217,7 @@ pub(crate) struct MutableBorrowEscaping {
 
 #[derive(Diagnostic)]
 #[diag(
-    r#"cannot call {$non_or_conditionally}-const formatting macro in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#,
+    r#"cannot call {$non_or_conditionally}-const formatting macro in {$kind}s"#,
     code = E0015,
 )]
 pub(crate) struct NonConstFmtMacroCall {
@@ -240,12 +228,7 @@ pub(crate) struct NonConstFmtMacroCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"cannot call {$non_or_conditionally}-const {$def_descr} `{$def_path_str}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"cannot call {$non_or_conditionally}-const {$def_descr} `{$def_path_str}` in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
@@ -256,14 +239,7 @@ pub(crate) struct NonConstFnCall {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    r#"cannot call non-const intrinsic `{$name}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#
-)]
+#[diag(r#"cannot call non-const intrinsic `{$name}` in {$kind}s"#)]
 pub(crate) struct NonConstIntrinsic {
     #[primary_span]
     pub span: Span,
@@ -280,12 +256,7 @@ pub(crate) struct UnallowedOpInConstContext {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"inline assembly is not allowed in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"inline assembly is not allowed in {$kind}s"#, code = E0015)]
 pub(crate) struct UnallowedInlineAsm {
     #[primary_span]
     pub span: Span,
@@ -384,14 +355,7 @@ pub(crate) struct RawBytesNote {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    r#"cannot match on `{$ty}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#
-)]
+#[diag(r#"cannot match on `{$ty}` in {$kind}s"#)]
 #[note("`{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es")]
 pub(crate) struct NonConstMatchEq<'tcx> {
     #[primary_span]
@@ -402,12 +366,7 @@ pub(crate) struct NonConstMatchEq<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"cannot use `for` loop on `{$ty}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"cannot use `for` loop on `{$ty}` in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -417,12 +376,7 @@ pub(crate) struct NonConstForLoopIntoIter<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"`?` is not allowed on `{$ty}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"`?` is not allowed on `{$ty}` in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -432,12 +386,7 @@ pub(crate) struct NonConstQuestionBranch<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"`?` is not allowed on `{$ty}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"`?` is not allowed on `{$ty}` in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -447,12 +396,7 @@ pub(crate) struct NonConstQuestionFromResidual<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"`try` block cannot convert `{$ty}` to the result in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"`try` block cannot convert `{$ty}` to the result in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -462,12 +406,7 @@ pub(crate) struct NonConstTryBlockFromOutput<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"cannot convert `{$ty}` into a future in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"cannot convert `{$ty}` into a future in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -477,12 +416,7 @@ pub(crate) struct NonConstAwait<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"cannot call {$non_or_conditionally}-const closure in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"cannot call {$non_or_conditionally}-const closure in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstClosure {
     #[primary_span]
     pub span: Span,
@@ -493,12 +427,7 @@ pub(crate) struct NonConstClosure {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"calling const c-variadic functions is unstable in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"calling const c-variadic functions is unstable in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstCVariadicCall {
     #[primary_span]
     pub span: Span,
@@ -512,23 +441,9 @@ pub(crate) enum NonConstClosureNote {
         #[primary_span]
         span: Span,
     },
-    #[note(
-        r#"function pointers need an RFC before allowed to be called in {$kind ->
-            [const] constant
-            [static] static
-            [const_fn] constant function
-            *[other] {""}
-        }s"#
-    )]
+    #[note(r#"function pointers need an RFC before allowed to be called in {$kind}s"#)]
     FnPtr { kind: ConstContext },
-    #[note(
-        r#"closures need an RFC before allowed to be called in {$kind ->
-            [const] constant
-            [static] static
-            [const_fn] constant function
-            *[other] {""}
-        }s"#
-    )]
+    #[note(r#"closures need an RFC before allowed to be called in {$kind}s"#)]
     Closure { kind: ConstContext },
 }
 
@@ -543,12 +458,7 @@ pub(crate) struct ConsiderDereferencing {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"cannot call {$non_or_conditionally}-const operator in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"cannot call {$non_or_conditionally}-const operator in {$kind}s"#, code = E0015)]
 pub(crate) struct NonConstOperator {
     #[primary_span]
     pub span: Span,
@@ -559,12 +469,7 @@ pub(crate) struct NonConstOperator {
 }
 
 #[derive(Diagnostic)]
-#[diag(r#"cannot perform {$non_or_conditionally}-const deref coercion on `{$ty}` in {$kind ->
-    [const] constant
-    [static] static
-    [const_fn] constant function
-    *[other] {""}
-}s"#, code = E0015)]
+#[diag(r#"cannot perform {$non_or_conditionally}-const deref coercion on `{$ty}` in {$kind}s"#, code = E0015)]
 #[note("attempting to deref into `{$target_ty}`")]
 pub(crate) struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
@@ -581,14 +486,7 @@ pub(crate) struct NonConstDerefCoercion<'tcx> {
 #[diag("destructor of `{$dropped_ty}` cannot be evaluated at compile-time", code = E0493)]
 pub(crate) struct LiveDrop<'tcx> {
     #[primary_span]
-    #[label(
-        r#"the destructor for this type cannot be evaluated in {$kind ->
-            [const] constant
-            [static] static
-            [const_fn] constant function
-            *[other] {""}
-        }s"#
-    )]
+    #[label(r#"the destructor for this type cannot be evaluated in {$kind}s"#)]
     pub span: Span,
     pub kind: ConstContext,
     pub dropped_ty: Ty<'tcx>,
