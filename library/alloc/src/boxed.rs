@@ -66,6 +66,11 @@
 //! recommended way to build a Box to a ZST if `Box::new` cannot be used is to use
 //! [`ptr::NonNull::dangling`].
 //!
+//! It can be assumed that the layout of `Box<A>` is the same as the layout of `Box<B>` if
+//! the layout of `A` is the same as the layout of `B` otherwise. It is therefore sound to
+//! convert between `Box<A>` and `Box<B>` using unsafe code if its sound to do the same conversion
+//! between `A` and `B`.
+//!
 //! On top of these basic layout requirements, a `Box<T>` must point to a valid value of `T`.
 //!
 //! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented
