@@ -1,5 +1,4 @@
 //@ edition:2021
-//@ run-pass
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Color {
@@ -13,10 +12,12 @@ fn main() {
         *r = v;
     };
     let mut green = |v| {
+    //~^ ERROR: cannot borrow `color` as mutable
         let Color::RGB(_, ref mut g, _) = color;
         *g = v;
     };
     let mut blue = |v| {
+    //~^ ERROR: cannot borrow `color` as mutable
         let Color::RGB(_, _, ref mut b) = color;
         *b = v;
     };
