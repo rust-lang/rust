@@ -411,6 +411,13 @@ pub(crate) struct NullOnLinkSection {
 }
 
 #[derive(Diagnostic)]
+#[diag("link name may not contain null characters", code = E0648)]
+pub(crate) struct NullOnLinkName {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`objc::class!` may not contain null characters")]
 pub(crate) struct NullOnObjcClass {
     #[primary_span]
@@ -981,13 +988,6 @@ pub(crate) struct IncompatibleWasmLink {
 pub(crate) struct LinkRequiresName {
     #[primary_span]
     #[label("missing `name` argument")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("link name must not contain NUL characters if link kind is `raw-dylib`")]
-pub(crate) struct RawDylibNoNul {
-    #[primary_span]
     pub span: Span,
 }
 
