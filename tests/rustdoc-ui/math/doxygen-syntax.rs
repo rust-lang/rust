@@ -1,5 +1,6 @@
 //@ run-rustfix
 #![doc(syntax="+tex_math_dollars")]
+#![feature(rustdoc_texmath)]
 #![deny(rustdoc::invalid_math)]
 
 //! The distance between \f$(x_1,y_1)\f$ and \f$(x_2,y_2)\f$ is
