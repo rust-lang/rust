@@ -1051,7 +1051,7 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in cfg and check-cfg configuration"
 cc = ["@Urgau"]
 
-[mentions."compiler/rustc_lint/src/early/diagnostics/check_cfg.rs"]
+[mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 

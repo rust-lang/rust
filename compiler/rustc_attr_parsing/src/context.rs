@@ -11,7 +11,6 @@ use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
@@ -463,18 +462,6 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
-    pub(crate) fn emit_lint(
-        &mut self,
-        lint: &'static Lint,
-        kind: AttributeLintKind,
-        span: impl Into<MultiSpan>,
-    ) {
-        self.emit_lint_inner(lint, EmitAttribute::Static(kind), span);
-    }
-
-    /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
-    /// must be delayed until after HIR is built. This method will take care of the details of
-    /// that.
     pub(crate) fn emit_dyn_lint<
         F: for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
     >(
@@ -483,7 +470,25 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         callback: F,
         span: impl Into<MultiSpan>,
     ) {
-        self.emit_lint_inner(lint, EmitAttribute::Dynamic(Box::new(callback)), span);
+        self.emit_lint_inner(
+            lint,
+            EmitAttribute(Box::new(move |dcx, level, _| callback(dcx, level))),
+            span,
+        );
+    }
+
+    pub(crate) fn emit_dyn_lint_with_sess<
+        F: for<'a> Fn(DiagCtxtHandle<'a>, Level, &Session) -> Diag<'a, ()>
+            + DynSend
+            + DynSync
+            + 'static,
+    >(
+        &mut self,
+        lint: &'static Lint,
+        callback: F,
+        span: impl Into<MultiSpan>,
+    ) {
+        self.emit_lint_inner(lint, EmitAttribute(Box::new(callback)), span);
     }
 
     fn emit_lint_inner(

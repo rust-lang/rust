@@ -79,7 +79,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                     emit_lint(
                         LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
                         path_span.into(),
-                        EmitAttribute::Dynamic(Box::new(move |dcx, level| {
+                        EmitAttribute(Box::new(move |dcx, level, _| {
                             errors::UnsafeAttrOutsideUnsafeLint {
                                 span: path_span,
                                 suggestion: not_from_proc_macro
