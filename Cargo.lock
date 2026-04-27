@@ -756,7 +756,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.1.14",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -2217,6 +2217,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
+name = "libmimalloc-sys"
+version = "0.1.46"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc89deee4af0429081d2a518c0431ae068222a5a262a3bc6ff4d8535ec2e02fe"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "libredox"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3423,13 +3432,13 @@ name = "rustc-main"
 version = "0.0.0"
 dependencies = [
  "getrandom 0.3.3",
+ "libmimalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
  "rustc_driver_impl",
  "rustc_public",
  "rustc_public_bridge",
  "rustc_windows_rc",
- "tikv-jemalloc-sys",
  "wasi 0.14.2+wasi-0.2.4",
 ]
 
@@ -5540,16 +5549,6 @@ dependencies = [
 [[package]]
 name = "tier-check"
 version = "0.1.0"
-
-[[package]]
-name = "tikv-jemalloc-sys"
-version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
-dependencies = [
- "cc",
- "libc",
-]
 
 [[package]]
 name = "tinystr"
