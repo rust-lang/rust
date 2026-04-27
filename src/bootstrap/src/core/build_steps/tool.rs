@@ -229,7 +229,9 @@ pub fn prepare_tool_cargo(
     cargo.env("LZMA_API_STATIC", "1");
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if builder.config.jemalloc(target) && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+    if builder.config.override_allocator(target)
+        && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
+    {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
         // See: https://github.com/rust-lang/rust/pull/135081
         if target.starts_with("aarch64") {
@@ -752,8 +754,8 @@ impl Step for Rustdoc {
         // to build rustdoc.
         //
         let mut extra_features = Vec::new();
-        if builder.config.jemalloc(target) {
-            extra_features.push("jemalloc".to_string());
+        if builder.config.override_allocator(target) {
+            extra_features.push("override_allocator".to_string());
         }
 
         let compilers = RustcPrivateCompilers::from_target_compiler(builder, target_compiler);
@@ -1576,8 +1578,8 @@ tool_rustc_extended!(Clippy {
     stable: true,
     add_bins_to_sysroot: ["clippy-driver"],
     add_features: |builder, target, features| {
-        if builder.config.jemalloc(target) {
-            features.push("jemalloc".to_string());
+        if builder.config.override_allocator(target) {
+            features.push("override_allocator".to_string());
         }
     }
 });
@@ -1587,8 +1589,8 @@ tool_rustc_extended!(Miri {
     stable: false,
     add_bins_to_sysroot: ["miri"],
     add_features: |builder, target, features| {
-        if builder.config.jemalloc(target) {
-            features.push("jemalloc".to_string());
+        if builder.config.override_allocator(target) {
+            features.push("override_allocator".to_string());
         }
     },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.

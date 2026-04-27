@@ -32,7 +32,7 @@ ENV RUST_CONFIGURE_ARGS="--enable-extended \
       --enable-profiler \
       --enable-sanitizers \
       --disable-docs \
-      --set rust.jemalloc \
+      --set rust.override-allocator \
       --set rust.lto=thin \
       --set rust.codegen-units=1 \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \

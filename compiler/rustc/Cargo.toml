@@ -26,8 +26,7 @@ rustc_public_bridge = { path = "../rustc_public_bridge" }
 getrandom = "=0.3.3"
 wasi = "=0.14.2"
 
-
-[dependencies.tikv-jemalloc-sys]
+[target.'cfg(not(target_os = "windows"))'.dependencies.tikv-jemalloc-sys]
 version = "0.6.1"
 optional = true
 features = ['override_allocator_on_supported_platforms']
@@ -35,11 +34,11 @@ features = ['override_allocator_on_supported_platforms']
 [features]
 # tidy-alphabetical-start
 check_only = ['rustc_driver_impl/check_only']
-jemalloc = ['dep:tikv-jemalloc-sys']
 llvm = ['rustc_driver_impl/llvm']
 llvm_enzyme = ['rustc_driver_impl/llvm_enzyme']
 llvm_offload = ['rustc_driver_impl/llvm_offload']
 max_level_info = ['rustc_driver_impl/max_level_info']
+override_allocator = ['dep:tikv-jemalloc-sys', 'rustc_driver_impl/override_allocator']
 rustc_randomized_layouts = ['rustc_driver_impl/rustc_randomized_layouts']
 # tidy-alphabetical-end
 

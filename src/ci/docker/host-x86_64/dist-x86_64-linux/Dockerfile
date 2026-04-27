@@ -90,7 +90,7 @@ ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set llvm.libzstd=true \
-      --set rust.jemalloc \
+      --set rust.override-allocator \
       --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1"

@@ -43,7 +43,7 @@ minifier = { version = "0.3.2", default-features = false }
 expect-test = "1.4.0"
 
 [features]
-jemalloc = []
+override_allocator = []
 
 [package.metadata.rust-analyzer]
 rustc_private = true

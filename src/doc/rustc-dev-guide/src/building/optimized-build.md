@@ -31,11 +31,10 @@ Enabling LTO on Linux has [produced] speed-ups by up to 10%.
 ## Memory allocator
 
 Using a different memory allocator for `rustc` can provide significant performance benefits.
-If you want to enable the `jemalloc` allocator, you can set the `rust.jemalloc` option to `true`
-in `bootstrap.toml`:
+If you want to enable the jemalloc allocator, you can set the `rust.override-allocator` option to `true`
 
 ```toml
-rust.jemalloc = true
+rust.override-allocator = true
 ```
 
 > Note that this option is currently only supported for Linux and macOS targets.

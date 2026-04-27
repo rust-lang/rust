@@ -24,7 +24,7 @@ extern crate rustc_span;
 /// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// https://github.com/rust-lang/cc-rs/issues/1613.
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "override_allocator", not(target_os = "windows")))]
 // Make sure `--all-features` works: only Linux and macOS actually use jemalloc, and not on arm32.
 #[cfg(all(
     any(target_os = "linux", target_os = "macos"),
