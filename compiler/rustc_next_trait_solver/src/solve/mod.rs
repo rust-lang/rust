@@ -269,6 +269,63 @@ where
             return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
+        // We merge identical responses modulo region constraints if one's region constraints is a
+        // superset of another's. This is to avoid unnecessary ambiguity due to lazy param_env
+        // normalization.
+        // See trait-system-refactor-initiative#265.
+        if candidates.iter().all(|candidate| {
+            matches!(
+                candidate.source,
+                CandidateSource::AliasBound(_) | CandidateSource::ParamEnv(_)
+            )
+        }) {
+            let one: CanonicalResponse<I> = candidates[0].result;
+            let eq_modulo_region_constraint =
+                |a: &CanonicalResponse<I>, b: &CanonicalResponse<I>| {
+                    // We ignore var_kinds as well since it changes with region constraints.
+                    // It shouldn't be a problem since it's entirely determined by the response.
+                    // FIXME: use an override approach? This is too fragile w.r.t field changes.
+                    a.max_universe == b.max_universe
+                        && a.value.certainty == b.value.certainty
+                        && a.value.var_values == b.value.var_values
+                        && a.value.external_constraints.normalization_nested_goals
+                            == b.value.external_constraints.normalization_nested_goals
+                        && a.value.external_constraints.opaque_types
+                            == b.value.external_constraints.opaque_types
+                };
+            if candidates[1..]
+                .iter()
+                .all(|candidate| eq_modulo_region_constraint(&candidate.result, &one))
+            {
+                let (largest_candidate_index, largest_candidate) = candidates
+                    .iter()
+                    .enumerate()
+                    .max_by_key(|(_, candidate)| {
+                        candidate.result.value.external_constraints.region_constraints.len()
+                    })
+                    .unwrap();
+                let largest_region_constraints =
+                    &largest_candidate.result.value.external_constraints.region_constraints;
+                // FIXME: Linear search has bad perf for large amount of constraints.
+                // Maybe make constraints ordered so that we can use binary search or use sets.
+                if candidates.iter().enumerate().filter(|(i, _)| *i != largest_candidate_index).all(
+                    |(_, candidate)| {
+                        candidate
+                            .result
+                            .value
+                            .external_constraints
+                            .region_constraints
+                            .iter()
+                            .all(|constraint| largest_region_constraints.contains(constraint))
+                    },
+                ) {
+                    // FIXME: Seems unnecessary to create a new `MergeCandidateInfo` kind.
+                    // Though the naming is kinda confusing if we reuse it here.
+                    return Some((largest_candidate.result, MergeCandidateInfo::EqualResponse));
+                }
+            }
+        }
+
         let one: CanonicalResponse<I> = candidates[0].result;
         if candidates[1..].iter().all(|candidate| candidate.result == one) {
             return Some((one, MergeCandidateInfo::EqualResponse));
