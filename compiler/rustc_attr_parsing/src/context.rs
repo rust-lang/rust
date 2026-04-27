@@ -5,16 +5,14 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
-use private::Sealed;
-use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
+use rustc_ast::{AttrStyle, MetaItemLit};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
+use rustc_hir::AttrPath;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
-use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
@@ -68,50 +66,31 @@ use crate::session_diagnostics::{
 };
 use crate::target_checking::AllowedTargets;
 use crate::{AttributeParser, EmitAttribute};
-type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
-pub(super) struct GroupTypeInner<S: Stage> {
-    pub(super) accepters: BTreeMap<&'static [Symbol], GroupTypeInnerAccept<S>>,
+type GroupType = LazyLock<GroupTypeInner>;
+
+pub(super) struct GroupTypeInner {
+    pub(super) accepters: BTreeMap<&'static [Symbol], GroupTypeInnerAccept>,
 }
 
-pub(super) struct GroupTypeInnerAccept<S: Stage> {
+pub(super) struct GroupTypeInnerAccept {
     pub(super) template: AttributeTemplate,
-    pub(super) accept_fn: AcceptFn<S>,
+    pub(super) accept_fn: AcceptFn,
     pub(super) allowed_targets: AllowedTargets,
     pub(super) safety: AttributeSafety,
-    pub(super) finalizer: FinalizeFn<S>,
+    pub(super) finalizer: FinalizeFn,
 }
 
-pub(crate) type AcceptFn<S> =
-    Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess, S>, &ArgParser) + Send + Sync>;
-pub(crate) type FinalizeFn<S> = fn(&mut FinalizeContext<'_, '_, S>) -> Option<AttributeKind>;
+pub(crate) type AcceptFn =
+    Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess>, &ArgParser) + Send + Sync>;
+pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> Option<AttributeKind>;
 
 macro_rules! attribute_parsers {
     (
         pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
-        mod early {
-            use super::*;
-            type Combine<T> = super::Combine<T, Early>;
-            type Single<T> = super::Single<T, Early>;
-            type WithoutArgs<T> = super::WithoutArgs<T, Early>;
-
-            attribute_parsers!(@[Early] pub(crate) static $name = [$($names),*];);
-        }
-        mod late {
-            use super::*;
-            type Combine<T> = super::Combine<T, Late>;
-            type Single<T> = super::Single<T, Late>;
-            type WithoutArgs<T> = super::WithoutArgs<T, Late>;
-
-            attribute_parsers!(@[Late] pub(crate) static $name = [$($names),*];);
-        }
-    };
-    (
-        @[$stage: ty] pub(crate) static $name: ident = [$($names: ty),* $(,)?];
-    ) => {
-        pub(crate) static $name: GroupType<$stage> = LazyLock::new(|| {
-            let mut accepters = BTreeMap::<_, GroupTypeInnerAccept<$stage>>::new();
+        pub(crate) static $name: GroupType = LazyLock::new(|| {
+            let mut accepters = BTreeMap::<_, GroupTypeInnerAccept>::new();
             $(
                 {
                     thread_local! {
@@ -128,8 +107,8 @@ macro_rules! attribute_parsers {
                                             accept_fn(s, cx, args)
                                         })
                                     }),
-                                    safety: <$names as crate::attributes::AttributeParser<$stage>>::SAFETY,
-                                    allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
+                                    safety: <$names as crate::attributes::AttributeParser>::SAFETY,
+                                    allowed_targets: <$names as crate::attributes::AttributeParser>::ALLOWED_TARGETS,
                                     finalizer: |cx| {
                                         let state = STATE_OBJECT.take();
                                         state.finalize(cx)
@@ -343,85 +322,11 @@ attribute_parsers!(
     ];
 );
 
-mod private {
-    pub trait Sealed {}
-    impl Sealed for super::Early {}
-    impl Sealed for super::Late {}
-}
-
-// allow because it's a sealed trait
-#[allow(private_interfaces)]
-pub trait Stage: Sized + 'static + Sealed {
-    type Id: Copy;
-
-    fn parsers() -> &'static GroupType<Self>;
-
-    fn emit_err<'sess>(
-        &self,
-        sess: &'sess Session,
-        diag: impl for<'x> Diagnostic<'x>,
-    ) -> ErrorGuaranteed;
-
-    fn should_emit(&self) -> ShouldEmit;
-}
-
-// allow because it's a sealed trait
-#[allow(private_interfaces)]
-impl Stage for Early {
-    type Id = NodeId;
-
-    fn parsers() -> &'static GroupType<Self> {
-        &early::ATTRIBUTE_PARSERS
-    }
-    fn emit_err<'sess>(
-        &self,
-        sess: &'sess Session,
-        diag: impl for<'x> Diagnostic<'x>,
-    ) -> ErrorGuaranteed {
-        self.should_emit().emit_err(sess.dcx().create_err(diag))
-    }
-
-    fn should_emit(&self) -> ShouldEmit {
-        self.emit_errors
-    }
-}
-
-// allow because it's a sealed trait
-#[allow(private_interfaces)]
-impl Stage for Late {
-    type Id = HirId;
-
-    fn parsers() -> &'static GroupType<Self> {
-        &late::ATTRIBUTE_PARSERS
-    }
-    fn emit_err<'sess>(
-        &self,
-        tcx: &'sess Session,
-        diag: impl for<'x> Diagnostic<'x>,
-    ) -> ErrorGuaranteed {
-        tcx.dcx().emit_err(diag)
-    }
-
-    fn should_emit(&self) -> ShouldEmit {
-        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed }
-    }
-}
-
-/// Used when parsing attributes for miscellaneous things *before* ast lowering
-pub struct Early {
-    /// Whether to emit errors or delay them as a bug.
-    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed.
-    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted.
-    pub emit_errors: ShouldEmit,
-}
-/// used when parsing attributes during ast lowering
-pub struct Late;
-
 /// Context given to every attribute parser when accepting
 ///
 /// Gives [`AttributeParser`]s enough information to create errors, for example.
-pub struct AcceptContext<'f, 'sess, S: Stage> {
-    pub(crate) shared: SharedContext<'f, 'sess, S>,
+pub struct AcceptContext<'f, 'sess> {
+    pub(crate) shared: SharedContext<'f, 'sess>,
 
     /// The outer span of the attribute currently being parsed
     ///
@@ -455,9 +360,9 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     pub(crate) attr_path: AttrPath,
 }
 
-impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
+impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
-        self.stage.emit_err(&self.sess, diag)
+        self.cx.emit_err(diag)
     }
 
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
@@ -493,7 +398,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         span: impl Into<MultiSpan>,
     ) {
         if !matches!(
-            self.stage.should_emit(),
+            self.should_emit,
             ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
         ) {
             return;
@@ -536,8 +441,8 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     }
 }
 
-impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
-    pub(crate) fn adcx(&mut self) -> AttributeDiagnosticContext<'_, 'f, 'sess, S> {
+impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
+    pub(crate) fn adcx(&mut self) -> AttributeDiagnosticContext<'_, 'f, 'sess> {
         AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
     }
 
@@ -618,15 +523,15 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 }
 
-impl<'f, 'sess, S: Stage> Deref for AcceptContext<'f, 'sess, S> {
-    type Target = SharedContext<'f, 'sess, S>;
+impl<'f, 'sess> Deref for AcceptContext<'f, 'sess> {
+    type Target = SharedContext<'f, 'sess>;
 
     fn deref(&self) -> &Self::Target {
         &self.shared
     }
 }
 
-impl<'f, 'sess, S: Stage> DerefMut for AcceptContext<'f, 'sess, S> {
+impl<'f, 'sess> DerefMut for AcceptContext<'f, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.shared
     }
@@ -636,16 +541,14 @@ impl<'f, 'sess, S: Stage> DerefMut for AcceptContext<'f, 'sess, S> {
 ///
 /// Gives [`AttributeParser`](crate::attributes::AttributeParser)s enough information to create
 /// errors, for example.
-pub struct SharedContext<'p, 'sess, S: Stage> {
+pub struct SharedContext<'p, 'sess> {
     /// The parse context, gives access to the session and the
     /// diagnostics context.
-    pub(crate) cx: &'p mut AttributeParser<'sess, S>,
+    pub(crate) cx: &'p mut AttributeParser<'sess>,
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
     pub(crate) target: rustc_hir::Target,
 
-    /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
-    /// is `Late` and is the ID of the syntactical component this attribute was applied to.
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 }
 
@@ -653,8 +556,8 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
 ///
 /// Gives [`AttributeParser`](crate::attributes::AttributeParser)s enough information to create
 /// errors, for example.
-pub(crate) struct FinalizeContext<'p, 'sess, S: Stage> {
-    pub(crate) shared: SharedContext<'p, 'sess, S>,
+pub(crate) struct FinalizeContext<'p, 'sess> {
+    pub(crate) shared: SharedContext<'p, 'sess>,
 
     /// A list of all attribute on this syntax node.
     ///
@@ -665,29 +568,29 @@ pub(crate) struct FinalizeContext<'p, 'sess, S: Stage> {
     pub(crate) all_attrs: &'p [RefPathParser<'p>],
 }
 
-impl<'p, 'sess: 'p, S: Stage> Deref for FinalizeContext<'p, 'sess, S> {
-    type Target = SharedContext<'p, 'sess, S>;
+impl<'p, 'sess: 'p> Deref for FinalizeContext<'p, 'sess> {
+    type Target = SharedContext<'p, 'sess>;
 
     fn deref(&self) -> &Self::Target {
         &self.shared
     }
 }
 
-impl<'p, 'sess: 'p, S: Stage> DerefMut for FinalizeContext<'p, 'sess, S> {
+impl<'p, 'sess: 'p> DerefMut for FinalizeContext<'p, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.shared
     }
 }
 
-impl<'p, 'sess: 'p, S: Stage> Deref for SharedContext<'p, 'sess, S> {
-    type Target = AttributeParser<'sess, S>;
+impl<'p, 'sess: 'p> Deref for SharedContext<'p, 'sess> {
+    type Target = AttributeParser<'sess>;
 
     fn deref(&self) -> &Self::Target {
         self.cx
     }
 }
 
-impl<'p, 'sess: 'p, S: Stage> DerefMut for SharedContext<'p, 'sess, S> {
+impl<'p, 'sess: 'p> DerefMut for SharedContext<'p, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.cx
     }
@@ -734,15 +637,12 @@ impl ShouldEmit {
     }
 }
 
-pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess, S: Stage> {
-    ctx: &'a mut AcceptContext<'f, 'sess, S>,
+pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess> {
+    ctx: &'a mut AcceptContext<'f, 'sess>,
     custom_suggestions: Vec<Suggestion>,
 }
 
-impl<'a, 'f, 'sess: 'f, S> AttributeDiagnosticContext<'a, 'f, 'sess, S>
-where
-    S: Stage,
-{
+impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     fn emit_parse_error(
         &mut self,
         span: Span,
@@ -787,10 +687,7 @@ where
 }
 
 /// Helpers that can be used to generate errors during attribute parsing.
-impl<'a, 'f, 'sess: 'f, S> AttributeDiagnosticContext<'a, 'f, 'sess, S>
-where
-    S: Stage,
-{
+impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     pub(crate) fn expected_integer_literal_in_range(
         &mut self,
         span: Span,
@@ -1021,21 +918,15 @@ where
     }
 }
 
-impl<'a, 'f, 'sess: 'f, S> Deref for AttributeDiagnosticContext<'a, 'f, 'sess, S>
-where
-    S: Stage,
-{
-    type Target = AcceptContext<'f, 'sess, S>;
+impl<'a, 'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'a, 'f, 'sess> {
+    type Target = AcceptContext<'f, 'sess>;
 
     fn deref(&self) -> &Self::Target {
         self.ctx
     }
 }
 
-impl<'a, 'f, 'sess: 'f, S> DerefMut for AttributeDiagnosticContext<'a, 'f, 'sess, S>
-where
-    S: Stage,
-{
+impl<'a, 'f, 'sess: 'f> DerefMut for AttributeDiagnosticContext<'a, 'f, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.ctx
     }

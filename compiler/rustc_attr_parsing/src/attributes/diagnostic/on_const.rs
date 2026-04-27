@@ -11,8 +11,8 @@ pub(crate) struct OnConstParser {
     directive: Option<(Span, Directive)>,
 }
 
-impl<S: Stage> AttributeParser<S> for OnConstParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+impl AttributeParser for OnConstParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_const],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
@@ -53,7 +53,7 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
     // this linted on in parser.
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(span) = self.span {
             Some(AttributeKind::OnConst { span, directive: self.directive.map(|d| Box::new(d.1)) })
         } else {

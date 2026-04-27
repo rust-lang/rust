@@ -11,7 +11,7 @@ use thin_vec::ThinVec;
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
-use crate::context::{AcceptContext, FinalizeContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext};
 use crate::errors::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
@@ -25,7 +25,7 @@ use crate::session_diagnostics::{
     DocAttributeNotAttribute, DocKeywordNotKeyword,
 };
 
-fn check_keyword<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, keyword: Symbol, span: Span) -> bool {
+fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
     // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
     // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
@@ -39,11 +39,7 @@ fn check_keyword<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, keyword: Symbol, s
     false
 }
 
-fn check_attribute<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
-    attribute: Symbol,
-    span: Span,
-) -> bool {
+fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span) -> bool {
     // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
     if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&attribute) {
         return true;
@@ -53,8 +49,8 @@ fn check_attribute<S: Stage>(
 }
 
 /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
-fn check_attr_not_crate_level<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn check_attr_not_crate_level(
+    cx: &mut AcceptContext<'_, '_>,
     span: Span,
     attr_name: Symbol,
 ) -> bool {
@@ -66,7 +62,7 @@ fn check_attr_not_crate_level<S: Stage>(
 }
 
 /// Checks that an attribute is used at the crate level. Returns `true` if valid.
-fn check_attr_crate_level<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) -> bool {
+fn check_attr_crate_level(cx: &mut AcceptContext<'_, '_>, span: Span) -> bool {
     if cx.shared.target != Target::Crate {
         cx.emit_dyn_lint(
             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
@@ -79,11 +75,7 @@ fn check_attr_crate_level<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Spa
 }
 
 // FIXME: To be removed once merged and replace with `cx.expected_name_value(span, _name)`.
-fn expected_name_value<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
-    span: Span,
-    _name: Option<Symbol>,
-) {
+fn expected_name_value(cx: &mut AcceptContext<'_, '_>, span: Span, _name: Option<Symbol>) {
     cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
         |dcx, level| ExpectedNameValue.into_diag(dcx, level),
@@ -92,7 +84,7 @@ fn expected_name_value<S: Stage>(
 }
 
 // FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
-fn expected_no_args<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) {
+fn expected_no_args(cx: &mut AcceptContext<'_, '_>, span: Span) {
     cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
         |dcx, level| ExpectedNoArgs.into_diag(dcx, level),
@@ -102,8 +94,8 @@ fn expected_no_args<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) {
 
 // FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
 // cx.expected_string_literal(span, _actual_literal);
-fn expected_string_literal<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn expected_string_literal(
+    cx: &mut AcceptContext<'_, '_>,
     span: Span,
     _actual_literal: Option<&MetaItemLit>,
 ) {
@@ -114,8 +106,8 @@ fn expected_string_literal<S: Stage>(
     );
 }
 
-fn parse_keyword_and_attribute<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+fn parse_keyword_and_attribute(
+    cx: &mut AcceptContext<'_, '_>,
     path: &OwnedPathParser,
     args: &ArgParser,
     attr_value: &mut Option<(Symbol, Span)>,
@@ -160,9 +152,9 @@ pub(crate) struct DocParser {
 }
 
 impl DocParser {
-    fn parse_single_test_doc_attr_item<S: Stage>(
+    fn parse_single_test_doc_attr_item(
         &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         mip: &MetaItemParser,
     ) {
         let path = mip.path();
@@ -233,12 +225,7 @@ impl DocParser {
         }
     }
 
-    fn add_alias<S: Stage>(
-        &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
-        alias: Symbol,
-        span: Span,
-    ) {
+    fn add_alias(&mut self, cx: &mut AcceptContext<'_, '_>, alias: Symbol, span: Span) {
         let attr_str = "`#[doc(alias = \"...\")]`";
         if alias == sym::empty {
             cx.emit_err(DocAliasEmpty { span, attr_str });
@@ -271,9 +258,9 @@ impl DocParser {
         self.attribute.aliases.insert(alias, span);
     }
 
-    fn parse_alias<S: Stage>(
+    fn parse_alias(
         &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         path: &OwnedPathParser,
         args: &ArgParser,
     ) {
@@ -301,9 +288,9 @@ impl DocParser {
         }
     }
 
-    fn parse_inline<S: Stage>(
+    fn parse_inline(
         &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         path: &OwnedPathParser,
         args: &ArgParser,
         inline: DocInline,
@@ -316,7 +303,7 @@ impl DocParser {
         self.attribute.inline.push((inline, path.span()));
     }
 
-    fn parse_cfg<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
+    fn parse_cfg(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         // This function replaces cases like `cfg(all())` with `true`.
         fn simplify_cfg(cfg_entry: &mut CfgEntry) {
             match cfg_entry {
@@ -336,9 +323,9 @@ impl DocParser {
         }
     }
 
-    fn parse_auto_cfg<S: Stage>(
+    fn parse_auto_cfg(
         &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         path: &OwnedPathParser,
         args: &ArgParser,
     ) {
@@ -456,11 +443,7 @@ impl DocParser {
         }
     }
 
-    fn parse_single_doc_attr_item<S: Stage>(
-        &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
-        mip: &MetaItemParser,
-    ) {
+    fn parse_single_doc_attr_item(&mut self, cx: &mut AcceptContext<'_, '_>, mip: &MetaItemParser) {
         let path = mip.path();
         let args = mip.args();
 
@@ -680,11 +663,7 @@ impl DocParser {
         }
     }
 
-    fn accept_single_doc_attr<S: Stage>(
-        &mut self,
-        cx: &mut AcceptContext<'_, '_, S>,
-        args: &ArgParser,
-    ) {
+    fn accept_single_doc_attr(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
         match args {
             ArgParser::NoArgs => {
                 let suggestions = cx.adcx().suggestions();
@@ -723,8 +702,8 @@ impl DocParser {
     }
 }
 
-impl<S: Stage> AttributeParser<S> for DocParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+impl AttributeParser for DocParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::doc],
         template!(
             List: &[
@@ -794,7 +773,7 @@ impl<S: Stage> AttributeParser<S> for DocParser {
     //     Error(Target::WherePredicate),
     // ]);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if self.nb_doc_attrs != 0 {
             Some(AttributeKind::Doc(Box::new(self.attribute)))
         } else {

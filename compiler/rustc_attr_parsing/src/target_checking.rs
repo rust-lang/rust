@@ -8,7 +8,7 @@ use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, Span, Symbol, sym};
 
 use crate::AttributeParser;
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::errors::{
     InvalidAttrAtCrateLevel, InvalidTargetLint, ItemFollowingInnerAttr,
     UnsupportedAttributesInWhere,
@@ -87,11 +87,11 @@ pub(crate) enum Policy {
     Error(Target),
 }
 
-impl<'sess, S: Stage> AttributeParser<'sess, S> {
+impl<'sess> AttributeParser<'sess> {
     pub(crate) fn check_target(
         allowed_targets: &AllowedTargets,
         target: Target,
-        cx: &mut AcceptContext<'_, 'sess, S>,
+        cx: &mut AcceptContext<'_, 'sess>,
     ) {
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
@@ -176,7 +176,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         }
     }
 
-    pub(crate) fn check_crate_level(target: Target, cx: &mut AcceptContext<'_, 'sess, S>) {
+    pub(crate) fn check_crate_level(target: Target, cx: &mut AcceptContext<'_, 'sess>) {
         if target == Target::Crate {
             return;
         }

@@ -2,7 +2,7 @@ use super::prelude::*;
 
 pub(crate) struct MustNotSuspendParser;
 
-impl<S: Stage> SingleAttributeParser<S> for MustNotSuspendParser {
+impl SingleAttributeParser for MustNotSuspendParser {
     const PATH: &[rustc_span::Symbol] = &[sym::must_not_suspend];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
@@ -12,7 +12,7 @@ impl<S: Stage> SingleAttributeParser<S> for MustNotSuspendParser {
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NameValue(reason) => match reason.value_as_str() {
                 Some(val) => Some(val),

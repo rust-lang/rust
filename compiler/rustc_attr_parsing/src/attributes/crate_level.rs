@@ -9,13 +9,13 @@ use crate::errors::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
 
 pub(crate) struct CrateNameParser;
 
-impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
+impl SingleAttributeParser for CrateNameParser {
     const PATH: &[Symbol] = &[sym::crate_name];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(n) = args else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, None);
@@ -33,7 +33,7 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
 
 pub(crate) struct CrateTypeParser;
 
-impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
+impl CombineAttributeParser for CrateTypeParser {
     const PATH: &[Symbol] = &[sym::crate_type];
     type Item = CrateType;
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::CrateType(items);
@@ -44,7 +44,7 @@ impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
         template!(NameValueStr: "crate type", "https://doc.rust-lang.org/reference/linkage.html");
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let ArgParser::NameValue(n) = args else {
@@ -88,13 +88,13 @@ impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
 
 pub(crate) struct RecursionLimitParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
+impl SingleAttributeParser for RecursionLimitParser {
     const PATH: &[Symbol] = &[sym::recursion_limit];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, None);
@@ -111,12 +111,12 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
 
 pub(crate) struct MoveSizeLimitParser;
 
-impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
+impl SingleAttributeParser for MoveSizeLimitParser {
     const PATH: &[Symbol] = &[sym::move_size_limit];
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, None);
@@ -133,13 +133,13 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
 
 pub(crate) struct TypeLengthLimitParser;
 
-impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
+impl SingleAttributeParser for TypeLengthLimitParser {
     const PATH: &[Symbol] = &[sym::type_length_limit];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, None);
@@ -156,12 +156,12 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
 
 pub(crate) struct PatternComplexityLimitParser;
 
-impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
+impl SingleAttributeParser for PatternComplexityLimitParser {
     const PATH: &[Symbol] = &[sym::pattern_complexity_limit];
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
             let attr_span = cx.attr_span;
             cx.adcx().expected_name_value(attr_span, None);
@@ -178,7 +178,7 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
 
 pub(crate) struct NoCoreParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for NoCoreParser {
+impl NoArgsAttributeParser for NoCoreParser {
     const PATH: &[Symbol] = &[sym::no_core];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoCore;
@@ -186,25 +186,25 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoCoreParser {
 
 pub(crate) struct NoStdParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for NoStdParser {
+impl NoArgsAttributeParser for NoStdParser {
     const PATH: &[Symbol] = &[sym::no_std];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoStd;
 }
 
 pub(crate) struct NoMainParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for NoMainParser {
+impl NoArgsAttributeParser for NoMainParser {
     const PATH: &[Symbol] = &[sym::no_main];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoMain;
 }
 
 pub(crate) struct RustcCoherenceIsCoreParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
+impl NoArgsAttributeParser for RustcCoherenceIsCoreParser {
     const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoherenceIsCore;
@@ -212,13 +212,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
 
 pub(crate) struct WindowsSubsystemParser;
 
-impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
+impl SingleAttributeParser for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
             let inner_span = cx.inner_span;
             cx.adcx().expected_name_value(
@@ -246,7 +246,7 @@ impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
 
 pub(crate) struct PanicRuntimeParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for PanicRuntimeParser {
+impl NoArgsAttributeParser for PanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::panic_runtime];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PanicRuntime;
@@ -254,7 +254,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for PanicRuntimeParser {
 
 pub(crate) struct NeedsPanicRuntimeParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for NeedsPanicRuntimeParser {
+impl NoArgsAttributeParser for NeedsPanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::needs_panic_runtime];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsPanicRuntime;
@@ -262,7 +262,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for NeedsPanicRuntimeParser {
 
 pub(crate) struct ProfilerRuntimeParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for ProfilerRuntimeParser {
+impl NoArgsAttributeParser for ProfilerRuntimeParser {
     const PATH: &[Symbol] = &[sym::profiler_runtime];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
@@ -270,16 +270,16 @@ impl<S: Stage> NoArgsAttributeParser<S> for ProfilerRuntimeParser {
 
 pub(crate) struct NoBuiltinsParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for NoBuiltinsParser {
+impl NoArgsAttributeParser for NoBuiltinsParser {
     const PATH: &[Symbol] = &[sym::no_builtins];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
 }
 
 pub(crate) struct RustcPreserveUbChecksParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcPreserveUbChecksParser {
+impl NoArgsAttributeParser for RustcPreserveUbChecksParser {
     const PATH: &[Symbol] = &[sym::rustc_preserve_ub_checks];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPreserveUbChecks;
@@ -287,7 +287,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPreserveUbChecksParser {
 
 pub(crate) struct RustcNoImplicitBoundsParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitBoundsParser {
+impl NoArgsAttributeParser for RustcNoImplicitBoundsParser {
     const PATH: &[Symbol] = &[sym::rustc_no_implicit_bounds];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitBounds;
@@ -295,7 +295,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitBoundsParser {
 
 pub(crate) struct DefaultLibAllocatorParser;
 
-impl<S: Stage> NoArgsAttributeParser<S> for DefaultLibAllocatorParser {
+impl NoArgsAttributeParser for DefaultLibAllocatorParser {
     const PATH: &[Symbol] = &[sym::default_lib_allocator];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::DefaultLibAllocator;
@@ -303,7 +303,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for DefaultLibAllocatorParser {
 
 pub(crate) struct FeatureParser;
 
-impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
+impl CombineAttributeParser for FeatureParser {
     const PATH: &[Symbol] = &[sym::feature];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
@@ -311,7 +311,7 @@ impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let Some(list) = cx.expect_list(args, cx.attr_span) else {
@@ -349,7 +349,7 @@ impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
 
 pub(crate) struct RegisterToolParser;
 
-impl<S: Stage> CombineAttributeParser<S> for RegisterToolParser {
+impl CombineAttributeParser for RegisterToolParser {
     const PATH: &[Symbol] = &[sym::register_tool];
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::RegisterTool;
@@ -357,7 +357,7 @@ impl<S: Stage> CombineAttributeParser<S> for RegisterToolParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["tool1, tool2, ..."]);
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let Some(list) = cx.expect_list(args, cx.attr_span) else {

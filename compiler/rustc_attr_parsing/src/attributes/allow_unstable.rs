@@ -4,7 +4,7 @@ use super::prelude::*;
 use crate::session_diagnostics;
 
 pub(crate) struct AllowInternalUnstableParser;
-impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
+impl CombineAttributeParser for AllowInternalUnstableParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unstable];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> =
@@ -18,17 +18,17 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
+        parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
             .into_iter()
             .zip(iter::repeat(cx.attr_span))
     }
 }
 
 pub(crate) struct UnstableFeatureBoundParser;
-impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
+impl CombineAttributeParser for UnstableFeatureBoundParser {
     const PATH: &[rustc_span::Symbol] = &[sym::unstable_feature_bound];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableFeatureBound(items);
@@ -40,20 +40,20 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         if !cx.features().staged_api() {
             cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
         }
-        parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
+        parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
             .into_iter()
             .zip(iter::repeat(cx.attr_span))
     }
 }
 
 pub(crate) struct RustcAllowConstFnUnstableParser;
-impl<S: Stage> CombineAttributeParser<S> for RustcAllowConstFnUnstableParser {
+impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_const_fn_unstable];
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> =
@@ -67,15 +67,15 @@ impl<S: Stage> CombineAttributeParser<S> for RustcAllowConstFnUnstableParser {
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
     fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
+        cx: &mut AcceptContext<'_, '_>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
-        parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
+        parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
     }
 }
 
-fn parse_unstable<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+fn parse_unstable(
+    cx: &AcceptContext<'_, '_>,
     args: &ArgParser,
     symbol: Symbol,
 ) -> impl IntoIterator<Item = Symbol> {

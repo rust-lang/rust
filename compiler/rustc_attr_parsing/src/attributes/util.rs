@@ -6,7 +6,7 @@ use rustc_hir::RustcVersion;
 use rustc_hir::limit::Limit;
 use rustc_span::Symbol;
 
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::parser::{ArgParser, NameValueParser};
 use crate::session_diagnostics::LimitInvalid;
 
@@ -36,8 +36,8 @@ pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
 /// `#[link_ordinal]` and `#[rustc_layout_scalar_valid_range_start]`.
 /// `cx` is the context given to the attribute.
 /// `args` is the parser for the attribute arguments.
-pub(crate) fn parse_single_integer<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+pub(crate) fn parse_single_integer(
+    cx: &mut AcceptContext<'_, '_>,
     args: &ArgParser,
 ) -> Option<u128> {
     let single = cx.expect_single_element_list(args, cx.attr_span)?;
@@ -52,7 +52,7 @@ pub(crate) fn parse_single_integer<S: Stage>(
     Some(num.0)
 }
 
-impl<S: Stage> AcceptContext<'_, '_, S> {
+impl AcceptContext<'_, '_> {
     pub(crate) fn parse_limit_int(&mut self, nv: &NameValueParser) -> Option<Limit> {
         let Some(limit) = nv.value_as_str() else {
             self.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));

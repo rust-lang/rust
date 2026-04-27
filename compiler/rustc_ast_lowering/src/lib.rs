@@ -41,7 +41,7 @@ use std::sync::Arc;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, *};
-use rustc_attr_parsing::{AttributeParser, EmitAttribute, Late, OmitDoc};
+use rustc_attr_parsing::{AttributeParser, EmitAttribute, OmitDoc, Recovery, ShouldEmit};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -223,7 +223,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 tcx.sess,
                 tcx.features(),
                 registered_tools,
-                Late,
+                ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             ),
             delayed_lints: Vec::new(),
         }

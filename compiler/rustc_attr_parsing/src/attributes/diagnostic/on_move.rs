@@ -6,7 +6,7 @@ use rustc_span::sym;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::errors::DiagnosticOnMoveOnlyForAdt;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
@@ -18,12 +18,7 @@ pub(crate) struct OnMoveParser {
 }
 
 impl OnMoveParser {
-    fn parse<'sess, S: Stage>(
-        &mut self,
-        cx: &mut AcceptContext<'_, 'sess, S>,
-        args: &ArgParser,
-        mode: Mode,
-    ) {
+    fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         if !cx.features().diagnostic_on_move() {
             // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
             return;
@@ -48,8 +43,8 @@ impl OnMoveParser {
         }
     }
 }
-impl<S: Stage> AttributeParser<S> for OnMoveParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+impl AttributeParser for OnMoveParser {
+    const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_move],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
@@ -60,7 +55,7 @@ impl<S: Stage> AttributeParser<S> for OnMoveParser {
     // "Allowed" for all targets but noop if used on not-adt.
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
-    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
         if let Some(span) = self.span {
             Some(AttributeKind::OnMove { span, directive: self.directive.map(|d| Box::new(d.1)) })
         } else {

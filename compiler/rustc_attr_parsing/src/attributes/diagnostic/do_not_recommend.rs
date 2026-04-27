@@ -8,20 +8,20 @@ use rustc_session::lint::builtin::{
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::{OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::errors::IncorrectDoNotRecommendLocation;
 use crate::parser::ArgParser;
 use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 
 pub(crate) struct DoNotRecommendParser;
-impl<S: Stage> SingleAttributeParser<S> for DoNotRecommendParser {
+impl SingleAttributeParser for DoNotRecommendParser {
     const PATH: &[Symbol] = &[sym::diagnostic, sym::do_not_recommend];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     // "Allowed" on any target, noop on all but trait impls
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
     const TEMPLATE: AttributeTemplate = template!(Word /*doesn't matter */);
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let attr_span = cx.attr_span;
         if !matches!(args, ArgParser::NoArgs) {
             cx.emit_dyn_lint(

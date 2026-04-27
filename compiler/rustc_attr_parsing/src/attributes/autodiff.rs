@@ -10,13 +10,13 @@ use thin_vec::ThinVec;
 
 use crate::attributes::SingleAttributeParser;
 use crate::attributes::prelude::Allow;
-use crate::context::{AcceptContext, Stage};
+use crate::context::AcceptContext;
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
 
 pub(crate) struct RustcAutodiffParser;
 
-impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
+impl SingleAttributeParser for RustcAutodiffParser {
     const PATH: &[Symbol] = &[sym::rustc_autodiff];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -30,7 +30,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
         "https://doc.rust-lang.org/std/autodiff/index.html"
     );
 
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let list = match args {
             ArgParser::NoArgs => return Some(AttributeKind::RustcAutodiff(None)),
             ArgParser::List(list) => list,

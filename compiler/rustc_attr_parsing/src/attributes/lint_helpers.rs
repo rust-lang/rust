@@ -1,7 +1,7 @@
 use super::prelude::*;
 
 pub(crate) struct RustcAsPtrParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcAsPtrParser {
+impl NoArgsAttributeParser for RustcAsPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_as_ptr];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -14,7 +14,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcAsPtrParser {
 }
 
 pub(crate) struct RustcPubTransparentParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
+impl NoArgsAttributeParser for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
@@ -25,7 +25,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
 }
 
 pub(crate) struct RustcPassByValueParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcPassByValueParser {
+impl NoArgsAttributeParser for RustcPassByValueParser {
     const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
@@ -36,7 +36,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassByValueParser {
 }
 
 pub(crate) struct RustcShouldNotBeCalledOnConstItemsParser;
-impl<S: Stage> NoArgsAttributeParser<S> for RustcShouldNotBeCalledOnConstItemsParser {
+impl NoArgsAttributeParser for RustcShouldNotBeCalledOnConstItemsParser {
     const PATH: &[Symbol] = &[sym::rustc_should_not_be_called_on_const_items];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
@@ -46,9 +46,9 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcShouldNotBeCalledOnConstItemsPa
 }
 
 pub(crate) struct AutomaticallyDerivedParser;
-impl<S: Stage> NoArgsAttributeParser<S> for AutomaticallyDerivedParser {
+impl NoArgsAttributeParser for AutomaticallyDerivedParser {
     const PATH: &[Symbol] = &[sym::automatically_derived];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Impl { of_trait: true }),
         Error(Target::Crate),
