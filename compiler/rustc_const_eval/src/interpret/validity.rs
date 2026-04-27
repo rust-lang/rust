@@ -1442,7 +1442,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // First check that the base type is valid
                 self.visit_value(&val.transmute(self.ecx.layout_of(*base)?, self.ecx)?)?;
                 // When you extend this match, make sure to also add tests to
-                // tests/ui/type/pattern_types/validity.rs((
+                // tests/ui/type/pattern_types/validity.rs
                 match **pat {
                     // Range and non-null patterns are precisely reflected into `valid_range` and thus
                     // handled fully by `visit_scalar` (called below).
@@ -1456,6 +1456,34 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     // The consolation here is that codegen also will miss that UB, so at least
                     // we won't see optimizations actually breaking such programs.
                     ty::PatternKind::Or(_patterns) => {}
+                }
+                // FIXME(pattern_types): handle everything based on the pattern, not on the layout.
+                // it's ok to run scalar validation even if the pattern type is `u8 is 0..=255` and thus
+                // allows uninit values, because that's rare and so not a perf issue.
+                match val.layout.backend_repr {
+                    BackendRepr::Scalar(scalar_layout) => {
+                        if !scalar_layout.is_uninit_valid() {
+                            // There is something to check here.
+                            // We read directly via `ecx` since the read cannot fail -- we already read
+                            // this field above when recursing into the field.
+                            let scalar = self.ecx.read_scalar(val)?;
+                            self.visit_scalar(scalar, scalar_layout)?;
+                        }
+                    }
+                    BackendRepr::ScalarPair(a_layout, b_layout) => {
+                        // We can only proceed if *both* scalars need to be initialized.
+                        // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                        // the other must be init.
+                        if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
+                            // We read directly via `ecx` since the read cannot fail -- we already read
+                            // this field above when recursing into the field.
+                            let (a, b) = self.ecx.read_immediate(val)?.to_scalar_pair();
+                            self.visit_scalar(a, a_layout)?;
+                            self.visit_scalar(b, b_layout)?;
+                        }
+                    }
+                    BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => unreachable!(),
+                    BackendRepr::Memory { .. } => unreachable!()
                 }
             }
             ty::Adt(adt, _) if adt.is_maybe_dangling() => {
@@ -1479,15 +1507,14 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             }
         }
 
-        // *After* all of this, check further information stored in the layout. We need to check
-        // this to handle types like `NonNull` where the `Scalar` info is more restrictive than what
-        // the fields say (`rustc_layout_scalar_valid_range_start`). But in most cases, this will
-        // just propagate what the fields say, and then we want the error to point at the field --
-        // so, we first recurse, then we do this check.
+        // *After* all of this, check further information stored in the layout.
+        // On leaf types like `!` or empty enums, this will raise the error.
+        // This means that for types wrapping such a type, we won't ever get here, but it's
+        // just the simplest way to check for this case.
         //
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g., first we check
-        // MyNewtype and then the scalar in there).
+        // the fields of MyNewtype, and then we check MyNewType again).
         if val.layout.is_uninhabited() {
             let ty = val.layout.ty;
             throw_validation_failure!(
@@ -1495,35 +1522,40 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 format!("encountered a value of uninhabited type `{ty}`")
             );
         }
-        match val.layout.backend_repr {
-            BackendRepr::Scalar(scalar_layout) => {
-                if !scalar_layout.is_uninit_valid() {
-                    // There is something to check here.
-                    // We read directly via `ecx` since the read cannot fail -- we already read
-                    // this field above when recursing into the field.
-                    let scalar = self.ecx.read_scalar(val)?;
-                    self.visit_scalar(scalar, scalar_layout)?;
+        if cfg!(debug_assertions) {
+            // Check that we don't miss any new changes to layout computation in our checks above.
+            match val.layout.backend_repr {
+                BackendRepr::Scalar(scalar_layout) => {
+                    if !scalar_layout.is_uninit_valid() {
+                        // There is something to check here.
+                        // We read directly via `ecx` since the read cannot fail -- we already read
+                        // this field above when recursing into the field.
+                        let scalar = self
+                            .ecx
+                            .read_scalar(val)
+                            .expect("the above checks should have fully handled this situation");
+                        self.visit_scalar(scalar, scalar_layout)
+                            .expect("the above checks should have fully handled this situation");
+                    }
                 }
-            }
-            BackendRepr::ScalarPair(a_layout, b_layout) => {
-                // We can only proceed if *both* scalars need to be initialized.
-                // FIXME: find a way to also check ScalarPair when one side can be uninit but
-                // the other must be init.
-                if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
-                    // We read directly via `ecx` since the read cannot fail -- we already read
-                    // this field above when recursing into the field.
-                    let (a, b) = self.ecx.read_immediate(val)?.to_scalar_pair();
-                    self.visit_scalar(a, a_layout)?;
-                    self.visit_scalar(b, b_layout)?;
+                BackendRepr::ScalarPair(a_layout, b_layout) => {
+                    // We can only proceed if *both* scalars need to be initialized.
+                    // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                    // the other must be init.
+                    if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
+                        let (a, b) = self
+                            .ecx
+                            .read_immediate(val)
+                            .expect("the above checks should have fully handled this situation")
+                            .to_scalar_pair();
+                        self.visit_scalar(a, a_layout)
+                            .expect("the above checks should have fully handled this situation");
+                        self.visit_scalar(b, b_layout)
+                            .expect("the above checks should have fully handled this situation");
+                    }
                 }
-            }
-            BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {
-                // No checks here, we assume layout computation gets this right.
-                // (This is harder to check since Miri does not represent these as `Immediate`. We
-                // also cannot use field projections since this might be a newtype around a vector.)
-            }
-            BackendRepr::Memory { .. } => {
-                // Nothing to do.
+                BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => {}
+                BackendRepr::Memory { .. } => {}
             }
         }
 

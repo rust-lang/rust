@@ -2,7 +2,7 @@
 //@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-#![feature(custom_mir, core_intrinsics, rustc_attrs)]
+#![feature(custom_mir, core_intrinsics, rustc_attrs, pattern_types, pattern_type_macro)]
 
 use std::intrinsics::mir::*;
 
@@ -72,7 +72,7 @@ fn statics() {
 
     static RC: &E = &E::V2(4);
 
-    // CHECK: [[t:_.*]] = const {alloc5: &&E};
+    // CHECK: [[t:_.*]] = const {alloc7: &&E};
     // CHECK: [[e2]] = copy (*[[t]]);
     let e2 = RC;
 
@@ -88,9 +88,8 @@ fn statics() {
     };
 }
 
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-struct NonZeroUsize(usize);
+struct NonZeroUsize(std::pat::pattern_type!(usize is 1..=usize::MAX));
 
 // EMIT_MIR enum.mutate_discriminant.DataflowConstProp.diff
 
@@ -101,8 +100,9 @@ fn mutate_discriminant() -> u8 {
         let x: Option<NonZeroUsize>;
         {
             SetDiscriminant(x, 1);
+            let y = CastTransmute::<_, std::pat::pattern_type!(usize is 1..=usize::MAX)>(0_usize);
             // This assignment overwrites the niche in which the discriminant is stored.
-            place!(Field(Field(Variant(x, 1), 0), 0)) = 0_usize;
+            place!(Field(Field(Variant(x, 1), 0), 0)) = y;
             // So we cannot know the value of this discriminant.
 
             // CHECK: [[a:_.*]] = discriminant({{_.*}});

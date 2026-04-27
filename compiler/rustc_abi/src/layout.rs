@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 use std::fmt::{self, Write};
-use std::ops::{Bound, Deref};
+use std::ops::Deref;
 use std::{cmp, iter};
 
 use rustc_hashes::Hash64;
@@ -348,7 +348,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
         is_special_no_niche: bool,
-        scalar_valid_range: (Bound<u128>, Bound<u128>),
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
         always_sized: bool,
@@ -380,7 +379,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 variants,
                 is_enum,
                 is_special_no_niche,
-                scalar_valid_range,
                 always_sized,
                 present_first,
             )
@@ -530,7 +528,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
         is_special_no_niche: bool,
-        scalar_valid_range: (Bound<u128>, Bound<u128>),
         always_sized: bool,
         present_first: VariantIdx,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
@@ -568,52 +565,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             }
             st.largest_niche = None;
             return Ok(st);
-        }
-
-        let (start, end) = scalar_valid_range;
-        match st.backend_repr {
-            BackendRepr::Scalar(ref mut scalar) | BackendRepr::ScalarPair(ref mut scalar, _) => {
-                // Enlarging validity ranges would result in missed
-                // optimizations, *not* wrongly assuming the inner
-                // value is valid. e.g. unions already enlarge validity ranges,
-                // because the values may be uninitialized.
-                //
-                // Because of that we only check that the start and end
-                // of the range is representable with this scalar type.
-
-                let max_value = scalar.size(dl).unsigned_int_max();
-                if let Bound::Included(start) = start {
-                    // FIXME(eddyb) this might be incorrect - it doesn't
-                    // account for wrap-around (end < start) ranges.
-                    assert!(start <= max_value, "{start} > {max_value}");
-                    scalar.valid_range_mut().start = start;
-                }
-                if let Bound::Included(end) = end {
-                    // FIXME(eddyb) this might be incorrect - it doesn't
-                    // account for wrap-around (end < start) ranges.
-                    assert!(end <= max_value, "{end} > {max_value}");
-                    scalar.valid_range_mut().end = end;
-                }
-
-                // Update `largest_niche` if we have introduced a larger niche.
-                let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
-                if let Some(niche) = niche {
-                    match st.largest_niche {
-                        Some(largest_niche) => {
-                            // Replace the existing niche even if they're equal,
-                            // because this one is at a lower offset.
-                            if largest_niche.available(dl) <= niche.available(dl) {
-                                st.largest_niche = Some(niche);
-                            }
-                        }
-                        None => st.largest_niche = Some(niche),
-                    }
-                }
-            }
-            _ => assert!(
-                start == Bound::Unbounded && end == Bound::Unbounded,
-                "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
-            ),
         }
 
         Ok(st)

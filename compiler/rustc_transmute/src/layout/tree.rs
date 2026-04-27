@@ -329,33 +329,11 @@ pub(crate) mod rustc {
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
-                ty::Adt(adt_def, _args_ref) if !ty.is_box() => {
-                    let (lo, hi) = cx.tcx().layout_scalar_valid_range(adt_def.did());
-
-                    use core::ops::Bound::*;
-                    let is_transparent = adt_def.repr().transparent();
-                    match (adt_def.adt_kind(), lo, hi) {
-                        (AdtKind::Struct, Unbounded, Unbounded) => {
-                            Self::from_struct((ty, layout), *adt_def, cx)
-                        }
-                        (AdtKind::Struct, Included(1), Included(_hi)) if is_transparent => {
-                            // FIXME(@joshlf): Support `NonZero` types:
-                            // - Check to make sure that the first field is
-                            //   numerical
-                            // - Check to make sure that the upper bound is the
-                            //   maximum value for the field's type
-                            // - Construct `Self::nonzero`
-                            Err(Err::NotYetSupported)
-                        }
-                        (AdtKind::Enum, Unbounded, Unbounded) => {
-                            Self::from_enum((ty, layout), *adt_def, cx)
-                        }
-                        (AdtKind::Union, Unbounded, Unbounded) => {
-                            Self::from_union((ty, layout), *adt_def, cx)
-                        }
-                        _ => Err(Err::NotYetSupported),
-                    }
-                }
+                ty::Adt(adt_def, _args_ref) if !ty.is_box() => match adt_def.adt_kind() {
+                    AdtKind::Struct => Self::from_struct((ty, layout), *adt_def, cx),
+                    AdtKind::Enum => Self::from_enum((ty, layout), *adt_def, cx),
+                    AdtKind::Union => Self::from_union((ty, layout), *adt_def, cx),
+                },
 
                 ty::Ref(region, ty, mutability) => {
                     let layout = layout_of(cx, *ty)?;

@@ -147,8 +147,6 @@ impl AttributeKind {
             RustcInsignificantDtor => Yes,
             RustcIntrinsic => Yes,
             RustcIntrinsicConstStableIndirect => No,
-            RustcLayoutScalarValidRangeEnd(..) => Yes,
-            RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcLegacyConstGenerics { .. } => Yes,
             RustcLintOptDenyFieldAccess { .. } => Yes,
             RustcLintOptTy => Yes,
