@@ -1325,6 +1325,12 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
     }
 }
 
+const fn assert_send<T: core::marker::Send>() {}
+const fn assert_sync<T: core::marker::Sync>() {}
+
+const _: () = assert_send::<CommandArgs<'static>>();
+const _: () = assert_sync::<CommandArgs<'static>>();
+
 /// An iterator over the command environment variables.
 ///
 /// This struct is created by

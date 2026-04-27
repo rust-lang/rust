@@ -93,6 +93,11 @@ pub struct CStringIter<'a> {
     iter: crate::slice::Iter<'a, *const c_char>,
 }
 
+// SAFETY: `CStringIter` is basically just a `slice::Iter<&'a CStr>`
+unsafe impl Send for CStringIter<'_> {}
+// SAFETY: `CStringIter` is basically just a `slice::Iter<&'a CStr>`
+unsafe impl Sync for CStringIter<'_> {}
+
 impl<'a> Iterator for CStringIter<'a> {
     type Item = &'a CStr;
     fn next(&mut self) -> Option<&'a CStr> {
