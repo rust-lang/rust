@@ -543,16 +543,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "wasip2",
     "wasip3",
     "windows-link",
-    "windows-sys",
-    "windows-targets",
-    "windows_aarch64_gnullvm",
-    "windows_aarch64_msvc",
-    "windows_i686_gnu",
-    "windows_i686_gnullvm",
-    "windows_i686_msvc",
-    "windows_x86_64_gnu",
-    "windows_x86_64_gnullvm",
-    "windows_x86_64_msvc",
+    "windows-sys@0.61.100", // Enforce the usage of our dummy windows-sys patch. Keep version in sync.
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
