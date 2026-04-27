@@ -576,6 +576,15 @@ impl DocParser {
                 }
             }
             Some(sym::syntax) => {
+                if !cx.features().rustdoc_texmath() {
+                    feature_err(
+                        cx.sess(),
+                        sym::rustdoc_texmath,
+                        path.span(),
+                        msg!("the `#[doc(syntax)]` attribute is unstable"),
+                    )
+                    .emit();
+                }
                 let span = args.span().unwrap_or(path.span());
                 let tex_math_dollars = if let Some(v) = args.as_name_value()
                     && let Some(syntax) = v.value_as_str()

@@ -1,6 +1,7 @@
 // This test ensures that the mathml.css file is loaded if,
 // and only if, there is a math span in the file.
 
+#![feature(rustdoc_texmath)]
 #![crate_name = "foo"]
 #![doc(syntax="-tex_math_dollars")]
 
