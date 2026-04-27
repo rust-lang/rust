@@ -427,13 +427,33 @@ impl<'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Adt(def, args) => {
-                // Only newtypes and enums w/ nullable pointer optimization.
+                // Only newtypes and enums w/ nullable pointer optimization (NPO).
                 if def.is_union() || def.variants().is_empty() || def.variants().len() > 2 {
                     return Err(err);
                 }
+                // Only default repr types.
+                {
+                    // We can ignore the seed and some particular flags that can never affect the
+                    // layout of newtypes / NPO types, but we have to check everything else.
+                    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } =
+                        def.repr();
+                    let ignored_flags = ReprFlags::IS_TRANSPARENT
+                        | ReprFlags::IS_LINEAR
+                        | ReprFlags::RANDOMIZE_LAYOUT;
+                    if int.is_some()
+                        || align.is_some()
+                        || pack.is_some()
+                        || flags.difference(ignored_flags) != ReprFlags::default()
+                        || scalable.is_some()
+                    {
+                        return Err(err);
+                    }
+                }
 
                 // Get a zero-sized variant or a pointer newtype.
-                let zero_or_ptr_variant = |i| {
+                // Returns `Ok(None)` for 1-ZST types, `Ok(Some)` if (ignoring all 1-ZST fields)
+                // there's just a single pointer, and `Err` otherwise.
+                let zero_or_ptr_variant = |i| -> Result<Option<SizeSkeleton<'tcx>>, _> {
                     let i = VariantIdx::from_usize(i);
                     let fields =
                         def.variant(i).fields.iter().map(|field| {

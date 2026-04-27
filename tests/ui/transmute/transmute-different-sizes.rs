@@ -48,4 +48,23 @@ pub unsafe fn shouldnt_work2<T: ?Sized>(from: *mut T) -> PtrAndEmptyArray<T> {
     //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
 }
 
+#[repr(align(16))]
+struct OverAlignWrap<T>(T);
+
+fn shouldnt_work3<T: ?Sized>(x: OverAlignWrap<*const T>) -> *const T {
+    unsafe { transmute(x) }
+    //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
+}
+
+#[repr(C)]
+enum NotNullPointerOptimized<T> {
+    Some(T),
+    None
+}
+
+fn shouldnt_work4<T: ?Sized>(x: &T) -> NotNullPointerOptimized<&T> {
+    unsafe { transmute(x) }
+    //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
+}
+
 fn main() {}

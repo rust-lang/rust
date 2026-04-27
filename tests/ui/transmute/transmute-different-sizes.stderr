@@ -43,6 +43,24 @@ LL |     std::mem::transmute(from)
    = note: source type: `*mut T` (pointer to `T`)
    = note: target type: `PtrAndEmptyArray<T>` (size can vary because of <T as Pointee>::Metadata)
 
-error: aborting due to 5 previous errors
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:55:14
+   |
+LL |     unsafe { transmute(x) }
+   |              ^^^^^^^^^
+   |
+   = note: source type: `OverAlignWrap<*const T>` (size can vary because of <T as Pointee>::Metadata)
+   = note: target type: `*const T` (pointer to `T`)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-different-sizes.rs:66:14
+   |
+LL |     unsafe { transmute(x) }
+   |              ^^^^^^^^^
+   |
+   = note: source type: `&T` (pointer to `T`)
+   = note: target type: `NotNullPointerOptimized<&T>` (size can vary because of <T as Pointee>::Metadata)
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0512`.
