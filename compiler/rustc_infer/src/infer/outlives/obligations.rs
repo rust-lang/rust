@@ -85,14 +85,15 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn register_outlives_constraint(
         &self,
         ty::OutlivesPredicate(arg, r2): ty::ArgOutlivesPredicate<'tcx>,
+        vis: ty::VisibleForLeakCheck,
         cause: &ObligationCause<'tcx>,
     ) {
         match arg.kind() {
             ty::GenericArgKind::Lifetime(r1) => {
-                self.register_region_outlives_constraint(ty::OutlivesPredicate(r1, r2), cause);
+                self.register_region_outlives_constraint(ty::OutlivesPredicate(r1, r2), vis, cause);
             }
             ty::GenericArgKind::Type(ty1) => {
-                self.register_type_outlives_constraint(ty1, r2, cause);
+                self.register_type_outlives_constraint(ty1, r2, vis, cause);
             }
             ty::GenericArgKind::Const(_) => unreachable!(),
         }
@@ -101,24 +102,26 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn register_region_eq_constraint(
         &self,
         ty::RegionEqPredicate(r_a, r_b): ty::RegionEqPredicate<'tcx>,
+        vis: ty::VisibleForLeakCheck,
         cause: &ObligationCause<'tcx>,
     ) {
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             SubregionOrigin::RelateRegionParamBound(cause.span, None)
         });
-        self.equate_regions(origin, r_a, r_b);
+        self.equate_regions(origin, r_a, r_b, vis);
     }
 
     pub fn register_region_outlives_constraint(
         &self,
         ty::OutlivesPredicate(r_a, r_b): ty::RegionOutlivesPredicate<'tcx>,
+        vis: ty::VisibleForLeakCheck,
         cause: &ObligationCause<'tcx>,
     ) {
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             SubregionOrigin::RelateRegionParamBound(cause.span, None)
         });
         // `'a: 'b` ==> `'b <= 'a`
-        self.sub_regions(origin, r_b, r_a);
+        self.sub_regions(origin, r_b, r_a, vis);
     }
 
     /// Registers that the given region obligation must be resolved
@@ -140,6 +143,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         sup_type: Ty<'tcx>,
         sub_region: Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
         cause: &ObligationCause<'tcx>,
     ) {
         // `is_global` means the type has no params, infer, placeholder, or non-`'static`
@@ -172,6 +176,7 @@ impl<'tcx> InferCtxt<'tcx> {
             sup_type,
             sub_region,
             origin,
+            visible_for_leak_check: vis,
         });
     }
 
@@ -233,7 +238,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 );
             }
 
-            for TypeOutlivesConstraint { sup_type, sub_region, origin } in my_region_obligations {
+            for TypeOutlivesConstraint { sup_type, sub_region, origin, visible_for_leak_check } in
+                my_region_obligations
+            {
                 let outlives = ty::Binder::dummy(ty::OutlivesPredicate(sup_type, sub_region));
                 let ty::OutlivesPredicate(sup_type, sub_region) =
                     deeply_normalize_ty(outlives, origin.clone())
@@ -264,7 +271,13 @@ impl<'tcx> InferCtxt<'tcx> {
                     outlives_env.known_type_outlives(),
                 );
                 let category = origin.to_constraint_category();
-                outlives.type_must_outlive(origin, sup_type, sub_region, category);
+                outlives.type_must_outlive(
+                    origin,
+                    sup_type,
+                    sub_region,
+                    category,
+                    visible_for_leak_check,
+                );
             }
         }
 
@@ -296,6 +309,7 @@ pub trait TypeOutlivesDelegate<'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
         constraint_category: ConstraintCategory<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     );
 
     fn push_verify(
@@ -345,12 +359,13 @@ where
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
         category: ConstraintCategory<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
         assert!(!ty.has_escaping_bound_vars());
 
         let mut components = smallvec![];
         push_outlives_components(self.tcx, ty, &mut components);
-        self.components_must_outlive(origin, &components, region, category);
+        self.components_must_outlive(origin, &components, region, category, vis);
     }
 
     fn components_must_outlive(
@@ -359,12 +374,14 @@ where
         components: &[Component<TyCtxt<'tcx>>],
         region: ty::Region<'tcx>,
         category: ConstraintCategory<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
         for component in components.iter() {
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate.push_sub_region_constraint(origin, region, *region1, category);
+                    self.delegate
+                        .push_sub_region_constraint(origin, region, *region1, category, vis);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);
@@ -372,9 +389,11 @@ where
                 Component::Placeholder(placeholder_ty) => {
                     self.placeholder_ty_must_outlive(origin, region, *placeholder_ty);
                 }
-                Component::Alias(alias_ty) => self.alias_ty_must_outlive(origin, region, *alias_ty),
+                Component::Alias(alias_ty) => {
+                    self.alias_ty_must_outlive(origin, region, *alias_ty, vis)
+                }
                 Component::EscapingAlias(subcomponents) => {
-                    self.components_must_outlive(origin, subcomponents, region, category);
+                    self.components_must_outlive(origin, subcomponents, region, category, vis);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
                     // Ignore this, we presume it will yield an error later,
@@ -424,6 +443,7 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         alias_ty: ty::AliasTy<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
         // An optimization for a common case with opaque types.
         if alias_ty.args.is_empty() {
@@ -486,7 +506,7 @@ where
         {
             debug!("no declared bounds");
             let opt_variances = self.tcx.opt_alias_variances(kind);
-            self.args_must_outlive(alias_ty.args, origin, region, opt_variances);
+            self.args_must_outlive(alias_ty.args, origin, region, opt_variances, vis);
             return;
         }
 
@@ -518,7 +538,7 @@ where
             debug!(?unique_bound);
             debug!("unique declared bound appears in trait ref");
             let category = origin.to_constraint_category();
-            self.delegate.push_sub_region_constraint(origin, region, unique_bound, category);
+            self.delegate.push_sub_region_constraint(origin, region, unique_bound, category, vis);
             return;
         }
 
@@ -539,6 +559,7 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         opt_variances: Option<&[ty::Variance]>,
+        vis: ty::VisibleForLeakCheck,
     ) {
         let constraint = origin.to_constraint_category();
         for (index, arg) in args.iter().enumerate() {
@@ -555,11 +576,12 @@ where
                             region,
                             lt,
                             constraint,
+                            vis,
                         );
                     }
                 }
                 GenericArgKind::Type(ty) => {
-                    self.type_must_outlive(origin.clone(), ty, region, constraint);
+                    self.type_must_outlive(origin.clone(), ty, region, constraint, vis);
                 }
                 GenericArgKind::Const(_) => {
                     // Const parameters don't impose constraints.
@@ -576,8 +598,9 @@ impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
         _constraint_category: ConstraintCategory<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
-        self.sub_regions(origin, a, b)
+        self.sub_regions(origin, a, b, vis)
     }
 
     fn push_verify(

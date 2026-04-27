@@ -417,7 +417,10 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // when checking whether a `ParamEnv` candidate is global.
             ty::ReStatic => match self.canonicalize_mode {
                 CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
-                    CanonicalVarKind::Region(ty::UniverseIndex::ROOT)
+                    CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.variables.len().into(),
+                    ))
                 }
                 CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
                 | CanonicalizeMode::Response { .. } => return r,
@@ -431,24 +434,42 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // `ReErased`. We may be able to short-circuit registering region
             // obligations if we encounter a `ReErased` on one side, for example.
             ty::ReErased | ty::ReError(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Input(_) => {
+                    CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { .. } => return r,
             },
 
             ty::ReEarlyParam(_) | ty::ReLateParam(_) => match self.canonicalize_mode {
-                CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Input(_) => {
+                    CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { .. } => {
                     panic!("unexpected region in response: {r:?}")
                 }
             },
 
             ty::RePlaceholder(placeholder) => match self.canonicalize_mode {
-                // We canonicalize placeholder regions as existentials in query inputs.
-                CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                CanonicalizeMode::Input(_) => {
+                    CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
+                        ty::UniverseIndex::ROOT,
+                        self.variables.len().into(),
+                    ))
+                }
                 CanonicalizeMode::Response { max_input_universe } => {
                     // If we have a placeholder region inside of a query, it must be from
-                    // a new universe.
-                    if max_input_universe.can_name(placeholder.universe()) {
+                    // a new universe, unless it's anon from the root universe, which is
+                    // used for canonicalization of any free region from the input.
+                    if !(placeholder.universe() == ty::UniverseIndex::ROOT
+                        && placeholder.bound.kind == ty::BoundRegionKind::Anon)
+                        && max_input_universe.can_name(placeholder.universe())
+                    {
                         panic!("new placeholder in universe {max_input_universe:?}: {r:?}");
                     }
                     CanonicalVarKind::PlaceholderRegion(placeholder)
@@ -462,7 +483,12 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                     "region vid should have been resolved fully before canonicalization"
                 );
                 match self.canonicalize_mode {
-                    CanonicalizeMode::Input(_) => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+                    CanonicalizeMode::Input(_) => {
+                        CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
+                            ty::UniverseIndex::ROOT,
+                            self.variables.len().into(),
+                        ))
+                    }
                     CanonicalizeMode::Response { .. } => {
                         CanonicalVarKind::Region(self.delegate.universe_of_lt(vid).unwrap())
                     }

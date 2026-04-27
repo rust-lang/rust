@@ -135,7 +135,8 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
     }
 }
 
-pub type QueryRegionConstraint<'tcx> = (ty::RegionConstraint<'tcx>, ConstraintCategory<'tcx>);
+pub type QueryRegionConstraint<'tcx> =
+    (ty::RegionConstraint<'tcx>, ConstraintCategory<'tcx>, ty::VisibleForLeakCheck);
 
 #[derive(Default)]
 pub struct CanonicalParamEnvCache<'tcx> {

@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
+use rustc_type_ir::solve::{Certainty, Goal, NoSolution, VisibleForLeakCheck};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
@@ -45,7 +45,9 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         term: <Self::Interner as Interner>::Term,
     ) -> Option<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>>;
 
-    fn make_deduplicated_region_constraints(&self) -> Vec<ty::RegionConstraint<Self::Interner>>;
+    fn make_deduplicated_region_constraints(
+        &self,
+    ) -> Vec<(ty::RegionConstraint<Self::Interner>, VisibleForLeakCheck)>;
 
     fn instantiate_canonical<V>(
         &self,

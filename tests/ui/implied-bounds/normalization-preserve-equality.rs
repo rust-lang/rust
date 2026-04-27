@@ -1,9 +1,5 @@
-// Both revisions should pass. `borrowck` revision is a bug!
-//
+//@ check-pass
 //@ revisions: wfcheck borrowck
-//@ [wfcheck] check-pass
-//@ [borrowck] check-fail
-//@ [borrowck] known-bug: #106569
 
 struct Equal<'a, 'b>(&'a &'b (), &'b &'a ()); // implies 'a == 'b
 

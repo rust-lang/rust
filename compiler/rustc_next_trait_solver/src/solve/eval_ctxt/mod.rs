@@ -30,7 +30,8 @@ use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
     Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, inspect,
+    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, VisibleForLeakCheck,
+    inspect,
 };
 
 mod probe;
@@ -202,7 +203,7 @@ where
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
-            ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on)
+            ecx.evaluate_goal(GoalSource::Misc, goal, stalled_on, true)
         })
     }
 
@@ -213,7 +214,7 @@ where
     ) -> bool {
         self.probe(|| {
             EvalCtxt::enter_root(self, self.cx().recursion_limit(), I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalSource::Misc, goal, None)
+                ecx.evaluate_goal(GoalSource::Misc, goal, None, true)
             })
             .is_ok_and(|r| match r.certainty {
                 Certainty::Yes => true,
@@ -232,7 +233,7 @@ where
     ) -> bool {
         self.probe(|| {
             EvalCtxt::enter_root(self, root_depth, I::Span::dummy(), |ecx| {
-                ecx.evaluate_goal(GoalSource::Misc, goal, None)
+                ecx.evaluate_goal(GoalSource::Misc, goal, None, true)
             })
         })
         .is_ok()
@@ -413,9 +414,10 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
+        is_root_goal: bool,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
         let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(source, goal, stalled_on)?;
+            self.evaluate_goal_raw(source, goal, stalled_on, is_root_goal)?;
         assert!(normalization_nested_goals.is_empty());
         Ok(goal_evaluation)
     }
@@ -432,6 +434,7 @@ where
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
+        is_root_goal: bool,
     ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution> {
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
@@ -480,11 +483,33 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
+        // FIXME: We should revisit and consider removing this after
+        // *assumptions on binders* is available, like once we had done in the
+        // stabilization of `-Znext-solver=coherence`(#121848).
+        // We ignore constraints from the nested goals in leak check. This is to match
+        // with the old solver's behavior, which has separated evaluation and fulfillment,
+        // and the former doesn't consider outlives obligations from the later.
+        let vis = if is_root_goal {
+            VisibleForLeakCheck::Yes
+        } else {
+            match goal.predicate.kind().skip_binder() {
+                ty::PredicateKind::Clause(_)
+                | ty::PredicateKind::DynCompatible(_)
+                | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::Coerce(_)
+                | ty::PredicateKind::ConstEquate(_, _)
+                | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::NormalizesTo(_) => VisibleForLeakCheck::No,
+                ty::PredicateKind::AliasRelate(_, _, _) => VisibleForLeakCheck::Yes,
+            }
+        };
+
         let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
             response,
+            vis,
             self.origin_span,
         );
 
@@ -676,7 +701,7 @@ where
                 let (
                     NestedNormalizationGoals(nested_goals),
                     GoalEvaluation { goal, certainty, stalled_on, has_changed: _ },
-                ) = self.evaluate_goal_raw(source, unconstrained_goal, stalled_on)?;
+                ) = self.evaluate_goal_raw(source, unconstrained_goal, stalled_on, false)?;
                 // Add the nested goals from normalization to our own nested goals.
                 trace!(?nested_goals);
                 self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
@@ -729,7 +754,7 @@ where
                 }
             } else {
                 let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
-                    self.evaluate_goal(source, goal, stalled_on)?;
+                    self.evaluate_goal(source, goal, stalled_on, false)?;
                 if has_changed == HasChanged::Yes {
                     unchanged_certainty = None;
                 }
@@ -1092,13 +1117,18 @@ where
         args
     }
 
-    pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
-        self.delegate.register_ty_outlives(ty, lt, self.origin_span);
+    pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region, vis: VisibleForLeakCheck) {
+        self.delegate.register_ty_outlives(ty, lt, vis, self.origin_span);
     }
 
-    pub(super) fn register_region_outlives(&self, a: I::Region, b: I::Region) {
+    pub(super) fn register_region_outlives(
+        &self,
+        a: I::Region,
+        b: I::Region,
+        vis: VisibleForLeakCheck,
+    ) {
         // `'a: 'b` ==> `'b <= 'a`
-        self.delegate.sub_regions(b, a, self.origin_span);
+        self.delegate.sub_regions(b, a, vis, self.origin_span);
     }
 
     /// Computes the list of goals required for `arg` to be well-formed
@@ -1296,7 +1326,7 @@ where
         let mut unique = HashSet::default();
         external_constraints
             .region_constraints
-            .retain(|outlives| !outlives.is_trivial() && unique.insert(*outlives));
+            .retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1527,6 +1557,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         goal.param_env,
         &proof_tree.orig_values,
         response,
+        VisibleForLeakCheck::Yes,
         origin_span,
     );
 

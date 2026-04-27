@@ -115,10 +115,11 @@ pub enum ConstraintKind {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Constraint<'tcx> {
     pub kind: ConstraintKind,
-    // If `kind` is `VarSubVar` or `VarSubReg`, this must be a `ReVar`.
+    // If `kind` is `VarSubVar`, `VarSubReg`, `VarEqVar` or `VarEqReg`, this must be a `ReVar`.
     pub sub: Region<'tcx>,
-    // If `kind` is `VarSubVar` or `RegSubVar`, this must be a `ReVar`.
+    // If `kind` is `VarSubVar`, `RegSubVar` or `VarEqVar`, this must be a `ReVar`.
     pub sup: Region<'tcx>,
+    pub visible_for_leak_check: ty::VisibleForLeakCheck,
 }
 
 impl Constraint<'_> {
@@ -127,7 +128,7 @@ impl Constraint<'_> {
     }
 
     pub fn iter_outlives(self) -> impl Iterator<Item = Self> {
-        let Constraint { kind, sub, sup } = self;
+        let Constraint { kind, sub, sup, visible_for_leak_check } = self;
 
         match kind {
             ConstraintKind::VarSubVar
@@ -135,18 +136,42 @@ impl Constraint<'_> {
             | ConstraintKind::VarSubReg
             | ConstraintKind::RegSubReg => iter::once(self).chain(None),
 
-            ConstraintKind::VarEqVar => {
-                iter::once(Constraint { kind: ConstraintKind::VarSubVar, sub, sup })
-                    .chain(Some(Constraint { kind: ConstraintKind::VarSubVar, sub: sup, sup: sub }))
-            }
-            ConstraintKind::VarEqReg => {
-                iter::once(Constraint { kind: ConstraintKind::VarSubReg, sub, sup })
-                    .chain(Some(Constraint { kind: ConstraintKind::RegSubVar, sub: sup, sup: sub }))
-            }
-            ConstraintKind::RegEqReg => {
-                iter::once(Constraint { kind: ConstraintKind::RegSubReg, sub, sup })
-                    .chain(Some(Constraint { kind: ConstraintKind::RegSubReg, sub: sup, sup: sub }))
-            }
+            ConstraintKind::VarEqVar => iter::once(Constraint {
+                kind: ConstraintKind::VarSubVar,
+                sub,
+                sup,
+                visible_for_leak_check,
+            })
+            .chain(Some(Constraint {
+                kind: ConstraintKind::VarSubVar,
+                sub: sup,
+                sup: sub,
+                visible_for_leak_check,
+            })),
+            ConstraintKind::VarEqReg => iter::once(Constraint {
+                kind: ConstraintKind::VarSubReg,
+                sub,
+                sup,
+                visible_for_leak_check,
+            })
+            .chain(Some(Constraint {
+                kind: ConstraintKind::RegSubVar,
+                sub: sup,
+                sup: sub,
+                visible_for_leak_check,
+            })),
+            ConstraintKind::RegEqReg => iter::once(Constraint {
+                kind: ConstraintKind::RegSubReg,
+                sub,
+                sup,
+                visible_for_leak_check,
+            })
+            .chain(Some(Constraint {
+                kind: ConstraintKind::RegSubReg,
+                sub: sup,
+                sup: sub,
+                visible_for_leak_check,
+            })),
         }
     }
 }
@@ -457,6 +482,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
+        visible_for_leak_check: ty::VisibleForLeakCheck,
     ) {
         if a != b {
             // FIXME: We could only emit constraints if `unify_var_{var, value}` fails when
@@ -467,7 +493,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 }
                 (ReVar(a_vid), ReVar(b_vid), _, _) => {
                     self.add_constraint(
-                        Constraint { kind: ConstraintKind::VarEqVar, sub: a, sup: b },
+                        Constraint {
+                            kind: ConstraintKind::VarEqVar,
+                            sub: a,
+                            sup: b,
+                            visible_for_leak_check,
+                        },
                         origin,
                     );
                     debug!("make_eqregion: unifying {:?} with {:?}", a_vid, b_vid);
@@ -479,12 +510,22 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                     if reg.is_static() {
                         // all regions are subregions of static, so don't go bidirectional here
                         self.add_constraint(
-                            Constraint { kind: ConstraintKind::RegSubVar, sub: reg, sup: var },
+                            Constraint {
+                                kind: ConstraintKind::RegSubVar,
+                                sub: reg,
+                                sup: var,
+                                visible_for_leak_check,
+                            },
                             origin,
                         );
                     } else {
                         self.add_constraint(
-                            Constraint { kind: ConstraintKind::VarEqReg, sub: var, sup: reg },
+                            Constraint {
+                                kind: ConstraintKind::VarEqReg,
+                                sub: var,
+                                sup: reg,
+                                visible_for_leak_check,
+                            },
                             origin,
                         );
                     }
@@ -500,13 +541,23 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 (ReStatic, _, st, reg) | (_, ReStatic, reg, st) => {
                     // all regions are subregions of static, so don't go bidirectional here
                     self.add_constraint(
-                        Constraint { kind: ConstraintKind::RegSubReg, sub: st, sup: reg },
+                        Constraint {
+                            kind: ConstraintKind::RegSubReg,
+                            sub: st,
+                            sup: reg,
+                            visible_for_leak_check,
+                        },
                         origin,
                     );
                 }
                 _ => {
                     self.add_constraint(
-                        Constraint { kind: ConstraintKind::RegEqReg, sub: a, sup: b },
+                        Constraint {
+                            kind: ConstraintKind::RegEqReg,
+                            sub: a,
+                            sup: b,
+                            visible_for_leak_check,
+                        },
                         origin,
                     );
                 }
@@ -520,6 +571,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
+        visible_for_leak_check: ty::VisibleForLeakCheck,
     ) {
         // cannot add constraints once regions are resolved
         debug!("origin = {:#?}", origin);
@@ -534,19 +586,33 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             (ReVar(sub_id), ReVar(sup_id)) => {
                 if sub_id != sup_id {
                     self.add_constraint(
-                        Constraint { kind: ConstraintKind::VarSubVar, sub, sup },
+                        Constraint {
+                            kind: ConstraintKind::VarSubVar,
+                            sub,
+                            sup,
+                            visible_for_leak_check,
+                        },
                         origin,
                     );
                 }
             }
-            (_, ReVar(_)) => self
-                .add_constraint(Constraint { kind: ConstraintKind::RegSubVar, sub, sup }, origin),
-            (ReVar(_), _) => self
-                .add_constraint(Constraint { kind: ConstraintKind::VarSubReg, sub, sup }, origin),
+            (_, ReVar(_)) => self.add_constraint(
+                Constraint { kind: ConstraintKind::RegSubVar, sub, sup, visible_for_leak_check },
+                origin,
+            ),
+            (ReVar(_), _) => self.add_constraint(
+                Constraint { kind: ConstraintKind::VarSubReg, sub, sup, visible_for_leak_check },
+                origin,
+            ),
             _ => {
                 if sub != sup {
                     self.add_constraint(
-                        Constraint { kind: ConstraintKind::RegSubReg, sub, sup },
+                        Constraint {
+                            kind: ConstraintKind::RegSubReg,
+                            sub,
+                            sup,
+                            visible_for_leak_check,
+                        },
                         origin,
                     )
                 }
@@ -655,8 +721,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let new_r = ty::Region::new_var(tcx, c);
         for old_r in [a, b] {
             match t {
-                Glb => self.make_subregion(origin.clone(), new_r, old_r),
-                Lub => self.make_subregion(origin.clone(), old_r, new_r),
+                Glb => {
+                    self.make_subregion(origin.clone(), new_r, old_r, ty::VisibleForLeakCheck::Yes)
+                }
+                Lub => {
+                    self.make_subregion(origin.clone(), old_r, new_r, ty::VisibleForLeakCheck::Yes)
+                }
             }
         }
         debug!("combine_vars() c={:?}", c);

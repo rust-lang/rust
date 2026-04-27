@@ -709,6 +709,7 @@ fn ty_known_to_outlive<'tcx>(
             sub_region: region,
             sup_type: ty,
             origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+            visible_for_leak_check: ty::VisibleForLeakCheck::Yes,
         });
     })
 }
@@ -728,6 +729,7 @@ fn region_known_to_outlive<'tcx>(
             SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
             region_b,
             region_a,
+            ty::VisibleForLeakCheck::Yes,
         );
     })
 }

@@ -223,26 +223,29 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         match self.ambient_variance {
             // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
             ty::Covariant => {
-                self.infcx
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .make_subregion(origin, b, a);
+                self.infcx.inner.borrow_mut().unwrap_region_constraints().make_subregion(
+                    origin,
+                    b,
+                    a,
+                    ty::VisibleForLeakCheck::Yes,
+                );
             }
             // Suptype(&'a u8, &'b u8) => Outlives('b: 'a) => SubRegion('a, 'b)
             ty::Contravariant => {
-                self.infcx
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .make_subregion(origin, a, b);
+                self.infcx.inner.borrow_mut().unwrap_region_constraints().make_subregion(
+                    origin,
+                    a,
+                    b,
+                    ty::VisibleForLeakCheck::Yes,
+                );
             }
             ty::Invariant => {
-                self.infcx
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .make_eqregion(origin, a, b);
+                self.infcx.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
+                    origin,
+                    a,
+                    b,
+                    ty::VisibleForLeakCheck::Yes,
+                );
             }
             ty::Bivariant => {
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
