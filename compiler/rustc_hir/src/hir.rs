@@ -4140,20 +4140,20 @@ impl<'hir> FnDecl<'hir> {
         None
     }
 
-    pub fn implicit_self(&self) -> ImplicitSelfKind {
+    pub const fn implicit_self(&self) -> ImplicitSelfKind {
         self.fn_decl_kind.implicit_self()
     }
 
-    pub fn c_variadic(&self) -> bool {
+    pub const fn c_variadic(&self) -> bool {
         self.fn_decl_kind.c_variadic()
     }
 
-    pub fn lifetime_elision_allowed(&self) -> bool {
+    pub const fn lifetime_elision_allowed(&self) -> bool {
         self.fn_decl_kind.lifetime_elision_allowed()
     }
 
     /// Returns `true` if the function has a splatted argument.
-    pub fn has_splatted_arg(&self) -> bool {
+    pub const fn has_splatted_arg(&self) -> bool {
         self.fn_decl_kind.has_splatted_arg()
     }
 
@@ -4179,8 +4179,7 @@ impl<'hir> FnDecl<'hir> {
 
     /// Returns a dummy FnDecl with the given span, no inputs, no output, and lifetime elision
     /// allowed.
-    #[inline]
-    pub fn dummy(span: Span) -> Self {
+    pub const fn dummy(span: Span) -> Self {
         Self {
             inputs: &[],
             output: FnRetTy::DefaultReturn(span),
@@ -4207,7 +4206,7 @@ pub enum ImplicitSelfKind {
 
 impl ImplicitSelfKind {
     /// Does this represent an implicit self?
-    pub fn has_implicit_self(&self) -> bool {
+    pub const fn has_implicit_self(&self) -> bool {
         !matches!(*self, ImplicitSelfKind::None)
     }
 }
