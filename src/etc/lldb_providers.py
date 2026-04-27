@@ -305,16 +305,33 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     )
 
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+    capacity = (
+        inner_vec.GetChildMemberWithName("buf")
+        .GetChildMemberWithName("cap")
+        .GetValueAsUnsigned()
+    )
 
     if length <= 0:
         return '""'
+
+    no_hi_bit_max: int = 1 << ((pointer.GetByteSize() * 8) - 1)
+    # technically length isn't a NoHighBit<usize>, but length should always be <= capacity
+    if length >= no_hi_bit_max or capacity >= no_hi_bit_max:
+        return "<error: invalid len/capacity>"
+    if pointer.GetValueAsUnsigned() == 0:
+        return "<error: String pointer is null>"
+
     error = SBError()
     process = pointer.GetProcess()
-    data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)
-    if error.Success():
-        return '"' + data.decode("utf8", "replace") + '"'
-    else:
-        raise Exception("ReadMemory error: %s", error.GetCString())
+    try:
+        data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)
+        if error.Success():
+            return '"' + data.decode("utf8", "replace") + '"'
+        else:
+            return f"<error: {error.GetCString()}>"
+    except Exception as e:
+        print(f"Unable to generate String summary: {e.__cause__}")
+        return "<error: Unable to read memory>"
 
 
 def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -443,6 +460,9 @@ class StructSyntheticProvider:
 class StdStringSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
+        self.no_hi_bit_max = 1 << (ptr_size - 1)
+
         self.update()
 
     def update(self):
@@ -454,7 +474,25 @@ class StdStringSyntheticProvider:
             .GetChildMemberWithName("pointer")
             .GetChildMemberWithName("pointer")
         )
-        self.length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+
+        self.capacity = (
+            inner_vec.GetChildMemberWithName("buf")
+            .GetChildMemberWithName("cap")
+            .GetValueAsUnsigned()
+        )
+
+        # As of 4/18/2026, LLDB cannot accurately determine the difference between Some("") and None
+        # this just makes sure we're not trying to access data when the string is clearly in an
+        # invalid state.
+        if (
+            self.capacity >= self.no_hi_bit_max
+            or self.data_ptr.GetValueAsUnsigned() == 0
+        ):
+            self.capacity = 0
+            self.length = 0
+        else:
+            self.length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+
         self.element_type = self.data_ptr.GetType().GetPointeeType()
 
     def has_children(self) -> bool:
@@ -928,6 +966,8 @@ class StdVecSyntheticProvider:
         # logger >> "[StdVecSyntheticProvider] for " + str(valobj.GetName())
         self.valobj = valobj
         self.element_type = None
+        ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
+        self.no_hi_bit_max = 1 << (ptr_size - 1)
         self.update()
 
     def num_children(self) -> int:
@@ -949,14 +989,18 @@ class StdVecSyntheticProvider:
         return element
 
     def update(self):
-        self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
-        self.buf = self.valobj.GetChildMemberWithName("buf").GetChildMemberWithName(
-            "inner"
+        buf: SBValue = self.valobj.GetChildMemberWithName("buf")
+        self.data_ptr = unwrap_unique_or_non_null(
+            buf.GetChildMemberWithName("inner").GetChildMemberWithName("ptr")
         )
 
-        self.data_ptr = unwrap_unique_or_non_null(
-            self.buf.GetChildMemberWithName("ptr")
-        )
+        capacity: int = buf.GetChildMemberWithName("cap").GetValueAsUnsigned()
+
+        if capacity >= self.no_hi_bit_max or self.data_ptr.GetValueAsUnsigned() == 0:
+            self.capacity = 0
+            self.length = 0
+        else:
+            self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
 
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
