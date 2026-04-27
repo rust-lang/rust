@@ -251,6 +251,9 @@ impl VaList<'_> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Clone for VaList<'f> {
+    /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
+    ///
+    /// Corresponds to `va_copy` in C.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
@@ -263,8 +266,14 @@ impl<'f> const Clone for VaList<'f> {
 
 #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
 impl<'f> const Drop for VaList<'f> {
+    /// Drop the [`VaList`].
+    ///
+    /// Corresponds to `va_end` in C.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     fn drop(&mut self) {
+        // Call the rust `va_end` intrinsic, which is a no-op and does not map to LLVM `va_end`.
+        // The rust intrinsic exists as a hook for Miri to check for UB.
+        //
         // SAFETY: this variable argument list is being dropped, so won't be read from again.
         unsafe { va_end(self) }
     }
@@ -324,7 +333,7 @@ mod sealed {
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
 // to accept unsupported types in the meantime.
 #[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe: sealed::Sealed {}
+pub unsafe trait VaArgSafe: Copy + sealed::Sealed {}
 
 crate::cfg_select! {
     any(target_arch = "avr", target_arch = "msp430") => {
@@ -381,6 +390,12 @@ const _: () = {
     va_arg_safe_check::<crate::ffi::c_ulonglong>();
 
     va_arg_safe_check::<crate::ffi::c_double>();
+
+    va_arg_safe_check::<*const crate::ffi::c_void>();
+    va_arg_safe_check::<*mut crate::ffi::c_void>();
+
+    va_arg_safe_check::<*const crate::ffi::c_char>();
+    va_arg_safe_check::<*mut crate::ffi::c_char>();
 };
 
 impl<'f> VaList<'f> {
