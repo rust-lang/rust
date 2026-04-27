@@ -356,7 +356,7 @@ pub enum PathSet {
     /// command-line value of `std` will match if `library/std` is in the
     /// set.
     ///
-    /// NOTE: the paths within a set should always be aliases of one another.
+    /// NOTE: the paths within a set should all select the same unit of work.
     /// For example, `src/librustdoc` and `src/tools/rustdoc` should be in the same set,
     /// but `library/core` and `library/std` generally should not, unless there's no way (for that Step)
     /// to build them separately.
@@ -555,10 +555,7 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    /// single, non-aliased path
-    ///
-    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
-    pub fn path(mut self, path: &str) -> Self {
+    fn assert_valid_path(&self, path: &str) {
         let submodules_paths = self.builder.submodule_paths();
 
         // assert only if `p` isn't submodule
@@ -568,9 +565,28 @@ impl<'a> ShouldRun<'a> {
                 "`should_run.path` should correspond to a real on-disk path - use `alias` if there is no relevant path: {path}"
             );
         }
+    }
+
+    /// A single path
+    ///
+    /// Must be an on-disk path; use [`alias`][Self::alias] for names that do not
+    /// correspond to on-disk paths.
+    pub fn path(mut self, path: &str) -> Self {
+        self.assert_valid_path(path);
 
         let task = TaskPath { path: path.into(), kind: Some(self.kind) };
         self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
+        self
+    }
+
+    /// Multiple on-disk paths that should select the same unit of work.
+    pub fn selectors(mut self, paths: &[&str]) -> Self {
+        let mut set = BTreeSet::new();
+        for path in paths {
+            self.assert_valid_path(path);
+            set.insert(TaskPath { path: (*path).into(), kind: Some(self.kind) });
+        }
+        self.paths.insert(PathSet::Set(set));
         self
     }
 

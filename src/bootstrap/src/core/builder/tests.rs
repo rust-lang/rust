@@ -2401,6 +2401,29 @@ mod snapshot {
     }
 
     #[test]
+    fn test_exclude_rustdoc_aliases() {
+        let ctx = TestCtx::new();
+        let host = TargetSelection::from_user(&host_target());
+
+        let get_steps = |args: &[&str]| ctx.config("build").args(args).get_steps();
+
+        for args in [
+            ["--skip", "rustdoc"].as_slice(),
+            ["--skip", "src/tools/rustdoc"].as_slice(),
+            ["--skip", "src/librustdoc"].as_slice(),
+        ] {
+            let steps = get_steps(args);
+
+            steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
+            steps.assert_no_match(|metadata| {
+                metadata.name == "rustdoc"
+                    && metadata.kind == Kind::Build
+                    && metadata.target == host
+            });
+        }
+    }
+
+    #[test]
     fn test_cargo_stage_1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
