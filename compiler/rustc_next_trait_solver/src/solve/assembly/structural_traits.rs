@@ -993,8 +993,9 @@ where
             .iter()
             .filter(|source_projection| self.projection_may_match(**source_projection, alias_term));
         let Some(replacement) = matching_projections.next() else {
-            // This shouldn't happen.
-            panic!("could not replace {alias_term:?} with term from from {:?}", self.self_ty);
+            // This can happen when the projection on trait object isn't well-formed.
+            // So the matching projection is filtered out.
+            return Ok(None);
         };
         // FIXME: This *may* have issues with duplicated projections.
         if matching_projections.next().is_some() {

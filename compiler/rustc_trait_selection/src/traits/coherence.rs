@@ -230,11 +230,20 @@ fn fresh_impl_header_normalized<'tcx>(
 ) -> ImplHeader<'tcx> {
     let header = fresh_impl_header(infcx, impl_def_id, is_of_trait);
 
-    let InferOk { value: mut header, obligations } =
-        infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(header));
-
-    header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
-    header
+    // FIXME: If we normalize the header, we'll unify headers more than we want.
+    // That's because we replace unevaluated consts with infer vars and then they can unify with
+    // anything.
+    // Even checking the obligations later doesn't help as the cyclic const detection is in
+    // relating.
+    // See `tests/ui/const-generics/issues/issue-89304.rs`
+    if infcx.next_trait_solver() {
+        header
+    } else {
+        let InferOk { value: mut header, obligations } =
+            infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(header));
+        header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
+        header
+    }
 }
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including

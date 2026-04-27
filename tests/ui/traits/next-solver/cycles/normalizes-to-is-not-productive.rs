@@ -38,6 +38,7 @@ fn impls_bound<T: Bound>() {
 //       - normalize `<Foo as Trait<T>>::Assoc`
 //         - via blanket impl, requires where-clause `Foo: Bound` -> cycle
 fn generic<T>()
+//~^ ERROR: the trait bound `Foo: Bound` is not satisfied
 where
     <Foo as Trait<T>>::Assoc: Bound,
     //~^ ERROR the trait bound `Foo: Bound` is not satisfied

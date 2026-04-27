@@ -11,10 +11,10 @@ trait Proj<'a> {
     type Assoc;
 }
 fn foo<T>()
+    //~^ ERROR: overflow normalizing the associated type `<T as Proj<'b>>::Assoc`
 where
     T: for<'a> Proj<'a, Assoc = for<'b> fn(<T as Proj<'b>>::Assoc)>,
     (): Trait<<T as Proj<'static>>::Assoc>
-    //~^ ERROR overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>` [E0275]
 {
 }
 

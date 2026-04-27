@@ -470,13 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tail = self.tcx.struct_tail_raw(
                 ty,
                 &self.misc(span),
-                |ty| {
-                    if self.next_trait_solver() {
-                        self.try_structurally_resolve_type(span, ty)
-                    } else {
-                        self.normalize(span, Unnormalized::new_wip(ty))
-                    }
-                },
+                |ty| self.normalize(span, Unnormalized::new_wip(ty)),
                 || {},
             );
             // Sized types have static alignment, and so do slices.
@@ -1432,35 +1426,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Try to resolve `ty` to a structural type, normalizing aliases.
-    ///
-    /// In case there is still ambiguity, the returned type may be an inference
-    /// variable. This is different from `structurally_resolve_type` which errors
-    /// in this case.
-    #[instrument(level = "debug", skip(self, sp), ret)]
-    pub(crate) fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if self.next_trait_solver()
-            && let ty::Alias(..) = ty.kind()
-        {
-            // We need to use a separate variable here as otherwise the temporary for
-            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
-            // in a reentrant borrow, causing an ICE.
-            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_ty(
-                Unnormalized::new_wip(ty),
-                &mut **self.fulfillment_cx.borrow_mut(),
-            );
-            match result {
-                Ok(normalized_ty) => normalized_ty,
-                Err(errors) => {
-                    let guar = self.err_ctxt().report_fulfillment_errors(errors);
-                    return Ty::new_error(self.tcx, guar);
-                }
-            }
-        } else {
-            self.resolve_vars_with_obligations(ty)
-        }
-    }
-
     #[instrument(level = "debug", skip(self, sp), ret)]
     pub(crate) fn try_structurally_resolve_const(
         &self,
@@ -1502,7 +1467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// If no resolution is possible, then an error is reported.
     /// Numeric inference variables may be left unresolved.
     pub(crate) fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.try_structurally_resolve_type(sp, ty);
+        let ty = self.resolve_vars_with_obligations(ty);
 
         if !ty.is_ty_var() { ty } else { self.type_must_be_known_at_this_point(sp, ty) }
     }

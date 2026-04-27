@@ -8,9 +8,7 @@ use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_trait_selection::solve::NoSolution;
 use rustc_trait_selection::traits::ObligationCause;
-use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use tracing::{debug, instrument};
 
@@ -242,71 +240,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body.source.def_id().expect_local(),
         );
 
-        if self.infcx.next_trait_solver() {
-            let param_env = self.infcx.param_env;
-            // FIXME: Make this into a real type op?
-            self.fully_perform_op(
-                location.to_locations(),
-                ConstraintCategory::Boring,
-                CustomTypeOp::new(
-                    |ocx| {
-                        let structurally_normalize = |ty| {
-                            ocx.structurally_normalize_ty(&cause, param_env, Unnormalized::new_wip(ty))
-                            .unwrap_or_else(|_| bug!("struct tail should have been computable, since we computed it in HIR"))
-                        };
-
-                        let tail = tcx.struct_tail_raw(
-                            ty,
-                            &cause,
-                            structurally_normalize,
-                            || {},
-                        );
-
-                        Ok(tail)
-                    },
-                    "normalizing struct tail",
-                ),
-            )
-            .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
-        } else {
-            let mut normalize = |ty| self.normalize(ty, location);
-            let tail = tcx.struct_tail_raw(ty, &cause, &mut normalize, || {});
-            normalize(tail)
-        }
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub(super) fn structurally_resolve(
-        &mut self,
-        ty: Ty<'tcx>,
-        location: impl NormalizeLocation,
-    ) -> Ty<'tcx> {
-        if self.infcx.next_trait_solver() {
-            let body = self.body;
-            let param_env = self.infcx.param_env;
-            // FIXME: Make this into a real type op?
-            self.fully_perform_op(
-                location.to_locations(),
-                ConstraintCategory::Boring,
-                CustomTypeOp::new(
-                    |ocx| {
-                        ocx.structurally_normalize_ty(
-                            &ObligationCause::misc(
-                                location.to_locations().span(body),
-                                body.source.def_id().expect_local(),
-                            ),
-                            param_env,
-                            Unnormalized::new_wip(ty),
-                        )
-                        .map_err(|_| NoSolution)
-                    },
-                    "normalizing struct tail",
-                ),
-            )
-            .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar))
-        } else {
-            self.normalize(ty, location)
-        }
+        let mut normalize = |ty| self.normalize(ty, location);
+        let tail = tcx.struct_tail_raw(ty, &cause, &mut normalize, || {});
+        normalize(tail)
     }
 
     #[instrument(skip(self), level = "debug")]

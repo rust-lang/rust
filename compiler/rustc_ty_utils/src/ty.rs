@@ -362,14 +362,8 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip(),
         &cause,
         |ty| {
-            ocx.structurally_normalize_ty(&cause, param_env, Unnormalized::new_wip(ty))
-                .unwrap_or_else(|_| {
-                    Ty::new_error_with_message(
-                        tcx,
-                        tcx.def_span(impl_def_id),
-                        "struct tail should be computable",
-                    )
-                })
+            // FIXME: ambiguity is just ignored.
+            ocx.normalize(&cause, param_env, Unnormalized::new_wip(ty))
         },
         || (),
     );

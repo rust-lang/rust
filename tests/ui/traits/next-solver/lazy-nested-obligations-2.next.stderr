@@ -1,10 +1,10 @@
-error[E0271]: type mismatch resolving `fn(&str) {f} == fn(&str)`
+error[E0271]: type mismatch resolving `fn(&str) == fn(&str) {f}`
   --> $DIR/lazy-nested-obligations-2.rs:20:21
    |
 LL |     let _: V<i32> = V(f);
    |                     ^^^^ types differ
 
-error[E0271]: type mismatch resolving `fn(&str) {f} == fn(&str)`
+error[E0271]: type mismatch resolving `fn(&str) == fn(&str) {f}`
   --> $DIR/lazy-nested-obligations-2.rs:27:22
    |
 LL |     let _: E3<i32> = E3::Var(f);

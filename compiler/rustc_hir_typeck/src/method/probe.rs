@@ -2112,21 +2112,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // `WhereClauseCandidate` requires that the self type is a param,
                         // because it has special behavior with candidate preference as an
                         // inherent pick.
-                        match ocx.structurally_normalize_ty(
+                        let ty = ocx.normalize(
                             cause,
                             self.param_env,
                             Unnormalized::new_wip(trait_ref.self_ty()),
-                        ) {
-                            Ok(ty) => {
-                                if !matches!(ty.kind(), ty::Param(_)) {
-                                    debug!("--> not a param ty: {xform_self_ty:?}");
-                                    return ProbeResult::NoMatch;
-                                }
-                            }
-                            Err(errors) => {
-                                debug!("--> cannot relate self-types {:?}", errors);
-                                return ProbeResult::NoMatch;
-                            }
+                        );
+                        if !matches!(ty.kind(), ty::Param(_)) {
+                            debug!("--> not a param ty: {xform_self_ty:?}");
+                            return ProbeResult::NoMatch;
                         }
                     }
 

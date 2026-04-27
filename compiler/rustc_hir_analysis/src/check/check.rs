@@ -923,6 +923,15 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let ty_span = tcx.ty_span(def_id);
+                // FIXME: Unnormalized version can ill-formed even if the normalized one is well-formed.
+                // Don't break the old solver for now. See `tests/ui/wf/wf-normalization-sized.rs`.
+                if tcx.next_trait_solver_globally() {
+                    wfcx.register_wf_obligation(
+                        ty_span,
+                        Some(WellFormedLoc::Ty(def_id)),
+                        ty.skip_normalization().into(),
+                    );
+                }
                 let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
                 wfcx.register_bound(

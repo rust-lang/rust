@@ -461,7 +461,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |ty| self.structurally_resolve(ty, locations),
+                |ty| self.normalize(ty, locations),
                 |ty, variant_index, field, ()| PlaceTy::field_ty(tcx, ty, variant_index, field),
                 |_| unreachable!(),
             );

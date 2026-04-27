@@ -315,17 +315,6 @@ fn orphan_check<'tcx>(
             return Ok(user_ty);
         }
 
-        let ty = if infcx.next_trait_solver() {
-            ocx.structurally_normalize_ty(
-                &cause,
-                ty::ParamEnv::empty(),
-                Unnormalized::new_wip(infcx.resolve_vars_if_possible(ty)),
-            )
-            .unwrap_or(ty)
-        } else {
-            ty
-        };
-
         Ok::<_, !>(ty)
     };
 

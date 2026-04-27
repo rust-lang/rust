@@ -1,8 +1,12 @@
-error[E0275]: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
-  --> $DIR/find-param-recursion-issue-152716.rs:16:9
+error[E0275]: overflow normalizing the associated type `<T as Proj<'b>>::Assoc`
+  --> $DIR/find-param-recursion-issue-152716.rs:13:1
    |
-LL |     (): Trait<<T as Proj<'static>>::Assoc>
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / fn foo<T>()
+LL | |
+LL | | where
+LL | |     T: for<'a> Proj<'a, Assoc = for<'b> fn(<T as Proj<'b>>::Assoc)>,
+LL | |     (): Trait<<T as Proj<'static>>::Assoc>
+   | |__________________________________________^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`find_param_recursion_issue_152716`)
 

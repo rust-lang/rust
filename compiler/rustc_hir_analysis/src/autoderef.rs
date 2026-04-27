@@ -90,16 +90,9 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
                 // NOTE: we may still need to normalize the built-in deref in case
                 // we have some type like `&<Ty as Trait>::Assoc`, since users of
                 // autoderef expect this type to have been structurally normalized.
-                if self.infcx.next_trait_solver()
-                    && let ty::Alias(..) = ty.kind()
-                {
-                    let (normalized_ty, obligations) =
-                        self.structurally_normalize_ty(Unnormalized::new_wip(ty))?;
-                    self.state.obligations.extend(obligations);
-                    (AutoderefKind::Builtin, normalized_ty)
-                } else {
-                    (AutoderefKind::Builtin, ty)
-                }
+                let (normalized_ty, obligations) = self.normalize_ty(Unnormalized::new_wip(ty))?;
+                self.state.obligations.extend(obligations);
+                (AutoderefKind::Builtin, normalized_ty)
             } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
                 // The overloaded deref check already normalizes the pointee type.
                 (AutoderefKind::Overloaded, ty)
@@ -177,9 +170,8 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let (normalized_ty, obligations) = self.structurally_normalize_ty(Unnormalized::new(
-            Ty::new_projection(tcx, trait_target_def_id, [ty]),
-        ))?;
+        let (normalized_ty, obligations) = self
+            .normalize_ty(Unnormalized::new(Ty::new_projection(tcx, trait_target_def_id, [ty])))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
@@ -187,25 +179,18 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn structurally_normalize_ty(
+    pub fn normalize_ty(
         &self,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
-        let Ok(normalized_ty) = ocx.structurally_normalize_ty(
+        let normalized_ty = ocx.normalize(
             &traits::ObligationCause::misc(self.span, self.body_id),
             self.param_env,
             ty,
-        ) else {
-            // We shouldn't have errors here in the old solver, except for
-            // evaluate/fulfill mismatches, but that's not a reason for an ICE.
-            return None;
-        };
+        );
         let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
-            if self.infcx.next_trait_solver() {
-                unreachable!();
-            }
             // We shouldn't have errors here in the old solver, except for
             // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             debug!(?errors, "encountered errors while fulfilling");

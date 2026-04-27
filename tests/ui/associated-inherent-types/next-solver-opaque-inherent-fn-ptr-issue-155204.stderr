@@ -46,16 +46,17 @@ LL |     type AssocType = impl Send;
 error[E0308]: mismatched types
   --> $DIR/next-solver-opaque-inherent-fn-ptr-issue-155204.rs:14:9
    |
+LL |     type AssocType = impl Send;
+   |                      --------- the expected opaque type
+...
 LL |     fn ret(&self) -> Self::AssocType {
    |                      --------------- expected `Windows<for<'a> fn(&'a ())>::AssocType` because of return type
 LL |
 LL |         ()
    |         ^^ types differ
    |
-   = note: expected associated type `Windows<for<'a> fn(&'a ())>::AssocType`
-                    found unit type `()`
-   = help: consider constraining the associated type `Windows<for<'a> fn(&'a ())>::AssocType` to `()` or calling a method that returns `Windows<for<'a> fn(&'a ())>::AssocType`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   = note: expected opaque type `Windows<for<'a> fn(&'a ())>::AssocType`
+                found unit type `()`
 
 error: aborting due to 7 previous errors
 

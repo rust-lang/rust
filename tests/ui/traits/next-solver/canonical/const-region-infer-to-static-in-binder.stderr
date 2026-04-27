@@ -4,6 +4,18 @@ error[E0284]: type annotations needed: cannot satisfy `the constant `{ || {} }` 
 LL | struct X<const FN: fn() = { || {} }>;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `{ || {} }` can be evaluated`
 
+error[E0284]: type annotations needed
+  --> $DIR/const-region-infer-to-static-in-binder.rs:4:10
+   |
+LL | struct X<const FN: fn() = { || {} }>;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+note: required by a const generic parameter in `X`
+  --> $DIR/const-region-infer-to-static-in-binder.rs:4:10
+   |
+LL | struct X<const FN: fn() = { || {} }>;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `X`
+
 error: using function pointers as const generic parameters is forbidden
   --> $DIR/const-region-infer-to-static-in-binder.rs:4:20
    |
@@ -21,6 +33,6 @@ LL | struct X<const FN: fn() = { || {} }>;
    = note: the only supported types are integers, `bool`, and `char`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0284`.

@@ -43,11 +43,10 @@ impl<'a, 'tcx> Expectation<'tcx> {
     pub(super) fn try_structurally_resolve_and_adjust_for_branches(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        span: Span,
     ) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
-                let ety = fcx.try_structurally_resolve_type(span, ety);
+                let ety = fcx.resolve_vars_with_obligations(ety);
                 if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
             }
             ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),

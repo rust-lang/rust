@@ -32,14 +32,6 @@ note: required by a bound in `Bar`
 LL | struct Bar<T: Foo + ?Sized> {
    |               ^^^ required by this bound in `Bar`
 
-error[E0618]: expected function, found `Box<(dyn Callback<(dyn Callback<T> + 'static)> + 'static)>`
-  --> $DIR/object-projection-with-unsatisfied-bound-2.rs:24:9
-   |
-LL |         (self.callback)(any(), any());
-   |         ^^^^^^^^^^^^^^^--------------
-   |         |
-   |         call expression requires function
-
 error[E0277]: the trait bound `(dyn Callback<T> + 'static): Foo` is not satisfied
   --> $DIR/object-projection-with-unsatisfied-bound-2.rs:24:9
    |
@@ -51,6 +43,14 @@ help: this trait has no implementations, consider adding one
    |
 LL | trait Foo {
    | ^^^^^^^^^
+
+error[E0618]: expected function, found `Box<(dyn Callback<(dyn Callback<T> + 'static), Output = ()> + 'static)>`
+  --> $DIR/object-projection-with-unsatisfied-bound-2.rs:24:9
+   |
+LL |         (self.callback)(any(), any());
+   |         ^^^^^^^^^^^^^^^--------------
+   |         |
+   |         call expression requires function
 
 error: aborting due to 4 previous errors
 

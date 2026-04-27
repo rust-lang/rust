@@ -55,5 +55,4 @@ impl<T> Foo for T where T: Expression {}
 fn main() {
     SelectInt.check("bar");
     //~^ ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
-    //[next]~| ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
 }
