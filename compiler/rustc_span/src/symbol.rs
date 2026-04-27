@@ -1857,6 +1857,7 @@ symbols! {
         rustdoc,
         rustdoc_internals,
         rustdoc_missing_doc_code_examples,
+        rustdoc_texmath,
         rustfmt,
         rvalue_static_promotion,
         rvector,
