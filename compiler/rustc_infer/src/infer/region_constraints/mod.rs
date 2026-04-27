@@ -441,9 +441,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         debug!("RegionConstraintCollector: add_verify({:?})", verify);
 
         // skip no-op cases known to be satisfied
-        if let VerifyBound::AllBounds(ref bs) = verify.bound
-            && bs.is_empty()
-        {
+        if verify.bound.holds_trivially() {
             return;
         }
 
@@ -762,13 +760,47 @@ impl<'tcx> VerifyBound<'tcx> {
     }
 
     pub fn or(self, vb: VerifyBound<'tcx>) -> VerifyBound<'tcx> {
-        if self.must_hold() || vb.cannot_hold() {
-            self
-        } else if self.cannot_hold() || vb.must_hold() {
-            vb
-        } else {
-            VerifyBound::AnyBound(vec![self, vb])
+        match (self, vb) {
+            // Normalise the case of a trivially satisfied bound to the smallest possible case.
+            (this, that) if this.must_hold() || that.must_hold() => Self::always_holds(),
+            // Short-circuit:
+            (this, that) if that.cannot_hold() => this,
+            (this, that) if this.cannot_hold() => that,
+            (VerifyBound::AnyBound(mut this), VerifyBound::AnyBound(mut that)) => {
+                // Flatten two `AnyBound`s.
+                this.append(&mut that);
+                VerifyBound::AnyBound(this)
+            }
+            // FIXME: This can still nest arbitrarily.
+            (this, that) => VerifyBound::AnyBound(vec![this, that]),
         }
+    }
+
+    pub fn always_holds() -> Self {
+        VerifyBound::AllBounds(Vec::new())
+    }
+
+    pub fn never_holds() -> Self {
+        VerifyBound::AnyBound(Vec::new())
+    }
+
+    // Perform a cheap check if this bound trivially always holds.
+    #[inline]
+    pub fn holds_trivially(&self) -> bool {
+        let holds_trivially = match self {
+            VerifyBound::IfEq(_) => false,
+            VerifyBound::OutlivedBy(region) => region.is_static(),
+            VerifyBound::IsEmpty => false,
+            VerifyBound::AnyBound(_verify_bounds) => false,
+            VerifyBound::AllBounds(verify_bounds) => verify_bounds.is_empty(),
+        };
+
+        // Booby-trap it so that anyone breaking the intended normalisation trips this.
+        debug_assert!(
+            holds_trivially == self.must_hold(),
+            "Self-evident bound {self:?} wasn't normalised properly!"
+        );
+        holds_trivially
     }
 }
 

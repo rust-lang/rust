@@ -397,7 +397,9 @@ where
         param_ty: ty::ParamTy,
     ) {
         let verify_bound = self.verify_bound.param_or_placeholder_bound(param_ty.to_ty(self.tcx));
-        self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
+        if !verify_bound.holds_trivially() {
+            self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -410,12 +412,14 @@ where
         let verify_bound = self
             .verify_bound
             .param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty));
-        self.delegate.push_verify(
-            origin,
-            GenericKind::Placeholder(placeholder_ty),
-            region,
-            verify_bound,
-        );
+        if !verify_bound.holds_trivially() {
+            self.delegate.push_verify(
+                origin,
+                GenericKind::Placeholder(placeholder_ty),
+                region,
+                verify_bound,
+            );
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -528,6 +532,18 @@ where
         // edges into the inference graph, leading to inference failures
         // even though a satisfactory solution exists.
         let verify_bound = self.verify_bound.alias_bound(alias_ty);
+        if verify_bound.holds_trivially() {
+            debug!("Skipping trivially satisfied verify bound.");
+            return;
+        }
+
+        // If this bound is always satisfied, a complex bound should never have been
+        // constructed and we should have gotten [[`VerifyBound::always_satisfied`]]
+        debug_assert!(
+            !verify_bound.must_hold(),
+            "Attempted to add always-satisfied verify bound {verify_bound:?}"
+        );
+
         debug!("alias_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, GenericKind::Alias(alias_ty), region, verify_bound);
     }
