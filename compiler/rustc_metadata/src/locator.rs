@@ -224,6 +224,7 @@ use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
@@ -1051,7 +1052,8 @@ impl fmt::Display for MetadataError<'_> {
 }
 
 impl CrateError {
-    pub(crate) fn report(self, sess: &Session, span: Span, missing_core: bool) {
+    pub(crate) fn report(self, tcx: TyCtxt<'_>, span: Span, missing_core: bool) {
+        let sess = tcx.sess;
         let dcx = sess.dcx();
         match self {
             CrateError::NonAsciiName(crate_name) => {
@@ -1186,11 +1188,7 @@ impl CrateError {
                         crate_name,
                         add_info,
                         missing_core,
-                        current_crate: sess
-                            .opts
-                            .crate_name
-                            .clone()
-                            .unwrap_or_else(|| "<unknown>".to_string()),
+                        current_crate: tcx.local_crate_name().to_string(),
                         is_nightly_build: sess.is_nightly_build(),
                         profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                         locator_triple: locator.triple,
@@ -1212,11 +1210,7 @@ impl CrateError {
                     crate_name,
                     add_info: String::new(),
                     missing_core,
-                    current_crate: sess
-                        .opts
-                        .crate_name
-                        .clone()
-                        .unwrap_or_else(|| "<unknown>".to_string()),
+                    current_crate: tcx.local_crate_name().to_string(),
                     is_nightly_build: sess.is_nightly_build(),
                     profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
                     locator_triple: sess.opts.target_triple.clone(),

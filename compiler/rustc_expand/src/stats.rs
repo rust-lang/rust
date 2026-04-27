@@ -37,7 +37,7 @@ pub(crate) fn unreachable_to_string<T>(_: &T) -> String {
 }
 
 pub(crate) fn update_bang_macro_stats(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     fragment_kind: AstFragmentKind,
     span: Span,
     mac: Box<ast::MacCall>,
@@ -75,7 +75,7 @@ pub(crate) fn update_bang_macro_stats(
 }
 
 pub(crate) fn update_attr_macro_stats(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     fragment_kind: AstFragmentKind,
     span: Span,
     path: &ast::Path,
@@ -104,7 +104,7 @@ pub(crate) fn update_attr_macro_stats(
 }
 
 pub(crate) fn update_derive_macro_stats(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     fragment_kind: AstFragmentKind,
     span: Span,
     path: &ast::Path,
@@ -118,7 +118,7 @@ pub(crate) fn update_derive_macro_stats(
 }
 
 pub(crate) fn update_macro_stats(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     macro_kind: MacroKind,
     fragment_kind: AstFragmentKind,
     span: Span,

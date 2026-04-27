@@ -21,7 +21,7 @@ fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy +
 }
 
 fn record_expand_proc_macro<'a>(
-    ecx: &ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a, '_>,
     name: &'static str,
     span: Span,
 ) -> TimingGuard<'a> {
@@ -37,7 +37,7 @@ pub struct BangProcMacro {
 impl base::BangProcMacro for BangProcMacro {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         input: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -62,7 +62,7 @@ pub struct AttrProcMacro {
 impl base::AttrProcMacro for AttrProcMacro {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
@@ -92,7 +92,7 @@ pub struct DeriveProcMacro {
 impl MultiItemModifier for DeriveProcMacro {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         _meta_item: &ast::MetaItem,
         item: Annotatable,
@@ -181,7 +181,7 @@ type DeriveClient = pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>
 fn expand_derive_macro(
     invoc_id: LocalExpnId,
     input: TokenStream,
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     client: DeriveClient,
 ) -> Result<TokenStream, ()> {
     let _timer =
@@ -224,7 +224,7 @@ struct QueryDeriveExpandCtx {
 impl QueryDeriveExpandCtx {
     /// Store the extension context and the client into the thread local value.
     /// It will be accessible via the `with` method while `f` is active.
-    fn enter<F, R>(ecx: &mut ExtCtxt<'_>, client: DeriveClient, f: F) -> R
+    fn enter<F, R>(ecx: &mut ExtCtxt<'_, '_>, client: DeriveClient, f: F) -> R
     where
         F: FnOnce() -> R,
     {
@@ -237,11 +237,11 @@ impl QueryDeriveExpandCtx {
     /// Must be called while the `enter` function is active.
     fn with<F, R>(f: F) -> R
     where
-        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a>, DeriveClient) -> R,
+        F: for<'a, 'b> FnOnce(&'b mut ExtCtxt<'a, '_>, DeriveClient) -> R,
     {
         DERIVE_EXPAND_CTX.with(|ctx| {
             let ectx = {
-                let casted = ctx.expansion_ctx.cast::<ExtCtxt<'_>>();
+                let casted = ctx.expansion_ctx.cast::<ExtCtxt<'_, '_>>();
                 // SAFETY: We can only get the value from `with` while the `enter` function
                 // is active (on the callstack), and that function's signature ensures that the
                 // lifetime is valid.

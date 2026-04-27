@@ -62,7 +62,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel, OutputType};
 use rustc_session::{EarlyDiagCtxt, Session};
 use rustc_span::def_id::DefId;
 
@@ -219,7 +219,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         // Obtain and complete the Miri configuration.
         let mut config = self.miri_config.take().expect("after_analysis must only be called once");
         // Add filename to `miri` arguments.
-        config.args.insert(0, tcx.sess.io.input.filestem().to_string());
+        let exe_path = tcx.output_filenames(()).path(OutputType::Exe);
+        let exe_stem = exe_path.filestem().unwrap().to_string_lossy();
+        config.args.insert(0, exe_stem.to_string());
 
         // Adjust working directory for interpretation.
         if let Some(cwd) = env::var_os("MIRI_CWD") {

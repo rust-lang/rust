@@ -15,7 +15,7 @@ use rustc_span::{Span, sym};
 /// `$crate` will refer to either the `std` or `core` crate depending on which
 /// one we're expanding from.
 pub(crate) fn expand_panic<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -28,7 +28,7 @@ pub(crate) fn expand_panic<'cx>(
 /// - `$crate::panic::unreachable_2021!(...)`
 /// depending on the edition.
 pub(crate) fn expand_unreachable<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -38,7 +38,7 @@ pub(crate) fn expand_unreachable<'cx>(
 
 fn expand<'cx>(
     mac: rustc_span::Symbol,
-    cx: &'cx ExtCtxt<'_>,
+    cx: &'cx ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

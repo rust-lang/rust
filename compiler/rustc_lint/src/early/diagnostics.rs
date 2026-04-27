@@ -23,22 +23,19 @@ impl<'a> Diagnostic<'a, ()> for DiagAndSess<'_> {
 
 /// This is a diagnostic struct that will decorate a `AttributeLintKind`
 /// Directly creating the lint structs is expensive, using this will only decorate the lint structs when needed.
-pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
-    pub sess: &'sess Session,
-    pub tcx: Option<TyCtxt<'tcx>>,
+pub struct DecorateAttrLint<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     pub diagnostic: &'a AttributeLintKind,
 }
 
-impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
+impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
             &AttributeLintKind::UnexpectedCfgName(name, value) => {
-                check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
-                    .into_diag(dcx, level)
+                check_cfg::unexpected_cfg_name(self.tcx, name, value).into_diag(dcx, level)
             }
             &AttributeLintKind::UnexpectedCfgValue(name, value) => {
-                check_cfg::unexpected_cfg_value(self.sess, self.tcx, name, value)
-                    .into_diag(dcx, level)
+                check_cfg::unexpected_cfg_value(self.tcx, name, value).into_diag(dcx, level)
             }
         }
     }

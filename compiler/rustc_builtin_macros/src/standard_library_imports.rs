@@ -11,7 +11,7 @@ use thin_vec::thin_vec;
 pub fn inject(
     krate: &mut ast::Crate,
     pre_configured_attrs: &[ast::Attribute],
-    resolver: &mut dyn ResolverExpand,
+    resolver: &mut dyn ResolverExpand<'_>,
     sess: &Session,
     features: &Features,
 ) -> usize {

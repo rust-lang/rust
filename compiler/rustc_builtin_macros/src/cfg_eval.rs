@@ -18,7 +18,7 @@ use tracing::instrument;
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 pub(crate) fn expand(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     _span: Span,
     meta_item: &ast::MetaItem,
     annotatable: Annotatable,

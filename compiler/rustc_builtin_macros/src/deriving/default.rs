@@ -12,7 +12,7 @@ use crate::deriving::generic::*;
 use crate::errors;
 
 pub(crate) fn expand_deriving_default(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &ast::MetaItem,
     item: &Annotatable,
@@ -57,14 +57,14 @@ pub(crate) fn expand_deriving_default(
     trait_def.expand(cx, mitem, item, push)
 }
 
-fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+fn default_call(cx: &ExtCtxt<'_, '_>, span: Span) -> Box<ast::Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())
 }
 
 fn default_struct_substructure(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     trait_span: Span,
     substr: &Substructure<'_>,
     summary: &StaticFields<'_>,
@@ -97,7 +97,7 @@ fn default_struct_substructure(
 }
 
 fn default_enum_substructure(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     trait_span: Span,
     enum_def: &EnumDef,
     item_span: Span,
@@ -156,7 +156,7 @@ fn default_enum_substructure(
 }
 
 fn extract_default_variant<'a>(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     enum_def: &'a EnumDef,
     trait_span: Span,
     item_span: Span,
@@ -240,7 +240,7 @@ fn extract_default_variant<'a>(
 }
 
 fn validate_default_attribute(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     default_variant: &rustc_ast::Variant,
 ) -> Result<(), ErrorGuaranteed> {
     let attrs: SmallVec<[_; 1]> =
@@ -275,11 +275,11 @@ fn validate_default_attribute(
     Ok(())
 }
 
-struct DetectNonVariantDefaultAttr<'a, 'b> {
-    cx: &'a ExtCtxt<'b>,
+struct DetectNonVariantDefaultAttr<'a, 'b, 'tcx> {
+    cx: &'a ExtCtxt<'b, 'tcx>,
 }
 
-impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b, '_> {
     fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
         if attr.has_name(kw::Default) {
             let post = if self.cx.ecfg.features.default_field_values() {

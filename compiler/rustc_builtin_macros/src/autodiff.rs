@@ -83,7 +83,7 @@ mod llvm_enzyme {
     }
 
     pub(crate) fn from_ast(
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         meta_item: &ThinVec<MetaItemInner>,
         has_ret: bool,
         mode: DiffMode,
@@ -162,7 +162,7 @@ mod llvm_enzyme {
     }
 
     pub(crate) fn expand_forward(
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         expand_span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
@@ -171,7 +171,7 @@ mod llvm_enzyme {
     }
 
     pub(crate) fn expand_reverse(
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         expand_span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
@@ -203,7 +203,7 @@ mod llvm_enzyme {
     /// FIXME(ZuseZ4): Once autodiff is enabled by default, make this a doc comment which is checked
     /// in CI.
     pub(crate) fn expand_with_mode(
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         expand_span: Span,
         meta_item: &ast::MetaItem,
         mut item: Annotatable,
@@ -502,7 +502,7 @@ mod llvm_enzyme {
     // std::intrinsics::autodiff(source as fn(..) -> .., diff, (args))
     // ```
     fn call_autodiff(
-        ecx: &ExtCtxt<'_>,
+        ecx: &ExtCtxt<'_, '_>,
         primal: Ident,
         diff: Ident,
         span: Span,
@@ -586,7 +586,7 @@ mod llvm_enzyme {
     // Given `foo` and `<A, B, C>` params, gen `foo::<A, B, C>`
     // We use this expression when passing primal and diff function to the autodiff intrinsic
     fn gen_turbofish_expr(
-        ecx: &ExtCtxt<'_>,
+        ecx: &ExtCtxt<'_, '_>,
         ident: Ident,
         generics: &Generics,
         span: Span,
@@ -648,7 +648,7 @@ mod llvm_enzyme {
     // FIXME(Sa4dUs): make individual activities' span available so errors
     // can point to only the activity instead of the entire attribute
     fn gen_enzyme_decl(
-        ecx: &ExtCtxt<'_>,
+        ecx: &ExtCtxt<'_, '_>,
         sig: &ast::FnSig,
         x: &RustcAutodiff,
         span: Span,

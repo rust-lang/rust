@@ -459,13 +459,13 @@ impl Invocation {
     }
 }
 
-pub struct MacroExpander<'a, 'b> {
-    pub cx: &'a mut ExtCtxt<'b>,
+pub struct MacroExpander<'a, 'b, 'tcx> {
+    pub cx: &'a mut ExtCtxt<'b, 'tcx>,
     monotonic: bool, // cf. `cx.monotonic_expander()`
 }
 
-impl<'a, 'b> MacroExpander<'a, 'b> {
-    pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
+impl<'a, 'b, 'tcx> MacroExpander<'a, 'b, 'tcx> {
+    pub fn new(cx: &'a mut ExtCtxt<'b, 'tcx>, monotonic: bool) -> Self {
         MacroExpander { cx, monotonic }
     }
 
@@ -1279,10 +1279,10 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn descr() -> &'static str {
         unreachable!()
     }
-    fn walk_flat_map(self, _collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, _collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         unreachable!()
     }
-    fn walk(&mut self, _collector: &mut InvocationCollector<'_, '_>) {
+    fn walk(&mut self, _collector: &mut InvocationCollector<'_, '_, '_>) {
         unreachable!()
     }
     fn is_mac_call(&self) -> bool {
@@ -1308,14 +1308,14 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     }
     fn wrap_flat_map_node_walk_flat_map(
         node: Self,
-        collector: &mut InvocationCollector<'_, '_>,
-        walk_flat_map: impl FnOnce(Self, &mut InvocationCollector<'_, '_>) -> Self::OutputTy,
+        collector: &mut InvocationCollector<'_, '_, '_>,
+        walk_flat_map: impl FnOnce(Self, &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy,
     ) -> Result<Self::OutputTy, Self> {
         Ok(walk_flat_map(node, collector))
     }
     fn expand_cfg_false(
         &mut self,
-        collector: &mut InvocationCollector<'_, '_>,
+        collector: &mut InvocationCollector<'_, '_, '_>,
         _pos: usize,
         span: Span,
     ) {
@@ -1339,7 +1339,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_items()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_item(collector, self)
     }
     fn is_mac_call(&self) -> bool {
@@ -1368,8 +1368,8 @@ impl InvocationCollectorNode for Box<ast::Item> {
     }
     fn wrap_flat_map_node_walk_flat_map(
         mut node: Self,
-        collector: &mut InvocationCollector<'_, '_>,
-        walk_flat_map: impl FnOnce(Self, &mut InvocationCollector<'_, '_>) -> Self::OutputTy,
+        collector: &mut InvocationCollector<'_, '_, '_>,
+        walk_flat_map: impl FnOnce(Self, &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy,
     ) -> Result<Self::OutputTy, Self> {
         if !matches!(node.kind, ItemKind::Mod(..)) {
             return Ok(walk_flat_map(node, collector));
@@ -1420,9 +1420,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
 
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
-                        ecx.sess,
-                        ecx.ecfg.features,
-                        ecx.resolver.registered_tools(),
+                        ecx.resolver.tcx(),
                         ecx.current_expansion.lint_node_id,
                         &attrs,
                         &items,
@@ -1497,7 +1495,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_trait_items()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_assoc_item(collector, self.wrapped, AssocCtxt::Trait)
     }
     fn is_mac_call(&self) -> bool {
@@ -1541,7 +1539,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_impl_items()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_assoc_item(collector, self.wrapped, AssocCtxt::Impl { of_trait: false })
     }
     fn is_mac_call(&self) -> bool {
@@ -1585,7 +1583,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_trait_impl_items()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_assoc_item(collector, self.wrapped, AssocCtxt::Impl { of_trait: true })
     }
     fn is_mac_call(&self) -> bool {
@@ -1626,7 +1624,7 @@ impl InvocationCollectorNode for Box<ast::ForeignItem> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_foreign_items()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_foreign_item(collector, self)
     }
     fn is_mac_call(&self) -> bool {
@@ -1656,7 +1654,7 @@ impl InvocationCollectorNode for ast::Variant {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_variants()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_variant(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1672,7 +1670,7 @@ impl InvocationCollectorNode for ast::WherePredicate {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_where_predicates()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_where_predicate(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1688,7 +1686,7 @@ impl InvocationCollectorNode for ast::FieldDef {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_field_defs()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_field_def(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1704,7 +1702,7 @@ impl InvocationCollectorNode for ast::PatField {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_pat_fields()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_pat_field(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1720,7 +1718,7 @@ impl InvocationCollectorNode for ast::ExprField {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr_fields()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_expr_field(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1736,7 +1734,7 @@ impl InvocationCollectorNode for ast::Param {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_params()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_param(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1752,7 +1750,7 @@ impl InvocationCollectorNode for ast::GenericParam {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_generic_params()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_generic_param(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1784,7 +1782,7 @@ impl InvocationCollectorNode for ast::Arm {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_arms()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_arm(collector, self)
     }
     fn as_target(&self) -> Target {
@@ -1800,7 +1798,7 @@ impl InvocationCollectorNode for ast::Stmt {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_stmts()
     }
-    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_flat_map_stmt(collector, self)
     }
     fn is_mac_call(&self) -> bool {
@@ -1877,12 +1875,12 @@ impl InvocationCollectorNode for ast::Crate {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_crate()
     }
-    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
+    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_, '_>) {
         walk_crate(collector, self)
     }
     fn expand_cfg_false(
         &mut self,
-        collector: &mut InvocationCollector<'_, '_>,
+        collector: &mut InvocationCollector<'_, '_, '_>,
         pos: usize,
         _span: Span,
     ) {
@@ -1906,7 +1904,7 @@ impl InvocationCollectorNode for ast::Ty {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_ty()
     }
-    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
+    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_, '_>) {
         // Save the pre-expanded name of this `ImplTrait`, so that later when defining
         // an APIT we use a name that doesn't have any placeholder fragments in it.
         if let ast::TyKind::ImplTrait(..) = self.kind {
@@ -1943,7 +1941,7 @@ impl InvocationCollectorNode for ast::Pat {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_pat()
     }
-    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
+    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_, '_>) {
         walk_pat(collector, self)
     }
     fn is_mac_call(&self) -> bool {
@@ -1972,7 +1970,7 @@ impl InvocationCollectorNode for ast::Expr {
     fn descr() -> &'static str {
         "an expression"
     }
-    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
+    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_, '_>) {
         walk_expr(collector, self)
     }
     fn is_mac_call(&self) -> bool {
@@ -1999,7 +1997,7 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_opt_expr()
     }
-    fn walk_flat_map(mut self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+    fn walk_flat_map(mut self, collector: &mut InvocationCollector<'_, '_, '_>) -> Self::OutputTy {
         walk_expr(collector, &mut self.wrapped);
         Some(self.wrapped)
     }
@@ -2037,7 +2035,7 @@ impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         AstNodeWrapper::new(fragment.make_method_receiver_expr(), MethodReceiverTag)
     }
-    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
+    fn walk(&mut self, collector: &mut InvocationCollector<'_, '_, '_>) {
         walk_expr(collector, &mut self.wrapped)
     }
     fn is_mac_call(&self) -> bool {
@@ -2056,7 +2054,7 @@ impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
 }
 
 fn build_single_delegations<'a, Node: InvocationCollectorNode>(
-    ecx: &ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_, '_>,
     deleg: &'a ast::DelegationMac,
     item: &'a ast::Item<Node::ItemKind>,
     suffixes: &'a [(Ident, Option<Ident>)],
@@ -2144,13 +2142,13 @@ impl DummyAstNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     }
 }
 
-struct InvocationCollector<'a, 'b> {
-    cx: &'a mut ExtCtxt<'b>,
+struct InvocationCollector<'a, 'b, 'tcx> {
+    cx: &'a mut ExtCtxt<'b, 'tcx>,
     invocations: Vec<(Invocation, Option<Arc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 
-impl<'a, 'b> InvocationCollector<'a, 'b> {
+impl<'a, 'b, 'tcx> InvocationCollector<'a, 'b, 'tcx> {
     fn cfg(&self) -> StripUnconfigured<'_> {
         StripUnconfigured {
             sess: self.cx.sess,
@@ -2495,7 +2493,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
+impl<'a, 'b, 'tcx> MutVisitor for InvocationCollector<'a, 'b, 'tcx> {
     fn flat_map_item(&mut self, node: Box<ast::Item>) -> SmallVec<[Box<ast::Item>; 1]> {
         self.flat_map_node(node)
     }

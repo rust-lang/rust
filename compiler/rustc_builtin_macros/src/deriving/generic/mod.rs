@@ -340,7 +340,7 @@ pub(crate) enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub(crate) type CombineSubstructureFunc<'a> =
-    Box<dyn FnMut(&ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
+    Box<dyn FnMut(&ExtCtxt<'_, '_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
 pub(crate) fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
@@ -375,7 +375,7 @@ impl BlockOrExpr {
     }
 
     // Converts it into a block.
-    fn into_block(mut self, cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Block> {
+    fn into_block(mut self, cx: &ExtCtxt<'_, '_>, span: Span) -> Box<ast::Block> {
         if let Some(expr) = self.1 {
             self.0.push(cx.stmt_expr(expr));
         }
@@ -383,7 +383,7 @@ impl BlockOrExpr {
     }
 
     // Converts it into an expression.
-    fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> Box<Expr> {
+    fn into_expr(self, cx: &ExtCtxt<'_, '_>, span: Span) -> Box<Expr> {
         if self.0.is_empty() {
             match self.1 {
                 None => cx.expr_block(cx.block(span, ThinVec::new())),
@@ -409,18 +409,18 @@ impl BlockOrExpr {
 fn find_type_parameters(
     ty: &ast::Ty,
     ty_param_names: &[Symbol],
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
 ) -> Vec<TypeParameter> {
     use rustc_ast::visit;
 
-    struct Visitor<'a, 'b> {
-        cx: &'a ExtCtxt<'b>,
+    struct Visitor<'a, 'b, 'tcx> {
+        cx: &'a ExtCtxt<'b, 'tcx>,
         ty_param_names: &'a [Symbol],
         bound_generic_params_stack: ThinVec<ast::GenericParam>,
         type_params: Vec<TypeParameter>,
     }
 
-    impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
+    impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b, '_> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             let stack_len = self.bound_generic_params_stack.len();
             if let ast::TyKind::FnPtr(fn_ptr) = &ty.kind
@@ -474,7 +474,7 @@ fn find_type_parameters(
 impl<'a> TraitDef<'a> {
     pub(crate) fn expand(
         self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         mitem: &ast::MetaItem,
         item: &'a Annotatable,
         push: &mut dyn FnMut(Annotatable),
@@ -484,7 +484,7 @@ impl<'a> TraitDef<'a> {
 
     pub(crate) fn expand_ext(
         self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         mitem: &ast::MetaItem,
         item: &'a Annotatable,
         push: &mut dyn FnMut(Annotatable),
@@ -592,7 +592,7 @@ impl<'a> TraitDef<'a> {
     /// therefore does not get bound by the derived trait.
     fn create_derived_impl(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         type_ident: Ident,
         generics: &Generics,
         field_tys: Vec<&ast::Ty>,
@@ -862,7 +862,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_struct_def(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         struct_def: &'a VariantData,
         type_ident: Ident,
         generics: &Generics,
@@ -915,7 +915,7 @@ impl<'a> TraitDef<'a> {
 
     fn expand_enum_def(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         enum_def: &'a EnumDef,
         type_ident: Ident,
         generics: &Generics,
@@ -975,7 +975,7 @@ impl<'a> TraitDef<'a> {
 impl<'a> MethodDef<'a> {
     fn call_substructure_method(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         nonselflike_args: &[Box<Expr>],
@@ -1001,7 +1001,7 @@ impl<'a> MethodDef<'a> {
     //   `&self`.
     fn extract_arg_details(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
@@ -1038,7 +1038,7 @@ impl<'a> MethodDef<'a> {
 
     fn create_method(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
@@ -1136,7 +1136,7 @@ impl<'a> MethodDef<'a> {
     /// ```
     fn expand_struct_method_body<'b>(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
         type_ident: Ident,
@@ -1159,7 +1159,7 @@ impl<'a> MethodDef<'a> {
 
     fn expand_static_struct_method_body(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'a>,
         struct_def: &'a VariantData,
         type_ident: Ident,
@@ -1213,7 +1213,7 @@ impl<'a> MethodDef<'a> {
     /// `Unify`), and possibly a default arm.
     fn expand_enum_method_body<'b>(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
@@ -1261,7 +1261,7 @@ impl<'a> MethodDef<'a> {
         // let __self_discr = ::core::intrinsics::discriminant_value(self);
         // let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         // ```
-        let get_discr_pieces = |cx: &ExtCtxt<'_>| {
+        let get_discr_pieces = |cx: &ExtCtxt<'_, '_>| {
             let discr_idents: Vec<_> = prefixes
                 .iter()
                 .map(|name| Ident::from_str_and_span(&format!("{name}_discr"), span))
@@ -1462,7 +1462,7 @@ impl<'a> MethodDef<'a> {
 
     fn expand_static_enum_method_body(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
@@ -1480,7 +1480,11 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &ExtCtxt<'_>, struct_def: &'a VariantData) -> StaticFields<'a> {
+    fn summarise_struct(
+        &self,
+        cx: &ExtCtxt<'_, '_>,
+        struct_def: &'a VariantData,
+    ) -> StaticFields<'a> {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
@@ -1510,7 +1514,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_patterns(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
@@ -1600,7 +1604,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_pattern_fields(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         struct_def: &'a VariantData,
         prefixes: &[String],
     ) -> Vec<FieldInfo> {
@@ -1617,7 +1621,7 @@ impl<'a> TraitDef<'a> {
 
     fn create_struct_field_access_fields(
         &self,
-        cx: &ExtCtxt<'_>,
+        cx: &ExtCtxt<'_, '_>,
         selflike_args: &[Box<Expr>],
         struct_def: &'a VariantData,
         is_packed: bool,
@@ -1673,13 +1677,13 @@ pub(crate) enum CsFold<'a> {
 /// Statics may not be folded over.
 pub(crate) fn cs_fold<F>(
     use_foldl: bool,
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
     mut f: F,
 ) -> Box<Expr>
 where
-    F: FnMut(&ExtCtxt<'_>, CsFold<'_>) -> Box<Expr>,
+    F: FnMut(&ExtCtxt<'_, '_>, CsFold<'_>) -> Box<Expr>,
 {
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {

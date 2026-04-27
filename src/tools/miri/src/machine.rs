@@ -27,7 +27,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
-use rustc_span::def_id::{CrateNum, DefId};
+use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
@@ -676,8 +676,7 @@ impl<'tcx> MiriMachine<'tcx> {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
-            let crate_name =
-                tcx.sess.opts.crate_name.clone().unwrap_or_else(|| "unknown-crate".to_string());
+            let crate_name = tcx.crate_name(LOCAL_CRATE);
             let pid = process::id();
             // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
             // the PID is padded so that the nondeterministic value of the PID does not spread

@@ -7,7 +7,7 @@ use rustc_parse::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use rustc_span::Span;
 
 pub(crate) fn expand<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -22,7 +22,7 @@ pub(crate) fn expand<'cx>(
 }
 
 fn parse_pat_ty<'a>(
-    cx: &mut ExtCtxt<'a>,
+    cx: &mut ExtCtxt<'a, '_>,
     stream: TokenStream,
 ) -> PResult<'a, (Box<Ty>, Box<TyPat>)> {
     let mut parser = cx.new_parser_from_tts(stream);
@@ -57,7 +57,7 @@ fn ty_pat(kind: TyPatKind, span: Span) -> TyPat {
     TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None }
 }
 
-fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_, '_>, pat: ast::Pat) -> TyPat {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
             start.map(|value| {

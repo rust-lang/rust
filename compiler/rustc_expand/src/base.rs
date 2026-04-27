@@ -13,13 +13,13 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PResult};
-use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::{CfgEntry, CollapseMacroDebuginfo, Deprecation};
 use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
+use rustc_middle::ty::TyCtxt;
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::Parser;
 use rustc_session::Session;
@@ -268,7 +268,7 @@ impl<'cx> MacroExpanderResult<'cx> {
     ///
     /// The `TokenStream` is forwarded without any expansion.
     pub fn from_tts(
-        cx: &'cx mut ExtCtxt<'_>,
+        cx: &'cx mut ExtCtxt<'_, '_>,
         tts: TokenStream,
         site_span: Span,
         arm_span: Span,
@@ -287,7 +287,7 @@ pub trait MultiItemModifier {
     /// `meta_item` is the attribute, and `item` is the item being modified.
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
@@ -297,11 +297,11 @@ pub trait MultiItemModifier {
 
 impl<F> MultiItemModifier for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> Vec<Annotatable>,
+    F: Fn(&mut ExtCtxt<'_, '_>, Span, &ast::MetaItem, Annotatable) -> Vec<Annotatable>,
 {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
@@ -314,7 +314,7 @@ where
 pub trait BangProcMacro {
     fn expand<'cx>(
         &self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &'cx mut ExtCtxt<'_, '_>,
         span: Span,
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed>;
@@ -322,11 +322,11 @@ pub trait BangProcMacro {
 
 impl<F> BangProcMacro for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, TokenStream) -> Result<TokenStream, ErrorGuaranteed>,
+    F: Fn(&mut ExtCtxt<'_, '_>, Span, TokenStream) -> Result<TokenStream, ErrorGuaranteed>,
 {
     fn expand<'cx>(
         &self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &'cx mut ExtCtxt<'_, '_>,
         span: Span,
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -338,7 +338,7 @@ where
 pub trait AttrProcMacro {
     fn expand<'cx>(
         &self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &'cx mut ExtCtxt<'_, '_>,
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
@@ -347,7 +347,7 @@ pub trait AttrProcMacro {
     // Default implementation for safe attributes; override if the attribute can be unsafe.
     fn expand_with_safety<'cx>(
         &self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &'cx mut ExtCtxt<'_, '_>,
         safety: Safety,
         span: Span,
         annotation: TokenStream,
@@ -366,7 +366,7 @@ where
 {
     fn expand<'cx>(
         &self,
-        _ecx: &'cx mut ExtCtxt<'_>,
+        _ecx: &'cx mut ExtCtxt<'_, '_>,
         _span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
@@ -380,7 +380,7 @@ where
 pub trait TTMacroExpander: Any {
     fn expand<'cx, 'a: 'cx>(
         &'a self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &'cx mut ExtCtxt<'_, '_>,
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx>;
@@ -389,15 +389,15 @@ pub trait TTMacroExpander: Any {
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt<'_, '_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
 
 impl<F: 'static> TTMacroExpander for F
 where
-    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
+    F: for<'cx> Fn(&'cx mut ExtCtxt<'_, '_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
     fn expand<'cx, 'a: 'cx>(
         &'a self,
-        ecx: &'cx mut ExtCtxt<'_>,
+        ecx: &'cx mut ExtCtxt<'_, '_>,
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx> {
@@ -406,7 +406,7 @@ where
 }
 
 pub trait GlobDelegationExpander {
-    fn expand(&self, ecx: &mut ExtCtxt<'_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
+    fn expand(&self, ecx: &mut ExtCtxt<'_, '_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
 }
 
 fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stmt; 1]>> {
@@ -984,7 +984,7 @@ impl SyntaxExtension {
     /// A dummy bang macro `foo!()`.
     pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
         fn expand(
-            ecx: &mut ExtCtxt<'_>,
+            ecx: &mut ExtCtxt<'_, '_>,
             span: Span,
             _ts: TokenStream,
         ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -996,7 +996,7 @@ impl SyntaxExtension {
     /// A dummy derive macro `#[derive(Foo)]`.
     pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
         fn expander(
-            _: &mut ExtCtxt<'_>,
+            _: &mut ExtCtxt<'_, '_>,
             _: Span,
             _: &ast::MetaItem,
             _: Annotatable,
@@ -1024,7 +1024,7 @@ impl SyntaxExtension {
         impl GlobDelegationExpander for GlobDelegationExpanderImpl {
             fn expand(
                 &self,
-                ecx: &mut ExtCtxt<'_>,
+                ecx: &mut ExtCtxt<'_, '_>,
             ) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()> {
                 match ecx.resolver.glob_delegation_suffixes(
                     self.trait_def_id,
@@ -1081,7 +1081,8 @@ pub struct DeriveResolution {
     pub is_const: bool,
 }
 
-pub trait ResolverExpand {
+pub trait ResolverExpand<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx>;
     fn next_node_id(&mut self) -> NodeId;
     fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId;
 
@@ -1185,9 +1186,7 @@ pub trait ResolverExpand {
 pub trait LintStoreExpand {
     fn pre_expansion_lint(
         &self,
-        sess: &Session,
-        features: &Features,
-        registered_tools: &RegisteredTools,
+        tcx: TyCtxt<'_>,
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[Box<Item>],
@@ -1233,13 +1232,13 @@ pub struct ExpansionData {
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
-pub struct ExtCtxt<'a> {
+pub struct ExtCtxt<'a, 'tcx> {
     pub sess: &'a Session,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub num_standard_library_imports: usize,
     pub reduced_recursion_limit: Option<(Limit, ErrorGuaranteed)>,
     pub root_path: PathBuf,
-    pub resolver: &'a mut dyn ResolverExpand,
+    pub resolver: &'a mut dyn ResolverExpand<'tcx>,
     pub current_expansion: ExpansionData,
     /// Error recovery mode entered when expansion is stuck
     /// (or during eager expansion, but that's a hack).
@@ -1258,13 +1257,13 @@ pub struct ExtCtxt<'a> {
     pub nb_macro_errors: usize,
 }
 
-impl<'a> ExtCtxt<'a> {
+impl<'a, 'tcx> ExtCtxt<'a, 'tcx> {
     pub fn new(
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
-        resolver: &'a mut dyn ResolverExpand,
+        resolver: &'a mut dyn ResolverExpand<'tcx>,
         lint_store: LintStoreExpandDyn<'a>,
-    ) -> ExtCtxt<'a> {
+    ) -> ExtCtxt<'a, 'tcx> {
         ExtCtxt {
             sess,
             ecfg,
@@ -1295,13 +1294,13 @@ impl<'a> ExtCtxt<'a> {
     }
 
     /// Returns a `Folder` for deeply expanding all macros in an AST node.
-    pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
+    pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a, 'tcx> {
         expand::MacroExpander::new(self, false)
     }
 
     /// Returns a `Folder` that deeply expands all macros and assigns all `NodeId`s in an AST node.
     /// Once `NodeId`s are assigned, the node may not be expanded, removed, or otherwise modified.
-    pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
+    pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a, 'tcx> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> Parser<'a> {

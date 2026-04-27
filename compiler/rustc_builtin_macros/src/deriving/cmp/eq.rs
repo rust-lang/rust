@@ -9,7 +9,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 pub(crate) fn expand_deriving_eq(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -53,7 +53,7 @@ pub(crate) fn expand_deriving_eq(
 }
 
 fn cs_total_eq_assert(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {

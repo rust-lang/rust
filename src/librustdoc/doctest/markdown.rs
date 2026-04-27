@@ -1,5 +1,6 @@
 //! Doctest functionality used only for doctests in `.md` Markdown files.
 
+use std::ffi::OsStr;
 use std::fs::read_to_string;
 use std::sync::{Arc, Mutex};
 
@@ -79,6 +80,20 @@ impl DocTestVisitor for MdCollector {
     }
 }
 
+/// Obviously not a real crate name, but close enough for purposes of doctests.
+///
+/// We don't have a `Session` when parsing markdown files so we can't do any better here.
+pub fn filestem(input: &Input) -> &str {
+    if let Input::File(ifile) = input {
+        // If for some reason getting the file stem as a UTF-8 string fails,
+        // then fallback to a fixed name.
+        if let Some(name) = ifile.file_stem().and_then(OsStr::to_str) {
+            return name;
+        }
+    }
+    "rust_out"
+}
+
 /// Runs any tests/code examples in the markdown file `options.input`.
 pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> Result<(), String> {
     let input_str = match input {
@@ -88,8 +103,7 @@ pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> 
         Input::Str { name: _, input } => input.clone(),
     };
 
-    // Obviously not a real crate name, but close enough for purposes of doctests.
-    let crate_name = input.filestem().to_string();
+    let crate_name = filestem(input).to_string();
     let temp_dir =
         tempdir().map_err(|error| format!("failed to create temporary directory: {error:?}"))?;
     let args_file = temp_dir.path().join("rustdoc-cfgs");

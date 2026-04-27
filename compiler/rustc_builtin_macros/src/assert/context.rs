@@ -10,7 +10,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-pub(super) struct Context<'cx, 'a> {
+pub(super) struct Context<'cx, 'a, 'tcx> {
     // An optimization.
     //
     // Elements that aren't consumed (PartialEq, PartialOrd, ...) can be copied **after** the
@@ -18,7 +18,7 @@ pub(super) struct Context<'cx, 'a> {
     best_case_captures: Vec<Stmt>,
     // Top-level `let captureN = Capture::new()` statements
     capture_decls: Vec<Capture>,
-    cx: &'cx ExtCtxt<'a>,
+    cx: &'cx ExtCtxt<'a, 'tcx>,
     // Formatting string used for debugging
     fmt_string: String,
     // If the current expression being visited consumes itself. Used to construct
@@ -36,8 +36,8 @@ pub(super) struct Context<'cx, 'a> {
     span: Span,
 }
 
-impl<'cx, 'a> Context<'cx, 'a> {
-    pub(super) fn new(cx: &'cx ExtCtxt<'a>, span: Span) -> Self {
+impl<'cx, 'a, 'tcx> Context<'cx, 'a, 'tcx> {
+    pub(super) fn new(cx: &'cx ExtCtxt<'a, 'tcx>, span: Span) -> Self {
         Self {
             best_case_captures: <_>::default(),
             capture_decls: <_>::default(),
@@ -443,12 +443,12 @@ fn escape_to_fmt(s: &str) -> String {
     rslt
 }
 
-fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
+fn expr_addr_of_mut(cx: &ExtCtxt<'_, '_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
     cx.expr(sp, ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, e))
 }
 
 fn expr_method_call(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     seg: PathSegment,
     receiver: Box<Expr>,
     args: ThinVec<Box<Expr>>,
@@ -457,6 +457,6 @@ fn expr_method_call(
     cx.expr(span, ExprKind::MethodCall(Box::new(MethodCall { seg, receiver, args, span })))
 }
 
-fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
+fn expr_paren(cx: &ExtCtxt<'_, '_>, sp: Span, e: Box<Expr>) -> Box<Expr> {
     cx.expr(sp, ExprKind::Paren(e))
 }

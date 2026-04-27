@@ -68,7 +68,7 @@ struct MacroInput {
 /// ```text
 /// Ok((fmtstr, parsed arguments))
 /// ```
-fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
+fn parse_args<'a>(ecx: &ExtCtxt<'a, '_>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
     let mut p = ecx.new_parser_from_tts(tts);
 
     // parse the format string
@@ -157,7 +157,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
 }
 
 fn make_format_args(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     input: MacroInput,
     append_newline: bool,
     macro_span: Span,
@@ -682,7 +682,7 @@ fn make_format_args(
 }
 
 fn invalid_placeholder_type_error(
-    ecx: &ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_, '_>,
     ty: &str,
     ty_span: Option<Range<usize>>,
     fmt_span: Span,
@@ -710,7 +710,7 @@ fn invalid_placeholder_type_error(
 }
 
 fn report_missing_placeholders(
-    ecx: &ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_, '_>,
     unused: Vec<(Span, bool)>,
     used: &[bool],
     args: &FormatArguments,
@@ -869,7 +869,7 @@ fn report_missing_placeholders(
 /// This function detects and reports unused format!() arguments that are
 /// redundant due to implicit captures (e.g. `format!("{x}", x)`).
 fn report_redundant_format_arguments<'a>(
-    ecx: &ExtCtxt<'a>,
+    ecx: &ExtCtxt<'a, '_>,
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
@@ -941,7 +941,7 @@ fn report_redundant_format_arguments<'a>(
 /// there are named arguments or numbered positional arguments in the
 /// format string.
 fn report_invalid_references(
-    ecx: &ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_, '_>,
     invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     template: &[FormatArgsPiece],
     fmt_span: Span,
@@ -1107,7 +1107,7 @@ fn report_invalid_references(
 }
 
 fn expand_format_args_impl<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     mut sp: Span,
     tts: TokenStream,
     nl: bool,
@@ -1133,7 +1133,7 @@ fn expand_format_args_impl<'cx>(
 }
 
 pub(crate) fn expand_format_args<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -1141,7 +1141,7 @@ pub(crate) fn expand_format_args<'cx>(
 }
 
 pub(crate) fn expand_format_args_nl<'cx>(
-    ecx: &'cx mut ExtCtxt<'_>,
+    ecx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

@@ -10,7 +10,7 @@ use crate::deriving::{path_local, path_std};
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
 pub(crate) fn expand_deriving_partial_eq(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -119,7 +119,7 @@ pub(crate) fn expand_deriving_partial_eq(
 /// If called on static or all-fieldless enums/structs, which should not occur
 /// during derive expansion.
 fn get_substructure_equality_expr(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     substructure: &Substructure<'_>,
 ) -> Box<Expr> {
@@ -183,7 +183,7 @@ fn get_substructure_equality_expr(
 ///
 /// Panics if there are not exactly two arguments to compare (should be `self`
 /// and `other`).
-fn get_field_equality_expr(cx: &ExtCtxt<'_>, field: &FieldInfo) -> Box<Expr> {
+fn get_field_equality_expr(cx: &ExtCtxt<'_, '_>, field: &FieldInfo) -> Box<Expr> {
     let [rhs] = &field.other_selflike_exprs[..] else {
         cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
     };
@@ -213,7 +213,7 @@ fn peel_refs(mut expr: &Box<Expr>) -> Box<Expr> {
 ///
 /// If the given expression is a block, it is wrapped in parentheses; otherwise,
 /// it is returned unchanged.
-fn wrap_block_expr(cx: &ExtCtxt<'_>, expr: Box<Expr>) -> Box<Expr> {
+fn wrap_block_expr(cx: &ExtCtxt<'_, '_>, expr: Box<Expr>) -> Box<Expr> {
     if matches!(&expr.kind, ExprKind::Block(..)) {
         return cx.expr_paren(expr.span, expr);
     }

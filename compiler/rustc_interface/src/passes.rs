@@ -16,7 +16,6 @@ use rustc_data_structures::thousands;
 use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
-use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
@@ -25,13 +24,11 @@ use rustc_hir::limit::Limit;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{
-    BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
-};
+use rustc_lint::{BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::ty::{self, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
@@ -40,7 +37,7 @@ use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::{filename_for_input, invalid_output_for_target};
+use rustc_session::output::{filename_for_input, invalid_output_for_target, validate_crate_name};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
@@ -85,46 +82,34 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     krate
 }
 
-fn pre_expansion_lint<'a>(
-    sess: &Session,
-    features: &Features,
-    lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
-    check_node: impl EarlyCheckNode<'a>,
-    node_name: Symbol,
-) {
-    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str()).run(
-        || {
+fn pre_expansion_lint<'a>(tcx: TyCtxt<'_>, check_node: impl EarlyCheckNode<'a>, node_name: Symbol) {
+    tcx.sess
+        .prof
+        .generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str())
+        .run(|| {
             rustc_lint::check_ast_node(
-                sess,
-                None,
-                features,
+                tcx,
                 true,
-                lint_store,
-                registered_tools,
                 None,
                 rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
                 check_node,
             );
-        },
-    );
+        });
 }
 
-// Cannot implement directly for `LintStore` due to trait coherence.
-struct LintStoreExpandImpl<'a>(&'a LintStore);
+// Can't move this into rustc_expand because it doesn't depend on rustc_lint.
+struct LintStoreExpandImpl;
 
-impl LintStoreExpand for LintStoreExpandImpl<'_> {
+impl LintStoreExpand for LintStoreExpandImpl {
     fn pre_expansion_lint(
         &self,
-        sess: &Session,
-        features: &Features,
-        registered_tools: &RegisteredTools,
+        tcx: TyCtxt<'_>,
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);
+        pre_expansion_lint(tcx, (node_id, attrs, items), name);
     }
 }
 
@@ -141,17 +126,9 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
-    pre_expansion_lint(
-        sess,
-        features,
-        lint_store,
-        tcx.registered_tools(()),
-        lint_check_node,
-        crate_name,
-    );
+    pre_expansion_lint(tcx, lint_check_node, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     let num_standard_library_imports = sess.time("crate_injection", || {
@@ -213,7 +190,7 @@ fn configure_and_expand(
             proc_macro_backtrace: sess.opts.unstable_opts.proc_macro_backtrace,
         };
 
-        let lint_store = LintStoreExpandImpl(lint_store);
+        let lint_store = LintStoreExpandImpl;
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
         ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!
@@ -309,17 +286,16 @@ fn configure_and_expand(
     krate
 }
 
-fn print_macro_stats(ecx: &ExtCtxt<'_>) {
+fn print_macro_stats(ecx: &ExtCtxt<'_, '_>) {
     use std::fmt::Write;
 
-    let crate_name = ecx.ecfg.crate_name.as_str();
-    let crate_name = if crate_name == "build_script_build" {
-        // This is a build script. Get the package name from the environment.
+    let crate_name = if ecx.resolver.tcx().is_build_script() {
+        // Get the package name from the environment.
         let pkg_name =
             std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "<unknown crate>".to_string());
         format!("{pkg_name} build script")
     } else {
-        crate_name.to_string()
+        ecx.resolver.tcx().crate_name(LOCAL_CRATE).as_str().to_string()
     };
 
     // No instability because we immediately sort the produced vector.
@@ -467,14 +443,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         }
     });
 
-    let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
-        sess,
-        Some(tcx),
-        tcx.features(),
+        tcx,
         false,
-        lint_store,
-        tcx.registered_tools(()),
         Some(lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
@@ -936,15 +907,15 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         krate.spans.inner_span,
     );
     let stable_crate_id = StableCrateId::new(
-        crate_name,
+        crate_name.normalized,
         crate_types.contains(&CrateType::Executable),
         sess.opts.cg.metadata.clone(),
         sess.cfg_version,
     );
 
-    let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
+    let outputs = util::build_output_filenames(sess, crate_name);
 
-    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id);
+    let dep_graph = setup_dep_graph(sess, crate_name.normalized, stable_crate_id);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -1008,13 +979,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         |tcx| {
             let feed = tcx.create_crate_num(stable_crate_id).unwrap();
             assert_eq!(feed.key(), LOCAL_CRATE);
-            feed.crate_name(crate_name);
+            feed.crate_name(crate_name.normalized);
 
             let feed = tcx.feed_unit_query();
             feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
                 tcx.sess,
                 &pre_configured_attrs,
-                crate_name,
+                crate_name.normalized,
             )));
             feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
@@ -1038,11 +1009,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             attribute_lint.lint_id.lint,
                             attribute_lint.id,
                             attribute_lint.span.clone(),
-                            DecorateAttrLint {
-                                sess: tcx.sess,
-                                tcx: Some(tcx),
-                                diagnostic: &attribute_lint.kind,
-                            },
+                            DecorateAttrLint { tcx, diagnostic: &attribute_lint.kind },
                         );
                     }
                     DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
@@ -1319,8 +1286,53 @@ pub(crate) fn start_codegen<'tcx>(
     (codegen, crate_info, metadata)
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CrateName {
+    /// The normalized final crate name.
+    ///
+    /// Crate name precedence is as follows:
+    /// - `#![crate_name]` must match `--crate-name` if both are present.
+    /// - Both `#![crate_name]` and `--crate-name` are validated.
+    /// - If neither are present, the input comes from an on-disk file, and the file is valid
+    /// UTF-8, the normalized filename. The normalized filename is not validated.
+    /// - Otherwise, `rust_out`.
+    ///
+    /// If you don't want the crate name to be normalized, use [`TyCtxt::filestem`].
+    ///
+    /// Note that `#![cfg_attr(..., crate_name = "...")]` is a hard error.
+    /// Note that the normalization applied to input filestem is very incomplete and cannot be
+    /// relied upon to produce a valid Rust identifier.
+    ///
+    /// See [`get_crate_name`] for more info.
+    pub normalized: Symbol,
+    /// The unnormalized crate name, as suitable for an [`OutFileName`].
+    /// If no crate name was present, fall back to the filestem of the input.
+    ///
+    /// Note that no normalization is applied and the stem may be an invalid Rust identifier.
+    ///
+    /// Usually you don't want this and should use [`local_crate_name`](CrateName::normalized) instead.
+    /// See its docs for more information.
+    ///
+    /// I don't know why some existing code depends on this behavior but it does.
+    pub unnormalized: Symbol,
+}
+
+impl CrateName {
+    pub fn from_normalized(sess: &Session, name: Symbol, span: Option<Span>) -> Self {
+        validate_crate_name(sess, name, span);
+        CrateName { normalized: name, unnormalized: name }
+    }
+
+    pub fn from_unnormalized(sess: &Session, unnormalized: &str, span: Option<Span>) -> Self {
+        let normalized = Symbol::intern(&unnormalized.replace('-', "_"));
+        validate_crate_name(sess, normalized, span);
+
+        CrateName { normalized, unnormalized: Symbol::intern(unnormalized) }
+    }
+}
+
 /// Compute and validate the crate name.
-pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol {
+pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> CrateName {
     // We validate *all* occurrences of `#![crate_name]`, pick the first find and
     // if a crate name was passed on the command line via `--crate-name` we enforce
     // that they match.
@@ -1331,11 +1343,9 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
     let attr_crate_name =
         parse_crate_name(sess, krate_attrs, ShouldEmit::EarlyFatal { also_emit_lints: true });
 
-    let validate = |name, span| {
-        rustc_session::output::validate_crate_name(sess, name, span);
-        name
-    };
+    let validate = |name, span| CrateName::from_normalized(sess, name, span);
 
+    #[expect(rustc::bad_opt_access, reason = "Can't use crate_name(). We are crate_name().")]
     if let Some(crate_name) = &sess.opts.crate_name {
         let crate_name = Symbol::intern(crate_name);
         if let Some((attr_crate_name, span)) = attr_crate_name
@@ -1360,11 +1370,11 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
         if file_stem.starts_with('-') {
             sess.dcx().emit_err(errors::CrateNameInvalid { crate_name: file_stem });
         } else {
-            return validate(Symbol::intern(&file_stem.replace('-', "_")), None);
+            return CrateName::from_unnormalized(sess, file_stem, None);
         }
     }
 
-    sym::rust_out
+    validate(sym::rust_out, None)
 }
 
 pub(crate) fn parse_crate_name(

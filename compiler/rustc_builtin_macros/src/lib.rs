@@ -55,7 +55,7 @@ pub mod standard_library_imports;
 pub mod test_harness;
 pub mod util;
 
-pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
+pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand<'_>) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);
     macro register_bang($($name:ident: $f:expr,)*) {
         $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Arc::new($f as MacroExpanderFn)));)*

@@ -25,7 +25,7 @@ use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 /// We mark item with an inert attribute "rustc_test_marker" which the test generation
 /// logic will pick up on.
 pub(crate) fn expand_test_case(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     attr_sp: Span,
     meta_item: &ast::MetaItem,
     anno_item: Annotatable,
@@ -85,7 +85,7 @@ pub(crate) fn expand_test_case(
 }
 
 pub(crate) fn expand_test(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     attr_sp: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -96,7 +96,7 @@ pub(crate) fn expand_test(
 }
 
 pub(crate) fn expand_bench(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     attr_sp: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
@@ -107,7 +107,7 @@ pub(crate) fn expand_bench(
 }
 
 pub(crate) fn expand_test_or_bench(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     attr_sp: Span,
     item: Annotatable,
     is_bench: bool,
@@ -404,7 +404,12 @@ pub(crate) fn expand_test_or_bench(
     }
 }
 
-fn not_testable_error(cx: &ExtCtxt<'_>, is_bench: bool, attr_sp: Span, item: Option<&ast::Item>) {
+fn not_testable_error(
+    cx: &ExtCtxt<'_, '_>,
+    is_bench: bool,
+    attr_sp: Span,
+    item: Option<&ast::Item>,
+) {
     let dcx = cx.dcx();
     let name = if is_bench { "bench" } else { "test" };
     let msg = format!("the `#[{name}]` attribute may only be used on a free function");
@@ -438,7 +443,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, is_bench: bool, attr_sp: Span, item: Opt
     }
 }
 
-fn get_location_info(cx: &ExtCtxt<'_>, fn_: &ast::Fn) -> (Symbol, usize, usize, usize, usize) {
+fn get_location_info(cx: &ExtCtxt<'_, '_>, fn_: &ast::Fn) -> (Symbol, usize, usize, usize, usize) {
     let span = fn_.ident.span;
     let (source_file, lo_line, lo_col, hi_line, hi_col) =
         cx.sess.source_map().span_to_location_info(span);
@@ -478,7 +483,7 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
     }
 }
 
-fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
+fn should_panic(cx: &ExtCtxt<'_, '_>, i: &ast::Item) -> ShouldPanic {
     if let Some(Attribute::Parsed(AttributeKind::ShouldPanic { reason, .. })) =
         AttributeParser::parse_limited(cx.sess, &i.attrs, &[sym::should_panic])
     {
@@ -497,7 +502,7 @@ enum TestType {
 /// Attempts to determine the type of test.
 /// Since doctests are created without macro expanding, only possible variants here
 /// are `UnitTest`, `IntegrationTest` or `Unknown`.
-fn test_type(cx: &ExtCtxt<'_>) -> TestType {
+fn test_type(cx: &ExtCtxt<'_, '_>) -> TestType {
     // Root path from context contains the topmost sources directory of the crate.
     // I.e., for `project` with sources in `src` and tests in `tests` folders
     // (no matter how many nested folders lie inside),
@@ -517,7 +522,7 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 }
 
 fn check_test_signature(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     i: &ast::Item,
     f: &ast::Fn,
 ) -> Result<(), ErrorGuaranteed> {
@@ -581,7 +586,7 @@ fn check_test_signature(
 }
 
 fn check_bench_signature(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     i: &ast::Item,
     f: &ast::Fn,
 ) -> Result<(), ErrorGuaranteed> {

@@ -5,7 +5,7 @@ use rustc_span::{Span, kw};
 use crate::errors;
 
 pub(crate) fn expand_trace_macros(
-    cx: &mut ExtCtxt<'_>,
+    cx: &mut ExtCtxt<'_, '_>,
     sp: Span,
     tt: TokenStream,
 ) -> MacroExpanderResult<'static> {

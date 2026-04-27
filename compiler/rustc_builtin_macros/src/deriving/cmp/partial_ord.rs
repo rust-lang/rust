@@ -8,7 +8,7 @@ use crate::deriving::generic::*;
 use crate::deriving::{path_std, pathvec_std};
 
 pub(crate) fn expand_deriving_partial_ord(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     mitem: &MetaItem,
     item: &Annotatable,
@@ -72,7 +72,7 @@ pub(crate) fn expand_deriving_partial_ord(
 }
 
 fn cs_partial_cmp(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     substr: &Substructure<'_>,
     discr_then_data: bool,

@@ -17,7 +17,7 @@ use thin_vec::thin_vec;
 use crate::errors;
 use crate::util::{expr_to_string, get_exprs_from_tts, get_single_expr_from_tts};
 
-fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError> {
+fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_, '_>, var: Symbol) -> Result<Symbol, VarError> {
     let var = var.as_str();
     if let Some(value) = cx.sess.opts.logical_env.get(var) {
         return Ok(Symbol::intern(value));
@@ -28,7 +28,7 @@ fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError
 }
 
 pub(crate) fn expand_option_env<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -88,7 +88,7 @@ pub(crate) fn expand_option_env<'cx>(
 }
 
 pub(crate) fn expand_env<'cx>(
-    cx: &'cx mut ExtCtxt<'_>,
+    cx: &'cx mut ExtCtxt<'_, '_>,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

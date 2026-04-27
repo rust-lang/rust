@@ -31,8 +31,8 @@ struct Test {
     name: Symbol,
 }
 
-struct TestCtxt<'a> {
-    ext_cx: ExtCtxt<'a>,
+struct TestCtxt<'a, 'tcx> {
+    ext_cx: ExtCtxt<'a, 'tcx>,
     panic_strategy: PanicStrategy,
     def_site: Span,
     test_cases: Vec<Test>,
@@ -46,7 +46,7 @@ pub fn inject(
     krate: &mut ast::Crate,
     sess: &Session,
     features: &Features,
-    resolver: &mut dyn ResolverExpand,
+    resolver: &mut dyn ResolverExpand<'_>,
 ) {
     let dcx = sess.dcx();
     let panic_strategy = sess.panic_strategy();
@@ -89,12 +89,12 @@ pub fn inject(
     }
 }
 
-struct TestHarnessGenerator<'a> {
-    cx: TestCtxt<'a>,
+struct TestHarnessGenerator<'a, 'tcx> {
+    cx: TestCtxt<'a, 'tcx>,
     tests: Vec<Test>,
 }
 
-impl TestHarnessGenerator<'_> {
+impl TestHarnessGenerator<'_, '_> {
     fn add_test_cases(&mut self, node_id: ast::NodeId, span: Span, prev_tests: Vec<Test>) {
         let mut tests = mem::replace(&mut self.tests, prev_tests);
 
@@ -118,7 +118,7 @@ impl TestHarnessGenerator<'_> {
     }
 }
 
-impl<'a> MutVisitor for TestHarnessGenerator<'a> {
+impl<'a> MutVisitor for TestHarnessGenerator<'a, '_> {
     fn visit_crate(&mut self, c: &mut ast::Crate) {
         let prev_tests = mem::take(&mut self.tests);
         walk_crate(self, c);
@@ -222,7 +222,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
 /// Crawl over the crate, inserting test reexports and the test main function
 fn generate_test_harness(
     sess: &Session,
-    resolver: &mut dyn ResolverExpand,
+    resolver: &mut dyn ResolverExpand<'_>,
     reexport_test_harness_main: Option<Symbol>,
     krate: &mut ast::Crate,
     features: &Features,
@@ -286,7 +286,7 @@ fn generate_test_harness(
 /// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
 /// function and [`TestCtxt::test_runner`] provides a path that replaces
 /// `test::test_main_static`.
-fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
+fn mk_main(cx: &mut TestCtxt<'_, '_>) -> Box<ast::Item> {
     let sp = cx.def_site;
     let ecx = &cx.ext_cx;
     let test_ident = Ident::new(sym::test, sp);
@@ -365,7 +365,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
 
 /// Creates a slice containing every test like so:
 /// &[&test1, &test2]
-fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
+fn mk_tests_slice(cx: &TestCtxt<'_, '_>, sp: Span) -> Box<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 

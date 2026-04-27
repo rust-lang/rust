@@ -19,7 +19,7 @@ macro_rules! path {
 }
 
 pub(crate) fn expand_deriving_coerce_pointee(
-    cx: &ExtCtxt<'_>,
+    cx: &ExtCtxt<'_, '_>,
     span: Span,
     _mitem: &MetaItem,
     item: &Annotatable,
@@ -402,11 +402,11 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
     }
 }
 
-struct DetectNonGenericPointeeAttr<'a, 'b> {
-    cx: &'a ExtCtxt<'b>,
+struct DetectNonGenericPointeeAttr<'a, 'b, 'tcx> {
+    cx: &'a ExtCtxt<'b, 'tcx>,
 }
 
-impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonGenericPointeeAttr<'a, 'b> {
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonGenericPointeeAttr<'a, 'b, '_> {
     fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) -> Self::Result {
         if attr.has_name(sym::pointee) {
             self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });
@@ -450,11 +450,11 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonGenericPointeeAttr<'a, '
     }
 }
 
-struct AlwaysErrorOnGenericParam<'a, 'b> {
-    cx: &'a ExtCtxt<'b>,
+struct AlwaysErrorOnGenericParam<'a, 'b, 'tcx> {
+    cx: &'a ExtCtxt<'b, 'tcx>,
 }
 
-impl<'a, 'b> rustc_ast::visit::Visitor<'a> for AlwaysErrorOnGenericParam<'a, 'b> {
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for AlwaysErrorOnGenericParam<'a, 'b, '_> {
     fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) -> Self::Result {
         if attr.has_name(sym::pointee) {
             self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });

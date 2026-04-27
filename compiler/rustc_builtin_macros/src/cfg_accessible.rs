@@ -10,7 +10,7 @@ use crate::errors;
 
 pub(crate) struct Expander;
 
-fn validate_input<'a>(ecx: &ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
+fn validate_input<'a>(ecx: &ExtCtxt<'_, '_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
     use errors::CfgAccessibleInvalid::*;
     match mi.meta_item_list() {
         None => {}
@@ -38,7 +38,7 @@ fn validate_input<'a>(ecx: &ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a as
 impl MultiItemModifier for Expander {
     fn expand(
         &self,
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &mut ExtCtxt<'_, '_>,
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,

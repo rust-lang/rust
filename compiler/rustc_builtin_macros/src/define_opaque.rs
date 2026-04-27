@@ -3,7 +3,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::Span;
 
 pub(crate) fn expand(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_, '_>,
     _expand_span: Span,
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
