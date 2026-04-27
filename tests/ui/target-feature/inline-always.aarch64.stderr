@@ -5,7 +5,7 @@ LL |     target_feature_identity();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: function will not be inlined
-   = note: the following target features are on `target_feature_identity` but missing from `call_no_target_features`: neon, fp16
+   = note: the following target features are on `target_feature_identity` but missing from `call_no_target_features`: fp16
 note: `target_feature_identity` is defined here
   --> $DIR/inline-always.rs:17:1
    |
@@ -14,7 +14,7 @@ LL | pub unsafe fn target_feature_identity() {}
    = note: `#[warn(inline_always_mismatching_target_features)]` on by default
 help: add `#[target_feature]` attribute to `call_no_target_features`
    |
-LL + #[target_feature(enable = "neon,fp16")]
+LL + #[target_feature(enable = "fp16")]
 LL | unsafe fn call_no_target_features() {
    |
 

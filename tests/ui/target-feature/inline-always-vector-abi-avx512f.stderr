@@ -1,0 +1,22 @@
+warning: call to `#[inline(always)]`-annotated `callee_missing_avx512f` requires the same target features to be inlined
+  --> $DIR/inline-always-vector-abi-avx512f.rs:29:14
+   |
+LL |     unsafe { callee_missing_avx512f(x, y) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: function will not be inlined
+   = note: the following target features are on `caller_has_avx512f_abi_mismatch` but missing from `callee_missing_avx512f`: avx512f
+note: `caller_has_avx512f_abi_mismatch` is defined here
+  --> $DIR/inline-always-vector-abi-avx512f.rs:28:1
+   |
+LL | fn caller_has_avx512f_abi_mismatch(x: &__m256, y: bool) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(inline_always_mismatching_target_features)]` on by default
+help: add `#[target_feature]` attribute to `callee_missing_avx512f`
+   |
+LL + #[target_feature(enable = "avx512f")]
+LL | fn callee_missing_avx512f(x: &__m256, y: bool) {
+   |
+
+warning: 1 warning emitted
+

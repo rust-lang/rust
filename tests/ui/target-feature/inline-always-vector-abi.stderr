@@ -1,0 +1,41 @@
+warning: call to `#[inline(always)]`-annotated `callee_missing_avx` requires the same target features to be inlined
+  --> $DIR/inline-always-vector-abi.rs:28:14
+   |
+LL |     unsafe { callee_missing_avx(x, y) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: function will not be inlined
+   = note: the following target features are on `caller_has_abi_mismatch` but missing from `callee_missing_avx`: avx
+note: `caller_has_abi_mismatch` is defined here
+  --> $DIR/inline-always-vector-abi.rs:27:1
+   |
+LL | fn caller_has_abi_mismatch(x: &__m256, y: bool) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(inline_always_mismatching_target_features)]` on by default
+help: add `#[target_feature]` attribute to `callee_missing_avx`
+   |
+LL + #[target_feature(enable = "avx")]
+LL | fn callee_missing_avx(x: &__m256, y: bool) {
+   |
+
+warning: call to `#[inline(always)]`-annotated `callee_requires_avx` requires the same target features to be inlined
+  --> $DIR/inline-always-vector-abi.rs:44:14
+   |
+LL |     unsafe { callee_requires_avx(x, y) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: function will not be inlined
+   = note: the following target features are on `callee_requires_avx` but missing from `caller_missing_avx`: avx
+note: `callee_requires_avx` is defined here
+  --> $DIR/inline-always-vector-abi.rs:34:1
+   |
+LL | fn callee_requires_avx(x: &__m256, y: bool) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[target_feature]` attribute to `caller_missing_avx`
+   |
+LL + #[target_feature(enable = "avx")]
+LL | fn caller_missing_avx(x: &__m256, y: bool) {
+   |
+
+warning: 2 warnings emitted
+

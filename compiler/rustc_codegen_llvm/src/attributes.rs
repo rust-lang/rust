@@ -40,25 +40,23 @@ pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
     llvm::RemoveStringAttrFromFn(llfn, name);
 }
 
-/// Get LLVM attribute for the provided inline heuristic.
-pub(crate) fn inline_attr<'ll, 'tcx>(
+/// Get LLVM attribute for the provided inline heuristic that can be applied
+/// to a function definition
+fn inline_attr_for_fn_def<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
+    has_function_features: bool,
 ) -> Option<&'ll Attribute> {
-    // `optnone` requires `noinline`
-    let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
-    let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
-        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
-        (InlineAttr::None, _) if instance.def.requires_inline(tcx) => InlineAttr::Hint,
-        (inline, _) => inline,
-    };
-
     if !tcx.sess.opts.unstable_opts.inline_llvm {
         // disable LLVM inlining
         return Some(AttributeKind::NoInline.create_attr(cx.llcx));
     }
-    match inline {
+
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+    let inline = get_inline_attr_from_codegen_fn_attrs(tcx, codegen_fn_attrs, instance);
+
+    let llvm_attr = match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
         InlineAttr::Always | InlineAttr::Force { .. } => {
             Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
@@ -71,7 +69,58 @@ pub(crate) fn inline_attr<'ll, 'tcx>(
             }
         }
         InlineAttr::None => None,
+    };
+
+    let is_inline_always = is_inline_always_attr(inline);
+    // Keep non-`#[inline(always)]` attributes on the function definition as
+    // usual. `#[inline(always)]` can also stay on the function when there are
+    // no per-function target features.
+    //
+    // Once a function has target features, we avoid attaching `alwaysinline`
+    // to the definition itself. In that case the attribute is checked and,
+    // when legal, emitted on individual call sites instead.
+    if !is_inline_always || (is_inline_always && !has_function_features) { llvm_attr } else { None }
+}
+
+/// Get the `InlineAttr` for the given instance.
+fn get_inline_attr_from_codegen_fn_attrs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    codegen_fn_attrs: &CodegenFnAttrs,
+    instance: ty::Instance<'tcx>,
+) -> InlineAttr {
+    // `optnone` requires `noinline`
+    match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
+        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
+        (InlineAttr::None, _) if instance.def.requires_inline(tcx) => InlineAttr::Hint,
+        (inline, _) => inline,
     }
+}
+
+#[inline]
+fn is_inline_always_attr(inline_attr: InlineAttr) -> bool {
+    matches!(inline_attr, InlineAttr::Always | InlineAttr::Force { .. })
+}
+
+/// Do we have an LLVM inline always attribute for the callsite?
+pub(crate) fn has_inline_always_callsite_attribute<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    attrs: &CodegenFnAttrs,
+    instance: ty::Instance<'tcx>,
+) -> bool {
+    // disable LLVM inlining
+    if !tcx.sess.opts.unstable_opts.inline_llvm {
+        return false;
+    }
+
+    // If there are no target features on the function then we do not want to
+    // return anything. As the attribute will have been applied to the function
+    // definition.
+    if attrs.target_features.is_empty() {
+        return false;
+    }
+
+    // We are only interested in the `#[inline(always)]` attribute
+    is_inline_always_attr(get_inline_attr_from_codegen_fn_attrs(tcx, attrs, instance))
 }
 
 #[inline]
@@ -568,14 +617,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features =
         codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
-    // Apply function attributes as per usual if there are no user defined
-    // target features otherwise this will get applied at the callsite.
-    if function_features.is_empty() {
-        if let Some(instance) = instance
-            && let Some(inline_attr) = inline_attr(cx, tcx, instance)
-        {
-            to_add.push(inline_attr);
-        }
+    if let Some(instance) = instance
+        && let Some(inline_attr) =
+            inline_attr_for_fn_def(cx, tcx, instance, !function_features.is_empty())
+    {
+        to_add.push(inline_attr);
     }
 
     let function_features = function_features

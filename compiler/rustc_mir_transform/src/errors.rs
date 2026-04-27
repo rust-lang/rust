@@ -10,22 +10,35 @@ use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
 use rustc_span::{Ident, Span, Symbol};
 
-/// Emit diagnostic for calls to `#[inline(always)]`-annotated functions with a
-/// `#[target_feature]` attribute where the caller enables a different set of target features.
-pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
+/// Emit the `inline_always_mismatching_target_features` lint for a call to an
+/// `#[inline(always)]` function that cannot be inlined at the call site.
+///
+/// This is used for both direct caller/callee target feature mismatches and
+/// vector ABI mismatches. `feature_source_def_id` identifies the side that
+/// contributes the missing features, while `feature_target_def_id` identifies
+/// the side that should be updated by the suggestion.
+pub(crate) fn emit_inline_always_target_feature_diagnostic<'tcx>(
     tcx: TyCtxt<'tcx>,
     call_span: Span,
     callee_def_id: DefId,
     caller_def_id: DefId,
-    callee_only: &[&'a str],
+    missing_features: &str,
+    feature_source_def_id: DefId,
+    feature_target_def_id: DefId,
 ) {
     tcx.emit_node_span_lint(
         lint::builtin::INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
         tcx.local_def_id_to_hir_id(caller_def_id.as_local().unwrap()),
         call_span,
         rustc_errors::DiagDecorator(|lint| {
+            // These calls to `tcx.def_path_str(...)` need to live inside this
+            // closure otherwise can cause an ICE, see;
+            // https://github.com/rust-lang/rust/pull/150805
             let callee = tcx.def_path_str(callee_def_id);
-            let caller = tcx.def_path_str(caller_def_id);
+            let feature_target = tcx.def_path_str(feature_target_def_id);
+            let feature_source = tcx.def_path_str(feature_source_def_id);
+
+            let suggested_features = missing_features.replace(", ", ",");
 
             lint.primary_message(format!(
                 "call to `#[inline(always)]`-annotated `{callee}` \
@@ -34,17 +47,19 @@ pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
             lint.note("function will not be inlined");
 
             lint.note(format!(
-                "the following target features are on `{callee}` but missing from `{caller}`: {}",
-                callee_only.join(", ")
+                "the following target features are on `{feature_source}` but missing from \
+                 `{feature_target}`: {missing_features}"
             ));
-            lint.span_note(callee_def_id.default_span(tcx), format!("`{callee}` is defined here"));
+            lint.span_note(
+                feature_source_def_id.default_span(tcx),
+                format!("`{feature_source}` is defined here"),
+            );
 
-            let feats = callee_only.join(",");
             lint.span_suggestion(
-                tcx.def_span(caller_def_id).shrink_to_lo(),
-                format!("add `#[target_feature]` attribute to `{caller}`"),
-                format!("#[target_feature(enable = \"{feats}\")]\n"),
-                lint::Applicability::MaybeIncorrect,
+                tcx.def_span(feature_target_def_id).shrink_to_lo(),
+                format!("add `#[target_feature]` attribute to `{feature_target}`"),
+                format!("#[target_feature(enable = \"{suggested_features}\")]\n"),
+                Applicability::MaybeIncorrect,
             );
         }),
     );

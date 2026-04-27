@@ -15,7 +15,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature, TargetFeatureKind};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
@@ -30,12 +30,12 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
+use crate::attributes::{self};
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
-    ToLlvmBool, Type, Value,
+    self, AtomicOrdering, AtomicRmwBinOp, AttributeKind, BasicBlock, FromGeneric, GEPNoWrapFlags,
+    Metadata, TRUE, ToLlvmBool, Type, Value,
 };
 use crate::type_of::LayoutLlvmExt;
 
@@ -1415,29 +1415,38 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             )
         };
 
-        if let Some(callee_instance) = callee_instance {
+        // Check for whether we can add `#[inline(always)]` to a callsite
+        if let (Some(callee_instance), Some(caller_attrs)) = (callee_instance, caller_attrs) {
             // Attributes on the function definition being called
             let callee_attrs = self.cx.tcx.codegen_fn_attrs(callee_instance.def_id());
-            if let Some(caller_attrs) = caller_attrs
-                // If there is an inline attribute and a target feature that matches
-                // we will add the attribute to the callsite otherwise we'll omit
-                // this and not add the attribute to prevent soundness issues.
-                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, callee_instance)
-                && self.cx.tcx.is_target_feature_call_safe(
+
+            // Only propagate `#[inline(always)]` to the callsite when there is
+            // an attribute and the caller and callee are compatible for
+            // inlining here. Otherwise we explicitly emit a `noinline` to
+            // ensure that the function will not get inlined through an LLVM
+            // pass.
+            if attributes::has_inline_always_callsite_attribute(
+                self.cx.tcx,
+                callee_attrs,
+                callee_instance,
+            ) {
+                if self.tcx.is_call_inline_able_at_callsite(
                     &callee_attrs.target_features,
-                    &caller_attrs.target_features.iter().cloned().chain(
-                        self.cx.tcx.sess.target_features.iter().map(|feat| TargetFeature {
-                            name: *feat,
-                            kind: TargetFeatureKind::Implied,
-                        })
-                    ).collect::<Vec<_>>(),
-                )
-            {
-                attributes::apply_to_callsite(
-                    call,
-                    llvm::AttributePlace::Function,
-                    &[inlining_rule],
-                );
+                    &caller_attrs.target_features,
+                ) {
+                    attributes::apply_to_callsite(
+                        call,
+                        llvm::AttributePlace::Function,
+                        &[AttributeKind::AlwaysInline.create_attr(self.cx.llcx)],
+                    );
+                } else {
+                    // Ensure the function call will not be inlined.
+                    attributes::apply_to_callsite(
+                        call,
+                        llvm::AttributePlace::Function,
+                        &[AttributeKind::NoInline.create_attr(self.cx.llcx)],
+                    );
+                }
             }
         }
 
