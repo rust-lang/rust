@@ -325,26 +325,26 @@ fn get_concurrency() -> usize {
 }
 
 /// Information that was historically needed to create a libtest `TestDescAndFn`.
-pub(crate) struct CollectedTest {
-    pub(crate) desc: CollectedTestDesc,
-    pub(crate) config: Arc<Config>,
-    pub(crate) testpaths: TestPaths,
-    pub(crate) revision: Option<String>,
+pub struct CollectedTest {
+    pub desc: CollectedTestDesc,
+    pub config: Arc<Config>,
+    pub testpaths: TestPaths,
+    pub revision: Option<String>,
 }
 
 /// Information that was historically needed to create a libtest `TestDesc`.
-pub(crate) struct CollectedTestDesc {
-    pub(crate) name: String,
-    pub(crate) filterable_path: Utf8PathBuf,
-    pub(crate) ignore: bool,
-    pub(crate) ignore_message: Option<Cow<'static, str>>,
-    pub(crate) should_fail: ShouldFail,
+pub struct CollectedTestDesc {
+    pub name: String,
+    pub filterable_path: Utf8PathBuf,
+    pub ignore: bool,
+    pub ignore_message: Option<Cow<'static, str>>,
+    pub should_fail: ShouldFail,
 }
 
 /// Tests with `//@ should-fail` are tests of compiletest itself, and should
 /// be reported as successful if and only if they would have _failed_.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ShouldFail {
+pub enum ShouldFail {
     No,
     Yes,
 }

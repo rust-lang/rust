@@ -33,6 +33,8 @@ use std::{env, fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Component, Utf8Path, Utf8PathBuf};
+pub use common::{Config, TestPaths};
+pub use executor::{CollectedTest, CollectedTestDesc, ShouldFail};
 use getopts::Options;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use tracing::debug;
@@ -40,19 +42,18 @@ use walkdir::WalkDir;
 
 use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
-    expected_output_path, output_base_dir, output_relative_path,
+    CodegenBackend, CompareMode, Debugger, PassMode, TestMode, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
 use crate::edition::parse_edition;
-use crate::executor::CollectedTest;
 
 /// Creates the `Config` instance for this invocation of compiletest.
 ///
 /// The config mostly reflects command-line arguments, but there might also be
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
-fn parse_config(args: Vec<String>) -> Config {
+pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -660,7 +661,7 @@ impl TestCollector {
 /// FIXME(Zalathar): Now that we no longer rely on libtest, try to overhaul
 /// test discovery to take into account the filters/tests specified on the
 /// command-line, instead of having to enumerate everything.
-fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
+pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
     debug!("making tests from {}", config.src_test_suite_root);
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
