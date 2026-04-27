@@ -853,7 +853,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
-        intrinsics::maximum_number_nsz_f16(self, other)
+        intrinsics::maximum_number_f16(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -884,7 +884,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
-        intrinsics::minimum_number_nsz_f16(self, other)
+        intrinsics::minimum_number_f16(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -1390,7 +1390,7 @@ impl f16 {
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    pub const fn clamp(mut self, min: f16, max: f16) -> f16 {
+    pub const fn clamp(self, min: f16, max: f16) -> f16 {
         const_assert!(
             min <= max,
             "min > max, or either was NaN",
@@ -1398,14 +1398,7 @@ impl f16 {
             min: f16,
             max: f16,
         );
-
-        if self < min {
-            self = min;
-        }
-        if self > max {
-            self = max;
-        }
-        self
+        self.max(min).min(max)
     }
 
     /// Clamps this number to a symmetric range centered around zero.
