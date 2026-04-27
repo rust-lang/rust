@@ -180,6 +180,10 @@ impl SourceDatabase for RootDatabase {
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
     }
+
+    fn line_column(&self, file: FileId, offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        line_index(self, file).try_line_col(offset).map(|lc| (lc.line, lc.col)).ok_or(())
+    }
 }
 
 impl Default for RootDatabase {

@@ -132,6 +132,10 @@ impl SourceDatabase for TestDB {
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
         (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
     }
+
+    fn line_column(&self, _file: FileId, _offset: syntax::TextSize) -> Result<(u32, u32), ()> {
+        Err(())
+    }
 }
 
 #[salsa_macros::db]
