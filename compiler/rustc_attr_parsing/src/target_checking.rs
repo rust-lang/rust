@@ -292,15 +292,16 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         // in where clauses. After that, this function would become useless.
         let spans = attrs
             .into_iter()
-            // FIXME: We shouldn't need to special-case `doc`!
-            .filter(|attr| {
-                matches!(
-                    attr,
-                    Attribute::Parsed(AttributeKind::DocComment { .. } | AttributeKind::Doc(_))
-                        | Attribute::Unparsed(_)
-                )
+            .filter_map(|attr| {
+                match attr {
+                    Attribute::Parsed(AttributeKind::DocComment { span, .. }) => Some(*span),
+                    // FIXME: We shouldn't need to special-case `doc`!
+                    Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
+                    // Checked during attribute parsing target checking
+                    Attribute::Parsed(_) => None,
+                    Attribute::Unparsed(attr) => Some(attr.span),
+                }
             })
-            .map(|attr| attr.span())
             .collect::<Vec<_>>();
         if !spans.is_empty() {
             self.dcx()
