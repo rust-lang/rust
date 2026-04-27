@@ -1411,7 +1411,9 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the tool build step.
-    if builder.config.jemalloc(target) && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+    if builder.config.override_allocator(target)
+        && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
+    {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
         // See: https://github.com/rust-lang/rust/pull/135081
         if target.starts_with("aarch64") {

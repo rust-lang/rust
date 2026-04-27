@@ -17,7 +17,7 @@ extern crate rustc_span;
 /// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// <https://github.com/rust-lang/cc-rs/issues/1613>.
-#[cfg(feature = "jemalloc")]
+#[cfg(feature = "override_allocator")]
 extern crate tikv_jemalloc_sys as _;
 
 use clippy_utils::sym;

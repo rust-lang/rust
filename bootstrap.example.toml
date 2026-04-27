@@ -848,7 +848,7 @@
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This option is only tested on Linux and OSX. It can also be configured per-target in the
 # [target.<tuple>] section.
-#rust.jemalloc = false
+#rust.override-allocator = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
 # running the tests in normal mode. Largely only used on CI and during local
@@ -1121,8 +1121,8 @@
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
-# This overrides the global `rust.jemalloc` option. See that option for more info.
-#jemalloc = rust.jemalloc (bool)
+# This overrides the global `rust.override-allocator` option. See that option for more info.
+#override-allocator = rust.override-allocator (bool)
 
 # The linker configuration that will *override* the default linker used for Linux
 # targets in the built compiler.

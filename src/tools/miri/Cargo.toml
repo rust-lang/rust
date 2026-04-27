@@ -68,7 +68,7 @@ stack-cache = []
 expensive-consistency-checks = ["stack-cache"]
 tracing = ["serde_json"]
 native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
-jemalloc = []
+override_allocator = []
 check_only = ["libffi?/check_only", "capstone?/check_only", "genmc-sys?/check_only"]
 
 [lints.rust.unexpected_cfgs]

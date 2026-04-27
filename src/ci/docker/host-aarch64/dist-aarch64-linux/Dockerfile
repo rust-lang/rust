@@ -89,7 +89,7 @@ ENV RUST_CONFIGURE_ARGS="--build=aarch64-unknown-linux-gnu \
       --set llvm.libzstd=true \
       --set llvm.ninja=false \
       --set rust.debug-assertions=false \
-      --set rust.jemalloc \
+      --set rust.override-allocator \
       --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1"

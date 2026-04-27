@@ -28,7 +28,7 @@ runners:
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py check compiletest && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc-html -- --exact
-    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.override-allocator
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     # Ensure that host tooling is tested on our minimum supported macOS version.
     MACOSX_DEPLOYMENT_TARGET: 10.12
@@ -110,7 +110,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
-        --set rust.jemalloc
+        --set rust.override-allocator
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
