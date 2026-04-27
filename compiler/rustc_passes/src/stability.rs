@@ -58,6 +58,7 @@ fn inherit_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
                 _ => false,
             }
         }
+        DefKind::Closure => true,
         _ => false,
     }
 }
