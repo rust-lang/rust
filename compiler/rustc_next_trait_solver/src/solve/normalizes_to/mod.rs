@@ -384,19 +384,46 @@ where
 
             // Finally we construct the actual value of the associated type.
             let term = match goal.predicate.alias.kind(cx) {
-                ty::AliasTermKind::ProjectionTy { .. } => {
-                    cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
+                ty::AliasTermKind::ProjectionTy { .. } => cx
+                    .type_of(target_item_def_id)
+                    .instantiate(cx, target_args)
+                    .skip_norm_wip()
+                    .into(),
+                ty::AliasTermKind::ProjectionConst { .. }
+                    if cx.is_type_const(target_item_def_id) =>
+                {
+                    cx.const_of_item(target_item_def_id)
+                        .instantiate(cx, target_args)
+                        .skip_norm_wip()
+                        .into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
-                    cx.const_of_item(target_item_def_id).map_bound(|ct| ct.into())
+                    // target_args contains vars:
+                    // - the Self type of the impl block is instantiated with fresh vars
+                    // - the resulting type is eq'd against the actual Self type
+                    // - the fresh vars are then used as target_args
+                    // we need the actual args to run const eval, so we need to actually do the `eq`
+                    // and figure out the args, so, call try_evaluate_added_goals
+                    ecx.try_evaluate_added_goals()?;
+                    // HACK(khyperia): this shouldn't be necessary, `try_evaluate_const` calls
+                    // `resolve_vars_if_possible`. However, on failure,
+                    // `evaluate_const_and_instantiate` then checks `has_non_region_infer` on the
+                    // *pre*-`resolve_vars_if_possible` args, which, we want to return false if we
+                    // successfully identified the actual type.
+                    // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics
+                    // and HasInfers or something, and make evaluate_const_and_instantiate change
+                    // its behavior based on that, rather than it checking `has_non_region_infer`.
+                    let target_args = ecx.resolve_vars_if_possible(target_args);
+                    let uv = ty::UnevaluatedConst::new(
+                        target_item_def_id.try_into().unwrap(),
+                        target_args,
+                    );
+                    return ecx.evaluate_const_and_instantiate_normalizes_to_term(goal, uv);
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(
-                goal,
-                term.instantiate(cx, target_args).skip_norm_wip(),
-            );
+            ecx.instantiate_normalizes_to_term(goal, term);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

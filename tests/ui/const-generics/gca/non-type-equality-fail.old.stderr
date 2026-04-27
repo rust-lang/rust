@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/non-type-equality-fail.rs:33:9
+   |
+LL |     let _: Struct<{ <GenericStructImpl<N> as Trait>::PROJECTED_A }> =
+   |            -------------------------------------------------------- expected due to this
+LL |         Struct::<{ <GenericStructImpl<N> as Trait>::PROJECTED_B }>;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `<GenericStructImpl<N> as Trait>::PROJECTED_A`, found `<GenericStructImpl<N> as Trait>::PROJECTED_B`
+   |
+   = note: expected struct `Struct<<GenericStructImpl<N> as Trait>::PROJECTED_A>`
+              found struct `Struct<<GenericStructImpl<N> as Trait>::PROJECTED_B>`
+
+error[E0308]: mismatched types
+  --> $DIR/non-type-equality-fail.rs:38:41
+   |
+LL |     let _: Struct<{ T::PROJECTED_A }> = Struct::<{ T::PROJECTED_B }>;
+   |            --------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `<T as Trait>::PROJECTED_A`, found `<T as Trait>::PROJECTED_B`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Struct<<T as Trait>::PROJECTED_A>`
+              found struct `Struct<<T as Trait>::PROJECTED_B>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

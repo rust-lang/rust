@@ -1168,6 +1168,33 @@ where
         self.delegate.evaluate_const(param_env, uv)
     }
 
+    pub(super) fn evaluate_const_and_instantiate_normalizes_to_term(
+        &mut self,
+        goal: Goal<I, ty::NormalizesTo<I>>,
+        uv: ty::UnevaluatedConst<I>,
+    ) -> QueryResult<I> {
+        match self.delegate.evaluate_const(goal.param_env, uv) {
+            Some(evaluated) => {
+                self.instantiate_normalizes_to_term(goal, evaluated.into());
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            None => {
+                if uv.has_non_region_infer() {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                } else {
+                    // We do not instantiate to the `uv` passed in, but rather
+                    // `goal.predicate.alias`. The `uv` passed in might correspond to the `impl`
+                    // form of a constant (with generic arguments corresponding to the impl block),
+                    // however, we want to structurally instantiate to the original, non-rebased,
+                    // trait `Self` form of the constant (with generic arguments being the trait
+                    // `Self` type).
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+            }
+        }
+    }
+
     pub(super) fn is_transmutable(
         &mut self,
         src: I::Ty,

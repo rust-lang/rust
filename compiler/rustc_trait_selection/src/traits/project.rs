@@ -545,10 +545,22 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         ));
     }
 
-    let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
-        tcx.type_of(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
-    } else {
-        tcx.const_of_item(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
+    let term: Term<'tcx> = match alias_term.kind(tcx) {
+        ty::AliasTermKind::InherentTy { def_id } => {
+            tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip().into()
+        }
+        ty::AliasTermKind::InherentConst { def_id } if tcx.is_type_const(def_id) => {
+            tcx.const_of_item(def_id).instantiate(tcx, args).skip_norm_wip().into()
+        }
+        ty::AliasTermKind::InherentConst { .. } => {
+            // FIXME(gca): This is dead code at the moment. It should eventually call
+            // super::evaluate_const like projected consts do in confirm_impl_candidate in this
+            // file. However, how generic args are represented for IACs is up in the air right now.
+            // Will super::evaluate_const eventually take the inherent_args or the impl_args form of
+            // args? It might be either.
+            panic!("References to inherent associated consts should have been blocked");
+        }
+        kind => panic!("expected inherent alias, found {kind:?}"),
     };
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
@@ -613,11 +625,13 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
     alias_term.rebase_inherent_args_onto_impl(impl_args, tcx)
 }
 
+#[derive(Debug)]
 enum Projected<'tcx> {
     Progress(Progress<'tcx>),
     NoProgress(ty::Term<'tcx>),
 }
 
+#[derive(Debug)]
 struct Progress<'tcx> {
     term: ty::Term<'tcx>,
     obligations: PredicateObligations<'tcx>,
@@ -648,7 +662,7 @@ impl<'tcx> Progress<'tcx> {
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
 // FIXME(mgca): While this supports constants, it is only used for types by default right now
-#[instrument(level = "info", skip(selcx))]
+#[instrument(level = "info", ret, skip(selcx))]
 fn project<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -2029,12 +2043,6 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_term.defining_node);
 
-    let term = if obligation.predicate.kind(tcx).is_type() {
-        tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
-    } else {
-        tcx.const_of_item(assoc_term.item.def_id).map_bound(|ct| ct.into())
-    };
-
     let progress = if !tcx.check_args_compatible(assoc_term.item.def_id, args) {
         let msg = "impl item and trait item have different parameters";
         let span = obligation.cause.span;
@@ -2046,7 +2054,42 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err, obligations: nested }
     } else {
         assoc_term_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: term.instantiate(tcx, args).skip_norm_wip(), obligations: nested }
+
+        let term = match obligation.predicate.kind(tcx) {
+            ty::AliasTermKind::ProjectionTy { .. } => {
+                tcx.type_of(assoc_term.item.def_id).instantiate(tcx, args).skip_norm_wip().into()
+            }
+            ty::AliasTermKind::ProjectionConst { .. }
+                if tcx.is_type_const(assoc_term.item.def_id) =>
+            {
+                tcx.const_of_item(assoc_term.item.def_id)
+                    .instantiate(tcx, args)
+                    .skip_norm_wip()
+                    .into()
+            }
+            ty::AliasTermKind::ProjectionConst { .. } => {
+                let uv = ty::UnevaluatedConst::new(assoc_term.item.def_id, args);
+                let ct = ty::Const::new_unevaluated(tcx, uv);
+                // We don't want to use super::evaluate_const, because that returns its parameter
+                // unchanged if it is too generic to evaluate. We are passing the `impl` form of the
+                // constant to evaluate_const (with generic arguments corresponding to the impl
+                // block), but we want to return the original, non-rebased, trait `Self` form of the
+                // constant (with generic arguments being the trait `Self` type) in Projected::NoProgress.
+                match super::try_evaluate_const(selcx.infcx, ct, param_env) {
+                    Ok(evaluated) => evaluated.into(),
+                    Err(
+                        super::EvaluateConstErr::EvaluationFailure(e)
+                        | super::EvaluateConstErr::InvalidConstParamTy(e),
+                    ) => ty::Const::new_error(tcx, e).into(),
+                    Err(super::EvaluateConstErr::HasGenericsOrInfers) => {
+                        return Ok(Projected::NoProgress(obligation.predicate.to_term(tcx)));
+                    }
+                }
+            }
+            kind => panic!("expected projection alias, found {kind:?}"),
+        };
+
+        Progress { term, obligations: nested }
     };
     Ok(Projected::Progress(progress))
 }

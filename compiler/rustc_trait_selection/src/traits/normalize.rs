@@ -339,22 +339,26 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }),
         );
         self.depth += 1;
-        let res = if free.kind(infcx.tcx).is_type() {
-            infcx
+        let res = match free.kind(infcx.tcx) {
+            ty::AliasTermKind::FreeTy { def_id } => infcx
                 .tcx
-                .type_of(free.def_id())
+                .type_of(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
-                .into()
-        } else {
-            infcx
+                .into(),
+            ty::AliasTermKind::FreeConst { def_id } if infcx.tcx.is_type_const(def_id) => infcx
                 .tcx
-                .const_of_item(free.def_id())
+                .const_of_item(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
-                .into()
+                .into(),
+            ty::AliasTermKind::FreeConst { .. } => {
+                super::evaluate_const(infcx, free.to_term(infcx.tcx).expect_const(), self.param_env)
+                    .into()
+            }
+            kind => panic!("expected free alias, found {kind:?}"),
         };
         self.depth -= 1;
         res
@@ -376,6 +380,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         t
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if !needs_normalization(self.selcx.infcx, &ty) {
             return ty;
