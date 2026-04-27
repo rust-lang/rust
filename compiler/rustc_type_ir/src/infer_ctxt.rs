@@ -98,6 +98,10 @@ pub enum TypingMode<I: Interner> {
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
     PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
+    /// During the evaluation of reflection logic that ignores lifetimes, we can only
+    /// handle impls that are fully generic over all lifetimes without constraints on
+    /// those lifetimes (other than implied bounds).
+    Reflection,
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
     /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
@@ -131,6 +135,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
     fn eq(&self, other: &Self) -> bool {
         match (self.0, other.0) {
             (TypingMode::Coherence, TypingMode::Coherence) => true,
+            (TypingMode::Reflection, TypingMode::Reflection) => true,
             (
                 TypingMode::Analysis { defining_opaque_types_and_generators: l },
                 TypingMode::Analysis { defining_opaque_types_and_generators: r },
@@ -146,6 +151,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
             (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
             (
                 TypingMode::Coherence
+                | TypingMode::Reflection
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
@@ -169,6 +175,7 @@ impl<I: Interner> TypingMode<I> {
             TypingMode::Coherence => true,
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => false,
         }
@@ -407,6 +414,7 @@ where
         TypingMode::Coherence
         | TypingMode::Analysis { .. }
         | TypingMode::Borrowck { .. }
+        | TypingMode::Reflection
         | TypingMode::PostBorrowckAnalysis { .. } => {
             infcx.cx().features().feature_bound_holds_in_crate(symbol)
         }

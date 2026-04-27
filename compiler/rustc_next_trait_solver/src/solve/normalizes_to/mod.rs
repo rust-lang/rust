@@ -303,6 +303,7 @@ where
                         // Outside of coherence, we treat the associated item as rigid instead.
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::Reflection
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
                         | ty::TypingMode::PostAnalysis => {
                             ecx.structurally_instantiate_normalizes_to_term(
@@ -341,6 +342,7 @@ where
                         }
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::Reflection
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
                         | ty::TypingMode::PostAnalysis => {
                             ecx.structurally_instantiate_normalizes_to_term(
@@ -968,6 +970,13 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         unreachable!("`BikeshedGuaranteedNoDrop` does not have an associated type: {:?}", goal)
+    }
+
+    fn consider_builtin_try_as_dyn_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("`TryAsDynCompat` does not have an associated type: {:?}", goal)
     }
 
     fn consider_builtin_field_candidate(

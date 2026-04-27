@@ -1,13 +1,15 @@
+use std::ops::ControlFlow;
+
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, kw};
+use rustc_type_ir::{TypeSuperVisitable as _, TypeVisitable, TypeVisitor};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
-use crate::ty;
-use crate::ty::{EarlyBinder, GenericArgsRef};
+use crate::ty::{self, ClauseKind, EarlyBinder, GenericArgsRef, Region, RegionKind, TyKind};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -435,6 +437,70 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
         instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| Unnormalized::new(*p)));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
+    }
+
+    /// Allow simple where bounds like `T: Debug`, but prevent any kind of
+    /// outlives bounds or uses of generic parameters on the right hand side.
+    pub fn is_fully_generic_for_reflection(self) -> bool {
+        struct ParamChecker;
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamChecker {
+            type Result = ControlFlow<()>;
+            fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
+                match r.kind() {
+                    RegionKind::ReEarlyParam(_) | RegionKind::ReStatic | RegionKind::ReError(_) => {
+                        ControlFlow::Break(())
+                    }
+                    RegionKind::ReVar(_)
+                    | RegionKind::RePlaceholder(_)
+                    | RegionKind::ReErased
+                    | RegionKind::ReLateParam(_) => {
+                        bug!("unexpected lifetime in impl: {r:?}")
+                    }
+                    RegionKind::ReBound(..) => ControlFlow::Continue(()),
+                }
+            }
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+                match t.kind() {
+                    TyKind::Param(_p) => {
+                        // Reject using parameters used in the type in where bounds
+                        return ControlFlow::Break(());
+                    }
+                    TyKind::Alias(..) => return ControlFlow::Break(()),
+                    _ => (),
+                }
+                t.super_visit_with(self)
+            }
+        }
+
+        // Pessimistic: if any of the parameters have where bounds
+        // don't allow this impl to be used.
+        self.predicates.iter().all(|(clause, _)| {
+            match clause.kind().skip_binder() {
+                ClauseKind::Trait(trait_predicate) => {
+                    // In a `T: Trait`, if the rhs bound does not contain any generic params
+                    // or 'static lifetimes, then it cannot transitively cause such requirements,
+                    // considering we apply the fully-generic-for-reflection rules to any impls for
+                    // that trait, too.
+                    if matches!(trait_predicate.self_ty().kind(), ty::Param(_))
+                        && trait_predicate.trait_ref.args[1..]
+                            .iter()
+                            .all(|arg| arg.visit_with(&mut ParamChecker).is_continue())
+                    {
+                        return true;
+                    }
+                }
+                ClauseKind::RegionOutlives(_)
+                | ClauseKind::TypeOutlives(_)
+                | ClauseKind::Projection(_)
+                | ClauseKind::ConstArgHasType(_, _)
+                | ClauseKind::WellFormed(_)
+                | ClauseKind::ConstEvaluatable(_)
+                | ClauseKind::HostEffect(_)
+                | ClauseKind::UnstableFeature(_) => {}
+            }
+            clause.visit_with(&mut ParamChecker).is_continue()
+        })
     }
 }
 

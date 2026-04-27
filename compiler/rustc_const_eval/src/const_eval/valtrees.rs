@@ -240,6 +240,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
         match typing_env.typing_mode() {
             ty::TypingMode::PostAnalysis => {}
             ty::TypingMode::Coherence
+            | ty::TypingMode::Reflection
             | ty::TypingMode::Analysis { .. }
             | ty::TypingMode::Borrowck { .. }
             | ty::TypingMode::PostBorrowckAnalysis { .. } => {

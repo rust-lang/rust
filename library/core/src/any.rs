@@ -86,7 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::intrinsics::{self, type_id_vtable};
+use crate::intrinsics::{self, type_id, type_id_vtable};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
 use crate::{fmt, hash, ptr};
@@ -808,14 +808,12 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    pub const fn trait_info_of<
-        T: ptr::Pointee<Metadata = ptr::DynMetadata<T>> + ?Sized + 'static,
-    >(
+    pub const fn trait_info_of<'a, T: TryAsDynCompatible<'a> + ?Sized>(
         self,
     ) -> Option<TraitImpl<T>> {
         // SAFETY: The vtable was obtained for `T`, so it is guaranteed to be `DynMetadata<T>`.
         // The intrinsic can't infer this because it is designed to work with arbitrary TypeIds.
-        unsafe { transmute(self.trait_info_of_trait_type_id(const { TypeId::of::<T>() })) }
+        unsafe { transmute(self.trait_info_of_trait_type_id(const { type_id::<T>() })) }
     }
 
     /// Checks if the [TypeId] implements the trait of `trait_represented_by_type_id`. If it does it returns [TraitImpl] which can be used to build a fat pointer.
@@ -971,12 +969,72 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()
 }
 
-/// Returns `Some(&U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
+/// Trait that is automatically implemented for all `dyn Trait<'b, C> + 'a` without assoc type bounds.
+/// The lifetime parameter should be the same that is used to constrain generic type parameters
+/// that are turned into the dyn trait constrained by `TryAsDynCompatible`.
+///
+/// This is required for `try_as_dyn` to be able to soundly convert non-static
+/// types to `dyn Trait`.
+///
+/// Note: these requirements are sufficient for soundness, but it is unclear
+/// if they are all necessary. We may be able to lift some requirements in favor
+/// of more precise ones.
+///
+#[unstable(feature = "try_as_dyn", issue = "144361")]
+#[lang = "try_as_dyn"]
+#[rustc_deny_explicit_impl]
+pub trait TryAsDynCompatible<'a>: ptr::Pointee<Metadata = ptr::DynMetadata<Self>> {}
+
+/// Returns `Some(&U)` if `T` can be coerced to the dyn trait type `U`. Otherwise, it returns `None`.
+///
+/// # Run-time failures
+///
+/// There are multiple ways to get a `None`, and you need to manually analyze which one it is, as the
+/// compiler does not provide any help here.
+///
+/// * `T` does not implement `Trait` at all,
+/// * `T`'s impl for `Trait` is not fully generic,
+/// * `T`'s impl for `Trait` is a builtin impl (e.g. `dyn Debug` implements `Debug`)
+///
+/// There is some detailed documentation about this feature at
+/// <https://doc.rust-lang.org/unstable-book/language-features/try_as_dyn.html>
+/// But the gist is summarized below:
+///
+/// ## Lifetime-independent impls
+///
+/// `try_as_dyn` does not have access to lifetime information, thus it cannot differentiate between
+/// `'static`, other lifetimes, and can't reason about outlives bounds on impls. Thus we can only accept
+/// impls that do not have `'static` lifetimes, or outlives bounds of any kind. You can have simple
+/// trait bounds, and the compiler will transitively only use impls of those simple trait bounds that satisfy
+/// the same rules as the main trait you're converting to.
+///
+/// An example of a legal impl is:
+///
+/// ```rust
+/// # trait Trait<'a, T> {}
+/// # struct Type<'b, U>(&'b U);
+/// # use std::fmt::{Debug, Display};
+/// impl<'a, 'b, T: Debug, U: Display> Trait<'a, T> for Type<'b, U> {}
+/// ```
+///
+/// Impls without generic parameters at all are also legal, as long as they contain no `'static` lifetimes.
+///
+/// ## Builtin impls
+///
+/// Builtin impls (like `impl Debug for dyn Debug`) have various obscure rules and often are not fully generic.
+/// To simplify reasoning about what is allowed and what not, all builtin impls are rejected and will neither
+/// directly nor indirectly contribute to a `Some` result.
 ///
 /// # Compile-time failures
-/// Determining whether `T` can be coerced to the trait object type `U` requires compiler trait resolution.
+/// Determining whether `T` can be coerced to the dyn trait type `U` requires compiler trait resolution.
 /// In some cases, that resolution can exceed the recursion limit,
 /// and compilation will fail instead of this function returning `None`.
+///
+/// The input type `T` must outlive the lifetime `'a` on the `dyn Trait + 'a`.
+/// This is basically the same rule that forbids `let x: &dyn Trait + 'static = &&some_local_variable;`
+/// So if you see borrow check errors around `try_as_dyn`, think about whether a normal unsizing
+/// coercion would be possible at all if you were using concrete types or had bounds on the input type.
+///
 /// # Examples
 ///
 /// ```rust
@@ -1006,14 +1064,9 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 /// ```
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn<
-    T: Any + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
-    t: &T,
-) -> Option<&U> {
+pub const fn try_as_dyn<'a, T: 'a, U: TryAsDynCompatible<'a> + ?Sized>(t: &T) -> Option<&U> {
     let vtable: Option<ptr::DynMetadata<U>> =
-        const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
+        const { type_id::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts(t, dyn_metadata);
@@ -1027,47 +1080,14 @@ pub const fn try_as_dyn<
 
 /// Returns `Some(&mut U)` if `T` can be coerced to the trait object type `U`. Otherwise, it returns `None`.
 ///
-/// # Compile-time failures
-/// Determining whether `T` can be coerced to the trait object type `U` requires compiler trait resolution.
-/// In some cases, that resolution can exceed the recursion limit,
-/// and compilation will fail instead of this function returning `None`.
-/// # Examples
-///
-/// ```rust
-/// #![feature(try_as_dyn)]
-///
-/// use core::any::try_as_dyn_mut;
-///
-/// trait Animal {
-///     fn speak(&self) -> &'static str;
-/// }
-///
-/// struct Dog;
-/// impl Animal for Dog {
-///     fn speak(&self) -> &'static str { "woof" }
-/// }
-///
-/// struct Rock; // does not implement Animal
-///
-/// let mut dog = Dog;
-/// let mut rock = Rock;
-///
-/// let as_animal: Option<&mut dyn Animal> = try_as_dyn_mut::<Dog, dyn Animal>(&mut dog);
-/// assert_eq!(as_animal.unwrap().speak(), "woof");
-///
-/// let not_an_animal: Option<&mut dyn Animal> = try_as_dyn_mut::<Rock, dyn Animal>(&mut rock);
-/// assert!(not_an_animal.is_none());
-/// ```
+/// See documentation of [try_as_dyn] for details about the behaviour and limitations.
 #[must_use]
 #[unstable(feature = "try_as_dyn", issue = "144361")]
-pub const fn try_as_dyn_mut<
-    T: Any + 'static,
-    U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized + 'static,
->(
+pub const fn try_as_dyn_mut<'a, T: 'a, U: TryAsDynCompatible<'a> + ?Sized>(
     t: &mut T,
 ) -> Option<&mut U> {
     let vtable: Option<ptr::DynMetadata<U>> =
-        const { TypeId::of::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
+        const { type_id::<T>().trait_info_of::<U>().as_ref().map(TraitImpl::get_vtable) };
     match vtable {
         Some(dyn_metadata) => {
             let pointer = ptr::from_raw_parts_mut(t, dyn_metadata);

@@ -1,3 +1,5 @@
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
 //@ run-pass
 #![feature(try_as_dyn)]
 
@@ -7,7 +9,7 @@ use std::fmt::Debug;
 fn debug_format_with_try_as_dyn<T: 'static>(t: &T) -> String {
     match std::any::try_as_dyn::<_, dyn Debug>(t) {
         Some(d) => format!("{d:?}"),
-        None => "default".to_string()
+        None => "default".to_string(),
     }
 }
 
@@ -16,7 +18,7 @@ fn main() {
     #[allow(dead_code)]
     #[derive(Debug)]
     struct A {
-        index: usize
+        index: usize,
     }
     let a = A { index: 42 };
     let result = debug_format_with_try_as_dyn(&a);

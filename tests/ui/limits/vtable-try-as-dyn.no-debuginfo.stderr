@@ -1,15 +1,15 @@
 error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
   --> $SRC_DIR/core/src/any.rs:LL:COL
    |
-   = note: evaluation of `std::any::try_as_dyn::<[u8; usize::MAX], dyn Trait>::{constant#0}` failed inside this call
-note: inside `TypeId::trait_info_of::<dyn Trait>`
+   = note: evaluation of `std::any::try_as_dyn::<'_, [u8; usize::MAX], dyn Trait>::{constant#0}` failed inside this call
+note: inside `TypeId::trait_info_of::<'_, dyn Trait>`
   --> $SRC_DIR/core/src/any.rs:LL:COL
 note: inside `TypeId::trait_info_of_trait_type_id`
   --> $SRC_DIR/core/src/any.rs:LL:COL
 note: inside `type_info::<impl TypeId>::info`
   --> $SRC_DIR/core/src/mem/type_info.rs:LL:COL
 
-note: the above error was encountered while instantiating `fn try_as_dyn::<[u8; usize::MAX], dyn Trait>`
+note: the above error was encountered while instantiating `fn try_as_dyn::<'_, [u8; usize::MAX], dyn Trait>`
   --> $DIR/vtable-try-as-dyn.rs:14:13
    |
 LL |     let _ = std::any::try_as_dyn::<[u8; usize::MAX], dyn Trait>(x);
