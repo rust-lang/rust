@@ -163,8 +163,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     && self.is_ssa(place) =>
             {
                 let successor = Location { block: *target, statement_index: 0 };
-                if location.dominates(successor, &self.dominators) {
-                    assert_ne!(location.block, successor.block);
+                if location.dominates(successor, &self.dominators) && location.block != successor.block {
                     let val = *expected as u128;
                     let range = WrappingRange { start: val, end: val };
                     self.insert_range(place, successor, range);
@@ -187,8 +186,7 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                         continue;
                     }
                     let successor = Location { block: target, statement_index: 0 };
-                    if self.unique_predecessors.contains(successor.block) {
-                        assert_ne!(location.block, successor.block);
+                    if self.unique_predecessors.contains(successor.block) && location.block != successor.block {
                         let range = WrappingRange { start: val, end: val };
                         self.insert_range(place, successor, range);
                     }
