@@ -1827,7 +1827,11 @@ impl Build {
                 metadata = t!(fs::metadata(&src), format!("target = {}", src.display()));
             } else {
                 let link = t!(fs::read_link(src));
-                t!(self.symlink_file(link, dst));
+                if t!(link.metadata()).is_dir() {
+                    t!(symlink_dir(&self.config, &link, dst));
+                } else {
+                    t!(self.symlink_file(link, dst));
+                }
                 return;
             }
         }
