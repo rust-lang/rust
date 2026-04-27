@@ -21,6 +21,7 @@ use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::UnconstrainedGenericParameter;
+use crate::errors::remove_or_use_generic::suggest_to_remove_or_use_generic;
 
 mod min_specialization;
 
@@ -177,6 +178,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                             );
                         }
                     }
+                    suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, param, true);
                     res = Err(diag.emit());
                 }
             }
@@ -242,6 +244,7 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
                 const_param_note2: const_param_note,
             });
             diag.code(E0207);
+            suggest_to_remove_or_use_generic(tcx, &mut diag, impl_def_id, &param, false);
             res = Err(diag.emit());
         }
     }
