@@ -144,5 +144,8 @@ pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
         ExternAbi::Custom => {
             Err(UnstableAbi { abi, feature: sym::abi_custom, explain: GateReason::Experimental })
         }
+        ExternAbi::Swift => {
+            Err(UnstableAbi { abi, feature: sym::abi_swift, explain: GateReason::Experimental })
+        }
     }
 }

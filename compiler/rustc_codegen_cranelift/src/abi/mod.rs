@@ -63,6 +63,9 @@ pub(crate) fn conv_to_call_conv(
         // convention for declaring foreign functions.
         CanonAbi::Custom => default_call_conv,
 
+        // Cranelift has no Swift calling convention; fall back to the platform default.
+        CanonAbi::Swift => default_call_conv,
+
         CanonAbi::X86(x86_call) => match x86_call {
             X86Call::SysV64 => CallConv::SystemV,
             X86Call::Win64 => CallConv::WindowsFastcall,
