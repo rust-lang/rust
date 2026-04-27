@@ -1366,6 +1366,6 @@ fn split_flags(flags: &str) -> Vec<String> {
         .split('\'')
         .enumerate()
         .flat_map(|(i, f)| if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() })
-        .map(move |s| s.to_owned())
-        .collect::<Vec<_>>()
+        .map(|s| s.to_owned())
+        .collect()
 }
