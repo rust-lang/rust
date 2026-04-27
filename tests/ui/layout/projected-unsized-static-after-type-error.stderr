@@ -1,0 +1,21 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/projected-unsized-static-after-type-error.rs:6:15
+   |
+LL | struct Thing(<&[fn()] as ::core::ops::Deref>::Target);
+   |               ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | struct Thing<'a>(<&'a [fn()] as ::core::ops::Deref>::Target);
+   |             ++++   ++
+
+error[E0080]: the type `Thing` has an unknown layout
+  --> $DIR/projected-unsized-static-after-type-error.rs:11:19
+   |
+LL | const Y: &Thing = &X;
+   |                   ^^ evaluation of `Y` failed here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0106.
+For more information about an error, try `rustc --explain E0080`.
