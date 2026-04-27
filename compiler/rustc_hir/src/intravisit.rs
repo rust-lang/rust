@@ -69,6 +69,7 @@ use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, Symbol};
 
+use crate::def_id::HirId;
 use crate::hir::*;
 
 pub trait IntoVisitor<'hir> {

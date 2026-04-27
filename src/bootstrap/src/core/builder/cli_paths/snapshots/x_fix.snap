@@ -33,7 +33,6 @@ expression: fix
     - Set({fix::compiler/rustc_hashes})
     - Set({fix::compiler/rustc_hir})
     - Set({fix::compiler/rustc_hir_analysis})
-    - Set({fix::compiler/rustc_hir_id})
     - Set({fix::compiler/rustc_hir_pretty})
     - Set({fix::compiler/rustc_hir_typeck})
     - Set({fix::compiler/rustc_incremental})

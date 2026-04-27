@@ -18,9 +18,10 @@ use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, PrintAttribute};
+use rustc_hir::def_id::{CRATE_HIR_ID, HirId};
 use rustc_hir::{
     BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
-    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
+    GenericParam, GenericParamKind, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
     PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
@@ -286,7 +287,7 @@ pub fn print_crate<'a>(
     // Print all attributes, regardless of actual style, as inner attributes
     // since this is the crate root with nothing above it to print outer
     // attributes.
-    for attr in s.attrs(hir::CRATE_HIR_ID) {
+    for attr in s.attrs(CRATE_HIR_ID) {
         s.print_attribute_as_style(attr, ast::AttrStyle::Inner);
     }
 

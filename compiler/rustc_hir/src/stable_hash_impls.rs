@@ -1,12 +1,11 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::HashStableContext;
-use rustc_span::def_id::DefPathHash;
+use rustc_span::def_id::{DefPathHash, ItemLocalId};
 
 use crate::HashIgnoredAttrId;
 use crate::hir::{
     AttributeMap, BodyId, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
-use crate::hir_id::ItemLocalId;
 
 impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for BodyId {
     type KeyType = (DefPathHash, ItemLocalId);

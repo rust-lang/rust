@@ -512,7 +512,7 @@ impl DefKind {
 ///   pointing to the definition of `str_to_string` in the current crate.
 //
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
-pub enum Res<Id = hir::HirId> {
+pub enum Res<Id = crate::def_id::HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
     /// **Not bound to a specific namespace.**

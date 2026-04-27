@@ -33,7 +33,6 @@ expression: check compiletest --include-default-paths
     - Set({check::compiler/rustc_hashes})
     - Set({check::compiler/rustc_hir})
     - Set({check::compiler/rustc_hir_analysis})
-    - Set({check::compiler/rustc_hir_id})
     - Set({check::compiler/rustc_hir_pretty})
     - Set({check::compiler/rustc_hir_typeck})
     - Set({check::compiler/rustc_incremental})

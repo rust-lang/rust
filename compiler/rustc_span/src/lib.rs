@@ -55,6 +55,7 @@ pub use hygiene::{
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId, StableCrateId};
 pub mod edit_distance;
+pub mod node_id;
 mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 

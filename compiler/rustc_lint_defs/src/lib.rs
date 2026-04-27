@@ -1,18 +1,15 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
-use rustc_ast::AttrId;
-use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::def_id::DefPathHash;
+use rustc_span::def_id::{DefPathHash, HirId, ItemLocalId};
 pub use rustc_span::edition::Edition;
-use rustc_span::{HashStableContext, Ident, Span, Symbol, sym};
+use rustc_span::{AttrId, HashStableContext, Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -248,8 +245,11 @@ impl Level {
     }
 
     /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &impl AttributeExt) -> Option<(Self, Option<LintExpectationId>)> {
-        attr.name().and_then(|name| Self::from_symbol(name, || Some(attr.id())))
+    pub fn from_attr(
+        attr_name: Option<Symbol>,
+        attr_id: impl Fn() -> AttrId,
+    ) -> Option<(Self, Option<LintExpectationId>)> {
+        attr_name.and_then(|name| Self::from_symbol(name, || Some(attr_id())))
     }
 
     /// Converts a `Symbol` to a level.

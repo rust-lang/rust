@@ -1,11 +1,11 @@
 use std::any::Any;
 
-/// This module provides types and traits for buffering lints until later in compilation.
-use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
 use rustc_lint_defs::{AttributeLintKind, Lint, LintId};
+/// This module provides types and traits for buffering lints until later in compilation.
+use rustc_span::node_id::NodeId;
 
 use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
 
