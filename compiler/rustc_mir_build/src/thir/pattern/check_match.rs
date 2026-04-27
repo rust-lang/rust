@@ -168,7 +168,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
                 // Lint only single irrefutable let binding.
                 if let [Some((_, Irrefutable))] = chain_refutabilities[..] {
-                    self.lint_single_let(ex.span, None);
+                    self.lint_single_let(ex.span, None, None);
                 }
                 return;
             }
@@ -438,7 +438,45 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         if let LetSource::PlainLet = self.let_source {
             self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
         } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
-            self.lint_single_let(span, else_span);
+            if span.from_expansion() {
+                self.lint_single_let(span, None, None);
+                return;
+            }
+            let let_else_span = self.check_irrefutable_option_some(pat, scrut, span);
+
+            let sm = self.tcx.sess.source_map();
+            let next_token_start = sm.span_extend_while_whitespace(span.clone()).hi();
+            let line_span = sm.span_extend_to_line(span.clone()).with_lo(next_token_start);
+            let else_keyword_span = sm.span_until_whitespace(line_span);
+            self.lint_single_let(span, Some(else_keyword_span), let_else_span);
+        }
+    }
+
+    /// Check case `let x = Some(y);`, user likely intended to destructure `Option`
+    fn check_irrefutable_option_some(
+        &self,
+        pat: &'p Pat<'tcx>,
+        initializer: Option<&Expr<'tcx>>,
+        span: Span,
+    ) -> Option<LetElseReplacementSuggestion> {
+        if let sm = self.tcx.sess.source_map()
+            && let Some(initializer) = initializer
+            && let Some(s_ty) = initializer.ty.ty_adt_def()
+            && self.tcx.is_diagnostic_item(rustc_span::sym::Option, s_ty.did())
+            && let ExprKind::Scope { value, .. } = initializer.kind
+            && let initializer_expr = &self.thir[value]
+            && let ExprKind::Adt(box AdtExpr { fields, .. }) = &initializer_expr.kind
+            && let Some(field) = fields.first()
+            && let inner = &self.thir[field.expr]
+            && let Some(inner_ty) = inner.ty.ty_adt_def()
+            && self.tcx.is_diagnostic_item(rustc_span::sym::Option, inner_ty.did())
+            && let Ok(rhs) = sm.span_to_snippet(inner.span)
+            && let Ok(lhs) = sm.span_to_snippet(pat.span)
+        {
+            let lhs = format!("Some({})", lhs);
+            Some(LetElseReplacementSuggestion { span, lhs, rhs })
+        } else {
+            None
         }
     }
 
@@ -559,14 +597,20 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn lint_single_let(&mut self, let_span: Span, else_span: Option<Span>) {
+    fn lint_single_let(
+        &mut self,
+        let_span: Span,
+        else_keyword_span: Option<Span>,
+        let_else_span: Option<LetElseReplacementSuggestion>,
+    ) {
         report_irrefutable_let_patterns(
             self.tcx,
             self.hir_source,
             self.let_source,
             1,
             let_span,
-            else_span,
+            else_keyword_span,
+            let_else_span,
         );
     }
 
@@ -862,7 +906,8 @@ fn report_irrefutable_let_patterns(
     source: LetSource,
     count: usize,
     span: Span,
-    else_span: Option<Span>,
+    else_keyword_span: Option<Span>,
+    let_else_span: Option<LetElseReplacementSuggestion>,
 ) {
     macro_rules! emit_diag {
         ($lint:tt) => {{
@@ -875,11 +920,23 @@ fn report_irrefutable_let_patterns(
         LetSource::IfLet | LetSource::ElseIfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
         LetSource::LetElse => {
+            let spans = match else_keyword_span {
+                Some(else_keyword_span) => {
+                    let mut spans = MultiSpan::from_span(else_keyword_span);
+                    spans.push_span_label(
+                        span,
+                        msg!("assigning to binding pattern will always succeed"),
+                    );
+                    spans
+                }
+                None => span.into(),
+            };
+
             tcx.emit_node_span_lint(
                 IRREFUTABLE_LET_PATTERNS,
                 id,
-                span,
-                IrrefutableLetPatternsLetElse { count, else_span },
+                spans,
+                IrrefutableLetPatternsLetElse { be_replaced: let_else_span },
             );
         }
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
