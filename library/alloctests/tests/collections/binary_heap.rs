@@ -590,3 +590,65 @@ fn panic_safe() {
         }
     }
 }
+
+#[test]
+fn given_a_binary_heap_can_create_an_extract_if_iterator() {
+    let mut heap: BinaryHeap<usize> = BinaryHeap::new();
+    let iter = heap.extract_if(|_| unreachable!("there's nothing to decide on"));
+
+    iter.for_each(drop);
+    assert!(heap.is_empty())
+}
+
+#[test]
+fn given_some_binary_heap_with_one_item_when_extracting_if_true_extracts_all_items() {
+    let mut heap: BinaryHeap<usize> = BinaryHeap::new();
+    heap.push(10);
+    let v: Vec<usize> = heap.extract_if(|_| true).collect();
+
+    assert!(heap.is_empty());
+    assert_eq!(v, vec![10]);
+}
+
+#[test]
+fn given_some_binary_heap_with_three_items_when_extracting_if_true_extracts_all_items_in_arbitrary_order()
+ {
+    let mut heap = BinaryHeap::new();
+    heap.push(10);
+    heap.push(15);
+    heap.push(11);
+    let v: Vec<_> = heap.extract_if(|_| true).collect();
+
+    assert!(heap.is_empty());
+    assert_eq!(v, vec![15, 10, 11]);
+}
+
+#[test]
+fn given_some_binary_heap_with_some_items_when_extracting_if_even_extracts_just_even_items() {
+    let mut heap = BinaryHeap::new();
+    heap.push(10);
+    heap.push(15);
+    heap.push(11);
+    let v: Vec<_> = heap.extract_if(|&mut x| x % 2 == 0).collect();
+
+    assert_eq!(v, vec![10]);
+    assert_eq!(heap.pop(), Some(15));
+    assert_eq!(heap.pop(), Some(11));
+    assert_eq!(heap.pop(), None);
+}
+
+#[test]
+fn given_some_binary_heap_with_some_items_when_extracting_if_when_dropping_without_iterating_leaves_heap_in_valid_state()
+ {
+    let mut heap = BinaryHeap::new();
+    heap.push(10);
+    heap.push(15);
+    heap.push(11);
+
+    drop(heap.extract_if(|&mut x| x % 2 == 0));
+
+    assert_eq!(heap.pop(), Some(15));
+    assert_eq!(heap.pop(), Some(11));
+    assert_eq!(heap.pop(), Some(10));
+    assert_eq!(heap.pop(), None);
+}
