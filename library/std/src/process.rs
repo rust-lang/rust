@@ -1185,7 +1185,8 @@ impl Command {
     /// [`Command::env_remove`] can be retrieved with this method.
     ///
     /// Note that this output does not include environment variables inherited from the parent
-    /// process.
+    /// process. To see the full list of environment variables, including those inherited from the
+    /// parent process, use [`Command::get_resolved_envs`].
     ///
     /// Each element is a tuple key/value pair `(&OsStr, Option<&OsStr>)`. A [`None`] value
     /// indicates its key was explicitly removed via [`Command::env_remove`]. The associated key for
@@ -1212,6 +1213,42 @@ impl Command {
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_envs(&self) -> CommandEnvs<'_> {
         CommandEnvs { iter: self.inner.get_envs() }
+    }
+
+    /// Returns an iterator of the environment variables that will be set when the process is spawned.
+    ///
+    /// This returns the environment as it would be if the command were executed at the time of calling
+    /// this method. The returned environment includes:
+    /// - All inherited environment variables from the parent process (unless [`Command::env_clear`] was called)
+    /// - All environment variables explicitly set via [`Command::env`] or [`Command::envs`]
+    /// - Excluding any environment variables removed via [`Command::env_remove`]
+    ///
+    /// Note that the returned environment is a snapshot at the time this method is called and will not
+    /// reflect any subsequent changes to the `Command` or the parent process's environment. Additionally,
+    /// it will not reflect changes made in a `pre_exec` hook (on Unix platforms).
+    ///
+    /// Each element is a tuple `(OsString, OsString)` representing an environment variable key and value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(command_resolved_envs)]
+    /// use std::process::Command;
+    /// use std::ffi::{OsString, OsStr};
+    /// use std::env;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// cmd.env("TZ", "UTC");
+    /// unsafe { env::set_var("EDITOR", "vim"); }
+    ///
+    /// let resolved: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
+    /// assert_eq!(resolved.get(OsStr::new("TZ")), Some(&OsString::from("UTC")));
+    /// assert_eq!(resolved.get(OsStr::new("EDITOR")), Some(&OsString::from("vim")));
+    /// ```
+    #[unstable(feature = "command_resolved_envs", issue = "149070")]
+    pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
+        self.inner.get_resolved_envs()
     }
 
     /// Returns the working directory for the child process.
@@ -1366,6 +1403,9 @@ impl<'a> fmt::Debug for CommandEnvs<'a> {
         self.iter.fmt(f)
     }
 }
+
+#[unstable(feature = "command_resolved_envs", issue = "149070")]
+pub use imp::CommandResolvedEnvs;
 
 /// The output of a finished process.
 ///
