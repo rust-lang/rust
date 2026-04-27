@@ -1005,6 +1005,13 @@ impl Step for Size {
     }
 
     #[inline]
+    #[cfg(not(bootstrap))]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u64::forward_overflowing(start.bytes(), count);
+        (Self::from_bytes(s), o)
+    }
+
+    #[inline]
     fn forward(start: Self, count: usize) -> Self {
         Self::from_bytes(u64::forward(start.bytes(), count))
     }
@@ -1017,6 +1024,13 @@ impl Step for Size {
     #[inline]
     fn backward_checked(start: Self, count: usize) -> Option<Self> {
         u64::backward_checked(start.bytes(), count).map(Self::from_bytes)
+    }
+
+    #[inline]
+    #[cfg(not(bootstrap))]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (s, o) = u64::backward_overflowing(start.bytes(), count);
+        (Self::from_bytes(s), o)
     }
 
     #[inline]

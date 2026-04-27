@@ -363,10 +363,15 @@ pub struct RangeInclusive<Idx> {
     pub(crate) start: Idx,
     pub(crate) end: Idx,
 
-    // This field is:
+    // This field represents an overflow flag for either bound (start or end):
     //  - `false` upon construction
-    //  - `false` when iteration has yielded an element and the iterator is not exhausted
-    //  - `true` when iteration has been used to exhaust the iterator
+    //  - `false` when iteration has yielded an element and
+    //    neither bound has overflowed the valid range of `Idx`
+    //  - `true` when iteration has caused either bound to
+    //    overflow the valid range of `Idx`
+    //
+    // When this is true, `start` or `end` may be left in an unspecified state,
+    // often wrapping (modular arithmetic) around at the boundary of `Idx`.
     //
     // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
     pub(crate) exhausted: bool,
@@ -464,6 +469,13 @@ impl RangeInclusive<usize> {
     /// The caller is responsible for dealing with `end == usize::MAX`.
     #[inline]
     pub(crate) const fn into_slice_range(self) -> Range<usize> {
+        // Typically users should not be indexing with exhausted instances,
+        // but this heuristic should apply to most cases. This doesn't
+        // handle reverse iteration well (`next_back` and `nth_back` can
+        // cause `end` to wrap around to values at or near `usize::MAX`),
+        // but using an exhausted `RangeInclusive` after reverse iteration
+        // is an exceedingly rare case.
+
         // If we're not exhausted, we want to simply slice `start..end + 1`.
         // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
         // empty range that is still subject to bounds-checks for that endpoint.
@@ -1127,9 +1139,11 @@ impl<T> const RangeBounds<T> for RangeInclusive<T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         if self.exhausted {
-            // When the iterator is exhausted, we usually have start == end,
+            // When the iterator is exhausted, it might have overflowed,
             // but we want the range to appear empty, containing nothing.
-            Excluded(&self.end)
+            // So in that case, we return bounds which are always empty:
+            // Included(start)..Excluded(start)
+            Excluded(&self.start)
         } else {
             Included(&self.end)
         }
@@ -1140,16 +1154,12 @@ impl<T> const RangeBounds<T> for RangeInclusive<T> {
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const IntoBounds<T> for RangeInclusive<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (
-            Included(self.start),
-            if self.exhausted {
-                // When the iterator is exhausted, we usually have start == end,
-                // but we want the range to appear empty, containing nothing.
-                Excluded(self.end)
-            } else {
-                Included(self.end)
-            },
-        )
+        assert!(
+            !self.exhausted,
+            "attempted to convert from an exhausted `RangeInclusive` (unspecified behavior)"
+        );
+
+        (Included(self.start), Included(self.end))
     }
 }
 
