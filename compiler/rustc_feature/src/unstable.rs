@@ -237,6 +237,8 @@ declare_features! (
     (internal, field_representing_type_raw, "1.96.0", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
+    /// Allows using `arg@` rustdoc disambiguator
+    (unstable, intra_doc_arg, "CURRENT_RUSTC_VERSION", None),
     /// Allows using the #[rustc_intrinsic] attribute.
     (internal, intrinsics, "1.0.0", None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
