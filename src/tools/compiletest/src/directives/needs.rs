@@ -290,6 +290,50 @@ pub(super) fn handle_needs(
         }
     }
 
+    if name == "needs-asm-mnemonic" {
+        let Some(rest) = ln.value_after_colon() else {
+            return IgnoreDecision::Error {
+                message: "expected `needs-asm-mnemonic` to have a mnemonic name after colon"
+                    .to_string(),
+            };
+        };
+
+        if !config.default_codegen_backend.is_llvm() {
+            return IgnoreDecision::Ignore {
+                reason: "skipping test as non-LLVM backend does not support mnemonic queries"
+                    .to_string(),
+            };
+        }
+
+        let mnemonic = rest.trim();
+        let target_flag = format!("--target={}", config.target);
+        let output = query_rustc_output(
+            config,
+            &[
+                &target_flag,
+                "-Zunstable-options",
+                &format!("--print=backend-has-mnemonic:{}", mnemonic),
+            ],
+            Default::default(),
+        );
+
+        let has_mnemonic = match output.trim() {
+            "true" => true,
+            "false" => false,
+            _ => panic!(
+                "unexpected output from `--print=backend-has-mnemonic:{mnemonic}`: {output:?}"
+            ),
+        };
+
+        if has_mnemonic {
+            return IgnoreDecision::Continue;
+        } else {
+            return IgnoreDecision::Ignore {
+                reason: format!("skipping test as target does not have `{mnemonic}` mnemonic"),
+            };
+        }
+    }
+
     if !name.starts_with("needs-") {
         return IgnoreDecision::Continue;
     }
