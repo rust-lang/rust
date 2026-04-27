@@ -1,0 +1,16 @@
+error: unknown command "\["
+  --> $DIR/double-escaped.rs:5:9
+   |
+LL | //! Let $f(x) \in \mathbb{Z}\[x\]$ be non-zero primitive squarefree polynomial
+   |         ^^^^^^^^^^^^^^^^^^^^----^^
+   |                             |
+   |                             help: consider if the math span might be double-escaped: `[x`
+   |
+note: the lint level is defined here
+  --> $DIR/double-escaped.rs:3:9
+   |
+LL | #![deny(rustdoc::invalid_math)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

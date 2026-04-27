@@ -1,0 +1,14 @@
+error: unknown command "\frobnicate"
+  --> $DIR/basic.rs:6:5
+   |
+LL | //! $\frobnicate{2}$
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/basic.rs:2:9
+   |
+LL | #![deny(rustdoc::invalid_math)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

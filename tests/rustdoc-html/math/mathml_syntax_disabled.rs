@@ -7,14 +7,17 @@
 //! $\sqrt{2}$
 //@ has 'foo/index.html'
 //@ !matches - '//link/@href' 'mathml'
+//@ count - '//math' 0
 
 pub mod module {
     //! $\sqrt{2}$
     //@ has 'foo/module/index.html'
     //@ !matches - '//link/@href' 'mathml'
+    //@ count - '//math' 0
 
     //@ has 'foo/module/struct.MathSyntax.html'
     //@ !matches - '//link/@href' 'mathml'
+    //@ count - '//math' 0
     /// $\sqrt{2}$
     pub struct MathSyntax;
 
