@@ -198,5 +198,5 @@ index 073116933bd..c3e4578204d 100644
 EOF
 
 echo "[TEST] rustc test suite"
-./x.py test --stage 0 --test-args=--no-capture tests/{codegen-units,run-make,run-make-cargo,ui,incremental}
+./x.py test --stage 0 --no-capture --verbose-run-make-subprocess-output=false tests/{codegen-units,run-make,run-make-cargo,ui,incremental}
 popd
