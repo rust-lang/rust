@@ -608,7 +608,7 @@ fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
         && let ExprKind::Call(callee, [_]) = expr.kind
         && let ExprKind::Path(qpath) = callee.kind
-        && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitFromOutput)
+        && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryFromOutput)
     {
         true
     } else {

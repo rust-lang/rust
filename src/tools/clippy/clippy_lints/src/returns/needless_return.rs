@@ -135,7 +135,7 @@ fn check_final_expr<'tcx>(
                 // if desugar of `do yeet`, don't lint
                 if let ExprKind::Call(path_expr, [_]) = inner_expr.kind
                     && let ExprKind::Path(qpath) = path_expr.kind
-                    && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitFromYeet)
+                    && cx.tcx.qpath_is_lang_item(qpath, LangItem::TryFromYeet)
                 {
                     return;
                 }

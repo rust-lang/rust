@@ -2203,5 +2203,5 @@ impl<T, E, F: [const] From<E>> const ops::FromResidual<ops::Yeet<E>> for Result<
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
-    type TryType = Result<T, E>;
+    type Try = Result<T, E>;
 }
