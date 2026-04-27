@@ -332,17 +332,23 @@ fn target_archive_format_to_object_kind(format: &str) -> Option<ObjectArchiveKin
 }
 
 fn archive_kinds_compatible(actual: ObjectArchiveKind, expected: ObjectArchiveKind) -> bool {
+    if actual == expected {
+        return true;
+    }
     matches!(
         (actual, expected),
-        (ObjectArchiveKind::Gnu, ObjectArchiveKind::Gnu)
-        | (ObjectArchiveKind::Bsd, ObjectArchiveKind::Bsd)
-        | (ObjectArchiveKind::Bsd64, ObjectArchiveKind::Bsd64)
-        | (ObjectArchiveKind::Coff, ObjectArchiveKind::Coff)
-        | (ObjectArchiveKind::AixBig, ObjectArchiveKind::AixBig)
+        // An archive without long filenames or symbol table is detected as Unknown;
+        // this is compatible with any target format.
+        (ObjectArchiveKind::Unknown, _)
         // 64-bit symbol table variants are compatible with their 32-bit counterparts
         | (ObjectArchiveKind::Gnu64, ObjectArchiveKind::Gnu)
         | (ObjectArchiveKind::Bsd64, ObjectArchiveKind::Bsd)
         | (ObjectArchiveKind::Bsd, ObjectArchiveKind::Bsd64)
+        // GNU and COFF archives share the same magic and member header format;
+        // only the symbol table layout differs.
+        | (ObjectArchiveKind::Gnu, ObjectArchiveKind::Coff)
+        | (ObjectArchiveKind::Coff, ObjectArchiveKind::Gnu)
+        | (ObjectArchiveKind::Gnu64, ObjectArchiveKind::Coff)
     )
 }
 
@@ -461,9 +467,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             target_archive_format_to_object_kind(&self.sess.target.archive_format)
         {
             let actual_kind = archive.kind();
-            if actual_kind != ObjectArchiveKind::Unknown
-                && !archive_kinds_compatible(actual_kind, expected_kind)
-            {
+            if !archive_kinds_compatible(actual_kind, expected_kind) {
                 self.sess.dcx().emit_warn(crate::errors::IncompatibleArchiveFormat {
                     path: archive_path.clone(),
                     actual: archive_format_display_name(&format!("{actual_kind:?}")),

@@ -4,25 +4,30 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, llvm_ar, path, rfs, rustc, static_lib_name};
+use run_make_support::{cc, llvm_ar, path, rfs, rustc, static_lib_name, target};
 
 fn main() {
     rfs::create_dir("archive");
 
-    cc().arg("-c").input("native.c").output("archive/native.o").run();
-
     // Test 1 (first defense): BSD format archive on a GNU/Linux target should
     // emit a format mismatch warning.
-    let bsd_archive = path("archive").join(static_lib_name("native_bsd"));
-    llvm_ar().arg("rcus").arg("--format=bsd").output_input(&bsd_archive, "archive/native.o").run();
-    rustc()
-        .input("lib.rs")
-        .crate_type("rlib")
-        .library_search_path("archive")
-        .arg("-lstatic=native_bsd")
-        .run()
-        .assert_stderr_contains("BSD")
-        .assert_stderr_contains("GNU");
+    if target().contains("linux") {
+        cc().arg("-c").input("native.c").output("archive/native.o").run();
+        let bsd_archive = path("archive").join(static_lib_name("native_bsd"));
+        llvm_ar()
+            .arg("rcus")
+            .arg("--format=bsd")
+            .output_input(&bsd_archive, "archive/native.o")
+            .run();
+        rustc()
+            .input("lib.rs")
+            .crate_type("rlib")
+            .library_search_path("archive")
+            .arg("-lstatic=native_bsd")
+            .run()
+            .assert_stderr_contains("BSD")
+            .assert_stderr_contains("GNU");
+    }
 
     // Test 2 (second defense): corrupt archive with member offset exceeding
     // file boundary should produce an error, not an ICE.
