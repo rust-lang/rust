@@ -318,6 +318,16 @@ pub(crate) struct ConstParamTyImplOnNonAdt {
 }
 
 #[derive(Diagnostic)]
+#[diag("the trait `ConstParamTy` may not be implemented for this type")]
+pub(crate) struct ConstParamTyImplOnNonExhaustive {
+    #[primary_span]
+    #[label("non exhaustive const params are forbidden")]
+    pub defn_span: Span,
+    #[label("caused by this attribute")]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("the trait `ConstParamTy` may not be implemented for this struct")]
 pub(crate) struct ConstParamTyFieldVisMismatch {
     #[primary_span]

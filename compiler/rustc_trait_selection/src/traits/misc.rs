@@ -4,8 +4,9 @@ use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
+use rustc_middle::bug;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, FulfillmentError, Obligation, ObligationCause};
@@ -22,6 +23,7 @@ pub enum ConstParamTyImplementationError<'tcx> {
     InvalidInnerTyOfBuiltinTy(Vec<(Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdtOrBuiltinAllowed,
+    NonExhaustive(Span),
 }
 
 pub enum InfringingFieldsReason<'tcx> {
@@ -124,6 +126,19 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         ty::Tuple(inner_tys) => inner_tys.into_iter().collect(),
 
         ty::Adt(adt, args) if adt.is_enum() || adt.is_struct() => {
+            if !tcx.features().adt_const_params() {
+                for variant in adt.variants() {
+                    if variant.is_field_list_non_exhaustive() {
+                        let attr_span = match hir::find_attr!(tcx, variant.def_id, hir::attrs::AttributeKind::NonExhaustive(span) => *span)
+                        {
+                            Some(sp) => sp,
+                            None => bug!("non_exhaustive variant missing NonExhaustive attribute"),
+                        };
+                        return Err(ConstParamTyImplementationError::NonExhaustive(attr_span));
+                    }
+                }
+            }
+
             all_fields_implement_trait(
                 tcx,
                 param_env,

@@ -221,6 +221,12 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
+        Err(ConstParamTyImplementationError::NonExhaustive(attr_span)) => {
+            let defn_span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
+            Err(tcx
+                .dcx()
+                .emit_err(errors::ConstParamTyImplOnNonExhaustive { defn_span, attr_span }))
+        }
         Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(infringing_tys)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
