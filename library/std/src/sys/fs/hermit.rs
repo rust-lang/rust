@@ -1,3 +1,5 @@
+use alloc_crate::borrow::Cow;
+
 use crate::ffi::{CStr, OsStr, OsString, c_char};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
@@ -52,6 +54,37 @@ impl ReadDir {
         Self { inner: Arc::new(inner), pos: 0 }
     }
 }
+
+/// Specialization trait used to construct a `ReadDir`
+trait ReadDirFromPath<P> {
+    fn from_path(dir: Vec<u8>, path: P) -> Self;
+}
+
+impl<P: AsRef<Path>> ReadDirFromPath<P> for ReadDir {
+    default fn from_path(dir: Vec<u8>, path: P) -> Self {
+        let inner = InnerReadDir { root: path.as_ref().to_path_buf(), dir };
+        ReadDir::new(inner)
+    }
+}
+
+/// This constructs a `ReadDir` for all types that can be converted
+/// into `PathBuf` without allocating
+macro_rules! impl_read_dir_from_path {
+    ($t:ty) => {
+        impl ReadDirFromPath<$t> for ReadDir {
+            fn from_path(dir: Vec<u8>, path: $t) -> Self {
+                let inner = InnerReadDir::new(path.into(), dir);
+                ReadDir::new(inner)
+            }
+        }
+    };
+}
+
+impl_read_dir_from_path!(PathBuf);
+impl_read_dir_from_path!(Box<Path>);
+impl_read_dir_from_path!(Cow<'_, Path>);
+impl_read_dir_from_path!(OsString);
+impl_read_dir_from_path!(String);
 
 pub struct DirEntry {
     /// path to the entry
@@ -512,12 +545,11 @@ impl FromRawFd for File {
     }
 }
 
-pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let fd_raw = run_path_with_cstr(path, &|path| {
+pub fn readdir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
+    let fd_raw = run_path_with_cstr(path.as_ref(), &|path| {
         cvt(unsafe { hermit_abi::open(path.as_ptr(), O_RDONLY | O_DIRECTORY, 0) })
     })?;
     let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
-    let root = path.to_path_buf();
 
     // read all director entries
     let mut vec: Vec<u8> = Vec::new();
@@ -551,7 +583,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
         }
     }
 
-    Ok(ReadDir::new(InnerReadDir::new(root, vec)))
+    Ok(<ReadDir as ReadDirFromPath<P>>::from_path(vec, path))
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {

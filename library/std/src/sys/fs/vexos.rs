@@ -477,7 +477,7 @@ impl Drop for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
+pub fn readdir<P: AsRef<Path>>(_p: P) -> io::Result<ReadDir> {
     // While there *is* a userspace function for reading file directories,
     // the necessary implementation cannot currently be done cleanly, as
     // VEXos does not expose directory length to user programs.
