@@ -171,6 +171,7 @@ declare_passes! {
     mod promote_consts : PromoteTemps;
     mod ref_prop : ReferencePropagation;
     mod remove_noop_landing_pads : RemoveNoopLandingPads;
+    mod remove_dead_drops : RemoveDeadDrops;
     mod remove_place_mention : RemovePlaceMention;
     mod remove_storage_markers : RemoveStorageMarkers;
     mod remove_uninit_drops : RemoveUninitDrops;
@@ -221,6 +222,7 @@ pub fn provide(providers: &mut Providers) {
         mir_built,
         mir_const_qualif,
         mir_promoted,
+        mir_post_borrowck_cleanup,
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
@@ -474,7 +476,7 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
+        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage, &remove_dead_drops::RemoveDeadDrops],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
         pm::Optimizations::Allowed,
     );
@@ -483,6 +485,19 @@ fn mir_promoted(
 
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
+}
+
+fn mir_post_borrowck_cleanup(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
+    let (body, _) = tcx.mir_promoted(def);
+    let mut body = body.steal();
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[&remove_dead_drops::RemoveDeadDrops],
+        None,
+        pm::Optimizations::Allowed,
+    );
+    tcx.alloc_steal_mir(body)
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
