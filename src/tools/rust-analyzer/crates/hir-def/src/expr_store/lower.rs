@@ -1817,8 +1817,8 @@ impl<'db> ExprCollector<'db> {
         })
     }
 
-    /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
-    /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
+    /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::FromOutput::from_output(<expr>) }`,
+    /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::FromOutput::from_output(()) }`
     /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
     fn desugar_try_block(&mut self, e: BlockExpr, result_type: Option<ast::Type>) -> ExprId {
         let try_from_output = self.lang_path(self.lang_items().TryTraitFromOutput);

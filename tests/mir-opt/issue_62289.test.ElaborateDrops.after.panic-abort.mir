@@ -36,7 +36,7 @@ fn test() -> Option<Vec<u32>> {
         StorageLive(_5);
         StorageLive(_6);
         _6 = Option::<u32>::None;
-        _5 = <Option<u32> as Try>::branch(move _6) -> [return: bb2, unwind: bb13];
+        _5 = <Option<u32> as Branch>::branch(move _6) -> [return: bb2, unwind: bb13];
     }
 
     bb2: {
