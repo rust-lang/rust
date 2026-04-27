@@ -221,7 +221,9 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
             let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
 
             if init {
-                // SAFETY: init is either 0 or the init_len from the previous iteration.
+                // SAFETY: `init` is only true after `reader` initializes
+                // `read_buf`. `flush_buf` preserves the spare capacity, so it
+                // is OK to persist this across `flush_buf` calls.
                 unsafe { read_buf.set_init() };
             }
 
@@ -248,6 +250,8 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                     Err(e) => return Err(e),
                 }
             } else {
+                // SAFETY: `flush_buf` will not de-initialize any elements of
+                // the spare capacity so we can remember `init` across this.
                 self.flush_buf()?;
             }
         }

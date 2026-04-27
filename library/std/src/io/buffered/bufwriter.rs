@@ -193,6 +193,10 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
     pub(in crate::io) fn flush_buf(&mut self) -> io::Result<()> {
+        // SAFETY: `<BufWriter as BufferedWriterSpec>::copy_from` assumes that
+        // this will not de-initialize any elements of `self.buf`'s spare
+        // capacity.
+
         /// Helper struct to ensure the buffer is updated after all the writes
         /// are complete. It tracks the number of written bytes and drains them
         /// all from the front of the buffer when dropped.
@@ -225,7 +229,16 @@ impl<W: ?Sized + Write> BufWriter<W> {
         impl Drop for BufGuard<'_> {
             fn drop(&mut self) {
                 if self.written > 0 {
-                    self.buffer.drain(..self.written);
+                    // Like `self.buffer.drain(..self.written)` but more obviously
+                    // preserving the spare capacity; see note above.
+                    let new_len = self.buffer.len() - self.written;
+                    // SAFETY: Assumes `Vec::as_mut_slice` will not
+                    // de-initialize any elements of `self.buf`'s spare capacity,
+                    // and that `<&mut [u8]>::copy_within` will not do so either.
+                    self.buffer.as_mut_slice().copy_within(self.written.., 0);
+                    // SAFETY: Assumes `Vec::truncate` will not de-initialize
+                    // any elements of `self.buf`'s spare capacity,
+                    self.buffer.truncate(new_len);
                 }
             }
         }
