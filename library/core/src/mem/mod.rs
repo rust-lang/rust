@@ -667,15 +667,17 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 /// This means that, for example, the padding byte in `(u8, u16)` is not
 /// necessarily zeroed.
 ///
-/// There is no guarantee that an all-zero byte-pattern represents a valid value
-/// of some type `T`. For example, the all-zero byte-pattern is not a valid value
-/// for reference types (`&T`, `&mut T`) and function pointers. Using `zeroed`
-/// on such types causes immediate [undefined behavior][ub] because [the Rust
-/// compiler assumes][inv] that there always is a valid value in a variable it
-/// considers initialized.
-///
 /// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
 /// It is useful for FFI sometimes, but should generally be avoided.
+///
+///
+/// # Safety
+///
+/// The all-zero byte-pattern must represent a valid value of some type `T`.
+/// For example, it is not valid for reference types (`&T`, `&mut T`) or function
+/// pointers. Using `zeroed` on such types causes immediate [undefined behavior][ub]
+/// because [the Rust compiler assumes][inv] that there always is a valid value in a
+/// variable it considers initialized.
 ///
 /// [zeroed]: MaybeUninit::zeroed
 /// [ub]: ../../reference/behavior-considered-undefined.html
@@ -732,7 +734,10 @@ pub const unsafe fn zeroed<T>() -> T {
 /// This makes it undefined behavior to have uninitialized data in a variable even
 /// if that variable has an integer type.
 ///
-/// Therefore, it is immediate undefined behavior to call this function on nearly all types,
+///
+/// # Safety
+///
+/// It is immediate undefined behavior to call this function on nearly all types,
 /// including integer types and arrays of integer types, and even if the result is unused.
 ///
 /// [uninit]: MaybeUninit::uninit
@@ -1025,20 +1030,15 @@ pub const fn copy<T: Copy>(x: &T) -> T {
     *x
 }
 
-/// Interprets `src` as having type `&Dst`, and then reads `src` without moving
-/// the contained value.
+/// Interprets `src` as having type `&Dst`, and then reads `src` without moving the contained value.
+/// The function will panic if [`size_of::<Src>`][size_of] is less than [`size_of::<Dst>`][size_of].
 ///
-/// This function will unsafely assume the pointer `src` is valid for [`size_of::<Dst>`][size_of]
-/// bytes by transmuting `&Src` to `&Dst` and then reading the `&Dst` (except that this is done
-/// in a way that is correct even when `&Dst` has stricter alignment requirements than `&Src`).
-/// It will also unsafely create a copy of the contained value instead of moving out of `src`.
+/// # Safety
 ///
-/// It is not a compile-time error if `Src` and `Dst` have different sizes, but it
-/// is highly encouraged to only invoke this function where `Src` and `Dst` have the
-/// same size. This function triggers [undefined behavior][ub] if `Dst` is larger than
-/// `Src`.
+/// * The first [`size_of::<Dst>`][size_of] bytes of memory pointed to by `src` must represent
+///   a valid value of type `Dst`.
+/// * Users must ensure that creating the returned value does not violate Rust's aliasing rules.
 ///
-/// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
