@@ -738,9 +738,9 @@ These tests revolve around the inline `const` block that forces the compiler to
 
 See [Instrument coverage | The rustc book](https://doc.rust-lang.org/rustc/instrument-coverage.html).
 
-## `tests/ui/instrument-xray/`: `-Z instrument-xray`
+## `tests/ui/instrument-xray/`: `-Z instrument-function=xray`
 
-See [Tracking issue for `-Z instrument-xray` #102921](https://github.com/rust-lang/rust/issues/102921).
+See [Tracking issue for `-Z instrument-function=xray` #102921](https://github.com/rust-lang/rust/issues/102921).
 
 ## `tests/ui/internal/`
 
