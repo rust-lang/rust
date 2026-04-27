@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/3021
+
 fn siphash(k0 : u64) {
 
     struct SipHash {

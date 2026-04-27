@@ -1,5 +1,5 @@
 error[E0560]: struct `NonCopyable` has no field named `p`
-  --> $DIR/issue-4736.rs:4:26
+  --> $DIR/tuple-struct-field-constructor-error.rs:6:26
    |
 LL | struct NonCopyable(());
    |        ----------- `NonCopyable` defined here
