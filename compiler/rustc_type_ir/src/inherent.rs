@@ -206,42 +206,6 @@ pub trait Tys<I: Interner<Tys = Self>>:
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait FSigKind<I: Interner<FSigKind = Self>>: Copy + Debug + Hash + Eq {
-    /// The identity function.
-    fn fn_sig_kind(self) -> Self;
-
-    /// Create a new FnSigKind with the given ABI, safety, and C-style variadic flag.
-    fn new(abi: I::Abi, safety: I::Safety, c_variadic: bool) -> Self;
-
-    /// Returns the ABI.
-    fn abi(self) -> I::Abi;
-
-    /// Returns the safety mode.
-    fn safety(self) -> I::Safety;
-
-    /// Do the function arguments end with a C-style variadic argument?
-    fn c_variadic(self) -> bool;
-}
-
-#[rust_analyzer::prefer_underscore_import]
-pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
-    /// The identity function.
-    fn abi(self) -> Self;
-
-    /// The ABI `extern "Rust"`.
-    fn rust() -> I::Abi;
-
-    /// Whether this ABI is `extern "Rust"`.
-    fn is_rust(self) -> bool;
-
-    /// Pack the ABI into a small dense integer, so it can be stored as packed `FnSigKind` flags.
-    fn pack_abi(self) -> u8;
-
-    /// Unpack the ABI from packed `FnSigKind` flags.
-    fn unpack_abi(abi_index: u8) -> Self;
-}
-
-#[rust_analyzer::prefer_underscore_import]
 pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     /// The `safe` safety mode.
     fn safe() -> Self;

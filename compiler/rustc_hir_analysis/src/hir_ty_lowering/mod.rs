@@ -3590,7 +3590,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let fn_sig_kind = FnSigKind::default()
             .set_abi(abi)
-            .set_safe(safety.is_safe())
+            .set_safety(safety)
             .set_c_variadic(decl.fn_decl_kind.c_variadic());
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, fn_sig_kind);
         let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);

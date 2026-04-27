@@ -407,7 +407,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sig = this.tcx.mk_fn_sig(
             args.iter().map(|a| a.layout.ty),
             dest.layout.ty,
-            FnSigKind::default().set_abi(caller_abi).set_safe(true),
+            FnSigKind::default().set_abi(caller_abi).set_safety(rustc_hir::Safety::Safe),
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 

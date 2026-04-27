@@ -723,7 +723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bound_sig = expected_sig.sig.map_bound(|sig| {
             let fn_sig_kind = FnSigKind::default()
                 .set_abi(ExternAbi::RustCall)
-                .set_safe(true)
+                .set_safety(hir::Safety::Safe)
                 .set_c_variadic(sig.c_variadic());
             self.tcx.mk_fn_sig(sig.inputs().iter().cloned(), sig.output(), fn_sig_kind)
         });
@@ -860,7 +860,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let fn_sig_kind = FnSigKind::default()
                 .set_abi(ExternAbi::RustCall)
-                .set_safe(true)
+                .set_safety(hir::Safety::Safe)
                 .set_c_variadic(expected_sigs.liberated_sig.c_variadic());
             expected_sigs.liberated_sig =
                 self.tcx.mk_fn_sig(inputs, supplied_output_ty, fn_sig_kind);
@@ -935,7 +935,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let fn_sig_kind = FnSigKind::default()
             .set_abi(ExternAbi::RustCall)
-            .set_safe(true)
+            .set_safety(hir::Safety::Safe)
             .set_c_variadic(decl.c_variadic());
         let result = ty::Binder::bind_with_vars(
             self.tcx.mk_fn_sig(supplied_arguments, supplied_return, fn_sig_kind),
@@ -1098,7 +1098,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let fn_sig_kind = FnSigKind::default()
             .set_abi(ExternAbi::RustCall)
-            .set_safe(true)
+            .set_safety(hir::Safety::Safe)
             .set_c_variadic(decl.c_variadic());
         let result = ty::Binder::dummy(self.tcx.mk_fn_sig(supplied_arguments, err_ty, fn_sig_kind));
 

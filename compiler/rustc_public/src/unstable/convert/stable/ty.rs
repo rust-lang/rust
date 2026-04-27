@@ -257,7 +257,7 @@ where
 
 // This internal type isn't publicly exposed, because it is an implementation detail.
 // But it's a public field of FnSig (which has a public mirror type), so allow conversions.
-impl<'tcx> Stable<'tcx> for ty::FnSigKind {
+impl<'tcx> Stable<'tcx> for ty::FnSigKind<'tcx> {
     type T = (bool /*c_variadic*/, crate::mir::Safety, crate::ty::Abi);
     fn stable<'cx>(
         &self,

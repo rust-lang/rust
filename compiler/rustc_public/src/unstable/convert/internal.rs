@@ -310,7 +310,7 @@ impl RustcInternal for FnSig {
     ) -> Self::T<'tcx> {
         let fn_sig_kind = rustc_ty::FnSigKind::default()
             .set_abi(self.abi.internal(tables, tcx))
-            .set_safe(self.safety == Safety::Safe)
+            .set_safety(self.safety.internal(tables, tcx))
             .set_c_variadic(self.c_variadic);
         tcx.lift(rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
