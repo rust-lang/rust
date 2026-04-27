@@ -2495,6 +2495,15 @@ fn maybe_install_llvm(
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, FileType::NativeLibrary);
+
+            if install_symlink && let Some(llvm_config_path) = &builder.llvm_config(target) {
+                let major = llvm::get_llvm_version_major(builder, llvm_config_path);
+                let versioned_name = match &builder.config.llvm_version_suffix {
+                    Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.dylib"),
+                    None => format!("libLLVM-{major}.dylib"),
+                };
+                t!(builder.symlink_file("libLLVM.dylib", dst_libdir.join(versioned_name)));
+            }
         }
         !builder.config.dry_run()
     } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult {
