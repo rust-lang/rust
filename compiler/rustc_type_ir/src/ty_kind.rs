@@ -858,9 +858,11 @@ impl FnSigKind {
     const C_VARIADIC_FLAG: u8 = 1 << 7;
 
     /// The marker index for "no splatted arguments".
-    /// Must have the same value as `FnDeclFlags::NO_SPLATTED_ARG_INDEX` and `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
+    /// Must have the same value as `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
     ///
     /// This is an implementation detail, which should only be used in low-level encoding.
+    // FIXME(splat): if we remove this limit from hir::FnDecl and FnSig, all instances of this
+    // constant can go away entirely.
     pub const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
 
     /// Create a new FnSigKind with the "Rust" ABI, "Unsafe" safety, and no C-style variadic or splatted arguments.
