@@ -727,19 +727,41 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     }
 }
 
-struct MathDetector<'c, I> {
+struct MathConverter<'c, I> {
     p: I,
     contains_mathml: &'c Cell<bool>,
+    parser: Option<math_core::LatexToMathML>,
 }
 
-impl<'a, 'c, I: Iterator<Item = Event<'a>>> Iterator for MathDetector<'c, I> {
+impl<'a, 'c, I: Iterator<Item = Event<'a>>> Iterator for MathConverter<'c, I> {
     type Item = Event<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.p.next();
-        if matches!(event, Some(Event::InlineMath(_) | Event::DisplayMath(_))) {
+        let mut convert = |latex: &str, display: math_core::MathDisplay| -> Event<'a> {
+            let parser = if let Some(parser) = self.parser.as_ref() {
+                parser
+            } else if let Ok(parser) =
+                math_core::LatexToMathML::new(math_core::MathCoreConfig::default())
+            {
+                self.parser.insert(parser)
+            } else {
+                return Event::Text(latex.to_owned().into());
+            };
+            if let Ok(result) = parser.convert_with_local_counter(latex, display) {
+                Event::Html(result.into())
+            } else {
+                Event::Text(latex.to_owned().into())
+            }
+        };
+        if let Some(Event::InlineMath(latex)) = event {
             self.contains_mathml.set(true);
+            Some(convert(&latex, math_core::MathDisplay::Inline))
+        } else if let Some(Event::DisplayMath(latex)) = event {
+            self.contains_mathml.set(true);
+            Some(convert(&latex, math_core::MathDisplay::Block))
+        } else {
+            event
         }
-        event
     }
 }
 
@@ -1415,7 +1437,7 @@ impl<'a> Markdown<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = MathDetector { p, contains_mathml };
+            let p = MathConverter { p, contains_mathml, parser: None };
             CodeBlocks::new(p, codes, edition, playground)
         })
     }
@@ -1510,7 +1532,7 @@ impl MarkdownWithToc<'_> {
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
-            let p = MathDetector { p, contains_mathml };
+            let p = MathConverter { p, contains_mathml, parser: None };
             html::push_html(&mut s, p);
         });
 
@@ -1564,7 +1586,7 @@ impl<'a> MarkdownItemInfo<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = MathDetector { p, contains_mathml };
+            let p = MathConverter { p, contains_mathml, parser: None };
             // in legacy wrap mode, strip <p> elements to avoid them inserting newlines
             html::write_html_fmt(&mut f, p)?;
 
@@ -1602,7 +1624,10 @@ impl MarkdownSummaryLine<'_> {
             !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
         });
 
-        html::push_html(&mut s, MathDetector { p: without_paragraphs, contains_mathml });
+        html::push_html(
+            &mut s,
+            MathConverter { p: without_paragraphs, contains_mathml, parser: None },
+        );
 
         let has_more_content =
             matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
