@@ -3294,6 +3294,50 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
+        // Emit E0492 for `&const { expr }` when `expr` has
+        // interior mutability, since that's what actually prevents promotion.
+        if let Some(expr) = self.find_expr(proper_span)
+            && let hir::ExprKind::ConstBlock(const_block) = expr.kind
+        {
+            let borrowed_ty = self.body.local_decls[borrow.borrowed_place.local].ty;
+            let typing_env = self.infcx.typing_env(self.infcx.param_env);
+            let tcx = self.infcx.tcx;
+            if !borrowed_ty.is_freeze(tcx, typing_env) {
+                let body_expr = tcx.hir_body(const_block.body).value;
+                let inner_span = if let hir::ExprKind::Block(block, _) = body_expr.kind
+                    && let Some(tail_expr) = block.expr
+                {
+                    tail_expr.span
+                } else {
+                    body_expr.span
+                };
+                let mut err = struct_span_code_err!(
+                    self.dcx(),
+                    inner_span,
+                    E0492,
+                    "interior mutable shared borrows of temporaries that have their \
+                    lifetime extended until the end of the program are not allowed"
+                );
+                err.span_label(
+                    inner_span,
+                    "this borrow of an interior mutable value refers to such a temporary",
+                );
+                err.note(
+                    "temporaries in constants and statics can have their lifetime \
+                    extended until the end of the program",
+                );
+                err.note(
+                    "to avoid accidentally creating global mutable state, such \
+                    temporaries must be immutable",
+                );
+                err.help(
+                    "if you really want global mutable state, try replacing the \
+                    temporary by an interior mutable `static` or a `static mut`",
+                );
+                return err;
+            }
+        }
+
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {
