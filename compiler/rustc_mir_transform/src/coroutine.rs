@@ -391,6 +391,11 @@ impl<'tcx> TransformVisitor<'tcx> {
     // Create a temporary assignment if the visited destination and RHS now
     // refer to overlapping fields of the coroutine state.
     // https://github.com/rust-lang/rust/issues/149748
+    // trans
+    //    _x.a = copy/move _x.b
+    // into
+    //    _temp =  copy/move _x.b
+    //    _x.a = move _temp
     fn split_overlapping_assignment_if_needed(
         &mut self,
         dst: Place<'tcx>,
@@ -398,18 +403,19 @@ impl<'tcx> TransformVisitor<'tcx> {
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) {
-        let Some(ty) = dst_ty else { return };
-        let Rvalue::Use(operand) = rvalue else { return };
-        let (Operand::Copy(src) | Operand::Move(src)) = *operand else { return };
-        if dst.is_indirect() || src.is_indirect() || src.local != dst.local {
-            return;
+        if let (Operand::Copy(src) | Operand::Move(src)) = *operand
+            && !src.is_indirect()
+            && !dst.is_indirect()
+            && src.local == dst.local
+            && let Rvalue::Use(operand) = rvalue
+            && let Some(ty) = dst_ty
+        {
+            let temp = Place::from(self.patch.new_temp(ty, self.body_span));
+            let temp_assign_stmt =
+                StatementKind::Assign(Box::new((temp, Rvalue::Use(operand.clone()))));
+            self.patch.add_statement(location, temp_assign_stmt);
+            *operand = Operand::Move(temp);
         }
-
-        let temp = Place::from(self.patch.new_temp(ty, self.body_span));
-        let temp_assign_stmt =
-            StatementKind::Assign(Box::new((temp, Rvalue::Use(operand.clone()))));
-        self.patch.add_statement(location, temp_assign_stmt);
-        *operand = Operand::Move(temp);
     }
 
     /// Swaps all references of `old_local` and `new_local`.
