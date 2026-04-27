@@ -3,11 +3,11 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, BottomUpFolder, Ty, TypeFoldable, TypeVisitableExt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
@@ -405,9 +405,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Unify the method signature with our incompatible arg, to
                     // do inference in the *opposite* direction and to find out
                     // what our ideal rcvr ty would look like.
+                    let Some(input_arg) = method.sig.inputs().get(idx + 1) else {
+                        if method.sig.splatted().is_some() {
+                            // FIXME(splat): when the arg is splatted, adjust its index
+                            return None;
+                        } else {
+                            span_bug!(
+                                self.tcx.def_span(method.def_id),
+                                "arg index {} out of bounds for method with {} inputs",
+                                idx + 1,
+                                method.sig.inputs().len(),
+                            );
+                        }
+                    };
                     let _ = self
                         .at(&ObligationCause::dummy(), self.param_env)
-                        .eq(DefineOpaqueTypes::Yes, method.sig.inputs()[idx + 1], arg_ty)
+                        .eq(DefineOpaqueTypes::Yes, *input_arg, arg_ty)
                         .ok()?;
                     self.select_obligations_where_possible(|errs| {
                         // Yeet the errors, we're already reporting errors.

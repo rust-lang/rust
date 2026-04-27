@@ -34,6 +34,7 @@ use tracing::debug;
 use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
+use crate::find_attr;
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
 use crate::lints::DelayedLints;
@@ -3924,13 +3925,30 @@ pub struct Param<'hir> {
     pub span: Span,
 }
 
+/// Error type for splatted argument index errors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SplattedArgIndexError {
+    /// The splatted argument index is invalid.
+    /// Currently the only unsupported index is `u16::MAX`, which is used to indicate that no argument
+    /// is splatted.
+    InvalidIndex { splatted_arg_index: u16 },
+
+    /// The splatted argument index is outside the bounds of the function arguments.
+    OutOfBounds { splatted_arg_index: u16, args_len: u16 },
+}
+
 /// Contains the packed non-type fields of a function declaration.
-// FIXME(splat): add the splatted argument index as a u16
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub struct FnDeclFlags {
-    /// Holds the c_variadic and lifetime_elision_allowed bitflags, and 3 bits for the `ImplicitSelfKind`.
+    /// Holds the c_variadic, lifetime_elision_allowed, and has_splatted_arg bitflags, and 3 bits
+    /// for the `ImplicitSelfKind`.
     flags: u8,
+
+    /// Which function argument is splatted into multiple arguments in callers, if any?
+    /// Splatting functions with `u16::MAX` arguments is not supported, see `FnSigKind` for
+    /// details.
+    splatted: u16,
 }
 
 impl fmt::Debug for FnDeclFlags {
@@ -3942,11 +3960,15 @@ impl fmt::Debug for FnDeclFlags {
             f.field(&"LifetimeElisionAllowed");
         } else {
             f.field(&"NoLifetimeElision");
-        };
+        }
 
         if self.c_variadic() {
             f.field(&"CVariadic");
-        };
+        }
+
+        if self.has_splatted_arg() {
+            f.field(&"HasSplattedArg");
+        }
 
         f.finish()
     }
@@ -3962,14 +3984,19 @@ impl FnDeclFlags {
     /// Bitflag for lifetime elision.
     const LIFETIME_ELISION_ALLOWED_FLAG: u8 = 1 << 4;
 
-    /// Create a new FnDeclKind with no implicit self, no lifetime elision, and no C-style variadic argument.
+    /// Bitflag set if any argument is splatted (for performance).
+    const HAS_SPLATTED_ARG_FLAG: u8 = 1 << 5;
+
+    /// Create a new FnDeclKind with no implicit self, no lifetime elision, no C-style variadic
+    /// argument, and no splatted argument.
     /// To modify these flags, use the `set_*` methods, for readability.
     // FIXME: use Default instead when that trait is const stable.
     pub const fn default() -> Self {
-        Self { flags: 0 }
+        Self { flags: 0, splatted: 0 }
             .set_implicit_self(ImplicitSelfKind::None)
             .set_lifetime_elision_allowed(false)
             .set_c_variadic(false)
+            .set_has_splatted_arg(false)
     }
 
     /// Set the implicit self kind.
@@ -4012,6 +4039,18 @@ impl FnDeclFlags {
         self
     }
 
+    /// Set the splatted argument flag.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_has_splatted_arg(mut self, has_splatted_arg: bool) -> Self {
+        if has_splatted_arg {
+            self.flags |= Self::HAS_SPLATTED_ARG_FLAG;
+        } else {
+            self.flags &= !Self::HAS_SPLATTED_ARG_FLAG;
+        }
+
+        self
+    }
+
     /// Get the implicit self kind.
     pub const fn implicit_self(self) -> ImplicitSelfKind {
         match self.flags & Self::IMPLICIT_SELF_MASK {
@@ -4032,6 +4071,42 @@ impl FnDeclFlags {
     /// Is lifetime elision allowed?
     pub const fn lifetime_elision_allowed(self) -> bool {
         self.flags & Self::LIFETIME_ELISION_ALLOWED_FLAG != 0
+    }
+
+    /// Does this function have a splatted argument?
+    pub const fn has_splatted_arg(self) -> bool {
+        self.flags & Self::HAS_SPLATTED_ARG_FLAG != 0
+    }
+
+    /// Returns `true` if the given input contains a `#[splat]` attribute in `attrs`.
+    #[inline]
+    pub fn is_splatted_arg<'hir>(
+        &self,
+        input: &'hir Ty<'hir>,
+        attrs: &'hir dyn Fn(HirId) -> &'hir [Attribute],
+    ) -> bool {
+        self.has_splatted_arg() && find_attr!(attrs(input.hir_id), Splat(_))
+    }
+
+    /// Searches `inputs` and `attrs` for the index of the splatted argument. Returns `None` if
+    /// there is no splatted argument.
+    #[inline]
+    pub fn splatted_arg_index<'hir>(
+        &self,
+        inputs: &'hir [Ty<'hir>],
+        attrs: &'hir dyn Fn(HirId) -> &'hir [Attribute],
+    ) -> Option<u16> {
+        if !self.has_splatted_arg() {
+            return None;
+        }
+
+        for (index, input) in inputs.iter().enumerate() {
+            if self.is_splatted_arg(input, attrs) {
+                return Some(u16::try_from(index).unwrap());
+            }
+        }
+
+        unreachable!("no splatted argument found");
     }
 }
 
@@ -4068,19 +4143,46 @@ impl<'hir> FnDecl<'hir> {
         None
     }
 
-    pub fn implicit_self(&self) -> ImplicitSelfKind {
+    pub const fn implicit_self(&self) -> ImplicitSelfKind {
         self.fn_decl_kind.implicit_self()
     }
 
-    pub fn c_variadic(&self) -> bool {
+    pub const fn c_variadic(&self) -> bool {
         self.fn_decl_kind.c_variadic()
     }
 
-    pub fn lifetime_elision_allowed(&self) -> bool {
+    pub const fn lifetime_elision_allowed(&self) -> bool {
         self.fn_decl_kind.lifetime_elision_allowed()
     }
 
-    pub fn dummy(span: Span) -> Self {
+    /// Returns `true` if the function has a splatted argument.
+    pub const fn has_splatted_arg(&self) -> bool {
+        self.fn_decl_kind.has_splatted_arg()
+    }
+
+    /// Returns `true` if the given argument `index` contains a `#[splat]` attribute in `attrs`.
+    #[inline]
+    pub fn is_splatted_arg(
+        &self,
+        index: usize,
+        attrs: &'hir dyn Fn(HirId) -> &'hir [Attribute],
+    ) -> bool {
+        self.fn_decl_kind.is_splatted_arg(&self.inputs[index], attrs)
+    }
+
+    /// Searches `self.inputs` and `attrs` for the index of the splatted argument. Returns `None`
+    /// if there is no splatted argument.
+    #[inline]
+    pub fn splatted_arg_index(
+        &self,
+        attrs: &'hir dyn Fn(HirId) -> &'hir [Attribute],
+    ) -> Option<u16> {
+        self.fn_decl_kind.splatted_arg_index(self.inputs, attrs)
+    }
+
+    /// Returns a dummy FnDecl with the given span, no inputs, no output, and lifetime elision
+    /// allowed.
+    pub const fn dummy(span: Span) -> Self {
         Self {
             inputs: &[],
             output: FnRetTy::DefaultReturn(span),
@@ -4107,7 +4209,7 @@ pub enum ImplicitSelfKind {
 
 impl ImplicitSelfKind {
     /// Does this represent an implicit self?
-    pub fn has_implicit_self(&self) -> bool {
+    pub const fn has_implicit_self(&self) -> bool {
         !matches!(*self, ImplicitSelfKind::None)
     }
 }

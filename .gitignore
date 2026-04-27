@@ -56,6 +56,9 @@ no_llvm_build
 /src/bootstrap/target
 /src/ci/citool/target
 /src/tools/x/target
+# Created by `x rust-analyzer[-clippy]` tests
+/library/core/src/iter/traits/target
+/library/core/src/slice/target
 # Created by `x vendor`
 /vendor
 # Created by default with `src/ci/docker/run.sh`

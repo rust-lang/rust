@@ -308,6 +308,7 @@ impl RustcInternal for FnSig {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
+        // FIXME(splat): When `#[splat]` is complete (or stable), add splatted to the public FnSig
         let fn_sig_kind = rustc_ty::FnSigKind::default()
             .set_abi(self.abi.internal(tables, tcx))
             .set_safe(self.safety == Safety::Safe)

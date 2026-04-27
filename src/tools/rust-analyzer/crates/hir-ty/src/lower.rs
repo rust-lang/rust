@@ -574,6 +574,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 abi: fn_.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
                 safety: if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
                 c_variadic: fn_.is_varargs,
+                // FIXME(splat): handle splatted arguments
                 inputs_and_output: Tys::new_from_slice(&args),
             }),
         )

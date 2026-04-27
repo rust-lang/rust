@@ -3055,8 +3055,39 @@ impl FnDecl {
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).is_some_and(Param::is_self)
     }
+
     pub fn c_variadic(&self) -> bool {
         self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+    }
+
+    /// The marker index for "no splatted arguments".
+    /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX`.
+    // FIXME(splat): if we remove this limit from hir::FnDecl and FnSig, all instances of this
+    // constant can go away entirely.
+    pub const NO_SPLATTED_ARG_INDEX: u16 = u16::MAX;
+
+    /// Returns a splatted argument index and its span, if any splatted arguments are present.
+    #[inline]
+    pub fn splatted(&self) -> Option<(u16 /* arg_index */, Span)> {
+        let (index, span) = self.inputs.iter().enumerate().find_map(|(index, arg)| {
+            arg.attrs.iter().find_map(|attr| {
+                attr.has_name(sym::splat).then_some((u16::try_from(index).unwrap(), attr.span))
+            })
+        })?;
+
+        if index == Self::NO_SPLATTED_ARG_INDEX {
+            // AST validation has already checked the splatted argument index is valid, so just
+            // ignore invalid indexes here.
+            None
+        } else {
+            Some((index, span))
+        }
+    }
+
+    /// Returns `true` if the function has a splatted argument.
+    #[inline(always)]
+    pub fn has_splatted_arg(&self) -> bool {
+        self.splatted().is_some()
     }
 }
 
