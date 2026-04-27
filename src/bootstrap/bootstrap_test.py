@@ -238,6 +238,21 @@ class BuildBootstrap(unittest.TestCase):
         args, _ = self.build_args(env={"CARGOFLAGS": "--timings"})
         self.assertTrue("--timings" in args)
 
+    def test_build_bootstrap_uses_explicit_build_target(self):
+        args, _ = self.build_args(
+            configure_args=[
+                "--set",
+                "build.cargo=" + sys.executable,
+                "--set",
+                "build.rustc=" + sys.executable,
+            ],
+            args=["--build", "host-tuple"],
+        )
+        expected_build = os.environ.get("BUILD_PLATFORM", "host-tuple")
+        self.assertEqual(args[1], "build")
+        self.assertTrue("--bins" in args)
+        self.assertEqual(args[args.index("--target") + 1], expected_build)
+
     def test_warnings(self):
         for toml_warnings in ["false", "true", None]:
             configure_args = []
