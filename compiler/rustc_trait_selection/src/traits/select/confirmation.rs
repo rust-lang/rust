@@ -28,7 +28,7 @@ use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::{
     ImplSource, ImplSourceUserDefinedData, Normalized, Obligation, ObligationCause,
-    PolyTraitObligation, PredicateObligation, Selection, SelectionError, TraitObligation,
+    PolyTraitObligation, PredicateObligation, Selection, SelectionError, TraitObligation, wf,
 };
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -586,6 +586,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
                 nested.push(obligation.with(tcx, normalized_bound));
             }
+
+            // The above only ensures that the normalized assoc type meets the bounds.
+            // Check well-formedness of itself as well.
+            let normalized_assoc_type = normalize_with_depth_to(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                Ty::new_projection(tcx, assoc_type, trait_predicate.trait_ref.args),
+                &mut nested,
+            );
+            nested.extend(
+                wf::obligations(
+                    self.infcx,
+                    obligation.param_env,
+                    obligation.cause.body_id,
+                    obligation.recursion_depth + 1,
+                    normalized_assoc_type.into(),
+                    obligation.cause.span,
+                )
+                .into_iter()
+                .flatten(),
+            );
         }
 
         debug!(?nested, "object nested obligations");
