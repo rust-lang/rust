@@ -23,8 +23,10 @@ use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
+use rustc_trait_selection::solve::NextSolverError;
 use rustc_trait_selection::traits::{
-    self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    self, FromSolverError, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    OldSolverError,
 };
 use tracing::{debug, instrument};
 
@@ -803,10 +805,7 @@ struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     body_id: LocalDefId,
 }
 
-impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E>
-where
-    E: 'tcx,
-{
+impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E> {
     fn new(
         ocx: &'a ObligationCtxt<'a, 'tcx, E>,
         span: Span,
@@ -819,7 +818,7 @@ where
 
 impl<'tcx, E> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx, E>
 where
-    E: 'tcx,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx

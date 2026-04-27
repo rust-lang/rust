@@ -37,7 +37,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
+    self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt, TraitEngine,
 };
 use tracing::{debug, instrument};
 
@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in a reentrant borrow, causing an ICE.
             let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_ty(
                 Unnormalized::new_wip(ty),
-                &mut **self.fulfillment_cx.borrow_mut(),
+                &mut *self.fulfillment_cx.borrow_mut(),
             );
             match result {
                 Ok(normalized_ty) => normalized_ty,
@@ -1477,7 +1477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in a reentrant borrow, causing an ICE.
             let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_const(
                 Unnormalized::new_wip(ct),
-                &mut **self.fulfillment_cx.borrow_mut(),
+                &mut *self.fulfillment_cx.borrow_mut(),
             );
             match result {
                 Ok(normalized_ct) => normalized_ct,

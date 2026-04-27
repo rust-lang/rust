@@ -9,7 +9,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::{self, DualFulfillmentCtxt, FulfillmentError, TraitEngine};
 use tracing::instrument;
 
 use super::callee::DeferredCallResolution;
@@ -32,7 +32,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
-    pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>>,
+    pub(super) fulfillment_cx: RefCell<DualFulfillmentCtxt<'tcx, FulfillmentError<'tcx>>>,
 
     // Used to detect opaque types uses added after we've already checked them.
     //
@@ -86,7 +86,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             .in_hir_typeck()
             .build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
-        let fulfillment_cx = RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx));
+        let fulfillment_cx = RefCell::new(DualFulfillmentCtxt::new(&infcx));
 
         TypeckRootCtxt {
             infcx,
