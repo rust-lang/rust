@@ -23,8 +23,29 @@ macro_rules! weak_lang_items {
     }
 }
 
+macro_rules! decl_lang_items {
+    ($($item:ident,)*) => {
+        pub static DECL_LANG_ITEMS: &[LangItem] = &[$(LangItem::$item,)*];
+
+        impl LangItem {
+            pub fn is_decl(self) -> bool {
+                matches!(self, $(LangItem::$item)|*)
+            }
+        }
+    }
+}
+
 weak_lang_items! {
     PanicImpl,          rust_begin_unwind;
     EhPersonality,      rust_eh_personality;
     EhCatchTypeinfo,    rust_eh_catch_typeinfo;
+}
+
+decl_lang_items! {
+    MemCpy,
+    MemMove,
+    MemSet,
+    MemCmp,
+    Bcmp,
+    StrLen,
 }
