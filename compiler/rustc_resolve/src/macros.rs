@@ -265,11 +265,15 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
         };
 
-        let (mut derives, mut inner_attr, mut deleg_impl) = (&[][..], false, None);
+        // inner_attr: Only `Some` if this macro is an inner attribute.
+        //
+        // Stores the span + expansion ID of the target item that this inner attribute applies to.
+        let (mut derives, mut inner_attr, mut deleg_impl) = (&[][..], None, None);
+
         let (path, kind) = match invoc.kind {
-            InvocationKind::Attr { ref attr, derives: ref attr_derives, .. } => {
+            InvocationKind::Attr { ref attr, derives: ref attr_derives, ref item, .. } => {
                 derives = self.arenas.alloc_ast_paths(attr_derives);
-                inner_attr = attr.style == ast::AttrStyle::Inner;
+                inner_attr = (attr.style == ast::AttrStyle::Inner).then(|| (invoc_id, item.span()));
                 (&attr.get_normal_item().path, MacroKind::Attr)
             }
             InvocationKind::Bang { ref mac, .. } => (&mac.path, MacroKind::Bang),
@@ -567,7 +571,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         path: &ast::Path,
         kind: MacroKind,
         supports_macro_expansion: SupportsMacroExpansion,
-        inner_attr: bool,
+        inner_attr: Option<(LocalExpnId, Span)>,
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
@@ -578,6 +582,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
             path,
             kind,
+            inner_attr,
             parent_scope,
             force,
             deleg_impl,
@@ -651,7 +656,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match supports_macro_expansion {
                 SupportsMacroExpansion::No => Some(("a", "non-macro attribute")),
                 SupportsMacroExpansion::Yes { supports_inner_attrs } => {
-                    if inner_attr && !supports_inner_attrs {
+                    if inner_attr.is_some() && !supports_inner_attrs {
                         Some(("a", "non-macro inner attribute"))
                     } else {
                         None
@@ -690,7 +695,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
-        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes() {
+        if res != Res::Err && inner_attr.is_some() && !self.tcx.features().custom_inner_attributes()
+        {
             let is_macro = match res {
                 Res::Def(..) => true,
                 Res::NonMacroAttr(..) => false,
@@ -770,6 +776,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.resolve_macro_or_delegation_path(
             path,
             MacroKind::Derive,
+            None,
             parent_scope,
             force,
             None,
@@ -781,8 +788,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolve_macro_or_delegation_path<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        ast_path: &ast::Path,
-        kind: MacroKind,
+        ast_path: &ast::Path, // Path to the macro (e.g. `foo::bar!()`)
+        kind: MacroKind,      // What kind of macro it is (e.g. `Bang`)
+        inner_attr: Option<(LocalExpnId, Span)>, // if this is an inner attribute, span of the item it applies to
         parent_scope: &ParentScope<'ra>,
         force: bool,
         deleg_impl: Option<(LocalDefId, Span)>,
@@ -793,7 +801,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
 
-        // Possibly apply the macro helper hack
+        // Possibly apply the macro helper hack, if #[macro_export(local_inner_macros)] is applied
+        //
+        // ident!(...) -> $crate::ident!(...)
         if deleg_impl.is_none()
             && kind == MacroKind::Bang
             && let [segment] = path.as_slice()
@@ -802,6 +812,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let root = Ident::new(kw::DollarCrate, segment.ident.span);
             path.insert(0, Segment::from_ident(root));
         }
+
+        let parent_scope =
+            if inner_attr.is_some() { &ParentScope::empty(self.arenas) } else { parent_scope };
 
         let res = if deleg_impl.is_some() || path.len() > 1 {
             let ns = if deleg_impl.is_some() { TypeNS } else { MacroNS };
@@ -823,6 +836,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             self.multi_segment_macro_resolutions.borrow_mut(&self).push((
+                inner_attr,
                 path,
                 path_span,
                 kind,
@@ -850,6 +864,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             self.single_segment_macro_resolutions.borrow_mut(&self).push((
+                inner_attr,
                 path[0].ident,
                 kind,
                 *parent_scope,
@@ -887,6 +902,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Ok((ext, res))
     }
 
+    /// See also `resolve_macro_or_delegation_path`
     pub(crate) fn finalize_macro_resolutions(&mut self, krate: &Crate) {
         let check_consistency = |this: &Self,
                                  path: &[Segment],
@@ -921,8 +937,36 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
+        let get_inner_module = |this: &Self, node_id, span: Span| {
+            let parent_did = this.invocation_parent(node_id);
+            let parent_module = this.get_module(parent_did.into())?;
+
+            let mut child_module = None;
+
+            parent_module.for_each_child(&this, |_, _, child_span, _, data| {
+                if span.contains(child_span)
+                    && let Some(did) = data.res().opt_def_id()
+                    && let Some(module) = this.get_module(did)
+                {
+                    child_module = Some(module);
+                }
+            });
+
+            // `child_module` will be `None` if the inner attribute applies to the crate root,
+            // in which case it makes sense to resolve in `parent_module` (the crate root)
+            Some(child_module.unwrap_or(parent_module))
+        };
+
         let macro_resolutions = self.multi_segment_macro_resolutions.take(self);
-        for (mut path, path_span, kind, parent_scope, initial_res, ns) in macro_resolutions {
+        for (inner_attr, mut path, path_span, kind, mut parent_scope, initial_res, ns) in
+            macro_resolutions
+        {
+            if let Some((node_id, span)) = inner_attr
+                && let Some(module) = get_inner_module(&self, node_id, span)
+            {
+                parent_scope.module = module;
+            }
+
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path {
                 seg.id = None;
@@ -1025,7 +1069,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let macro_resolutions = self.single_segment_macro_resolutions.take(self);
-        for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
+        for (inner_attr, ident, kind, mut parent_scope, initial_binding, sugg_span) in
+            macro_resolutions
+        {
+            if let Some((node_id, span)) = inner_attr
+                && let Some(module) = get_inner_module(&self, node_id, span)
+            {
+                parent_scope.module = module;
+            }
+
             match self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),

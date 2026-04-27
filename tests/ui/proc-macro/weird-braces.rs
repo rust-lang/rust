@@ -16,8 +16,8 @@ trait Bar<const V: bool> {}
 #[print_target_and_args(first_outer)]
 #[print_target_and_args(second_outer)]
 impl Bar<{1 > 0}> for Foo<{true}> {
-    #![print_target_and_args(first_inner)]
-    #![print_target_and_args(second_inner)]
+    #![crate::print_target_and_args(first_inner)]
+    #![crate::print_target_and_args(second_inner)]
 }
 
 fn main() {}

@@ -1,0 +1,46 @@
+error[E0433]: cannot find `ignore` in `clippy`
+  --> $DIR/inner.rs:6:16
+   |
+LL |     #![clippy::ignore]
+   |                ^^^^^^ could not find `ignore` in `clippy`
+
+error[E0433]: cannot find `ignore` in `clippy`
+  --> $DIR/inner.rs:14:16
+   |
+LL |     #![clippy::ignore]
+   |                ^^^^^^ could not find `ignore` in `clippy`
+
+error[E0659]: `clippy` is ambiguous
+  --> $DIR/inner.rs:6:8
+   |
+LL |     #![clippy::ignore]
+   |        ^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `clippy` could refer to a tool module
+note: `clippy` could also refer to the module defined here
+  --> $DIR/inner.rs:10:5
+   |
+LL |     pub mod clippy {}
+   |     ^^^^^^^^^^^^^^^^^
+   = help: use `self::clippy` to refer to this module unambiguously
+
+error[E0659]: `clippy` is ambiguous
+  --> $DIR/inner.rs:14:8
+   |
+LL |     #![clippy::ignore]
+   |        ^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `clippy` could refer to a tool module
+note: `clippy` could also refer to the module imported here
+  --> $DIR/inner.rs:18:9
+   |
+LL |     use a::clippy;
+   |         ^^^^^^^^^
+   = help: use `self::clippy` to refer to this module unambiguously
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0433, E0659.
+For more information about an error, try `rustc --explain E0433`.
