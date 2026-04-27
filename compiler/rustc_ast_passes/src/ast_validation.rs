@@ -17,7 +17,6 @@
 //! require name resolution or type checking, or other kinds of complex analysis.
 
 use std::mem;
-use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use itertools::{Either, Itertools};
@@ -27,7 +26,7 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
+use rustc_errors::{DiagCtxtHandle, LintBuffer, Diagnostic};
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
@@ -37,7 +36,6 @@ use rustc_session::lint::builtin::{
 use rustc_session::parse::feature_err;
 use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
-use thin_vec::thin_vec;
 
 use crate::errors::{self, TildeConstReason};
 
@@ -1576,14 +1574,8 @@ impl Visitor<'_> for AstValidator<'_> {
         }
 
         validate_generic_param_order(self.dcx(), &generics.params, generics.span);
-
-        for predicate in &generics.where_clause.predicates {
-            let span = predicate.span;
-            if let WherePredicateKind::EqPredicate(predicate) = &predicate.kind {
-                deny_equality_constraints(self, predicate, span, generics);
-            }
-        }
         walk_list!(self, visit_generic_param, &generics.params);
+
         for predicate in &generics.where_clause.predicates {
             match &predicate.kind {
                 WherePredicateKind::BoundPredicate(bound_pred) => {
@@ -1607,7 +1599,7 @@ impl Visitor<'_> for AstValidator<'_> {
                         }
                     }
                 }
-                _ => {}
+                WherePredicateKind::RegionPredicate(_) => {}
             }
             self.visit_where_predicate(predicate);
         }
@@ -1937,170 +1929,6 @@ impl Visitor<'_> for AstValidator<'_> {
             |this| visit::walk_anon_const(this, anon_const),
         )
     }
-}
-
-/// When encountering an equality constraint in a `where` clause, emit an error. If the code seems
-/// like it's setting an associated type, provide an appropriate suggestion.
-fn deny_equality_constraints(
-    this: &AstValidator<'_>,
-    predicate: &WhereEqPredicate,
-    predicate_span: Span,
-    generics: &Generics,
-) {
-    let mut err = errors::EqualityInWhere { span: predicate_span, assoc: None, assoc2: None };
-
-    // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-    if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
-        && let TyKind::Path(None, path) = &qself.ty.kind
-        && let [PathSegment { ident, args: None, .. }] = &path.segments[..]
-    {
-        for param in &generics.params {
-            if param.ident == *ident
-                && let [PathSegment { ident, args, .. }] = &full_path.segments[qself.position..]
-            {
-                // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
-                let mut assoc_path = full_path.clone();
-                // Remove `Bar` from `Foo::Bar`.
-                assoc_path.segments.pop();
-                let len = assoc_path.segments.len() - 1;
-                let gen_args = args.as_deref().cloned();
-                // Build `<Bar = RhsTy>`.
-                let arg = AngleBracketedArg::Constraint(AssocItemConstraint {
-                    id: rustc_ast::node_id::DUMMY_NODE_ID,
-                    ident: *ident,
-                    gen_args,
-                    kind: AssocItemConstraintKind::Equality {
-                        term: predicate.rhs_ty.clone().into(),
-                    },
-                    span: ident.span,
-                });
-                // Add `<Bar = RhsTy>` to `Foo`.
-                match &mut assoc_path.segments[len].args {
-                    Some(args) => match args.deref_mut() {
-                        GenericArgs::Parenthesized(_) | GenericArgs::ParenthesizedElided(..) => {
-                            continue;
-                        }
-                        GenericArgs::AngleBracketed(args) => {
-                            args.args.push(arg);
-                        }
-                    },
-                    empty_args => {
-                        *empty_args = Some(
-                            AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into(),
-                        );
-                    }
-                }
-                err.assoc = Some(errors::AssociatedSuggestion {
-                    span: predicate_span,
-                    ident: *ident,
-                    param: param.ident,
-                    path: pprust::path_to_string(&assoc_path),
-                })
-            }
-        }
-    }
-
-    let mut suggest =
-        |poly: &PolyTraitRef, potential_assoc: &PathSegment, predicate: &WhereEqPredicate| {
-            if let [trait_segment] = &poly.trait_ref.path.segments[..] {
-                let assoc = pprust::path_to_string(&ast::Path::from_ident(potential_assoc.ident));
-                let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                let (args, span) = match &trait_segment.args {
-                    Some(args) => match args.deref() {
-                        ast::GenericArgs::AngleBracketed(args) => {
-                            let Some(arg) = args.args.last() else {
-                                return;
-                            };
-                            (format!(", {assoc} = {ty}"), arg.span().shrink_to_hi())
-                        }
-                        _ => return,
-                    },
-                    None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
-                };
-                let removal_span = if generics.where_clause.predicates.len() == 1 {
-                    // We're removing th eonly where bound left, remove the whole thing.
-                    generics.where_clause.span
-                } else {
-                    let mut span = predicate_span;
-                    let mut prev_span: Option<Span> = None;
-                    let mut preds = generics.where_clause.predicates.iter().peekable();
-                    // Find the predicate that shouldn't have been in the where bound list.
-                    while let Some(pred) = preds.next() {
-                        if let WherePredicateKind::EqPredicate(_) = pred.kind
-                            && pred.span == predicate_span
-                        {
-                            if let Some(next) = preds.peek() {
-                                // This is the first predicate, remove the trailing comma as well.
-                                span = span.with_hi(next.span.lo());
-                            } else if let Some(prev_span) = prev_span {
-                                // Remove the previous comma as well.
-                                span = span.with_lo(prev_span.hi());
-                            }
-                        }
-                        prev_span = Some(pred.span);
-                    }
-                    span
-                };
-                err.assoc2 = Some(errors::AssociatedSuggestion2 {
-                    span,
-                    args,
-                    predicate: removal_span,
-                    trait_segment: trait_segment.ident,
-                    potential_assoc: potential_assoc.ident,
-                });
-            }
-        };
-
-    if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
-        // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-        for bounds in generics.params.iter().map(|p| &p.bounds).chain(
-            generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
-                WherePredicateKind::BoundPredicate(p) => Some(&p.bounds),
-                _ => None,
-            }),
-        ) {
-            for bound in bounds {
-                if let GenericBound::Trait(poly) = bound
-                    && poly.modifiers == TraitBoundModifiers::NONE
-                {
-                    if full_path.segments[..full_path.segments.len() - 1]
-                        .iter()
-                        .map(|segment| segment.ident.name)
-                        .zip(poly.trait_ref.path.segments.iter().map(|segment| segment.ident.name))
-                        .all(|(a, b)| a == b)
-                        && let Some(potential_assoc) = full_path.segments.last()
-                    {
-                        suggest(poly, potential_assoc, predicate);
-                    }
-                }
-            }
-        }
-        // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
-        if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
-                generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
-                    WherePredicateKind::BoundPredicate(p)
-                        if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
-                            && let [segment] = &path.segments[..] =>
-                    {
-                        Some((segment.ident, &p.bounds))
-                    }
-                    _ => None,
-                }),
-            ) {
-                if ident == potential_param.ident {
-                    for bound in bounds {
-                        if let ast::GenericBound::Trait(poly) = bound
-                            && poly.modifiers == TraitBoundModifiers::NONE
-                        {
-                            suggest(poly, potential_assoc, predicate);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    this.dcx().emit_err(err);
 }
 
 pub fn check_crate(

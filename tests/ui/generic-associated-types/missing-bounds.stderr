@@ -1,11 +1,11 @@
-error: equality constraints are not yet supported in `where` clauses
+error: equality constraints are not supported in where-clauses
   --> $DIR/missing-bounds.rs:39:33
    |
 LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^ not supported
    |
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
-help: if `Output` is an associated type you're trying to set, use the associated type binding syntax
+help: use the associated type binding syntax if `Output` is an associated type you're trying to set
    |
 LL - impl<B: Add> Add for E<B> where <B as Add>::Output = B {
 LL + impl<B: Add> Add for E<B> where B: Add<Output = B> {

@@ -1,0 +1,34 @@
+error: equality constraints are not supported in where-clauses
+  --> $DIR/equality-predicates.rs:7:14
+   |
+LL | fn f() where u8 = u16 {}
+   |              ^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+
+error: equality constraints are not supported in where-clauses
+  --> $DIR/equality-predicates.rs:10:22
+   |
+LL | fn g() where for<'a> &'static (u8,) == u16, {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+
+error: equality constraints are not supported in where-clauses
+  --> $DIR/equality-predicates.rs:21:5
+   |
+LL |     <T as Iterator>::Item == for<> fn(),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+
+error: equality constraints are not supported in where-clauses
+  --> $DIR/equality-predicates.rs:19:5
+   |
+LL |     T::Item = fn(),
+   |     ^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+
+error: aborting due to 4 previous errors
+

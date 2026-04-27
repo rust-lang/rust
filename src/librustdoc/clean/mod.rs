@@ -408,15 +408,10 @@ fn clean_where_predicate<'tcx>(
                 bound_params,
             }
         }
-
         hir::WherePredicateKind::RegionPredicate(wrp) => WherePredicate::RegionPredicate {
             lifetime: clean_lifetime(wrp.lifetime, cx),
             bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
         },
-
-        // We should never actually reach this case because these predicates should've already been
-        // rejected in an earlier compiler pass. This feature isn't fully implemented (#20041).
-        hir::WherePredicateKind::EqPredicate(_) => bug!("EqPredicate"),
     })
 }
 
@@ -521,7 +516,7 @@ fn clean_projection_predicate<'tcx>(
     pred: ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> WherePredicate {
-    WherePredicate::EqPredicate {
+    WherePredicate::ProjectionPredicate {
         lhs: clean_projection(pred.map_bound(|p| p.projection_term), cx, None),
         rhs: clean_middle_term(pred.map_bound(|p| p.term), cx),
     }
@@ -788,8 +783,8 @@ pub(crate) fn clean_generics<'tcx>(
                     }
                 }
             }
-            WherePredicate::EqPredicate { lhs, rhs } => {
-                eq_predicates.push(WherePredicate::EqPredicate { lhs, rhs });
+            WherePredicate::ProjectionPredicate { lhs, rhs } => {
+                eq_predicates.push(WherePredicate::ProjectionPredicate { lhs, rhs });
             }
         }
     }
