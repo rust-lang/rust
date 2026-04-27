@@ -29,7 +29,9 @@ pub use self::intern::{
     HasStaticRootDefId, InternError, InternKind, intern_const_alloc_for_constprop,
     intern_const_alloc_recursive,
 };
-pub use self::machine::{AllocMap, Machine, MayLeak, ReturnAction, compile_time_machine};
+pub use self::machine::{
+    AllocMap, Machine, MayLeak, RetagMode, ReturnAction, compile_time_machine,
+};
 pub use self::memory::{AllocInfo, AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 use self::operand::Operand;
 pub use self::operand::{ImmTy, Immediate, OpTy};

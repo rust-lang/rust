@@ -363,9 +363,12 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 bb.terminator().source_info,
                 mir::StatementKind::Assign(Box::new((
                     *destination,
-                    mir::Rvalue::Use(mir::Operand::Copy(
-                        arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
-                    )),
+                    mir::Rvalue::Use(
+                        mir::Operand::Copy(
+                            arg_place.project_deeper(&[mir::ProjectionElem::Deref], tcx),
+                        ),
+                        mir::WithRetag::Yes,
+                    ),
                 ))),
             ));
 

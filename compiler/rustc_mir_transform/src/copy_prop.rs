@@ -152,7 +152,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
         // Do not leave tautological assignments around.
         if let StatementKind::Assign(box (lhs, ref rhs)) = stmt.kind
-            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) = *rhs
+            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs), _) = *rhs
             && lhs == rhs
         {
             stmt.make_nop(true);

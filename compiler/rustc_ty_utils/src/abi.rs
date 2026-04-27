@@ -584,6 +584,11 @@ fn fn_abi_new_uncached<'tcx>(
         extra_args
     };
 
+    // For some functions we treat their first argument as-if it was a mutable reference
+    // even if it is a raw pointer. This is a terrible hack since it becomes effectively
+    // part of the MIR semantics that every MIR consumer needs to be aware of.
+    // Do not add more functions here! Instead, put the actually intended type in the signature.
+    // FIXME(#154274): remove this hack.
     let is_drop_in_place = determined_fn_def_id.is_some_and(|def_id| {
         tcx.is_lang_item(def_id, LangItem::DropInPlace)
             || tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)

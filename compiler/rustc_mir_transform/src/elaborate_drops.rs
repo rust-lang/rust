@@ -403,11 +403,14 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
     }
 
     fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
-        Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-            span,
-            user_ty: None,
-            const_: Const::from_bool(self.tcx, val),
-        })))
+        Rvalue::Use(
+            Operand::Constant(Box::new(ConstOperand {
+                span,
+                user_ty: None,
+                const_: Const::from_bool(self.tcx, val),
+            })),
+            WithRetag::Yes,
+        )
     }
 
     fn set_drop_flag(&mut self, loc: Location, path: MovePathIndex, val: DropFlagState) {

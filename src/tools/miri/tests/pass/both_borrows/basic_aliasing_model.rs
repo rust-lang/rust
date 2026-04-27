@@ -26,6 +26,7 @@ fn main() {
     box_into_raw_allows_interior_mutable_alias();
     cell_inside_struct();
     zst();
+    mut_derefer();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -316,4 +317,14 @@ fn zst() {
         let ptr = alloc(l);
         with_protector(&mut *ptr.cast::<()>(), ptr, l);
     }
+}
+
+fn mut_derefer() {
+    // The nested derefs get adjusted by the derefer pass, ensure we handle
+    // the resulting MIR correctly.
+    let x = &mut &mut (1, 2);
+    let l = &mut x.0;
+    *l += 1;
+    let _r = &mut x.1;
+    *l += 1;
 }

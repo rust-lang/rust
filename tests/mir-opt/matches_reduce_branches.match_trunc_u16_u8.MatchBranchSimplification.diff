@@ -58,7 +58,7 @@
 - 
 -     bb10: {
 +         StorageLive(_3);
-+         _3 = move _2;
++         _3 = no_retag move _2;
 +         _0 = copy _3 as u8 (IntToInt);
 +         StorageDead(_3);
           return;

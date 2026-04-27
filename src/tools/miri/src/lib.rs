@@ -181,10 +181,16 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "--cfg=miri",
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
-    "-Zmir-emit-retag",
     "-Zmir-preserve-ub",
     "-Zmir-opt-level=0",
+    // Disable passes that add checks for language UB -- we get better diagnostics if
+    // we let Miri do these checks.
     "-Zmir-enable-passes=-CheckAlignment,-CheckNull,-CheckEnums",
+    // FIXME: Disable some passes to make higher opt levels also work.
+    // - ReferencePropagation is incompatible with SB's ref-to-raw castb behavior.
+    //   The fix here is to ditch SB and use TB instead but we're not yet ready for that.
+    // - GVN is not yet adjusted for implicit retags during assignments.
+    "-Zmir-enable-passes=-ReferencePropagation,-GVN",
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.
     "-Zdeduplicate-diagnostics=no",

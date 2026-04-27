@@ -710,6 +710,11 @@ fn main() -> ExitCode {
         }
     }
 
+    // Disabling validation also disables aliasing checks (as retags are done during validation).
+    if miri_config.validation == ValidationMode::No {
+        miri_config.borrow_tracker = None;
+    }
+
     // Native calls and strict provenance are not compatible.
     if !miri_config.native_lib.is_empty() && miri_config.provenance_mode == ProvenanceMode::Strict {
         fatal_error!("strict provenance is not compatible with calling native functions");

@@ -1656,26 +1656,23 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     #[inline(always)]
     fn retag_ptr_value(
         ecx: &mut InterpCx<'tcx, Self>,
-        kind: mir::RetagKind,
         val: &ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
+        ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         if ecx.machine.borrow_tracker.is_some() {
-            ecx.retag_ptr_value(kind, val)
+            ecx.retag_ptr_value(val, ty)
         } else {
-            interp_ok(val.clone())
+            interp_ok(None)
         }
     }
 
     #[inline(always)]
-    fn retag_place_contents(
+    fn with_retag_mode<T>(
         ecx: &mut InterpCx<'tcx, Self>,
-        kind: mir::RetagKind,
-        place: &PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        if ecx.machine.borrow_tracker.is_some() {
-            ecx.retag_place_contents(kind, place)?;
-        }
-        interp_ok(())
+        mode: RetagMode,
+        f: impl FnOnce(&mut InterpCx<'tcx, Self>) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, T> {
+        if ecx.machine.borrow_tracker.is_some() { ecx.with_retag_mode(mode, f) } else { f(ecx) }
     }
 
     fn protect_in_place_function_argument(
