@@ -6,6 +6,7 @@ trait Tr {
     const fn test() {
         //~^ ERROR functions in traits cannot be declared const
         (const || {})()
+        //~^ ERROR cannot use `const` closures outside of const contexts
     }
 }
 
