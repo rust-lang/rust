@@ -1,0 +1,26 @@
+error[E0191]: the value of the associated type `Assoc2` in `Bar` must be specified
+  --> $DIR/defaults-on-trait-object.rs:20:24
+   |
+LL |     type Assoc2;
+   |     ----------- `Assoc2` defined here
+...
+LL | type BarObj1 = Box<dyn Bar>;
+   |                        ^^^
+   |
+help: specify the associated type
+   |
+LL | type BarObj1 = Box<dyn Bar<Assoc2 = /* Type */>>;
+   |                           +++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/defaults-on-trait-object.rs:29:17
+   |
+LL |     let _: () = foo2.foo();
+   |            --   ^^^^^^^^^^ expected `()`, found `bool`
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0191, E0308.
+For more information about an error, try `rustc --explain E0191`.
