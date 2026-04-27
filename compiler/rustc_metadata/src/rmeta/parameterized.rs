@@ -1,12 +1,16 @@
 use std::hash::Hash;
 
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region, Ty};
 use rustc_serialize::Encodable;
 use rustc_span::Symbol;
 
 use crate::rmeta::encoder::EncodeContext;
+use crate::rmeta::encoder::public_api_hasher::{PublicApiHasher, PublicApiHashingContext};
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::{LazyArray, LazyValue, LocalDefId};
 
 pub(crate) trait ParameterizedOverTcx: 'static {
@@ -185,6 +189,13 @@ pub(super) trait EncodeFrom<'tcx, T> {
     /// just a no-op. For more complex types this usually creates a `LazyValue<T>` or `LazyArray<T>`
     /// encoding `value` with `encoder` in the process
     fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, value: T) -> Self;
+
+    fn encode_from_hashed<'a>(
+        encoder: &mut EncodeContext<'a, 'tcx>,
+        value: T,
+        hcx: &mut PublicApiHashingContext<'_>,
+        hasher: &mut PublicApiHasher,
+    ) -> Self;
 }
 
 macro_rules! trivial_encode_from {
@@ -199,6 +210,16 @@ macro_rules! trivial_encode_from {
                 ) -> $ty {
                     value
                 }
+
+                fn encode_from_hashed<'a>(
+                    _encoder: &mut EncodeContext<'a, 'tcx>,
+                    value: $ty,
+                    hcx: &mut PublicApiHashingContext<'_>,
+                    hasher: &mut PublicApiHasher,
+                ) -> $ty {
+                    hasher.digest(value, hcx);
+                    value
+                }
             }
         )+
     };
@@ -211,7 +232,8 @@ macro_rules! lazy_encode_from {
         $(
             impl<'tcx, B> EncodeFrom<'tcx, B> for LazyValue<$ty>
             where
-                B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>
+                B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>,
+                <$ty as ParameterizedOverTcx>::Value<'tcx>: StableHash
             {
                 fn encode_from<'a>(
                     encoder: &mut EncodeContext<'a, 'tcx>,
@@ -219,9 +241,64 @@ macro_rules! lazy_encode_from {
                 ) -> LazyValue<$ty> {
                     encoder.lazy(value)
                 }
+
+                fn encode_from_hashed<'a>(
+                    encoder: &mut EncodeContext<'a, 'tcx>,
+                    value: B,
+                    hcx: &mut PublicApiHashingContext<'_>,
+                    hasher: &mut PublicApiHasher,
+                ) -> LazyValue<$ty> {
+                    hasher.digest(value.borrow(), hcx);
+                    encoder.lazy(value)
+                }
             }
         )+
     };
+}
+
+macro_rules! lazy_encode_from_unhashed {
+    (
+        $($ty:ty,)+
+    ) => {
+        $(
+            impl<'tcx, B> EncodeFrom<'tcx, B> for LazyValue<$ty>
+            where
+                B: std::borrow::Borrow<<$ty as ParameterizedOverTcx>::Value<'tcx>>,
+            {
+                fn encode_from<'a>(
+                    encoder: &mut EncodeContext<'a, 'tcx>,
+                    value: B,
+                ) -> LazyValue<$ty> {
+                    encoder.lazy(value)
+                }
+
+                fn encode_from_hashed<'a>(
+                    _encoder: &mut EncodeContext<'a, 'tcx>,
+                    _value: B,
+                    _hcx: &mut PublicApiHashingContext<'_>,
+                    _hasher: &mut PublicApiHasher,
+                ) -> LazyValue<$ty> {
+                    unreachable!()
+                }
+            }
+        )+
+    };
+}
+
+impl<'tcx> EncodeFrom<'tcx, DefId> for RemappedRawDefId {
+    fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, value: DefId) -> Self {
+        RemappedRawDefId::create(value, &encoder.local_defs_remapping)
+    }
+
+    fn encode_from_hashed<'a>(
+        encoder: &mut EncodeContext<'a, 'tcx>,
+        value: DefId,
+        hcx: &mut PublicApiHashingContext<'_>,
+        hasher: &mut PublicApiHasher,
+    ) -> Self {
+        hasher.digest(value, hcx);
+        RemappedRawDefId::create(value, &encoder.local_defs_remapping)
+    }
 }
 
 trivial_encode_from! {
@@ -229,7 +306,6 @@ trivial_encode_from! {
     u64,
     // tidy-alphabetical-start
     crate::rmeta::AttrFlags,
-    crate::rmeta::remapped_def_id::RemappedRawDefId,
     rustc_hir::Constness,
     rustc_hir::CoroutineKind,
     rustc_hir::Defaultness,
@@ -253,7 +329,6 @@ lazy_encode_from! {
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIdMap<rustc_middle::ty::EarlyBinder<'static, Ty<'static>>>,
     rustc_hir::def_id::DefIdMap<std::vec::Vec<rustc_hir::def_id::DefId>>,
-    rustc_hir::definitions::DefKey,
     rustc_index::IndexVec<rustc_abi::FieldIdx, rustc_span::Symbol>,
     rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'static>>,
     rustc_index::bit_set::DenseBitSet<u32>,
@@ -289,16 +364,30 @@ lazy_encode_from! {
     // tidy-alphabetical-end
 }
 
+lazy_encode_from_unhashed! {
+    rustc_hir::definitions::DefKey,
+}
+
 impl<'tcx, T, B> EncodeFrom<'tcx, Option<B>> for Option<LazyValue<T>>
 where
     T: ParameterizedOverTcx,
     T::Value<'tcx>: for<'b> Encodable<EncodeContext<'b, 'tcx>>,
-    B: std::borrow::Borrow<T::Value<'tcx>>,
+    B: std::borrow::Borrow<T::Value<'tcx>> + StableHash,
 {
     fn encode_from<'a>(
         encoder: &mut EncodeContext<'a, 'tcx>,
         value: Option<B>,
     ) -> Option<LazyValue<T>> {
+        value.map(|v| encoder.lazy(v))
+    }
+
+    fn encode_from_hashed<'a>(
+        encoder: &mut EncodeContext<'a, 'tcx>,
+        value: Option<B>,
+        hcx: &mut PublicApiHashingContext<'_>,
+        hasher: &mut PublicApiHasher,
+    ) -> Self {
+        hasher.digest(&value, hcx);
         value.map(|v| encoder.lazy(v))
     }
 }
@@ -307,10 +396,19 @@ impl<'tcx, T, I, B> EncodeFrom<'tcx, I> for LazyArray<T>
 where
     T: ParameterizedOverTcx,
     I: IntoIterator<Item = B>,
-    B: std::borrow::Borrow<T::Value<'tcx>>,
+    B: std::borrow::Borrow<T::Value<'tcx>> + StableHash,
     T::Value<'tcx>: for<'a> Encodable<EncodeContext<'a, 'tcx>>,
 {
     fn encode_from<'a>(encoder: &mut EncodeContext<'a, 'tcx>, values: I) -> Self {
         encoder.lazy_array(values)
+    }
+
+    fn encode_from_hashed<'a>(
+        encoder: &mut EncodeContext<'a, 'tcx>,
+        values: I,
+        hcx: &mut PublicApiHashingContext<'_>,
+        hasher: &mut PublicApiHasher,
+    ) -> Self {
+        encoder.lazy_array(values.into_iter().inspect(|b| hasher.digest(b, hcx)))
     }
 }

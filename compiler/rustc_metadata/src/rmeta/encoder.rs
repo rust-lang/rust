@@ -28,9 +28,9 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
+use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::AssocContainer;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
@@ -48,16 +48,24 @@ use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
 use twox_hash::XxHash3_128;
 
+use self::public_api_hasher::{
+    HashableCrateHeader, HashableCrateRoot, Hashed, NoneIfHashed, PublicApiHasher,
+    PublicApiHashingContext,
+};
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
-pub(super) struct MetadataBuilder<'a, 'tcx, 'b> {
+pub(super) mod public_api_hasher;
+
+pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
     encoder: &'b mut EncodeContext<'a, 'tcx>,
+    pub(super) tables: TableBuilders,
+    hcx: &'c mut PublicApiHashingContext<'h>,
 }
 
-impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
+impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
     fn is_proc_macro(&self) -> bool {
         self.encoder.is_proc_macro()
     }
@@ -72,7 +80,6 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     metadata_hasher: Arc<Mutex<XxHash3_128>>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
-    pub(super) tables: TableBuilders,
 
     lazy_state: LazyState,
     span_shorthands: FxHashMap<Span, usize>,
@@ -97,8 +104,10 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
     pub(super) local_defs_remapping: LocalDefsRemapping,
-    syntax_context_remapping: HygieneRemappingResults<SyntaxContext, RemappedSyntaxContext>,
-    local_expn_id_remapping: HygieneRemappingResults<LocalExpnId, RemappedLocalExpnIndex>,
+    pub(super) syntax_context_remapping:
+        HygieneRemappingResults<SyntaxContext, RemappedSyntaxContext>,
+    pub(super) local_expn_id_remapping:
+        HygieneRemappingResults<LocalExpnId, RemappedLocalExpnIndex>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -563,7 +572,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
+impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
     fn position(&self) -> usize {
         self.encoder.position()
     }
@@ -592,6 +601,25 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         self.encoder.lazy_array(values)
     }
 
+    pub(super) fn hashed_lazy_array<
+        T: ParameterizedOverTcx,
+        I: IntoIterator<Item = B>,
+        B: Borrow<T::Value<'tcx>>,
+    >(
+        &mut self,
+        values: I,
+    ) -> Hashed<LazyArray<T>>
+    where
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>> + StableHash,
+    {
+        let mut hasher = PublicApiHasher::default();
+        let array = self.encoder.lazy_array(values.into_iter().map(|v| {
+            hasher.digest(v.borrow(), self.hcx);
+            v
+        }));
+        Hashed { value: array, hash: hasher.finish(self.hcx) }
+    }
+
     fn encode_def_path_table(&mut self) {
         let defs = self.tcx().definitions();
         if self.is_proc_macro() {
@@ -615,13 +643,19 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         }
     }
 
-    fn encode_def_path_hash_map(&mut self) -> LazyValue<DefPathHashMapRef<'static>> {
-        self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx().def_path_hash_to_def_index_map()))
+    fn encode_def_path_hash_map(&mut self) -> Hashed<LazyValue<DefPathHashMapRef<'static>>> {
+        Hashed {
+            // FIXME remove this when we start stroing DefId-s as DefPathHash
+            hash: Some(Fingerprint::ZERO),
+            value: self.encoder.lazy(DefPathHashMapRef::BorrowedFromTcx(
+                self.tcx().def_path_hash_to_def_index_map(),
+            )),
+        }
     }
 
     fn encode_source_map(
         &mut self,
-    ) -> LazyTable<OnDiskSourceFileIdx, Option<LazyValue<rustc_span::SourceFile>>> {
+    ) -> Hashed<LazyTable<OnDiskSourceFileIdx, Option<LazyValue<rustc_span::SourceFile>>>> {
         let source_map = self.tcx().sess.source_map();
         let all_source_files = source_map.files();
 
@@ -630,7 +664,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         // is done.
         let required_source_files = self.encoder.required_source_files.take().unwrap();
 
-        let mut adapted = TableBuilder::<OnDiskSourceFileIdx, _>::default();
+        let mut adapted = TableBuilder::<RDRHashNone<_>, OnDiskSourceFileIdx, _>::default();
 
         let local_crate_stable_id = self.tcx().stable_crate_id(LOCAL_CRATE);
 
@@ -686,7 +720,8 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
             adapted.set_some(OnDiskSourceFileIdx(on_disk_index), self.lazy(&adapted_source_file));
         }
 
-        adapted.encode(&mut self.encoder.opaque)
+        // FIXME fix this when we do proper hashing
+        adapted.encode(&mut self.encoder.opaque, self.hcx)
     }
 
     fn encode_crate_root(&mut self) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
@@ -762,6 +797,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
+            let mut hasher = PublicApiHasher::default();
             trace!("beginning to encode alloc ids");
             loop {
                 let new_n = self.encoder.interpret_allocs.len();
@@ -775,11 +811,15 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
                     let id = self.encoder.interpret_allocs[idx];
                     let pos = self.position() as u64;
                     interpret_alloc_index.push(pos);
+                    hasher.digest(tcx.global_alloc(id), self.hcx);
                     interpret::specialized_encode_alloc_id(self.encoder, tcx, id);
                 }
                 n = new_n;
             }
-            self.lazy_array(interpret_alloc_index)
+            Hashed {
+                value: self.encoder.lazy_array(interpret_alloc_index),
+                hash: hasher.finish(self.hcx),
+            }
         });
 
         // Encode the proc macro data. This affects `tables`, so we need to do this before we
@@ -787,7 +827,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         // encode_def_path_table.
         let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros());
 
-        let tables = stat!("tables", || self.encoder.tables.encode(&mut self.encoder.opaque));
+        let tables = stat!("tables", || self.tables.encode(&mut self.encoder.opaque, self.hcx));
 
         let debugger_visualizers =
             stat!("debugger-visualizers", || self.encode_debugger_visualizers());
@@ -824,8 +864,8 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
             .encode_enabled_denied_partial_mitigations());
 
         let attrs = tcx.hir_krate_attrs();
-        let crate_root = CrateRoot {
-            header: CrateHeader {
+        let crate_root = HashableCrateRoot {
+            header: HashableCrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
                 triple: tcx.sess.opts.target_triple.clone(),
                 is_proc_macro_crate: proc_macro_data.is_some(),
@@ -841,7 +881,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
             has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
             has_default_lib_allocator: find_attr!(attrs, DefaultLibAllocator),
             externally_implementable_items,
-            proc_macro_data,
+            proc_macro_data: NoneIfHashed { value: proc_macro_data },
             debugger_visualizers,
             compiler_builtins: find_attr!(attrs, CompilerBuiltins),
             needs_allocator: find_attr!(attrs, NeedsAllocator),
@@ -880,8 +920,8 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
             expn_hashes,
             def_path_hash_map,
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
-            rdr_hashes: RDRHashes { public_api_hash: tcx.crate_hash(LOCAL_CRATE) },
         };
+        let crate_root = crate_root.into_crate_root(self.tcx(), self.hcx);
         let root = stat!("crate-root", || self.lazy(crate_root));
 
         // By default the crate hash (SVH) is derived from the encoded metadata bytes. With
@@ -1504,7 +1544,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
+impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
         let mut state = AnalyzeAttrState {
@@ -1531,8 +1571,8 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
     /// Writing to a field of `tables` should be as simple as
     /// `self.table_writer().field(index, tcx.get_field_value(index))`, even for complex structs
     /// that require encoding as `LazyValue`/`LazyArray` first.
-    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, '_> {
-        super::TableWriter { encoder: &mut self.encoder }
+    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, 'h, '_, '_, '_> {
+        super::TableWriter { encoder: self.encoder, hcx: self.hcx, tables: &mut self.tables }
     }
 
     fn encode_def_ids(&mut self) {
@@ -1694,17 +1734,12 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
                 let coroutine_for_closure = tcx.coroutine_for_closure(def_id);
-                let remapped_id = RemappedRawDefId::create(
-                    coroutine_for_closure,
-                    &self.encoder.local_defs_remapping,
-                );
 
-                self.table_writer().coroutine_for_closure(local_id, remapped_id);
+                self.table_writer().coroutine_for_closure(local_id, coroutine_for_closure);
 
                 // If this async closure has a by-move body, record it too.
                 if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
                     let id = tcx.coroutine_by_move_body_def_id(coroutine_for_closure);
-                    let id = RemappedRawDefId::create(id, &self.encoder.local_defs_remapping);
 
                     self.table_writer()
                         .coroutine_by_move_body_def_id(coroutine_for_closure.expect_local(), id);
@@ -1816,11 +1851,13 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         }
     }
 
-    fn encode_externally_implementable_items(&mut self) -> LazyArray<EiiMapEncodedKeyValue> {
+    fn encode_externally_implementable_items(
+        &mut self,
+    ) -> Hashed<LazyArray<EiiMapEncodedKeyValue>> {
         empty_proc_macro!(self);
         let externally_implementable_items = self.tcx().externally_implementable_items(LOCAL_CRATE);
 
-        self.lazy_array(externally_implementable_items.iter().map(
+        self.hashed_lazy_array(externally_implementable_items.iter().map(
             |(foreign_item, (decl, impls))| {
                 (
                     *foreign_item,
@@ -2133,38 +2170,35 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         self.table_writer().macro_definition(def_id, &*macro_def.body);
     }
 
-    fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
+    fn encode_native_libraries(&mut self) -> Hashed<LazyArray<NativeLib>> {
         empty_proc_macro!(self);
         let used_libraries = self.tcx().native_libraries(LOCAL_CRATE);
-        self.lazy_array(used_libraries)
+        self.hashed_lazy_array(used_libraries)
     }
 
-    fn encode_foreign_modules(&mut self) -> LazyArray<ForeignModule> {
+    fn encode_foreign_modules(&mut self) -> Hashed<LazyArray<ForeignModule>> {
         empty_proc_macro!(self);
         let foreign_modules = self.tcx().foreign_modules(LOCAL_CRATE);
-        self.lazy_array(foreign_modules.iter().map(|(_, m)| m))
+        self.hashed_lazy_array(foreign_modules.iter().map(|(_, m)| m))
     }
 
-    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
-        let mut syntax_contexts: TableBuilder<SyntaxContext, _> = Default::default();
-        let mut expn_data_table: TableBuilder<LocalExpnId, _> = Default::default();
-        let mut expn_hash_table: TableBuilder<LocalExpnId, _> = Default::default();
+    fn encode_hygiene(
+        &mut self,
+    ) -> (Hashed<SyntaxContextTable>, Hashed<ExpnDataTable>, Hashed<ExpnHashTable>) {
+        let mut syntax_contexts: TableBuilder<RDRHashAll<_>, SyntaxContext, _> = Default::default();
+        let mut expn_data_table: TableBuilder<RDRHashAll<_>, LocalExpnId, _> = Default::default();
+        let mut expn_hash_table: TableBuilder<RDRHashNone<_>, LocalExpnId, _> = Default::default();
 
         HygieneEncodeContext::encode(
             &Rc::clone(&self.encoder.hygiene_ctxt),
-            &mut (
-                &mut self.encoder,
-                &mut syntax_contexts,
-                &mut expn_data_table,
-                &mut expn_hash_table,
-            ),
+            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), ctxt, ctxt_data| {
-                let ctxt = this.syntax_context_remapping.map_id(ctxt);
+                let ctxt = this.encoder.syntax_context_remapping.map_id(ctxt);
                 syntax_contexts.set_some(ctxt, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), expn_id, expn_data, hash| {
                 if let Some(expn_id) = expn_id.as_local() {
-                    let expn_index = this.local_expn_id_remapping.map_id(expn_id);
+                    let expn_index = this.encoder.local_expn_id_remapping.map_id(expn_id);
 
                     expn_data_table.set_some(expn_index, this.lazy(expn_data.expect("local expn")));
                     expn_hash_table.set_some(expn_index, this.lazy(hash));
@@ -2173,9 +2207,9 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         );
 
         (
-            syntax_contexts.encode(&mut self.encoder.opaque),
-            expn_data_table.encode(&mut self.encoder.opaque),
-            expn_hash_table.encode(&mut self.encoder.opaque),
+            syntax_contexts.encode(&mut self.encoder.opaque, self.hcx),
+            expn_data_table.encode(&mut self.encoder.opaque, self.hcx),
+            expn_hash_table.encode(&mut self.encoder.opaque, self.hcx),
         )
     }
 
@@ -2257,12 +2291,13 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
 
             let macros = self.lazy_array(macros);
 
-            let mut proc_macro_quoted_spans = TableBuilder::default();
+            let mut proc_macro_quoted_spans = TableBuilder::<RDRHashNone<_>, _, _>::default();
             for (i, span) in tcx.sess.proc_macro_quoted_spans() {
                 proc_macro_quoted_spans.set_some(ProcMacroQuotedSpansIdx(i), self.lazy(span));
             }
 
-            let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(&mut self.encoder.opaque);
+            let proc_macro_quoted_spans =
+                proc_macro_quoted_spans.encode(&mut self.encoder.opaque, self.hcx).value;
 
             Some(ProcMacroData {
                 proc_macro_decls_static,
@@ -2275,10 +2310,10 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         }
     }
 
-    fn encode_debugger_visualizers(&mut self) -> LazyArray<DebuggerVisualizerFile> {
+    fn encode_debugger_visualizers(&mut self) -> Hashed<LazyArray<DebuggerVisualizerFile>> {
         empty_proc_macro!(self);
 
-        self.lazy_array(
+        self.hashed_lazy_array(
             self.tcx()
                 .debugger_visualizers(LOCAL_CRATE)
                 .iter()
@@ -2290,7 +2325,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         )
     }
 
-    fn encode_crate_deps(&mut self) -> LazyArray<CrateDep> {
+    fn encode_crate_deps(&mut self) -> Hashed<LazyArray<CrateDep>> {
         empty_proc_macro!(self);
 
         let deps = self
@@ -2322,76 +2357,80 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         // the assumption that they are numbered 1 to n.
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
-        self.lazy_array(deps.iter().map(|(_, dep)| dep))
+        self.hashed_lazy_array(deps.iter().map(|(_, dep)| dep))
     }
 
-    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
+    fn encode_target_modifiers(&mut self) -> Hashed<LazyArray<TargetModifier>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
-        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
+        self.hashed_lazy_array(tcx.sess.opts.gather_target_modifiers())
     }
 
-    fn encode_enabled_denied_partial_mitigations(&mut self) -> LazyArray<DeniedPartialMitigation> {
+    fn encode_enabled_denied_partial_mitigations(
+        &mut self,
+    ) -> Hashed<LazyArray<DeniedPartialMitigation>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
-        self.lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
+        self.hashed_lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
     }
 
-    fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
+    fn encode_lib_features(&mut self) -> Hashed<LazyArray<(Symbol, FeatureStability)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
         let lib_features = tcx.lib_features(LOCAL_CRATE);
-        self.lazy_array(lib_features.to_sorted_vec())
+        self.hashed_lazy_array(lib_features.to_sorted_vec())
     }
 
-    fn encode_stability_implications(&mut self) -> LazyArray<(Symbol, Symbol)> {
+    fn encode_stability_implications(&mut self) -> Hashed<LazyArray<(Symbol, Symbol)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
         let implications = tcx.stability_implications(LOCAL_CRATE);
         let sorted = implications.to_sorted_stable_ord();
-        self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
+        self.hashed_lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
     }
 
-    fn encode_canonical_symbols(&mut self) -> LazyArray<(Symbol, LocalDefId)> {
+    fn encode_canonical_symbols(&mut self) -> Hashed<LazyArray<(Symbol, LocalDefId)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
         let canonical_symbols = &tcx.canonical_symbols(LOCAL_CRATE);
-        self.lazy_array(canonical_symbols.iter().map(|cs| (cs.symbol, cs.def_id.expect_local())))
+        self.hashed_lazy_array(
+            canonical_symbols.iter().map(|cs| (cs.symbol, cs.def_id.expect_local())),
+        )
     }
 
-    fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, LocalDefId)> {
+    fn encode_diagnostic_items(&mut self) -> Hashed<LazyArray<(Symbol, LocalDefId)>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
         let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
-        self.lazy_array(
+        self.hashed_lazy_array(
             diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.expect_local())),
         )
     }
 
-    fn encode_fake_doc_items(&mut self) -> LazyArray<LocalDefId> {
+    fn encode_fake_doc_items(&mut self) -> Hashed<LazyArray<LocalDefId>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
         let fake_doc_items = &tcx.fake_doc_items(LOCAL_CRATE);
-        self.lazy_array(fake_doc_items.iter().map(|cs| cs.expect_local()))
+        self.hashed_lazy_array(fake_doc_items.iter().map(|cs| cs.expect_local()))
     }
 
-    fn encode_lang_items(&mut self) -> LazyArray<(LocalDefId, LangItem)> {
+    fn encode_lang_items(&mut self) -> Hashed<LazyArray<(LocalDefId, LangItem)>> {
         empty_proc_macro!(self);
         let lang_items = self.tcx().lang_items().iter();
-        self.lazy_array(
+        self.hashed_lazy_array(
             lang_items
                 .filter_map(|(lang_item, def_id)| def_id.as_local().map(|id| (id, lang_item))),
         )
     }
 
-    fn encode_lang_items_missing(&mut self) -> LazyArray<LangItem> {
+    fn encode_lang_items_missing(&mut self) -> Hashed<LazyArray<LangItem>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
-        self.lazy_array(&tcx.lang_items().missing)
+        self.hashed_lazy_array(&tcx.lang_items().missing)
     }
 
-    fn encode_stripped_cfg_items(&mut self) -> LazyArray<StrippedCfgItem<LocalDefId>> {
-        self.lazy_array(
+    fn encode_stripped_cfg_items(&mut self) -> Hashed<LazyArray<StrippedCfgItem<LocalDefId>>> {
+        self.hashed_lazy_array(
             self.tcx()
                 .stripped_cfg_items(LOCAL_CRATE)
                 .into_iter()
@@ -2399,14 +2438,16 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         )
     }
 
-    fn encode_traits(&mut self) -> LazyArray<LocalDefId> {
+    fn encode_traits(&mut self) -> Hashed<LazyArray<LocalDefId>> {
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx().traits(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()))
+        self.hashed_lazy_array(
+            self.tcx().traits(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
+        )
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
     #[instrument(level = "debug", skip(self))]
-    fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
+    fn encode_impls(&mut self) -> Hashed<LazyArray<TraitImpls>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
         let mut trait_impls: FxIndexMap<DefId, Vec<(LocalDefId, Option<SimplifiedType>)>> =
@@ -2446,8 +2487,6 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
                 if let Ok(mut an) = trait_def.ancestors(tcx, local_id.to_def_id())
                     && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
                 {
-                    let parent =
-                        RemappedRawDefId::create(parent, &self.encoder.local_defs_remapping);
                     self.table_writer().impl_parent(local_id, parent);
                 }
 
@@ -2460,51 +2499,65 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
             }
         }
 
+        let mut hasher = PublicApiHasher::default();
         let trait_impls: Vec<_> = trait_impls
             .into_iter()
-            .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: RemappedRawDefId::create(
-                    trait_def_id,
-                    &self.encoder.local_defs_remapping,
-                ),
-                impls: self.lazy_array(&impls),
+            .map(|(trait_def_id, impls)| {
+                hasher.digest(trait_def_id, self.hcx);
+                hasher.digest(&impls, self.hcx);
+                TraitImpls {
+                    trait_id: RemappedRawDefId::create(
+                        trait_def_id,
+                        &self.encoder.local_defs_remapping,
+                    ),
+                    impls: self.lazy_array(&impls),
+                }
             })
             .collect();
 
-        self.lazy_array(trait_impls)
+        Hashed { value: self.encoder.lazy_array(trait_impls), hash: hasher.finish(self.hcx) }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
+    fn encode_incoherent_impls(&mut self) -> Hashed<LazyArray<IncoherentImpls>> {
         empty_proc_macro!(self);
         let tcx = self.tcx();
 
+        let mut hasher = PublicApiHasher::default();
         let all_impls: Vec<_> = tcx
             .crate_inherent_impls(())
             .0
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {
-                self_ty: self.lazy(simp),
-                impls: self.lazy_array(impls.iter().map(|def_id| *def_id)),
+                self_ty: self.encoder.lazy({
+                    hasher.digest(simp, self.hcx);
+                    simp
+                }),
+                impls: self.encoder.lazy_array({
+                    hasher.digest(impls, self.hcx);
+                    impls.iter().copied()
+                }),
             })
             .collect();
 
-        self.lazy_array(&all_impls)
+        Hashed { value: self.encoder.lazy_array(&all_impls), hash: hasher.finish(self.hcx) }
     }
 
-    fn encode_exportable_items(&mut self) -> LazyArray<LocalDefId> {
+    fn encode_exportable_items(&mut self) -> Hashed<LazyArray<LocalDefId>> {
         empty_proc_macro!(self);
-        self.lazy_array(
+        self.hashed_lazy_array(
             self.tcx().exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
         )
     }
 
-    fn encode_stable_order_of_exportable_impls(&mut self) -> LazyArray<(LocalDefId, usize)> {
+    fn encode_stable_order_of_exportable_impls(
+        &mut self,
+    ) -> Hashed<LazyArray<(LocalDefId, usize)>> {
         empty_proc_macro!(self);
         let stable_order_of_exportable_impls =
             self.tcx().stable_order_of_exportable_impls(LOCAL_CRATE);
-        self.lazy_array(
+        self.hashed_lazy_array(
             stable_order_of_exportable_impls
                 .iter()
                 .map(|(def_id, idx)| (def_id.expect_local(), *idx)),
@@ -2520,16 +2573,16 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
     fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-    ) -> LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)> {
+    ) -> Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
         empty_proc_macro!(self);
 
-        self.lazy_array(exported_symbols)
+        self.hashed_lazy_array(exported_symbols)
     }
 
-    fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
+    fn encode_dylib_dependency_formats(&mut self) -> Hashed<LazyArray<Option<LinkagePreference>>> {
         empty_proc_macro!(self);
         let arr = dylib_dependency_formats(self.tcx()).into_iter().flatten();
-        self.lazy_array(arr.map(|(_id, slot)| slot))
+        self.hashed_lazy_array(arr.map(|(_id, slot)| slot))
     }
 }
 
@@ -2741,13 +2794,21 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         dep_node,
         tcx,
         || {
-            with_encode_metadata_header(tcx, path, |ecx| {
-                let mut builder = MetadataBuilder { encoder: ecx };
-                // Encode all the entries and extra information in the crate,
-                // culminating in the `CrateRoot` which points to all of it.
-                let (root, unhashed) = builder.encode_crate_root();
+            tcx.with_stable_hashing_context(|hcx| {
+                let is_proc_macro = tcx.crate_types().contains(&CrateType::ProcMacro);
+                let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash
+                    & !is_proc_macro
+                    & tcx.sess.opts.incremental.is_some();
+                let mut hcx = PublicApiHashingContext::new(hash_public_api, hcx);
+                with_encode_metadata_header(tcx, path, |ecx| {
+                    let mut builder =
+                        MetadataBuilder { encoder: ecx, hcx: &mut hcx, tables: Default::default() };
+                    // Encode all the entries and extra information in the crate,
+                    // culminating in the `CrateRoot` which points to all of it.
+                    let (root, unhashed) = builder.encode_crate_root();
 
-                (root.position.get(), unhashed.position.get())
+                    (root.position.get(), unhashed.position.get())
+                })
             })
         },
         None,
@@ -2831,7 +2892,6 @@ fn with_encode_metadata_header(
         metadata_hasher: Arc::clone(&metadata_hasher),
         tcx,
         feat: tcx.features(),
-        tables: Default::default(),
         lazy_state: LazyState::NoNode,
         span_shorthands: Default::default(),
         type_shorthands: Default::default(),

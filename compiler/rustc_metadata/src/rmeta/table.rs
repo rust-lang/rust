@@ -1,9 +1,13 @@
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_hir::def::CtorOf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
 use rustc_span::{LocalExpnId, SyntaxContext};
 
 use crate::rmeta::decoder::MetaBlob;
+use crate::rmeta::encoder::public_api_hasher::{
+    Hashed, PublicApiHashingContext, TablePublicApiHasher,
+};
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
@@ -433,45 +437,61 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
     }
 }
 
-pub(crate) trait TableIdx {
+pub(crate) trait TableIdx: Copy {
     type Encoded: Idx;
     type Decoded: Idx;
+
+    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded;
 }
 
 impl TableIdx for LocalDefId {
     type Encoded = RemappedLocalDefId;
     type Decoded = DefIndex;
+    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+        encoder.local_defs_remapping.map_local_def_id(self)
+    }
 }
 
 impl TableIdx for SyntaxContext {
     type Encoded = RemappedSyntaxContext;
     type Decoded = DecodedSyntaxContext;
+
+    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+        encoder.syntax_context_remapping.map_id(self)
+    }
 }
 
 impl TableIdx for LocalExpnId {
     type Encoded = RemappedLocalExpnIndex;
     type Decoded = ExpnIndex;
+
+    fn to_encoded(self, encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+        encoder.local_expn_id_remapping.map_id(self)
+    }
 }
 
 /// Helper for constructing a table's serialization (also see `Table`).
-pub(super) struct TableBuilder<I: TableIdx, T: FixedSizeEncoding> {
+pub(super) struct TableBuilder<H: TablePublicApiHasher<I>, I: TableIdx, T: FixedSizeEncoding> {
     width: usize,
     blocks: IndexVec<I::Encoded, T::ByteArray>,
+    pub(super) hasher: H,
     _marker: PhantomData<(I::Decoded, T)>,
 }
 
-impl<I: TableIdx, T: FixedSizeEncoding> Default for TableBuilder<I, T> {
+impl<H: TablePublicApiHasher<I>, I: TableIdx, T: FixedSizeEncoding> Default
+    for TableBuilder<H, I, T>
+{
     fn default() -> Self {
         TableBuilder {
             width: 0,
             blocks: Default::default(),
-            //hasher: Default::default(),
+            hasher: Default::default(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<I: TableIdx, const N: usize, T> TableBuilder<I, Option<T>>
+impl<H: TablePublicApiHasher<I>, I: TableIdx, const N: usize, T> TableBuilder<H, I, Option<T>>
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
@@ -479,8 +499,53 @@ where
         self.set(i, Some(value))
     }
 }
+impl<
+    H: TablePublicApiHasher<I>,
+    I: TableIdx + StableHash,
+    const N: usize,
+    T: FixedSizeEncoding<ByteArray = [u8; N]>,
+> TableBuilder<H, I, T>
+{
+    pub(super) fn set_hashed<'tcx, V>(
+        &mut self,
+        i: I,
+        value: V,
+        encoder: &mut EncodeContext<'_, 'tcx>,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) where
+        T: EncodeFrom<'tcx, V>,
+    {
+        let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
+        self.set(encoded_i, encoded_value);
+    }
+}
+impl<H, I, const N: usize, T> TableBuilder<H, I, Option<T>>
+where
+    H: TablePublicApiHasher<I>,
+    I: TableIdx + StableHash,
+    Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+{
+    pub(super) fn set_some_hashed<'tcx, V>(
+        &mut self,
+        i: I,
+        value: V,
+        encoder: &mut EncodeContext<'_, 'tcx>,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) where
+        T: EncodeFrom<'tcx, V>,
+    {
+        let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
+        self.set_some(encoded_i, encoded_value);
+    }
+}
 
-impl<I: TableIdx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBuilder<I, T> {
+impl<
+    H: TablePublicApiHasher<I>,
+    I: TableIdx,
+    const N: usize,
+    T: FixedSizeEncoding<ByteArray = [u8; N]>,
+> TableBuilder<H, I, T>
+{
     /// Sets the table value if it is not default.
     /// ATTENTION: For optimization default values are simply ignored by this function, because
     /// right now metadata tables never need to reset non-default values to default. If such need
@@ -504,7 +569,11 @@ impl<I: TableIdx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> Tab
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<I, T> {
+    pub(crate) fn encode(
+        &self,
+        buf: &mut FileEncoder<'_>,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) -> Hashed<LazyTable<I, T>> {
         let pos = buf.position();
 
         let width = self.width;
@@ -565,11 +634,12 @@ impl<I: TableIdx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> Tab
         }
 
         debug_assert!(width <= usize::MAX >> 1);
-        LazyTable::from_position_and_encoded_size(
+        let encoded = LazyTable::from_position_and_encoded_size(
             NonZero::new(pos).unwrap(),
             (width << 1) | usize::from(sparse),
             len,
-        )
+        );
+        Hashed { value: encoded, hash: self.hasher.finish(hcx) }
     }
 }
 

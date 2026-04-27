@@ -18,6 +18,7 @@ use rustc_attr_ir::{
 use rustc_crate_store::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::PreciseCapturingArgKind;
@@ -30,7 +31,8 @@ use rustc_hir::definitions::DefKey;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{
-    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
+    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, StableHash, TyDecodable,
+    TyEncodable,
 };
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -56,6 +58,9 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::encoder::public_api_hasher::{
+    Hashed, PublicApiHasher, PublicApiHashingContext, RDRHashAll, RDRHashNone,
+};
 use crate::rmeta::parameterized::EncodeFrom;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::table::TableIdx;
@@ -344,6 +349,10 @@ struct OnDiskSourceFileIdx(u32);
 impl TableIdx for OnDiskSourceFileIdx {
     type Decoded = Self;
     type Encoded = Self;
+
+    fn to_encoded(self, _encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+        self
+    }
 }
 
 impl Idx for OnDiskSourceFileIdx {
@@ -362,6 +371,10 @@ struct ProcMacroQuotedSpansIdx(usize);
 impl TableIdx for ProcMacroQuotedSpansIdx {
     type Decoded = Self;
     type Encoded = Self;
+
+    fn to_encoded(self, _encoder: &EncodeContext<'_, '_>) -> Self::Encoded {
+        self
+    }
 }
 
 impl Idx for ProcMacroQuotedSpansIdx {
@@ -590,7 +603,7 @@ pub(crate) mod remapped_def_id {
 ///
 /// Note the absence of the dependency's `-C extra-filename`: it lives in
 /// [`CrateRootUnhashed::dep_extra_filenames`] instead, deliberately outside the hash.
-#[derive(Encodable, BlobDecodable)]
+#[derive(Encodable, BlobDecodable, StableHash)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
@@ -625,35 +638,46 @@ macro_rules! define_tables {
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<LocalDefId, $T1>,)+
-            $($name2: TableBuilder<LocalDefId, Option<$T2>>,)+
+            $($name1: TableBuilder<RDRHashAll<LocalDefId>, LocalDefId, $T1>,)+
+            $($name2: TableBuilder<RDRHashAll<LocalDefId>, LocalDefId, Option<$T2>>,)+
         }
 
         impl TableBuilders {
             fn encode(
                 &self,
                 buf: &mut FileEncoder<'_>,
-            ) -> LazyTables
+                hcx: &mut PublicApiHashingContext<'_>,
+            ) -> Hashed<LazyTables>
             {
+                let mut hasher = PublicApiHasher::default();
                 let tables = LazyTables {
-                    $($name1: self.$name1.encode(buf),)+
-                    $($name2: self.$name2.encode(buf),)+
+                    $($name1: {
+                        let table = self.$name1.encode(buf, hcx);
+                        hasher.digest(&table, hcx);
+                        table.value
+                    },)+
+                    $($name2: {
+                        let table = self.$name2.encode(buf, hcx);
+                        hasher.digest(&table, hcx);
+                        table.value
+                    },)+
                 };
-                tables
+                Hashed {
+                    hash: hasher.finish(hcx),
+                    value: tables,
+                }
             }
         }
 
-        impl<'a, 'tcx, 'b> TableWriter<'a, 'tcx, 'b> {
+        impl<'a, 'tcx, 'h, 'b, 'c, 'd> TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd> {
             $(
                 /// Records a value into the corresponding `TableBuilders` field, encoding it in
                 /// the process when necessary
                 fn $name1<T>(&mut self, i: LocalDefId, v: T)
                 where
-                    $T1: EncodeFrom<'tcx, T>
+                    $T1: EncodeFrom<'tcx, T>,
                 {
-                    let encoded = <$T1 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
-                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
-                    self.encoder.tables.$name1.set(idx, encoded);
+                    self.tables.$name1.set_hashed(i, v, self.encoder, self.hcx);
                 }
             )+
             $(
@@ -663,9 +687,7 @@ macro_rules! define_tables {
                 where
                     $T2: EncodeFrom<'tcx, T>
                 {
-                    let encoded = <$T2 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
-                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
-                    self.encoder.tables.$name2.set(idx, Some(encoded));
+                    self.tables.$name2.set_some_hashed(i, v, self.encoder, self.hcx);
                 }
             )+
         }
@@ -674,8 +696,10 @@ macro_rules! define_tables {
 
 /// Helper struct for writing values into [`TableBuilders`].
 #[must_use]
-struct TableWriter<'a, 'tcx, 'b> {
+struct TableWriter<'a, 'tcx, 'h, 'b, 'c, 'd> {
     encoder: &'b mut EncodeContext<'a, 'tcx>,
+    hcx: &'c mut PublicApiHashingContext<'h>,
+    tables: &'d mut TableBuilders,
 }
 
 define_tables! {
@@ -691,6 +715,8 @@ define_tables! {
     //
     // Note also that this table is fully populated (no gaps) as every DefIndex should have a
     // corresponding DefPathHash.
+    //
+    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
     def_path_hashes: Table<u64>,
     explicit_item_bounds: Table<LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_item_self_bounds: Table<LazyArray<(ty::Clause<'static>, Span)>>,
@@ -767,6 +793,8 @@ define_tables! {
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
+    //
+    // We don't need to include this in the hash, hashing `def_path_hash_map` takes care of it.
     def_keys: Table<LazyValue<DefKey>>,
     variant_data: Table<LazyValue<VariantData>>,
     assoc_container: Table<LazyValue<ty::AssocContainer>>,
@@ -784,7 +812,7 @@ define_tables! {
     mut_restriction: Table<LazyValue<ty::RestrictionKind>>,
 }
 
-#[derive(TyEncodable, TyDecodable)]
+#[derive(TyEncodable, TyDecodable, StableHash)]
 struct VariantData {
     idx: VariantIdx,
     discr: ty::VariantDiscr,
@@ -794,9 +822,19 @@ struct VariantData {
 }
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Default, Clone, Copy)]
     pub struct AttrFlags: u8 {
         const IS_DOC_HIDDEN = 1 << 0;
+    }
+}
+
+impl StableHash for AttrFlags {
+    fn stable_hash<Hcx: rustc_data_structures::stable_hash::StableHashCtxt>(
+        &self,
+        hcx: &mut Hcx,
+        hasher: &mut rustc_data_structures::stable_hash::StableHasher,
+    ) {
+        self.bits().stable_hash(hcx, hasher)
     }
 }
 
