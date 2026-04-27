@@ -2178,6 +2178,111 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to) // None for `struct Foo()`
     }
 
+    /// Returns the path segments (as symbols) of a module, including `kw::Crate` at the start.
+    /// For example, for `crate::foo::bar`, returns `[Crate, foo, bar]`.
+    /// Returns `None` for block modules that don't have a `DefId`.
+    fn module_path_names(&self, module: Module<'ra>) -> Option<Vec<Symbol>> {
+        let mut path = Vec::new();
+        let mut def_id = module.opt_def_id()?;
+        while let Some(parent) = self.tcx.opt_parent(def_id) {
+            if let Some(name) = self.tcx.opt_item_name(def_id) {
+                path.push(name);
+            }
+            if parent.is_top_level_module() {
+                break;
+            }
+            def_id = parent;
+        }
+        path.reverse();
+        path.insert(0, kw::Crate);
+        Some(path)
+    }
+
+    /// Shortens a candidate import path to use `super::` (up to 1 level) or `self::` (same module)
+    /// relative to the current scope, if possible. Only applies to crate-local items and
+    /// only when the resulting path is actually shorter than the original.
+    fn shorten_candidate_path(
+        &self,
+        suggestion: &mut ImportSuggestion,
+        current_module: Module<'ra>,
+    ) {
+        const MAX_SUPER_PATH_ITEMS_IN_SUGGESTION: usize = 1;
+
+        // Only shorten local items.
+        if suggestion.did.is_none_or(|did| !did.is_local()) {
+            return;
+        }
+
+        // Build current module path: [Crate, foo, bar, ...].
+        let Some(current_mod_path) = self.module_path_names(current_module) else {
+            return;
+        };
+
+        // Normalise candidate path: filter out `PathRoot` (`::`), and if the path
+        // doesn't start with `Crate`, prepend it (edition 2015 paths are relative
+        // to the crate root without an explicit `crate::` prefix).
+        let candidate_names = {
+            let filtered_segments: Vec<_> = suggestion
+                .path
+                .segments
+                .iter()
+                .filter(|segment| segment.ident.name != kw::PathRoot)
+                .collect();
+
+            let mut candidate_names: Vec<Symbol> =
+                filtered_segments.iter().map(|segment| segment.ident.name).collect();
+            if candidate_names.first() != Some(&kw::Crate) {
+                candidate_names.insert(0, kw::Crate);
+            }
+            if candidate_names.len() < 2 {
+                return;
+            }
+            candidate_names
+        };
+
+        // The candidate's module path is everything except the last segment (the item name).
+        let candidate_mod_names = &candidate_names[..candidate_names.len() - 1];
+
+        // Find the longest common prefix between the current module and candidate module paths.
+        let common_prefix_length = current_mod_path
+            .iter()
+            .zip(candidate_mod_names.iter())
+            .take_while(|(current, candidate)| current == candidate)
+            .count();
+
+        // Non-crate-local item; keep the full absolute path.
+        if common_prefix_length == 0 {
+            return;
+        }
+
+        let super_count = current_mod_path.len() - common_prefix_length;
+
+        // At the crate root, `use` paths resolve from the crate root anyway, so we can
+        // drop the `crate::` prefix entirely instead of replacing it with `self::`.
+        let at_crate_root = current_mod_path.len() == 1;
+
+        let mut new_segments = if super_count == 0 && at_crate_root {
+            ThinVec::new()
+        } else {
+            let prefix_keyword = match super_count {
+                0 => kw::SelfLower,
+                1..=MAX_SUPER_PATH_ITEMS_IN_SUGGESTION => kw::Super,
+                _ => return, // Too many `super` levels; keep the full absolute path.
+            };
+            thin_vec![ast::PathSegment::from_ident(Ident::with_dummy_span(prefix_keyword),)]
+        };
+        for &name in &candidate_names[common_prefix_length..] {
+            new_segments.push(ast::PathSegment::from_ident(Ident::with_dummy_span(name)));
+        }
+
+        // Only apply if the result is strictly shorter than the original path.
+        if new_segments.len() >= suggestion.path.segments.len() {
+            return;
+        }
+
+        suggestion.path = Path { span: suggestion.path.span, segments: new_segments, tokens: None };
+    }
+
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError {
             ident,
@@ -2206,12 +2311,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut not_publicly_reexported = false;
         if let Some((this_res, outer_ident)) = outermost_res {
-            let import_suggestions = self.lookup_import_candidates(
+            let mut import_suggestions = self.lookup_import_candidates(
                 outer_ident,
                 this_res.ns().unwrap_or(Namespace::TypeNS),
                 &parent_scope,
                 &|res: Res| res == this_res,
             );
+            // Shorten candidate paths using `super::` or `self::` when possible.
+            for suggestion in &mut import_suggestions {
+                self.shorten_candidate_path(suggestion, parent_scope.module);
+            }
             let point_to_def = !show_candidates(
                 self.tcx,
                 &mut err,

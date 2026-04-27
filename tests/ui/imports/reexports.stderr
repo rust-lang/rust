@@ -14,7 +14,9 @@ error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:36:22
    |
 LL |     use crate::b::a::foo::S;
-   |                      ^^^ private module import
+   |                      ^^^  - struct `S` is not publicly re-exported
+   |                      |
+   |                      private module import
    |
 note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:24:17
@@ -31,7 +33,9 @@ error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:37:22
    |
 LL |     use crate::b::b::foo::S as T;
-   |                      ^^^ private module import
+   |                      ^^^  - struct `S` is not publicly re-exported
+   |                      |
+   |                      private module import
    |
 note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:29:17
