@@ -270,8 +270,6 @@ enum ResolutionError<'ra> {
     IdentifierBoundMoreThanOnceInSamePattern(Ident),
     /// Error E0426: use of undeclared label.
     UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
-    /// Error E0429: `self` imports are only allowed within a `{ }` list.
-    SelfImportsOnlyAllowedWithin { root: bool, span_with_rename: Span },
     /// Error E0433: failed to resolve.
     FailedToResolve {
         segment: Symbol,
