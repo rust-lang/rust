@@ -32,6 +32,9 @@ impl<T, const N: usize> IntoIter<T, N> {
     }
 }
 
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> !Iterator for [T; N] {}
+
 // Note: the `#[rustc_skip_during_method_dispatch(array)]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2021,
 // so those calls will still resolve to the slice implementation, by reference.
@@ -362,7 +365,7 @@ unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
 #[rustc_unsafe_specialization_marker]
-pub trait NonDrop {}
+trait NonDrop {}
 
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.alive
 // and thus we can't implement drop-handling
