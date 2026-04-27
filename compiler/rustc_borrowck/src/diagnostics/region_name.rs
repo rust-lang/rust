@@ -328,7 +328,12 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
                     let closure_kind = match def_ty {
                         DefiningTy::Closure(_, args) => args.as_closure().kind(),
-                        DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().kind(),
+                        DefiningTy::CoroutineClosure(_, args) => {
+                            match args.as_coroutine_closure().kind() {
+                                ty::ClosureKind::Fn => ty::ClosureKind::FnOnce,
+                                kind => kind,
+                            }
+                        }
                         _ => {
                             // Can't have BrEnv in functions, constants or coroutines.
                             bug!("BrEnv outside of closure.");
@@ -350,7 +355,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                              can't escape the closure"
                         }
                         ty::ClosureKind::FnOnce => {
-                            bug!("BrEnv in a `FnOnce` closure");
+                            "closure implements `FnOnce`, so references to captured variables \
+                             can't escape the closure"
                         }
                     };
 
