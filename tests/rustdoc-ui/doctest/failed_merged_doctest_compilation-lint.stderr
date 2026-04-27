@@ -1,0 +1,17 @@
+error: failed to compile merged doctests for edition 2024. Reverting to standalone doctests.
+  --> $DIR/failed_merged_doctest_compilation-lint.rs:11:1
+   |
+LL | / #![deny(rustdoc::failed_merged_doctest_compilation)]
+LL | |
+LL | | //! ```
+LL | | //!
+LL | | //! let x
+LL | | //! ```
+   | |_______^
+   |
+note: the lint level is defined here
+  --> $DIR/failed_merged_doctest_compilation-lint.rs:11:9
+   |
+LL | #![deny(rustdoc::failed_merged_doctest_compilation)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
