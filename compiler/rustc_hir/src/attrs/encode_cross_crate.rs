@@ -47,6 +47,7 @@ impl AttributeKind {
             FfiConst(..) => No,
             FfiPure(..) => No,
             Fundamental { .. } => Yes,
+            Fused(..) => No,
             Ignore { .. } => No,
             Inline(..) => No,
             InstructionSet(..) => No,

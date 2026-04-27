@@ -1895,18 +1895,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             hir::ClosureKind::Closure => "a closure",
             hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_)) => "a coroutine",
             hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
+                hir::CoroutineDesugaring::Async { fused: _ },
                 hir::CoroutineSource::Block,
             )) => "an async block",
             hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
+                hir::CoroutineDesugaring::Async { fused: _ },
                 hir::CoroutineSource::Fn,
             )) => "an async function",
             hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
+                hir::CoroutineDesugaring::Async { fused: _ },
                 hir::CoroutineSource::Closure,
             ))
-            | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => {
+            | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async { fused: _ }) => {
                 "an async closure"
             }
             hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(

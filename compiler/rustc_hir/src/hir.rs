@@ -2206,7 +2206,7 @@ pub enum CoroutineKind {
 impl CoroutineKind {
     pub fn movability(self) -> Movability {
         match self {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, _)
             | CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => Movability::Static,
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => Movability::Movable,
             CoroutineKind::Coroutine(mov) => mov,
@@ -2270,7 +2270,7 @@ impl fmt::Display for CoroutineSource {
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineDesugaring {
     /// An explicit `async` block or the body of an `async` function.
-    Async,
+    Async { fused: bool },
 
     /// An explicit `gen` block or the body of a `gen` function.
     Gen,
@@ -2283,7 +2283,7 @@ pub enum CoroutineDesugaring {
 impl fmt::Display for CoroutineDesugaring {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoroutineDesugaring::Async => {
+            CoroutineDesugaring::Async { fused: _ } => {
                 if f.alternate() {
                     f.write_str("`async` ")?;
                 } else {

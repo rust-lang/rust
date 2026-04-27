@@ -1196,7 +1196,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if !matches!(
                     kind,
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         _
                     ),)
                 ) {

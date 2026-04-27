@@ -1006,6 +1006,8 @@ symbols! {
         fsub_fast,
         full,
         fundamental,
+        fused,
+        fused_attribute,
         fused_iterator,
         future_output,
         future_trait,

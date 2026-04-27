@@ -1049,7 +1049,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let Some(hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(closure), ..
             })) = self.tcx.hir_get_if_local(def_id)
-            && let hir::ClosureKind::CoroutineClosure(CoroutineDesugaring::Async) = closure.kind
+            && let hir::ClosureKind::CoroutineClosure(CoroutineDesugaring::Async { fused: _ }) =
+                closure.kind
             && let Some(arg_span) = closure.fn_arg_span
             && obligation.cause.span.contains(arg_span)
         {
@@ -1132,8 +1133,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut body = self.tcx.hir_body(closure.body).value;
 
                 // Async closures desugar to a closure returning a coroutine
-                if let hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) =
-                    closure.kind
+                if let hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async {
+                    fused: _,
+                }) = closure.kind
                 {
                     let peeled = body.peel_blocks().peel_drop_temps();
                     if let hir::ExprKind::Closure(inner) = peeled.kind {
@@ -3248,7 +3250,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Some(match self.tcx.coroutine_kind(coroutine_did).unwrap() {
                         CoroutineKind::Coroutine(_) => format!("coroutine is not {trait_name}"),
                         CoroutineKind::Desugared(
-                            CoroutineDesugaring::Async,
+                            CoroutineDesugaring::Async { fused: _ },
                             CoroutineSource::Fn,
                         ) => self
                             .tcx
@@ -3260,13 +3262,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 format!("future returned by `{name}` is not {trait_name}")
                             })?,
                         CoroutineKind::Desugared(
-                            CoroutineDesugaring::Async,
+                            CoroutineDesugaring::Async { fused: _ },
                             CoroutineSource::Block,
                         ) => {
                             format!("future created by async block is not {trait_name}")
                         }
                         CoroutineKind::Desugared(
-                            CoroutineDesugaring::Async,
+                            CoroutineDesugaring::Async { fused: _ },
                             CoroutineSource::Closure,
                         ) => {
                             format!("future created by async closure is not {trait_name}")
@@ -4002,9 +4004,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => {
                         "yield"
                     }
-                    Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
-                        "await"
-                    }
+                    Some(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async { fused: _ },
+                        _,
+                    )) => "await",
                     Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => {
                         "yield`/`await"
                     }
@@ -4564,7 +4567,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && snippet.ends_with('?')
         {
             match self.tcx.coroutine_kind(obligation.cause.body_id) {
-                Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                Some(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async { fused: _ },
+                    _,
+                )) => {
                     err.span_suggestion_verbose(
                         span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
                         "consider `await`ing on the `Future`",

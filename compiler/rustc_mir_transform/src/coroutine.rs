@@ -218,10 +218,18 @@ impl<'tcx> TransformVisitor<'tcx> {
         let source_info = SourceInfo::outermost(body.span);
 
         let none_value = match self.coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
-                span_bug!(body.span, "`Future`s are not fused inherently")
-            }
             CoroutineKind::Coroutine(_) => span_bug!(body.span, "`Coroutine`s cannot be fused"),
+            // Fused futures continue to return `Poll::Pending`.
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused }, _) => {
+                debug_assert!(fused);
+                let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, body.span);
+                make_aggregate_adt(
+                    poll_def_id,
+                    VariantIdx::ONE,
+                    self.tcx.mk_args(&[self.old_ret_ty.into()]),
+                    IndexVec::new(),
+                )
+            }
             // `gen` continues return `None`
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 let option_def_id = self.tcx.require_lang_item(LangItem::Option, body.span);
@@ -279,9 +287,9 @@ impl<'tcx> TransformVisitor<'tcx> {
         statements: &mut Vec<Statement<'tcx>>,
     ) {
         const ZERO: VariantIdx = VariantIdx::ZERO;
-        const ONE: VariantIdx = VariantIdx::from_usize(1);
+        const ONE: VariantIdx = VariantIdx::ONE;
         let rvalue = match self.coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, _) => {
                 let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, source_info.span);
                 let args = self.tcx.mk_args(&[self.old_ret_ty.into()]);
                 let (variant_idx, operands) = if is_return {
@@ -1121,7 +1129,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
         const_: Const::zero_sized(tcx.types.unit),
     }));
     let ready_val = Rvalue::Aggregate(
-        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
+        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::ZERO, args, None, None)),
         indexvec![val],
     );
     Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))
@@ -1276,17 +1284,19 @@ fn create_coroutine_resume_function<'tcx>(
 
     if can_return {
         let block = match transform.coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
-            | CoroutineKind::Coroutine(_) => {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: false }, _)
+                if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) =>
+            {
                 // For `async_drop_in_place<T>::{closure}` we just keep return Poll::Ready,
                 // because async drop of such coroutine keeps polling original coroutine
-                if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) {
-                    insert_poll_ready_block(tcx, body)
-                } else {
-                    insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
-                }
+                insert_poll_ready_block(tcx, body)
             }
-            CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: false }, _)
+            | CoroutineKind::Coroutine(_) => {
+                insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+            }
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: true }, _)
+            | CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
             | CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 transform.insert_none_ret_block(body)
             }
@@ -1299,8 +1309,10 @@ fn create_coroutine_resume_function<'tcx>(
 
     match transform.coroutine_kind {
         CoroutineKind::Coroutine(_)
-        | CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _) =>
-        {
+        | CoroutineKind::Desugared(
+            CoroutineDesugaring::Async { fused: _ } | CoroutineDesugaring::AsyncGen,
+            _,
+        ) => {
             make_coroutine_state_argument_pinned(tcx, body);
         }
         // Iterator::next doesn't accept a pinned argument,
@@ -1490,7 +1502,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         let discr_ty = args.as_coroutine().discr_ty(tcx);
 
         let new_ret_ty = match coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, _) => {
                 // Compute Poll<return_ty>
                 let poll_did = tcx.require_lang_item(LangItem::Poll, body.span);
                 let poll_adt_ref = tcx.adt_def(poll_did);
@@ -1523,13 +1535,19 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // and corresponding futures kept in layout.
         let has_async_drops = matches!(
             coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
+            CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ } | CoroutineDesugaring::AsyncGen,
+                _
+            )
         ) && has_expandable_async_drops(tcx, body, coroutine_ty);
 
         // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
         if matches!(
             coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
+            CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ } | CoroutineDesugaring::AsyncGen,
+                _
+            )
         ) {
             let context_mut_ref = transform_async_context(tcx, body);
             expand_async_drops(tcx, body, context_mut_ref, coroutine_kind, coroutine_ty);

@@ -1004,7 +1004,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     match self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(did)).unwrap()
                     {
                         hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::Async,
+                            hir::CoroutineDesugaring::Async { fused: _ },
                             hir::CoroutineSource::Closure,
                         ) => write!(self, "async closure")?,
                         hir::CoroutineKind::Desugared(

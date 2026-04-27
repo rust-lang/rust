@@ -125,6 +125,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
+                Attribute::Parsed(AttributeKind::Fused(attr_span)) => {
+                    self.check_fused(hir_id, *attr_span, target)
+                }
                 Attribute::Parsed(AttributeKind::ProcMacro(_)) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
                 }
@@ -1734,6 +1737,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
             self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
         };
+    }
+
+    fn check_fused(&self, hir_id: HirId, attr_span: Span, target: Target) {
+        return;
+        match target {
+            Target::Fn => todo!("Check that the fn is async"),
+            Target::Closure => todo!("Check that the closure is async"),
+            Target::Expression => todo!("Check that this is an async block"),
+            Target::Method(
+                MethodKind::Inherent | MethodKind::TraitImpl | MethodKind::Trait { body: true },
+            ) => todo!("Check that this is async"),
+            _ => bug!("This should not be accepted by rustc_attr_parsing"),
+        }
     }
 }
 

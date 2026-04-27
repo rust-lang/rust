@@ -293,6 +293,8 @@ declare_features! (
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
+    /// Allows using the `#[fused]` attribute.
+    (unstable, fused_attribute, "CURRENT_RUSTC_VERSION", Some(147129)),
     /// Allows using `#[link_name="llvm.*"]`.
     (internal, link_llvm_intrinsics, "1.0.0", Some(29602)),
     /// Allows using the `#[linkage = ".."]` attribute.

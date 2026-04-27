@@ -791,7 +791,7 @@ impl<'tcx> Instance<'tcx> {
         let coroutine_callable_item = if tcx.is_lang_item(trait_id, LangItem::Future) {
             assert_matches!(
                 coroutine_kind,
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async { fused: _ }, _)
             );
             hir::LangItem::FuturePoll
         } else if tcx.is_lang_item(trait_id, LangItem::Iterator) {

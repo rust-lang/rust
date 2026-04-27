@@ -499,7 +499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 debug!(?coroutine_kind);
                 match coroutine_kind {
-                    CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
+                    CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, _) => {
                         candidates.vec.push(AsyncClosureCandidate);
                     }
                     _ => (),

@@ -2938,7 +2938,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "field not available in `impl Future`, but it is available in its `Output`",
         );
         match self.tcx.coroutine_kind(self.body_id) {
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 err.span_suggestion_verbose(
                     base.span.shrink_to_hi(),
                     "consider `await`ing on the `Future` to access the field",

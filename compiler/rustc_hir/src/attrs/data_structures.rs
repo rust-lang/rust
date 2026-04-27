@@ -1065,6 +1065,9 @@ pub enum AttributeKind {
     /// Represents `#[fundamental]`.
     Fundamental,
 
+    /// Represents `#[fused]`.
+    Fused(Span),
+
     /// Represents `#[ignore]`
     Ignore {
         span: Span,

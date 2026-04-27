@@ -256,6 +256,7 @@ attribute_parsers!(
         Single<WithoutArgs<FfiConstParser>>,
         Single<WithoutArgs<FfiPureParser>>,
         Single<WithoutArgs<FundamentalParser>>,
+        Single<WithoutArgs<FusedParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
         Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
