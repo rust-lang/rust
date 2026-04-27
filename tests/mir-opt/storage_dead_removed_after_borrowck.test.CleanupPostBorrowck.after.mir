@@ -1,0 +1,48 @@
+// MIR for `test` after CleanupPostBorrowck
+
+fn test() -> () {
+    let mut _0: ();
+    let _1: i32;
+    let _3: ();
+    scope 1 {
+        debug x => _1;
+        let _2: Droppable;
+        scope 2 {
+            debug y => _2;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 42_i32;
+        nop;
+        StorageLive(_2);
+        _2 = Droppable;
+        nop;
+        StorageLive(_3);
+        _3 = may_panic() -> [return: bb1, unwind: bb3];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        _0 = const ();
+        drop(_2) -> [return: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+
+    bb3 (cleanup): {
+        nop;
+        drop(_2) -> [return: bb4, unwind terminate(cleanup)];
+    }
+
+    bb4 (cleanup): {
+        nop;
+        nop;
+        resume;
+    }
+}
