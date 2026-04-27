@@ -20,6 +20,8 @@ pub unsafe trait VaArgSafe {}
 
 unsafe impl VaArgSafe for i32 {}
 unsafe impl VaArgSafe for i64 {}
+#[cfg(target_pointer_width = "64")]
+unsafe impl VaArgSafe for i128 {}
 unsafe impl VaArgSafe for f64 {}
 unsafe impl<T> VaArgSafe for *const T {}
 
@@ -101,6 +103,22 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // SPARC64-NEXT: stx %o2, [%o0]
     // SPARC64-NEXT: retl
     // SPARC64-NEXT: ldx [%o1], %o0
+    va_arg(ap)
+}
+
+#[unsafe(no_mangle)]
+#[cfg(target_pointer_width = "64")]
+unsafe extern "C" fn read_i128(ap: &mut VaList<'_>) -> i128 {
+    // SPARC64-LABEL: read_i128
+    // SPARC64: ldx [%o0], %o1
+    // SPARC64-NEXT: add %o1, 15, %o1
+    // SPARC64-NEXT: and %o1, -16, %o1
+    // SPARC64-NEXT: add %o1, 16, %o2
+    // SPARC64-NEXT: stx %o2, [%o0]
+    // SPARC64-NEXT: ldx [%o1], %o0
+    // SPARC64-NEXT: or %o1, 8, %o1
+    // SPARC64-NEXT: retl
+    // SPARC64-NEXT: ldx [%o1], %o1
     va_arg(ap)
 }
 

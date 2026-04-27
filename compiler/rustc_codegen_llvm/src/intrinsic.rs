@@ -3,8 +3,8 @@ use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Integer, NumScalableVectors, Primitive,
-    Size, WrappingRange,
+    AddressSpace, Align, BackendRepr, Float, HasDataLayout, NumScalableVectors, Primitive, Size,
+    WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -298,11 +298,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 match scalar.primitive() {
                     Primitive::Pointer(_) => {
                         // Pointers are always OK.
-                    }
-                    Primitive::Int(Integer::I128, _) => {
-                        // FIXME: maybe we should support these? At least on 32-bit powerpc
-                        // the logic in LLVM does not handle i128 correctly though.
-                        bug!("the va_arg intrinsic does not support `i128`/`u128`")
                     }
                     Primitive::Int(..) => {
                         let int_width = self.cx().size_of(result.layout.ty).bits();

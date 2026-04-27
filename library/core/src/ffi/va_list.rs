@@ -286,6 +286,15 @@ mod sealed {
     impl Sealed for f32 {}
     impl Sealed for f64 {}
 
+    // The unstable annotation here is not needed, but makes sure that the feature gate is defined
+    // on all targets, even though the actual instances of VaArgSafe for i128/u128 are not.
+    #[unstable_feature_bound(c_variadic_int128)]
+    #[unstable(feature = "c_variadic_int128", issue = "155752")]
+    impl Sealed for i128 {}
+    #[unstable_feature_bound(c_variadic_int128)]
+    #[unstable(feature = "c_variadic_int128", issue = "155752")]
+    impl Sealed for u128 {}
+
     impl<T> Sealed for *mut T {}
     impl<T> Sealed for *const T {}
 }
@@ -310,6 +319,9 @@ mod sealed {
 /// and [`c_float`] is promoted to [`c_double`]. Implementing this trait for types that are
 /// subject to this promotion rule is invalid.
 ///
+/// This trait is only implemented for 128-bit integers when the platform defines the `__int128`
+/// type.
+///
 /// [`c_int`]: core::ffi::c_int
 /// [`c_long`]: core::ffi::c_long
 /// [`c_longlong`]: core::ffi::c_longlong
@@ -321,8 +333,8 @@ mod sealed {
 /// [`c_float`]: core::ffi::c_float
 /// [`c_double`]: core::ffi::c_double
 // We may unseal this trait in the future, but currently our `va_arg` implementations don't support
-// types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
-// to accept unsupported types in the meantime.
+// types with a non-scalar layout. Inline assembly can be used to accept unsupported types in the
+// meantime.
 #[lang = "va_arg_safe"]
 pub unsafe trait VaArgSafe: sealed::Sealed {}
 
@@ -362,6 +374,51 @@ unsafe impl VaArgSafe for isize {}
 unsafe impl VaArgSafe for u32 {}
 unsafe impl VaArgSafe for u64 {}
 unsafe impl VaArgSafe for usize {}
+
+// Implement `VaArgSafe` for 128-bit integers on targets where clang provides `__int128`.
+//
+// GCC does not implement `__int128` for any 16-bit/32-bit target:
+//
+// https://gcc.gnu.org/onlinedocs/gcc-15.2.0/gcc/_005f_005fint128.html
+//
+// > There is no support in GCC for expressing an integer constant of type __int128 for targets
+// > with long long integer less than 128 bits wide.
+//
+// Per https://learn.microsoft.com/en-us/cpp/cpp/data-type-ranges?view=msvc-170, MSVC does not
+// define `__int128`.
+//
+// Clang is slightly more permissive: it defines `__int128` on wasm32 (a 32-bit target) and also
+// does provide `__int128` on 64-bit `*-pc-windows-msvc`, and we follow suit.
+cfg_select! {
+    any(
+        target_arch = "aarch64",
+        target_arch = "amdgpu",
+        target_arch = "arm64ec",
+        target_arch = "bpf",
+        target_arch = "loongarch64",
+        target_arch = "mips64",
+        target_arch = "mips64r6",
+        target_arch = "nvptx64",
+        target_arch = "powerpc64",
+        target_arch = "riscv64",
+        target_arch = "s390x",
+        target_arch = "sparc64",
+        target_arch = "wasm32",
+        target_arch = "wasm64",
+        target_arch = "x86_64",
+    ) => {
+        #[cfg(not(any(target_arch = "wasm32", target_abi = "x32", target_pointer_width = "64")))]
+        compile_error!("unexpected target architecture for 128-bit c-variadic");
+
+        #[unstable_feature_bound(c_variadic_int128)]
+        #[unstable(feature = "c_variadic_int128", issue = "155752")]
+        unsafe impl VaArgSafe for i128 {}
+        #[unstable_feature_bound(c_variadic_int128)]
+        #[unstable(feature = "c_variadic_int128", issue = "155752")]
+        unsafe impl VaArgSafe for u128 {}
+    }
+    _ => {}
+}
 
 unsafe impl VaArgSafe for f64 {}
 
