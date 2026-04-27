@@ -2,7 +2,12 @@
 # dynamically in CI from ci.yml.
 runners:
   - &base-job
-    env: { }
+    env:
+      # This force enables the new Cargo build-dir layout for all CI jobs.
+      # The new layout will become the default soon so we enable it on everything
+      # to catch issues as soon as possible.
+      # See: https://github.com/rust-lang/cargo/issues/15010
+      CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT: true
 
   - &job-linux-4c
     os: ubuntu-24.04

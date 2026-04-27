@@ -600,6 +600,8 @@ impl Builder<'_> {
 
         let mut hostflags = HostFlags::default();
 
+        cargo.env("CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT", "true");
+
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
         for backend in self.codegen_backends(compiler) {
