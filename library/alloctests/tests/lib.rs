@@ -41,6 +41,7 @@
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
 #![feature(vec_try_remove)]
+#![feature(const_default)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
