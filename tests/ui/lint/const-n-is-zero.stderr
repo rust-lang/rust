@@ -1,0 +1,52 @@
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:14:13
+   |
+LL |     let _ = s.array_windows::<0>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:19:13
+   |
+LL |     let _ = s.as_chunks::<{ 0 }>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:23:13
+   |
+LL |     let _ = s.as_rchunks::<{ 1 - 1 }>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:29:13
+   |
+LL |     let _ = m.as_chunks_mut::<ZERO>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:33:13
+   |
+LL |     let _ = m.as_rchunks_mut::<{ if ZERO == 0 { 0 } else { 1 } }>();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:37:13
+   |
+LL |     let _ = s.array_windows().any(|[]| true);
+   |             ^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:41:13
+   |
+LL |     let _ = s.iter().map_windows(|[]| true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: this operation will panic at runtime
+  --> $DIR/const-n-is-zero.rs:45:13
+   |
+LL |     let _ = s.iter().array_chunks().any(|[]| true);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ const parameter `N` is zero
+
+error: aborting due to 8 previous errors
+
