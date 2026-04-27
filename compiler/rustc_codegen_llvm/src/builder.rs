@@ -1668,12 +1668,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn vector_reduce_xor(&mut self, src: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.vector.reduce.xor", &[self.val_ty(src)], &[src])
     }
-    pub(crate) fn vector_reduce_fmin(&mut self, src: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.vector.reduce.fmin", &[self.val_ty(src)], &[src])
-    }
-    pub(crate) fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
-        self.call_intrinsic("llvm.vector.reduce.fmax", &[self.val_ty(src)], &[src])
-    }
     pub(crate) fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         self.call_intrinsic(
             if is_signed { "llvm.vector.reduce.smin" } else { "llvm.vector.reduce.umin" },

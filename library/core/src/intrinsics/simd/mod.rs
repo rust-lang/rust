@@ -520,7 +520,7 @@ pub unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
 
 /// Checks if all mask values are true.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 ///
 /// # Safety
 /// `x` must contain only `0` or `!0`.
@@ -530,7 +530,7 @@ pub const unsafe fn simd_reduce_all<T>(x: T) -> bool;
 
 /// Checks if any mask value is true.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 ///
 /// # Safety
 /// `x` must contain only `0` or `!0`.
@@ -540,29 +540,25 @@ pub const unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 /// Returns the maximum element of a vector.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of integers.
 ///
 /// `U` must be the element type of `T`.
-///
-/// For floating-point values, uses IEEE-754 `maxNum`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_reduce_max<T, U>(x: T) -> U;
 
 /// Returns the minimum element of a vector.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of integers.
 ///
 /// `U` must be the element type of `T`.
-///
-/// For floating-point values, uses IEEE-754 `minNum`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_reduce_min<T, U>(x: T) -> U;
 
 /// Logical "and"s all elements together.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of integers.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -571,7 +567,7 @@ pub const unsafe fn simd_reduce_and<T, U>(x: T) -> U;
 
 /// Logical "ors" all elements together.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of integers.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -580,7 +576,7 @@ pub const unsafe fn simd_reduce_or<T, U>(x: T) -> U;
 
 /// Logical "exclusive ors" all elements together.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of integers.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
