@@ -72,7 +72,7 @@ pub(super) fn collect_fake_borrows<'tcx>(
     temp_span: Span,
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
-    if candidates.iter().all(|candidate| !candidate.has_guard) {
+    if candidates.iter().all(|candidate| candidate.guards.is_empty()) {
         // Fake borrows are only used when there is a guard.
         return Vec::new();
     }
@@ -138,7 +138,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
 
     fn visit_candidate(&mut self, candidate: &Candidate<'tcx>) {
         for binding in &candidate.extra_data.bindings {
-            if let super::SubpatternBindings::One(binding) = binding {
+            if let super::OrderedPatternData::One(binding) = binding {
                 self.visit_binding(binding);
             }
         }
@@ -149,7 +149,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
 
     fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'tcx>) {
         for binding in &flat_pat.extra_data.bindings {
-            if let super::SubpatternBindings::One(binding) = binding {
+            if let super::OrderedPatternData::One(binding) = binding {
                 self.visit_binding(binding);
             }
         }

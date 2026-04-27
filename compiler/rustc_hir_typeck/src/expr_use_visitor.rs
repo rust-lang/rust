@@ -947,13 +947,14 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         read_discriminant();
                     }
                 }
+
                 PatKind::Or(_)
                 | PatKind::Box(_)
                 | PatKind::Ref(..)
-                | PatKind::Guard(..)
                 | PatKind::Tuple(..)
                 | PatKind::Wild
                 | PatKind::Missing
+                | PatKind::Guard(..)
                 | PatKind::Err(_) => {
                     // If the PatKind is Or, Box, Ref, Guard, or Tuple, the relevant accesses
                     // are made later as these patterns contains subpatterns.
