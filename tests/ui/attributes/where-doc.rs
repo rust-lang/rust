@@ -16,6 +16,19 @@ where
 //~^ ERROR most attributes are not supported in `where` clauses
 ():,
 
+// == That the doc attributes below don't trigger the error is a bug
+#[doc()]
+():,
+
+#[doc(5)]
+():,
+
+#[doc]
+():,
+
+#[doc = 5]
+():,
+
 { }
 
 fn main() {}
