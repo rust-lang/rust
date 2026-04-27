@@ -387,8 +387,20 @@ pub fn target_spec_to_backend_features<'a>(
     sess: &'a Session,
     mut extend_backend_features: impl FnMut(&'a str, /* enable */ bool),
 ) {
-    // Compute implied features
     let mut rust_features = vec![];
+
+    // This check handles SM versions that defaults (by LLVM) to unsupported (by Rust) PTX ISA versions.
+    // sm_70, sm_72 and sm_75 defaults to PTX ISA versions with major version 6, while sm_80 default to 7.0
+    if sess.target.arch == Arch::Nvptx64
+        && matches!(
+            sess.opts.cg.target_cpu.as_deref(),
+            None | Some("sm_70") | Some("sm_72") | Some("sm_75")
+        )
+    {
+        rust_features.push((true, "ptx70"));
+    }
+
+    // Compute implied features
     parse_rust_feature_list(
         sess,
         &sess.target.features,

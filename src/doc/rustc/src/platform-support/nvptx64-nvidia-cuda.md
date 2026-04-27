@@ -25,12 +25,22 @@ There are two options for using the core library:
 
 ### Target and features
 
-It is generally necessary to specify the target, such as `-C target-cpu=sm_89`, because the default is very old. This implies two target features: `sm_89` and `ptx78` (and all preceding features within `sm_*` and `ptx*`). Rust will default to using the oldest PTX version that supports the target processor (see [this table](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#release-notes-ptx-release-history)), which maximizes driver compatibility.
-One can use `-C target-feature=+ptx80` to choose a later PTX version without changing the target (the default in this case, `ptx78`, requires CUDA driver version 11.8, while `ptx80` would require driver version 12.0).
+It is often beneficial to specify the target SM architecture, such as `-C target-cpu=sm_89`, because the default prioritizes broad compatibility rather than performance. Doing so also selects the PTX version as the *maximum* of (a) the oldest PTX version that supports the chosen target processor (see [this table](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#release-notes-ptx-release-history)) and (b) the oldest PTX version supported by the Rust toolchain, which maximizes driver compatibility.
+One can use `-C target-feature=+ptx80` to choose a later PTX version without changing the target SM architecture (the default in this case, `ptx78`, requires CUDA driver version 11.8, while `ptx80` would require driver version 12.0).
 Later PTX versions may allow more efficient code generation.
 
 Although Rust follows LLVM in representing `ptx*` and `sm_*` as target features, they should be thought of as having crate granularity, set via (either via `-Ctarget-cpu` and optionally `-Ctarget-feature`).
 While the compiler accepts `#[target_feature(enable = "ptx80", enable = "sm_89")]`, it is not supported, may not behave as intended, and may become erroneous in the future.
+
+## Minimum SM and PTX support by Rust version
+Support for old hardware architectures and PTX ISA versions is periodically dropped. This table shows the minimum supported versions per Rust version.
+
+| Rust         | SM minimum     | PTX ISA minimum |
+| ------------ | -------------- | --------------- |
+|  - 1.96      | 2.0            | 3.2             |
+| 1.97 - TBD   | 7.0 (Volta+)   | 7.0 (CUDA 11+)  |
+
+For a full overview of which GPUs support code built for a specific SM version, see the [CUDA GPU Compute Capability documentation](https://developer.nvidia.com/cuda/gpus).
 
 ## Building Rust kernels
 
