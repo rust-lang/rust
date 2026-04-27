@@ -2615,7 +2615,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
 #[rustc_unsafe_specialization_marker]
 pub(crate) trait MarkerEq: PartialEq<Self> {}
 
-impl<T: Eq> MarkerEq for T {}
+impl<T: ?Sized + Eq> MarkerEq for T {}
 
 /// We're doing this specialization here, and not as a more general optimization on `&T`, because it
 /// would otherwise add a cost to all equality checks on refs. We assume that `Rc`s are used to
@@ -2628,12 +2628,12 @@ impl<T: Eq> MarkerEq for T {}
 impl<T: ?Sized + MarkerEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
     #[inline]
     fn eq(&self, other: &Rc<T, A>) -> bool {
-        Rc::ptr_eq(self, other) || **self == **other
+        ptr::eq(self.ptr.as_ptr(), other.ptr.as_ptr()) || **self == **other
     }
 
     #[inline]
     fn ne(&self, other: &Rc<T, A>) -> bool {
-        !Rc::ptr_eq(self, other) && **self != **other
+        !ptr::eq(self.ptr.as_ptr(), other.ptr.as_ptr()) && **self != **other
     }
 }
 
