@@ -69,33 +69,33 @@ mod c_alloc {
 
     #[unsafe(no_mangle)]
     unsafe extern "C" fn calloc(items: usize, size: usize) -> *mut c_void {
-        unsafe { tikv_jemalloc_sys::calloc(items, size) }
+        unsafe { rustc_driver::jemalloc::calloc(items, size) }
     }
 
     #[unsafe(no_mangle)]
     unsafe extern "C" fn posix_memalign(ptr: *mut *mut c_void, size: usize, align: usize) -> c_int {
-        unsafe { tikv_jemalloc_sys::posix_memalign(ptr, size, align) }
+        unsafe { rustc_driver::jemalloc::posix_memalign(ptr, size, align) }
     }
 
     #[unsafe(no_mangle)]
     unsafe extern "C" fn aligned_alloc(size: usize, align: usize) -> *mut c_void {
-        unsafe { tikv_jemalloc_sys::aligned_alloc(size, align) }
+        unsafe { rustc_driver::jemalloc::aligned_alloc(size, align) }
     }
 
     #[unsafe(no_mangle)]
     unsafe extern "C" fn malloc(size: usize) -> *mut c_void {
-        unsafe { tikv_jemalloc_sys::malloc(size) }
+        unsafe { rustc_driver::jemalloc::malloc(size) }
     }
 
     #[unsafe(no_mangle)]
     unsafe extern "C" fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void {
-        unsafe { tikv_jemalloc_sys::realloc(ptr, size) }
+        unsafe { rustc_driver::jemalloc::realloc(ptr, size) }
     }
 
     #[unsafe(no_mangle)]
     unsafe extern "C" fn free(ptr: *mut c_void) {
         unsafe {
-            tikv_jemalloc_sys::free(ptr);
+            rustc_driver::jemalloc::free(ptr);
         }
     }
 }

@@ -3837,6 +3837,7 @@ dependencies = [
  "rustc_target",
  "serde_json",
  "shlex",
+ "tikv-jemalloc-sys",
  "tikv-jemallocator",
  "tracing",
  "windows 0.61.3",
