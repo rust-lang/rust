@@ -782,6 +782,7 @@ pub(crate) mod debuginfo {
             const FlagNonTrivial          = (1 << 26);
             const FlagBigEndian           = (1 << 27);
             const FlagLittleEndian        = (1 << 28);
+            const FlagAllCallsDescribed   = (1 << 29);
         }
     }
 
