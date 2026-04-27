@@ -544,6 +544,8 @@ pub struct CfgHideShow {
 
 #[derive(Clone, Debug, Default, HashStable_Generic, Decodable, PrintAttribute)]
 pub struct DocAttribute {
+    pub first_span: Span,
+
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
     // Because we need to emit the error if there is more than one `inline` attribute on an item
@@ -581,6 +583,7 @@ pub struct DocAttribute {
 impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
     fn encode(&self, encoder: &mut E) {
         let DocAttribute {
+            first_span,
             aliases,
             hidden,
             inline,
@@ -603,6 +606,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
             test_attrs,
             no_crate_inject,
         } = self;
+        rustc_serialize::Encodable::<E>::encode(first_span, encoder);
         rustc_serialize::Encodable::<E>::encode(aliases, encoder);
         rustc_serialize::Encodable::<E>::encode(hidden, encoder);
 
