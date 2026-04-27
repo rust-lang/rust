@@ -90,6 +90,7 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, Obliga
 use tracing::{debug, instrument, trace};
 
 use crate::deref_separator::deref_finder;
+use crate::patch::MirPatch;
 use crate::{abort_unwinding_calls, errors, pass_manager as pm, simplify};
 
 pub(super) struct StateTransform;
@@ -210,6 +211,10 @@ struct TransformVisitor<'tcx> {
     old_yield_ty: Ty<'tcx>,
 
     old_ret_ty: Ty<'tcx>,
+
+    body_span: Span,
+
+    patch: MirPatch<'tcx>,
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
@@ -383,6 +388,30 @@ impl<'tcx> TransformVisitor<'tcx> {
         (assign, temp)
     }
 
+    // Create a temporary assignment if the visited destination and RHS now
+    // refer to overlapping fields of the coroutine state.
+    // https://github.com/rust-lang/rust/issues/149748
+    fn split_overlapping_assignment_if_needed(
+        &mut self,
+        dst: Place<'tcx>,
+        dst_ty: Option<Ty<'tcx>>,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+    ) {
+        let Some(ty) = dst_ty else { return };
+        let Rvalue::Use(operand) = rvalue else { return };
+        let (Operand::Copy(src) | Operand::Move(src)) = *operand else { return };
+        if dst.is_indirect() || src.is_indirect() || src.local != dst.local {
+            return;
+        }
+
+        let temp = Place::from(self.patch.new_temp(ty, self.body_span));
+        let temp_assign_stmt =
+            StatementKind::Assign(Box::new((temp, Rvalue::Use(operand.clone()))));
+        self.patch.add_statement(location, temp_assign_stmt);
+        *operand = Operand::Move(temp);
+    }
+
     /// Swaps all references of `old_local` and `new_local`.
     #[tracing::instrument(level = "trace", skip(self, body))]
     fn replace_local(&mut self, old_local: Local, new_local: Local, body: &mut Body<'tcx>) {
@@ -414,6 +443,18 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
         }
+    }
+
+    fn visit_assign(
+        &mut self,
+        dst: &mut Place<'tcx>,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+    ) {
+        let dst_ty = self.remap.get(dst.local).and_then(|entry| entry.map(|(ty, _, _)| ty));
+        self.visit_place(dst, PlaceContext::MutatingUse(MutatingUseContext::Store), location);
+        self.visit_rvalue(rvalue, location);
+        self.split_overlapping_assignment_if_needed(*dst, dst_ty, rvalue, location);
     }
 
     #[tracing::instrument(level = "trace", skip(self, stmt), ret)]
@@ -1584,8 +1625,11 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             new_ret_local,
             old_ret_ty,
             old_yield_ty,
+            body_span: body.span,
+            patch: MirPatch::new(body),
         };
         transform.visit_body(body);
+        std::mem::replace(&mut transform.patch, MirPatch::new(body)).apply(body);
 
         // Swap the actual `RETURN_PLACE` and the provisional `new_ret_local`.
         transform.replace_local(RETURN_PLACE, new_ret_local, body);
