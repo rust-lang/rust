@@ -1136,6 +1136,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "&{region}{kind_str}{place:?}")
             }
 
+            Reborrow(target, mutability, ref place) => {
+                write!(
+                    fmt,
+                    "{target:?}({} {place:?})",
+                    if mutability.is_mut() { "reborrow" } else { "coerce shared" }
+                )
+            }
+
             CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
             RawPtr(mutability, ref place) => {

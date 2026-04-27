@@ -590,6 +590,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
+            ExprKind::Reborrow { .. } => {
+                // FIXME(reborrow): it should currently be impossible to end up evaluating a
+                // Reborrow expression as a place. That might not in the future, but what this then
+                // evaluates to requires further thought.
+                unreachable!();
+            }
         }
     }
 

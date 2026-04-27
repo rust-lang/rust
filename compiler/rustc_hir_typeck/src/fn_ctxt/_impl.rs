@@ -343,6 +343,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
                 }
+                Adjust::GenericReborrow(_) => {
+                    // FIXME(reborrow): figure out if we have effects to enforce here.
+                }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
                 }

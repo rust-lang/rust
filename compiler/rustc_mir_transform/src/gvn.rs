@@ -1073,6 +1073,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
             }
+            Rvalue::Reborrow(_, mutbl, place) => {
+                if mutbl == Mutability::Mut {
+                    let mut operand = Operand::Copy(place);
+                    let val = self.simplify_operand(&mut operand, location);
+                    *rvalue = Rvalue::Use(operand);
+                    return val;
+                } else {
+                    // FIXME(reborrow): CoerceShared should perform effectively a copy followed by a
+                    // transmute, or possibly something more complicated in the future. For now we
+                    // leave this unoptimised.
+                    return None;
+                }
+            }
             Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
