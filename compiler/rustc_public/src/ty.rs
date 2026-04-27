@@ -109,7 +109,9 @@ impl Ty {
 /// Represents a pattern in the type system
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Pattern {
-    Range { start: Option<TyConst>, end: Option<TyConst>, include_end: bool },
+    Range { start: TyConst, end: TyConst, include_end: bool },
+    NotNull,
+    Or(Vec<Pattern>),
 }
 
 /// Represents a constant in the type system
