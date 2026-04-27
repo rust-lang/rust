@@ -24,9 +24,10 @@ use std::path::{Path, PathBuf};
 use gccjit::OutputKind;
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::SerializedModule;
+use rustc_codegen_ssa::back::rmeta_link;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind, looks_like_rust_object_file};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
@@ -63,6 +64,7 @@ fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) ->
         let archive_data = unsafe {
             Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
         };
+        let digest = rmeta_link::read_from_data(&archive_data, path).unwrap();
         let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
         let obj_files = archive
             .members()
@@ -71,7 +73,7 @@ fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) ->
                     .ok()
                     .and_then(|c| std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c)))
             })
-            .filter(|&(name, _)| looks_like_rust_object_file(name));
+            .filter(|&(name, _)| digest.rust_object_files.iter().any(|f| f == name));
         for (name, child) in obj_files {
             info!("adding bitcode from {}", name);
             let path = tmp_path.path().join(name);
