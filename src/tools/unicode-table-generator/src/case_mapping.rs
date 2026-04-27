@@ -48,21 +48,33 @@ use std::ops::RangeInclusive;
 use crate::fmt_helpers::Hex;
 use crate::{UnicodeData, fmt_list};
 
-pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [(String, usize); 3]) {
+pub(crate) fn generate_case_mapping(data: &UnicodeData) -> (String, [(String, usize); 4]) {
     let mut file = String::new();
 
     file.push_str("\n\n");
     file.push_str(HEADER.trim_start());
     file.push('\n');
-    let (lower_tables, lower_desc, lower_size) = generate_tables("LOWER", &data.to_lower);
+    let (lower_tables, lower_desc, lower_size) = generate_tables("LOWERCASE", &data.to_lower);
     file.push_str(&lower_tables);
     file.push_str("\n\n");
-    let (upper_tables, upper_desc, upper_size) = generate_tables("UPPER", &data.to_upper);
+    let (upper_tables, upper_desc, upper_size) = generate_tables("UPPERCASE", &data.to_upper);
     file.push_str(&upper_tables);
     file.push_str("\n\n");
-    let (title_tables, title_desc, title_size) = generate_tables("TITLE", &data.to_title);
+    let (title_tables, title_desc, title_size) = generate_tables("TITLECASE", &data.to_title);
     file.push_str(&title_tables);
-    (file, [(lower_desc, lower_size), (upper_desc, upper_size), (title_desc, title_size)])
+    file.push_str("\n\n");
+    let (casefold_tables, casefold_desc, casefold_size) =
+        generate_tables("CASEFOLD", &data.to_casefold);
+    file.push_str(&casefold_tables);
+    (
+        file,
+        [
+            (lower_desc, lower_size),
+            (upper_desc, upper_size),
+            (title_desc, title_size),
+            (casefold_desc, casefold_size),
+        ],
+    )
 }
 
 // So far, only planes 0 and 1 (Basic Multilingual Plane and Supplementary
@@ -205,7 +217,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
                     output_high, input_high,
                     "Case-mapping a character should not change its plane"
                 );
-                let delta = output_low as i16 - input_low as i16;
+                let delta = output_low.wrapping_sub(input_low).cast_signed();
                 let range = Range::singleton(input_low);
                 l2_lut.singles.push((range, delta));
             }
@@ -264,7 +276,7 @@ fn generate_tables(case: &str, data: &BTreeMap<u32, [u32; 3]>) -> (String, Strin
     let size = l1_lut.size();
     let num_ranges =
         l1_lut.l2_luts.iter().map(|l2| l2.singles.len() + l2.multis.len()).sum::<usize>();
-    let table = format!("static {case}CASE_LUT: L1Lut = {l1_lut:#?};");
+    let table = format!("static {case}_LUT: L1Lut = {l1_lut:#?};");
     let desc = format!(
         "{:6} codepoints in {:3} ranges (U+{:06X} - U+{:06X}) using 2-level LUT",
         data.len(),
@@ -381,7 +393,7 @@ fn lookup(input: char, l1_lut: &L1Lut) -> Option<[char; 3]> {
 }
 
 pub fn to_lower(c: char) -> [char; 3] {
-    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AChanges_When_Lowercased%253A%5D-%5B%253AASCII%253A%5D&abb=on
+    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Lowercased:]-[:ASCII:]&abb=on
     if c < '\u{C0}' {
         return [c.to_ascii_lowercase(), '\0', '\0'];
     }
@@ -390,7 +402,7 @@ pub fn to_lower(c: char) -> [char; 3] {
 }
 
 pub fn to_upper(c: char) -> [char; 3] {
-    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AChanges_When_Uppercased%253A%5D-%5B%253AASCII%253A%5D&abb=on
+    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Uppercased:]-[:ASCII:]&abb=on
     if c < '\u{B5}' {
         return [c.to_ascii_uppercase(), '\0', '\0'];
     }
@@ -399,11 +411,64 @@ pub fn to_upper(c: char) -> [char; 3] {
 }
 
 pub fn to_title(c: char) -> [char; 3] {
-    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AChanges_When_Titlecased%253A%5D-%5B%253AASCII%253A%5D&abb=on
+    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Titlecased:]-[:ASCII:]&abb=on
     if c < '\u{B5}' {
         return [c.to_ascii_uppercase(), '\0', '\0'];
     }
 
     lookup(c, &TITLECASE_LUT).or_else(|| lookup(c, &UPPERCASE_LUT)).unwrap_or([c, '\0', '\0'])
+}
+
+pub fn to_casefold(c: char) -> [char; 3] {
+    // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Casefolded:]-[:ASCII:]&abb=on
+    if c < '\u{B5}' {
+        return [c.to_ascii_lowercase(), '\0', '\0'];
+    }
+
+
+    lookup(c, &CASEFOLD_LUT).unwrap_or_else(|| {
+        // fall back to lowercase of uppercase
+
+        let uppercase = lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0']);
+        let mut final_result = to_lower(uppercase[0]);
+        if uppercase[1] != '\0' {
+            let lowercase_1 = to_lower(uppercase[1]);
+            debug_assert_eq!(lowercase_1[2], '\0');
+
+            // If, after updating the Unicode data
+            // to a new Unicode version, the below
+            // assertion starts to fail in tests,
+            // delete it, and uncomment the
+            // `if` condition and corresponding
+            // `else` block below it.
+            debug_assert_eq!(final_result[1], '\0');
+            //if final_result[1] == '\0' {
+
+            final_result[1] = lowercase_1[0];
+
+            if uppercase[2] != '\0' {
+                debug_assert_eq!(lowercase_1[1], '\0');
+                let lowercase_2 = to_lower(uppercase[2]);
+                debug_assert_eq!(lowercase_2[1], '\0');
+                debug_assert_eq!(lowercase_2[2], '\0');
+                final_result[2] = lowercase_2[0];
+            } else {
+                // If, after updating the Unicode data
+                // to a new Unicode version, the below
+                // assertion starts to fail in tests,
+                // delete it and uncomment the line
+                // below it.
+                debug_assert_eq!(lowercase_1[1], '\0');
+                //final_result[2] = lowercase_1[1];
+            }
+
+            /*} else {
+                final_result[2] = lowercase_1[0];
+                debug_assert_eq!(lowercase_1[1], '\0');
+                debug_assert_eq!(uppercase[2], '\0')
+            }*/
+        }
+        final_result
+    })
 }
 ";

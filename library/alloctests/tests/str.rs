@@ -1886,7 +1886,13 @@ fn to_lowercase() {
 #[test]
 fn to_uppercase() {
     assert_eq!("".to_uppercase(), "");
-    assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
+    assert_eq!("aéǅßẞﬁᾀ".to_uppercase(), "AÉǄSSẞFIἈΙ");
+}
+
+#[test]
+fn to_casefold() {
+    assert_eq!("".to_casefold(), "");
+    assert_eq!("ꮿﬁῲὼ\u{0345}ßẞΣς".to_casefold(), "Ꮿfiὼιὼιssssσσ");
 }
 
 #[test]

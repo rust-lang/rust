@@ -1075,16 +1075,17 @@ impl char {
     }
 
     /// Returns `true` if this `char` has the `Case_Ignorable` property. This narrow-use property
-    /// is used to implement context-dependent casing for the Greek letter sigma (uppercase Σ),
+    /// is used to implement context-dependent casing for the Greek letter sigma (uppercase 'Σ'),
     /// which has two lowercase forms.
     ///
     /// `Case_Ignorable` is [described][D136] in Chapter 3 (Conformance) of the Unicode Core Specification,
-    /// and specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`];
-    /// see those resources for more information.
+    /// and specified in the [Unicode Character Database][ucd] [`DerivedCoreProperties.txt`].
+    /// See those resources, as well as [`to_lowercase()`]'s documentation, for more information.
     ///
     /// [D136]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G63116
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    /// [`to_lowercase()`]: Self::to_lowercase()
     #[must_use]
     #[inline]
     #[unstable(feature = "case_ignorable", issue = "154848")]
@@ -1154,8 +1155,6 @@ impl char {
     /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
     /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
-    /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
-    ///
     /// This operation performs an unconditional mapping without tailoring. That is, the conversion
     /// is independent of context and language. See [below](#notes-on-context-and-locale)
     /// for more information.
@@ -1210,13 +1209,24 @@ impl char {
     ///
     /// ## Greek sigma
     ///
-    /// In Greek, the letter simga (uppercase Σ) has two lowercase forms:
-    /// ς which is used only at the end of a word, and σ which is used everywhere else.
-    /// `to_lowercase()` always uses the second form:
+    /// In Greek, the letter simga (uppercase 'Σ') has two lowercase forms:
+    /// 'σ' which is used in most situations, and 'ς' which appears only
+    /// at the end of a word. [`char::to_lowercase()`] always uses the first form:
     ///
     /// ```
     /// assert_eq!('Σ'.to_lowercase().to_string(), "σ");
     /// ```
+    ///
+    /// `str::to_lowercase()` (only available with the `alloc` crate)
+    /// *does* properly handle this contextual mapping,
+    /// so prefer using that method if you can. Alternatively, you can use
+    /// [`is_cased()`] and [`is_case_ignorable()`] to implement it yourself.
+    /// See `Final_Sigma` in [Table 3.17] of the Unicode Standard,
+    /// along with [`SpecialCasing.txt`], for more details.
+    ///
+    /// [`is_cased()`]: Self::is_cased()
+    /// [`is_case_ignorable()`]: Self::is_case_ignorable()
+    /// [Table 3.17]: https://www.unicode.org/versions/latest/core-spec/chapter-3/#G54277
     ///
     /// ## Turkish and Azeri I/ı/İ/i
     ///
@@ -1225,13 +1235,13 @@ impl char {
     /// * 'Dotless': I / ı, sometimes written ï
     /// * 'Dotted': İ / i
     ///
-    /// Note that the uppercase undotted 'I' is the same as the Latin. Therefore:
+    /// Note that the uppercase undotted 'I' is the same codepoint as the Latin. Therefore:
     ///
     /// ```
     /// let lower_i = 'I'.to_lowercase().to_string();
     /// ```
     ///
-    /// The value of `lower_i` here relies on the language of the text: if we're
+    /// `'I'`'s correct lowercase relies on the language of the text: if we're
     /// in `en-US`, it should be `"i"`, but if we're in `tr-TR` or `az-AZ`, it should
     /// be `"ı"`. `to_lowercase()` does not take this into account, and so:
     ///
@@ -1242,6 +1252,8 @@ impl char {
     /// ```
     ///
     /// holds across languages.
+    ///
+    /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     #[must_use = "this returns the lowercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1392,22 +1404,22 @@ impl char {
     /// As stated above, this method is locale-insensitive.
     /// If you need locale support, consider using an external crate,
     /// like [`icu_casemap`](https://crates.io/crates/icu_casemap)
-    /// which is developed by Unicode. A description of a common
-    /// locale-dependent casing issue follows:
+    /// which is developed by Unicode. A description of one common
+    /// locale-dependent casing issue follows (there are others):
     ///
     /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
     ///
     /// * 'Dotless': I / ı, sometimes written ï
     /// * 'Dotted': İ / i
     ///
-    /// Note that the lowercase dotted 'i' is the same as the Latin. Therefore:
+    /// Note that the lowercase dotted 'i' is the same codepoint as the Latin. Therefore:
     ///
     /// ```
     /// #![feature(titlecase)]
     /// let upper_i = 'i'.to_titlecase().to_string();
     /// ```
     ///
-    /// The value of `upper_i` here relies on the language of the text: if we're
+    /// `'i'`'s correct titlecase relies on the language of the text: if we're
     /// in `en-US`, it should be `"I"`, but if we're in `tr-TR` or `az-AZ`, it should
     /// be `"İ"`. `to_titlecase()` does not take this into account, and so:
     ///
@@ -1504,21 +1516,21 @@ impl char {
     /// As stated above, this method is locale-insensitive.
     /// If you need locale support, consider using an external crate,
     /// like [`icu_casemap`](https://crates.io/crates/icu_casemap)
-    /// which is developed by Unicode. A description of a common
-    /// locale-dependent casing issue follows:
+    /// which is developed by Unicode. A description of one common
+    /// locale-dependent casing issue follows (there are others):
     ///
     /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
     ///
     /// * 'Dotless': I / ı, sometimes written ï
     /// * 'Dotted': İ / i
     ///
-    /// Note that the lowercase dotted 'i' is the same as the Latin. Therefore:
+    /// Note that the lowercase dotted 'i' is the same codepoint as the Latin. Therefore:
     ///
     /// ```
     /// let upper_i = 'i'.to_uppercase().to_string();
     /// ```
     ///
-    /// The value of `upper_i` here relies on the language of the text: if we're
+    /// `'i'`'s correct uppercase relies on the language of the text: if we're
     /// in `en-US`, it should be `"I"`, but if we're in `tr-TR` or `az-AZ`, it should
     /// be `"İ"`. `to_uppercase()` does not take this into account, and so:
     ///
@@ -1537,6 +1549,88 @@ impl char {
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
         ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
+    }
+
+    /// Returns an iterator that yields the case folding of this `char` as one or more
+    /// `char`s.
+    ///
+    /// Case folding is meant to be used when performing case-insensitive string comparisons.
+    /// Case-folded strings should not usually be exposed directly to users. For most,
+    /// but not all, characters, the casefold mapping is identical to the lowercase one.
+    ///
+    /// This iterator yields the `char`(s) in the common or full case folding for this `char`,
+    /// as given by the [Unicode Character Database][ucd] [`CaseFolding.txt`].
+    /// The maximum number of `char`s in a case folding is 3.
+    ///
+    /// [ucd]: https://www.unicode.org/reports/tr44/
+    /// [`CaseFolding.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/CaseFolding.txt
+    ///
+    /// This operation performs an unconditional mapping without tailoring. That is, the conversion
+    /// is independent of context and language.
+    ///
+    /// It also does not perform any [normalization] (e.g. NFC).
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
+    ///
+    /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case folding in
+    /// general and Chapter 3 (Conformance) discusses the default algorithm for case folding.
+    ///
+    /// [Unicode Standard]: https://www.unicode.org/versions/latest/
+    ///
+    /// # Examples
+    ///
+    /// The German sharp S `'ß'` (U+DF) is a single Unicode code point
+    /// that casefolds to `"ss"`. Its uppercase variant '`ẞ`' (U+1E9E)
+    /// has the same case-folding.
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// assert!('ß'.to_casefold().eq(['s', 's']));
+    /// assert!('ẞ'.to_casefold().eq(['s', 's']));
+    /// ```
+    ///
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// assert_eq!('ß'.to_casefold().to_string(), "ss");
+    /// assert_eq!('ẞ'.to_casefold().to_string(), "ss");
+    /// ```
+    ///
+    /// # Note on locale
+    ///
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
+    ///
+    /// * 'Dotless': I / ı, sometimes written ï
+    /// * 'Dotted': İ / i
+    ///
+    /// Note that the uppercase undotted 'I' is the same codepoint as the Latin. Therefore:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let casefold_i = 'I'.to_casefold().to_string();
+    /// ```
+    ///
+    /// `'I'`'s correct case folding relies on the language of the text: if we're
+    /// in `en-US`, it should be `"i"`, but if we're in `tr-TR` or `az-AZ`, it should
+    /// be `"ı"`. `to_casefold()` does not take this into account, and so:
+    ///
+    /// ```
+    /// #![feature(casefold)]
+    /// let casefold_i = 'I'.to_casefold().to_string();
+    ///
+    /// assert_eq!(casefold_i, "i");
+    /// ```
+    ///
+    /// holds across languages.
+    #[must_use = "this returns the case-folded character as a new iterator, \
+                  without modifying the original"]
+    #[unstable(feature = "casefold", issue = "none")]
+    #[inline]
+    pub fn to_casefold(self) -> ToCasefold {
+        ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
     }
 
     /// Checks if the value is within the ASCII range.

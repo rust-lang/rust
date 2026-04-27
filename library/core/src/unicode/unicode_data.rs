@@ -10,7 +10,8 @@
 // to_lower        :  1112 bytes,   1462 codepoints in 185 ranges (U+0000C0 - U+01E921) using 2-level LUT
 // to_upper        :  1998 bytes,   1554 codepoints in 299 ranges (U+0000B5 - U+01E943) using 2-level LUT
 // to_title        :   340 bytes,    135 codepoints in  49 ranges (U+0000DF - U+00FB17) using 2-level LUT
-// Total           :  9629 bytes
+// to_casefold     :    32 bytes,    174 codepoints in   5 ranges (U+000131 - U+00ABBF) using 2-level LUT
+// Total           :  9661 bytes
 
 #[inline(always)]
 const fn bitset_search<
@@ -846,7 +847,7 @@ pub mod conversions {
     }
 
     pub fn to_lower(c: char) -> [char; 3] {
-        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AChanges_When_Lowercased%253A%5D-%5B%253AASCII%253A%5D&abb=on
+        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Lowercased:]-[:ASCII:]&abb=on
         if c < '\u{C0}' {
             return [c.to_ascii_lowercase(), '\0', '\0'];
         }
@@ -855,7 +856,7 @@ pub mod conversions {
     }
 
     pub fn to_upper(c: char) -> [char; 3] {
-        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AChanges_When_Uppercased%253A%5D-%5B%253AASCII%253A%5D&abb=on
+        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Uppercased:]-[:ASCII:]&abb=on
         if c < '\u{B5}' {
             return [c.to_ascii_uppercase(), '\0', '\0'];
         }
@@ -864,12 +865,65 @@ pub mod conversions {
     }
 
     pub fn to_title(c: char) -> [char; 3] {
-        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AChanges_When_Titlecased%253A%5D-%5B%253AASCII%253A%5D&abb=on
+        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Titlecased:]-[:ASCII:]&abb=on
         if c < '\u{B5}' {
             return [c.to_ascii_uppercase(), '\0', '\0'];
         }
 
         lookup(c, &TITLECASE_LUT).or_else(|| lookup(c, &UPPERCASE_LUT)).unwrap_or([c, '\0', '\0'])
+    }
+
+    pub fn to_casefold(c: char) -> [char; 3] {
+        // https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[:Changes_When_Casefolded:]-[:ASCII:]&abb=on
+        if c < '\u{B5}' {
+            return [c.to_ascii_lowercase(), '\0', '\0'];
+        }
+
+
+        lookup(c, &CASEFOLD_LUT).unwrap_or_else(|| {
+            // fall back to lowercase of uppercase
+
+            let uppercase = lookup(c, &UPPERCASE_LUT).unwrap_or([c, '\0', '\0']);
+            let mut final_result = to_lower(uppercase[0]);
+            if uppercase[1] != '\0' {
+                let lowercase_1 = to_lower(uppercase[1]);
+                debug_assert_eq!(lowercase_1[2], '\0');
+
+                // If, after updating the Unicode data
+                // to a new Unicode version, the below
+                // assertion starts to fail in tests,
+                // delete it, and uncomment the
+                // `if` condition and corresponding
+                // `else` block below it.
+                debug_assert_eq!(final_result[1], '\0');
+                //if final_result[1] == '\0' {
+
+                final_result[1] = lowercase_1[0];
+
+                if uppercase[2] != '\0' {
+                    debug_assert_eq!(lowercase_1[1], '\0');
+                    let lowercase_2 = to_lower(uppercase[2]);
+                    debug_assert_eq!(lowercase_2[1], '\0');
+                    debug_assert_eq!(lowercase_2[2], '\0');
+                    final_result[2] = lowercase_2[0];
+                } else {
+                    // If, after updating the Unicode data
+                    // to a new Unicode version, the below
+                    // assertion starts to fail in tests,
+                    // delete it and uncomment the line
+                    // below it.
+                    debug_assert_eq!(lowercase_1[1], '\0');
+                    //final_result[2] = lowercase_1[1];
+                }
+
+                /*} else {
+                    final_result[2] = lowercase_1[0];
+                    debug_assert_eq!(lowercase_1[1], '\0');
+                    debug_assert_eq!(uppercase[2], '\0')
+                }*/
+            }
+            final_result
+        })
     }
 
     static LOWERCASE_LUT: L1Lut = L1Lut {
@@ -1178,6 +1232,26 @@ pub mod conversions {
                     (0xfb13, [0x0544, 0x0576, 0x0000]), (0xfb14, [0x0544, 0x0565, 0x0000]),
                     (0xfb15, [0x0544, 0x056b, 0x0000]), (0xfb16, [0x054e, 0x0576, 0x0000]),
                     (0xfb17, [0x0544, 0x056d, 0x0000]),
+                ],
+            },
+            L2Lut {
+                singles: &[ // 0 entries, 0 bytes
+                ],
+                multis: &[ // 0 entries, 0 bytes
+                ],
+            },
+        ],
+    };
+
+    static CASEFOLD_LUT: L1Lut = L1Lut {
+        l2_luts: [
+            L2Lut {
+                singles: &[ // 4 entries, 24 bytes
+                    (Range::singleton(0x0131), 0), (Range::step_by_1(0x13a0..=0x13f5), 0),
+                    (Range::step_by_1(0x13f8..=0x13fd), -8), (Range::step_by_1(0xab70..=0xabbf), 26672),
+                ],
+                multis: &[ // 1 entries, 8 bytes
+                    (0x1e9e, [0x0073, 0x0073, 0x0000]),
                 ],
             },
             L2Lut {
