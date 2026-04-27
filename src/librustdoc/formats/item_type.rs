@@ -105,8 +105,8 @@ item_type! {
     // distinction because they will point to a `macro.[name].html` file and not
     // `[attr|derive].[name].html` file, so the link generation needs to take it into account while
     // still having the filtering working as expected.
-    BangMacroAttribute = 28,
-    BangMacroDerive = 29,
+    DeclMacroAttribute = 28,
+    DeclMacroDerive = 29,
 }
 
 impl<'a> From<&'a clean::Item> for ItemType {
@@ -226,8 +226,8 @@ impl ItemType {
             ItemType::AssocConst => "associatedconstant",
             ItemType::ForeignType => "foreigntype",
             ItemType::Keyword => "keyword",
-            ItemType::ProcAttribute | ItemType::BangMacroAttribute => "attr",
-            ItemType::ProcDerive | ItemType::BangMacroDerive => "derive",
+            ItemType::ProcAttribute | ItemType::DeclMacroAttribute => "attr",
+            ItemType::ProcDerive | ItemType::DeclMacroDerive => "derive",
             ItemType::TraitAlias => "traitalias",
             ItemType::Attribute => "attribute",
         }

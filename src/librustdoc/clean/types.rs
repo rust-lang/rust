@@ -770,8 +770,8 @@ impl Item {
     pub(crate) fn types(&self) -> impl Iterator<Item = ItemType> {
         if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
             Either::Right(macro_kinds.iter().map(|kind| match kind {
-                MacroKinds::ATTR => ItemType::BangMacroAttribute,
-                MacroKinds::DERIVE => ItemType::BangMacroDerive,
+                MacroKinds::ATTR => ItemType::DeclMacroAttribute,
+                MacroKinds::DERIVE => ItemType::DeclMacroDerive,
                 MacroKinds::BANG => ItemType::Macro,
                 _ => panic!("unsupported macro kind {kind:?}"),
             }))

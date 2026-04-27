@@ -265,7 +265,7 @@ declare namespace rustdoc {
          * But the documentation lives in a single `macro.NAME.html` page, and
          * this boolean flag is used for generating that HREF.
          */
-        isBangMacro: boolean,
+        forceMacroHref: boolean,
     }
 
     /**

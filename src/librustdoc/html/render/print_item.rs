@@ -235,8 +235,8 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             // we cheat by turning them into their "proc-macro equivalent".
             for type_ in item.types() {
                 let type_ = match type_ {
-                    ItemType::BangMacroAttribute => ItemType::ProcAttribute,
-                    ItemType::BangMacroDerive => ItemType::ProcDerive,
+                    ItemType::DeclMacroAttribute => ItemType::ProcAttribute,
+                    ItemType::DeclMacroDerive => ItemType::ProcDerive,
                     type_ => type_,
                 };
                 not_stripped_items.entry(type_).or_default().push((index, item));

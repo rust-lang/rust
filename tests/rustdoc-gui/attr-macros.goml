@@ -53,7 +53,7 @@ define-function: (
 
 // Now we check it's correctly listed in the crate page.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-call-function: ("crate_page", {"name": "attr_macro", "section_id": "attribute-macros"})
+call-function: ("crate_page", {"name": "attr_macro", "section_id": "attributes"})
 call-function: ("crate_page", {"name": "derive_macro", "section_id": "derives"})
 // We also check we don't have duplicated sections.
 assert-count: ("//*[@id='main-content']/h2[text()='Attribute Macros']", 1)
@@ -77,7 +77,7 @@ define-function: (
 
 // And finally we check it's correctly listed in the "all items" page.
 go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
-call-function: ("all_items_page", {"name": "attr_macro", "section_id": "attribute-macros"})
+call-function: ("all_items_page", {"name": "attr_macro", "section_id": "attributes"})
 call-function: ("all_items_page", {"name": "derive_macro", "section_id": "derives"})
 
 // We now check a macro with all 3 different kinds.

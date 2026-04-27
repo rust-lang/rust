@@ -543,10 +543,10 @@ impl AllTypes {
             ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
             ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
             ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-            ItemType::ProcAttribute | ItemType::BangMacroAttribute => {
+            ItemType::ProcAttribute | ItemType::DeclMacroAttribute => {
                 self.attribute_macros.insert(ItemEntry::new(new_url, name))
             }
-            ItemType::ProcDerive | ItemType::BangMacroDerive => {
+            ItemType::ProcDerive | ItemType::DeclMacroDerive => {
                 self.derive_macros.insert(ItemEntry::new(new_url, name))
             }
             ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
@@ -2605,8 +2605,8 @@ impl ItemSection {
             Self::AssociatedConstants => "associated-consts",
             Self::ForeignTypes => "foreign-types",
             Self::Keywords => "keywords",
-            Self::Attributes => "attributes",
-            Self::AttributeMacros => "attribute-macros",
+            Self::Attributes => "attribute-docs",
+            Self::AttributeMacros => "attributes",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
         }
@@ -2667,8 +2667,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ForeignType => ItemSection::ForeignTypes,
         ItemType::Keyword => ItemSection::Keywords,
         ItemType::Attribute => ItemSection::Attributes,
-        ItemType::ProcAttribute | ItemType::BangMacroAttribute => ItemSection::AttributeMacros,
-        ItemType::ProcDerive | ItemType::BangMacroDerive => ItemSection::DeriveMacros,
+        ItemType::ProcAttribute | ItemType::DeclMacroAttribute => ItemSection::AttributeMacros,
+        ItemType::ProcDerive | ItemType::DeclMacroDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
     }
 }

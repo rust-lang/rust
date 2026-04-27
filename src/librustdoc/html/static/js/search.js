@@ -1658,13 +1658,13 @@ class DocSearch {
             deprecated: raw[6] === 1 ? true : false,
             unstable: raw[7] === 1 ? true : false,
             associatedItemDisambiguatorOrExternCrateUrl: raw.length === 8 ? null : raw[8],
-            isBangMacro: false,
+            forceMacroHref: false,
         };
         if (item.ty === 28 || item.ty === 29) {
             // "proc attribute" is 23, "proc derive" is 24 whereas "bang macro attribute" is 28 and
             // "bang macro derive" is 29, so 5 of difference to go from the latter to the former.
             item.ty -= 5;
-            item.isBangMacro = true;
+            item.forceMacroHref = true;
         }
         return item;
     }
@@ -2164,7 +2164,7 @@ class DocSearch {
             let displayPath;
             let href;
             let traitPath = null;
-            const type = item.entry && item.entry.isBangMacro ? "macro" : itemTypesName[item.ty];
+            const type = item.entry && item.entry.forceMacroHref ? "macro" : itemTypesName[item.ty];
             const name = item.name;
             let path = item.modulePath;
             let exactPath = item.exactModulePath;
