@@ -15,7 +15,7 @@ from lldb import (
 from rust_types import is_tuple_fields
 
 if TYPE_CHECKING:
-    from lldb import SBValue, SBType, SBTypeStaticField, SBTarget
+    from lldb import SBValue, SBType, SBTypeStaticField, SBTarget, SBProcess
 
 # from lldb.formatters import Logger
 
@@ -289,6 +289,28 @@ def vec_to_string(vec: SBValue) -> str:
     )
 
 
+def read_string(
+    process: SBProcess, address: int, length: int, error: Optional[SBError] = None
+) -> str:
+    """Reads a string from running process's memory. If `error` is passed in, it will be passed
+    to the `SBProcess.ReadMemory` call, and will reflect any errors after the function is called.
+
+    If any error or exception occurs, a placeholder byte array of the form "<error: [reason]>" will
+    be returned instead."""
+
+    if error is None:
+        error = SBError()
+    try:
+        data = process.ReadMemory(address, length, error)
+        if error.Success():
+            return '"' + data.decode("utf8", "replace").__repr__[1:-1] + '"'
+        else:
+            return f"<error: {error.GetCString()}>"
+    except Exception as e:
+        print(f"Unable to generate String summary: {e.__cause__}")
+        return "<error: Unable to read memory>"
+
+
 def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     inner_vec = (
         valobj.GetNonSyntheticValue()
@@ -321,17 +343,9 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     if pointer.GetValueAsUnsigned() == 0:
         return "<error: String pointer is null>"
 
-    error = SBError()
     process = pointer.GetProcess()
-    try:
-        data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)
-        if error.Success():
-            return '"' + data.decode("utf8", "replace") + '"'
-        else:
-            return f"<error: {error.GetCString()}>"
-    except Exception as e:
-        print(f"Unable to generate String summary: {e.__cause__}")
-        return "<error: Unable to read memory>"
+
+    return read_string(process, pointer.GetValueAsAddress(), length)
 
 
 def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
