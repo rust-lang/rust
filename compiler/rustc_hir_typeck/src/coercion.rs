@@ -1998,9 +1998,13 @@ impl<'tcx> CoerceMany<'tcx> {
             );
         }
 
-        let ret_coercion_span = fcx.ret_coercion_span.get();
+        let is_return_position = fcx
+            .tcx
+            .hir_get_fn_id_for_return_block(block_or_return_id)
+            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_id));
 
-        if let Some(sp) = ret_coercion_span
+        if is_return_position
+            && let Some(sp) = fcx.ret_coercion_span.get()
             // If the closure has an explicit return type annotation, or if
             // the closure's return type has been inferred from outside
             // requirements (such as an Fn* trait bound), then a type error
@@ -2009,9 +2013,6 @@ impl<'tcx> CoerceMany<'tcx> {
             // note in this case, since it would be incorrect.
             && let Some(fn_sig) = fcx.body_fn_sig()
             && fn_sig.output().is_ty_var()
-            && fcx.ret_coercion.as_ref().is_some_and(|ret_coercion| {
-                fcx.resolve_vars_if_possible(ret_coercion.borrow().expected_ty()) == expected
-            })
         {
             err.span_note(sp, format!("return type inferred to be `{expected}` here"));
         }
