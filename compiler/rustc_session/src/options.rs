@@ -653,6 +653,7 @@ type OptionDescrs<O> = &'static [OptionDesc<O>];
 
 /// Indicates whether a removed option should warn or error.
 enum RemovedOption {
+    #[allow(unused)] // we might want deprecated options that warn again in the future
     Warn,
     Err,
 }
@@ -2037,10 +2038,9 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 
     // tidy-alphabetical-start
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    ar: String = (String::new(), parse_string, [UNTRACKED],
-        "this option is deprecated and does nothing",
-        removed: Warn),
+    ar: () = ((), parse_ignore, [UNTRACKED],
+        "this option has been removed",
+        removed: Err),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
@@ -2075,11 +2075,10 @@ options! {
     help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    inline_threshold: Option<u32> = (None, parse_opt_number, [UNTRACKED],
-        "this option is deprecated and does nothing \
+    inline_threshold: () = ((), parse_ignore, [UNTRACKED],
+        "this option has been removed \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
-        removed: Warn),
+        removed: Err),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
@@ -2117,10 +2116,9 @@ options! {
         "give an empty list of passes to the pass manager"),
     no_redzone: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "disable the use of the redzone"),
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
-        "this option is deprecated and does nothing",
-        removed: Warn),
+    no_stack_check: () = ((), parse_ignore, [UNTRACKED],
+        "this option has been removed",
+        removed: Err),
     no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
         "disable loop vectorization optimization passes"),
     no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],
@@ -2154,7 +2152,6 @@ options! {
         "set rpath values in libs/exes (default: no)"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
-    #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     soft_float: () = ((), parse_ignore, [UNTRACKED],
         "this option has been removed \
         (use a corresponding *eabi target instead)",
