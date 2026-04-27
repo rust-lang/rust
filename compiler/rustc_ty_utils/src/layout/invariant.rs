@@ -1,8 +1,8 @@
 use std::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
+use rustc_middle::{bug, ty};
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
@@ -52,6 +52,14 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     }
 
     fn skip_newtypes<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
+        match *layout.ty.kind() {
+            ty::UnsafeBinder(bound_ty) => {
+                let ty = cx.tcx().instantiate_bound_regions_with_erased(bound_ty.into());
+                return skip_newtypes(cx, &TyAndLayout { ty, ..*layout });
+            }
+            _ => {}
+        }
+
         if matches!(layout.layout.variants(), Variants::Multiple { .. }) {
             // Definitely not a newtype of anything.
             return *layout;
