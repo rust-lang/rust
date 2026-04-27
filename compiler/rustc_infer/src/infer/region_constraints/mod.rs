@@ -200,9 +200,6 @@ pub enum VerifyBound<'tcx> {
     /// if `R: min`, then by transitivity `G: min`.
     OutlivedBy(Region<'tcx>),
 
-    /// Given a region `R`, true if it is `'empty`.
-    IsEmpty,
-
     /// Given a set of bounds `B`, expands to the function:
     ///
     /// ```ignore (pseudo-rust)
@@ -745,7 +742,6 @@ impl<'tcx> VerifyBound<'tcx> {
         match self {
             VerifyBound::IfEq(..) => false,
             VerifyBound::OutlivedBy(re) => re.is_static(),
-            VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
         }
@@ -754,8 +750,8 @@ impl<'tcx> VerifyBound<'tcx> {
     pub fn cannot_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(..) => false,
-            VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
+            // Edge case: am empty any (or all) bound cannot hold:
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().any(|b| b.cannot_hold()),
         }
