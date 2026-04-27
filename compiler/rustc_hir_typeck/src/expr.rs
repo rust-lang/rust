@@ -412,9 +412,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let expected_inner = match unop {
-            hir::UnOp::Not | hir::UnOp::Neg => expected,
-            hir::UnOp::Deref => NoExpectation,
+        // For negative numeric literals, use the expected type of the operation as the expected
+        // type of the operand. This guides inference, potentially giving us a concrete type for
+        // the operand before we attempt method lookup in `check_expr_unop`, allowing us to use its
+        // specialized diagnostics for types that can't be negated. We'll also guide inference later
+        // if the operand has a numeric type, using the type of the operand as the type of the
+        // operation overall, so it's also fine if we can't resolve numeric operands' types yet.
+        let expected_inner = if unop == hir::UnOp::Neg
+            && let hir::ExprKind::Lit(lit) = oprnd.kind
+            && matches!(lit.node, ast::LitKind::Int(..) | ast::LitKind::Float(..))
+        {
+            expected
+        } else {
+            NoExpectation
         };
         let oprnd_t = self.check_expr_with_expectation(oprnd, expected_inner);
 
@@ -434,13 +444,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, err.emit())
             }),
             hir::UnOp::Not => {
-                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                // If it's builtin, we can reuse the type, this helps inference.
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected);
+                // If it's builtin, we can reuse the type. This lets inference flow from the result
+                // type to the operand type, in case it's still uninferred.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
-                let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
-                // If it's builtin, we can reuse the type, this helps inference.
+                let result = self.check_user_unop(expr, oprnd_t, unop, expected);
+                // If it's builtin, we can reuse the type. This lets inference flow from the result
+                // type to the operand type, in case it's still uninferred.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
             }
         }
