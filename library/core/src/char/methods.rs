@@ -1050,8 +1050,9 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_is_control", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub fn is_control(self) -> bool {
+    pub const fn is_control(self) -> bool {
         // According to
         // https://www.unicode.org/policies/stability_policy.html#Property_Value,
         // the set of codepoints in `Cc` will never change.
