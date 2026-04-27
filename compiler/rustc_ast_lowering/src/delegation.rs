@@ -93,8 +93,9 @@ struct ParamInfo {
     /// Whether the function arguments end in a C variadic `...` parameter.
     pub c_variadic: bool,
 
-    /// The index of the splatted parameter, if any.
-    pub splatted: Option<u16>,
+    /// Does the function have a splatted parameter?
+    /// The index is available from the attributes.
+    pub has_splatted_arg: bool,
 }
 
 const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
@@ -384,15 +385,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
-    /// Returns function parameter info, including C variadic `...` and `#[splat]` if present.
+    /// Returns function parameter info, including C variadic `...` and `#[splat]` flag if present.
     fn param_info(&self, def_id: DefId) -> ParamInfo {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
 
-        // FIXME(splat): use `sig.splatted()` once FnSig has it
+        // FIXME(splat): use `sig.splatted().is_some()` once FnSig has it
         ParamInfo {
             param_count: sig.inputs().len() + usize::from(sig.c_variadic()),
             c_variadic: sig.c_variadic(),
-            splatted: None,
+            has_splatted_arg: false,
         }
     }
 
@@ -407,7 +408,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         call_expr_id: HirId,
         unused_target_expr: bool,
     ) -> &'hir hir::FnDecl<'hir> {
-        let ParamInfo { param_count, c_variadic, splatted } = param_info;
+        let ParamInfo { param_count, c_variadic, has_splatted_arg } = param_info;
 
         // The last parameter in C variadic functions is skipped in the signature,
         // like during regular lowering.
@@ -454,8 +455,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl_kind: FnDeclFlags::default()
                 .set_lifetime_elision_allowed(true)
                 .set_c_variadic(c_variadic)
-                .set_splatted(splatted, inputs.len())
-                .unwrap(),
+                .set_has_splatted_arg(has_splatted_arg),
         })
     }
 

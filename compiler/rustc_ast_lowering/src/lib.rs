@@ -1776,7 +1776,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coro: Option<CoroutineKind>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
-        let mut splatted = decl.splatted();
+        let mut splatted_arg_index = decl.splatted();
 
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
@@ -1784,7 +1784,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut inputs = &decl.inputs[..];
         if decl.c_variadic() {
             // Splat + variadic errors in AST validation, so just ignore one of them here.
-            splatted = None;
+            splatted_arg_index = None;
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
@@ -1875,8 +1875,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.owner.id == fn_node_id && self.owner.lifetime_elision_allowed,
             )
             .set_c_variadic(c_variadic)
-            .set_splatted(splatted, inputs.len())
-            .unwrap();
+            .set_has_splatted_arg(splatted_arg_index.is_some());
+
+        if let Some((index, span)) = splatted_arg_index {
+            // For performance, just lower the one attribute fn args care about to HIR.
+            let local_id = inputs[usize::from(index)].hir_id.local_id;
+            assert!(!self.attrs.contains_key(&local_id));
+            self.attrs.insert(
+                local_id,
+                arena_vec![self; hir::Attribute::Parsed(hir::attrs::AttributeKind::Splat(span))],
+            );
+        }
 
         self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
     }
