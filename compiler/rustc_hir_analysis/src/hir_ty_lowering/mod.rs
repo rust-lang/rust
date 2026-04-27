@@ -29,6 +29,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, FatalError, Level, StashKey,
     struct_span_code_err,
 };
+use rustc_hir::attrs::HasAttrs;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
@@ -3593,7 +3594,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .set_abi(abi)
             .set_safe(safety.is_safe())
             .set_c_variadic(decl.fn_decl_kind.c_variadic())
-            .set_splatted(decl.fn_decl_kind.splatted(), input_tys.len())
+            .set_splatted(
+                decl.splatted_arg_index(&move |id| HasAttrs::get_attrs(id, &tcx)),
+                input_tys.len(),
+            )
             .unwrap();
         let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, fn_sig_kind);
         let fn_ptr_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
