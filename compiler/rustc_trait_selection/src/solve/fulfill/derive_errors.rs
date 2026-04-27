@@ -233,20 +233,14 @@ impl<'tcx> BestObligation<'tcx> {
                 if candidates.len() > 1 {
                     candidates.retain(|candidate| {
                         goal.infcx().probe(|_| {
-                            // Replaying proof-tree state is only a diagnostics aid. If the
-                            // canonical state no longer reproduces cleanly in the current
-                            // inference context, keep the candidate rather than changing the
-                            // observable error into an ICE.
-                            candidate.try_instantiate_nested_goals(self.span()).is_none_or(
-                                |nested_goals| {
-                                    nested_goals.iter().any(|nested_goal| {
-                                        matches!(
-                                            nested_goal.source(),
-                                            GoalSource::ImplWhereBound
-                                                | GoalSource::AliasBoundConstCondition
-                                                | GoalSource::AliasWellFormed
-                                        ) && nested_goal.result().is_err()
-                                    })
+                            candidate.instantiate_nested_goals(self.span()).iter().any(
+                                |nested_goal| {
+                                    matches!(
+                                        nested_goal.source(),
+                                        GoalSource::ImplWhereBound
+                                            | GoalSource::AliasBoundConstCondition
+                                            | GoalSource::AliasWellFormed
+                                    ) && nested_goal.result().is_err()
                                 },
                             )
                         })
@@ -488,12 +482,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             _ => ChildMode::PassThrough,
         };
 
-        let Some(nested_goals) = candidate.try_instantiate_nested_goals(self.span()) else {
-            // We failed to replay this proof-tree candidate in the current inference state.
-            // Fall back to the current obligation instead of trying to derive a more specific
-            // nested error from diagnostics-only reconstruction.
-            return ControlFlow::Break(self.obligation.clone());
-        };
+        let nested_goals = candidate.instantiate_nested_goals(self.span());
 
         // If the candidate requires some `T: FnPtr` bound which does not hold should not be treated as
         // an actual candidate, instead we should treat them as if the impl was never considered to
