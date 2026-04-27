@@ -248,7 +248,8 @@ enum ResolutionError<'ra> {
         outer_res: Res,
         has_generic_params: HasGenericParams,
         def_kind: DefKind,
-        inner_item: Option<(Span, ast::ItemKind)>,
+        /// 1. label span, 2. item span, 3. item kind
+        inner_item: Option<(Span, Span, ast::ItemKind)>,
         current_self_ty: Option<String>,
     },
     /// Error E0403: the name is already used for a type or const parameter in this generic
