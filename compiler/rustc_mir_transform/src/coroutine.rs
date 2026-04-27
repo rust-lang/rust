@@ -403,11 +403,11 @@ impl<'tcx> TransformVisitor<'tcx> {
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) {
-        if let (Operand::Copy(src) | Operand::Move(src)) = *operand
+        if let Rvalue::Use(operand) = rvalue
+            && let Operand::Copy(src) | Operand::Move(src) = *operand
             && !src.is_indirect()
             && !dst.is_indirect()
             && src.local == dst.local
-            && let Rvalue::Use(operand) = rvalue
             && let Some(ty) = dst_ty
         {
             let temp = Place::from(self.patch.new_temp(ty, self.body_span));
