@@ -164,10 +164,11 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
             {
                 let successor = Location { block: *target, statement_index: 0 };
                 if location.dominates(successor, &self.dominators) {
-                    assert_ne!(location.block, successor.block);
-                    let val = *expected as u128;
-                    let range = WrappingRange { start: val, end: val };
-                    self.insert_range(place, successor, range);
+                    if location.block != successor.block {
+                        let val = *expected as u128;
+                        let range = WrappingRange { start: val, end: val };
+                        self.insert_range(place, successor, range);
+                    }
                 }
             }
             TerminatorKind::SwitchInt { discr, targets }
@@ -188,7 +189,9 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     }
                     let successor = Location { block: target, statement_index: 0 };
                     if self.unique_predecessors.contains(successor.block) {
-                        assert_ne!(location.block, successor.block);
+                        if location.block == successor.block {
+                            continue;
+                        }
                         let range = WrappingRange { start: val, end: val };
                         self.insert_range(place, successor, range);
                     }
@@ -201,13 +204,14 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     && let [val] = targets.all_values()
                     && self.unique_predecessors.contains(otherwise.block)
                 {
-                    assert_ne!(location.block, otherwise.block);
-                    let range = if val.get() == 0 {
-                        WrappingRange { start: 1, end: 1 }
-                    } else {
-                        WrappingRange { start: 0, end: 0 }
-                    };
-                    self.insert_range(place, otherwise, range);
+                    if location.block != otherwise.block {
+                        let range = if val.get() == 0 {
+                            WrappingRange { start: 1, end: 1 }
+                        } else {
+                            WrappingRange { start: 0, end: 0 }
+                        };
+                        self.insert_range(place, otherwise, range);
+                    }
                 }
             }
             _ => {}
