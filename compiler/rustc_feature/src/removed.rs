@@ -1,24 +1,16 @@
 //! List of the removed feature gates.
 
-use std::num::{NonZero, NonZeroU32};
+use std::num::NonZero;
 
 use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
+use crate::opt_nonzero_u32;
 
 pub struct RemovedFeature {
     pub feature: Feature,
     pub reason: Option<&'static str>,
     pub pull: Option<NonZero<u32>>,
-}
-
-macro_rules! opt_nonzero_u32 {
-    () => {
-        None
-    };
-    ($val:expr) => {
-        Some(NonZeroU32::new($val).unwrap())
-    };
 }
 
 macro_rules! declare_features {
@@ -54,7 +46,6 @@ declare_features! (
 
     /// Allows using the `amdgpu-kernel` ABI.
     (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None, 120495),
-    (removed, abi_c_cmse_nonsecure_call, "1.90.0", Some(81391), Some("renamed to abi_cmse_nonsecure_call"), 142146),
     (removed, advanced_slice_patterns, "1.42.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`"), 67712),
     (removed, allocator, "1.0.0", None, None),
@@ -74,8 +65,6 @@ declare_features! (
      Some("cannot be allowed in const eval in any meaningful way"), 73398),
     /// Allows limiting the evaluation steps of const expressions
     (removed, const_eval_limit, "1.72.0", Some(67217), Some("removed the limit entirely"), 103877),
-    /// Allows non-trivial generic constants which have to be manually propagated upwards.
-    (removed, const_evaluatable_checked, "1.56.0", Some(76560), Some("renamed to `generic_const_exprs`"), 88369),
     /// Allows the definition of `const` functions with some advanced features.
     (removed, const_fn, "1.54.0", Some(57563),
      Some("split into finer-grained feature gates"), 85109),
@@ -116,11 +105,6 @@ declare_features! (
     /// Allows using `doc(primitive)` without a future-incompat warning.
     (removed, doc_primitive, "1.58.0", Some(88070),
      Some("merged into `#![feature(rustdoc_internals)]`"), 90420),
-    /// Allows `#[doc(spotlight)]`.
-    /// The attribute was renamed to `#[doc(notable_trait)]`
-    /// and the feature to `doc_notable_trait`.
-    (removed, doc_spotlight, "1.53.0", Some(45040),
-     Some("renamed to `doc_notable_trait`"), 80965),
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None),
     /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
@@ -150,10 +134,6 @@ declare_features! (
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (removed, ffi_returns_twice, "1.78.0", Some(58314),
      Some("being investigated by the ffi-unwind project group"), 120502),
-    /// Allows generators to be cloned.
-    (removed, generator_clone, "1.75.0", Some(95360), Some("renamed to `coroutine_clone`"), 116958),
-    /// Allows defining generators.
-    (removed, generators, "1.75.0", Some(43122), Some("renamed to `coroutines`"), 116958),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
     (removed, generic_associated_types_extended, "1.85.0", Some(95451),
         Some(
@@ -199,23 +179,13 @@ declare_features! (
     (removed, negate_unsigned, "1.0.0", Some(29645), None),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
     (removed, never_type_fallback, "1.93.0", Some(65992), Some("removed in favor of unconditional fallback"), 148871),
-    /// Allows `#[no_coverage]` on functions.
-    /// The feature was renamed to `coverage_attribute` and the attribute to `#[coverage(on|off)]`
-    (removed, no_coverage, "1.74.0", Some(84605), Some("renamed to `coverage_attribute`"), 114656),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), Some("removed due to lack of demand"), 69667),
-    // Allows the use of `no_sanitize` attribute.
-    /// The feature was renamed to `sanitize` and the attribute to `#[sanitize(xyz = "on|off")]`
-    (removed, no_sanitize, "1.91.0", Some(39699), Some(r#"renamed to sanitize(xyz = "on|off")"#), 142681),
     /// Note: this feature was previously recorded in a separate
     /// `STABLE_REMOVED` list because it, uniquely, was once stable but was
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None, 40110),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible (object safe).
-    /// Renamed to `dyn_compatible_for_dispatch`.
-    (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
-     Some("renamed to `dyn_compatible_for_dispatch`"), 131511),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (removed, omit_gdb_pretty_printer_section, "1.91.0", None, None, 144738),
     /// Allows using `#[on_unimplemented(..)]` on traits.
@@ -223,10 +193,6 @@ declare_features! (
     (removed, on_unimplemented, "1.40.0", None, None, 65794),
     /// A way to temporarily opt out of opt-in copy. This will *never* be accepted.
     (removed, opt_out_copy, "1.0.0", None, None, 20740),
-    /// Allows features specific to OIBIT (now called auto traits).
-    /// Renamed to `auto_traits`.
-    (removed, optin_builtin_traits, "1.50.0", Some(13231),
-     Some("renamed to `auto_traits`"), 79336),
     /// Allows overlapping impls of marker traits.
     (removed, overlapping_marker_traits, "1.42.0", Some(29864),
      Some("removed in favor of `#![feature(marker_trait_attr)]`"), 68544),

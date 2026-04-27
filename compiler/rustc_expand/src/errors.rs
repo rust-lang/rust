@@ -156,6 +156,23 @@ pub(crate) struct FeatureRemoved<'a> {
     pub pull_note: String,
 }
 
+#[derive(Diagnostic)]
+#[diag("feature was renamed", code = E0557)]
+#[note("renamed in {$renamed_rustc_version}{$pull_note}")]
+pub(crate) struct FeatureRenamed<'a> {
+    #[primary_span]
+    #[suggestion(
+        "update to the new name",
+        code = "{new_name}",
+        applicability = "machine-applicable"
+    )]
+    #[label("feature was renamed")]
+    pub span: Span,
+    pub new_name: &'a str,
+    pub renamed_rustc_version: &'a str,
+    pub pull_note: String,
+}
+
 #[derive(Subdiagnostic)]
 #[note("{$reason}")]
 pub(crate) struct FeatureRemovedReason<'a> {

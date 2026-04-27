@@ -19,7 +19,7 @@ use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::msg;
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, REMOVED_LANG_FEATURES,
-    UNSTABLE_LANG_FEATURES,
+    RENAMED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
 };
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{
@@ -33,7 +33,7 @@ use tracing::instrument;
 
 use crate::errors::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
-    FeatureRemovedReason, InvalidCfg, RemoveExprNotSupported,
+    FeatureRemovedReason, FeatureRenamed, InvalidCfg, RemoveExprNotSupported,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -69,6 +69,26 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                     span: feature_ident.span,
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
                     removed_rustc_version: f.feature.since,
+                    pull_note,
+                });
+                continue;
+            }
+
+            // The old name is deprecated in favor of a new one, point the user at it
+            if let Some(f) =
+                RENAMED_LANG_FEATURES.iter().find(|f| feature_ident.name == f.feature.name)
+            {
+                let pull_note = if let Some(pull) = f.pull {
+                    format!(
+                        "; see <https://github.com/rust-lang/rust/pull/{pull}> for more information",
+                    )
+                } else {
+                    "".to_owned()
+                };
+                sess.dcx().emit_err(FeatureRenamed {
+                    span: feature_ident.span,
+                    new_name: f.new_name,
+                    renamed_rustc_version: f.feature.since,
                     pull_note,
                 });
                 continue;

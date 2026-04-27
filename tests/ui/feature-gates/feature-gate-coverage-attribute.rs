@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![feature(no_coverage)] //~ ERROR feature has been removed [E0557]
+#![feature(no_coverage)] //~ ERROR feature was renamed [E0557]
 
 #[derive(PartialEq, Eq)] // ensure deriving `Eq` does not enable `feature(coverage)`
 struct Foo {
