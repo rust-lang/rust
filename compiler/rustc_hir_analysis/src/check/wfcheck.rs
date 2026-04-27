@@ -326,7 +326,7 @@ pub(super) fn check_item<'tcx>(
         hir::ItemKind::Struct(..) => check_type_defn(tcx, item, false),
         hir::ItemKind::Union(..) => check_type_defn(tcx, item, true),
         hir::ItemKind::Enum(..) => check_type_defn(tcx, item, true),
-        hir::ItemKind::Trait(..) => check_trait(tcx, item),
+        hir::ItemKind::Trait { .. } => check_trait(tcx, item),
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         _ => Ok(()),
     }
@@ -1188,7 +1188,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
     });
 
     // Only check traits, don't check trait aliases
-    if let hir::ItemKind::Trait(..) = item.kind {
+    if let hir::ItemKind::Trait { .. } = item.kind {
         check_gat_where_clauses(tcx, item.owner_id.def_id);
     }
     res

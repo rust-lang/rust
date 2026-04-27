@@ -171,7 +171,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 Ty::new_adt(tcx, def, args)
             }
             ItemKind::GlobalAsm { .. } => tcx.typeck(def_id).node_type(hir_id),
-            ItemKind::Trait(..)
+            ItemKind::Trait { .. }
             | ItemKind::TraitAlias(..)
             | ItemKind::Macro(..)
             | ItemKind::Mod(..)

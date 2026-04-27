@@ -4467,7 +4467,7 @@ impl<'hir> Item<'hir> {
                 GenericBounds<'hir>,
                 &'hir [TraitItemId]
             ),
-            ItemKind::Trait(impl_restriction, constness, is_auto, safety, ident, generics, bounds, items),
+            ItemKind::Trait { impl_restriction, constness, is_auto, safety, ident, generics, bounds, items },
             (impl_restriction, *constness, *is_auto, *safety, *ident, generics, bounds, items);
 
         expect_trait_alias, (Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
@@ -4659,16 +4659,16 @@ pub enum ItemKind<'hir> {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A trait definition.
-    Trait(
-        &'hir ImplRestriction<'hir>,
-        Constness,
-        IsAuto,
-        Safety,
-        Ident,
-        &'hir Generics<'hir>,
-        GenericBounds<'hir>,
-        &'hir [TraitItemId],
-    ),
+    Trait {
+        impl_restriction: &'hir ImplRestriction<'hir>,
+        constness: Constness,
+        is_auto: IsAuto,
+        safety: Safety,
+        ident: Ident,
+        generics: &'hir Generics<'hir>,
+        bounds: GenericBounds<'hir>,
+        items: &'hir [TraitItemId],
+    },
     /// A trait alias.
     TraitAlias(Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
 
@@ -4714,7 +4714,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(_, _, _, _, ident, ..)
+            | ItemKind::Trait { ident, .. }
             | ItemKind::TraitAlias(_, ident, ..) => Some(ident),
 
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
@@ -4732,7 +4732,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
-            | ItemKind::Trait(_, _, _, _, _, generics, _, _)
+            | ItemKind::Trait { generics, .. }
             | ItemKind::TraitAlias(_, _, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,

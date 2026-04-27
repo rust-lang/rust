@@ -1967,7 +1967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.1.insert((self_ty.span, String::new()));
                 }
                 Some(Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, rustc_ast::ast::IsAuto::Yes, ..),
+                    kind: hir::ItemKind::Trait { is_auto:  rustc_ast::ast::IsAuto::Yes, .. },
                     span: item_span,
                     ..
                 })) => {
@@ -1979,7 +1979,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(
                     Node::Item(hir::Item {
                         kind:
-                            hir::ItemKind::Trait(_, _, _, _, ident, ..)
+                            hir::ItemKind::Trait { ident, .. }
                             | hir::ItemKind::TraitAlias(_, ident, ..),
                         ..
                     })
@@ -4638,7 +4638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return;
                         }
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, _, _, ident, _, bounds, _),
+                            kind: hir::ItemKind::Trait { ident, bounds, .. },
                             ..
                         }) => {
                             let (sp, sep, article) = if bounds.is_empty() {

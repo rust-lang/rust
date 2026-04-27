@@ -306,16 +306,16 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     cur_f = Some(field);
                 }
             },
-            ItemKind::Trait(
-                _impl_restriction,
-                _constness,
+            ItemKind::Trait {
+                impl_restriction:_,
+                constness:_,
                 is_auto,
-                _safety,
-                _ident,
-                _generics,
-                _generic_bounds,
-                item_ref,
-            ) if self.enable_ordering_for_trait && *is_auto == IsAuto::No => {
+                safety:_,
+                ident:_,
+                generics: _,
+                bounds: _,
+                items: item_ref}
+             if self.enable_ordering_for_trait && *is_auto == IsAuto::No => {
                 let mut cur_t: Option<(TraitItemId, Ident)> = None;
 
                 for &item in *item_ref {
@@ -510,7 +510,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Enum(..) => Enum,
         ItemKind::Struct(..) => Struct,
         ItemKind::Union(..) => Union,
-        ItemKind::Trait(..) => Trait,
+        ItemKind::Trait { .. } => Trait,
         ItemKind::TraitAlias(..) => TraitAlias,
         ItemKind::Impl(..) => Impl,
     }

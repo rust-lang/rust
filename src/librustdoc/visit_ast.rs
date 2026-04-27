@@ -537,7 +537,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::Union(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Static(..)
-            | hir::ItemKind::Trait(..)
+            | hir::ItemKind::Trait { .. }
             | hir::ItemKind::TraitAlias(..) => {
                 self.add_to_current_mod(item, renamed, import_id);
             }
@@ -607,7 +607,7 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
                 hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl(..)
-                    | hir::ItemKind::Trait(..)
+                    | hir::ItemKind::Trait { .. }
             );
         let prev = mem::replace(&mut self.is_importable_from_parent, new_value);
         walk_item(self, i);

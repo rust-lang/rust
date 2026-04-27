@@ -486,7 +486,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     intravisit::walk_item(self, item)
                 }
                 hir::ItemKind::ForeignMod { .. } => ControlFlow::Continue(()),
-                hir::ItemKind::Trait(.., trait_item_refs) => {
+                hir::ItemKind::Trait { items: trait_item_refs, .. } => {
                     // mark assoc ty live if the trait is live
                     for trait_item in trait_item_refs {
                         if self.tcx.def_kind(trait_item.owner_id) == DefKind::AssocTy {

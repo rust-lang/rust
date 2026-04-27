@@ -757,7 +757,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span, cb);
             }
-            hir::ItemKind::Trait(
+            hir::ItemKind::Trait {
                 impl_restriction,
                 constness,
                 is_auto,
@@ -765,8 +765,8 @@ impl<'a> State<'a> {
                 ident,
                 generics,
                 bounds,
-                trait_items,
-            ) => {
+                items: trait_items,
+            } => {
                 let (cb, ib) = self.head("");
                 self.print_impl_restriction(impl_restriction);
                 self.print_constness(constness);
