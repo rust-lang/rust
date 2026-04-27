@@ -3,11 +3,11 @@
 // caused by `{{root}}` appearing in diagnostic suggestions
 
 mod A {
-    use Iuse::{ ::Fish }; //~ ERROR cannot find module or crate `Iuse` in the crate root
+    use Iuse::{ ::Fish }; //~ ERROR unresolved import `Iuse`
 }
 
 mod B {
-    use A::{::Fish}; //~ ERROR the crate root in paths can only be used in start position
+    use A::{::Fish}; //~ ERROR unresolved import `A::Fish`
 }
 
 fn main() {}

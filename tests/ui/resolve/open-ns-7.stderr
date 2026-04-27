@@ -4,13 +4,6 @@ error[E0432]: unresolved import `my_api::utils`
 LL | use my_api::utils::utils_helper;
    |             ^^^^^ could not find `utils` in `my_api`
 
-error[E0433]: cannot find `utils` in `my_api`
-  --> $DIR/open-ns-7.rs:12:21
-   |
-LL |     let _ = my_api::utils::utils_helper();
-   |                     ^^^^^ could not find `utils` in `my_api`
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0432, E0433.
-For more information about an error, try `rustc --explain E0432`.
+For more information about this error, try `rustc --explain E0432`.

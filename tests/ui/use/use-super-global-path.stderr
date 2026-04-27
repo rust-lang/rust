@@ -1,23 +1,16 @@
 error[E0433]: global paths cannot start with `super`
-  --> $DIR/use-super-global-path.rs:7:11
-   |
-LL |     use ::super::{S, Z};
-   |           ^^^^^ cannot start with this
-
-error[E0433]: global paths cannot start with `super`
-  --> $DIR/use-super-global-path.rs:7:11
-   |
-LL |     use ::super::{S, Z};
-   |           ^^^^^ cannot start with this
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0433]: global paths cannot start with `super`
-  --> $DIR/use-super-global-path.rs:12:15
+  --> $DIR/use-super-global-path.rs:11:15
    |
 LL |         use ::super::main;
    |               ^^^^^ cannot start with this
 
-error: aborting due to 3 previous errors
+error[E0432]: unresolved import `super`
+  --> $DIR/use-super-global-path.rs:7:11
+   |
+LL |     use ::super::{S, Z};
+   |           ^^^^^ cannot start with this
 
-For more information about this error, try `rustc --explain E0433`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

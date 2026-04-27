@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `foo`
-  --> $DIR/absolute-paths-in-nested-use-groups.rs:3:5
+  --> $DIR/redundant-import-errors-nested.rs:3:5
    |
-LL | use foo::{
+LL | use foo::{bar, baz::bat};
    |     ^^^ use of unresolved module or unlinked crate `foo`
    |
 help: you might be missing a crate named `foo`, add it to your project and import it in your code

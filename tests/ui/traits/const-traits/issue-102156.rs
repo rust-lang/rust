@@ -4,7 +4,6 @@
 
 use core::convert::{From, TryFrom};
 //~^ ERROR
-//~| ERROR
 
 use std::pin::Pin;
 use std::alloc::Allocator;

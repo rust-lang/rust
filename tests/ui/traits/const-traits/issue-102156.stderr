@@ -1,4 +1,4 @@
-error[E0433]: cannot find `core` in the crate root
+error[E0432]: unresolved import `core`
   --> $DIR/issue-102156.rs:5:5
    |
 LL | use core::convert::{From, TryFrom};
@@ -10,19 +10,6 @@ LL - use core::convert::{From, TryFrom};
 LL + use std::convert::{From, TryFrom};
    |
 
-error[E0433]: cannot find `core` in the crate root
-  --> $DIR/issue-102156.rs:5:5
-   |
-LL | use core::convert::{From, TryFrom};
-   |     ^^^^ you might be missing crate `core`
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: try using `std` instead of `core`
-   |
-LL - use core::convert::{From, TryFrom};
-LL + use std::convert::{From, TryFrom};
-   |
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0433`.
+For more information about this error, try `rustc --explain E0432`.
