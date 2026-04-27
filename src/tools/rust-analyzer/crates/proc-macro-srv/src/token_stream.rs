@@ -302,9 +302,9 @@ impl<S> TokenStream<S> {
                         span: span.derive_ranged(range),
                     }))
                 }
-                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
-                    if starts_with_number {
-                        return Err("Lifetime cannot start with a number".to_owned());
+                rustc_lexer::TokenKind::Lifetime { invalid } => {
+                    if invalid {
+                        return Err(format!("Invalid lifetime identifier: `{}`", &s[range]));
                     }
                     let range = range.start + 1..range.end;
                     tokenstream.push(TokenTree::Punct(Punct {
