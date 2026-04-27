@@ -21,6 +21,10 @@ note: required for this `Drop` impl
    |
 LL | impl<T> const Drop for ConstDrop2<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider restricting type parameter `T` with unstable trait `Destruct`
+   |
+LL | impl<T: [const] Destruct> const Drop for ConstDrop2<T> {
+   |       ++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

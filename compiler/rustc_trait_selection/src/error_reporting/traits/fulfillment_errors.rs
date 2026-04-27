@@ -25,8 +25,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::{
-    PrintPolyTraitPredicateExt, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
-    with_forced_trimmed_paths,
+    PrintPolyTraitPredicateExt, PrintPolyTraitRefExt as _, PrintTraitPredicateExt as _, PrintTraitRefExt as _, with_forced_trimmed_paths
 };
 use rustc_middle::ty::{
     self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -886,6 +885,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                 }
             }
+        } else if let ty::Param(param) = trait_ref.self_ty().skip_binder().kind()
+            && let Some(generics) =
+                self.tcx.hir_node_by_def_id(main_obligation.cause.body_id).generics()
+        {
+            let constraint = ty::print::with_no_trimmed_paths!(format!(
+                "[const] {}",
+                trait_ref.map_bound(|tr| tr.trait_ref).print_trait_sugared(),
+            ));
+            ty::suggest_constraining_type_param(
+                self.tcx,
+                generics,
+                &mut diag,
+                param.name.as_str(),
+                &constraint,
+                Some(trait_ref.def_id()),
+                None,
+            );
         }
         diag
     }
@@ -2708,7 +2724,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn predicate_can_apply(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        pred: ty::PolyTraitPredicate<'tcx>,
+        pred: impl Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
     ) -> bool {
         struct ParamToVarFolder<'a, 'tcx> {
             infcx: &'a InferCtxt<'tcx>,
