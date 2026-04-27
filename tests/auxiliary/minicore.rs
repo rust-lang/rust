@@ -300,6 +300,14 @@ impl Sync for () {}
 
 impl<T, const N: usize> Sync for [T; N] {}
 
+// Function pointers are treated as `Sync` to match real `core` behavior.
+//
+// We intentionally only cover the zero-argument form since tests using this minicore
+// are simplified to `fn() -> R` / `extern "C" fn() -> R` to avoid arity-specific
+// complexity. See: tests/codegen-llvm/pauth-extern-weak-global.rs for the use case.
+impl<R> Sync for fn() -> R {}
+impl<R> Sync for unsafe extern "C" fn() -> R {}
+
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
 

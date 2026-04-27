@@ -117,7 +117,11 @@ pub(crate) fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = bx.tcx();
     let def_id = tcx.require_lang_item(li, span);
     let instance = ty::Instance::mono(tcx, def_id);
-    (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance), instance)
+    (
+        bx.fn_abi_of_instance(instance, ty::List::empty()),
+        bx.get_fn_addr(instance, Some(PacMetadata::default())),
+        instance,
+    )
 }
 
 pub(crate) fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
