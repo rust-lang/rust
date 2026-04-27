@@ -216,7 +216,9 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     file.set_sub_architecture(sub_architecture);
     if sess.target.is_like_darwin {
         if macho_is_arm64e(&sess.target) {
-            file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
+            file.set_macho_cpu_subtype(
+                object::macho::CPU_SUBTYPE_ARM64E | object::macho::CPU_SUBTYPE_PTRAUTH_ABI,
+            );
         }
 
         file.set_macho_build_version(macho_object_build_version_for_target(sess))
