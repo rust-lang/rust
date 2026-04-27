@@ -60,7 +60,8 @@ where
                 .skip_norm_wip()
                 .into()
         };
-        self.instantiate_normalizes_to_term(goal, normalized);
+
+        self.instantiate_normalizes_to_term_with_type_check(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
