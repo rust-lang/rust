@@ -224,10 +224,7 @@ pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
 }
 
 fn _var(key: &OsStr) -> Result<String, VarError> {
-    match var_os(key) {
-        Some(s) => s.into_string().map_err(VarError::NotUnicode),
-        None => Err(VarError::NotPresent),
-    }
+    env_imp::getenv(key).ok_or(VarError::NotPresent)?.into_string().map_err(VarError::NotUnicode)
 }
 
 /// Fetches the environment variable `key` from the current process, returning
