@@ -1,0 +1,35 @@
+error: cannot directly pin an ADT that is not `#[pin_v2]`
+  --> $DIR/direct-borrow-requires-pin-v2.rs:8:13
+   |
+LL |     let _ = &pin mut value;
+   |             ^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/direct-borrow-requires-pin-v2.rs:5:1
+   |
+LL | struct NotPinV2;
+   | ^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotPinV2;
+   |
+
+error: cannot directly pin an ADT that is not `#[pin_v2]`
+  --> $DIR/direct-borrow-requires-pin-v2.rs:13:13
+   |
+LL |     let _ = &pin const value;
+   |             ^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/direct-borrow-requires-pin-v2.rs:5:1
+   |
+LL | struct NotPinV2;
+   | ^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotPinV2;
+   |
+
+error: aborting due to 2 previous errors

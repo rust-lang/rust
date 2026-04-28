@@ -1392,6 +1392,21 @@ pub(crate) struct ProjectOnNonPinProjectType {
 }
 
 #[derive(Diagnostic)]
+#[diag("cannot directly pin an ADT that is not `#[pin_v2]`")]
+pub(crate) struct DirectPinBorrowOfNonPinProjectType {
+    #[primary_span]
+    pub span: Span,
+    #[note("type defined here")]
+    pub def_span: Option<Span>,
+    #[suggestion(
+        "add `#[pin_v2]` here",
+        code = "#[pin_v2]\n",
+        applicability = "machine-applicable"
+    )]
+    pub sugg_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag("falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied")]
 pub(crate) struct FloatLiteralF32Fallback {
     pub literal: String,

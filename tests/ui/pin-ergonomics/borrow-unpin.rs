@@ -9,10 +9,12 @@ use std::marker::PhantomPinned;
 use std::pin::Pin;
 
 #[cfg(pinned)]
+#[pin_v2]
 #[derive(Default)]
 struct Foo(PhantomPinned);
 
 #[cfg(unpin)]
+#[pin_v2]
 #[derive(Default)]
 struct Foo;
 

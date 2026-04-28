@@ -6,6 +6,7 @@
 
 use std::pin::Pin;
 
+#[pin_v2]
 struct Foo;
 
 fn foo_pin_mut(_: Pin<&mut Foo>) {}

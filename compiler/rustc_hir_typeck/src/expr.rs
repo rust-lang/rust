@@ -480,6 +480,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_ptr(self.tcx, ty, mutbl)
             }
             hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
+                if kind == hir::BorrowKind::Pin {
+                    self.check_pin_borrow_of_adt_requires_pin_v2(ty, expr.span);
+                }
+
                 // Note: at this point, we cannot say what the best lifetime
                 // is to use for resulting pointer. We want to use the
                 // shortest lifetime possible so as to avoid spurious borrowck
@@ -501,6 +505,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => unreachable!(),
                 }
             }
+        }
+    }
+
+    fn check_pin_borrow_of_adt_requires_pin_v2(&self, ty: Ty<'tcx>, span: Span) {
+        let ty = self.structurally_resolve_type(span, ty);
+        if let Some(adt) = ty.ty_adt_def()
+            && !adt.is_pin_project()
+        {
+            let def_span = self.tcx.hir_span_if_local(adt.did());
+            let sugg_span = def_span.map(|span| span.shrink_to_lo());
+            self.dcx().emit_err(crate::errors::DirectPinBorrowOfNonPinProjectType {
+                span,
+                def_span,
+                sugg_span,
+            });
         }
     }
 

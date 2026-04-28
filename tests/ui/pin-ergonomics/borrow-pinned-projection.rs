@@ -5,6 +5,7 @@
 // unrelated disjoint fields, but it must reject later mutable borrows or moves
 // of `pair.0` until reassignment.
 
+#[pin_v2]
 struct Foo;
 
 fn mutable_borrow_of_pinned_projection() {
