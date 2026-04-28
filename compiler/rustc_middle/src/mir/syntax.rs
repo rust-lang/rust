@@ -306,9 +306,9 @@ pub enum StatementKind<'tcx> {
     /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
     /// without the possibility of dropping the previous value (that must be done separately, if at
     /// all). The *exact* way this works is undecided. It probably does something like evaluating
-    /// the LHS to a place and the RHS to a value, and then storing the value to the place. Various
-    /// parts of this may do type specific things that are more complicated than simply copying
-    /// bytes. In particular, the assignment will typically erase the contents of padding,
+    /// the LHS to a place, then the RHS to a value, and then storing the value to the place.
+    /// Various parts of this may do type specific things that are more complicated than simply
+    /// copying bytes. In particular, the assignment will typically erase the contents of padding,
     /// erase provenance from non-pointer types, and implicitly "retag" all references and boxes
     /// that it copies, meaning that the resulting value is not an exact duplicate for all intents
     /// and purposes of the original value.
@@ -795,6 +795,9 @@ pub enum TerminatorKind<'tcx> {
     /// **Needs clarification**: The exact semantics of this. Current backends rely on `move`
     /// operands not aliasing the return place. It is unclear how this is justified in MIR, see
     /// [#71117].
+    ///
+    /// The evaluation order is currently "first compute destination place, then `func` operand,
+    /// then the arguments in left-to-right order".
     ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {
@@ -1494,7 +1497,7 @@ pub enum CastKind {
     /// but running a transmute between differently-sized types is UB.
     Transmute,
 
-    /// A `Subtype` cast is applied to any `StatementKind::Assign` where
+    /// A `Subtype` cast is applied to any [`StatementKind::Assign`] where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
     /// explicit during optimizations and codegen.
     ///
