@@ -178,9 +178,7 @@ fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
             && !file_name_str.contains("rustc_std_workspace_")
             && !file_name_str.contains("rustc_demangle")
             && !file_name_str.contains("rustc_literal_escaper"))
-            || file_name_str.contains("chalk")
-            || file_name_str.contains("tracing")
-            || file_name_str.contains("regex")
+            || file_name_str.contains("LLVM")
         {
             // These are large crates that are part of the rustc-dev component and are not
             // necessary to run regular programs.
@@ -208,9 +206,9 @@ fn build_clif_sysroot_for_triple(
 
         apply_patches(dirs, "stdlib", &sysroot_src_orig, &STDLIB_SRC.to_path(dirs));
 
-        // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
-        // recompilation as they are not affected by changes in cg_clif.
-        ensure_empty_dir(&build_dir.join("deps"));
+        // Cleanup the build dir, but keep the incremental cache for faster
+        // recompilation as it is not affected by changes in cg_clif.
+        ensure_empty_dir(&build_dir.join("build"));
     }
 
     // Build sysroot
@@ -243,6 +241,7 @@ fn build_clif_sysroot_for_triple(
     build_cmd.arg("--features").arg("backtrace panic-unwind");
     build_cmd.arg(format!("-Zroot-dir={}", STDLIB_SRC.to_path(dirs).display()));
     build_cmd.arg("-Zno-embed-metadata");
+    build_cmd.arg("-Zbuild-dir-new-layout");
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
@@ -254,7 +253,13 @@ fn build_clif_sysroot_for_triple(
     }
     spawn_and_wait(build_cmd);
 
-    for entry in fs::read_dir(build_dir.join("deps")).unwrap() {
+    for entry in fs::read_dir(build_dir.join("build"))
+        .unwrap()
+        .flat_map(|entry| entry.unwrap().path().read_dir().unwrap())
+        .map(|entry| entry.unwrap().path().join("out"))
+        .filter(|entry| entry.exists())
+        .flat_map(|entry| entry.read_dir().unwrap())
+    {
         let entry = entry.unwrap();
         if let Some(ext) = entry.path().extension() {
             if ext == "d" || ext == "dSYM" || ext == "clif" {

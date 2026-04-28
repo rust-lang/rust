@@ -1197,12 +1197,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let a = a.load_scalar(fx);
             let b = b.load_scalar(fx);
 
-            // FIXME(bytecodealliance/wasmtime#8312): Use `fmin` directly once
-            // Cranelift backend lowerings are implemented.
-            let a = codegen_f16_f128::f16_to_f32(fx, a);
-            let b = codegen_f16_f128::f16_to_f32(fx, b);
-            let val = fx.bcx.ins().fmin(a, b);
-            let val = codegen_f16_f128::f32_to_f16(fx, val);
+            let val = codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                fx.bcx.ins().fmin(a, b)
+            });
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
             ret.write_cvalue(fx, val);
         }
@@ -1240,12 +1237,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let a = a.load_scalar(fx);
             let b = b.load_scalar(fx);
 
-            // FIXME(bytecodealliance/wasmtime#8312): Use `fmax` directly once
-            // Cranelift backend lowerings are implemented.
-            let a = codegen_f16_f128::f16_to_f32(fx, a);
-            let b = codegen_f16_f128::f16_to_f32(fx, b);
-            let val = fx.bcx.ins().fmax(a, b);
-            let val = codegen_f16_f128::f32_to_f16(fx, val);
+            let val = codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                fx.bcx.ins().fmax(a, b)
+            });
             let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
             ret.write_cvalue(fx, val);
         }

@@ -120,13 +120,12 @@ impl UnwindContext {
         func_id: FuncId,
         context: &Context,
     ) {
-        if let target_lexicon::OperatingSystem::MacOSX { .. } =
-            module.isa().triple().operating_system
+        let triple = module.isa().triple();
+        if matches!(triple.operating_system, target_lexicon::OperatingSystem::MacOSX { .. })
+            && triple.architecture == target_lexicon::Architecture::X86_64
         {
             // The object crate doesn't currently support DW_GNU_EH_PE_absptr, which macOS
-            // requires for unwinding tables. In addition on arm64 it currently doesn't
-            // support 32bit relocations as we currently use for the unwinding table.
-            // See gimli-rs/object#415 and rust-lang/rustc_codegen_cranelift#1371
+            // requires for unwinding tables. See gimli-rs/object#415.
             return;
         }
 
@@ -250,8 +249,9 @@ impl UnwindContext {
             let mut section_map = FxHashMap::default();
             section_map.insert(id, section_id);
 
+            let use_section_symbol = product.object.format() != object::BinaryFormat::MachO;
             for reloc in &eh_frame.0.relocs {
-                product.add_debug_reloc(&section_map, &section_id, reloc);
+                product.add_debug_reloc(&section_map, &section_id, reloc, use_section_symbol);
             }
         }
     }

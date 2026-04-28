@@ -242,7 +242,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ github.ref == 'refs/heads/main' }}
-    needs: [todo_check, rustfmt, test, bench, dist]
+    # FIXME add bench back once rust-lang/cargo#16925 has been fixed
+    needs: [todo_check, rustfmt, test, dist]
 
     permissions:
       contents: write # for creating the dev tag and release

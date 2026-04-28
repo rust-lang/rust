@@ -204,7 +204,9 @@ impl<'tcx> CValue<'tcx> {
                 let (field_ptr, field_layout) = codegen_field(fx, ptr, None, layout, field);
                 CValue::by_ref(field_ptr, field_layout)
             }
-            CValueInner::ByRef(_, Some(_)) => todo!(),
+            CValueInner::ByRef(_, Some(_)) => {
+                bug!("value_field for unsized by-ref value not supported")
+            }
         }
     }
 
@@ -655,7 +657,13 @@ impl<'tcx> CPlace<'tcx> {
                             flags,
                         );
                     }
-                    CValueInner::ByRef(_, Some(_)) => todo!(),
+                    CValueInner::ByRef(_from_ptr, Some(_extra)) => {
+                        bug!(
+                            "write_cvalue for unsized by-ref value not allowed: dst={:?} src={:?}",
+                            dst_layout.ty,
+                            from.layout().ty
+                        );
+                    }
                 }
             }
         }

@@ -358,7 +358,6 @@ pub(crate) fn codegen_float_binop<'tcx>(
     } else {
         (lhs, rhs)
     };
-    let b = fx.bcx.ins();
     let res = match bin_op {
         // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings
         // have been added to Cranelift.
@@ -367,10 +366,10 @@ pub(crate) fn codegen_float_binop<'tcx>(
         {
             codegen_f16_f128::codegen_f128_binop(fx, bin_op, lhs, rhs)
         }
-        BinOp::Add => b.fadd(lhs, rhs),
-        BinOp::Sub => b.fsub(lhs, rhs),
-        BinOp::Mul => b.fmul(lhs, rhs),
-        BinOp::Div => b.fdiv(lhs, rhs),
+        BinOp::Add => fx.bcx.ins().fadd(lhs, rhs),
+        BinOp::Sub => fx.bcx.ins().fsub(lhs, rhs),
+        BinOp::Mul => fx.bcx.ins().fmul(lhs, rhs),
+        BinOp::Div => fx.bcx.ins().fdiv(lhs, rhs),
         BinOp::Rem => {
             let (name, ty, lhs, rhs) = match in_lhs.layout().ty.kind() {
                 ty::Float(FloatTy::F16) => (
@@ -389,22 +388,12 @@ pub(crate) fn codegen_float_binop<'tcx>(
                 _ => bug!(),
             };
 
-            let ret_val = fx.lib_call(
+            fx.lib_call(
                 name,
                 vec![AbiParam::new(ty), AbiParam::new(ty)],
                 vec![AbiParam::new(ty)],
                 &[lhs, rhs],
-            )[0];
-
-            let ret_val = if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
-                // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift
-                // operation once Cranelift backend lowerings have been
-                // implemented.
-                codegen_f16_f128::f32_to_f16(fx, ret_val)
-            } else {
-                ret_val
-            };
-            return CValue::by_val(ret_val, in_lhs.layout());
+            )[0]
         }
         BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
             let fltcc = match bin_op {

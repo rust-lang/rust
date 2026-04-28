@@ -43,7 +43,7 @@ impl DebugContext {
         let _: Result<()> = sections.for_each(|id, section| {
             if let Some(section_id) = section_map.get(&id) {
                 for reloc in &section.relocs {
-                    product.add_debug_reloc(&section_map, section_id, reloc);
+                    product.add_debug_reloc(&section_map, section_id, reloc, true);
                 }
             }
             Ok(())

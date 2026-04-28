@@ -235,6 +235,9 @@ pub(crate) fn compile_global_asm(
             .arg("-")
             .arg("-Abad_asm_style")
             .arg("-Zcodegen-backend=llvm")
+            // JSON targets currently require `-Zunstable-options`
+            // Tracking issue: https://github.com/rust-lang/rust/issues/151528
+            .arg("-Zunstable-options")
             .stdin(Stdio::piped())
             .spawn()
             .expect("Failed to spawn `as`.");

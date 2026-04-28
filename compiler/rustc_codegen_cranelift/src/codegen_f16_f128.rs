@@ -51,6 +51,40 @@ fn f64_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
     if ret_ty == types::I16 { fx.bcx.ins().bitcast(types::F16, MemFlags::new(), ret) } else { ret }
 }
 
+// FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings have
+// been added to Cranelift.
+pub(crate) fn maybe_with_f16_to_f32(
+    fx: &mut FunctionCx<'_, '_, '_>,
+    val: Value,
+    f: impl FnOnce(&mut FunctionCx<'_, '_, '_>, Value) -> Value,
+) -> Value {
+    if fx.bcx.func.dfg.value_type(val) == types::F16 {
+        let val = f16_to_f32(fx, val);
+        let res = f(fx, val);
+        f32_to_f16(fx, res)
+    } else {
+        f(fx, val)
+    }
+}
+
+// FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings have
+// been added to Cranelift.
+pub(crate) fn maybe_with_f16_to_f32_pair(
+    fx: &mut FunctionCx<'_, '_, '_>,
+    a: Value,
+    b: Value,
+    f: impl FnOnce(&mut FunctionCx<'_, '_, '_>, Value, Value) -> Value,
+) -> Value {
+    if fx.bcx.func.dfg.value_type(a) == types::F16 {
+        let a = f16_to_f32(fx, a);
+        let b = f16_to_f32(fx, b);
+        let res = f(fx, a, b);
+        f32_to_f16(fx, res)
+    } else {
+        f(fx, a, b)
+    }
+}
+
 pub(crate) fn fcmp(fx: &mut FunctionCx<'_, '_, '_>, cc: FloatCC, lhs: Value, rhs: Value) -> Value {
     let ty = fx.bcx.func.dfg.value_type(lhs);
     match ty {

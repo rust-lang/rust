@@ -67,9 +67,9 @@ index bc68bfe396..00143ef3ed 100644
 --- a/src/bootstrap/src/core/config/config.rs
 +++ b/src/bootstrap/src/core/config/config.rs
 @@ -2230,7 +2230,7 @@ pub fn download_ci_rustc_commit<'a>(
-                     return None;
-                 }
-
+         match freshness {
+             PathFreshness::LastModifiedUpstream { upstream } => upstream,
+             PathFreshness::HasLocalModifications { upstream, modifications } => {
 -                if dwn_ctx.is_running_on_ci() {
 +                if false && dwn_ctx.is_running_on_ci() {
                      eprintln!("CI rustc commit matches with HEAD and we are in CI.");
