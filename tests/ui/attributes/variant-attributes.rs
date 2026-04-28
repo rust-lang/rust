@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 //@ pp-exact - Make sure we actually print the attributes
 
 #![allow(non_camel_case_types)]
