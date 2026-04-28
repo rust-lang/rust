@@ -217,12 +217,10 @@ fn create_mingw_dll_import_lib(
     // able to control the *exact* spelling of each of the symbols that are being imported:
     // hence we don't want `dlltool` adding leading underscores automatically.
     let dlltool = find_binutils_dlltool(sess);
-    let temp_prefix = {
-        let mut path = PathBuf::from(&output_path);
-        path.pop();
-        path.push(lib_name);
-        path
-    };
+    // temp_prefix doesn't handle paths with spaces so
+    // use a relative path and set the current working directory
+    let cwd = output_path.parent().unwrap_or(output_path);
+    let temp_prefix = lib_name;
     // dlltool target architecture args from:
     // https://github.com/llvm/llvm-project-release-prs/blob/llvmorg-15.0.6/llvm/lib/ToolDrivers/llvm-dlltool/DlltoolDriver.cpp#L69
     let (dlltool_target_arch, dlltool_target_bitness) = match &sess.target.arch {
@@ -246,7 +244,8 @@ fn create_mingw_dll_import_lib(
         .arg(dlltool_target_bitness)
         .arg("--no-leading-underscore")
         .arg("--temp-prefix")
-        .arg(temp_prefix);
+        .arg(temp_prefix)
+        .current_dir(cwd);
 
     match dlltool_cmd.output() {
         Err(e) => {
