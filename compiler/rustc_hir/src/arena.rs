@@ -9,6 +9,7 @@ macro_rules! arena_types {
             [] attribute: rustc_hir::Attribute,
             [] owner_info: rustc_hir::OwnerInfo<'tcx>,
             [] macro_def: rustc_ast::MacroDef,
+            [] index_set: rustc_data_structures::fx::FxIndexSet<u32>,
         ]);
     )
 }

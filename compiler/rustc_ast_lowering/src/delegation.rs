@@ -43,14 +43,17 @@ use hir::def::{DefKind, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
-use rustc_ast::*;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_ast::{Block, Delegation, NodeId, StmtKind};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, FnDeclFlags};
 use rustc_middle::span_bug;
-use rustc_middle::ty::Asyncness;
+use rustc_middle::ty::{
+    self, Asyncness, ClauseKind, ConstKind, PredicateKind, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
+};
 use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol};
 use smallvec::SmallVec;
@@ -143,11 +146,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let (param_count, c_variadic) = self.param_count(sig_id);
 
-                let mut generics =
-                    self.uplift_delegation_generics(delegation, sig_id, item_id, is_method);
+                let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
 
                 let body_id = self.lower_delegation_body(
                     delegation,
+                    sig_id,
                     is_method,
                     param_count,
                     &mut generics,
@@ -162,8 +165,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let generics = self.arena.alloc(hir::Generics {
                     has_where_clause_predicates: false,
-                    params: self.arena.alloc_from_iter(generics.all_params(span, self)),
-                    predicates: self.arena.alloc_from_iter(generics.all_predicates(span, self)),
+                    params: self.arena.alloc_from_iter(generics.all_params()),
+                    predicates: self.arena.alloc_from_iter(generics.all_predicates()),
                     span,
                     where_clause_span: span,
                 });
@@ -398,6 +401,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_delegation_body(
         &mut self,
         delegation: &Delegation,
+        sig_id: DefId,
         is_method: bool,
         param_count: usize,
         generics: &mut GenericsGenerationResults<'hir>,
@@ -442,7 +446,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 args.push(this.lower_target_expr(&block));
             }
 
-            let final_expr = this.finalize_body_lowering(delegation, args, generics, span);
+            let final_expr = this.finalize_body_lowering(delegation, sig_id, args, generics, span);
 
             (this.arena.alloc_from_iter(parameters), final_expr)
         })
@@ -459,6 +463,105 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let block = self.lower_block(block, false);
         self.mk_expr(hir::ExprKind::Block(block, None), block.span)
+    }
+
+    fn find_used_parent_generics(&self, sig_id: DefId) -> &'hir FxIndexSet<u32> {
+        struct UsedParentGenericsCollector {
+            parent_count: u32,
+            used_parent_generics: FxIndexSet<u32>,
+        }
+
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParentGenericsCollector {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) {
+                if let ty::Param(param) = ty.kind() {
+                    self.check_if_parent_param(param.index);
+                }
+
+                ty.super_visit_with(self)
+            }
+
+            fn visit_region(&mut self, r: ty::Region<'tcx>) {
+                if let ty::ReEarlyParam(param) = r.kind() {
+                    self.check_if_parent_param(param.index);
+                }
+            }
+
+            fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+                if let ConstKind::Param(param) = ct.kind() {
+                    self.check_if_parent_param(param.index);
+                }
+
+                ct.super_visit_with(self)
+            }
+        }
+
+        impl UsedParentGenericsCollector {
+            fn check_if_parent_param(&mut self, index: u32) {
+                // Don't consider usage of Self.
+                if index > 0 && index < self.parent_count {
+                    self.used_parent_generics.insert(index);
+                }
+            }
+        }
+
+        // If parent is not a trait then we have no parent generics, so exit early.
+        let parent = self.tcx.parent(sig_id);
+        if !matches!(self.tcx.def_kind(parent), DefKind::Trait) {
+            return self.arena.alloc(Default::default());
+        }
+
+        let mut collector = UsedParentGenericsCollector {
+            parent_count: self.tcx.generics_of(sig_id).parent_count as u32,
+            used_parent_generics: Default::default(),
+        };
+
+        // Find used parent generics in signature and in predicates of sig. function.
+        self.tcx.fn_sig(sig_id).skip_binder().visit_with(&mut collector);
+        for (pred, _) in self.tcx.predicates_of(sig_id).predicates {
+            pred.visit_with(&mut collector);
+        }
+
+        // Next iterate over sig. function parent predicates and collect additional
+        // generic params that are used in those predicates.
+        // We start with parent generics that are used in signature or predicates of sig. function.
+        // The process will stop when no new generic params are added in `used_parent_generics` set.
+        loop {
+            let current_params = collector.used_parent_generics.clone();
+            for &param in &current_params {
+                for (pred, _) in self.tcx.predicates_of(parent).predicates {
+                    // Consider predicates of the following pattern: `T: Predicate`, where
+                    // `T` is either a type parameter (i.e., `T: Bound<'a, TOther>`, `T: 'static + 'a`)
+                    //  or lifetime (i.e., `'a: 'b + 'c`).
+                    let should_visit = match pred.as_predicate().kind().skip_binder() {
+                        PredicateKind::Clause(clause_kind) => match clause_kind {
+                            ClauseKind::Trait(trait_pred) => trait_pred.self_ty().is_param(param),
+                            ClauseKind::RegionOutlives(outlives_predicate) => {
+                                match outlives_predicate.0.kind() {
+                                    ty::ReEarlyParam(lifetime) if lifetime.index == param => true,
+                                    _ => false,
+                                }
+                            }
+                            ClauseKind::TypeOutlives(outlives_predicate) => {
+                                outlives_predicate.0.is_param(param)
+                            }
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+
+                    if should_visit {
+                        pred.visit_with(&mut collector);
+                    }
+                }
+            }
+
+            // Stop when no new used parent generics params were found.
+            if collector.used_parent_generics.len() == current_params.len() {
+                break;
+            }
+        }
+
+        self.arena.alloc(collector.used_parent_generics)
     }
 
     // Generates expression for the resulting body. If possible, `MethodCall` is used
@@ -479,6 +582,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn finalize_body_lowering(
         &mut self,
         delegation: &Delegation,
+        sig_id: DefId,
         args: Vec<hir::Expr<'hir>>,
         generics: &mut GenericsGenerationResults<'hir>,
         span: Span,
@@ -506,10 +610,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None,
             );
 
-            // FIXME(fn_delegation): proper support for parent generics propagation
-            // in method call scenario.
             let segment = self.process_segment(span, &segment, &mut generics.child);
             let segment = self.arena.alloc(segment);
+
+            // If `Self` generic param was generated then we will have to add all parent generics,
+            // as we will have a predicate `Self: Trait</* all parent generics */>`.
+            let parent_generics =
+                (!generics.generated_self).then(|| self.find_used_parent_generics(sig_id));
+
+            // We do not propagate parent generics in method call but still need to uplift them
+            // so they are generated in delegation.
+            generics.parent.generics.into_hir_generics(self, parent_generics, span);
+
+            let parent_generics = parent_generics.map_or(hir::MethodCallParentGenerics::All, |g| {
+                hir::MethodCallParentGenerics::Selected(g)
+            });
+
+            let parent_generics = hir::DelegationParentGenerics::MethodCall(parent_generics);
+            generics.parent.args_segment_id = Some(parent_generics);
 
             self.arena.alloc(hir::Expr {
                 hir_id: self.next_id(),
@@ -575,16 +693,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.mk_expr(hir::ExprKind::Block(block, None), span)
     }
 
-    fn process_segment(
+    fn process_segment<T: From<HirId>>(
         &mut self,
         span: Span,
         segment: &hir::PathSegment<'hir>,
-        result: &mut GenericsGenerationResult<'hir>,
+        result: &mut GenericsGenerationResult<'hir, T>,
     ) -> hir::PathSegment<'hir> {
         let details = result.generics.args_propagation_details();
 
+        // Always uplift generic params, as if they are not empty then they
+        // should be generated in delegation.
+        let generics = result.generics.into_hir_generics(self, None, span);
         let segment = if details.should_propagate {
-            let generics = result.generics.into_hir_generics(self, span);
             let args = generics.into_generic_args(self, span);
 
             // Needed for better error messages (`trait-impl-wrong-args-count.rs` test).
@@ -596,7 +716,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         if details.use_args_in_sig_inheritance {
-            result.args_segment_id = Some(segment.hir_id);
+            result.args_segment_id = Some(T::from(segment.hir_id));
         }
 
         segment

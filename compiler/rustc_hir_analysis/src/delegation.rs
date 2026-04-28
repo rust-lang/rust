@@ -3,13 +3,17 @@
 //! For more information about delegation design, see the tracking issue #118212.
 
 use std::debug_assert_matches;
+use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{DelegationGenerics, HirId, PathSegment};
+use rustc_hir::{
+    DelegationGenerics, DelegationParentGenerics, HirId, MethodCallParentGenerics, PathSegment,
+};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
@@ -17,6 +21,44 @@ use crate::collect::ItemCtxt;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 type RemapTable = FxHashMap<u32, u32>;
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        if !ty.has_param() {
+            return ControlFlow::Continue(());
+        }
+
+        if let ty::Param(param) = ty.kind()
+            && !self.remap_table.contains_key(&param.index)
+        {
+            return ControlFlow::Break(());
+        }
+
+        ty.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
+        if let ty::ReEarlyParam(param) = r.kind()
+            && !self.remap_table.contains_key(&param.index)
+        {
+            return ControlFlow::Break(());
+        }
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
+        if let ty::ConstKind::Param(param) = ct.kind()
+            && !self.remap_table.contains_key(&param.index)
+        {
+            return ControlFlow::Break(());
+        }
+
+        ct.super_visit_with(self)
+    }
+}
 
 struct ParamIndexRemapper<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -70,7 +112,10 @@ enum SelfPositionKind {
     None,
 }
 
-fn get_delegation_generics(tcx: TyCtxt<'_>, delegation_id: LocalDefId) -> &DelegationGenerics {
+fn get_delegation_generics<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    delegation_id: LocalDefId,
+) -> &'tcx DelegationGenerics<'tcx> {
     tcx.hir_node(tcx.local_def_id_to_hir_id(delegation_id))
         .fn_sig()
         .expect("processing delegation")
@@ -141,6 +186,19 @@ enum InheritanceKind {
     Own,
 }
 
+fn used_parent_generic_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    delegation_id: LocalDefId,
+) -> Option<&'tcx FxIndexSet<u32>> {
+    get_delegation_generics(tcx, delegation_id).parent_args_segment_id.and_then(|pg| {
+        if let DelegationParentGenerics::MethodCall(MethodCallParentGenerics::Selected(used)) = pg {
+            Some(used)
+        } else {
+            None
+        }
+    })
+}
+
 /// Maps sig generics into generic args of delegation. Delegation generics has the following pattern:
 ///
 /// [SELF | maybe self in the beginning]
@@ -172,11 +230,14 @@ fn create_mapping<'tcx>(
 
     let sig_generics = tcx.generics_of(sig_id);
     let process_sig_parent_generics = matches!(fn_kind(tcx, sig_id), FnKind::AssocTrait);
+    let used_parent_params = used_parent_generic_params(tcx, def_id);
 
     if process_sig_parent_generics {
         for i in (sig_generics.has_self as usize)..sig_generics.parent_count {
             let param = sig_generics.param_at(i, tcx);
-            if !param.kind.is_ty_or_const() {
+            if !param.kind.is_ty_or_const()
+                && used_parent_params.is_none_or(|used| used.contains(&param.index))
+            {
                 mapping.insert(param.index, args_index as u32);
                 args_index += 1;
             }
@@ -201,7 +262,9 @@ fn create_mapping<'tcx>(
     if process_sig_parent_generics {
         for i in (sig_generics.has_self as usize)..sig_generics.parent_count {
             let param = sig_generics.param_at(i, tcx);
-            if param.kind.is_ty_or_const() {
+            if param.kind.is_ty_or_const()
+                && used_parent_params.is_none_or(|used| used.contains(&param.index))
+            {
                 mapping.insert(param.index, args_index as u32);
                 args_index += 1;
             }
@@ -516,6 +579,13 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
                     continue;
                 }
 
+                // Check if all generic params are generated for the predicate. If we
+                // generate method call we may not generate all parent generics, thus
+                // we do not need their predicates.
+                if pred.0.visit_with(&mut self.folder).is_break() {
+                    continue;
+                }
+
                 let new_pred = pred.0.fold_with(&mut self.folder);
                 self.preds.push((
                     EarlyBinder::bind(new_pred).instantiate(self.tcx, args).skip_norm_wip(),
@@ -643,14 +713,17 @@ fn get_delegation_user_specified_args<'tcx>(
     let ctx = ItemCtxt::new(tcx, delegation_id);
     let lowerer = ctx.lowerer();
 
-    let parent_args = info.parent_args_segment_id.and_then(get_segment).map(|(segment, def_id)| {
-        let self_ty = get_delegation_self_ty(tcx, delegation_id);
+    let parent_args =
+        info.parent_args_segment_id.and_then(|id| id.into()).and_then(get_segment).map(
+            |(segment, def_id)| {
+                let self_ty = get_delegation_self_ty(tcx, delegation_id);
 
-        lowerer
-            .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
-            .0
-            .as_slice()
-    });
+                lowerer
+                    .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
+                    .0
+                    .as_slice()
+            },
+        );
 
     let child_args = info
         .child_args_segment_id

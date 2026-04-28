@@ -17,6 +17,7 @@ pub use rustc_ast::{
     MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
@@ -3757,10 +3758,37 @@ pub enum OpaqueTyOrigin<D> {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum MethodCallParentGenerics<'hir> {
+    All,
+    Selected(&'hir FxIndexSet<u32>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum DelegationParentGenerics<'hir> {
+    UserSpecified(HirId),
+    MethodCall(MethodCallParentGenerics<'hir>),
+}
+
+impl From<HirId> for DelegationParentGenerics<'_> {
+    fn from(value: HirId) -> Self {
+        Self::UserSpecified(value)
+    }
+}
+
+impl Into<Option<HirId>> for DelegationParentGenerics<'_> {
+    fn into(self) -> Option<HirId> {
+        match self {
+            DelegationParentGenerics::UserSpecified(hir_id) => Some(hir_id),
+            _ => None,
+        }
+    }
+}
+
 // Ids of parent (or child) path segment that contains user-specified args
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
-pub struct DelegationGenerics {
-    pub parent_args_segment_id: Option<HirId>,
+pub struct DelegationGenerics<'hir> {
+    pub parent_args_segment_id: Option<DelegationParentGenerics<'hir>>,
     pub child_args_segment_id: Option<HirId>,
     pub self_ty_id: Option<HirId>,
     pub propagate_self_ty: bool,
@@ -3770,7 +3798,7 @@ pub struct DelegationGenerics {
 pub enum InferDelegationSig<'hir> {
     Input(usize),
     // Place generics info here, as we always specify output type for delegations.
-    Output(&'hir DelegationGenerics),
+    Output(&'hir DelegationGenerics<'hir>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
@@ -4057,7 +4085,7 @@ impl<'hir> FnDecl<'hir> {
         None
     }
 
-    pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics> {
+    pub fn opt_delegation_generics(&self) -> Option<&'hir DelegationGenerics<'hir>> {
         if let FnRetTy::Return(ty) = self.output
             && let TyKind::InferDelegation(InferDelegation::Sig(_, kind)) = ty.kind
             && let InferDelegationSig::Output(generics) = kind

@@ -50,13 +50,13 @@ fn main() {
     X::bar::<i32, i32, 1>();
     X::bar::<'static, 'static, i32, i32, 1>();
     X::bar1();
-    x.trait_foo::<'static, 'static, i32, 1, String, true>();
+    x.trait_foo::<'static, String, true>();
     x.trait_foo1();
 
     <usize as LocalTrait>::bar::<i32, i32, 1>();
     <usize as LocalTrait>::bar::<'static, 'static, i32, i32, 1>();
     <usize as LocalTrait>::bar1();
 
-    1usize.trait_foo::<'static, 'static, i32, 1, String, true>();
+    1usize.trait_foo::<'static, String, true>();
     1usize.trait_foo1();
 }

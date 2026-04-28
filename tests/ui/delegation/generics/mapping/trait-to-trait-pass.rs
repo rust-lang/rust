@@ -32,14 +32,6 @@ mod test_1 {
         reuse Trait::<'static, 'static, 'static, i32>::foo as bar3 { self.get_self() }
         reuse Trait::<'static, 'static, 'static, i32>::foo::<'static, String, false>
             as bar4 { self.get_self() }
-
-        // FIXME(fn_delegation): Uncomment those tests when proper support for
-        // generics when method call is generated is added
-
-        // reuse Trait::foo::<'static, String, false> as bar5 { Self::get() }
-        // reuse Trait::foo as bar6 { Self::get() }
-        // reuse Trait::foo::<'static, String, false> as bar7 { self.get_self() }
-        // reuse Trait::foo as bar8 { self.get_self() }
     }
 
     trait Trait3 {

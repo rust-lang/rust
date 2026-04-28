@@ -1,6 +1,7 @@
 use hir::HirId;
 use hir::def::{DefKind, Res};
 use rustc_ast::*;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericParamDefKind;
@@ -74,16 +75,17 @@ pub(super) enum HirOrTyGenerics<'hir> {
     Hir(DelegationGenerics<&'hir hir::Generics<'hir>>),
 }
 
-pub(super) struct GenericsGenerationResult<'hir> {
+pub(super) struct GenericsGenerationResult<'hir, T> {
     pub(super) generics: HirOrTyGenerics<'hir>,
-    pub(super) args_segment_id: Option<HirId>,
+    pub(super) args_segment_id: Option<T>,
 }
 
 pub(super) struct GenericsGenerationResults<'hir> {
-    pub(super) parent: GenericsGenerationResult<'hir>,
-    pub(super) child: GenericsGenerationResult<'hir>,
+    pub(super) parent: GenericsGenerationResult<'hir, hir::DelegationParentGenerics<'hir>>,
+    pub(super) child: GenericsGenerationResult<'hir, HirId>,
     pub(super) self_ty_id: Option<HirId>,
     pub(super) propagate_self_ty: bool,
+    pub(super) generated_self: bool,
 }
 
 pub(super) struct GenericArgsPropagationDetails {
@@ -115,11 +117,13 @@ impl<'hir> HirOrTyGenerics<'hir> {
     pub(super) fn into_hir_generics(
         &mut self,
         ctx: &mut LoweringContext<'_, 'hir>,
+        filter: Option<&'hir FxIndexSet<u32>>,
         span: Span,
     ) -> &mut HirOrTyGenerics<'hir> {
         if let HirOrTyGenerics::Ty(ty) = self {
             let rename_self = matches!(ty.pos, GenericsPosition::Child);
-            let params = ctx.uplift_delegation_generic_params(span, ty.generics, rename_self);
+            let params =
+                ctx.uplift_delegation_generic_params(span, ty.generics, rename_self, filter);
 
             *self = HirOrTyGenerics::Hir(DelegationGenerics {
                 generics: params,
@@ -162,31 +166,18 @@ impl<'hir> HirOrTyGenerics<'hir> {
     }
 }
 
-impl<'hir> GenericsGenerationResult<'hir> {
+impl<'hir, T> GenericsGenerationResult<'hir, T> {
     fn new(
         generics: DelegationGenerics<&'hir [ty::GenericParamDef]>,
-    ) -> GenericsGenerationResult<'hir> {
+    ) -> GenericsGenerationResult<'hir, T> {
         GenericsGenerationResult { generics: HirOrTyGenerics::Ty(generics), args_segment_id: None }
     }
 }
 
 impl<'hir> GenericsGenerationResults<'hir> {
-    pub(super) fn all_params(
-        &mut self,
-        span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
-    ) -> impl Iterator<Item = hir::GenericParam<'hir>> {
-        // Now we always call `into_hir_generics` both on child and parent,
-        // however in future we would not do that, when scenarios like
-        // method call will be supported (if HIR generics were not obtained
-        // then it means that we did not propagated them, thus we do not need
-        // to generate params).
-        let mut create_params = |result: &mut GenericsGenerationResult<'hir>| {
-            result.generics.into_hir_generics(ctx, span).hir_generics_or_empty().params
-        };
-
-        let parent = create_params(&mut self.parent);
-        let child = create_params(&mut self.child);
+    pub(super) fn all_params(&mut self) -> impl Iterator<Item = hir::GenericParam<'hir>> {
+        let parent = self.parent.generics.hir_generics_or_empty().params;
+        let child = self.child.generics.hir_generics_or_empty().params;
 
         // Order generics, first we have parent and child lifetimes,
         // then parent and child types and consts.
@@ -205,24 +196,14 @@ impl<'hir> GenericsGenerationResults<'hir> {
     /// and `generate_lifetime_predicate` functions) we need to add them to delegation generics.
     /// Those predicates will not affect resulting predicate inheritance and folding
     /// in `rustc_hir_analysis`, as we inherit all predicates from delegation signature.
-    pub(super) fn all_predicates(
-        &mut self,
-        span: Span,
-        ctx: &mut LoweringContext<'_, 'hir>,
-    ) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
-        // Now we always call `into_hir_generics` both on child and parent,
-        // however in future we would not do that, when scenarios like
-        // method call will be supported (if HIR generics were not obtained
-        // then it means that we did not propagated them, thus we do not need
-        // to generate predicates).
-        let mut create_predicates = |result: &mut GenericsGenerationResult<'hir>| {
-            result.generics.into_hir_generics(ctx, span).hir_generics_or_empty().predicates
-        };
-
-        let parent = create_predicates(&mut self.parent);
-        let child = create_predicates(&mut self.child);
-
-        parent.into_iter().chain(child).copied()
+    pub(super) fn all_predicates(&mut self) -> impl Iterator<Item = hir::WherePredicate<'hir>> {
+        self.parent
+            .generics
+            .hir_generics_or_empty()
+            .predicates
+            .into_iter()
+            .chain(self.child.generics.hir_generics_or_empty().predicates)
+            .copied()
     }
 }
 
@@ -231,17 +212,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         delegation: &Delegation,
         sig_id: DefId,
-        item_id: NodeId,
         is_method: bool,
     ) -> GenericsGenerationResults<'hir> {
-        let delegation_parent_kind =
-            self.tcx.def_kind(self.tcx.local_parent(self.local_def_id(item_id)));
-
+        let delegation_id = self.current_hir_id_owner.def_id;
         let segments = &delegation.path.segments;
         let len = segments.len();
         let child_user_specified = segments[len - 1].args.is_some();
-
         let sig_params = &self.tcx.generics_of(sig_id).own_params[..];
+        let delegation_parent_kind = self.tcx.def_kind(self.tcx.local_parent(delegation_id));
 
         // If we are in trait impl always generate function whose generics matches
         // those that are defined in trait.
@@ -264,6 +242,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 child,
                 self_ty_id: None,
                 propagate_self_ty: false,
+                generated_self: false,
             };
         }
 
@@ -322,6 +301,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             child: GenericsGenerationResult::new(child_generics),
             self_ty_id: None,
             propagate_self_ty: free_to_trait_delegation && !generate_self,
+            generated_self: generate_self,
         }
     }
 
@@ -330,66 +310,73 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         params: &'hir [ty::GenericParamDef],
         rename_self: bool,
+        filter: Option<&'hir FxIndexSet<u32>>,
     ) -> &'hir hir::Generics<'hir> {
-        let params = self.arena.alloc_from_iter(params.iter().map(|p| {
-            let def_kind = match p.kind {
-                GenericParamDefKind::Lifetime => DefKind::LifetimeParam,
-                GenericParamDefKind::Type { .. } => DefKind::TyParam,
-                GenericParamDefKind::Const { .. } => DefKind::ConstParam,
-            };
+        let params = self.arena.alloc_from_iter(
+            params
+                .iter()
+                .filter(|p| p.name == kw::SelfUpper || filter.is_none_or(|f| f.contains(&p.index)))
+                .map(|p| {
+                    let def_kind = match p.kind {
+                        GenericParamDefKind::Lifetime => DefKind::LifetimeParam,
+                        GenericParamDefKind::Type { .. } => DefKind::TyParam,
+                        GenericParamDefKind::Const { .. } => DefKind::ConstParam,
+                    };
 
-            // Rename Self generic param to This so it is properly propagated.
-            // If the user will create a function `fn foo<Self>() {}` with generic
-            // param "Self" then it will not be generated in HIR, the same thing
-            // applies to traits, `trait Trait<Self> {}` will be represented as
-            // `trait Trait {}` in HIR and "unexpected keyword `Self` in generic parameters"
-            // error will be emitted.
-            // Note that we do not rename `Self` to `This` after non-recursive reuse
-            // from Trait, in this case the `Self` should not be propagated
-            // (we rely that implicit `Self` generic param of a trait is named "Self")
-            // and it is OK to have Self generic param generated during lowering.
-            let param_name =
-                if rename_self && p.name == kw::SelfUpper { sym::This } else { p.name };
+                    // Rename Self generic param to This so it is properly propagated.
+                    // If the user will create a function `fn foo<Self>() {}` with generic
+                    // param "Self" then it will not be generated in HIR, the same thing
+                    // applies to traits, `trait Trait<Self> {}` will be represented as
+                    // `trait Trait {}` in HIR and "unexpected keyword `Self` in generic parameters"
+                    // error will be emitted.
+                    // Note that we do not rename `Self` to `This` after non-recursive reuse
+                    // from Trait, in this case the `Self` should not be propagated
+                    // (we rely that implicit `Self` generic param of a trait is named "Self")
+                    // and it is OK to have Self generic param generated during lowering.
+                    let param_name =
+                        if rename_self && p.name == kw::SelfUpper { sym::This } else { p.name };
 
-            let param_ident = Ident::new(param_name, span);
-            let def_name = Some(param_ident.name);
-            let node_id = self.next_node_id();
+                    let param_ident = Ident::new(param_name, span);
+                    let def_name = Some(param_ident.name);
+                    let node_id = self.next_node_id();
 
-            let def_id = self.create_def(node_id, def_name, def_kind, span);
+                    let def_id = self.create_def(node_id, def_name, def_kind, span);
 
-            let kind = match p.kind {
-                GenericParamDefKind::Lifetime => {
-                    hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
-                }
-                GenericParamDefKind::Type { synthetic, .. } => {
-                    hir::GenericParamKind::Type { default: None, synthetic }
-                }
-                GenericParamDefKind::Const { .. } => {
-                    let hir_id = self.next_id();
-                    let kind = hir::TyKind::InferDelegation(hir::InferDelegation::DefId(p.def_id));
+                    let kind = match p.kind {
+                        GenericParamDefKind::Lifetime => hir::GenericParamKind::Lifetime {
+                            kind: hir::LifetimeParamKind::Explicit,
+                        },
+                        GenericParamDefKind::Type { synthetic, .. } => {
+                            hir::GenericParamKind::Type { default: None, synthetic }
+                        }
+                        GenericParamDefKind::Const { .. } => {
+                            let hir_id = self.next_id();
+                            let kind =
+                                hir::TyKind::InferDelegation(hir::InferDelegation::DefId(p.def_id));
 
-                    hir::GenericParamKind::Const {
-                        ty: self.arena.alloc(hir::Ty { kind, hir_id, span }),
-                        default: None,
+                            hir::GenericParamKind::Const {
+                                ty: self.arena.alloc(hir::Ty { kind, hir_id, span }),
+                                default: None,
+                            }
+                        }
+                    };
+
+                    // Important: we don't use `self.next_id()` as we want to execute
+                    // `lower_node_id` routine so param's id is added to `self.children`.
+                    let hir_id = self.lower_node_id(node_id);
+
+                    hir::GenericParam {
+                        hir_id,
+                        colon_span: Some(span),
+                        def_id,
+                        kind,
+                        name: hir::ParamName::Plain(param_ident),
+                        pure_wrt_drop: p.pure_wrt_drop,
+                        source: hir::GenericParamSource::Generics,
+                        span,
                     }
-                }
-            };
-
-            // Important: we don't use `self.next_id()` as we want to execute
-            // `lower_node_id` routine so param's id is added to `self.children`.
-            let hir_id = self.lower_node_id(node_id);
-
-            hir::GenericParam {
-                hir_id,
-                colon_span: Some(span),
-                def_id,
-                kind,
-                name: hir::ParamName::Plain(param_ident),
-                pure_wrt_drop: p.pure_wrt_drop,
-                source: hir::GenericParamSource::Generics,
-                span,
-            }
-        }));
+                }),
+        );
 
         // HACK: for now we generate predicates such that all lifetimes are early bound,
         // we can not not generate early-bound lifetimes, but we can't know which of them

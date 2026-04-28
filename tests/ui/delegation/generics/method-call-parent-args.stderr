@@ -1,0 +1,265 @@
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:48:22
+   |
+LL |         reuse Trait::foo::<String, false> as bar1 { Self::get() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:50:22
+   |
+LL |         reuse Trait::foo as bar2 { Self::get() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:55:22
+   |
+LL |         reuse Trait::foo::<String, false> as bar5 { self.get_self() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:57:22
+   |
+LL |         reuse Trait::foo as bar6 { self.get_self() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:111:22
+   |
+LL |         reuse Trait::foo::<String, false> as bar1 { Self::get() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:113:22
+   |
+LL |         reuse Trait::foo as bar2 { Self::get() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:118:22
+   |
+LL |         reuse Trait::foo::<String, false> as bar5 { self.get_self() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:120:22
+   |
+LL |         reuse Trait::foo as bar6 { self.get_self() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+
+error[E0283]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:178:22
+   |
+LL |         reuse Trait::foo::<String, false> as bar1 { self.get_self() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+   |
+note: multiple `impl`s satisfying `u8: test_2::Trait<'_, _>` found
+  --> $DIR/method-call-parent-args.rs:170:5
+   |
+LL |     impl Trait<'static, usize> for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     impl Trait<'static, String> for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:180:22
+   |
+LL |         reuse Trait::foo as bar2 { self.get_self() }
+   |                      ^^^ cannot infer type for type parameter `T` declared on the trait `Trait`
+   |
+note: multiple `impl`s satisfying `u8: test_2::Trait<'_, _>` found
+  --> $DIR/method-call-parent-args.rs:170:5
+   |
+LL |     impl Trait<'static, usize> for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     impl Trait<'static, String> for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u8: test_2::Trait<'static, ()>` is not satisfied
+  --> $DIR/method-call-parent-args.rs:183:51
+   |
+LL |         reuse Trait::<'static, ()>::foo as bar4 { self.get_self() }
+   |                                     ---           ^^^^^^^^^^^^^^^ the trait `test_2::Trait<'static, ()>` is not implemented for `u8`
+   |                                     |
+   |                                     required by a bound introduced by this call
+   |
+   = note: `u8` implements similarly named trait `test_1::Trait`, but not `test_2::Trait<'static, ()>`
+help: `u8` implements trait `test_2::Trait<'b, T>`
+  --> $DIR/method-call-parent-args.rs:170:5
+   |
+LL |     impl Trait<'static, usize> for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `test_2::Trait<'_, usize>`
+LL |     impl Trait<'static, String> for u8 {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `test_2::Trait<'_, String>`
+
+error[E0599]: no method named `foo` found for reference `&'static u8` in the current scope
+  --> $DIR/method-call-parent-args.rs:219:22
+   |
+LL |         reuse Trait::foo::<String, false> as bar1 { self.get_self() }
+   |                      ^^^ method not found in `&'static u8`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `foo`, perhaps you need to implement one of them:
+           candidate #1: `test_1::Trait`
+           candidate #2: `test_2::Trait`
+           candidate #3: `test_3::Trait`
+           candidate #4: `test_4::Trait`
+           candidate #5: `test_5::Trait`
+           candidate #6: `test_6::Trait`
+
+error[E0599]: no method named `foo` found for reference `&'static u8` in the current scope
+  --> $DIR/method-call-parent-args.rs:221:22
+   |
+LL |         reuse Trait::foo as bar2 { self.get_self() }
+   |                      ^^^ method not found in `&'static u8`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `foo`, perhaps you need to implement one of them:
+           candidate #1: `test_1::Trait`
+           candidate #2: `test_2::Trait`
+           candidate #3: `test_3::Trait`
+           candidate #4: `test_4::Trait`
+           candidate #5: `test_5::Trait`
+           candidate #6: `test_6::Trait`
+
+error[E0277]: the trait bound `u8: test_3::Trait<(), usize, ()>` is not satisfied
+  --> $DIR/method-call-parent-args.rs:223:70
+   |
+LL |         reuse Trait::<(), usize, ()>::foo::<String, false> as bar3 { self.get_self() }
+   |                                       ---                            ^^^^^^^^^^^^^^^ the trait `test_3::Trait<(), usize, ()>` is not implemented for `u8`
+   |                                       |
+   |                                       required by a bound introduced by this call
+   |
+help: the trait `test_3::Trait<(), usize, ()>` is not implemented for `u8`
+      but it is implemented for `usize`
+  --> $DIR/method-call-parent-args.rs:205:5
+   |
+LL |     impl<A: Bound<C>, B: Bound<A>, C> Trait<A, B, C> for usize {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `usize`, found `u8`
+
+error[E0277]: the trait bound `u8: test_3::Trait<(), (), ()>` is not satisfied
+  --> $DIR/method-call-parent-args.rs:225:50
+   |
+LL |         reuse Trait::<(), (), ()>::foo as bar4 { self.get_self() }
+   |                                    ---           ^^^^^^^^^^^^^^^ the trait `test_3::Trait<(), (), ()>` is not implemented for `u8`
+   |                                    |
+   |                                    required by a bound introduced by this call
+   |
+help: the trait `test_3::Trait<(), (), ()>` is not implemented for `u8`
+      but it is implemented for `usize`
+  --> $DIR/method-call-parent-args.rs:205:5
+   |
+LL |     impl<A: Bound<C>, B: Bound<A>, C> Trait<A, B, C> for usize {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `usize`, found `u8`
+
+error[E0277]: the trait bound `u8: test_3::Trait<(), usize, ()>` is not satisfied
+  --> $DIR/method-call-parent-args.rs:228:53
+   |
+LL |         reuse Trait::<(), usize, ()>::foo as bar5 { self.get_self() }
+   |                                       ---           ^^^^^^^^^^^^^^^ the trait `test_3::Trait<(), usize, ()>` is not implemented for `u8`
+   |                                       |
+   |                                       required by a bound introduced by this call
+   |
+help: the trait `test_3::Trait<(), usize, ()>` is not implemented for `u8`
+      but it is implemented for `usize`
+  --> $DIR/method-call-parent-args.rs:205:5
+   |
+LL |     impl<A: Bound<C>, B: Bound<A>, C> Trait<A, B, C> for usize {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `usize`, found `u8`
+
+error[E0283]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:321:22
+   |
+LL |         reuse Trait::* { Self::get_self() }
+   |                      ^ cannot infer type for type parameter `A` declared on the trait `Trait`
+   |
+   = note: the type must implement `test_6::Bound<_>`
+help: the trait `test_6::Bound<u8>` is implemented for `usize`
+  --> $DIR/method-call-parent-args.rs:312:5
+   |
+LL |     impl Bound<u8> for usize {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `test_6::Trait::foo`
+  --> $DIR/method-call-parent-args.rs:305:42
+   |
+LL |     trait Trait<'a, 'b: 'static + 'a, A: Bound<B>, B, C> {
+   |                                          ^^^^^^^^ required by this bound in `Trait::foo`
+LL |         fn foo<U, const M: bool>(&self, b: &'b str, f: impl FnOnce() -> usize) {}
+   |            --- required by a bound in this associated function
+
+error[E0282]: type annotations needed
+  --> $DIR/method-call-parent-args.rs:321:22
+   |
+LL |         reuse Trait::* { Self::get_self() }
+   |                      ^ cannot infer type for type parameter `C` declared on the trait `Trait`
+
+error[E0277]: the trait bound `usize: test_6::Bound<u32>` is not satisfied
+  --> $DIR/method-call-parent-args.rs:329:24
+   |
+LL |             self.bar::<usize, u32, true>(|| 123);
+   |                  ---   ^^^^^ the trait `test_6::Bound<u32>` is not implemented for `usize`
+   |                  |
+   |                  required by a bound introduced by this call
+   |
+   = note: `usize` implements similarly named trait `test_3::Bound`, but not `test_6::Bound<u32>`
+help: the trait `Bound<u32>` is not implemented for `usize`
+      but trait `Bound<u8>` is implemented for it
+  --> $DIR/method-call-parent-args.rs:312:5
+   |
+LL |     impl Bound<u8> for usize {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `u8`, found `u32`
+note: required by a bound in `test_6::X::bar`
+  --> $DIR/method-call-parent-args.rs:305:42
+   |
+LL |     trait Trait<'a, 'b: 'static + 'a, A: Bound<B>, B, C> {
+   |                                          ^^^^^^^^ required by this bound in `X::bar`
+...
+LL |         reuse Trait::* { Self::get_self() }
+   |                      - required by a bound in this associated function
+
+error[E0271]: expected `impl FnOnce() -> A` to return `usize`, but it returns `A`
+  --> $DIR/method-call-parent-args.rs:345:22
+   |
+LL |         reuse Trait::* { Self::get_self() }
+   |                      ^ expected `usize`, found type parameter `A`
+   |
+   = note:        expected type `usize`
+           found type parameter `A`
+note: required by a bound in `test_6::Trait::bar`
+  --> $DIR/method-call-parent-args.rs:307:58
+   |
+LL |         fn bar<const M: bool>(&self, f: impl FnOnce() -> A) {}
+   |                                                          ^ required by this bound in `Trait::bar`
+
+error[E0277]: the trait bound `usize: test_6::Bound<u32>` is not satisfied
+  --> $DIR/method-call-parent-args.rs:352:24
+   |
+LL |             self.bar::<usize, u32, true>(|| 123);
+   |                  ---   ^^^^^ the trait `test_6::Bound<u32>` is not implemented for `usize`
+   |                  |
+   |                  required by a bound introduced by this call
+   |
+   = note: `usize` implements similarly named trait `test_3::Bound`, but not `test_6::Bound<u32>`
+help: the trait `Bound<u32>` is not implemented for `usize`
+      but trait `Bound<u8>` is implemented for it
+  --> $DIR/method-call-parent-args.rs:312:5
+   |
+LL |     impl Bound<u8> for usize {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: for that trait implementation, expected `u8`, found `u32`
+note: required by a bound in `Y::bar`
+  --> $DIR/method-call-parent-args.rs:305:42
+   |
+LL |     trait Trait<'a, 'b: 'static + 'a, A: Bound<B>, B, C> {
+   |                                          ^^^^^^^^ required by this bound in `Y::bar`
+...
+LL |         reuse Trait::* { Self::get_self() }
+   |                      - required by a bound in this associated function
+
+error: aborting due to 21 previous errors
+
+Some errors have detailed explanations: E0271, E0277, E0282, E0283, E0599.
+For more information about an error, try `rustc --explain E0271`.
