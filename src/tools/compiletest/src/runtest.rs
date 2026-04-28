@@ -319,20 +319,6 @@ impl<'test> TestCx<'test> {
             TestMode::RustdocJs => true,
             TestMode::Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             TestMode::Crashes => false,
-            TestMode::Incremental => {
-                let revision =
-                    self.revision.expect("incremental tests require a list of revisions");
-                if revision.starts_with("cpass")
-                    || revision.starts_with("bpass")
-                    || revision.starts_with("rpass")
-                {
-                    true
-                } else if revision.starts_with("bfail") {
-                    false
-                } else {
-                    panic!("revision name must begin with `cpass`, `bfail`, `bpass`, or `rpass`");
-                }
-            }
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
