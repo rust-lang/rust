@@ -2424,6 +2424,9 @@ fn expr_store_diagnostics<'db>(
             ExpressionStoreDiagnostics::PatternArgInExternFn { node } => {
                 PatternArgInExternFn { node: *node }.into()
             }
+            ExpressionStoreDiagnostics::FruInDestructuringAssignment { node } => {
+                FruInDestructuringAssignment { node: *node }.into()
+            }
         });
     }
 

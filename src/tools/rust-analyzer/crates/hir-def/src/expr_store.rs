@@ -332,6 +332,7 @@ pub enum ExpressionStoreDiagnostics {
     AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
     PatternArgInExternFn { node: InFile<AstPtr<ast::Pat>> },
+    FruInDestructuringAssignment { node: InFile<AstPtr<ast::Expr>> },
 }
 
 impl ExpressionStoreBuilder {
