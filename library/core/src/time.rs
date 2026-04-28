@@ -1747,7 +1747,6 @@ impl fmt::Debug for Duration {
 /// [`f64`]: Duration::try_from_secs_f64
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
-#[repr(transparent)]
 pub struct TryFromFloatSecsError {
     kind: DurationConversionErrorKind,
 }
