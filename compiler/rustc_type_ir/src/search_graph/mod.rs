@@ -334,10 +334,6 @@ impl CycleHeads {
         self.heads.last_key_value().map(|(k, _)| *k)
     }
 
-    fn opt_lowest_cycle_head_index(&self) -> Option<StackDepth> {
-        self.heads.first_key_value().map(|(k, _)| *k)
-    }
-
     fn remove_highest_cycle_head(&mut self) -> CycleHead {
         let last = self.heads.pop_last();
         last.unwrap().1
@@ -473,10 +469,6 @@ impl PathsToNested {
 /// in this case as it could otherwise result in behavioral differences.
 /// Cycles can impact behavior. The cycle ABA may have different final
 /// results from a the cycle BAB depending on the cycle root.
-///
-/// We only start tracking nested goals once we've either encountered
-/// overflow or a solver cycle. This is a performance optimization to
-/// avoid tracking nested goals on the happy path.
 #[derive_where(Debug, Default, Clone; X: Cx)]
 struct NestedGoals<X: Cx> {
     nested_goals: HashMap<X::Input, PathsToNested>,
@@ -526,9 +518,7 @@ impl<X: Cx> NestedGoals<X> {
 /// goals still on the stack.
 #[derive_where(Debug; X: Cx)]
 struct ProvisionalCacheEntry<X: Cx> {
-    /// Whether evaluating the goal encountered overflow. This is used to
-    /// disable the cache entry except if the last goal on the stack is
-    /// already involved in this cycle.
+    /// Whether evaluating the goal encountered overflow.
     encountered_overflow: bool,
     /// All cycle heads this cache entry depends on.
     heads: CycleHeads,
@@ -598,8 +588,7 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 /// cache entry.
 enum UpdateParentGoalCtxt<'a, X: Cx> {
     Ordinary(&'a NestedGoals<X>),
-    CycleOnStack(X::Input),
-    ProvisionalCacheHit,
+    ProvisionalCacheHitOrDirectCycle,
 }
 
 impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
@@ -618,6 +607,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// have the same impact on the remaining evaluation.
     fn update_parent_goal(
         stack: &mut Stack<X>,
+        child_input: X::Input,
         step_kind_from_parent: PathKind,
         required_depth_for_nested: usize,
         heads: impl Iterator<Item = (StackDepth, CycleHead)>,
@@ -649,27 +639,14 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                     Ordering::Greater => unreachable!(),
                 }
             }
-            let parent_depends_on_cycle = match context {
+
+            parent.nested_goals.insert(child_input, step_kind_from_parent.into());
+            match context {
                 UpdateParentGoalCtxt::Ordinary(nested_goals) => {
                     parent.nested_goals.extend_from_child(step_kind_from_parent, nested_goals);
-                    !nested_goals.is_empty()
                 }
-                UpdateParentGoalCtxt::CycleOnStack(head) => {
-                    // We lookup provisional cache entries before detecting cycles.
-                    // We therefore can't use a global cache entry if it contains a cycle
-                    // whose head is in the provisional cache.
-                    parent.nested_goals.insert(head, step_kind_from_parent.into());
-                    true
-                }
-                UpdateParentGoalCtxt::ProvisionalCacheHit => true,
+                UpdateParentGoalCtxt::ProvisionalCacheHitOrDirectCycle => {}
             };
-            // Once we've got goals which encountered overflow or a cycle,
-            // we track all goals whose behavior may depend depend on these
-            // goals as this change may cause them to now depend on additional
-            // goals, resulting in new cycles. See the dev-guide for examples.
-            if parent_depends_on_cycle {
-                parent.nested_goals.insert(parent.input, PathsToNested::EMPTY);
-            }
         }
     }
 
@@ -781,6 +758,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return result;
         }
 
+        // Detect cycles on the stack. We do this before the global cache lookup as we'd
+        // need to check whether the current goal is on the stack regardless when checking
+        // whether a global cache entry is applicable.
+        if let Some(result) = self.check_cycle_on_stack(cx, input, step_kind_from_parent) {
+            return result;
+        }
+
         // Lookup the global cache unless we're building proof trees or are currently
         // fuzzing.
         let validate_cache = if !D::inspect_is_noop(inspect) {
@@ -800,15 +784,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         } else {
             None
         };
-
-        // Detect cycles on the stack. We do this after the global cache lookup to
-        // avoid iterating over the stack in case a goal has already been computed.
-        // This may not have an actual performance impact and we could reorder them
-        // as it may reduce the number of `nested_goals` we need to track.
-        if let Some(result) = self.check_cycle_on_stack(cx, input, step_kind_from_parent) {
-            debug_assert!(validate_cache.is_none(), "global cache and cycle on stack: {input:?}");
-            return result;
-        }
 
         // Unfortunate, it looks like we actually have to compute this goal.
         self.stack.push(StackEntry {
@@ -837,6 +812,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // lazily update its parent goal.
         Self::update_parent_goal(
             &mut self.stack,
+            input,
             step_kind_from_parent,
             evaluation_result.required_depth,
             evaluation_result.heads.iter(),
@@ -1092,36 +1068,20 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         for &ProvisionalCacheEntry { encountered_overflow, ref heads, path_from_head, result } in
             entries
         {
-            let head_index = heads.highest_cycle_head_index();
-            if encountered_overflow {
-                // This check is overly strict and very subtle. We need to make sure that if
-                // a global cache entry depends on some goal without adding it to its
-                // `nested_goals`, that goal must never have an applicable provisional
-                // cache entry to avoid incorrectly applying the cache entry.
-                //
-                // As we'd have to otherwise track literally all nested goals, we only
-                // apply provisional cache entries which encountered overflow once the
-                // current goal is already part of the same cycle. This check could be
-                // improved but seems to be good enough for now.
-                let last = self.stack.last().unwrap();
-                if last.heads.opt_lowest_cycle_head_index().is_none_or(|lowest| lowest > head_index)
-                {
-                    continue;
-                }
-            }
-
             // A provisional cache entry is only valid if the current path from its
             // highest cycle head to the goal is the same.
+            let head_index = heads.highest_cycle_head_index();
             if path_from_head
                 == Self::cycle_path_kind(&self.stack, step_kind_from_parent, head_index)
             {
                 Self::update_parent_goal(
                     &mut self.stack,
+                    input,
                     step_kind_from_parent,
                     0,
                     heads.iter(),
                     encountered_overflow,
-                    UpdateParentGoalCtxt::ProvisionalCacheHit,
+                    UpdateParentGoalCtxt::ProvisionalCacheHitOrDirectCycle,
                 );
                 debug!(?head_index, ?path_from_head, "provisional cache hit");
                 return Some(result);
@@ -1166,18 +1126,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             // A provisional cache entry is applicable if the path to
             // its highest cycle head is equal to the expected path.
             for &ProvisionalCacheEntry {
-                encountered_overflow,
+                encountered_overflow: _,
                 ref heads,
                 path_from_head: head_to_provisional,
                 result: _,
             } in entries.iter()
             {
-                // We don't have to worry about provisional cache entries which encountered
-                // overflow, see the relevant comment in `lookup_provisional_cache`.
-                if encountered_overflow {
-                    continue;
-                }
-
                 // A provisional cache entry only applies if the path from its highest head
                 // matches the path when encountering the goal.
                 //
@@ -1240,6 +1194,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             let heads = iter::empty();
             Self::update_parent_goal(
                 &mut self.stack,
+                input,
                 step_kind_from_parent,
                 required_depth,
                 heads,
@@ -1272,11 +1227,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         let head = CycleHead { paths_to_head: step_kind_from_parent.into(), usages };
         Self::update_parent_goal(
             &mut self.stack,
+            input,
             step_kind_from_parent,
             0,
             iter::once((head_index, head)),
             false,
-            UpdateParentGoalCtxt::CycleOnStack(input),
+            UpdateParentGoalCtxt::ProvisionalCacheHitOrDirectCycle,
         );
 
         // Return the provisional result or, if we're in the first iteration,
@@ -1438,7 +1394,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         evaluation_result: EvaluationResult<X>,
         dep_node: X::DepNodeIndex,
     ) {
-        debug!(?evaluation_result, "insert global cache");
+        debug!(?input, ?evaluation_result, "insert global cache");
         cx.with_global_cache(|cache| cache.insert(cx, input, evaluation_result, dep_node))
     }
 }
