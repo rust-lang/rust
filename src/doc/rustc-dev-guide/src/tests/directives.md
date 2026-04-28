@@ -163,6 +163,9 @@ The following directives will check rustc build settings and target settings:
   For tests that cross-compile to explicit targets
   via `--target`, use `needs-llvm-components` instead to ensure the appropriate
   backend is available.
+- `needs-asm-mnemonic: <MNEMONIC>` — ignores if the target backend does not
+  support the specified assembly mnemonic (e.g., `RET`, `NOP`).
+  Only supported with the LLVM backend.
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target (`build.profiler = true` in `bootstrap.toml`)
 - `needs-sanitizer-support` — ignores if the sanitizer support was not enabled
