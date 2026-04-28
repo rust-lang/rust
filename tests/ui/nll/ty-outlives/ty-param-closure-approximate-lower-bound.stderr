@@ -15,6 +15,14 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    = note: where T: '?1
 
 note: no external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:23:26
+   |
+LL |     let cell = Cell::new(&());
+   |                          ^^^
+   |
+   = note: defining inline constant type: generic<T>::{promoted#0}
+
+note: no external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:22:1
    |
 LL | fn generic<T>(value: T) {

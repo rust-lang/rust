@@ -10,7 +10,7 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    = note: this operation may be supported in the future
 
 error: overly complex generic constant
-  --> $DIR/issue-90318.rs:21:8
+  --> $DIR/issue-90318.rs:22:8
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,5 +20,76 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error: aborting due to 2 previous errors
+error[E0391]: cycle detected when borrow-checking `consume::{constant#0}`
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires normalizing `Binder { value: TraitPredicate(<If<{ TypeId::of::<T>() != TypeId::of::<()>() }> as True>, polarity:Positive), bound_vars: [] }`...
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires evaluating type-level constant...
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `consume::{constant#0}`...
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires caching mir of `consume::{constant#0}` for CTFE...
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `consume::{constant#0}`...
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires borrow-checking `consume::{constant#0}`, completing the cycle
+   = note: cycle used when running analysis passes on crate `issue_90318`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
+error[E0391]: cycle detected when borrow-checking `test::{constant#0}`
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires normalizing `Binder { value: TraitPredicate(<If<{ TypeId::of::<T>() != TypeId::of::<()>() }> as True>, polarity:Positive), bound_vars: [] }`...
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires evaluating type-level constant...
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `test::{constant#0}`...
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires caching mir of `test::{constant#0}` for CTFE...
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `test::{constant#0}`...
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires borrow-checking `test::{constant#0}`, completing the cycle
+   = note: cycle used when running analysis passes on crate `issue_90318`
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

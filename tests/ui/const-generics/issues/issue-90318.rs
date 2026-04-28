@@ -13,6 +13,7 @@ fn consume<T: 'static>(_val: T)
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
     //~^ ERROR overly complex generic constant
+    //~| ERROR cycle detected when borrow-checking `consume::{constant#0}`
 {
 }
 
@@ -20,6 +21,7 @@ fn test<T: 'static>()
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
     //~^ ERROR overly complex generic constant
+    //~| ERROR cycle detected when borrow-checking `test::{constant#0}`
 {
 }
 
