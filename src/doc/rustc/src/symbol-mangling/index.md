@@ -46,7 +46,6 @@ foo::example_function
 
 ## Mangling versions
 
-`rustc` supports different mangling versions which encode the names in different ways.
-The legacy version (which is currently the default on beta/stable) is not described here.
-The "v0" mangling scheme addresses several limitations of the legacy format,
-and is described in the [v0 Symbol Format](v0.md) chapter.
+There is currently one stable mangling scheme version - `v0`. On nightly builds, rustc supports
+switching back to the `legacy` mangling scheme using [`-C symbol-mangling-version`]. The `v0`
+mangling scheme is described in the [v0 Symbol Format](v0.md) chapter.
