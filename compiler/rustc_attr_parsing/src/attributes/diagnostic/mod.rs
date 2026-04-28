@@ -3,8 +3,8 @@ use std::ops::Range;
 use rustc_errors::{Diagnostic, E0232};
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
-    Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name, NameValue,
-    OnUnimplementedCondition, Piece, Predicate,
+    Directive, Filter, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name,
+    NameValue, Piece, Predicate,
 };
 use rustc_macros::Diagnostic;
 use rustc_parse_format::{
@@ -348,7 +348,7 @@ fn parse_directive_items<'p>(
                 if is_root {
                     let items = or_malformed!(item.args().as_list()?);
                     let mut iter = items.mixed();
-                    let condition: &MetaItemOrLitParser = match iter.next() {
+                    let filter: &MetaItemOrLitParser = match iter.next() {
                         Some(c) => c,
                         None => {
                             cx.emit_err(InvalidOnClause::Empty { span });
@@ -356,11 +356,11 @@ fn parse_directive_items<'p>(
                         }
                     };
 
-                    let filter = parse_condition(condition);
+                    let filter = parse_filter(filter);
 
                     if items.len() < 2 {
                         // Something like `#[rustc_on_unimplemented(on(.., /* nothing */))]`
-                        // There's a condition but no directive behind it, this is a mistake.
+                        // There's a filter but no directive behind it, this is a mistake.
                         malformed!();
                     }
 
@@ -528,12 +528,10 @@ fn slice_span(input: Span, Range { start, end }: Range<usize>, is_source_literal
     if is_source_literal { input.from_inner(InnerSpan { start, end }) } else { input }
 }
 
-pub(crate) fn parse_condition(
-    input: &MetaItemOrLitParser,
-) -> Result<OnUnimplementedCondition, InvalidOnClause> {
+pub(crate) fn parse_filter(input: &MetaItemOrLitParser) -> Result<Filter, InvalidOnClause> {
     let span = input.span();
     let pred = parse_predicate(input)?;
-    Ok(OnUnimplementedCondition { span, pred })
+    Ok(Filter { span, pred })
 }
 
 fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnClause> {
@@ -568,7 +566,7 @@ fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnCl
                 return Err(InvalidOnClause::UnsupportedLiteral { span: p.args_span() });
             };
             let name = parse_name(predicate.name);
-            let value = parse_filter(value.name);
+            let value = parse_filter_format(value.name);
             let kv = NameValue { name, value };
             Ok(Predicate::Match(kv))
         }
@@ -603,7 +601,7 @@ fn parse_name(name: Symbol) -> Name {
     }
 }
 
-fn parse_filter(input: Symbol) -> FilterFormatString {
+fn parse_filter_format(input: Symbol) -> FilterFormatString {
     let pieces = Parser::new(input.as_str(), None, None, false, ParseMode::Diagnostic)
         .map(|p| match p {
             RpfPiece::Lit(s) => LitOrArg::Lit(Symbol::intern(s)),

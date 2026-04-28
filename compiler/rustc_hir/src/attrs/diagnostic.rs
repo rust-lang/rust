@@ -14,7 +14,7 @@ pub struct Directive {
     pub is_rustc_attr: bool,
     /// This is never nested more than once, i.e. the directives in this
     /// thinvec have no filters of their own.
-    pub filters: ThinVec<(OnUnimplementedCondition, Directive)>,
+    pub filters: ThinVec<(Filter, Directive)>,
     pub message: Option<(Span, FormatString)>,
     pub label: Option<(Span, FormatString)>,
     pub notes: ThinVec<FormatString>,
@@ -51,29 +51,29 @@ impl Directive {
 
     pub fn eval(
         &self,
-        condition_options: Option<&ConditionOptions>,
+        filter_options: Option<&FilterOptions>,
         args: &FormatArgs,
     ) -> CustomDiagnostic {
         let this = &args.this;
         debug!(
-            "Directive::eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})"
+            "Directive::eval({self:?}, this={this}, options={filter_options:?}, args ={args:?})"
         );
 
         let mut ret = CustomDiagnostic::default();
 
-        if let Some(condition_options) = condition_options {
+        if let Some(filter_options) = filter_options {
             for (filter, directive) in &self.filters {
-                if filter.matches_predicate(condition_options) {
+                if filter.matches_predicate(filter_options) {
                     debug!("eval: {filter:?} succeeded");
                     ret.update(directive, args);
                 } else {
-                    debug!("eval: skipping {filter:?} due to condition");
+                    debug!("eval: skipping {filter:?} due to {filter_options:?}");
                 }
             }
         } else {
             debug_assert!(
                 !self.is_rustc_attr,
-                "Directive::eval called for `rustc_on_unimplemented` without `condition_options`"
+                "Directive::eval called for `rustc_on_unimplemented` without `filter_options`"
             );
         };
         ret.update(self, args);
@@ -237,12 +237,12 @@ pub enum FormatArg {
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.
 #[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
-pub struct OnUnimplementedCondition {
+pub struct Filter {
     pub span: Span,
     pub pred: Predicate,
 }
-impl OnUnimplementedCondition {
-    pub fn matches_predicate(self: &OnUnimplementedCondition, options: &ConditionOptions) -> bool {
+impl Filter {
+    pub fn matches_predicate(&self, options: &FilterOptions) -> bool {
         self.pred.eval(&mut |p| match p {
             FlagOrNv::Flag(b) => options.has_flag(*b),
             FlagOrNv::NameValue(NameValue { name, value }) => {
@@ -257,7 +257,7 @@ impl OnUnimplementedCondition {
     }
 }
 
-/// Predicate(s) in `#[rustc_on_unimplemented]`'s `on` filter. See [`OnUnimplementedCondition`].
+/// Predicate(s) in `#[rustc_on_unimplemented]`'s `on` filter. See [`Filter`].
 ///
 /// It is similar to the predicate in the `cfg` attribute,
 /// and may contain nested predicates.
@@ -391,8 +391,7 @@ pub enum LitOrArg {
     Arg(Symbol),
 }
 
-/// Used with `OnUnimplementedCondition::matches_predicate` to evaluate the
-/// [`OnUnimplementedCondition`].
+/// Used with `Filter::matches_predicate` to evaluate the [`Filter`].
 ///
 /// For example, given a
 /// ```rust,ignore (just an example)
@@ -418,7 +417,7 @@ pub enum LitOrArg {
 /// it will look like this:
 ///
 /// ```rust,ignore (just an example)
-/// ConditionOptions {
+/// FilterOptions {
 ///     self_types: ["u32", "{integral}"],
 ///     from_desugaring: Some("QuestionMark"),
 ///     cause: None,
@@ -431,7 +430,7 @@ pub enum LitOrArg {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct ConditionOptions {
+pub struct FilterOptions {
     /// All the self types that may apply.
     pub self_types: Vec<String>,
     // The kind of compiler desugaring.
@@ -445,7 +444,7 @@ pub struct ConditionOptions {
     pub generic_args: Vec<(Symbol, String)>,
 }
 
-impl ConditionOptions {
+impl FilterOptions {
     pub fn has_flag(&self, name: Flag) -> bool {
         match name {
             Flag::CrateLocal => self.crate_local,

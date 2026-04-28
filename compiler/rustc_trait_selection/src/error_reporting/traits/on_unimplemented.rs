@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::{ConditionOptions, CustomDiagnostic, FormatArgs};
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FilterOptions, FormatArgs};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::print::PrintTraitRefExt;
@@ -40,11 +40,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
             return CustomDiagnostic::default();
         }
-        let (condition_options, format_args) =
+        let (filter_options, format_args) =
             self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
         if let Some(command) = find_attr!(self.tcx, trait_pred.def_id(), OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
             command.eval(
-                Some(&condition_options),
+                Some(&filter_options),
                 &format_args,
             )
         } else {
@@ -57,7 +57,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
-    ) -> (ConditionOptions, FormatArgs) {
+    ) -> (FilterOptions, FormatArgs) {
         let (def_id, args) = (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args);
         let trait_pred = trait_pred.skip_binder();
 
@@ -219,14 +219,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id);
         let this_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
 
-        let condition_options = ConditionOptions {
-            self_types,
-            from_desugaring,
-            cause,
-            crate_local,
-            direct,
-            generic_args,
-        };
+        let filter_options =
+            FilterOptions { self_types, from_desugaring, cause, crate_local, direct, generic_args };
 
         // Unlike the generic_args earlier,
         // this one is *not* collected under `with_no_trimmed_paths!`
@@ -256,6 +250,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .collect();
 
         let format_args = FormatArgs { this, this_sugared, generic_args, item_context };
-        (condition_options, format_args)
+        (filter_options, format_args)
     }
 }
