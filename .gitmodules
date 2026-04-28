@@ -24,8 +24,8 @@
 	shallow = true
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/22.1-2026-03-22
+	url = https://github.com/nikic/llvm-project.git
+	branch = rust-fastisel-test
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
