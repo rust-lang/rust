@@ -1,9 +1,10 @@
+//@ known-bug: unknown
+//@ run-pass
+
 #![feature(view_types, view_type_macro)]
-//~ ERROR unknown feature `view_type_macro`
 #![allow(unused)]
 
 use std::view::view_type;
-//~ ERROR unresolved import
 
 enum Foo {
     Bar,

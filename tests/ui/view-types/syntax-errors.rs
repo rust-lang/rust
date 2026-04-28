@@ -1,9 +1,7 @@
 #![feature(view_types, view_type_macro)]
-//~^ ERROR unknown feature `view_type_macro`
 #![allow(unused)]
 
 use std::view::view_type;
-//~^ ERROR unresolved import
 
 struct Foo {
     bar: usize,
@@ -12,13 +10,16 @@ struct Foo {
 
 impl Foo {
     fn not_a_field(self: &mut view_type!(Foo.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
-    //~^ ERROR invalid `self` parameter type
+    //~^ ERROR expected identifier
+    //~| ERROR expected identifier
 
     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
-    //~^ ERROR invalid `self` parameter type
+    //~^ ERROR expected identifier
+    //~| ERROR expected identifier
 
     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
-    //~^ ERROR invalid `self` parameter type
+    //~^ ERROR expected one of
+    //~| ERROR expected one of
 }
 
 fn main() {}

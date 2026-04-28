@@ -639,6 +639,9 @@ pub mod process;
 pub mod random;
 pub mod sync;
 pub mod time;
+#[cfg_attr(feature = "nightly", not(bootstrap))]
+#[unstable(feature = "view_type_macro", issue = "155938")]
+pub mod view;
 
 // Pull in `std_float` crate  into std. The contents of
 // `std_float` are in a different repository: rust-lang/portable-simd.

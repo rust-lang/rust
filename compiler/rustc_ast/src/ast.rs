@@ -2564,6 +2564,8 @@ pub enum TyKind {
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
     FieldOf(Box<Ty>, Option<Ident>, Ident),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
