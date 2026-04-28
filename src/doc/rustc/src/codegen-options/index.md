@@ -91,6 +91,26 @@ following values:
 
 Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 
+## debuginfo-compression
+
+This flag controls how debug information is compressed. It takes one of the
+following values:
+
+* `none`: debug info is not compressed (the default).
+* `zlib`: debug info is compressed using zlib.
+* `zstd`: debug info is compressed using zstd.
+
+Tools which read debug info such as debuggers and profilers must support the
+compression algorithm or they will be unable to process the debug info. `zlib`
+compression tends to be well supported by Linux tools but `zstd` may require
+very recent versions of such tools.
+
+Compressing debug info can improve binary size but will increase time and memory
+used during compilation.
+
+This flag is ignored by the compiler if the target does not support the specified
+compression algorithm.
+
 ## default-linker-libraries
 
 This flag controls whether or not the linker includes its default libraries.

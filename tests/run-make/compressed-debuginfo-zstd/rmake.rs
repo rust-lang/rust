@@ -13,7 +13,7 @@ use run_make_support::{Rustc, llvm_readobj, run_in_tmpdir};
 fn check_compression(compression: &str, to_find: &str) {
     // check compressed debug sections via rustc flag
     prepare_and_check(to_find, |rustc| {
-        rustc.arg(&format!("-Zdebuginfo-compression={compression}"))
+        rustc.arg(&format!("-Cdebuginfo-compression={compression}"))
     });
 
     // check compressed debug sections via rust-lld flag

@@ -14,7 +14,7 @@ fn check_compression(compression: &str, to_find: &str) {
             .crate_type("lib")
             .emit("obj")
             .arg("-Cdebuginfo=full")
-            .arg(&format!("-Zdebuginfo-compression={compression}"))
+            .arg(&format!("-Cdebuginfo-compression={compression}"))
             .input("foo.rs")
             .run();
         let stderr = out.stderr_utf8();
