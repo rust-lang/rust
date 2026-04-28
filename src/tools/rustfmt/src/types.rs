@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
+use rustc_span::Ident;
 use rustc_span::{BytePos, Pos, Span, symbol::kw};
 use tracing::debug;
 
@@ -1064,6 +1065,12 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
+            ast::TyKind::View(ref inner, ref fields) => {
+                let mut result = String::new();
+                result.push_str(&inner.rewrite_result(context, shape)?);
+                result.push_str(&rewrite_view_fields(fields));
+                Ok(result)
+            }
         }
     }
 }
@@ -1364,5 +1371,29 @@ pub(crate) fn rewrite_bound_params(
         None
     } else {
         Some(result)
+    }
+}
+
+pub(crate) fn rewrite_view(v: &ast::ViewKind) -> String {
+    // FIXME: how should views be formatted?
+    // FIXME: handle comments.
+    match v {
+        ast::ViewKind::Full => String::new(),
+        ast::ViewKind::Partial { fields } => rewrite_view_fields(fields),
+    }
+}
+
+fn rewrite_view_fields(fields: &[Ident]) -> String {
+    // FIXME: how should views be formatted?
+    // FIXME: handle comments.
+    if fields.is_empty() {
+        format!(".{{}}")
+    } else {
+        let fields = fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect::<Vec<&str>>()
+            .join(", ");
+        format!(".{{ {fields} }}")
     }
 }

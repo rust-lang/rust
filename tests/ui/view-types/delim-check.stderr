@@ -1,0 +1,13 @@
+error: right curly brace `}` before `else` in a `let...else` statement not allowed
+  --> $DIR/delim-check.rs:10:32
+   |
+LL |     let a = &foo as &Foo.{ bar } else {
+   |                                ^
+   |
+help: wrap the type in parentheses
+   |
+LL |     let a = &foo as &(Foo.{ bar }) else {
+   |                      +           +
+
+error: aborting due to 1 previous error
+

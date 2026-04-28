@@ -1,4 +1,5 @@
 //@ known-bug: unknown
+//@ check-pass
 
 #![feature(view_types)]
 #![allow(unused)]

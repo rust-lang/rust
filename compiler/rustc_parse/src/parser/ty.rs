@@ -441,6 +441,8 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_token.span);
         let mut ty = self.mk_ty(span, kind);
 
+        ty = self.parse_trailing_views(ty)?;
+
         // Try to recover from use of `+` with incorrect priority.
         match allow_plus {
             AllowPlus::Yes => self.maybe_recover_from_bad_type_plus(&ty)?,
@@ -768,29 +770,45 @@ impl<'a> Parser<'a> {
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
-        if self.token == TokenKind::Dot && self.look_ahead(1, |t| t.kind == TokenKind::OpenBrace) {
-            // & [mut] <type> . { <fields> }
-            //                ^
-            //                we are here
-            let view_start_span = self.token.span;
-            self.bump();
-            let fields = self
-                .parse_delim_comma_seq(
-                    ExpTokenPair { tok: TokenKind::OpenBrace, token_type: TokenType::OpenBrace },
-                    ExpTokenPair { tok: TokenKind::CloseBrace, token_type: TokenType::CloseBrace },
-                    |p| p.parse_ident(),
-                )?
-                .0;
-            // FIXME(scrabsha): actually propagate field view in the AST.
-            let _ = fields;
-            let view_end_span = self.prev_token.span;
-            let span = view_start_span.to(view_end_span);
-            self.psess.gated_spans.gate(sym::view_types, span);
-        }
         Ok(match pinned {
             Pinnedness::Not => TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }),
             Pinnedness::Pinned => TyKind::PinnedRef(opt_lifetime, MutTy { ty, mutbl }),
         })
+    }
+
+    fn parse_trailing_views(&mut self, mut ty: Box<Ty>) -> PResult<'a, Box<Ty>> {
+        while let Some((fields, span)) = self.maybe_parse_view()? {
+            let span = ty.span.to(span);
+            let kind = TyKind::View(ty, fields);
+            ty = self.mk_ty(span, kind);
+        }
+        Ok(ty)
+    }
+
+    pub(crate) fn maybe_parse_view(&mut self) -> PResult<'a, Option<(ThinVec<Ident>, Span)>> {
+        if self.token == TokenKind::Dot && self.look_ahead(1, |t| t.kind == TokenKind::OpenBrace) {
+            // <ty> . { <fields> }
+            //      ^
+            //      we are here
+            let view_start = self.token.span;
+            self.bump();
+            let fields = match self.parse_delim_comma_seq(
+                ExpTokenPair { tok: TokenKind::OpenBrace, token_type: TokenType::OpenBrace },
+                ExpTokenPair { tok: TokenKind::CloseBrace, token_type: TokenType::CloseBrace },
+                |p| p.parse_field_name(),
+            ) {
+                Ok((fields, _)) => fields,
+                Err(diag) => {
+                    return Err(diag);
+                }
+            };
+            let view_end = self.prev_token.span;
+            let view_span = view_start.to(view_end);
+            self.psess.gated_spans.gate(sym::view_types, view_span);
+            Ok(Some((fields, view_span)))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Parse nothing, mutability or `pin` followed by "explicit" mutability.

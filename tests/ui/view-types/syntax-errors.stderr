@@ -1,17 +1,8 @@
-error: expected parameter name, found `{`
-  --> $DIR/syntax-errors.rs:10:30
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/syntax-errors.rs:10:32
    |
 LL |     fn not_a_field(&mut self.{ _ }, _: &mut Foo.{ _ }) {}
-   |                              ^ expected parameter name
-
-error: expected one of `)` or `,`, found `.`
-  --> $DIR/syntax-errors.rs:10:29
-   |
-LL |     fn not_a_field(&mut self.{ _ }, _: &mut Foo.{ _ }) {}
-   |                             ^
-   |                             |
-   |                             expected one of `)` or `,`
-   |                             help: missing `,`
+   |                                ^ expected identifier, found reserved identifier
 
 error: expected identifier, found reserved identifier `_`
   --> $DIR/syntax-errors.rs:10:51
@@ -19,23 +10,19 @@ error: expected identifier, found reserved identifier `_`
 LL |     fn not_a_field(&mut self.{ _ }, _: &mut Foo.{ _ }) {}
    |                                                   ^ expected identifier, found reserved identifier
 
-error: expected parameter name, found `{`
-  --> $DIR/syntax-errors.rs:15:26
+error: expected identifier, found keyword `where`
+  --> $DIR/syntax-errors.rs:14:28
    |
 LL |     fn keyword(&mut self.{ where }, _: &mut Foo.{ for }) {}
-   |                          ^ expected parameter name
-
-error: expected one of `)` or `,`, found `.`
-  --> $DIR/syntax-errors.rs:15:25
+   |                            ^^^^^ expected identifier, found keyword
    |
-LL |     fn keyword(&mut self.{ where }, _: &mut Foo.{ for }) {}
-   |                         ^
-   |                         |
-   |                         expected one of `)` or `,`
-   |                         help: missing `,`
+help: escape `where` to use it as an identifier
+   |
+LL |     fn keyword(&mut self.{ r#where }, _: &mut Foo.{ for }) {}
+   |                            ++
 
 error: expected identifier, found keyword `for`
-  --> $DIR/syntax-errors.rs:15:51
+  --> $DIR/syntax-errors.rs:14:51
    |
 LL |     fn keyword(&mut self.{ where }, _: &mut Foo.{ for }) {}
    |                                                   ^^^ expected identifier, found keyword
@@ -45,28 +32,21 @@ help: escape `for` to use it as an identifier
 LL |     fn keyword(&mut self.{ where }, _: &mut Foo.{ r#for }) {}
    |                                                   ++
 
-error: expected parameter name, found `{`
-  --> $DIR/syntax-errors.rs:20:27
+error: expected one of `,` or `}`, found `baz`
+  --> $DIR/syntax-errors.rs:18:33
    |
 LL |     fn no_comma(&mut self.{ bar baz }, _: &mut Foo.{ bar baz }) {}
-   |                           ^ expected parameter name
-
-error: expected one of `)` or `,`, found `.`
-  --> $DIR/syntax-errors.rs:20:26
-   |
-LL |     fn no_comma(&mut self.{ bar baz }, _: &mut Foo.{ bar baz }) {}
-   |                          ^
-   |                          |
-   |                          expected one of `)` or `,`
-   |                          help: missing `,`
+   |                                -^^^ expected one of `,` or `}`
+   |                                |
+   |                                help: missing `,`
 
 error: expected one of `,` or `}`, found `baz`
-  --> $DIR/syntax-errors.rs:20:58
+  --> $DIR/syntax-errors.rs:18:58
    |
 LL |     fn no_comma(&mut self.{ bar baz }, _: &mut Foo.{ bar baz }) {}
    |                                                         -^^^ expected one of `,` or `}`
    |                                                         |
    |                                                         help: missing `,`
 
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 

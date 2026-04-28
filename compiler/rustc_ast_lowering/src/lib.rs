@@ -1611,6 +1611,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::TyKind::Err(guar)
             }
+            TyKind::View(ty, _) => {
+                // FIXME(scrabsha): lower view types to HIR.
+                return self.lower_ty(ty, itctx);
+            }
             TyKind::Dummy => panic!("`TyKind::Dummy` should never be lowered"),
         };
 

@@ -31,7 +31,7 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
-use crate::types::opaque_ty;
+use crate::types::{opaque_ty, rewrite_view};
 use crate::utils::*;
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -2392,7 +2392,7 @@ fn rewrite_explicit_self(
     shape: Shape,
     has_multiple_attr_lines: bool,
 ) -> RewriteResult {
-    let self_str = match explicit_self.node {
+    let self_str = match explicit_self.node.kind {
         ast::SelfKind::Region(lt, m) => {
             let mut_str = format_mutability(m);
             let lifetime_str = rewrite_opt_lifetime(context, lt)?;
@@ -2412,10 +2412,12 @@ fn rewrite_explicit_self(
         }
         ast::SelfKind::Value(mutability) => format!("{}self", format_mutability(mutability)),
     };
+    let view = rewrite_view(&explicit_self.node.view);
+    let explicit_self_str = format!("{self_str}{view}");
     Ok(combine_strs_with_missing_comments(
         context,
         param_attrs,
-        &self_str,
+        &explicit_self_str,
         span,
         shape,
         !has_multiple_attr_lines,

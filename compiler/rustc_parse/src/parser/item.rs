@@ -3478,11 +3478,18 @@ impl<'a> Parser<'a> {
         let parse_self_possibly_typed = |this: &mut Self, m| {
             let eself_ident = expect_self_ident(this);
             let eself_hi = this.prev_token.span;
-            let eself = if this.eat(exp!(Colon)) {
-                SelfKind::Explicit(this.parse_ty()?, m)
+            let view = this.maybe_parse_view()?;
+
+            // FIXME: we could recover for `self.{}: Ty` here.
+            let (kind, view) = if let Some((fields, _)) = view {
+                (SelfKind::Value(m), ViewKind::Partial { fields })
+            } else if this.eat(exp!(Colon)) {
+                (SelfKind::Explicit(this.parse_ty()?, m), ViewKind::Full)
             } else {
-                SelfKind::Value(m)
+                (SelfKind::Value(m), ViewKind::Full)
             };
+
+            let eself = SelfParam { kind, view };
             Ok((eself, eself_ident, eself_hi))
         };
         let expect_self_ident_not_typed =
@@ -3514,15 +3521,15 @@ impl<'a> Parser<'a> {
         // Recover for the grammar `*self`, `*const self`, and `*mut self`.
         let recover_self_ptr = |this: &mut Self| {
             this.dcx().emit_err(errors::SelfArgumentPointer { span: this.token.span });
-
-            Ok((SelfKind::Value(Mutability::Not), expect_self_ident(this), this.prev_token.span))
+            let param = SelfParam { kind: SelfKind::Value(Mutability::Not), view: ViewKind::Full };
+            Ok((param, expect_self_ident(this), this.prev_token.span))
         };
 
         // Parse optional `self` parameter of a method.
         // Only a limited set of initial token sequences is considered `self` parameters; anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
-        let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
+        let (eself_kind, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
             token::And => {
                 let has_lifetime = is_lifetime(self, 1);
                 let skip_lifetime_count = has_lifetime as usize;
@@ -3559,6 +3566,12 @@ impl<'a> Parser<'a> {
                 };
                 let hi = self.token.span;
                 let self_ident = expect_self_ident_not_typed(self, &eself, eself_lo.until(hi));
+                let view = match self.maybe_parse_view()? {
+                    Some((fields, _)) => ViewKind::Partial { fields },
+                    None => ViewKind::Full,
+                };
+                let eself = SelfParam { kind: eself, view };
+
                 (eself, self_ident, hi)
             }
             // `*self`
@@ -3586,7 +3599,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
 
-        let eself = respan(eself_lo.to(eself_hi), eself);
+        let eself = respan(eself_lo.to(eself_hi), eself_kind);
         Ok(Some(Param::from_self(AttrVec::default(), eself, eself_ident)))
     }
 

@@ -168,6 +168,8 @@ pub enum TrailingBrace<'a> {
     /// Trailing brace in any other expression, such as `a + B {}`. We will
     /// suggest wrapping the innermost expression in parentheses: `a + (B {})`.
     Expr(&'a ast::Expr),
+    /// Trailing brace in a type, like the one in `&Foo.{ bar }`
+    Type(&'a ast::Ty),
 }
 
 /// If an expression ends with `}`, returns the innermost expression ending in the `}`
@@ -207,7 +209,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | ConstBlock(_) => break Some(TrailingBrace::Expr(expr)),
 
             Cast(_, ty) => {
-                break type_trailing_braced_mac_call(ty).map(TrailingBrace::MacCall);
+                break type_trailing_brace(ty);
             }
 
             MacCall(mac) => {
@@ -248,13 +250,17 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
     }
 }
 
-/// If the type's last token is `}`, it must be due to a braced macro call, such
-/// as in `*const brace! { ... }`. Returns that trailing macro call.
-fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
+/// If a type ends with `}`, return the innermost node ending with the `}`.
+///
+/// This may be caused by a macro call (`*const brace! { ... }`) or a view type
+/// (`&Foo.{ bar }`).
+fn type_trailing_brace(mut ty: &ast::Ty) -> Option<TrailingBrace<'_>> {
     loop {
         match &ty.kind {
             ast::TyKind::MacCall(mac) => {
-                break (mac.args.delim == Delimiter::Brace).then_some(mac);
+                break (mac.args.delim == Delimiter::Brace)
+                    .then_some(mac.as_ref())
+                    .map(TrailingBrace::MacCall);
             }
 
             ast::TyKind::Ptr(mut_ty)
@@ -262,6 +268,8 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
             | ast::TyKind::PinnedRef(_, mut_ty) => {
                 ty = &mut_ty.ty;
             }
+
+            ast::TyKind::View(..) => break Some(TrailingBrace::Type(ty)),
 
             ast::TyKind::UnsafeBinder(binder) => {
                 ty = &binder.inner_ty;
