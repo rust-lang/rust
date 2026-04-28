@@ -40,9 +40,6 @@
 //! }
 //! ```
 //!
-//
-// FIXME: Show how `Option` is used in practice, with lots of methods
-//
 //! # Options and pointers ("nullable" pointers)
 //!
 //! Rust's pointer types must always point to a valid location; there are
