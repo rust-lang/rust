@@ -333,6 +333,33 @@ fn chunked_bitset() {
     assert_eq!(b10000.count(), 6000);
     b10000.assert_valid();
     b10000b.assert_valid();
+
+    //-----------------------------------------------------------------------
+
+    let mut b64 = ChunkedBitSet::<usize>::new_filled(64);
+
+    let mut b64b = ChunkedBitSet::<usize>::new_empty(64);
+    b64b.insert(0);
+
+    b64.subtract(&b64b);
+    assert!(!b64.contains(0));
+    assert!(b64.contains(10));
+    assert!(b64.contains(50));
+    assert!(b64.contains(63));
+    assert_eq!(
+        b64.chunks(),
+        #[rustfmt::skip]
+        vec![
+            Mixed {
+                chunk_domain_size: 64,
+                ones_count: 63,
+                words: Rc::new([
+                    0xfffffffffffffffe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ])
+            },
+        ],
+    );
 }
 
 fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSet<usize> {
