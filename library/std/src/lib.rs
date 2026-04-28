@@ -255,7 +255,10 @@
 #![allow(unused_features)]
 //
 // Features:
-#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
+#![cfg_attr(
+    test,
+    feature(internal_output_capture, print_internals, super_let, update_panic_count, rt)
+)]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)

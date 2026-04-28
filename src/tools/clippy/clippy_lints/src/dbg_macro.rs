@@ -75,13 +75,33 @@ impl LateLintPass<'_> for DbgMacro {
                 "the `dbg!` macro is intended as a debugging tool",
                 |diag| {
                     let mut applicability = Applicability::MachineApplicable;
-                    let (sugg_span, suggestion) = match is_async_move_desugar(expr)
-                        .unwrap_or(expr)
-                        .peel_drop_temps()
-                        .kind
-                    {
+                    let dbg_expn = is_async_move_desugar(expr).unwrap_or(expr).peel_drop_temps();
+                    // `dbg!` always expands to a block. If it was given arguments, it assigns names to them
+                    // using `super let _ = (tmp = $arg);` statements.
+                    let ExprKind::Block(block, _) = dbg_expn.kind else {
+                        unreachable!()
+                    };
+                    let args: Vec<_> = block
+                        .stmts
+                        .iter()
+                        .filter_map(|stmt| {
+                            if let StmtKind::Let(LetStmt {
+                                super_: Some(_),
+                                init: Some(init),
+                                ..
+                            }) = stmt.kind
+                                && let ExprKind::Assign(_, arg, _) = init.kind
+                            {
+                                Some(arg)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    let (sugg_span, suggestion) = match args.as_slice() {
                         // dbg!()
-                        ExprKind::Block(..) => {
+                        [] => {
                             // If the `dbg!` macro is a "free" statement and not contained within other expressions,
                             // remove the whole statement.
                             if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
@@ -92,28 +112,23 @@ impl LateLintPass<'_> for DbgMacro {
                                 (macro_call.span, String::from("()"))
                             }
                         },
-                        ExprKind::Match(args, _, _) => {
-                            let suggestion = match args.kind {
-                                // dbg!(1) => 1
-                                ExprKind::Tup([val]) => {
-                                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
-                                        .to_string()
-                                },
-                                // dbg!(2, 3) => (2, 3)
-                                ExprKind::Tup([first, .., last]) => {
-                                    let snippet = snippet_with_applicability(
-                                        cx,
-                                        first.span.source_callsite().to(last.span.source_callsite()),
-                                        "..",
-                                        &mut applicability,
-                                    );
-                                    format!("({snippet})")
-                                },
-                                _ => unreachable!(),
-                            };
+                        // dbg!(1) => 1
+                        [val] => {
+                            let suggestion =
+                                snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
+                                    .to_string();
                             (macro_call.span, suggestion)
                         },
-                        _ => unreachable!(),
+                        // dbg!(2, 3) => (2, 3)
+                        [first, .., last] => {
+                            let snippet = snippet_with_applicability(
+                                cx,
+                                first.span.source_callsite().to(last.span.source_callsite()),
+                                "..",
+                                &mut applicability,
+                            );
+                            (macro_call.span, format!("({snippet})"))
+                        },
                     };
 
                     diag.span_suggestion(

@@ -594,43 +594,38 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
         let Some(var_info) = var_info else { return };
         let arg_name = var_info.name;
-        struct MatchArgFinder<'tcx> {
+        struct DbgArgFinder<'tcx> {
             tcx: TyCtxt<'tcx>,
             move_span: Span,
             arg_name: Symbol,
-            match_arg_span: Option<Span> = None,
+            dbg_arg_span: Option<Span> = None,
         }
-        impl Visitor<'_> for MatchArgFinder<'_> {
+        impl Visitor<'_> for DbgArgFinder<'_> {
             fn visit_expr(&mut self, e: &hir::Expr<'_>) {
-                // dbg! is expanded into a match pattern, we need to find the right argument span
-                if let hir::ExprKind::Match(scrutinee, ..) = &e.kind
-                    && let hir::ExprKind::Tup(args) = scrutinee.kind
+                // dbg! is expanded into assignments, we need to find the right argument span
+                if let hir::ExprKind::Assign(_, arg, _) = &e.kind
+                    && let hir::ExprKind::Path(hir::QPath::Resolved(
+                        _,
+                        path @ Path { segments: [seg], .. },
+                    )) = &arg.kind
+                    && seg.ident.name == self.arg_name
+                    && self.move_span.source_equal(arg.span)
                     && e.span.macro_backtrace().any(|expn| {
                         expn.macro_def_id.is_some_and(|macro_def_id| {
                             self.tcx.is_diagnostic_item(sym::dbg_macro, macro_def_id)
                         })
                     })
                 {
-                    for arg in args {
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(
-                            _,
-                            path @ Path { segments: [seg], .. },
-                        )) = &arg.kind
-                            && seg.ident.name == self.arg_name
-                            && self.move_span.source_equal(arg.span)
-                        {
-                            self.match_arg_span = Some(path.span);
-                            return;
-                        }
-                    }
+                    self.dbg_arg_span = Some(path.span);
+                    return;
                 }
                 hir::intravisit::walk_expr(self, e);
             }
         }
 
-        let mut finder = MatchArgFinder { tcx: self.infcx.tcx, move_span, arg_name, .. };
+        let mut finder = DbgArgFinder { tcx: self.infcx.tcx, move_span, arg_name, .. };
         finder.visit_expr(body);
-        if let Some(macro_arg_span) = finder.match_arg_span {
+        if let Some(macro_arg_span) = finder.dbg_arg_span {
             err.span_suggestion_verbose(
                 macro_arg_span.shrink_to_lo(),
                 "consider borrowing instead of transferring ownership",
