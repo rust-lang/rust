@@ -17,7 +17,7 @@
 -         StorageLive(_1);
 -         StorageLive(_2);
 -         StorageLive(_3);
-          _5 = const remap_debuginfo_locals::promoted[0];
+          _5 = const remap_debuginfo_locals::{promoted#0};
 -         _3 = &(*_5);
 -         _2 = &raw const (*_3);
 -         // DBG: _1 = &(*_2);

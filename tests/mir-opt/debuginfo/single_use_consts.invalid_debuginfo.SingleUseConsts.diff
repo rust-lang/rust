@@ -12,7 +12,7 @@
           let mut _6: &isize;
           scope 2 (inlined bar) {
 -             debug x => _4;
-+             debug x => const foo::promoted[0];
++             debug x => const foo::{promoted#0};
               let _7: isize;
               let mut _9: &isize;
               let _10: &isize;
@@ -22,7 +22,7 @@
                   let mut _8: &isize;
                   scope 4 {
 -                     debug z => _4;
-+                     debug z => const foo::promoted[0];
++                     debug z => const foo::{promoted#0};
                   }
               }
           }
@@ -31,7 +31,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_4);
--         _4 = const foo::promoted[0];
+-         _4 = const foo::{promoted#0};
 +         nop;
           StorageLive(_7);
 -         _7 = const 1_isize;

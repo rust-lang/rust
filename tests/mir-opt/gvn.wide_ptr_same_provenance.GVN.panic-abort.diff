@@ -62,7 +62,7 @@
   
       bb0: {
           StorageLive(_1);
-          _47 = const wide_ptr_same_provenance::promoted[0];
+          _47 = const wide_ptr_same_provenance::{promoted#0};
           _1 = &(*_47);
           StorageLive(_3);
 -         StorageLive(_4);

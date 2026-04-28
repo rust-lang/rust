@@ -19,7 +19,7 @@
 -         _0 = inner() -> [return: bb1, unwind unreachable];
 +         StorageLive(_1);
 +         StorageLive(_2);
-+         _1 = const inner::promoted[0];
++         _1 = const inner::{promoted#0};
 +         _0 = index() -> [return: bb1, unwind unreachable];
       }
   
