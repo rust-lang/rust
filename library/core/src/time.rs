@@ -1746,14 +1746,14 @@ impl fmt::Debug for Duration {
 /// [`f32`]: Duration::try_from_secs_f32
 /// [`f64`]: Duration::try_from_secs_f64
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
 #[repr(transparent)]
-pub struct DurationConversionError {
+pub struct TryFromFloatSecsError {
     kind: DurationConversionErrorKind,
 }
 
-#[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-impl fmt::Display for DurationConversionError {
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+impl fmt::Display for TryFromFloatSecsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             DurationConversionErrorKind::NanosecondsOverflow => {
@@ -1810,8 +1810,9 @@ enum DurationConversionErrorKind {
 /// [`nanoseconds`]: Duration::try_from_nanos_u128
 /// [`f32`]: Duration::try_from_secs_f32
 /// [`f64`]: Duration::try_from_secs_f64
-#[stable(feature = "duration_checked_float", since = "1.66.0")]
-pub type TryFromFloatSecsError = DurationConversionError;
+// FIXME: when stabilizing `non_panicking_duration_conversion`, change `TryFromFloatSecsError` to be a type alias to `DurationConversionError` instead.
+#[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
+pub type DurationConversionError = TryFromFloatSecsError;
 
 macro_rules! try_from_secs {
     (
@@ -1827,9 +1828,7 @@ macro_rules! try_from_secs {
         const EXP_MASK: $bits_ty = (1 << $exp_bits) - 1;
 
         if $secs < 0.0 {
-            return Err(DurationConversionError {
-                kind: DurationConversionErrorKind::NegativeFloat,
-            });
+            return Err(TryFromFloatSecsError { kind: DurationConversionErrorKind::NegativeFloat });
         }
 
         let bits = $secs.to_bits();
@@ -1888,7 +1887,7 @@ macro_rules! try_from_secs {
             let secs = u64::from(mant) << (exp - $mant_bits);
             (secs, 0)
         } else {
-            return Err(DurationConversionError {
+            return Err(TryFromFloatSecsError {
                 kind: DurationConversionErrorKind::FloatOverflowOrNan,
             });
         };
@@ -1955,7 +1954,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_checked_float", since = "1.66.0")]
     #[inline]
-    pub fn try_from_secs_f32(secs: f32) -> Result<Duration, DurationConversionError> {
+    pub fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 23,
@@ -2031,7 +2030,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_checked_float", since = "1.66.0")]
     #[inline]
-    pub fn try_from_secs_f64(secs: f64) -> Result<Duration, DurationConversionError> {
+    pub fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 52,
