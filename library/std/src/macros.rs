@@ -379,7 +379,9 @@ macro_rules! dbg {
 ///
 /// This is necessary so that `dbg!` outputs don't get torn, see #136703.
 #[doc(hidden)]
+#[allow_internal_unstable(std_internals)]
 #[rustc_macro_transparency = "semiopaque"]
+#[unstable(feature = "std_internals", issue = "none")]
 pub macro dbg_internal {
     (($($piece:literal),+) ($($processed:expr => $bound:ident),+) ()) => {
         // Use of `match` here is intentional because it affects the lifetimes
