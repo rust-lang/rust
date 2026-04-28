@@ -1794,6 +1794,7 @@ mod prim_ref {}
 /// have different sizes.
 ///
 /// ### ABI compatibility
+/// [ABI compatibility]: #abi-compatibility
 ///
 /// Generally, when a function is declared with one signature and called via a function pointer with
 /// a different signature, the two signatures must be *ABI-compatible* or else calling the function
@@ -1831,7 +1832,7 @@ mod prim_ref {}
 /// - `*const T`, `*mut T`, `&T`, `&mut T`, `Box<T>` (specifically, only `Box<T, Global>`), and
 ///   `NonNull<T>` are all ABI-compatible with each other for all `T`. They are also ABI-compatible
 ///   with each other for _different_ `T` if they have the same metadata type (`<T as
-///   Pointee>::Metadata`).
+///   Pointee>::Metadata`). However, see the [Control Flow Integrity][cfi-docs] docs for caveats.
 /// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
 ///   ABI-compatible with the `iN` integer type of the same size.
 /// - `char` is ABI-compatible with `u32`.
@@ -1889,6 +1890,8 @@ mod prim_ref {}
 /// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
+///
+/// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
 /// ### Trait implementations
 ///

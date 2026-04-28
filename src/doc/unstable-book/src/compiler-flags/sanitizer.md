@@ -246,6 +246,37 @@ Cargo build-std feature (i.e., `-Zbuild-std`) when enabling CFI.
 
 See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
+## Divergence from the Rust ABI
+
+There are some caveats to [the ABI-compatibility rules for Rust-to-Rust
+calls][rust-abi] due to how the CFI sanitizer is implemented. CFI is a tool
+that can be used to validate that dynamic function calls respect the ABI, but
+due to its C/C++ origins, it disagrees with the above documented guarantees in
+a few ways, see below. As CFI is unstable, the details may change in the
+future.
+
+When running the CFI sanitizer, pointer types are only ABI-compatible if the
+target type and mutability is the same. This means that `*mut String` and `*mut
+i32` are incompatible when using CFI. It also means that `*mut i32` is
+incompatible with `*const i32`. The `NonNull<_>` and `Box<_>` pointer types are
+currently considered immutable under CFI. For non-primitive target types, CFI
+uses the name of the type for its compatibility check.
+
+When not using the `-Zsanitizer-cfi-normalize-integers` flag, the CFI sanitizer
+further restricts the rules by considering `usize`/`isize` incompatible with
+the `uN`/`iN` integer type of the same size.
+
+Unlike other cases where the function ABI is violated, function calls that
+violate the CFI-specific ABI-compatibility rules are not undefined behavior.
+They are guaranteed to either function correctly, or to crash the program.
+
+This section only covers cases where CFI disagrees with the ABI-compatibility
+rules for Rust-to-Rust calls. It is not meant to be a complete explanation of
+how CFI works, and details important for C-to-Rust or Rust-to-C calls are
+omitted.
+
+[rust-abi]: https://doc.rust-lang.org/stable/std/primitive.fn.html#abi-compatibility
+
 ## Example 1: Redirecting control flow using an indirect branch/call to an invalid destination
 
 ```rust
