@@ -290,6 +290,37 @@ pub(super) fn handle_needs(
         }
     }
 
+    if name == "needs-asm-mnemonic" {
+        let Some(rest) = ln.value_after_colon() else {
+            return IgnoreDecision::Error {
+                message: "expected `needs-asm-mnemonic` to have a mnemonic name after colon"
+                    .to_string(),
+            };
+        };
+
+        if !config.default_codegen_backend.is_llvm() {
+            return IgnoreDecision::Ignore {
+                reason: "skipping test as non-LLVM backend does not support mnemonic queries"
+                    .to_string(),
+            };
+        }
+
+        let mnemonic = rest.trim();
+        let has_mnemonic = match mnemonic {
+            "ret" => cache.has_ret_mnemonic,
+            "nop" => cache.has_nop_mnemonic,
+            _ => has_mnemonic(config, mnemonic),
+        };
+
+        if has_mnemonic {
+            return IgnoreDecision::Continue;
+        } else {
+            return IgnoreDecision::Ignore {
+                reason: format!("skipping test as target does not have `{mnemonic}` mnemonic"),
+            };
+        }
+    }
+
     if !name.starts_with("needs-") {
         return IgnoreDecision::Continue;
     }
@@ -352,6 +383,10 @@ pub(super) struct CachedNeedsConditions {
     symlinks: bool,
     /// Whether LLVM built with zstd, for the `needs-llvm-zstd` directive.
     llvm_zstd: bool,
+    /// Might add particular other mnemonics heavily needed by tests here.
+    /// Otherwise call into llvm for every check
+    has_ret_mnemonic: bool,
+    has_nop_mnemonic: bool,
 }
 
 impl CachedNeedsConditions {
@@ -399,6 +434,8 @@ impl CachedNeedsConditions {
             llvm_zstd: llvm_has_zstd(&config),
             dlltool: find_dlltool(&config),
             symlinks: has_symlinks(),
+            has_ret_mnemonic: has_mnemonic(config, "ret"),
+            has_nop_mnemonic: has_mnemonic(config, "nop"),
         }
     }
 }
@@ -464,5 +501,28 @@ fn llvm_has_zstd(config: &Config) -> bool {
         "true" => true,
         "false" => false,
         _ => panic!("unexpected output from `--print=backend-has-zstd`: {output:?}"),
+    }
+}
+
+fn has_mnemonic(config: &Config, mnemonic: &str) -> bool {
+    if !config.default_codegen_backend.is_llvm() {
+        return false;
+    }
+
+    let target_flag = format!("--target={}", config.target);
+    let output = query_rustc_output(
+        config,
+        &[
+            &target_flag,
+            "-Zunstable-options",
+            &format!("--print=backend-has-mnemonic:{}", mnemonic),
+        ],
+        Default::default(),
+    );
+
+    match output.trim() {
+        "true" => true,
+        "false" => false,
+        _ => panic!("unexpected output from `--print=backend-has-mnemonic:{mnemonic}`: {output:?}"),
     }
 }
