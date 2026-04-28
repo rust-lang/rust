@@ -100,6 +100,7 @@ impl IntoDiagArg for ReturnLikeStatementKind {
     }
 }
 
+// FIXME(splat): add "non-splatted" to all 4 instances of this error message
 #[derive(Diagnostic)]
 #[diag("functions with the \"rust-call\" ABI must take a single non-self tuple argument")]
 pub(crate) struct RustCallIncorrectArgs {

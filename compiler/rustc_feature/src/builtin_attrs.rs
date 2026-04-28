@@ -392,6 +392,14 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // - https://github.com/rust-lang/rust/issues/130494
     gated!(pin_v2, pin_ergonomics, experimental!(pin_v2)),
 
+    // The `#[splat]` attribute is part of the `splat` experiment
+    // that improves the ergonomics of function overloading, tracked in:
+    //
+    // - https://github.com/rust-lang/rust/issues/153629
+    gated!(
+        splat, experimental!(splat),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

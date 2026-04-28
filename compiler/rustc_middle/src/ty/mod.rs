@@ -114,7 +114,8 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
-    Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
+    Rust2024IncompatiblePatInfo, SplattedDef, TypeckResults, UserType, UserTypeAnnotationIndex,
+    UserTypeKind,
 };
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::ich::StableHashingContext;

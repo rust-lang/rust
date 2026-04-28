@@ -721,6 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // in this binder we are creating.
         assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
         let bound_sig = expected_sig.sig.map_bound(|sig| {
+            // Ignore splatting, it is unsupported on closures.
             let fn_sig_kind = FnSigKind::default()
                 .set_abi(ExternAbi::RustCall)
                 .set_safe(true)

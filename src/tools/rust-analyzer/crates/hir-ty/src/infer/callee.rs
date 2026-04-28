@@ -159,6 +159,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
                 let kind_ty = autoderef.ctx().table.next_ty_var();
                 let interner = autoderef.ctx().interner();
+
+                // Ignore splatting, it is unsupported on closures.
                 let call_sig = interner.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
                     coroutine_closure_sig.to_coroutine(

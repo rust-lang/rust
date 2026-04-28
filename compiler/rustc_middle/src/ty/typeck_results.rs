@@ -36,6 +36,9 @@ pub struct TypeckResults<'tcx> {
     /// method calls, including those of overloaded operators.
     type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
 
+    /// Resolved definitions for splatted function calls.
+    splatted_defs: ItemLocalMap<Result<SplattedDef, ErrorGuaranteed>>,
+
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
     /// about the field you also need definition of the variant to which the field
@@ -229,6 +232,7 @@ impl<'tcx> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
             type_dependent_defs: Default::default(),
+            splatted_defs: Default::default(),
             field_indices: Default::default(),
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
@@ -285,6 +289,21 @@ impl<'tcx> TypeckResults<'tcx> {
         &mut self,
     ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
+    }
+
+    pub fn splatted_defs(&self) -> LocalTableInContext<'_, Result<SplattedDef, ErrorGuaranteed>> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.splatted_defs }
+    }
+
+    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef> {
+        validate_hir_id_for_typeck_results(self.hir_owner, id);
+        self.splatted_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
+    }
+
+    pub fn splatted_defs_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Result<SplattedDef, ErrorGuaranteed>> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.splatted_defs }
     }
 
     pub fn field_indices(&self) -> LocalTableInContext<'_, FieldIdx> {
@@ -405,6 +424,10 @@ impl<'tcx> TypeckResults<'tcx> {
         }
 
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
+    }
+
+    pub fn is_splatted_call(&self, expr: &hir::Expr<'_>) -> bool {
+        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(SplattedDef { .. })))
     }
 
     /// Returns the computed binding mode for a `PatKind::Binding` pattern
@@ -567,6 +590,18 @@ impl<'tcx> TypeckResults<'tcx> {
     ) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
     }
+}
+
+/// A resolved splatted function call.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub struct SplattedDef {
+    /// The function DefId, if available (FnPtrs don't have DefIds)
+    pub def_id: Option<DefId>,
+    /// The index of the first argument in the callee's splatted tuple, and the index of the
+    /// splatted tuple argument in the caller.
+    pub arg_index: u16,
+    /// The number of arguments in the splatted tuple.
+    pub arg_count: u16,
 }
 
 /// Validate that the given HirId (respectively its `local_id` part) can be

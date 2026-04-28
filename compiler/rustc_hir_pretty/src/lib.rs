@@ -16,12 +16,11 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, BoxMarker, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, PrintAttribute};
 use rustc_hir::{
-    BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg, GenericBound,
-    GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind,
-    PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind,
+    self as hir, BindingMode, ByRef, ConstArg, ConstArgExprField, ConstArgKind, GenericArg,
+    GenericBound, GenericParam, GenericParamKind, HirId, ImplicitSelfKind, LifetimeParamKind, Node,
+    PatKind, PreciseCapturingArg, RangeEnd, Term, TyFieldPath, TyPatKind, find_attr,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{DUMMY_SP, FileName, Ident, Span, Spanned, Symbol, kw, sym};
@@ -2264,6 +2263,9 @@ impl<'a> State<'a> {
         assert!(arg_idents.is_empty() || body_id.is_none());
         let mut i = 0;
         let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
+            if decl.has_splatted_arg() && find_attr!(s.attrs(decl.inputs[i].hir_id), Splat(_)) {
+                s.word("#[splat]");
+            }
             if i == 0 && decl.implicit_self().has_implicit_self() {
                 s.print_implicit_self(&decl.implicit_self());
             } else {
