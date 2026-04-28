@@ -21,12 +21,12 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::lint::builtin::{DEAD_CODE, UNUSED_PUB_ITEMS_IN_BINARY};
+use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
 use rustc_session::lint::{self, Lint, LintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
-    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UnusedPubItemsInBinaryNote,
+    ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
     UselessAssignment,
 };
 
@@ -1088,11 +1088,8 @@ impl<'tcx> DeadVisitor<'tcx> {
         (level.level, level.lint_id)
     }
 
-    fn unused_pub_items_in_binary_note(&self) -> Option<UnusedPubItemsInBinaryNote> {
-        self.target_lint
-            .name
-            .eq(UNUSED_PUB_ITEMS_IN_BINARY.name)
-            .then_some(UnusedPubItemsInBinaryNote)
+    fn dead_code_pub_in_binary_note(&self) -> Option<DeadCodePubInBinaryNote> {
+        self.target_lint.name.eq(DEAD_CODE_PUB_IN_BINARY.name).then_some(DeadCodePubInBinaryNote)
     }
 
     // # Panics
@@ -1206,7 +1203,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
-                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
+                    dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
                     ignored_derived_impls,
@@ -1243,7 +1240,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
-                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
+                    dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
                     parent_info,
                     ignored_derived_impls,
                     enum_variants_with_same_name,
@@ -1333,9 +1330,9 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 && !pre_deferred_seeding.live_symbols.contains(&def_id)
         };
 
-        lint_dead_code_or_unused_pub_items_in_binary(
+        lint_dead_codes(
             tcx,
-            UNUSED_PUB_ITEMS_IN_BINARY,
+            DEAD_CODE_PUB_IN_BINARY,
             module,
             &pre_deferred_seeding.live_symbols,
             &pre_deferred_seeding.ignored_derived_traits,
@@ -1346,7 +1343,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         );
     }
 
-    lint_dead_code_or_unused_pub_items_in_binary(
+    lint_dead_codes(
         tcx,
         DEAD_CODE,
         module,
@@ -1357,7 +1354,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
     );
 }
 
-fn lint_dead_code_or_unused_pub_items_in_binary<'tcx>(
+fn lint_dead_codes<'tcx>(
     tcx: TyCtxt<'tcx>,
     target_lint: &'static Lint,
     module: LocalModDefId,

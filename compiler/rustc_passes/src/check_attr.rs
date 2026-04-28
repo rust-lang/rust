@@ -1530,12 +1530,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 && attr.has_any_name(&[sym::allow, sym::warn, sym::deny, sym::forbid, sym::expect])
                 && let Some(meta) = attr.meta_item_list()
                 && meta.iter().any(|meta| {
-                    meta.meta_item()
-                        .is_some_and(|item| item.path == sym::unused_pub_items_in_binary)
+                    meta.meta_item().is_some_and(|item| item.path == sym::dead_code_pub_in_binary)
                 })
                 && !self.tcx.crate_types().contains(&CrateType::Executable)
             {
-                errors::UnusedNote::NoEffectUnusedPubItemsInBinary
+                errors::UnusedNote::NoEffectDeadCodePubInBinary
             } else if attr.has_name(sym::default_method_body_is_const) {
                 errors::UnusedNote::DefaultMethodBodyConst
             } else {

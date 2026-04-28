@@ -1,5 +1,5 @@
 #![deny(dead_code)]
-#![deny(unused_pub_items_in_binary)]
+#![deny(dead_code_pub_in_binary)]
 //~^ WARN unused attribute
 
 #![crate_type = "lib"]

@@ -1,10 +1,10 @@
 warning: unused attribute
   --> $DIR/library.rs:2:1
    |
-LL | #![deny(unused_pub_items_in_binary)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+LL | #![deny(dead_code_pub_in_binary)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
-   = note: the `unused_pub_items_in_binary` lint has no effect in library crates
+   = note: the `dead_code_pub_in_binary` lint has no effect in library crates
    = note: requested on the command line with `-W unused-attributes`
 
 error: function `unused_priv_fn` is never used
