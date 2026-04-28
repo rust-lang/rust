@@ -35,16 +35,16 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) placeholder_indices: PlaceholderIndices<'tcx>,
 }
 
-impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
-    pub(crate) fn init(definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>) -> Self {
-        Self { scc_to_annotation: IndexVec::new(), definitions }
-    }
-}
-
 /// A Visitor for SCC annotation construction.
 pub(crate) struct SccAnnotations<'d, 'tcx, A: scc::Annotation> {
     pub(crate) scc_to_annotation: IndexVec<ConstraintSccIndex, A>,
     definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
+}
+
+impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
+    pub(crate) fn init(definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>) -> Self {
+        Self { scc_to_annotation: IndexVec::new(), definitions }
+    }
 }
 
 impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
@@ -118,7 +118,7 @@ impl RegionTracker {
     }
 
     /// The largest universe this SCC can name. It's the smallest
-    /// largest nameable universe of any reachable region, or
+    /// max-nameable-universe of any reachable region, or
     /// `max_nameable(r) = min (max_nameable(r') for r' reachable from r)`
     pub(crate) fn max_nameable_universe(self) -> UniverseIndex {
         self.max_nameable_universe.0
@@ -208,7 +208,7 @@ pub(super) fn region_definitions<'tcx>(
 /// graph such that there is a series of constraints
 ///    A: B: C: ... : X  where
 /// A contains a placeholder whose universe cannot be named by X,
-/// add a constraint that A: 'static. This is a safe upper bound
+/// add a constraint that X: 'static. This is a safe upper bound
 /// in the face of borrow checker/trait solver limitations that will
 /// eventually go away.
 ///
@@ -327,8 +327,6 @@ pub(crate) fn rewrite_placeholder_outlives<'tcx>(
 
     for scc in sccs.all_sccs() {
         // No point in adding 'static: 'static!
-        // This micro-optimisation makes somewhat sense
-        // because static outlives *everything*.
         if scc == sccs.scc(fr_static) {
             continue;
         }
