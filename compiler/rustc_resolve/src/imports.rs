@@ -20,7 +20,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
-    PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
+    REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -99,11 +99,7 @@ pub(crate) enum ImportKind<'ra> {
         target: Ident,
         id: NodeId,
     },
-    MacroUse {
-        /// A field has been added indicating whether it should be reported as a lint,
-        /// addressing issue#119301.
-        warn_private: bool,
-    },
+    MacroUse,
     MacroExport,
 }
 
@@ -134,9 +130,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 .field("target", target)
                 .field("id", id)
                 .finish(),
-            MacroUse { warn_private } => {
-                f.debug_struct("MacroUse").field("warn_private", warn_private).finish()
-            }
+            MacroUse => f.debug_struct("MacroUse").finish(),
             MacroExport => f.debug_struct("MacroExport").finish(),
         }
     }
@@ -253,7 +247,7 @@ impl<'ra> ImportData<'ra> {
             ImportKind::Single { id, .. }
             | ImportKind::Glob { id, .. }
             | ImportKind::ExternCrate { id, .. } => Some(id),
-            ImportKind::MacroUse { .. } | ImportKind::MacroExport => None,
+            ImportKind::MacroUse | ImportKind::MacroExport => None,
         }
     }
 
@@ -263,7 +257,7 @@ impl<'ra> ImportData<'ra> {
             ImportKind::Single { id, .. } => Reexport::Single(to_def_id(id)),
             ImportKind::Glob { id, .. } => Reexport::Glob(to_def_id(id)),
             ImportKind::ExternCrate { id, .. } => Reexport::ExternCrate(to_def_id(id)),
-            ImportKind::MacroUse { .. } => Reexport::MacroUse,
+            ImportKind::MacroUse => Reexport::MacroUse,
             ImportKind::MacroExport => Reexport::MacroExport,
         }
     }
@@ -272,7 +266,6 @@ impl<'ra> ImportData<'ra> {
         ImportSummary {
             vis: self.vis,
             nearest_parent_mod: self.parent_scope.module.nearest_parent_mod().expect_local(),
-            is_single: matches!(self.kind, ImportKind::Single { .. }),
         }
     }
 }
@@ -333,20 +326,6 @@ struct UnresolvedImportError {
     on_unknown_attr: Option<OnUnknownData>,
 }
 
-// Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
-// are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(import: ImportSummary, decl: Decl<'_>) -> Option<NodeId> {
-    match (import.is_single, decl.kind) {
-        (true, DeclKind::Import { import: decl_import, .. })
-            if let ImportKind::ExternCrate { id, .. } = decl_import.kind
-                && import.vis.is_public() =>
-        {
-            Some(id)
-        }
-        _ => None,
-    }
-}
-
 /// Removes identical import layers from two declarations.
 fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra>) {
     if let DeclKind::Import { import: import1, source_decl: d1_next } = d1.kind
@@ -374,7 +353,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let decl_vis = decl.vis();
         if decl_vis.partial_cmp(import.vis, self.tcx) == Some(Ordering::Less)
             && decl_vis.is_accessible_from(import.nearest_parent_mod, self.tcx)
-            && pub_use_of_private_extern_crate_hack(import, decl).is_none()
         {
             // Imported declaration is less visible than the import, but is still visible
             // from the current module, use the declaration's visibility.
@@ -383,8 +361,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // Good case - imported declaration is more visible than the import, or the same,
             // use the import's visibility.
             // Bad case - imported declaration is too private for the current module.
-            // It doesn't matter what visibility we choose here (except in the `PRIVATE_MACRO_USE`
-            // and `PUB_USE_OF_PRIVATE_EXTERN_CRATE` cases), because either some error will be
+            // It doesn't matter what visibility we choose here, because either some error will be
             // reported, or the import declaration will be thrown away (unfortunately cannot use
             // delayed bug here for this reason).
             // Use import visibility to keep the all declaration visibilities in a module ordered.
@@ -1495,20 +1472,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // All namespaces must be re-exported with extra visibility for an error to occur.
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
-            if let Some(extern_crate_id) =
-                pub_use_of_private_extern_crate_hack(import.summary(), binding)
-            {
-                let extern_crate_sp = self.tcx.source_span(self.local_def_id(extern_crate_id));
-                self.lint_buffer.buffer_lint(
-                    PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-                    import_id,
-                    import.span,
-                    crate::errors::PrivateExternCrateReexport {
-                        ident,
-                        sugg: extern_crate_sp.shrink_to_lo(),
-                    },
-                );
-            } else if ns == TypeNS {
+            if ns == TypeNS {
                 let err = if crate_private_reexport {
                     self.dcx()
                         .create_err(CannotBeReexportedCratePublicNS { span: import.span, ident })
@@ -1802,7 +1766,7 @@ fn import_kind_to_string(import_kind: &ImportKind<'_>) -> String {
         ImportKind::Single { source, .. } => source.to_string(),
         ImportKind::Glob { .. } => "*".to_string(),
         ImportKind::ExternCrate { .. } => "<extern crate>".to_string(),
-        ImportKind::MacroUse { .. } => "#[macro_use]".to_string(),
+        ImportKind::MacroUse => "#[macro_use]".to_string(),
         ImportKind::MacroExport => "#[macro_export]".to_string(),
     }
 }

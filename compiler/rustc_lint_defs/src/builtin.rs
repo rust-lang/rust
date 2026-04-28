@@ -87,7 +87,6 @@ declare_lint_pass! {
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
         REFINING_IMPL_TRAIT_INTERNAL,
@@ -1289,40 +1288,6 @@ declare_lint! {
     pub EXPORTED_PRIVATE_DEPENDENCIES,
     Warn,
     "public interface leaks type from a private dependency"
-}
-
-declare_lint! {
-    /// The `pub_use_of_private_extern_crate` lint detects a specific
-    /// situation of re-exporting a private `extern crate`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// extern crate core;
-    /// pub use core as reexported_core;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A public `use` declaration should not be used to publically re-export a
-    /// private `extern crate`. `pub extern crate` should be used instead.
-    ///
-    /// This was historically allowed, but is not the intended behavior
-    /// according to the visibility rules. This is a [future-incompatible]
-    /// lint to transition this to a hard error in the future. See [issue
-    /// #127909] for more details.
-    ///
-    /// [issue #127909]: https://github.com/rust-lang/rust/issues/127909
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    Deny,
-    "detect public re-exports of private extern crates",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #127909),
-        report_in_deps: true,
-    };
 }
 
 declare_lint! {
@@ -4907,53 +4872,6 @@ declare_lint! {
     "elided lifetimes cannot be used in associated constants in impls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #115010),
-    };
-}
-
-declare_lint! {
-    /// The `private_macro_use` lint detects private macros that are imported
-    /// with `#[macro_use]`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs extern crate)
-    /// // extern_macro.rs
-    /// macro_rules! foo_ { () => {}; }
-    /// use foo_ as foo;
-    ///
-    /// // code.rs
-    ///
-    /// #![deny(private_macro_use)]
-    ///
-    /// #[macro_use]
-    /// extern crate extern_macro;
-    ///
-    /// fn main() {
-    ///     foo!();
-    /// }
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// error: cannot find macro `foo` in this scope
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// This lint arises from overlooking visibility checks for macros
-    /// in an external crate.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PRIVATE_MACRO_USE,
-    Deny,
-    "detects certain macro bindings that should not be re-exported",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #120192),
-        report_in_deps: true,
     };
 }
 

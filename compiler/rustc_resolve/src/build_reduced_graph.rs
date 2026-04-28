@@ -1122,9 +1122,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
         }
 
-        let macro_use_import = |this: &Self, span, warn_private| {
+        let macro_use_import = |this: &Self, span| {
             this.r.arenas.alloc_import(ImportData {
-                kind: ImportKind::MacroUse { warn_private },
+                kind: ImportKind::MacroUse,
                 root_id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: CmCell::new(Some(ModuleOrUniformRoot::Module(module))),
@@ -1142,22 +1142,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         let allow_shadowing = self.parent_scope.expansion == LocalExpnId::ROOT;
         if let Some(span) = import_all {
-            let import = macro_use_import(self, span, false);
+            let import = macro_use_import(self, span);
             self.r.potentially_unused_imports.push(import);
             module.for_each_child_mut(self, |this, ident, _, ns, binding| {
-                if ns == MacroNS {
-                    let import =
-                        if this.r.is_accessible_from(binding.vis(), this.parent_scope.module) {
-                            import
-                        } else {
-                            // FIXME: This branch is used for reporting the `private_macro_use` lint
-                            // and should eventually be removed.
-                            if this.r.macro_use_prelude.contains_key(&ident.name) {
-                                // Do not override already existing entries with compatibility entries.
-                                return;
-                            }
-                            macro_use_import(this, span, true)
-                        };
+                if ns == MacroNS
+                    && this.r.is_accessible_from(binding.vis(), this.parent_scope.module)
+                {
                     let import_decl = this.r.new_import_decl(binding, import);
                     this.add_macro_use_decl(ident.name, import_decl, span, allow_shadowing);
                 }
@@ -1172,7 +1162,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     None,
                 );
                 if let Ok(binding) = result {
-                    let import = macro_use_import(self, ident.span, false);
+                    let import = macro_use_import(self, ident.span);
                     self.r.potentially_unused_imports.push(import);
                     let import_decl = self.r.new_import_decl(binding, import);
                     self.add_macro_use_decl(ident.name, import_decl, ident.span, allow_shadowing);

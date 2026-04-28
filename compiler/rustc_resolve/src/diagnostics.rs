@@ -300,7 +300,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         use DeclKind::Import;
         let can_suggest = |binding: Decl<'_>, import: self::Import<'_>| {
             !binding.span.is_dummy()
-                && !matches!(import.kind, ImportKind::MacroUse { .. } | ImportKind::MacroExport)
+                && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
         };
         let import = match (&new_binding.kind, &old_binding.kind) {
             // If there are two imports where one or both have attributes then prefer removing the
@@ -2286,9 +2286,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         next_ident = source;
                         Some(source_decl)
                     }
-                    ImportKind::Glob { .. }
-                    | ImportKind::MacroUse { .. }
-                    | ImportKind::MacroExport => Some(source_decl),
+                    ImportKind::Glob { .. } | ImportKind::MacroUse | ImportKind::MacroExport => {
+                        Some(source_decl)
+                    }
                     ImportKind::ExternCrate { .. } => None,
                 },
                 _ => None,

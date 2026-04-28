@@ -1,9 +1,6 @@
-//@ compile-flags: --force-warn pub_use_of_private_extern_crate
+//@ compile-flags: --force-warn unused_variables
 //@ check-pass
 
-extern crate core;
-pub use core as reexported_core;
-//~^ warning: extern crate `core` is private
-//~| warning: this was previously accepted by the compiler
-
-fn main() {}
+fn main() {
+    let x = 10; //~ WARN unused variable: `x`
+}

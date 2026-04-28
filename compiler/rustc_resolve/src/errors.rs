@@ -794,19 +794,6 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
     pub(crate) ident: Ident,
 }
 
-#[derive(Diagnostic)]
-#[diag("extern crate `{$ident}` is private and cannot be re-exported", code = E0365)]
-pub(crate) struct PrivateExternCrateReexport {
-    pub ident: Ident,
-    #[suggestion(
-        "consider making the `extern crate` item publicly accessible",
-        code = "pub ",
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
-    pub sugg: Span,
-}
-
 #[derive(Subdiagnostic)]
 #[help("consider adding a `#[macro_export]` to the macro in the imported module")]
 pub(crate) struct ConsiderAddingMacroExport {
@@ -1427,12 +1414,6 @@ pub(crate) struct UnusedMacroUse;
 #[diag("applying the `#[macro_use]` attribute to an `extern crate` item is deprecated")]
 #[help("remove it and import macros at use sites with a `use` item instead")]
 pub(crate) struct MacroUseDeprecated;
-
-#[derive(Diagnostic)]
-#[diag("macro `{$ident}` is private")]
-pub(crate) struct MacroIsPrivate {
-    pub ident: Ident,
-}
 
 #[derive(Diagnostic)]
 #[diag("unused macro definition: `{$name}`")]

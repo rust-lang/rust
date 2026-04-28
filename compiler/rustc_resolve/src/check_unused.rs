@@ -420,15 +420,15 @@ impl Resolver<'_, '_> {
                     || import.span.is_dummy()
                     || self.import_use_map.contains_key(import) =>
                 {
-                    if let ImportKind::MacroUse { .. } = import.kind {
-                        if !import.span.is_dummy() {
-                            self.lint_buffer.buffer_lint(
-                                MACRO_USE_EXTERN_CRATE,
-                                import.root_id,
-                                import.span,
-                                crate::errors::MacroUseDeprecated,
-                            );
-                        }
+                    if let ImportKind::MacroUse = import.kind
+                        && !import.span.is_dummy()
+                    {
+                        self.lint_buffer.buffer_lint(
+                            MACRO_USE_EXTERN_CRATE,
+                            import.root_id,
+                            import.span,
+                            crate::errors::MacroUseDeprecated,
+                        );
                     }
                 }
                 ImportKind::ExternCrate { id, .. } => {
@@ -443,7 +443,7 @@ impl Resolver<'_, '_> {
                         maybe_unused_extern_crates.insert(id, import.span);
                     }
                 }
-                ImportKind::MacroUse { .. } => {
+                ImportKind::MacroUse => {
                     self.lint_buffer.buffer_lint(
                         UNUSED_IMPORTS,
                         import.root_id,

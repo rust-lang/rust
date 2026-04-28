@@ -644,6 +644,16 @@ fn register_builtins(store: &mut LintStore) {
     );
     store.register_removed("wasm_c_abi", "the wasm C ABI has been fixed");
     store.register_removed("soft_unstable", "the general soft-unstable mechanism has been removed");
+    store.register_removed(
+        "private_macro_use",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/120192> for more information",
+    );
+    store.register_removed(
+        "pub_use_of_private_extern_crate",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/127909> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

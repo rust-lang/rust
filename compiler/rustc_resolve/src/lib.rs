@@ -70,7 +70,6 @@ use rustc_middle::ty::{
     TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_session::config::CrateType;
-use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -2205,31 +2204,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
         if let DeclKind::Import { import, source_decl } = used_decl.kind {
-            if let ImportKind::MacroUse { warn_private: true } = import.kind {
-                // Do not report the lint if the macro name resolves in stdlib prelude
-                // even without the problematic `macro_use` import.
-                let found_in_stdlib_prelude = self.prelude.is_some_and(|prelude| {
-                    let empty_module = self.empty_module.to_module();
-                    let arenas = self.arenas;
-                    self.cm()
-                        .maybe_resolve_ident_in_module(
-                            ModuleOrUniformRoot::Module(prelude),
-                            ident,
-                            MacroNS,
-                            &ParentScope::module(empty_module, arenas),
-                            None,
-                        )
-                        .is_ok()
-                });
-                if !found_in_stdlib_prelude {
-                    self.lint_buffer().buffer_lint(
-                        PRIVATE_MACRO_USE,
-                        import.root_id,
-                        ident.span,
-                        errors::MacroIsPrivate { ident },
-                    );
-                }
-            }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if used == Used::Scope
@@ -2715,7 +2689,6 @@ enum Stage {
 struct ImportSummary {
     vis: Visibility,
     nearest_parent_mod: LocalDefId,
-    is_single: bool,
 }
 
 /// Invariant: if `Finalize` is used, expansion and import resolution must be complete.

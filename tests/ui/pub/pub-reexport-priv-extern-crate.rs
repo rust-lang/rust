@@ -1,11 +1,10 @@
 extern crate core;
-pub use core as reexported_core; //~ ERROR `core` is private and cannot be re-exported
-                                 //~^ WARN this was previously accepted
+pub use core as reexported_core;
+//~^ ERROR `core` is only public within the crate, and cannot be re-exported outside
 
 mod foo1 {
     extern crate core;
-    pub use self::core as core2; //~ ERROR extern crate `core` is private and cannot be re-exported
-                                 //~^ WARN this was previously accepted
+    pub use self::core as core2; //~ ERROR `core` is private, and cannot be re-exported
 }
 
 mod foo2 {
@@ -20,6 +19,5 @@ mod baz {
 }
 
 fn main() {
-    // Check that `foo1::core2` has the reexport's visibility and is accessible.
-    foo1::core2::mem::drop(());
+    foo1::core2::mem::drop(()); //~ ERROR crate import `core2` is private
 }
