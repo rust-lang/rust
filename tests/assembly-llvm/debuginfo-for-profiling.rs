@@ -1,4 +1,4 @@
-// Verify that additional discriminators are emitted for profiling with `-Zdebuginfo-for-profiling`:
+// Verify that additional discriminators are emitted for profiling with `-Cdebuginfo-for-profiling`:
 //  - 0 discriminators are emitted without the flag in the test below
 //  - at least 1 discriminator is emitted with the flag in the test below.
 //    Actual count depends on the target
@@ -12,9 +12,9 @@
 //@ [DEFAULT-X86] needs-llvm-components: x86
 //@ [DEFAULT-AARCH64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [DEFAULT-AARCH64] needs-llvm-components: aarch64
-//@ [DEBUGINFO-X86] compile-flags: -Zdebuginfo-for-profiling --target=x86_64-unknown-linux-gnu
+//@ [DEBUGINFO-X86] compile-flags: -Cdebuginfo-for-profiling --target=x86_64-unknown-linux-gnu
 //@ [DEBUGINFO-X86] needs-llvm-components: x86
-//@ [DEBUGINFO-AARCH64] compile-flags: -Zdebuginfo-for-profiling --target=aarch64-unknown-linux-gnu
+//@ [DEBUGINFO-AARCH64] compile-flags: -Cdebuginfo-for-profiling --target=aarch64-unknown-linux-gnu
 //@ [DEBUGINFO-AARCH64] needs-llvm-components: aarch64
 // DEFAULT-X86-NOT: discriminator
 // DEFAULT-AARCH64-NOT: discriminator

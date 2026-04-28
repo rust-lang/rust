@@ -1,4 +1,4 @@
-// Verify that additional discriminators are emitted for profiling with `-Zdebuginfo-for-profiling`:
+// Verify that additional discriminators are emitted for profiling with `-Cdebuginfo-for-profiling`:
 //  - 0 discriminators are emitted without the flag in the test below
 //  - at least 1 discriminator is emitted with the flag in the test below
 //
@@ -6,7 +6,7 @@
 //@ add-minicore
 //@ revisions: DEFAULT DEBUGINFO
 //@ compile-flags: -Copt-level=2 -Cdebuginfo=line-tables-only
-//@ [DEBUGINFO] compile-flags: -Zdebuginfo-for-profiling
+//@ [DEBUGINFO] compile-flags: -Cdebuginfo-for-profiling
 // DEFAULT-NOT: discriminator
 // DEBUGINFO-COUNT-1: discriminator
 
