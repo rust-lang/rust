@@ -40,8 +40,6 @@ use crate::sys::{FromInner, IntoInner, pipe as imp};
 /// # Example
 ///
 /// ```no_run
-/// # #[cfg(miri)] fn main() {}
-/// # #[cfg(not(miri))]
 /// # fn main() -> std::io::Result<()> {
 /// use std::io::{Read, Write, pipe};
 /// use std::process::Command;
@@ -126,8 +124,6 @@ impl PipeReader {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
     /// # fn main() -> std::io::Result<()> {
     /// use std::fs;
     /// use std::io::{pipe, Write};
@@ -185,8 +181,6 @@ impl PipeWriter {
     /// # Examples
     ///
     /// ```no_run
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
     /// # fn main() -> std::io::Result<()> {
     /// use std::process::Command;
     /// use std::io::{pipe, Read};
