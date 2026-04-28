@@ -1,16 +1,18 @@
-warning: irrefutable `let...else` pattern
-  --> $DIR/let-else-irrefutable-152938.rs:8:5
+warning: unreachable `else` clause
+  --> $DIR/let-else-irrefutable-152938.rs:8:31
    |
 LL |     let name_str = Some(name) else { return; };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ------------------------- ^^^^
+   |     |
+   |     assigning to binding pattern will always succeed
    |
    = note: this pattern always matches, so the else clause is unreachable
-help: remove this `else` block
-  --> $DIR/let-else-irrefutable-152938.rs:8:36
-   |
-LL |     let name_str = Some(name) else { return; };
-   |                                    ^^^^^^^^^^^
    = note: `#[warn(irrefutable_let_patterns)]` on by default
+help: consider using `let Some(name_str) = name` to match on a specific variant
+   |
+LL -     let name_str = Some(name) else { return; };
+LL +     let Some(name_str) = name else { return; };
+   |
 
 warning: 1 warning emitted
 
