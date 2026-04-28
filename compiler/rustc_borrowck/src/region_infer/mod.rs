@@ -501,43 +501,48 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
-        // If this is a closure, we can propagate unsatisfied
-        // `outlives_requirements` to our creator, so create a vector
-        // to store those. Otherwise, we'll pass in `None` to the
-        // functions below, which will trigger them to report errors
-        // eagerly.
-        let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
+        // If this is a nested body, we propagate unsatisfied
+        // outlives constraints to the parent body instead of
+        // eagerly erroing.
+        let mut propagated_outlives_requirements =
+            infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        self.check_type_tests(infcx, outlives_requirements.as_mut(), &mut errors_buffer);
+        self.check_type_tests(infcx, propagated_outlives_requirements.as_mut(), &mut errors_buffer);
 
         debug!(?errors_buffer);
-        debug!(?outlives_requirements);
+        debug!(?propagated_outlives_requirements);
 
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
         // constraints were too strong, and if so, emit or propagate those errors.
         if infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
             self.check_polonius_subset_errors(
-                outlives_requirements.as_mut(),
+                propagated_outlives_requirements.as_mut(),
                 &mut errors_buffer,
                 polonius_output
                     .as_ref()
                     .expect("Polonius output is unavailable despite `-Z polonius`"),
             );
         } else {
-            self.check_universal_regions(outlives_requirements.as_mut(), &mut errors_buffer);
+            self.check_universal_regions(
+                propagated_outlives_requirements.as_mut(),
+                &mut errors_buffer,
+            );
         }
 
         debug!(?errors_buffer);
 
-        let outlives_requirements = outlives_requirements.unwrap_or_default();
+        let propagated_outlives_requirements = propagated_outlives_requirements.unwrap_or_default();
 
-        if outlives_requirements.is_empty() {
+        if propagated_outlives_requirements.is_empty() {
             (None, errors_buffer)
         } else {
             let num_external_vids = self.universal_regions().num_global_and_external_regions();
             (
-                Some(ClosureRegionRequirements { num_external_vids, outlives_requirements }),
+                Some(ClosureRegionRequirements {
+                    num_external_vids,
+                    outlives_requirements: propagated_outlives_requirements,
+                }),
                 errors_buffer,
             )
         }
