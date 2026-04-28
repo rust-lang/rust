@@ -210,12 +210,11 @@ fn parse_directive_items<'p>(
     items: impl Iterator<Item = &'p MetaItemOrLitParser>,
     is_root: bool,
 ) -> Option<Directive> {
-    let condition = None;
     let mut message: Option<(Span, _)> = None;
     let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
     let mut parent_label = None;
-    let mut subcommands = ThinVec::new();
+    let mut filters = ThinVec::new();
 
     for item in items {
         let span = item.span();
@@ -357,7 +356,7 @@ fn parse_directive_items<'p>(
                         }
                     };
 
-                    let condition = parse_condition(condition);
+                    let filter = parse_condition(condition);
 
                     if items.len() < 2 {
                         // Something like `#[rustc_on_unimplemented(on(.., /* nothing */))]`
@@ -365,13 +364,11 @@ fn parse_directive_items<'p>(
                         malformed!();
                     }
 
-                    let mut directive =
-                        or_malformed!(parse_directive_items(cx, mode, iter, false)?);
-
-                    match condition {
-                        Ok(c) => {
-                            directive.condition = Some(c);
-                            subcommands.push(directive);
+                    match filter {
+                        Ok(filter) => {
+                            let directive =
+                                or_malformed!(parse_directive_items(cx, mode, iter, false)?);
+                            filters.push((filter, directive));
                         }
                         Err(e) => {
                             cx.emit_err(e);
@@ -390,8 +387,7 @@ fn parse_directive_items<'p>(
 
     Some(Directive {
         is_rustc_attr: matches!(mode, Mode::RustcOnUnimplemented),
-        condition,
-        subcommands,
+        filters,
         message,
         label,
         notes,

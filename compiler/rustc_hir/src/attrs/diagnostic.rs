@@ -2,7 +2,6 @@
 use std::fmt;
 use std::fmt::Debug;
 
-pub use rustc_ast::attr::data_structures::*;
 use rustc_macros::{Decodable, Encodable, HashStable, PrintAttribute};
 use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
@@ -13,8 +12,9 @@ use crate::attrs::PrintAttribute;
 #[derive(Clone, Default, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
 pub struct Directive {
     pub is_rustc_attr: bool,
-    pub condition: Option<OnUnimplementedCondition>,
-    pub subcommands: ThinVec<Directive>,
+    /// This is never nested more than once, i.e. the directives in this
+    /// thinvec have no filters of their own.
+    pub filters: ThinVec<(OnUnimplementedCondition, Directive)>,
     pub message: Option<(Span, FormatString)>,
     pub label: Option<(Span, FormatString)>,
     pub notes: ThinVec<FormatString>,
@@ -28,11 +28,8 @@ impl Directive {
     /// We can't check this while parsing the attribute because `rustc_attr_parsing` doesn't have
     /// access to the item an attribute is on. Instead we later call this function in `check_attr`.
     pub fn visit_params(&self, visit: &mut impl FnMut(Symbol, Span)) {
-        if let Some(condition) = &self.condition {
-            condition.visit_params(visit);
-        }
-
-        for subcommand in &self.subcommands {
+        for (filter, subcommand) in &self.filters {
+            filter.visit_params(visit);
             subcommand.visit_params(visit);
         }
 
@@ -62,53 +59,25 @@ impl Directive {
             "Directive::eval({self:?}, this={this}, options={condition_options:?}, args ={args:?})"
         );
 
-        let Some(condition_options) = condition_options else {
+        let mut ret = CustomDiagnostic::default();
+
+        if let Some(condition_options) = condition_options {
+            for (filter, directive) in &self.filters {
+                if filter.matches_predicate(condition_options) {
+                    debug!("eval: {filter:?} succeeded");
+                    ret.update(directive, args);
+                } else {
+                    debug!("eval: skipping {filter:?} due to condition");
+                }
+            }
+        } else {
             debug_assert!(
                 !self.is_rustc_attr,
                 "Directive::eval called for `rustc_on_unimplemented` without `condition_options`"
             );
-            return CustomDiagnostic {
-                label: self.label.as_ref().map(|l| l.1.format(args)),
-                message: self.message.as_ref().map(|m| m.1.format(args)),
-                notes: self.notes.iter().map(|n| n.format(args)).collect(),
-                parent_label: None,
-            };
         };
-        let mut message = None;
-        let mut label = None;
-        let mut notes = Vec::new();
-        let mut parent_label = None;
-
-        for command in self.subcommands.iter().chain(Some(self)).rev() {
-            debug!(?command);
-            if let Some(ref condition) = command.condition
-                && !condition.matches_predicate(condition_options)
-            {
-                debug!("eval: skipping {command:?} due to condition");
-                continue;
-            }
-            debug!("eval: {command:?} succeeded");
-            if let Some(ref message_) = command.message {
-                message = Some(message_.clone());
-            }
-
-            if let Some(ref label_) = command.label {
-                label = Some(label_.clone());
-            }
-
-            notes.extend(command.notes.clone());
-
-            if let Some(ref parent_label_) = command.parent_label {
-                parent_label = Some(parent_label_.clone());
-            }
-        }
-
-        CustomDiagnostic {
-            label: label.map(|l| l.1.format(args)),
-            message: message.map(|m| m.1.format(args)),
-            notes: notes.into_iter().map(|n| n.format(args)).collect(),
-            parent_label: parent_label.map(|e_s| e_s.format(args)),
-        }
+        ret.update(self, args);
+        ret
     }
 }
 
@@ -119,6 +88,22 @@ pub struct CustomDiagnostic {
     pub label: Option<String>,
     pub notes: Vec<String>,
     pub parent_label: Option<String>,
+}
+
+impl CustomDiagnostic {
+    fn update(&mut self, di: &Directive, args: &FormatArgs) {
+        if self.message.is_none() {
+            self.message = di.message.as_ref().map(|m| m.1.format(args));
+        }
+        if self.label.is_none() {
+            self.label = di.label.as_ref().map(|l| l.1.format(args));
+        }
+        if self.parent_label.is_none() {
+            self.parent_label = di.parent_label.as_ref().map(|p| p.format(args));
+        }
+
+        self.notes.extend(di.notes.iter().map(|n| n.format(args)))
+    }
 }
 
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
