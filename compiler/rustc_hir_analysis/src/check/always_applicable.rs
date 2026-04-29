@@ -217,16 +217,26 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
                 unreachable!()
             };
             let field_ty = eff.trait_ref.self_ty();
-            let diag = struct_span_code_err!(
+            let mut diag = struct_span_code_err!(
                 tcx.dcx(),
                 error.root_obligation.cause.span,
                 E0367,
                 "`{field_ty}` does not implement `[const] Destruct`",
             )
             .with_span_note(impl_span, "required for this `Drop` impl");
-            if field_ty.has_param() {
-                // FIXME: suggest adding `[const] Destruct` by teaching
-                // `suggest_restricting_param_bound` about const traits.
+            if field_ty.has_param()
+                && let Some(generics) = tcx.hir_node_by_def_id(impl_def_id).generics()
+            {
+                let destruct_def_id = tcx.lang_items().destruct_trait();
+                ty::suggest_constraining_type_param(
+                    tcx,
+                    generics,
+                    &mut diag,
+                    &field_ty.to_string(),
+                    "[const] Destruct",
+                    destruct_def_id,
+                    None,
+                );
             }
             Err(diag.emit())
         })

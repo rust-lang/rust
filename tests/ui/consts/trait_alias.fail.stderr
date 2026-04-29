@@ -3,6 +3,11 @@ error[E0277]: the trait bound `T: [const] Baz` is not satisfied
    |
 LL |         x.baz();
    |           ^^^
+   |
+help: consider further restricting type parameter `T` with trait `Baz`
+   |
+LL | const fn foo<T: [const] Foo + [const] Baz>(x: &T) {
+   |                             +++++++++++++
 
 error: aborting due to 1 previous error
 
