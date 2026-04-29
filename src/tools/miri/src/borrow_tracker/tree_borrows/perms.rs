@@ -91,7 +91,7 @@ impl PartialOrd for PermissionPriv {
 impl PermissionPriv {
     /// Check if `self` can be the initial state of a pointer.
     fn is_initial(&self) -> bool {
-        matches!(self, ReservedFrz { conflicted: false } | Frozen | ReservedIM | Cell)
+        matches!(self, ReservedFrz { conflicted: false } | Frozen | ReservedIM | Cell | Unique)
     }
 
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
@@ -265,14 +265,17 @@ impl Permission {
         self.inner == Cell
     }
 
-    /// Default initial permission of the root of a new tree at inbounds positions.
-    /// Must *only* be used for the root, this is not in general an "initial" permission!
+    /// Check if `self` is a Permission of type `Unique`
+    pub fn is_unique(&self) -> bool {
+        self.inner == Unique
+    }
+
+    /// Create a new Permission of type `Unique`
     pub fn new_unique() -> Self {
         Self { inner: Unique }
     }
 
-    /// Default initial permission of a reborrowed mutable reference that is either
-    /// protected or not interior mutable.
+    /// Create a new Permission of type `ReservedFrz` with conflictedReserved set to false
     pub fn new_reserved_frz() -> Self {
         Self { inner: ReservedFrz { conflicted: false } }
     }
@@ -304,8 +307,8 @@ impl Permission {
         self.inner.compatible_with_protector()
     }
 
-    /// What kind of access to perform before releasing the protector.
-    pub fn protector_end_access(&self) -> Option<AccessKind> {
+    /// What kind of access to perform before releasing the protector or on a reborrow.
+    pub fn associated_access(&self) -> Option<AccessKind> {
         match self.inner {
             // Do not do perform access if it is a `Cell`, as this
             // can cause data races when using thread-safe data types.

@@ -243,12 +243,12 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.write_int_fields_named(
             &[
-                ("st_dev", metadata.dev.into()),
+                ("st_dev", metadata.dev.unwrap_or(0).into()),
                 ("st_mode", mode.into()),
-                ("st_nlink", 0),
-                ("st_ino", 0),
-                ("st_uid", metadata.uid.into()),
-                ("st_gid", metadata.gid.into()),
+                ("st_nlink", metadata.nlink.unwrap_or(0).into()),
+                ("st_ino", metadata.ino.unwrap_or(0).into()),
+                ("st_uid", metadata.uid.unwrap_or(0).into()),
+                ("st_gid", metadata.gid.unwrap_or(0).into()),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
                 ("st_atime_nsec", access_nsec.into()),
@@ -257,8 +257,8 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("st_ctime", 0),
                 ("st_ctime_nsec", 0),
                 ("st_size", metadata.size.into()),
-                ("st_blocks", 0),
-                ("st_blksize", 0),
+                ("st_blocks", metadata.blocks.unwrap_or(0).into()),
+                ("st_blksize", metadata.blksize.unwrap_or(0).into()),
             ],
             &buf,
         )?;
@@ -586,9 +586,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if !matches!(
             &this.tcx.sess.target.os,
-            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android | Os::Linux
         ) {
-            panic!("`macos_fbsd_solaris_stat` should not be called on {}", this.tcx.sess.target.os);
+            panic!("`stat` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let path_scalar = this.read_pointer(path_op)?;
@@ -615,12 +615,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if !matches!(
             &this.tcx.sess.target.os,
-            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android
+            Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos | Os::Android | Os::Linux
         ) {
-            panic!(
-                "`macos_fbsd_solaris_lstat` should not be called on {}",
-                this.tcx.sess.target.os
-            );
+            panic!("`lstat` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let path_scalar = this.read_pointer(path_op)?;
@@ -730,12 +727,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(ecode);
         }
 
-        // the `_mask_op` parameter specifies the file information that the caller requested.
-        // However `statx` is allowed to return information that was not requested or to not
-        // return information that was requested. This `mask` represents the information we can
-        // actually provide for any target.
-        let mut mask = this.eval_libc_u32("STATX_TYPE") | this.eval_libc_u32("STATX_SIZE");
-
         // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
         // symbolic links.
         let follow_symlink = flags & this.eval_libc_i32("AT_SYMLINK_NOFOLLOW") == 0;
@@ -751,6 +742,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
+
+        // The `_mask_op` parameter specifies the file information that the caller requested.
+        // However, `statx` is allowed to return information that was not requested or to not
+        // return information that was requested. This `mask` represents the information we can
+        // actually provide for any target.
+        let mut mask = this.eval_libc_u32("STATX_TYPE") | this.eval_libc_u32("STATX_SIZE");
+
+        // Check which pieces of metadata we acquired, and set the appropriate flags in the mask.
+        if metadata.ino.is_some() {
+            mask |= this.eval_libc_u32("STATX_INO");
+        }
+        if metadata.nlink.is_some() {
+            mask |= this.eval_libc_u32("STATX_NLINK");
+        }
+        if metadata.uid.is_some() {
+            mask |= this.eval_libc_u32("STATX_UID");
+        }
+        if metadata.gid.is_some() {
+            mask |= this.eval_libc_u32("STATX_GID");
+        }
+        if metadata.blocks.is_some() {
+            mask |= this.eval_libc_u32("STATX_BLOCKS");
+        }
 
         // `statx.stx_mode` is `__u16`. `libc::S_IF*` are of type `mode_t`, which varies in
         // width across targets (`u16` on macOS, `u32` on Linux). Read using `mode_t`'s size.
@@ -791,15 +805,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_int_fields_named(
             &[
                 ("stx_mask", mask.into()),
-                ("stx_blksize", 0),
+                ("stx_blksize", metadata.blksize.unwrap_or(0).into()),
                 ("stx_attributes", 0),
-                ("stx_nlink", 0),
-                ("stx_uid", 0),
-                ("stx_gid", 0),
+                ("stx_nlink", metadata.nlink.unwrap_or(0).into()),
+                ("stx_uid", metadata.uid.unwrap_or(0).into()),
+                ("stx_gid", metadata.gid.unwrap_or(0).into()),
                 ("stx_mode", mode.into()),
-                ("stx_ino", 0),
+                ("stx_ino", metadata.ino.unwrap_or(0).into()),
                 ("stx_size", metadata.size.into()),
-                ("stx_blocks", 0),
+                ("stx_blocks", metadata.blocks.unwrap_or(0).into()),
                 ("stx_attributes_mask", 0),
                 ("stx_rdev_major", 0),
                 ("stx_rdev_minor", 0),
@@ -1664,15 +1678,24 @@ fn file_type_to_mode_name(file_type: std::fs::FileType) -> &'static str {
 
 /// Stores a file's metadata in order to avoid code duplication in the different metadata related
 /// shims.
+///
+/// Some fields are host/platform-specific. `None` means that Miri does not have a real value for
+/// this field, for example because the metadata is synthetic or because the host platform does not
+/// expose it. `statx` must only advertise the corresponding `STATX_*` bit when the field is `Some`;
+/// legacy `stat` writes zero for `None` to preserve the old fallback behavior.
 struct FileMetadata {
     mode: Scalar,
     size: u64,
     created: Option<(u64, u32)>,
     accessed: Option<(u64, u32)>,
     modified: Option<(u64, u32)>,
-    dev: u64,
-    uid: u32,
-    gid: u32,
+    dev: Option<u64>,
+    ino: Option<u64>,
+    nlink: Option<u64>,
+    uid: Option<u32>,
+    gid: Option<u32>,
+    blksize: Option<u64>,
+    blocks: Option<u64>,
 }
 
 impl FileMetadata {
@@ -1711,9 +1734,13 @@ impl FileMetadata {
             created: None,
             accessed: None,
             modified: None,
-            dev: 0,
-            uid: 0,
-            gid: 0,
+            dev: None,
+            uid: None,
+            gid: None,
+            blksize: None,
+            blocks: None,
+            ino: None,
+            nlink: None,
         }))
     }
 
@@ -1743,16 +1770,42 @@ impl FileMetadata {
             unix => {
                 use std::os::unix::fs::MetadataExt;
                 let dev = metadata.dev();
+                let ino = metadata.ino();
+                let nlink = metadata.nlink();
                 let uid = metadata.uid();
                 let gid = metadata.gid();
-            }
-            _ => {
-                let dev = 0;
-                let uid = 0;
-                let gid = 0;
-            }
-        }
+                let blksize = metadata.blksize();
+                let blocks = metadata.blocks();
 
-        interp_ok(Ok(FileMetadata { mode, size, created, accessed, modified, dev, uid, gid }))
+                interp_ok(Ok(FileMetadata {
+                    mode,
+                    size,
+                    created,
+                    accessed,
+                    modified,
+                    dev: Some(dev),
+                    ino: Some(ino),
+                    nlink: Some(nlink),
+                    uid: Some(uid),
+                    gid: Some(gid),
+                    blksize: Some(blksize),
+                    blocks: Some(blocks),
+                }))
+            }
+            _ => interp_ok(Ok(FileMetadata {
+                mode,
+                size,
+                created,
+                accessed,
+                modified,
+                dev: None,
+                ino: None,
+                nlink: None,
+                uid: None,
+                gid: None,
+                blksize: None,
+                blocks: None,
+            })),
+        }
     }
 }

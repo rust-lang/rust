@@ -1243,21 +1243,21 @@ impl VClockAlloc {
     /// operation. The `ty` parameter is used for diagnostics, letting
     /// the user know which type was written.
     pub fn write_non_atomic<'tcx>(
-        &mut self,
+        &self,
         alloc_id: AllocId,
         access_range: AllocRange,
         write_type: NaWriteType,
         ty: Option<Ty<'_>>,
-        machine: &mut MiriMachine<'_>,
+        machine: &MiriMachine<'_>,
     ) -> InterpResult<'tcx> {
         let current_span = machine.current_user_relevant_span();
-        let global = machine.data_race.as_vclocks_mut().unwrap();
+        let global = machine.data_race.as_vclocks_ref().unwrap();
         if !global.race_detecting() {
             return interp_ok(());
         }
         let (index, mut thread_clocks) = global.active_thread_state_mut(&machine.threads);
         for (mem_clocks_range, mem_clocks) in
-            self.alloc_ranges.get_mut().iter_mut(access_range.start, access_range.size)
+            self.alloc_ranges.borrow_mut().iter_mut(access_range.start, access_range.size)
         {
             if let Err(DataRace) =
                 mem_clocks.write_race_detect(&mut thread_clocks, index, write_type, current_span)

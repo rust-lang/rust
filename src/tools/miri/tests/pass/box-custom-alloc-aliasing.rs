@@ -2,7 +2,8 @@
 //! If `Box` has a local allocator, then it can't be `noalias` as the allocator
 //! may want to access allocator state based on the data pointer.
 
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 

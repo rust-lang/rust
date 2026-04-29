@@ -63,6 +63,7 @@ impl LocationState {
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
     pub fn new_non_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
         assert!(permission.is_initial() || permission.is_disabled());
+        assert!(!permission.is_unique());
         Self { permission, accessed: false, idempotent_foreign_access: sifa }
     }
 
@@ -71,6 +72,12 @@ impl LocationState {
     /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
     pub fn new_accessed(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
         Self { permission, accessed: true, idempotent_foreign_access: sifa }
+    }
+
+    /// Checks whether the current location state is ever reachable in a real execution.
+    pub fn possible(&self) -> bool {
+        // `Unique` can only be reached on actually accessed locations.
+        self.accessed || !self.permission.is_unique()
     }
 
     /// Check if the location has been accessed, i.e. if it has
@@ -150,6 +157,7 @@ impl LocationState {
         if protected && self.accessed && transition.produces_disabled() {
             return Err(TransitionError::ProtectedDisabled(old_perm));
         }
+        debug_assert!(self.possible());
         Ok(transition)
     }
 
@@ -397,6 +405,7 @@ impl<'tcx> Tree {
             ProvenanceExtra::Wildcard => None,
         };
         assert!(outside_perm.is_initial());
+        assert!(!outside_perm.is_unique());
 
         let default_strongest_idempotent =
             outside_perm.strongest_idempotent_foreign_access(protected);
@@ -690,7 +699,7 @@ impl<'tcx> Tree {
         for (loc_range, loc) in self.locations.iter_mut_all() {
             // Only visit accessed permissions
             if let Some(p) = loc.perms.get(source_idx)
-                && let Some(access_kind) = p.permission.protector_end_access()
+                && let Some(access_kind) = p.permission.associated_access()
                 && p.accessed
             {
                 let diagnostics = DiagnosticInfo {

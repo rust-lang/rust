@@ -1,5 +1,7 @@
 //! The same as `tests/fail/tree-borrows/cell-inside-struct` but with
 //! precise tracking of interior mutability disabled.
+//@revisions: tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows-implicit-writes
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-no-precise-interior-mut
 #[path = "../../utils/mod.rs"]
 #[macro_use]

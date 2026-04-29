@@ -1,3 +1,5 @@
+//@revisions: tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows-implicit-writes
 //@compile-flags: -Zmiri-tree-borrows
 #![feature(box_as_ptr)]
 #[path = "../../utils/mod.rs"]

@@ -1,4 +1,5 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(coroutines, coroutine_trait, never_type, stmt_expr_attributes)]
 
