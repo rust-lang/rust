@@ -2986,7 +2986,7 @@ fn crate_deps(tcx: TyCtxt<'_>) -> impl Iterator<Item = (CrateNum, CrateDep)> + '
     tcx.crates(()).iter().map(move |&cnum| {
         let dep = CrateDep {
             name: tcx.crate_name(cnum),
-            hash: tcx.crate_hash(cnum),
+            hash: tcx.public_api_hash(cnum),
             host_hash: tcx.crate_host_hash(cnum),
             kind: tcx.crate_dep_kind(cnum),
             extra_filename: tcx.extra_filename(cnum).clone(),
