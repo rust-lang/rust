@@ -373,7 +373,7 @@ impl AttributeParser for UsedParser {
                         return;
                     };
 
-                    match l.meta_item().and_then(|i| i.path().word_sym()) {
+                    match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                         Some(sym::compiler) => {
                             if !cx.features().used_with_arg() {
                                 feature_err(
