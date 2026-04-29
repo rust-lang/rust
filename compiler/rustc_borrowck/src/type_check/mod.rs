@@ -18,7 +18,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, ScrubbedTraitError};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -1868,6 +1868,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             // it must.
             self.prove_trait_ref(trait_ref, location.to_locations(), ConstraintCategory::CopyBound);
         }
+
+        if tcx.features().move_trait()
+            && matches!(
+                context,
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+                    | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+            )
+        {
+            self.prove_move_predicate(place_ty.ty, location.to_locations());
+        }
     }
 
     fn visit_projection_elem(
@@ -2719,10 +2729,16 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         let (mut output, region_constraints) =
-            scrape_region_constraints(infcx, root_def_id, "InstantiateOpaqueType", span, |ocx| {
-                ocx.register_obligations(self.obligations.clone());
-                Ok(())
-            })?;
+            scrape_region_constraints::<_, _, ScrubbedTraitError<'tcx>>(
+                infcx,
+                root_def_id,
+                "InstantiateOpaqueType",
+                span,
+                |ocx| {
+                    ocx.register_obligations(self.obligations.clone());
+                    Ok(())
+                },
+            )?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

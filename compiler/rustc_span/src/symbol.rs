@@ -1327,6 +1327,7 @@ symbols! {
         move_expr,
         move_ref_pattern,
         move_size_limit,
+        move_trait,
         movrs_target_feature,
         msp430,
         mul,

@@ -52,6 +52,15 @@ pub struct ObligationCtxt<'a, 'tcx, E = ScrubbedTraitError<'tcx>> {
     engine: RefCell<Box<dyn TraitEngine<'tcx, E>>>,
 }
 
+impl<'a, 'tcx, E> ObligationCtxt<'a, 'tcx, E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
+{
+    pub fn new_in(infcx: &'a InferCtxt<'tcx>) -> Self {
+        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'tcx, _>>::new(infcx)) }
+    }
+}
+
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>> {
     pub fn new_with_diagnostics(infcx: &'a InferCtxt<'tcx>) -> Self {
         Self { infcx, engine: RefCell::new(<dyn TraitEngine<'tcx, _>>::new(infcx)) }

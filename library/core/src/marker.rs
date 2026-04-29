@@ -232,7 +232,7 @@ pub trait PointeeSized {
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
-pub trait Unsize<T: PointeeSized>: PointeeSized {
+pub trait Unsize<T: PointeeSized + ?Move>: PointeeSized + ?Move {
     // Empty.
 }
 
@@ -254,7 +254,7 @@ pub trait Unsize<T: PointeeSized>: PointeeSized {
 #[unstable(feature = "structural_match", issue = "31434")]
 #[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
-pub trait StructuralPartialEq {
+pub trait StructuralPartialEq: ?Move {
     // Empty.
 }
 
@@ -267,9 +267,9 @@ marker_impls! {
         char,
         str /* Technically requires `[u8]: StructuralPartialEq` */,
         (),
-        {T, const N: usize} [T; N],
-        {T} [T],
-        {T: PointeeSized} &T,
+        {T: ?Move, const N: usize} [T; N],
+        {T: ?Move} [T],
+        {T: PointeeSized + ?Move} &T,
 }
 
 /// Types whose values can be duplicated simply by copying bits.
@@ -475,8 +475,8 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         f16, f32, f64, f128,
         bool, char,
-        {T: PointeeSized} *const T,
-        {T: PointeeSized} *mut T,
+        {T: PointeeSized + ?Move} *const T,
+        {T: PointeeSized + ?Move} *mut T,
 
 }
 
@@ -485,7 +485,7 @@ impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Copy for &T {}
+impl<T: PointeeSized + ?Move> Copy for &T {}
 
 /// Marker trait for the types that are allowed in union fields and unsafe
 /// binder types.
@@ -669,9 +669,9 @@ pub unsafe auto trait Sync {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> !Sync for *const T {}
+impl<T: PointeeSized + ?Move> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> !Sync for *mut T {}
+impl<T: PointeeSized + ?Move> !Sync for *mut T {}
 
 /// Zero-sized type used to mark things that "act like" they own a `T`.
 ///
@@ -808,43 +808,43 @@ impl<T: PointeeSized> !Sync for *mut T {}
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: PointeeSized>;
+pub struct PhantomData<T: PointeeSized + ?Move>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Hash for PhantomData<T> {
+impl<T: PointeeSized + ?Move> Hash for PhantomData<T> {
     #[inline]
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::PartialEq for PhantomData<T> {
+impl<T: PointeeSized + ?Move> cmp::PartialEq for PhantomData<T> {
     fn eq(&self, _other: &PhantomData<T>) -> bool {
         true
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::Eq for PhantomData<T> {}
+impl<T: PointeeSized + ?Move> cmp::Eq for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::PartialOrd for PhantomData<T> {
+impl<T: PointeeSized + ?Move> cmp::PartialOrd for PhantomData<T> {
     fn partial_cmp(&self, _other: &PhantomData<T>) -> Option<cmp::Ordering> {
         Option::Some(cmp::Ordering::Equal)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::Ord for PhantomData<T> {
+impl<T: PointeeSized + ?Move> cmp::Ord for PhantomData<T> {
     fn cmp(&self, _other: &PhantomData<T>) -> cmp::Ordering {
         cmp::Ordering::Equal
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Copy for PhantomData<T> {}
+impl<T: PointeeSized + ?Move> Copy for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> Clone for PhantomData<T> {
+impl<T: PointeeSized + ?Move> Clone for PhantomData<T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -852,18 +852,18 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T: PointeeSized> TrivialClone for PhantomData<T> {}
+unsafe impl<T: PointeeSized + ?Move> TrivialClone for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-const impl<T: PointeeSized> Default for PhantomData<T> {
+impl<T: PointeeSized + ?Move> const Default for PhantomData<T> {
     fn default() -> Self {
         Self
     }
 }
 
 #[unstable(feature = "structural_match", issue = "31434")]
-impl<T: PointeeSized> StructuralPartialEq for PhantomData<T> {}
+impl<T: PointeeSized + ?Move> StructuralPartialEq for PhantomData<T> {}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
@@ -906,7 +906,7 @@ pub trait DiscriminantKind {
 pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
-impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized + ?Move> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
@@ -928,7 +928,7 @@ marker_impls! {
 pub unsafe auto trait UnsafeUnpin {}
 
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
-impl<T: PointeeSized> !UnsafeUnpin for UnsafePinned<T> {}
+impl<T: PointeeSized + ?Move> !UnsafeUnpin for UnsafePinned<T> {}
 marker_impls! {
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
     unsafe UnsafeUnpin for
@@ -1362,4 +1362,43 @@ pub trait Reborrow {
 #[unstable(feature = "reborrow", issue = "145612")]
 pub trait CoerceShared<Target: Copy>: Reborrow {
     /* compiler built-in */
+}
+
+/// Marks a type as freely movable to another address in memory.
+///
+/// By default, all types are assumed to be `Move`. Similar to [`Sized`], the
+/// syntax `T: ?Move` can be used to relax this bound for some type `T`. However,
+/// `Move` bounds are implicitly added in *all* cases unless explicitly opted out
+/// of - notably, in trait definitions and associated types. If the `move_trait`
+/// feature is enabled, these can similarly be opted out of:
+/// ```
+/// #![feature(move_trait)]
+/// use std::marker::Move;
+///
+/// trait Foo: ?Move {
+///     type Bar: ?Move;
+/// }
+/// ```
+#[lang = "move_trait"]
+#[rustc_unsafe_specialization_marker]
+#[rustc_coinductive]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may not be movable",
+    label = "may not be movable"
+)]
+#[unstable(feature = "move_trait", issue = "149607")]
+pub unsafe auto trait Move {
+    // Empty.
+}
+
+marker_impls! {
+    #[unstable(feature = "move_trait", issue = "149607")]
+    unsafe Move for
+        {T: PointeeSized + ?Move} *const T,
+        {T: PointeeSized + ?Move} *mut T,
+        {T: PointeeSized + ?Move} &T,
+        {T: PointeeSized + ?Move} &mut T,
+        {T: PointeeSized + ?Move} PhantomData<T>,
+        {T: PointeeSized + ?Move} pattern_type!(*const T is !null),
+        {T: PointeeSized + ?Move} pattern_type!(*mut T is !null),
 }

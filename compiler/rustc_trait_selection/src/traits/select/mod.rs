@@ -1866,8 +1866,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         // We prefer `Sized` candidates over everything.
-        let mut sized_candidates =
-            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate));
+        let mut sized_candidates = candidates.iter().filter(|c| {
+            matches!(c.candidate, SizedCandidate) // nia: prefmode::marker && matches(AutoImpl)
+                || (matches!(candidate_preference_mode, CandidatePreferenceMode::Marker) && c.candidate.is_impl_candidate())
+        });
         if let Some(sized_candidate) = sized_candidates.next() {
             // There should only ever be a single sized candidate
             // as they would otherwise overlap.

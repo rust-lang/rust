@@ -686,7 +686,7 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
 /// in `rustc_trait_selection`.
 mod impls {
     use super::{Share, TrivialClone};
-    use crate::marker::PointeeSized;
+    use crate::marker::{Move, PointeeSized};
 
     macro_rules! impl_clone {
         ($($t:ty)*) => {
@@ -731,7 +731,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const impl<T: PointeeSized> Clone for *const T {
+    const impl<T: ?Move + PointeeSized> const Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -741,11 +741,11 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const unsafe impl<T: PointeeSized> TrivialClone for *const T {}
+    const unsafe impl<T: ?Move + PointeeSized> TrivialClone for *const T {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const impl<T: PointeeSized> Clone for *mut T {
+    const impl<T: ?Move + PointeeSized> Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -755,12 +755,12 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const unsafe impl<T: PointeeSized> TrivialClone for *mut T {}
+    const unsafe impl<T: ?Move + PointeeSized> TrivialClone for *mut T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const impl<T: PointeeSized> Clone for &T {
+    const impl<T: ?Move + PointeeSized> Clone for &T {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
@@ -771,12 +771,12 @@ mod impls {
     #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-    const unsafe impl<T: PointeeSized> TrivialClone for &T {}
+    const unsafe impl<T: ?Move + PointeeSized> TrivialClone for &T {}
 
     #[unstable(feature = "share_trait", issue = "156756")]
-    impl<T: PointeeSized> Share for &T {}
+    impl<T: ?Move + PointeeSized> Share for &T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: PointeeSized> !Clone for &mut T {}
+    impl<T: ?Move + PointeeSized> !Clone for &mut T {}
 }

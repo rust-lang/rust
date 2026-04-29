@@ -108,6 +108,12 @@ impl<'tcx> FulfillmentError<'tcx> {
     }
 }
 
+impl<'tcx> EngineError<'tcx> for FulfillmentError<'tcx> {
+    fn try_report_errors(infcx: &InferCtxt<'tcx>, errors: Vec<Self>) {
+        infcx.err_ctxt().report_fulfillment_errors(errors);
+    }
+}
+
 #[derive(Clone, TypeVisitable)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
