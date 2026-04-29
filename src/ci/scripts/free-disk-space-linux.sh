@@ -96,15 +96,11 @@ removeUnusedFilesAndDirs() {
     )
 
     if isGitHubRunner; then
+        # Paths common to all runners (both x86 and ARM)
         to_remove+=(
             "/usr/local/aws-sam-cli"
             "/usr/local/doc/cmake"
-            "/usr/local/julia"*
-            "/usr/local/lib/android"
-            "/usr/local/share/chromedriver-"*
-            "/usr/local/share/chromium"
             "/usr/local/share/cmake-"*
-            "/usr/local/share/edge_driver"
             "/usr/local/share/emacs"
             "/usr/local/share/gecko_driver"
             "/usr/local/share/icons"
@@ -112,16 +108,13 @@ removeUnusedFilesAndDirs() {
             "/usr/local/share/vcpkg"
             "/usr/local/share/vim"
             "/usr/share/apache-maven-"*
-            "/usr/share/gradle-"*
             "/usr/share/kotlinc"
-            "/usr/share/miniconda"
             "/usr/share/php"
             "/usr/share/ri"
             "/usr/share/swift"
 
             # binaries
             "/usr/local/bin/azcopy"
-            "/usr/local/bin/bicep"
             "/usr/local/bin/ccmake"
             "/usr/local/bin/cmake-"*
             "/usr/local/bin/cmake"
@@ -135,15 +128,52 @@ removeUnusedFilesAndDirs() {
             "/usr/local/bin/phpunit"
             "/usr/local/bin/pulumi-"*
             "/usr/local/bin/pulumi"
-            "/usr/local/bin/stack"
-
-            # Haskell runtime
-            "/usr/local/.ghcup"
 
             # Azure
             "/opt/az"
             "/usr/share/az_"*
+
+            # Microsoft Edge and powershell
+            "/opt/microsoft"
+
+            "/opt/pipx"
+            "/opt/pipx_bin"
         )
+
+        # Paths only present in x86 runners
+        local github_runner_x86_paths=(
+            "/usr/local/julia"*
+            "/usr/local/lib/android"
+            "/usr/local/share/chromedriver-"*
+            "/usr/local/share/chromium"
+            "/usr/local/share/edge_driver"
+            "/usr/share/gradle-"*
+            "/usr/share/miniconda"
+
+            # binaries
+            "/usr/local/bin/bicep"
+            "/usr/local/bin/stack"
+
+            # Haskell runtime
+            "/usr/local/.ghcup"
+        )
+
+        if isX86; then
+            to_remove+=("${github_runner_x86_paths[@]}")
+        else
+            # warn if x86-only paths are present in other runners
+            local existing_github_runner_x86_paths=()
+            local x86_path
+            for x86_path in "${github_runner_x86_paths[@]}"; do
+                if [ -e "$x86_path" ]; then
+                    existing_github_runner_x86_paths+=("$x86_path")
+                fi
+            done
+
+            if [ "${#existing_github_runner_x86_paths[@]}" -ne 0 ]; then
+                echo "::warning::You can remove the following paths to save space: ${existing_github_runner_x86_paths[*]}"
+            fi
+        fi
 
         if [ -n "${AGENT_TOOLSDIRECTORY:-}" ]; then
             # Environment variable set by GitHub Actions
@@ -201,10 +231,22 @@ cleanPackages() {
         '^dotnet-.*'
         '^llvm-.*'
         '^mongodb-.*'
+        '^temurin-.*-jdk'
+        'buildah'
         'firefox'
+        'google-cloud-cli'
+        'google-cloud-sdk'
+        'kubectl'
         'libgl1-mesa-dri'
         'mono-devel'
         'php.*'
+        'podman'
+        'skopeo'
+    )
+    local x86_only_packages=(
+        'google-chrome-stable'
+        'microsoft-edge-stable'
+        'powershell'
     )
 
     if isGitHubRunner; then
@@ -213,12 +255,20 @@ cleanPackages() {
         )
 
         if isX86; then
-            packages+=(
-                'google-chrome-stable'
-                'google-cloud-cli'
-                'google-cloud-sdk'
-                'powershell'
-            )
+            packages+=("${x86_only_packages[@]}")
+        else
+            # warn if x86-only packages are installed on other runners
+            local installed_x86_only_packages=()
+            local package
+            for package in "${x86_only_packages[@]}"; do
+                if dpkg-query -W -f='${binary:Package}\n' "$package" >/dev/null 2>&1; then
+                    installed_x86_only_packages+=("$package")
+                fi
+            done
+
+            if [ "${#installed_x86_only_packages[@]}" -ne 0 ]; then
+                echo "::warning::You can remove the following packages to save space: ${installed_x86_only_packages[*]}"
+            fi
         fi
     else
         packages+=(
@@ -235,11 +285,19 @@ cleanPackages() {
         || echo "::warning::The command [sudo apt-get clean] failed"
 }
 
-# Remove Docker images.
-# Ubuntu 22 runners have docker images already installed.
-# They aren't present in ubuntu 24 runners.
+# Remove preinstalled Docker images.
 cleanDocker() {
+    local images
+    images=$(sudo docker image ls -q)
+
+    if [ -z "$images" ]; then
+        echo "=> No docker images to remove."
+        return
+    fi
+
     echo "=> Removing the following docker images:"
+    # Use "docker image ls" without "-q" to get the full table output which contains
+    # also the image names and sizes.
     sudo docker image ls
     echo "=> Removing docker images..."
     sudo docker image prune --all --force || true
@@ -253,7 +311,8 @@ cleanSwap() {
 }
 
 sufficientSpaceEarlyExit() {
-    local available_space_kb=$(df -k . --output=avail | tail -n 1)
+    local available_space_kb
+    available_space_kb=$(df -k . --output=avail | tail -n 1)
 
     if [ "$available_space_kb" -ge "$space_target_kb" ]; then
         echo "Sufficient disk space available (${available_space_kb}KB >= ${space_target_kb}KB). Skipping cleanup."
@@ -267,7 +326,8 @@ sufficientSpaceEarlyExit() {
 checkAlternative() {
     local gha_alt_disk="/mnt"
 
-    local available_space_kb=$(df -k "$gha_alt_disk" --output=avail | tail -n 1)
+    local available_space_kb
+    available_space_kb=$(df -k "$gha_alt_disk" --output=avail | tail -n 1)
 
     # mount options that trade durability for performance
     # ignore-tidy-linelength
@@ -276,7 +336,8 @@ checkAlternative() {
     # GHA has a 2nd disk mounted at /mnt that is almost empty.
     # Check if it's a valid mountpoint and it has enough available space.
     if mountpoint "$gha_alt_disk" && [ "$available_space_kb" -ge "$space_target_kb" ]; then
-        local blkdev=$(df -k "$gha_alt_disk" --output=source | tail -n 1)
+        local blkdev
+        blkdev=$(df -k "$gha_alt_disk" --output=source | tail -n 1)
         echo "Sufficient space available on $blkdev mounted at $gha_alt_disk"
         # see cleanSwap(), swapfile may be mounted under /mnt
         sudo swapoff -a || true
