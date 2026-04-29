@@ -32,4 +32,7 @@ jobs:
         rustup target add ${{ matrix.target }}
 
     - name: Build and Test
+      env:
+        RUSTFLAGS: -D warnings
+        CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT: true
       run: ./ci/build_and_test.sh
