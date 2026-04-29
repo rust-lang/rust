@@ -8,6 +8,7 @@ use std::assert_matches;
 
 use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_ast::{IntTy, UintTy};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -21,9 +22,9 @@ use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
     PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format, err_unsup_format, interp_ok,
-    throw_inval, throw_ub, throw_ub_format, throw_unsup_format,
+    throw_inval, throw_ub, throw_ub_format,
 };
-use crate::interpret::Writeable;
+use crate::interpret::{MPlaceTy, Writeable};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -54,6 +55,22 @@ pub(crate) enum MinMax {
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
     /// and if one argument is NaN (quiet or signaling), the other one is returned.
     MaximumNumberNsz,
+}
+
+/// Whether two types `T` and `U` are compatible when a value of type `T` is passed as a c-variadic
+/// argument and read as a value of type `U`.
+enum VarArgCompatible {
+    /// `T` and `U` are compatible, e.g.
+    ///
+    /// - They're the same type.
+    /// - One is `usize`/`isize`, the other an integer type of the same width
+    /// and sign on the current target.
+    /// - They are compatible pointer types (see the exact rules below).
+    Compatible,
+    /// `T` and `U` are definitely not compatible.
+    Incompatible,
+    /// `T` and `U` are corresponding signed and unsigned integer types.
+    CastIntTo { source_is_signed: bool },
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -739,18 +756,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     throw_ub!(VaArgOutOfBounds);
                 };
 
-                // NOTE: In C some type conversions are allowed (e.g. casting between signed and
-                // unsigned integers). For now we require c-variadic arguments to be read with the
-                // exact type they were passed as.
-                if arg_mplace.layout.ty != dest.layout.ty {
-                    throw_unsup_format!(
-                        "va_arg type mismatch: requested `{}`, but next argument is `{}`",
-                        dest.layout.ty,
-                        arg_mplace.layout.ty
-                    );
-                }
-                // Copy the argument.
-                self.copy_op(&arg_mplace, dest)?;
+                // Error when the caller's argument is not c-variadic compatible with the type
+                // requested by the callee.
+                self.validate_c_variadic_argument(&arg_mplace, dest.layout)?;
+
+                // Copy the argument, allowing a transmute and relying on the compatibility check
+                // rejecting conversions between types of different size.
+                self.copy_op_allow_transmute(&arg_mplace, dest)?;
 
                 // Update the VaList pointer.
                 let new_key = self.va_list_ptr(varargs);
@@ -764,6 +776,130 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("{:?}", self.dump_place(&dest.clone().into()));
         self.return_to_block(ret)?;
         interp_ok(true)
+    }
+
+    /// Validate whether the value and type passed by the caller are compatible with the type
+    /// requested by the callee. Based on section 7.16.1.1 of the C23 specification.
+    ///
+    /// The callee requesting a value of a type is valid when that type is compatible with the type
+    /// provided by the caller (see `validate_c_variadic_compatible_ty`) and, if both types are
+    /// integers of the same size but different signedness, the passed value must be representable
+    /// in both types.
+    fn validate_c_variadic_argument(
+        &mut self,
+        arg_mplace: &MPlaceTy<'tcx, M::Provenance>,
+        callee_type: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let callee_ty = callee_type.ty;
+        let caller_ty = arg_mplace.layout.ty;
+
+        // Identical types are clearly compatible.
+        if caller_ty == callee_ty {
+            return interp_ok(());
+        }
+
+        // Types of different sizes can never be compatible.
+        if arg_mplace.layout.size != callee_type.size {
+            throw_ub_format!(
+                "va_arg type mismatch: requested `{}` is incompatible with next argument of type `{}`",
+                callee_ty,
+                caller_ty,
+            )
+        }
+
+        match self.validate_c_variadic_compatible_ty(arg_mplace.layout.ty, callee_type.ty)? {
+            VarArgCompatible::Compatible => interp_ok(()),
+            VarArgCompatible::Incompatible => throw_ub_format!(
+                "va_arg type mismatch: requested `{}` is incompatible with next argument of type `{}`",
+                callee_ty,
+                caller_ty,
+            ),
+            VarArgCompatible::CastIntTo { source_is_signed } => {
+                // Check that the value can be represented in the target type.
+                let size = arg_mplace.layout.size;
+                let scalar = self.read_scalar(arg_mplace)?;
+                if scalar.to_int(size)? < 0 {
+                    throw_ub_format!(
+                        "va_arg value mismatch: value `{value}_{caller_ty}` cannot be represented by type `{callee_ty}`",
+                        value = if source_is_signed {
+                            scalar.to_int(size)?.to_string()
+                        } else {
+                            scalar.to_uint(size)?.to_string()
+                        }
+                    )
+                }
+
+                interp_ok(())
+            }
+        }
+    }
+
+    /// Check whether the caller and callee type are compatible for c-variadic calls. Further
+    /// validation of the argument value may be needed to detect all UB.
+    ///
+    /// Types `T` and `U` are compatible when:
+    ///
+    /// - `T` and `U` are the same type.
+    /// - `T` and `U` are integer types of the same size.
+    /// - `T` and `U` are both pointers, and their target types are compatible.
+    /// - `T` is a pointer to [`std::ffi::c_void`] and `U` is a pointer to [`i8`] or [`u8`],
+    /// or vice versa.
+    fn validate_c_variadic_compatible_ty(
+        &mut self,
+        caller_type: Ty<'tcx>,
+        callee_type: Ty<'tcx>,
+    ) -> InterpResult<'tcx, VarArgCompatible> {
+        if caller_type == callee_type {
+            return interp_ok(VarArgCompatible::Compatible);
+        }
+
+        if self.layout_of(caller_type)?.size != self.layout_of(callee_type)?.size {
+            return interp_ok(VarArgCompatible::Incompatible);
+        }
+
+        // Any character type (`char`, `unsigned char` and `signed char`) is compatible with
+        // `void*`, so the signedness of `c_char` is irrelevant here.
+        let is_c_char = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(UintTy::U8) | ty::Int(IntTy::I8));
+
+        match (caller_type.kind(), callee_type.kind()) {
+            (ty::RawPtr(caller_target_ty, _), ty::RawPtr(callee_target_ty, _)) => {
+                // In C, types can be qualified by a combination of `const`, `volatile` and
+                // `restrict`. These properties are irrelevant for the ABI, and don't have an
+                // equivalent in rust.
+
+                // Accept the cast if one type is pointer to void, and the other is a pointer to
+                // a character type (`char`, `unsigned char` and `signed char`).
+                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*callee_target_ty) {
+                    return interp_ok(VarArgCompatible::Compatible);
+                }
+                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*caller_target_ty) {
+                    return interp_ok(VarArgCompatible::Compatible);
+                }
+
+                // Accept the cast if both types are pointers to compatible types.
+                match self
+                    .validate_c_variadic_compatible_ty(*caller_target_ty, *callee_target_ty)?
+                {
+                    VarArgCompatible::Incompatible => interp_ok(VarArgCompatible::Incompatible),
+                    VarArgCompatible::Compatible => interp_ok(VarArgCompatible::Compatible),
+                    VarArgCompatible::CastIntTo { source_is_signed: _ } => {
+                        // The integer cast check is not needed when the value is behind a pointer.
+                        interp_ok(VarArgCompatible::Compatible)
+                    }
+                }
+            }
+            (ty::Int(_), ty::Uint(_)) => {
+                interp_ok(VarArgCompatible::CastIntTo { source_is_signed: true })
+            }
+            (ty::Uint(_), ty::Int(_)) => {
+                interp_ok(VarArgCompatible::CastIntTo { source_is_signed: false })
+            }
+            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => {
+                // E.g. cast between `usize` and `u64` on a 64-bit platform.
+                interp_ok(VarArgCompatible::Compatible)
+            }
+            _ => interp_ok(VarArgCompatible::Incompatible),
+        }
     }
 
     pub(super) fn eval_nondiverging_intrinsic(
