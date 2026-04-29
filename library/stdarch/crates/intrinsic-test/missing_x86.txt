@@ -45,9 +45,6 @@ _mm_set1_pch
 _tpause
 _umwait
 
-# IMM8 must be an even number in the range `0..=62`
-_mm_sm3rnds2_epi32
-
 # SDE ERROR: Cannot execute XGETBV with ECX != 0
 _xgetbv
 
