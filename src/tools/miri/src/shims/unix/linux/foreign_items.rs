@@ -124,7 +124,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "statx" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [dirfd, pathname, flags, mask, statxbuf] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;

@@ -1,4 +1,5 @@
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 // This tests that the size of Option<Box<i32>> is the same as *const i32.
 fn option_box_deref() -> i32 {

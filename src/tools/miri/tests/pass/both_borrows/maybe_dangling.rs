@@ -1,7 +1,8 @@
 // Check that `MaybeDangling` actually prevents UB when it wraps dangling
 // boxes and references
 //
-//@revisions: stack tree
+//@revisions: stack tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(maybe_dangling)]
 

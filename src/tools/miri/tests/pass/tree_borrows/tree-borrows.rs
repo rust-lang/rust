@@ -1,3 +1,5 @@
+//@revisions: tree tree_implicit_writes
+//@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows-implicit-writes
 //@compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 
@@ -12,6 +14,7 @@ fn main() {
     direct_mut_to_const_raw();
     local_addr_of_mut();
     returned_mut_is_usable();
+    array_pointer_access();
 }
 
 #[allow(unused_assignments)]
@@ -101,4 +104,34 @@ fn direct_mut_to_const_raw() {
         *(y as *mut i32) = 1;
     }
     assert_eq!(*x, 1);
+}
+
+// Tests that accessing the same array using disjoint pointers does not cause UB under Tree Borrows.
+// The pointer will access the memory range using the outside permission, thus testing if it has been set correctly.
+// In particular, in implicit_writes mode we used to set the "outside" permissions to
+// `Unique`, which caused an ICE.
+// Put differently, this checks the absence of subobject provenance for arrays.
+fn array_pointer_access() {
+    let mut x = [1u8; 11];
+    let y = (&raw mut x).cast();
+    let res = foo(&mut x[0], y);
+    assert_eq!(res, 20);
+}
+
+fn foo(x: &mut u8, y: *mut u8) -> u8 {
+    unsafe {
+        let x: *mut u8 = x;
+        let res1 = access_nexts(x.add(1), y.add(1));
+        let res2 = access_nexts(y.add(1), x.add(1));
+        res1 + res2
+    }
+}
+
+fn access_nexts(x: *mut u8, y: *mut u8) -> u8 {
+    let mut sum = 0;
+    for i in 0..5 {
+        sum += unsafe { *x.add(2 * i) };
+        sum += unsafe { *y.add(2 * i + 1) };
+    }
+    sum
 }

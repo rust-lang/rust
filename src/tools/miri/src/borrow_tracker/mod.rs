@@ -224,6 +224,8 @@ pub enum BorrowTrackerMethod {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TreeBorrowsParams {
     pub precise_interior_mut: bool,
+    /// Controls whether `&mut` function arguments are immediately activated with an implicit write.
+    pub implicit_writes: bool,
 }
 
 impl BorrowTrackerMethod {

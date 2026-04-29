@@ -511,6 +511,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
   even if your code is accepted today, it might be declared UB in the future.
   This is much less likely with Stacked Borrows.
+* `-Zmiri-tree-borrows-implicit-writes` enables implicit writes for all `&mut` function arguments.
+  This makes Tree Borrows less permissive.
 * `-Zmiri-tree-borrows-no-precise-interior-mut` makes Tree Borrows
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree

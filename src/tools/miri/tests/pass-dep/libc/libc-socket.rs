@@ -16,6 +16,7 @@ const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
     test_create_close();
+    test_create_close_tcp();
     test_bind_ipv4();
     test_bind_ipv4_reuseaddr();
     test_set_reuseaddr_invalid_len();
@@ -50,6 +51,21 @@ fn main() {
 fn test_create_close() {
     let sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+
+    // Ensure that socket is initially blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, 0);
+
+    unsafe { errno_check(libc::close(sockfd)) };
+}
+
+/// Test creating a socket and then closing it afterwards but we explicitly
+/// specify that the TCP protocol should be used.
+fn test_create_close_tcp() {
+    let sockfd = unsafe {
+        errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, libc::IPPROTO_TCP)).unwrap()
+    };
 
     let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
 

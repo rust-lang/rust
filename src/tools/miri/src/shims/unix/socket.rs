@@ -316,10 +316,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 flags
             );
         }
-        if protocol != 0 {
+        if protocol != 0 && protocol != this.eval_libc_i32("IPPROTO_TCP") {
             throw_unsup_format!(
                 "socket: socket protocol {protocol} is unsupported, \
-                only 0 is allowed"
+                only IPPROTO_TCP and 0 are allowed"
             );
         }
 

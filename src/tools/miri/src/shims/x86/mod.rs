@@ -1107,6 +1107,54 @@ fn permute<'tcx>(
     interp_ok(())
 }
 
+/// Shuffle elements from *two* source registers (`left` and `right`) using
+/// the corresponding index in `indices`, and store the results in `dest`.
+///
+/// For a vector with `N` lanes, the low `log2(N)` bits of each index select a
+/// lane within a source vector. Bit `log2(N)` selects the source vector (`0` =>
+/// `left`, `1` => `right`), and all higher bits are ignored.
+/// Equivalently, lane `i` of the result is copied from
+/// `src[indices[i] & (N - 1)]` where
+/// `src = if indices[i] & N == 0 { left } else { right }`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutex2var_epi64>
+fn permute2<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    indices: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (indices, indices_len) = ecx.project_to_simd(indices)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    assert_eq!(dest_len, left_len);
+    assert_eq!(dest_len, indices_len);
+    assert_eq!(dest_len, right_len);
+
+    // Use the low bits to select a lane within either input vector, and the next bit to
+    // choose between the two vectors.
+    assert!(dest_len.is_power_of_two());
+    let lane_mask = u128::from(dest_len).strict_sub(1);
+    let vector_select_bit = u128::from(dest_len);
+
+    for i in 0..dest_len {
+        let dest = ecx.project_index(&dest, i)?;
+        let index_place = ecx.project_index(&indices, i)?;
+        let index = ecx.read_scalar(&index_place)?.to_uint(index_place.layout.size)?;
+        // `lane_mask` is at most `dest_len - 1` which fits in a `u64`, so this cannot fail.
+        let lane = u64::try_from(index & lane_mask).unwrap();
+        let src = if index & vector_select_bit == 0 { &left } else { &right };
+        let element = ecx.project_index(src, lane)?;
+
+        ecx.copy_op(&element, &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Multiplies packed 16-bit signed integer values, truncates the 32-bit
 /// product to the 18 most significant bits by right-shifting, and then
 /// divides the 18-bit value by 2 (rounding to nearest) by first adding

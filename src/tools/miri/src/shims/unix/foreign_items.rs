@@ -350,6 +350,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
+            "lstat" => {
+                let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.lstat(path, buf)?;
+                this.write_scalar(result, dest)?;
+            }
+            "stat" => {
+                let [path, buf] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.stat(path, buf)?;
+                this.write_scalar(result, dest)?;
+            }
             "rename" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [oldpath, newpath] = this.check_shim_sig(

@@ -3,7 +3,9 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{packssdw, packsswb, packusdw, packuswb, permute, pmaddbw, pmaddwd, psadbw, pshufb};
+use super::{
+    packssdw, packsswb, packusdw, packuswb, permute, permute2, pmaddbw, pmaddwd, psadbw, pshufb,
+};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -110,6 +112,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 permute(this, left, right, dest)?;
+            }
+            // Used to implement the _mm512_permutex2var_epi64 intrinsic.
+            "vpermi2var.q.512" => {
+                let [left, indices, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                permute2(this, left, indices, right, dest)?;
             }
             // Used to implement the _mm512_shuffle_epi8 intrinsic.
             "pshuf.b.512" => {
