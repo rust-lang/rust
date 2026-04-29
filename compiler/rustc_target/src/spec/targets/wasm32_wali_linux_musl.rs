@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::Yes),
         &[
-            "--target=wasm32-wasi-threads",
+            "--target=wasm32-linux-muslwali",
             "-Wl,--export-memory,",
             "-Wl,--shared-memory",
             "-Wl,--max-memory=1073741824",
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
     );
 
     Target {
-        llvm_target: "wasm32-wasi".into(),
+        llvm_target: "wasm32-linux-muslwali".into(),
         metadata: TargetMetadata {
             description: Some("WebAssembly Linux Interface with musl-libc".into()),
             tier: Some(3),
