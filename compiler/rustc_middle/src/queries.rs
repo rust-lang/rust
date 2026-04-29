@@ -274,7 +274,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir_*` methods.
     /// Avoid calling this query directly.
-    query opt_ast_lowering_delayed_lints(key: hir::OwnerId) -> Option<&'tcx hir::lints::DelayedLints> {
+    query opt_ast_lowering_delayed_lints(key: hir::OwnerId) -> Option<&'tcx Steal<hir::lints::DelayedLints>> {
         desc { "getting AST lowering delayed lints in `{}`", tcx.def_path_str(key) }
         // This query has to be `no_hash` and `eval_always`,
         // because it accesses `delayed_lints` which is not hashed as part of the HIR
