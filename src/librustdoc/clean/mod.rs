@@ -3260,14 +3260,22 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        generate_item_with_correct_attrs(
+        let mut clean_item = generate_item_with_correct_attrs(
             cx,
             kind,
             item.owner_id.def_id.to_def_id(),
             item.ident.name,
             import_id.as_slice(),
             renamed,
-        )
+        );
+        // We also need to take into account the `extern` block (doc_)cfg attributes.
+        let mut attrs = Attributes::from_hir(inline::load_attrs(
+            cx.tcx,
+            cx.tcx.hir_owner_parent(item.owner_id).owner.to_def_id(),
+        ));
+        attrs.merge_with(std::mem::take(&mut clean_item.inner.attrs));
+        clean_item.inner.attrs = attrs;
+        clean_item
     })
 }
 
