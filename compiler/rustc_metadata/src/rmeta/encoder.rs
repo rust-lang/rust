@@ -2338,7 +2338,7 @@ impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
             .map(|&cnum| {
                 let dep = CrateDep {
                     name: self.tcx().crate_name(cnum),
-                    hash: self.tcx().crate_hash(cnum),
+                    hash: self.tcx().public_api_hash(cnum),
                     host_hash: self.tcx().crate_host_hash(cnum),
                     kind: self.tcx().crate_dep_kind(cnum),
                     is_private: self.tcx().is_private_dep(cnum),
