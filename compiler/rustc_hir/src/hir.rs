@@ -18,6 +18,7 @@ pub use rustc_ast::{
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
@@ -1636,7 +1637,7 @@ pub struct OwnerInfo<'hir> {
     /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
     ///          should only be accessed in `eval_always` queries.
     #[stable_hasher(ignore)]
-    pub delayed_lints: DelayedLints,
+    pub delayed_lints: Steal<DelayedLints>,
 }
 
 impl<'tcx> OwnerInfo<'tcx> {
