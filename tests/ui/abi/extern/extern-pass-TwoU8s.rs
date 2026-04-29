@@ -10,8 +10,7 @@ pub struct TwoU8s {
     two: u8,
 }
 
-#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     pub fn rust_dbg_extern_identity_TwoU8s(v: TwoU8s) -> TwoU8s;
 }

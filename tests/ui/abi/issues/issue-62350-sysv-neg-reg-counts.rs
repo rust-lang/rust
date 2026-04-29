@@ -13,8 +13,7 @@ pub struct QuadFloats {
 mod rustrt {
     use super::QuadFloats;
 
-    #[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-    #[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
+    #[link(name = "rust_test_helpers", kind = "static")]
     extern "C" {
         pub fn get_c_exhaust_sysv64_ints(
             _: *const (),

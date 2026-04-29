@@ -2,8 +2,7 @@
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 
-#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     pub fn issue_97463_leak_uninit_data(a: u32, b: u32, c: u32) -> u16;
 }

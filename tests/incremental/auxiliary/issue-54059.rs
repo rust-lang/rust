@@ -40,8 +40,7 @@ proc_macro_expr_impl! {
     }
 }
 
-#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers"))]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     pub fn rust_dbg_extern_identity_u64(v: u64) -> u64;
 }

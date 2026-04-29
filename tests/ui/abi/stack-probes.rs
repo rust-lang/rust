@@ -17,8 +17,7 @@ use std::mem::MaybeUninit;
 use std::process::Command;
 use std::thread;
 
-#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     #[link_name = "rust_dbg_extern_identity_u64"]
     fn black_box(u: u64);
