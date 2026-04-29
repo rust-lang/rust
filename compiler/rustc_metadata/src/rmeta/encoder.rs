@@ -2303,7 +2303,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .map(|&cnum| {
                 let dep = CrateDep {
                     name: self.tcx.crate_name(cnum),
-                    hash: self.tcx.crate_hash(cnum),
+                    hash: self.tcx.public_api_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.crate_dep_kind(cnum),
                     extra_filename: self.tcx.extra_filename(cnum).to_owned(),
