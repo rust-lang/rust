@@ -131,6 +131,50 @@ impl<'a> TritonCodegen<'a> {
         self.codegen_add(tcx, location, lhs, rhs, mlir_block)
     }
 
+    pub fn codegen_div_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 2, "TritonCodegen::codegen_div_call: args length must be 2");
+
+        let arg0 = &args[0].node;
+        let arg1 = &args[1].node;
+
+        let lhs = self.codegen_operand(
+            tcx,
+            instance,
+            arg0,
+            arg0.ty(mir, tcx),
+            location,
+            mlir_block,
+            state,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx,
+            instance,
+            arg1,
+            arg1.ty(mir, tcx),
+            location,
+            mlir_block,
+            state,
+        )?;
+
+        self.codegen_div(tcx, location, lhs, rhs, mlir_block)
+    }
+
     pub fn codegen_and_call<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -814,27 +858,59 @@ impl<'a> TritonCodegen<'a> {
 
     pub fn codegen_div<'tcx>(
         &self,
-        _tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         location: Location<'a>,
         lhs: Value<'a, 'a>,
         rhs: Value<'a, 'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         let lhs_ty = lhs.r#type();
-        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
-            todo!("TritonCodegen::codegen_div tensor not yet supported")
-        }
-        if lhs_ty.is_integer() {
-            let div_op: Operation<'a> =
-                create_divsi(self.module.context(), location, lhs, rhs)
+        let rhs_ty = rhs.r#type();
+
+        let lhs_is_tensor = lhs_ty.is_tensor();
+        let rhs_is_tensor = rhs_ty.is_tensor();
+
+        let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
+            (true, true) => (lhs, rhs),
+            (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
+            (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
+            (false, false) => {
+                if lhs_ty.is_integer() {
+                    let div_op: Operation<'a> =
+                        create_divsi(self.module.context(), location, lhs, rhs)
+                            .map_err(|e| MlirError::CreateOperation { err: e })?;
+                    let result = div_op.result(0).expect("Div operation result not found");
+                    mlir_block.append_operation(div_op);
+                    return Ok(Some(result.into()));
+                }
+                let div_op: Operation<'a> = create_divf(self.module.context(), location, lhs, rhs)
                     .map_err(|e| MlirError::CreateOperation { err: e })?;
-            let result = div_op.result(0).expect("Div operation result not found");
-            mlir_block.append_operation(div_op);
-            return Ok(Some(result.into()));
-        }
-        let div_op: Operation<'a> = create_divf(self.module.context(), location, lhs, rhs)
-            .map_err(|e| MlirError::CreateOperation { err: e })?;
-        let result = div_op.result(0).expect("DivF operation result not found");
+                let result = div_op.result(0).expect("DivF operation result not found");
+                mlir_block.append_operation(div_op);
+                return Ok(Some(result.into()));
+            }
+        };
+
+        let lhs_ty: RankedTensorType<'a> = lhs
+            .r#type()
+            .try_into()
+            .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+
+        let rhs_ty: RankedTensorType<'a> = rhs
+            .r#type()
+            .try_into()
+            .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+
+        let div_op: Operation<'a> =
+            if lhs_ty.element().is_integer() && rhs_ty.element().is_integer() {
+                create_divsi(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+            } else {
+                create_divf(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+            };
+
+        let result = div_op.result(0).expect("Div operation result not found");
         mlir_block.append_operation(div_op);
         Ok(Some(result.into()))
     }

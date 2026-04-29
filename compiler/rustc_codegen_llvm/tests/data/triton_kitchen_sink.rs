@@ -190,8 +190,11 @@ impl Clone for bool {
     }
 }
 
+#[lang = "Option"]
 pub enum Option<T> {
+    #[lang = "None"]
     None,
+    #[lang = "Some"]
     Some(T),
 }
 
@@ -245,6 +248,24 @@ pub mod core {
             }
         }
 
+        #[lang = "mul_assign"]
+        pub trait MulAssign<RHS = Self> {
+            fn mul_assign(&mut self, rhs: RHS);
+        }
+
+        impl MulAssign for i32 {
+            fn mul_assign(&mut self, rhs: i32) {}
+        }
+        impl MulAssign for i64 {
+            fn mul_assign(&mut self, rhs: i64) {}
+        }
+        impl MulAssign for f32 {
+            fn mul_assign(&mut self, rhs: f32) {}
+        }
+        impl MulAssign for f64 {
+            fn mul_assign(&mut self, rhs: f64) {}
+        }
+
         #[lang = "add"]
         pub trait Add<RHS = Self> {
             type Output;
@@ -283,6 +304,30 @@ pub mod core {
             }
         }
 
+        #[lang = "add_assign"]
+        pub trait AddAssign<RHS = Self> {
+            fn add_assign(&mut self, rhs: RHS);
+        }
+
+        impl AddAssign for i32 {
+            fn add_assign(&mut self, rhs: i32) {}
+        }
+        impl AddAssign for u32 {
+            fn add_assign(&mut self, rhs: u32) {}
+        }
+        impl AddAssign for u64 {
+            fn add_assign(&mut self, rhs: u64) {}
+        }
+        impl AddAssign for i64 {
+            fn add_assign(&mut self, rhs: i64) {}
+        }
+        impl AddAssign for f32 {
+            fn add_assign(&mut self, rhs: f32) {}
+        }
+        impl AddAssign for f64 {
+            fn add_assign(&mut self, rhs: f64) {}
+        }
+
         #[lang = "sub"]
         pub trait Sub<RHS = Self> {
             type Output;
@@ -305,6 +350,27 @@ pub mod core {
             }
         }
 
+        #[lang = "sub_assign"]
+        pub trait SubAssign<RHS = Self> {
+            fn sub_assign(&mut self, rhs: RHS);
+        }
+
+        impl SubAssign for i32 {
+            fn sub_assign(&mut self, rhs: i32) {}
+        }
+        impl SubAssign for u32 {
+            fn sub_assign(&mut self, rhs: u32) {}
+        }
+        impl SubAssign for i64 {
+            fn sub_assign(&mut self, rhs: i64) {}
+        }
+        impl SubAssign for f32 {
+            fn sub_assign(&mut self, rhs: f32) {}
+        }
+        impl SubAssign for f64 {
+            fn sub_assign(&mut self, rhs: f64) {}
+        }
+
         #[lang = "div"]
         pub trait Div<RHS = Self> {
             type Output;
@@ -317,6 +383,24 @@ pub mod core {
             fn div(self, rhs: i32) -> Self::Output {
                 0
             }
+        }
+
+        #[lang = "div_assign"]
+        pub trait DivAssign<RHS = Self> {
+            fn div_assign(&mut self, rhs: RHS);
+        }
+
+        impl DivAssign for i32 {
+            fn div_assign(&mut self, rhs: i32) {}
+        }
+        impl DivAssign for i64 {
+            fn div_assign(&mut self, rhs: i64) {}
+        }
+        impl DivAssign for f32 {
+            fn div_assign(&mut self, rhs: f32) {}
+        }
+        impl DivAssign for f64 {
+            fn div_assign(&mut self, rhs: f64) {}
         }
 
         #[lang = "rem"]
@@ -362,8 +446,82 @@ pub mod core {
                 0.0
             }
         }
+
+        #[lang = "Range"]
+        pub struct Range<Idx> {
+            pub start: Idx,
+            pub end: Idx,
+        }
     }
 }
+
+#[lang = "eq"]
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool;
+}
+
+impl PartialEq for i32 {
+    fn eq(&self, _other: &i32) -> bool { false }
+    fn ne(&self, _other: &i32) -> bool { false }
+}
+
+#[lang = "partial_ord"]
+pub trait PartialOrd<Rhs: ?Sized = Self> {
+    fn lt(&self, other: &Rhs) -> bool;
+    fn gt(&self, other: &Rhs) -> bool;
+    fn le(&self, other: &Rhs) -> bool;
+    fn ge(&self, other: &Rhs) -> bool;
+}
+
+impl PartialOrd for i32 {
+    fn lt(&self, _other: &i32) -> bool { false }
+    fn gt(&self, _other: &i32) -> bool { false }
+    fn le(&self, _other: &i32) -> bool { false }
+    fn ge(&self, _other: &i32) -> bool { false }
+}
+
+pub mod iter {
+    #[lang = "iterator"]
+    pub trait Iterator {
+        type Item;
+
+        #[lang = "next"]
+        fn next(&mut self) -> super::Option<Self::Item>;
+    }
+
+    pub trait IntoIterator {
+        type Item;
+        type IntoIter: Iterator<Item = Self::Item>;
+
+        #[lang = "into_iter"]
+        fn into_iter(self) -> Self::IntoIter;
+    }
+
+    impl Iterator for super::core::ops::Range<i32> {
+        type Item = i32;
+
+        fn next(&mut self) -> super::Option<Self::Item> {
+            if self.start < self.end {
+                let v = self.start;
+                self.start = v + 1;
+                super::Option::Some(v)
+            } else {
+                super::Option::None
+            }
+        }
+    }
+
+    impl IntoIterator for super::core::ops::Range<i32> {
+        type Item = i32;
+        type IntoIter = super::core::ops::Range<i32>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self
+        }
+    }
+}
+
 pub mod triton {
     pub use super::*;
     /*
@@ -2863,6 +3021,25 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32, const USE_BIAS: bool
     if USE_BIAS { let _ = loaded + z; }
     // SwitchInt on a runtime bool SSA value (bool function parameter).
     if use_bias { let _ = loaded + z; }
+
+    // Range-based for loop: scf.for with runtime bound (n_elements).
+    // Accumulates z into for_acc over n_elements iterations.
+    let mut for_acc = T::zeros::<D>(&[BLOCK_SIZE]);
+    for _k in 0..n_elements {
+        for_acc = for_acc + z;
+    }
+    let _ = for_acc;
+
+    // While loop: scf.while with loop-carried scalar (n_start: i32) and tensor (while_acc).
+    // Models the tile-loop pattern used in batchnorm / layernorm kernels.
+    let mut while_acc = T::zeros::<D>(&[BLOCK_SIZE]);
+    let mut n_start: i32 = 0;
+    while n_start < n_elements {
+        while_acc = while_acc + z;
+        n_start += BLOCK_SIZE;
+    }
+    let _ = while_acc;
+
     let out_ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
     let _ = T::make_block_ptr(output_ptr, &[BLOCK_SIZE], &[1], &[0], &[BLOCK_SIZE], &[0]);
     T::store::<D, 1>(out_ptrs, mconst, None, &[0], None, None);

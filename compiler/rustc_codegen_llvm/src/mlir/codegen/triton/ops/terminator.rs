@@ -190,6 +190,7 @@ impl<'a> TritonCodegen<'a> {
             "core::ops::Mul::mul" => TritonCodegen::codegen_mul_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Add::add" => TritonCodegen::codegen_add_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Sub::sub" => TritonCodegen::codegen_sub_call as LocalCallHandler<'a, 'tcx>,
+            "core::ops::Div::div" => TritonCodegen::codegen_div_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::BitAnd::bitand" => TritonCodegen::codegen_and_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::BitOr::bitor" => TritonCodegen::codegen_or_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Div::div" => TritonCodegen::codegen_fdiv_call as LocalCallHandler<'a, 'tcx>,

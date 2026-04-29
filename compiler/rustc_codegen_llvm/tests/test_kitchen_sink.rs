@@ -126,5 +126,19 @@ mod tests {
         println!("Compiling tensor add with target: {}", tensor_add.display());
         let result = compiler.compile(&tensor_add, target);
         assert!(result.is_ok());
+
+        // Verify no unresolved __nv_* externs remain in the PTX — they indicate
+        // that libdevice was not linked and the PTX JIT will fail at runtime.
+        let ptx = std::fs::read_to_string("/tmp/kernel.asm")
+            .expect("kernel.asm not written");
+        let unresolved: Vec<&str> = ptx
+            .lines()
+            .filter(|l| l.contains(".extern .func") && l.contains("__nv_"))
+            .collect();
+        assert!(
+            unresolved.is_empty(),
+            "PTX contains unresolved __nv_* externs (libdevice not linked):\n{}",
+            unresolved.join("\n")
+        );
     }
 }

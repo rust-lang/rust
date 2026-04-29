@@ -2658,7 +2658,39 @@ impl<'a> TritonCodegen<'a> {
         _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        self.codegen_math_unary(tcx, instance, mir, args, "math.rsqrt", location, mlir_block, state)
+        // Lower rsqrt(x) as 1.0 / sqrt_rn(x) via tt.precise_sqrt + tt.precise_divf.
+        // math.rsqrt lowers to __nv_rsqrtf which requires libdevice to resolve at PTX JIT time.
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+
+        let sqrt_op: Operation<'a> = precise_sqrt(self.module.context(), location, x)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let sqrt_val = sqrt_op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(sqrt_op);
+
+        let x_ty = x.r#type();
+        let elem_ty = if x_ty.is_tensor() {
+            RankedTensorType::try_from(x_ty)
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?
+                .element()
+        } else {
+            x_ty
+        };
+        let one_attr = FloatAttribute::new(self.module.context(), elem_ty, 1.0);
+        let one_const_op: Operation<'a> =
+            melior::dialect::arith::constant(self.module.context(), one_attr.into(), location);
+        let one_scalar = one_const_op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(one_const_op);
+        let one_val = self.splat_scalar_const(location, one_scalar.into(), x_ty, mlir_block)?;
+
+        let div_op: Operation<'a> = precise_divf(self.module.context(), location, one_val, sqrt_val.into())
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = div_op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(div_op);
+        Ok(Some(result.into()))
     }
 
     pub fn codegen_sqrt_call<'tcx>(

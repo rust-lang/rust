@@ -200,6 +200,23 @@ struct RangeLoopInfo {
     next_result_local: Option<Local>,
 }
 
+/// Information about a detected `while cond { body }` loop in the MIR.
+#[derive(Debug)]
+struct WhileLoopInfo {
+    /// The loop header block that holds the SwitchInt on the condition.
+    header_bb: BasicBlock,
+    /// First block of the loop body (taken when condition is true).
+    body_entry_bb: BasicBlock,
+    /// All loop body blocks in execution order.
+    body_bbs: Vec<BasicBlock>,
+    /// The block whose Goto back-edge targets the header.
+    back_edge_bb: BasicBlock,
+    /// The block taken when the loop exits.
+    exit_bb: BasicBlock,
+    /// Locals that carry values across iterations (includes the condition-tested counter).
+    iter_carry_locals: Vec<Local>,
+}
+
 /// Pre-scan all MIR blocks to collect statically-known discriminant values.
 ///
 /// Handles two patterns:
@@ -645,6 +662,90 @@ fn detect_range_loop<'tcx>(instance: Instance<'tcx>, mir: &Body<'tcx>) -> Vec<Ra
         }
     }
     loops
+}
+
+/// Detect all `while cond { body }` loops in the MIR body.
+///
+/// A while loop in MIR appears as:
+///   header_bb: SwitchInt(cond) → [false → exit_bb, true → body_entry_bb]
+///   body_bbs:  ... statements ...
+///   back_edge_bb: Goto → header_bb
+///
+/// We detect this by finding back-edges where the header has a plain SwitchInt
+/// (not matched by the Range-loop detector as having an Option::Some induction var).
+fn detect_while_loop<'tcx>(
+    mir: &Body<'tcx>,
+    range_loop_blocks: &HashSet<BasicBlock>,
+) -> Vec<WhileLoopInfo> {
+    use rustc_middle::mir::TerminatorKind;
+
+    let mut loops = Vec::new();
+    for (bb, bb_data) in mir.basic_blocks.iter_enumerated() {
+        if let TerminatorKind::Goto { target } = &bb_data.terminator().kind {
+            if target.index() < bb.index() {
+                let header_bb = *target;
+                let back_edge_bb = bb;
+
+                // Skip blocks already claimed by a Range-based for-loop.
+                if range_loop_blocks.contains(&header_bb) || range_loop_blocks.contains(&back_edge_bb) {
+                    continue;
+                }
+
+                if let Some(info) = try_build_while_loop_info(mir, header_bb, back_edge_bb, range_loop_blocks) {
+                    loops.push(info);
+                }
+            }
+        }
+    }
+    loops
+}
+
+fn try_build_while_loop_info<'tcx>(
+    mir: &Body<'tcx>,
+    header_bb: BasicBlock,
+    back_edge_bb: BasicBlock,
+    range_loop_blocks: &HashSet<BasicBlock>,
+) -> Option<WhileLoopInfo> {
+    use rustc_middle::mir::TerminatorKind;
+
+    let header_data = &mir.basic_blocks[header_bb];
+
+    // Header must be a SwitchInt on a bool condition.
+    let (body_entry_bb, exit_bb) =
+        if let TerminatorKind::SwitchInt { discr: _, targets } = &header_data.terminator().kind {
+            let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
+            // SwitchInt on bool: case 0 = false → exit, otherwise = true → body
+            if cases.len() == 1 && cases[0].0 == 0 {
+                let exit_bb = cases[0].1;
+                let body_entry_bb = targets.otherwise();
+                (body_entry_bb, exit_bb)
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        };
+
+    // Collect body blocks, excluding any already in a range-loop region.
+    let body_bbs = collect_body_blocks_ordered(mir, body_entry_bb, header_bb);
+    if body_bbs.is_empty() || !body_bbs.contains(&back_edge_bb) {
+        return None;
+    }
+    if body_bbs.iter().any(|bb| range_loop_blocks.contains(bb)) {
+        return None;
+    }
+
+    // Find loop-carried locals: those assigned in the body and live across iterations.
+    let iter_carry_locals = find_iter_carry_locals(mir, &body_bbs);
+
+    Some(WhileLoopInfo {
+        header_bb,
+        body_entry_bb,
+        body_bbs,
+        back_edge_bb,
+        exit_bb,
+        iter_carry_locals,
+    })
 }
 
 fn try_build_range_loop_info<'tcx>(
@@ -1380,6 +1481,177 @@ impl<'a> TritonCodegen<'a> {
         Ok(())
     }
 
+    /// Generate a `scf.while` loop for a detected while-loop, emitting the condition in the
+    /// "before" region and the body + yield in the "after" region.
+    #[allow(clippy::too_many_arguments)]
+    fn codegen_scf_while_loop<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        loop_info: &WhileLoopInfo,
+        init_mlir_block: &BlockRef<'a, 'a>,
+        func_op: &Operation<'a>,
+        state: &mut CodegenState<'a, 'a>,
+        outer_basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
+        location: Location<'a>,
+    ) -> Result<(), MlirError> {
+        let ctx = self.module.context();
+
+        // Collect initial values and their MLIR types for each loop-carried local.
+        let init_vals: Vec<Value<'a, 'a>> = loop_info
+            .iter_carry_locals
+            .iter()
+            .map(|local| {
+                *state.ssa_values.get(local).unwrap_or_else(|| {
+                    panic!("scf.while: iter-carry local {:?} not in ssa_values", local)
+                })
+            })
+            .collect();
+        let carry_types: Vec<melior::ir::Type<'a>> = init_vals.iter().map(|v| v.r#type()).collect();
+
+        // Build the scf.while op: two empty regions (before + after); we fill them next.
+        let while_op: Operation<'a> = OperationBuilder::new("scf.while", location)
+            .add_operands(&init_vals)
+            .add_results(&carry_types)
+            .add_regions([Region::new(), Region::new()])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+
+        // ── "before" region (condition check) ──────────────────────────────────
+        // Entry block args: one per loop-carried value (same types as scf.while operands).
+        let before_region = while_op.region(0).expect("scf.while must have a before region");
+        let before_block_args: Vec<(melior::ir::Type<'a>, Location<'a>)> =
+            carry_types.iter().map(|ty| (*ty, location)).collect();
+        let before_block = Block::new(&before_block_args);
+        let before_block_ref = before_region.append_block(before_block);
+
+        // Map loop-carried locals to the before-region block arguments.
+        for (i, &local) in loop_info.iter_carry_locals.iter().enumerate() {
+            let arg: Value<'a, 'a> = before_block_ref.argument(i).unwrap().into();
+            state.ssa_values.insert(local, arg);
+        }
+
+        // Codegen the header block statements (condition computation) into before_block.
+        let header_data = &mir.basic_blocks[loop_info.header_bb];
+        for stmt in &header_data.statements {
+            self.codegen_statement(tcx, instance, mir, stmt, &before_block_ref, state)?;
+        }
+
+        // Extract the condition value from the header's SwitchInt discriminant.
+        use rustc_middle::mir::TerminatorKind;
+        let cond_val: Value<'a, 'a> =
+            if let TerminatorKind::SwitchInt { discr, .. } = &header_data.terminator().kind {
+                let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    TypingEnv::fully_monomorphized(),
+                    EarlyBinder::bind(discr.ty(mir, tcx)),
+                );
+                self.codegen_operand(
+                    tcx,
+                    instance,
+                    discr,
+                    normalized_ty,
+                    location,
+                    &before_block_ref,
+                    state,
+                )?
+            } else {
+                panic!("scf.while: header terminator is not SwitchInt");
+            };
+
+        // Collect current values of loop-carried locals to forward through scf.condition.
+        let cond_args: Vec<Value<'a, 'a>> = loop_info
+            .iter_carry_locals
+            .iter()
+            .map(|local| {
+                *state.ssa_values.get(local).unwrap_or_else(|| {
+                    panic!("scf.while before: iter-carry local {:?} missing", local)
+                })
+            })
+            .collect();
+
+        // Emit scf.condition(%cond) %carry_args... : types...
+        let mut condition_operands = vec![cond_val];
+        condition_operands.extend_from_slice(&cond_args);
+        let condition_op = OperationBuilder::new("scf.condition", location)
+            .add_operands(&condition_operands)
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        before_block_ref.append_operation(condition_op);
+
+        // ── "after" region (loop body) ─────────────────────────────────────────
+        // Entry block args: one per loop-carried value (types match before-region trailing args).
+        let after_region = while_op.region(1).expect("scf.while must have an after region");
+        let after_block_args: Vec<(melior::ir::Type<'a>, Location<'a>)> =
+            carry_types.iter().map(|ty| (*ty, location)).collect();
+        let after_block = Block::new(&after_block_args);
+        let after_block_ref = after_region.append_block(after_block);
+
+        // Map loop-carried locals to the after-region block arguments.
+        for (i, &local) in loop_info.iter_carry_locals.iter().enumerate() {
+            let arg: Value<'a, 'a> = after_block_ref.argument(i).unwrap().into();
+            state.ssa_values.insert(local, arg);
+        }
+
+        // Build a combined block map for body codegen (all body blocks → after_block).
+        let mut combined_blocks: HashMap<BasicBlock, BlockRef<'a, 'a>> =
+            outer_basic_blocks.clone();
+        for &body_bb in &loop_info.body_bbs {
+            combined_blocks.insert(body_bb, after_block_ref);
+        }
+        // Also map the header to before_block so codegen_goto back-edges land there.
+        combined_blocks.insert(loop_info.header_bb, before_block_ref);
+
+        // Set loop context so codegen_goto emits scf.yield at the back-edge.
+        state.loop_header_bb = Some(loop_info.header_bb);
+        state.loop_iter_carry_locals = loop_info.iter_carry_locals.clone();
+        state.loop_body_bbs = loop_info.body_bbs.iter().copied().collect();
+
+        // Codegen each body block into the single after_block.
+        for &body_bb in &loop_info.body_bbs {
+            let bb_data = &mir.basic_blocks[body_bb];
+            self.codegen_basic_block(
+                tcx,
+                instance,
+                mir,
+                body_bb,
+                bb_data,
+                func_op,
+                state,
+                &combined_blocks,
+            )?;
+        }
+
+        // Clear loop context.
+        state.loop_header_bb = None;
+        state.loop_iter_carry_locals.clear();
+        state.loop_body_bbs.clear();
+
+        // Collect scf.while results (post-loop values of the loop-carried locals).
+        let while_results: Vec<Value<'a, 'a>> = (0..loop_info.iter_carry_locals.len())
+            .map(|i| while_op.result(i).unwrap().into())
+            .collect();
+
+        // Append the scf.while to the init block.
+        init_mlir_block.append_operation(while_op.into());
+
+        // Map results back to iter-carry locals (values after the loop exits).
+        for (i, &local) in loop_info.iter_carry_locals.iter().enumerate() {
+            state.ssa_values.insert(local, while_results[i]);
+        }
+
+        // Branch from the init block to the exit block.
+        let exit_block = *outer_basic_blocks.get(&loop_info.exit_bb).unwrap_or_else(|| {
+            panic!("scf.while: exit block {:?} not in basic_blocks", loop_info.exit_bb)
+        });
+        let br_op = rustc_mlir::shared::cf::create_cf_br(ctx, location, &exit_block)
+            .map_err(|e| MlirError::CreateOperation { err: e })?;
+        init_mlir_block.append_operation(br_op.into());
+
+        Ok(())
+    }
+
     fn codegen_function<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -1533,7 +1805,16 @@ impl<'a> TritonCodegen<'a> {
             }
         }
 
-        // Map from init_bb → index into loop_infos for each loop.
+        // Detect while loops (must run after range-loop detection so we can exclude their blocks).
+        let while_loop_infos = detect_while_loop(mir, &loop_region_blocks);
+        for wl in &while_loop_infos {
+            loop_region_blocks.insert(wl.header_bb);
+            for &b in &wl.body_bbs {
+                loop_region_blocks.insert(b);
+            }
+        }
+
+        // Map from init_bb → index into loop_infos for each scf.for loop.
         // The "init block" ends with `goto → header_bb`; we intercept it to emit scf.for.
         let mut loop_init_bb_map: HashMap<BasicBlock, usize> = HashMap::new();
         for (loop_idx, l) in loop_infos.iter().enumerate() {
@@ -1553,9 +1834,29 @@ impl<'a> TritonCodegen<'a> {
             }
         }
 
+        // Map from init_bb → index into while_loop_infos for each scf.while loop.
+        // The "init block" ends with `goto → header_bb`; we intercept it to emit scf.while.
+        let mut while_loop_init_bb_map: HashMap<BasicBlock, usize> = HashMap::new();
+        for (loop_idx, wl) in while_loop_infos.iter().enumerate() {
+            if let Some(init_bb) = mir.basic_blocks.indices().find(|&bb| {
+                if loop_region_blocks.contains(&bb) {
+                    return false;
+                }
+                if bb >= wl.header_bb {
+                    return false;
+                }
+                matches!(
+                    &mir.basic_blocks[bb].terminator().kind,
+                    rustc_middle::mir::TerminatorKind::Goto { target } if *target == wl.header_bb
+                )
+            }) {
+                while_loop_init_bb_map.insert(init_bb, loop_idx);
+            }
+        }
+
         println!(
-            "[DEBUG] TritonCodegen: loop_infos count={}, loop_init_bb_map: {:?}",
-            loop_infos.len(), loop_init_bb_map
+            "[DEBUG] TritonCodegen: loop_infos count={}, while_loop_infos count={}, loop_init_bb_map: {:?}",
+            loop_infos.len(), while_loop_infos.len(), loop_init_bb_map
         );
 
         // Compute phi (block-argument) locals for join blocks in the non-loop CFG.
@@ -1604,7 +1905,7 @@ impl<'a> TritonCodegen<'a> {
         for &bb in &bfs_ordered_bbs {
             let bb_data = &mir.basic_blocks[bb];
             if loop_region_blocks.contains(&bb) {
-                continue; // Handled inside codegen_scf_for_loop.
+                continue; // Handled inside codegen_scf_for_loop / codegen_scf_while_loop.
             }
 
             if let Some(&loop_idx) = loop_init_bb_map.get(&bb) {
@@ -1625,6 +1926,33 @@ impl<'a> TritonCodegen<'a> {
                     instance,
                     mir,
                     &loop_infos[loop_idx],
+                    &init_mlir_block,
+                    &func_op,
+                    &mut state,
+                    &basic_blocks,
+                    location,
+                )?;
+                continue;
+            }
+
+            if let Some(&loop_idx) = while_loop_init_bb_map.get(&bb) {
+                // Process init-block statements only, then build the scf.while in-place.
+                let init_mlir_block = *basic_blocks.get(&bb).expect("while init block");
+                for stmt in &bb_data.statements {
+                    self.codegen_statement(
+                        tcx,
+                        instance,
+                        mir,
+                        stmt,
+                        &init_mlir_block,
+                        &mut state,
+                    )?;
+                }
+                self.codegen_scf_while_loop(
+                    tcx,
+                    instance,
+                    mir,
+                    &while_loop_infos[loop_idx],
                     &init_mlir_block,
                     &func_op,
                     &mut state,
@@ -2623,6 +2951,30 @@ impl<'a> TritonCodegen<'a> {
             CastKind::IntToInt => {
                 self.codegen_int_to_int(tcx, instance, operand, ty, location, mlir_block, state)
             }
+            CastKind::IntToFloat => {
+                // For Copy/Move operands, codegen_operand ignores the type and returns the SSA
+                // value directly, so passing the destination type as a hint is safe.
+                let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(*ty),
+                );
+                let src_val = self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)?;
+                let dest_ty = self.type_mapper.map_type(self.module.context(), &tcx, &normalized_ty);
+                let op: Operation<'a> = melior::dialect::arith::sitofp(src_val, dest_ty, location).into();
+                let result = op.result(0).expect("sitofp result").into();
+                mlir_block.append_operation(op);
+                Ok(result)
+            }
+            CastKind::FloatToInt => {
+                let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(*ty),
+                );
+                let src_val = self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)?;
+                let dest_ty = self.type_mapper.map_type(self.module.context(), &tcx, &normalized_ty);
+                let op: Operation<'a> = melior::dialect::arith::fptosi(src_val, dest_ty, location).into();
+                let result = op.result(0).expect("fptosi result").into();
+                mlir_block.append_operation(op);
+                Ok(result)
+            }
             _ => {
                 // Unhandled cast kinds (Transmute, PointerCoercion, ReifyFnPointer, etc.).
                 // Emit ub.poison of the destination type as a safe placeholder.
@@ -2631,10 +2983,6 @@ impl<'a> TritonCodegen<'a> {
                     tcx,
                     typing_env,
                     EarlyBinder::bind(*ty),
-                );
-                println!(
-                    "[DEBUG] codegen_cast fallback: cast_kind={:?} ty={:?}",
-                    cast_kind, normalized_ty
                 );
                 let mlir_ty =
                     self.type_mapper.map_type(self.module.context(), &tcx, &normalized_ty);

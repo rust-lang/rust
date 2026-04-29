@@ -140,15 +140,34 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
     return false;
   };
 
+  // Debug: log all __nv_* declarations found before linking.
+  {
+    bool any = false;
+    for (const auto &F : llvmMod->functions()) {
+      if (F.isDeclaration() && F.getName().starts_with("__nv_")) {
+        llvm::errs() << "[libdevice-dbg] extern decl: " << F.getName() << "\n";
+        any = true;
+      }
+    }
+    if (!any) {
+      llvm::errs() << "[libdevice-dbg] no __nv_* declarations found\n";
+    }
+  }
+
   if (needsLibdevice()) {
     // Prefer the env-var override, then the standard CUDA toolkit path.
+    const char *env_path = std::getenv("CUDA_LIBDEVICE_PATH");
     static const char *candidates[] = {
-        std::getenv("CUDA_LIBDEVICE_PATH"),
+        env_path,
         "/usr/local/cuda/nvvm/libdevice/libdevice.10.bc",
     };
     bool found = false;
     for (const char *path : candidates) {
-      if (path && llvm::sys::fs::exists(path)) {
+      bool exists = path && llvm::sys::fs::exists(path);
+      llvm::errs() << "[libdevice-dbg] candidate: "
+                   << (path ? path : "<null>")
+                   << " exists=" << exists << "\n";
+      if (exists) {
         libPaths.push_back(path);
         found = true;
         break;
@@ -162,9 +181,20 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
   }
 
   if (!libPaths.empty()) {
+    llvm::errs() << "[libdevice-dbg] calling linkExternLibs with "
+                 << libPaths.size() << " lib(s)\n";
     auto result = linkExternLibs(llvmContext, *llvmMod, libPaths);
     if (failed(result)) {
+      llvm::errs() << "[libdevice-dbg] linkExternLibs FAILED\n";
       return result;
+    }
+    // Check post-link: are the symbols now defined or still extern?
+    for (const auto &F : llvmMod->functions()) {
+      if (F.getName().starts_with("__nv_")) {
+        llvm::errs() << "[libdevice-dbg] post-link: " << F.getName()
+                     << (F.isDeclaration() ? " => still extern" : " => defined")
+                     << "\n";
+      }
     }
   }
 
@@ -531,14 +561,20 @@ CudaBackend::linkExternLibs(llvm::LLVMContext &llvmContext,
       return LogicalResult::failure();
     }
 
-    auto src =
-        llvm::getLazyBitcodeModule((*buf)->getMemBufferRef(), llvmContext);
+    // Use parseBitcodeFile (not getLazyBitcodeModule) so that all function
+    // bodies from libdevice are fully materialized before linking. The lazy
+    // variant leaves functions as declarations, so the linker cannot inline
+    // them and __nv_rsqrtf / __nv_sqrtf etc. remain as .extern in PTX.
+    // LinkOnlyNeeded ensures we only pull in symbols actually referenced by
+    // our module, keeping PTX size reasonable.
+    auto src = llvm::parseBitcodeFile((*buf)->getMemBufferRef(), llvmContext);
     if (!src) {
-      llvm::errs() << "Failed to get lazy bitcode module: " << libPath << "\n";
+      llvm::errs() << "Failed to parse bitcode file: " << libPath << "\n";
       return LogicalResult::failure();
     }
 
-    if (linker.linkInModule(std::move(*src))) {
+    if (linker.linkInModule(std::move(*src),
+                            llvm::Linker::Flags::LinkOnlyNeeded)) {
       llvm::errs() << "Failed to link extern library: " << libPath << "\n";
       return LogicalResult::failure();
     }
