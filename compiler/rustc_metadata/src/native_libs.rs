@@ -196,6 +196,28 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
         }
     }
     collector.process_command_line();
+    for lib in &mut collector.libs {
+        if tcx.sess.target.env == Env::Pauthtest {
+            if let NativeLibKind::Static { .. } = lib.kind {
+                if !tcx.sess.opts.unstable_opts.ui_testing {
+                    let diag = if lib.foreign_module.is_none() {
+                        errors::StaticLinkingNotSupported::UserRequested {
+                            lib_name: lib.name,
+                            target: tcx.sess.target.llvm_target.as_ref(),
+                        }
+                    } else {
+                        errors::StaticLinkingNotSupported::FromDependency {
+                            lib_name: lib.name,
+                            target: tcx.sess.target.llvm_target.as_ref(),
+                        }
+                    };
+                    tcx.dcx().emit_warn(diag);
+                }
+
+                lib.kind = NativeLibKind::Dylib { as_needed: None };
+            }
+        }
+    }
     collector.libs
 }
 

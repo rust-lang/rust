@@ -391,8 +391,9 @@ The following categories are supported (all present in tree):
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
-* UI error reporting (the target does not support `+crt-static`)
+* UI error/warning reporting (the target does not support static linking)
   * crt-static-pauthtest.rs
+  * pauth-static-link-warning
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
 `crashes`, `incremental`, `library`, `mir-opt`, `run-make`, `ui` and
@@ -413,6 +414,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/codegen-llvm/pauth/pauth-init-fini.rs \
   tests/run-make/pauth-quicksort-rust-driver \
   tests/run-make/pauth-quicksort-c-driver \
+  tests/run-make/pauth-static-link-warning \
   tests/ui/statics/crt-static-pauthtest.rs
 ```
 

@@ -8,8 +8,7 @@
 
 use std::ffi::c_int;
 
-#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     static mut rust_dbg_static_mut: c_int;
     pub fn rust_dbg_static_mut_check_four();

@@ -704,3 +704,18 @@ pub(crate) struct MitigationLessStrictInDependency {
     pub mitigation_level: String,
     pub extern_crate: Symbol,
 }
+
+#[derive(Diagnostic)]
+pub(crate) enum StaticLinkingNotSupported<'a> {
+    #[diag(
+        "static linking of `{$lib_name}` is not supported on `{$target}`; using dynamic linking instead"
+    )]
+    #[help("remove `kind = \"static\"` and ensure a shared library is available")]
+    UserRequested { lib_name: Symbol, target: &'a str },
+
+    #[diag(
+        "library `{$lib_name}` is linked statically by a dependency, but `{$target}` requires dynamic linking; using dynamic linking instead"
+    )]
+    #[help("ensure a shared library is available")]
+    FromDependency { lib_name: Symbol, target: &'a str },
+}

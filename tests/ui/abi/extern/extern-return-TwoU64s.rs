@@ -6,8 +6,7 @@ pub struct TwoU64s {
     two: u64,
 }
 
-#[cfg_attr(target_env = "pauthtest", link(name = "rust_test_helpers", kind = "dylib"))]
-#[cfg_attr(not(target_env = "pauthtest"), link(name = "rust_test_helpers", kind = "static"))]
+#[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     pub fn rust_dbg_extern_return_TwoU64s() -> TwoU64s;
 }
