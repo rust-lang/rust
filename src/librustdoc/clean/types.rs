@@ -1093,6 +1093,12 @@ impl Attributes {
         }
         aliases.into_iter().collect::<Vec<_>>().into()
     }
+
+    pub(crate) fn merge_with(&mut self, other: Self) {
+        let Self { doc_strings, other_attrs } = other;
+        self.doc_strings.extend(doc_strings);
+        self.other_attrs.extend(other_attrs);
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
