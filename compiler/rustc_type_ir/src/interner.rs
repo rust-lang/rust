@@ -145,9 +145,7 @@ pub trait Interner:
         + Eq
         + TypeVisitable<Self>
         + SliceLike<Item = Self::Pat>;
-    type FSigKind: FSigKind<Self>;
     type Safety: Safety<Self>;
-    type Abi: Abi<Self>;
 
     // Kinds of consts
     type Const: Const<Self>;
