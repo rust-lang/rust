@@ -3,7 +3,7 @@
 // Run-time:
 //   status: 0
 
-// TODO: remove these tests (extracted from libcore) when we run the libcore tests in the CI of the
+// FIXME: remove these tests (extracted from libcore) when we run the libcore tests in the CI of the
 // Rust repo.
 
 #![feature(core_intrinsics)]

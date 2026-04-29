@@ -214,7 +214,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            // TODO(antoyo): We can probably remove these and use the fallback intrinsic implementation.
+            // FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
             sym::minimumf32 | sym::minimumf64 | sym::maximumf32 | sym::maximumf64 => {
                 let (ty, func_name) = match name {
                     sym::minimumf32 => (self.cx.float_type, "fminimumf"),
