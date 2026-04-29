@@ -9,7 +9,7 @@ use crate::data_structures::DelayedMap;
 use crate::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable, shift_region};
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, Interner};
+use crate::{self as ty, FnSigKind, Interner};
 
 /// A closure can be modeled as a struct that looks like:
 /// ```ignore (illustrative)
@@ -367,7 +367,7 @@ pub struct CoroutineClosureSignature<I: Interner> {
     /// Always safe, RustCall, non-c-variadic
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
-    pub fn_sig_kind: I::FSigKind,
+    pub fn_sig_kind: FnSigKind<I>,
 }
 
 impl<I: Interner> Eq for CoroutineClosureSignature<I> {}
