@@ -67,8 +67,13 @@ impl<V: FlatMapInPlaceVec> FlatMapInPlace<V::Elem> for V {
     }
 }
 
-// A vec-like type must implement these operations to support `flat_map_in_place`.
-pub trait FlatMapInPlaceVec {
+/// A vec-like type must implement these operations to support `flat_map_in_place`.
+///
+/// # Safety
+///
+/// The memory safety of the unsafe block in `flat_map_in_place` relies on impls of this trait
+/// implementing all the operations correctly.
+pub unsafe trait FlatMapInPlaceVec {
     type Elem;
 
     fn len(&self) -> usize;
@@ -78,7 +83,7 @@ pub trait FlatMapInPlaceVec {
     fn insert(&mut self, idx: usize, elem: Self::Elem);
 }
 
-impl<T> FlatMapInPlaceVec for Vec<T> {
+unsafe impl<T> FlatMapInPlaceVec for Vec<T> {
     type Elem = T;
 
     fn len(&self) -> usize {
@@ -104,7 +109,7 @@ impl<T> FlatMapInPlaceVec for Vec<T> {
     }
 }
 
-impl<T> FlatMapInPlaceVec for ThinVec<T> {
+unsafe impl<T> FlatMapInPlaceVec for ThinVec<T> {
     type Elem = T;
 
     fn len(&self) -> usize {
@@ -130,7 +135,7 @@ impl<T> FlatMapInPlaceVec for ThinVec<T> {
     }
 }
 
-impl<T, const N: usize> FlatMapInPlaceVec for SmallVec<[T; N]> {
+unsafe impl<T, const N: usize> FlatMapInPlaceVec for SmallVec<[T; N]> {
     type Elem = T;
 
     fn len(&self) -> usize {
