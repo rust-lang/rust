@@ -4,6 +4,7 @@ use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
@@ -1092,42 +1093,65 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut look_at_return = true;
 
         err.span_label(closure_span, "in this closure");
-        // If the HIR node is a function or method call, get the DefId
-        // of the callee function or method, the span, and args of the call expr
-        let get_call_details = || {
-            let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
-                return None;
+        let closure_arg_has_fn_trait_bound =
+            |callee_def_id, input_index, generic_args: ty::GenericArgsRef<'tcx>| {
+                let sig = tcx.fn_sig(callee_def_id).instantiate(tcx, generic_args).skip_binder();
+                let Some(input_ty): Option<Ty<'tcx>> = sig.inputs().get(input_index).copied()
+                else {
+                    return false;
+                };
+
+                tcx.predicates_of(callee_def_id)
+                    .instantiate(tcx, generic_args)
+                    .predicates
+                    .iter()
+                    .any(|predicate| {
+                        predicate.as_trait_clause().is_some_and(|trait_pred| {
+                            trait_pred.polarity() == ty::PredicatePolarity::Positive
+                                && tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
+                                    == Some(ty::ClosureKind::Fn)
+                                && trait_pred.self_ty().skip_binder().peel_refs()
+                                    == input_ty.peel_refs()
+                        })
+                    })
             };
 
-            let typeck_results = tcx.typeck(def_id);
+        // If the HIR node is a function or method call, get the DefId
+        // of the callee function or method, the span, and argument info for the call expr.
+        let get_call_details =
+            || -> Option<(DefId, Span, usize, usize, ty::GenericArgsRef<'tcx>)> {
+                let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
+                    return None;
+                };
 
-            match kind {
-                hir::ExprKind::Call(expr, args) => {
-                    if let Some(ty::FnDef(def_id, _)) =
-                        typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
-                    {
-                        Some((*def_id, expr.span, *args))
-                    } else {
-                        None
+                let typeck_results = tcx.typeck(def_id);
+
+                match kind {
+                    hir::ExprKind::Call(expr, args) => {
+                        if let Some(ty::FnDef(def_id, generic_args)) =
+                            typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
+                        {
+                            let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                            Some((*def_id, expr.span, arg_pos, arg_pos, generic_args))
+                        } else {
+                            None
+                        }
                     }
+                    hir::ExprKind::MethodCall(_, _, args, span) => {
+                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                        let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
+                        let generic_args = typeck_results.node_args_opt(*hir_id)?;
+                        Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
+                    }
+                    _ => None,
                 }
-                hir::ExprKind::MethodCall(_, _, args, span) => typeck_results
-                    .type_dependent_def_id(*hir_id)
-                    .map(|def_id| (def_id, *span, *args)),
-                _ => None,
-            }
-        };
+            };
 
         // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...
-        if let Some((callee_def_id, call_span, call_args)) = get_call_details() {
-            let arg_pos = call_args
-                .iter()
-                .enumerate()
-                .filter(|(_, arg)| arg.hir_id == closure_id)
-                .map(|(pos, _)| pos)
-                .next();
-
+        if let Some((callee_def_id, call_span, arg_pos, input_index, generic_args)) =
+            get_call_details()
+        {
             let arg = match tcx.hir_get_if_local(callee_def_id) {
                 Some(
                     hir::Node::Item(hir::Item {
@@ -1144,16 +1168,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ..
                     }),
                 ) => Some(
-                    arg_pos
-                        .and_then(|pos| {
-                            sig.decl.inputs.get(
-                                pos + if sig.decl.implicit_self().has_implicit_self() {
-                                    1
-                                } else {
-                                    0
-                                },
-                            )
-                        })
+                    sig.decl
+                        .inputs
+                        .get(
+                            arg_pos
+                                + if sig.decl.implicit_self().has_implicit_self() { 1 } else { 0 },
+                        )
                         .map(|arg| arg.span)
                         .unwrap_or(ident.span),
                 ),
@@ -1161,6 +1181,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             };
             if let Some(span) = arg {
                 err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
+                err.span_label(call_span, "expects `Fn` instead of `FnMut`");
+                look_at_return = false;
+            } else if closure_arg_has_fn_trait_bound(callee_def_id, input_index, generic_args) {
+                // The callee is not local, so we cannot point at its argument declaration, but we
+                // can still explain that this call site expects an `Fn` closure. Avoid falling
+                // through to the enclosing function's return type, which is misleading in cases
+                // like `flat_map(|_| external::map(|_| ...))`.
                 err.span_label(call_span, "expects `Fn` instead of `FnMut`");
                 look_at_return = false;
             }

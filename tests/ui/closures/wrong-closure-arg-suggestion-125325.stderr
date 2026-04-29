@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
-  --> $DIR/wrong-closure-arg-suggestion-125325.rs:23:21
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:29:21
    |
 LL |     fn assoc_func(&self, _f: impl Fn()) -> usize {
    |                              --------- change this to accept `FnMut` instead of `Fn`
@@ -14,7 +14,7 @@ LL |     s.assoc_func(|| x = ());
    |       expects `Fn` instead of `FnMut`
 
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
-  --> $DIR/wrong-closure-arg-suggestion-125325.rs:25:13
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:31:13
    |
 LL | fn func(_f: impl Fn()) -> usize {
    |             --------- change this to accept `FnMut` instead of `Fn`
@@ -28,6 +28,76 @@ LL |     func(|| x = ())
    |     |    in this closure
    |     expects `Fn` instead of `FnMut`
 
-error: aborting due to 2 previous errors
+error[E0594]: cannot assign to `self.counter`, as `Fn` closures cannot mutate their captured variables
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:46:28
+   |
+LL |         take(|_| to_fn(|_| self.counter += 1));
+   |                  ----- --- ^^^^^^^^^^^^^^^^^ cannot assign
+   |                  |     |
+   |                  |     in this closure
+   |                  expects `Fn` instead of `FnMut`
 
-For more information about this error, try `rustc --explain E0594`.
+error: lifetime may not live long enough
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:46:18
+   |
+LL |         take(|_| to_fn(|_| self.counter += 1));
+   |              --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |              | |
+   |              | return type of closure `aux::Map<{closure@$DIR/wrong-closure-arg-suggestion-125325.rs:46:24: 46:27}>` contains a lifetime `'2`
+   |              lifetime `'1` represents this closure's body
+   |
+   = note: closure implements `Fn`, so references to captured variables can't escape the closure
+
+error[E0596]: cannot borrow `self` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:46:24
+   |
+LL |         take(|_| to_fn(|_| self.counter += 1));
+   |         ---- ---       ^^^ ------------ mutable borrow occurs due to use of `self` in closure
+   |         |    |         |
+   |         |    |         cannot borrow as mutable
+   |         |    in this closure
+   |         expects `Fn` instead of `FnMut`
+...
+LL | fn take<F, U>(_: F)
+   |                  - change this to accept `FnMut` instead of `Fn`
+
+error[E0594]: cannot assign to `self.counter`, as `Fn` closures cannot mutate their captured variables
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:54:34
+   |
+LL |         P.flat_map(|_| P.map(|_| self.counter += 1));
+   |                          --------^^^^^^^^^^^^^^^^^-
+   |                          |   |   |
+   |                          |   |   cannot assign
+   |                          |   in this closure
+   |                          expects `Fn` instead of `FnMut`
+
+error: lifetime may not live long enough
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:54:24
+   |
+LL |         P.flat_map(|_| P.map(|_| self.counter += 1));
+   |                    --- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |                    | |
+   |                    | return type of closure `aux::Map<{closure@$DIR/wrong-closure-arg-suggestion-125325.rs:54:30: 54:33}>` contains a lifetime `'2`
+   |                    lifetime `'1` represents this closure's body
+   |
+   = note: closure implements `Fn`, so references to captured variables can't escape the closure
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |         P.flat_map(|_| P.map(move |_| self.counter += 1));
+   |                              ++++
+
+error[E0596]: cannot borrow `self` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:54:30
+   |
+LL |         P.flat_map(|_| P.map(|_| self.counter += 1));
+   |           -------------------^^^--------------------
+   |           |        |         |   |
+   |           |        |         |   mutable borrow occurs due to use of `self` in closure
+   |           |        |         cannot borrow as mutable
+   |           |        in this closure
+   |           expects `Fn` instead of `FnMut`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.
