@@ -765,7 +765,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut bodies = std::mem::take(&mut self.bodies);
         let define_opaque = std::mem::take(&mut self.define_opaque);
         let trait_map = std::mem::take(&mut self.trait_map);
-        let delayed_lints = std::mem::take(&mut self.delayed_lints).into_boxed_slice();
+        let delayed_lints = Steal::new(std::mem::take(&mut self.delayed_lints).into_boxed_slice());
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
