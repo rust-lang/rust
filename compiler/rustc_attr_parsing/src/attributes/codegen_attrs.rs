@@ -118,11 +118,7 @@ impl SingleAttributeParser for ExportNameParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(name) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
@@ -146,11 +142,7 @@ impl SingleAttributeParser for RustcObjcClassParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "ClassName");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(classname) = nv.value_as_str() else {
             // `#[rustc_objc_class = ...]` is expected to be used as an implementation detail
             // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
@@ -177,11 +169,7 @@ impl SingleAttributeParser for RustcObjcSelectorParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "methodName");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(methname) = nv.value_as_str() else {
             // `#[rustc_objc_selector = ...]` is expected to be used as an implementation detail
             // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
@@ -471,29 +459,20 @@ fn parse_tf_attribute(
         return features;
     }
     for item in list.mixed() {
-        let Some(name_value) = item.meta_item() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::enable));
+        let Some((ident, value)) = cx.expect_name_value(item, item.span(), Some(sym::enable))
+        else {
             return features;
         };
 
         // Validate name
-        let Some(name) = name_value.path().word_sym() else {
-            cx.adcx().expected_name_value(name_value.path().span(), Some(sym::enable));
-            return features;
-        };
-        if name != sym::enable {
-            cx.adcx().expected_name_value(name_value.path().span(), Some(sym::enable));
+        if ident.name != sym::enable {
+            cx.adcx().expected_specific_argument(ident.span, &[sym::enable]);
             return features;
         }
 
         // Use value
-        let Some(name_value) = name_value.args().name_value() else {
-            cx.adcx().expected_name_value(item.span(), Some(sym::enable));
-            return features;
-        };
-        let Some(value_str) = name_value.value_as_str() else {
-            cx.adcx()
-                .expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+        let Some(value_str) = value.value_as_str() else {
+            cx.adcx().expected_string_literal(value.value_span, Some(value.value_as_lit()));
             return features;
         };
         for feature in value_str.as_str().split(",") {
@@ -592,14 +571,7 @@ impl SingleAttributeParser for SanitizeParser {
         let mut rtsan = None;
 
         for item in list.mixed() {
-            let Some(item) = item.meta_item() else {
-                cx.adcx().expected_name_value(item.span(), None);
-                continue;
-            };
-
-            let path = item.path().word_sym();
-            let Some(value) = item.args().name_value() else {
-                cx.adcx().expected_name_value(item.span(), path);
+            let Some((ident, value)) = cx.expect_name_value(item, item.span(), None) else {
                 continue;
             };
 
@@ -628,20 +600,20 @@ impl SingleAttributeParser for SanitizeParser {
                 }
             };
 
-            match path {
-                Some(sym::address) | Some(sym::kernel_address) => {
+            match ident.name {
+                sym::address | sym::kernel_address => {
                     apply(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS)
                 }
-                Some(sym::cfi) => apply(SanitizerSet::CFI),
-                Some(sym::kcfi) => apply(SanitizerSet::KCFI),
-                Some(sym::memory) => apply(SanitizerSet::MEMORY),
-                Some(sym::memtag) => apply(SanitizerSet::MEMTAG),
-                Some(sym::shadow_call_stack) => apply(SanitizerSet::SHADOWCALLSTACK),
-                Some(sym::thread) => apply(SanitizerSet::THREAD),
-                Some(sym::hwaddress) | Some(sym::kernel_hwaddress) => {
+                sym::cfi => apply(SanitizerSet::CFI),
+                sym::kcfi => apply(SanitizerSet::KCFI),
+                sym::memory => apply(SanitizerSet::MEMORY),
+                sym::memtag => apply(SanitizerSet::MEMTAG),
+                sym::shadow_call_stack => apply(SanitizerSet::SHADOWCALLSTACK),
+                sym::thread => apply(SanitizerSet::THREAD),
+                sym::hwaddress | sym::kernel_hwaddress => {
                     apply(SanitizerSet::HWADDRESS | SanitizerSet::KERNELHWADDRESS)
                 }
-                Some(sym::realtime) => match value.value_as_str() {
+                sym::realtime => match value.value_as_str() {
                     Some(sym::nonblocking) => rtsan = Some(RtsanSetting::Nonblocking),
                     Some(sym::blocking) => rtsan = Some(RtsanSetting::Blocking),
                     Some(sym::caller) => rtsan = Some(RtsanSetting::Caller),
@@ -654,7 +626,7 @@ impl SingleAttributeParser for SanitizeParser {
                 },
                 _ => {
                     cx.adcx().expected_specific_argument_strings(
-                        item.path().span(),
+                        ident.span,
                         &[
                             sym::address,
                             sym::kernel_address,
@@ -725,33 +697,25 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
         let mut errored = false;
 
         for item in meta_item_list.mixed() {
-            let Some(meta_item) = item.meta_item() else {
-                errored = true;
-                cx.adcx().expected_name_value(item.span(), None);
+            let Some((ident, value)) = cx.expect_name_value(item, item.span(), None) else {
                 continue;
             };
 
-            let Some(name_value_lit) = meta_item.args().name_value() else {
-                errored = true;
-                cx.adcx().expected_name_value(item.span(), None);
-                continue;
-            };
-
-            let attrib_to_write = match meta_item.ident().map(|ident| ident.name) {
-                Some(sym::prefix_nops) => {
+            let attrib_to_write = match ident.name {
+                sym::prefix_nops => {
                     // Duplicate prefixes are not allowed
                     if prefix.is_some() {
                         errored = true;
-                        cx.adcx().duplicate_key(meta_item.path().span(), sym::prefix_nops);
+                        cx.adcx().duplicate_key(ident.span, sym::prefix_nops);
                         continue;
                     }
                     &mut prefix
                 }
-                Some(sym::entry_nops) => {
+                sym::entry_nops => {
                     // Duplicate entries are not allowed
                     if entry.is_some() {
                         errored = true;
-                        cx.adcx().duplicate_key(meta_item.path().span(), sym::entry_nops);
+                        cx.adcx().duplicate_key(ident.span, sym::entry_nops);
                         continue;
                     }
                     &mut entry
@@ -759,23 +723,23 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
                 _ => {
                     errored = true;
                     cx.adcx().expected_specific_argument(
-                        meta_item.path().span(),
+                        ident.span,
                         &[sym::prefix_nops, sym::entry_nops],
                     );
                     continue;
                 }
             };
 
-            let rustc_ast::LitKind::Int(val, _) = name_value_lit.value_as_lit().kind else {
+            let rustc_ast::LitKind::Int(val, _) = value.value_as_lit().kind else {
                 errored = true;
-                cx.adcx().expected_integer_literal(name_value_lit.value_span);
+                cx.adcx().expected_integer_literal(value.value_span);
                 continue;
             };
 
             let Ok(val) = val.get().try_into() else {
                 errored = true;
                 cx.adcx().expected_integer_literal_in_range(
-                    name_value_lit.value_span,
+                    value.value_span,
                     u8::MIN as isize,
                     u8::MAX as isize,
                 );
