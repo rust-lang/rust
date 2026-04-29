@@ -270,7 +270,7 @@ fn parse_directive_items<'p>(
         // But we don't assert its presence yet because we don't want to mention it
         // if someone does something like `#[diagnostic::on_unimplemented(doesnt_exist)]`.
         // That happens in the big `match` below.
-        let value: Option<Ident> = match item.args().name_value() {
+        let value: Option<Ident> = match item.args().as_name_value() {
             Some(nv) => Some(or_malformed!(nv.value_as_ident()?)),
             None => None,
         };
