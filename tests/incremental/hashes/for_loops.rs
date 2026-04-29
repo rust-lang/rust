@@ -104,9 +104,9 @@ pub fn change_iterable() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, promoted_mir")]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, promoted_mir")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_iterable() {
     let mut _x = 0;

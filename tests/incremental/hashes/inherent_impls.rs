@@ -57,9 +57,9 @@ impl Foo {
 #[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2",except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass2",except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5",except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck_root")]
+    #[rustc_clean(cfg="bpass5",except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn method_body() {
         println!("Hello, world!");
