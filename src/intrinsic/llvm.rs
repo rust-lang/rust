@@ -1589,6 +1589,7 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.tileloaddrst164" => "__builtin_trap",
         "llvm.x86.tilezero" => "__builtin_trap",
         "llvm.x86.tilemovrow" => "__builtin_trap",
+        "llvm.x86.tilemovrowi" => "__builtin_trap",
         "llvm.x86.tdpbhf8ps" => "__builtin_trap",
         "llvm.x86.tdphbf8ps" => "__builtin_trap",
         "llvm.x86.tdpbf8ps" => "__builtin_trap",
@@ -1603,6 +1604,9 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.tcvtrowps2phh" => "__builtin_trap",
         "llvm.x86.tcvtrowps2phl" => "__builtin_trap",
         "llvm.x86.tcvtrowd2ps" => "__builtin_trap",
+        "llvm.x86.tcvtrowd2psi" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2phhi" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2phli" => "__builtin_trap",
         "llvm.x86.tcmmimfp16ps" => "__builtin_trap",
         "llvm.x86.tcmmrlfp16ps" => "__builtin_trap",
 

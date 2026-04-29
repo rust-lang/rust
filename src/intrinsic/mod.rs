@@ -4,9 +4,7 @@ mod simd;
 #[cfg(feature = "master")]
 use std::iter;
 
-#[cfg(feature = "master")]
-use gccjit::Type;
-use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
+use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
 use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
@@ -38,6 +36,22 @@ use crate::context::CodegenCx;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 use crate::type_of::LayoutGccExt;
 
+fn float_intrinsic<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    typ: Type<'gcc>,
+    name: &str,
+) -> Option<Function<'gcc>> {
+    // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
+    Some(cx.context.new_function(
+        None,
+        FunctionType::Extern,
+        typ,
+        &[cx.context.new_parameter(None, typ, "a"), cx.context.new_parameter(None, typ, "b")],
+        name,
+        false,
+    ))
+}
+
 fn get_simple_intrinsic<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -68,48 +82,19 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
         sym::fmuladdf32 => "fmaf", // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f32
         sym::fmuladdf64 => "fma",  // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f64
-        sym::minimumf32 => "fminimumf",
-        sym::minimumf64 => "fminimum",
-        sym::minimumf128 => {
-            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fminimumf128.html
-            let f128_type = cx.type_f128();
-            return Some(cx.context.new_function(
-                None,
-                FunctionType::Extern,
-                f128_type,
-                &[
-                    cx.context.new_parameter(None, f128_type, "a"),
-                    cx.context.new_parameter(None, f128_type, "b"),
-                ],
-                "fminimumf128",
-                false,
-            ));
-        }
-        sym::maximumf32 => "fmaximumf",
-        sym::maximumf64 => "fmaximum",
-        sym::maximumf128 => {
-            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fmaximumf128.html
-            let f128_type = cx.type_f128();
-            return Some(cx.context.new_function(
-                None,
-                FunctionType::Extern,
-                f128_type,
-                &[
-                    cx.context.new_parameter(None, f128_type, "a"),
-                    cx.context.new_parameter(None, f128_type, "b"),
-                ],
-                "fmaximumf128",
-                false,
-            ));
-        }
+        sym::minimumf32 => return float_intrinsic(cx, cx.type_f32(), "fminimumf"),
+        sym::minimumf64 => return float_intrinsic(cx, cx.type_f64(), "fminimum"),
+        sym::minimumf128 => return float_intrinsic(cx, cx.type_f128(), "fminimumf128"),
+        sym::maximumf32 => return float_intrinsic(cx, cx.type_f32(), "fmaximumf"),
+        sym::maximumf64 => return float_intrinsic(cx, cx.type_f64(), "fmaximum"),
+        sym::maximumf128 => return float_intrinsic(cx, cx.type_f128(), "fmaximumf128"),
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
         sym::ceilf64 => "ceil",
+        sym::powf128 => return float_intrinsic(cx, cx.type_f128(), "powf128"),
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
         // We match the LLVM backend and lower this to `rint`.
@@ -123,72 +108,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     Some(cx.context.get_builtin_function(gcc_name))
 }
 
-// FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
-fn get_simple_function<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
-    let (return_type, parameters, func_name) = match name {
-        sym::minimumf32 => {
-            let parameters = [
-                cx.context.new_parameter(None, cx.float_type, "a"),
-                cx.context.new_parameter(None, cx.float_type, "b"),
-            ];
-            (cx.float_type, parameters, "fminimumf")
-        }
-        sym::minimumf64 => {
-            let parameters = [
-                cx.context.new_parameter(None, cx.double_type, "a"),
-                cx.context.new_parameter(None, cx.double_type, "b"),
-            ];
-            (cx.double_type, parameters, "fminimum")
-        }
-        sym::minimumf128 => {
-            let f128_type = cx.type_f128();
-            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fminimumf128.html
-            let parameters = [
-                cx.context.new_parameter(None, f128_type, "a"),
-                cx.context.new_parameter(None, f128_type, "b"),
-            ];
-            (f128_type, parameters, "fminimumf128")
-        }
-        sym::maximumf32 => {
-            let parameters = [
-                cx.context.new_parameter(None, cx.float_type, "a"),
-                cx.context.new_parameter(None, cx.float_type, "b"),
-            ];
-            (cx.float_type, parameters, "fmaximumf")
-        }
-        sym::maximumf64 => {
-            let parameters = [
-                cx.context.new_parameter(None, cx.double_type, "a"),
-                cx.context.new_parameter(None, cx.double_type, "b"),
-            ];
-            (cx.double_type, parameters, "fmaximum")
-        }
-        sym::maximumf128 => {
-            let f128_type = cx.type_f128();
-            // GCC doesn't have the intrinsic we want so we use the compiler-builtins one
-            // https://docs.rs/compiler_builtins/latest/compiler_builtins/math/full_availability/fn.fmaximumf128.html
-            let parameters = [
-                cx.context.new_parameter(None, f128_type, "a"),
-                cx.context.new_parameter(None, f128_type, "b"),
-            ];
-            (f128_type, parameters, "fmaximumf128")
-        }
-        _ => return None,
-    };
-    Some(cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        return_type,
-        &parameters,
-        func_name,
-        false,
-    ))
-}
-
 fn get_simple_function_f128<'gcc, 'tcx>(
     span: Span,
     cx: &CodegenCx<'gcc, 'tcx>,
@@ -198,7 +117,12 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     let func_name = match name {
         sym::ceilf128 => "ceilf128",
         sym::fabs => "fabsf128",
+        sym::expf128 => "expf128",
+        sym::exp2f128 => "exp2f128",
         sym::floorf128 => "floorf128",
+        sym::logf128 => "logf128",
+        sym::log2f128 => "log2f128",
+        sym::log10f128 => "log10f128",
         sym::truncf128 => "truncf128",
         sym::roundf128 => "roundf128",
         sym::round_ties_even_f128 => "roundevenf128",
@@ -215,6 +139,24 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     )
 }
 
+fn generic_f16_builtin<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    name: Symbol,
+    args: &[OperandRef<'tcx, RValue<'gcc>>],
+) -> RValue<'gcc> {
+    let f32_type = cx.type_f32();
+    let builtin_name = match name {
+        sym::fabs => "fabsf",
+        _ => unreachable!(),
+    };
+
+    let func = cx.context.get_builtin_function(builtin_name);
+    let args: Vec<_> =
+        args.iter().map(|arg| cx.context.new_cast(None, arg.immediate(), f32_type)).collect();
+    let result = cx.context.new_call(None, func, &args);
+    cx.context.new_cast(None, result, cx.type_f16())
+}
+
 fn f16_builtin<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -224,17 +166,15 @@ fn f16_builtin<'gcc, 'tcx>(
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
+        sym::expf16 => "expf",
+        sym::exp2f16 => "exp2f",
         sym::fabs => "fabsf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
+        sym::logf16 => "logf",
+        sym::log2f16 => "log2f",
+        sym::log10f16 => "log10f",
         sym::powf16 => "__builtin_powf",
-        sym::powif16 => {
-            let func = cx.context.get_builtin_function("__builtin_powif");
-            let arg0 = cx.context.new_cast(None, args[0].immediate(), f32_type);
-            let args = [arg0, args[1].immediate()];
-            let result = cx.context.new_call(None, func, &args);
-            return cx.context.new_cast(None, result, cx.type_f16());
-        }
         sym::roundf16 => "__builtin_roundf",
         sym::round_ties_even_f16 => "__builtin_rintf",
         sym::sqrtf16 => "__builtin_sqrtf",
@@ -264,7 +204,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
-        let simple_func = get_simple_function(self, name);
 
         let value = match name {
             _ if simple.is_some() => {
@@ -275,8 +214,26 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            _ if simple_func.is_some() => {
-                let func = simple_func.expect("simple function");
+            // TODO(antoyo): We can probably remove these and use the fallback intrinsic implementation.
+            sym::minimumf32 | sym::minimumf64 | sym::maximumf32 | sym::maximumf64 => {
+                let (ty, func_name) = match name {
+                    sym::minimumf32 => (self.cx.float_type, "fminimumf"),
+                    sym::maximumf32 => (self.cx.float_type, "fmaximumf"),
+                    sym::minimumf64 => (self.cx.double_type, "fminimum"),
+                    sym::maximumf64 => (self.cx.double_type, "fmaximum"),
+                    _ => unreachable!(),
+                };
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    ty,
+                    &[
+                        self.cx.context.new_parameter(None, ty, "a"),
+                        self.cx.context.new_parameter(None, ty, "b"),
+                    ],
+                    func_name,
+                    false,
+                );
                 self.cx.context.new_call(
                     self.location,
                     func,
@@ -285,10 +242,14 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::ceilf16
             | sym::copysignf16
+            | sym::expf16
+            | sym::exp2f16
             | sym::floorf16
             | sym::fmaf16
+            | sym::logf16
+            | sym::log2f16
+            | sym::log10f16
             | sym::powf16
-            | sym::powif16
             | sym::roundf16
             | sym::round_ties_even_f16
             | sym::sqrtf16
@@ -299,6 +260,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::roundf128
             | sym::round_ties_even_f128
             | sym::sqrtf128
+            | sym::expf128
+            | sym::exp2f128
+            | sym::logf128
+            | sym::log2f128
+            | sym::log10f128
                 if self.cx.supports_f128_type =>
             {
                 let func = get_simple_function_f128(span, self, name);
@@ -346,6 +312,13 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     func,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
+            }
+            sym::powif16 => {
+                let func = self.cx.context.get_builtin_function("__builtin_powif");
+                let arg0 = self.cx.context.new_cast(None, args[0].immediate(), self.cx.type_f32());
+                let args = [arg0, args[1].immediate()];
+                let result = self.cx.context.new_call(None, func, &args);
+                self.cx.context.new_cast(None, result, self.cx.type_f16())
             }
             sym::powif128 => {
                 let f128_type = self.cx.type_f128();
@@ -490,7 +463,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
                 };
                 let func = match float_ty {
-                    ty::FloatTy::F16 => break 'fabs f16_builtin(self, name, args),
+                    ty::FloatTy::F16 => break 'fabs generic_f16_builtin(self, name, args),
                     ty::FloatTy::F32 => self.context.get_builtin_function("fabsf"),
                     ty::FloatTy::F64 => self.context.get_builtin_function("fabs"),
                     ty::FloatTy::F128 => get_simple_function_f128(span, self, name),

@@ -43,6 +43,7 @@ fn get_runners() -> Runners {
     runners.insert("--extended-regex-tests", ("Run extended regex tests", extended_regex_tests));
     runners.insert("--mini-tests", ("Run mini tests", mini_tests));
     runners.insert("--cargo-tests", ("Run cargo tests", cargo_tests));
+    runners.insert("--no-builtins-tests", ("Test #![no_builtins] attribute", no_builtins_tests));
     runners
 }
 
@@ -314,6 +315,65 @@ fn maybe_run_command_in_vm(
         vec![&"sudo", &"chroot", &vm_dir, &"qemu-m68k-static", &inside_vm_exe_path];
     vm_command.extend_from_slice(command);
     run_command_with_output_and_env(&vm_command, Some(&vm_parent_dir), Some(env))?;
+    Ok(())
+}
+
+/// Compile a source file to an object file and check if it contains a memset reference.
+fn object_has_memset(
+    env: &Env,
+    args: &TestArg,
+    src_file: &str,
+    obj_file_name: &str,
+) -> Result<bool, String> {
+    let cargo_target_dir = Path::new(&args.config_info.cargo_target_dir);
+    let obj_file = cargo_target_dir.join(obj_file_name);
+    let obj_file_str = obj_file.to_str().expect("obj_file to_str");
+
+    let mut command = args.config_info.rustc_command_vec();
+    command.extend_from_slice(&[
+        &src_file,
+        &"--emit",
+        &"obj",
+        &"-O",
+        &"--target",
+        &args.config_info.target_triple,
+        &"-o",
+    ]);
+    command.push(&obj_file_str);
+    run_command_with_env(&command, None, Some(env))?;
+
+    let nm_output = run_command_with_env(&[&"nm", &obj_file_str], None, Some(env))?;
+    let nm_stdout = String::from_utf8_lossy(&nm_output.stdout);
+
+    Ok(nm_stdout.contains("memset"))
+}
+
+fn no_builtins_tests(env: &Env, args: &TestArg) -> Result<(), String> {
+    // Test that the #![no_builtins] attribute prevents GCC from replacing
+    // code patterns (like loops) with calls to builtins (like memset).
+    // See https://github.com/rust-lang/rustc_codegen_gcc/issues/570
+
+    // Test 1: WITH #![no_builtins] - memset should NOT be present
+    println!("[TEST] no_builtins attribute (with #![no_builtins])");
+    let has_memset =
+        object_has_memset(env, args, "tests/no_builtins/no_builtins.rs", "no_builtins_test.o")?;
+    if has_memset {
+        return Err("no_builtins test FAILED: Found 'memset' in object file.\n\
+             The #![no_builtins] attribute should prevent GCC from replacing \n\
+             code patterns with builtin calls."
+            .to_string());
+    }
+
+    // Test 2: WITHOUT #![no_builtins] - memset SHOULD be present
+    println!("[TEST] no_builtins attribute (without #![no_builtins])");
+    let has_memset =
+        object_has_memset(env, args, "tests/no_builtins/with_builtins.rs", "with_builtins_test.o")?;
+    if !has_memset {
+        return Err("no_builtins test FAILED: 'memset' NOT found in object file.\n\
+             Without #![no_builtins], GCC should replace the loop with memset."
+            .to_string());
+    }
+
     Ok(())
 }
 
@@ -1248,6 +1308,7 @@ fn run_all(env: &Env, args: &TestArg) -> Result<(), String> {
     test_libcore(env, args)?;
     extended_sysroot_tests(env, args)?;
     cargo_tests(env, args)?;
+    no_builtins_tests(env, args)?;
     test_rustc(env, args)?;
 
     Ok(())

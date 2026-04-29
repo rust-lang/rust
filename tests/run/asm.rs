@@ -213,7 +213,6 @@ fn asm() {
         core::arch::asm!(
             "",
             out("al") _,
-            out("bl") _,
             out("cl") _,
             out("dl") _,
             out("sil") _,

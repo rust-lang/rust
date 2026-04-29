@@ -1,9 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
-use gccjit::{
-    Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
-};
+use gccjit::{Block, CType, Context, Function, FunctionType, LValue, Location, RValue, Type};
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
@@ -100,8 +98,6 @@ pub struct CodegenCx<'gcc, 'tcx> {
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // FIXME(antoyo): improve the SSA API to not require those.
-    /// Mapping from function pointer type to indexes of on stack parameters.
-    pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
     /// Mapping from function to indexes of on stack parameters.
     pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
@@ -289,7 +285,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             instances: Default::default(),
             function_instances: Default::default(),
             intrinsic_instances: Default::default(),
-            on_stack_params: Default::default(),
             on_stack_function_params: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),

@@ -47,7 +47,6 @@ tests/ui/sanitizer/cfi/virtual-auto.rs
 tests/ui/sanitizer/cfi/sized-associated-ty.rs
 tests/ui/sanitizer/cfi/can-reveal-opaques.rs
 tests/ui/sanitizer/kcfi-mangling.rs
-tests/ui/backtrace/dylib-dep.rs
 tests/ui/delegation/fn-header.rs
 tests/ui/consts/const-eval/parse_ints.rs
 tests/ui/simd/intrinsic/generic-as.rs
@@ -99,3 +98,16 @@ tests/ui/eii/privacy1.rs
 tests/ui/eii/default/call_impl.rs
 tests/ui/c-variadic/copy.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
+tests/ui/lto/all-crates.rs
+tests/ui/consts/const-eval/c-variadic.rs
+tests/ui/eii/default/call_default_panics.rs
+tests/ui/explicit-tail-calls/indirect.rs
+tests/ui/traits/inheritance/self-in-supertype.rs
+tests/ui/fmt/fmt_debug/shallow.rs
+tests/ui/c-variadic/roundtrip.rs
+tests/ui/eii/eii_impl_with_contract.rs
+tests/ui/eii/static/cross_crate_decl.rs
+tests/ui/eii/static/cross_crate_def.rs
+tests/ui/eii/static/same_address.rs
+tests/ui/eii/static/simple.rs
+tests/ui/explicit-tail-calls/default-trait-method.rs
