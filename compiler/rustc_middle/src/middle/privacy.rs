@@ -207,12 +207,11 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         self.map.get(&id)
     }
 
-    // FIXME: Share code with `fn update`.
     pub fn effective_vis_or_private(
         &mut self,
         id: Id,
         lazy_private_vis: impl FnOnce() -> Visibility,
-    ) -> &EffectiveVisibility {
+    ) -> &mut EffectiveVisibility {
         self.map.entry(id).or_insert_with(|| EffectiveVisibility::from_vis(lazy_private_vis()))
     }
 
@@ -226,11 +225,7 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         tcx: TyCtxt<'_>,
     ) -> bool {
         let mut changed = false;
-        let mut current_effective_vis = self
-            .map
-            .get(&id)
-            .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(lazy_private_vis()));
+        let current_effective_vis = self.effective_vis_or_private(id, lazy_private_vis);
 
         let mut inherited_effective_vis_at_prev_level = *inherited_effective_vis.at_level(level);
         let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
@@ -268,7 +263,6 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
             }
         }
 
-        self.map.insert(id, current_effective_vis);
         changed
     }
 }
