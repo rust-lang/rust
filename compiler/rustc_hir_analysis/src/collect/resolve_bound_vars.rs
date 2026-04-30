@@ -1272,7 +1272,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait()
                     {
-                        let mut diag: rustc_errors::Diag<'_> = rustc_session::parse::feature_err(
+                        let mut diag: rustc_errors::Diag<'_> = rustc_session::errors::feature_err(
                             &self.tcx.sess,
                             sym::anonymous_lifetime_in_impl_trait,
                             lifetime_ref.ident.span,

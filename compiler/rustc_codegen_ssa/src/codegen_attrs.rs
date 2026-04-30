@@ -12,8 +12,8 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_session::errors::feature_err;
 use rustc_session::lint;
-use rustc_session::parse::feature_err;
 use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
 

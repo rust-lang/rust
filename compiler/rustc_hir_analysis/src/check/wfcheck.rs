@@ -27,7 +27,7 @@ use rustc_middle::ty::{
     Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::parse::feature_err;
+use rustc_session::errors::feature_err;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::{InferCtxtRegionExt, OutlivesEnvironmentBuildExt};

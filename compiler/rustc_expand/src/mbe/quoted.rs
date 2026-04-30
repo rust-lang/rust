@@ -5,7 +5,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_feature::Features;
 use rustc_session::Session;
-use rustc_session::parse::feature_err;
+use rustc_session::errors::feature_err;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, kw, sym};
 

@@ -5,13 +5,178 @@ use rustc_ast::util::literal::LitError;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
-    MultiSpan,
+    MultiSpan, StashKey,
 };
+use rustc_feature::{GateIssue, find_feature_issue};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
+use crate::Session;
+use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
 use crate::parse::ParseSess;
+
+/// Construct a diagnostic for a language feature error due to the given `span`.
+/// The `feature`'s `Symbol` is the one you used in `unstable.rs` and `rustc_span::symbol`.
+#[track_caller]
+pub fn feature_err(
+    sess: &Session,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
+    explain: impl Into<DiagMessage>,
+) -> Diag<'_> {
+    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
+}
+
+/// Construct a diagnostic for a feature gate error.
+///
+/// This variant allows you to control whether it is a library or language feature.
+/// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
+#[track_caller]
+pub fn feature_err_issue(
+    sess: &Session,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
+    issue: GateIssue,
+    explain: impl Into<DiagMessage>,
+) -> Diag<'_> {
+    let span = span.into();
+
+    // Cancel an earlier warning for this same error, if it exists.
+    if let Some(span) = span.primary_span()
+        && let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning)
+    {
+        err.cancel()
+    }
+
+    let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
+    err
+}
+
+/// Construct a future incompatibility diagnostic for a feature gate.
+///
+/// This diagnostic is only a warning and *does not cause compilation to fail*.
+#[track_caller]
+pub fn feature_warn(sess: &Session, feature: Symbol, span: Span, explain: &'static str) {
+    feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
+}
+
+/// Construct a future incompatibility diagnostic for a feature gate.
+///
+/// This diagnostic is only a warning and *does not cause compilation to fail*.
+///
+/// This variant allows you to control whether it is a library or language feature.
+/// Almost always, you want to use this for a language feature. If so, prefer `feature_warn`.
+#[track_caller]
+pub fn feature_warn_issue(
+    sess: &Session,
+    feature: Symbol,
+    span: Span,
+    issue: GateIssue,
+    explain: &'static str,
+) {
+    let mut err = sess.dcx().struct_span_warn(span, explain);
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false, None);
+
+    // Decorate this as a future-incompatibility lint as in rustc_middle::lint::lint_level
+    let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
+    let future_incompatible = lint.future_incompatible.as_ref().unwrap();
+    err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
+    err.warn(lint.desc);
+    err.note(format!("for more information, see {}", future_incompatible.reason.reference()));
+
+    // A later feature_err call can steal and cancel this warning.
+    err.stash(span, StashKey::EarlySyntaxWarning);
+}
+
+/// Adds the diagnostics for a feature to an existing error.
+/// Must be a language feature!
+pub fn add_feature_diagnostics<G: EmissionGuarantee>(
+    err: &mut Diag<'_, G>,
+    sess: &Session,
+    feature: Symbol,
+) {
+    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language, false, None);
+}
+
+/// Adds the diagnostics for a feature to an existing error.
+///
+/// This variant allows you to control whether it is a library or language feature.
+/// Almost always, you want to use this for a language feature. If so, prefer
+/// `add_feature_diagnostics`.
+pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
+    err: &mut Diag<'_, G>,
+    sess: &Session,
+    feature: Symbol,
+    issue: GateIssue,
+    feature_from_cli: bool,
+    inject_span: Option<Span>,
+) {
+    if let Some(n) = find_feature_issue(feature, issue) {
+        err.subdiagnostic(FeatureDiagnosticForIssue { n });
+    }
+
+    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
+    if sess.unstable_features.is_nightly_build() {
+        if feature_from_cli {
+            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
+        } else if let Some(span) = inject_span {
+            err.subdiagnostic(FeatureDiagnosticSuggestion { feature, span });
+        } else {
+            err.subdiagnostic(FeatureDiagnosticHelp { feature });
+        }
+        if feature == sym::rustc_attrs {
+            // We're unlikely to stabilize something out of `rustc_attrs`
+            // without at least renaming it, so pointing out how old
+            // the compiler is will do little good.
+        } else if sess.opts.unstable_opts.ui_testing {
+            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
+        } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
+            err.subdiagnostic(suggestion);
+        }
+    }
+}
+
+/// This is only used by unstable_feature_bound as it does not have issue number information for now.
+/// This is basically the same as `feature_err_issue`
+/// but without the feature issue note. If we can do a lookup for issue number from feature name,
+/// then we should directly use `feature_err_issue` for ambiguity error of
+/// `#[unstable_feature_bound]`.
+#[track_caller]
+pub fn feature_err_unstable_feature_bound(
+    sess: &Session,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
+    explain: impl Into<DiagMessage>,
+) -> Diag<'_> {
+    let span = span.into();
+
+    // Cancel an earlier warning for this same error, if it exists.
+    if let Some(span) = span.primary_span() {
+        if let Some(err) = sess.dcx().steal_non_err(span, StashKey::EarlySyntaxWarning) {
+            err.cancel()
+        }
+    }
+
+    let mut err = sess.dcx().create_err(FeatureGateError { span, explain: explain.into() });
+
+    // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
+    if sess.unstable_features.is_nightly_build() {
+        err.subdiagnostic(FeatureDiagnosticHelp { feature });
+
+        if feature == sym::rustc_attrs {
+            // We're unlikely to stabilize something out of `rustc_attrs`
+            // without at least renaming it, so pointing out how old
+            // the compiler is will do little good.
+        } else if sess.opts.unstable_opts.ui_testing {
+            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
+        } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
+            err.subdiagnostic(suggestion);
+        }
+    }
+    err
+}
 
 #[derive(Diagnostic)]
 pub(crate) enum AppleDeploymentTarget {

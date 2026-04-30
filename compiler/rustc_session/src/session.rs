@@ -45,7 +45,7 @@ use crate::config::{
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
-use crate::parse::{ParseSess, add_feature_diagnostics};
+use crate::parse::ParseSess;
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
 
@@ -282,7 +282,7 @@ impl Session {
         if err.code.is_none() {
             err.code(E0658);
         }
-        add_feature_diagnostics(&mut err, self, feature);
+        errors::add_feature_diagnostics(&mut err, self, feature);
         err
     }
 

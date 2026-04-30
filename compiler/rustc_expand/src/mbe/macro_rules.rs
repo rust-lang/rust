@@ -23,7 +23,8 @@ use rustc_lint_defs::builtin::{
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_session::parse::{ParseSess, feature_err};
+use rustc_session::errors::feature_err;
+use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, kw, sym};

@@ -306,7 +306,7 @@ impl<'a> Diagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let mut diag = Diag::new(dcx, level, "`#[track_caller]` on async functions is a no-op")
             .with_span_label(self.label, "this function will not propagate the caller location");
-        rustc_session::parse::add_feature_diagnostics(
+        rustc_session::errors::add_feature_diagnostics(
             &mut diag,
             self.session,
             sym::async_fn_track_caller,

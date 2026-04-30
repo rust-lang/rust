@@ -11,9 +11,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
+use rustc_session::errors::feature_err_issue;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
 use rustc_session::lint::{DeprecatedSinceKind, Level, Lint};
-use rustc_session::parse::feature_err_issue;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
