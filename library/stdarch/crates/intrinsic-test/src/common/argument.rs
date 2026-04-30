@@ -94,6 +94,15 @@ where
             .to_string()
     }
 
+    pub fn as_non_imm_arglist_rust(&self) -> String {
+        self.iter()
+            .filter(|arg| !arg.has_constraint())
+            .format_with(", ", |arg, fmt| {
+                fmt(&format_args!("{}: {}", arg.name, arg.ty.rust_type()))
+            })
+            .to_string()
+    }
+
     pub fn as_call_params_c(&self, imm_args: &[i64]) -> String {
         let mut imm_args = imm_args.iter();
         self.iter()
@@ -112,8 +121,7 @@ where
     pub fn as_call_param_rust(&self) -> String {
         self.iter()
             .filter(|a| !a.has_constraint())
-            .map(|arg| arg.generate_name() + " as _")
-            .collect::<Vec<String>>()
+            .map(|arg| arg.generate_name())
             .join(", ")
     }
 

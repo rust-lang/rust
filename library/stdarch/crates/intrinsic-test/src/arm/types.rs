@@ -6,11 +6,27 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
     fn c_type(&self) -> String {
         let prefix = self.kind.c_prefix();
 
-        if let (Some(bit_len), simd_len, vec_len) = (self.bit_len, self.simd_len, self.vec_len) {
-            match (simd_len, vec_len) {
+        if let Some(bit_len) = self.bit_len {
+            match (self.simd_len, self.vec_len) {
                 (None, None) => format!("{prefix}{bit_len}_t"),
                 (Some(simd), None) => format!("{prefix}{bit_len}x{simd}_t"),
                 (Some(simd), Some(vec)) => format!("{prefix}{bit_len}x{simd}x{vec}_t"),
+                (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case
+            }
+        } else {
+            todo!("{self:#?}")
+        }
+    }
+
+    fn rust_type(&self) -> String {
+        let rust_prefix = self.kind.rust_prefix();
+        let c_prefix = self.kind.c_prefix();
+
+        if let Some(bit_len) = self.bit_len {
+            match (self.simd_len, self.vec_len) {
+                (None, None) => format!("{rust_prefix}{bit_len}"),
+                (Some(simd), None) => format!("{c_prefix}{bit_len}x{simd}_t"),
+                (Some(simd), Some(vec)) => format!("{c_prefix}{bit_len}x{simd}x{vec}_t"),
                 (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case
             }
         } else {

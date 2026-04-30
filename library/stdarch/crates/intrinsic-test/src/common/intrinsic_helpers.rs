@@ -93,6 +93,7 @@ impl TypeKind {
             Self::Poly => "u",
             Self::Char(Sign::Unsigned) => "u",
             Self::Char(Sign::Signed) => "i",
+            Self::Mask => "u",
             _ => unreachable!("Unused type kind: {self:#?}"),
         }
     }
@@ -256,19 +257,20 @@ pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {
     /// can be directly defined in `impl` blocks
     fn c_type(&self) -> String;
 
-    /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type. The generated line assumes
-    /// there is an int i in scope which is the current pass number.
-    fn print_result_rust(&self) -> String {
-        String::from("format_args!(\"{__return_value:.150?}\")")
-    }
+    /// Gets a string containing the typename for this type in Rust format.
+    /// can be directly defined in `impl` blocks
+    fn rust_type(&self) -> String;
 
     /// To enable architecture-specific logic
     fn rust_scalar_type(&self) -> String {
-        format!(
-            "{prefix}{bits}",
-            prefix = self.kind().rust_prefix(),
-            bits = self.inner_size()
-        )
+        if self.is_simd() {
+            format!(
+                "{prefix}{bits}",
+                prefix = self.kind().rust_prefix(),
+                bits = self.inner_size()
+            )
+        } else {
+            self.rust_type()
+        }
     }
 }

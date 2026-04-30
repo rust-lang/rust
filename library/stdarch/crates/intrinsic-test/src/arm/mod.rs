@@ -13,15 +13,10 @@ use json_parser::get_neon_intrinsics;
 
 pub struct ArmArchitectureTest {
     intrinsics: Vec<Intrinsic<ArmIntrinsicType>>,
-    cli_options: ProcessedCli,
 }
 
 impl SupportedArchitectureTest for ArmArchitectureTest {
     type IntrinsicImpl = ArmIntrinsicType;
-
-    fn cli_options(&self) -> &ProcessedCli {
-        &self.cli_options
-    }
 
     fn intrinsics(&self) -> &[Intrinsic<ArmIntrinsicType>] {
         &self.intrinsics
@@ -33,6 +28,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
 
     const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
     const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
+
+    fn arch_flags(&self) -> Vec<&str> {
+        vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"]
+    }
 
     fn create(cli_options: ProcessedCli) -> Self {
         let a32 = cli_options.target.starts_with("armv7");
@@ -60,9 +59,6 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .take(sample_size)
             .collect::<Vec<_>>();
 
-        Self {
-            intrinsics,
-            cli_options,
-        }
+        Self { intrinsics }
     }
 }

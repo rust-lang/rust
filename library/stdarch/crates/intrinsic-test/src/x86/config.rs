@@ -3,7 +3,6 @@ pub const NOTICE: &str = "\
 // test are derived from an XML specification, published under the same license as the
 // `intrinsic-test` crate.\n";
 
-// Format f16 values (and vectors containing them) in a way that is consistent with C.
 pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
 use core_arch::arch::x86_64::*;
 
@@ -132,14 +131,8 @@ unsafe fn _mm512_loadu_epi64_to___m512(mem_addr: *const i64) -> __m512 {
 "#;
 
 pub const PLATFORM_RUST_CFGS: &str = r#"
-#![cfg_attr(target_arch = "x86", feature(avx))]
-#![cfg_attr(target_arch = "x86", feature(sse))]
-#![cfg_attr(target_arch = "x86", feature(sse2))]
-#![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512_bf16))]
-#![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512_f16))]
-#![cfg_attr(target_arch = "x86", feature(stdarch_x86_rtm))]
-#![cfg_attr(target_arch = "x86", feature(stdarch_x86_rtm))]
-#![cfg_attr(target_arch = "x86_64", feature(x86_amx_intrinsics))]
-#![cfg_attr(target_arch = "x86_64", feature(stdarch_x86_avx512_f16))]
-#![feature(fmt_helpers_for_derive)]
+#![feature(stdarch_x86_avx512_bf16)]
+#![feature(stdarch_x86_avx512_f16)]
+#![feature(stdarch_x86_rtm)]
+#![feature(x86_amx_intrinsics)]
 "#;

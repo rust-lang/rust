@@ -4,9 +4,31 @@ use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 use crate::common::argument::ArgumentList;
 use crate::common::intrinsic::Intrinsic;
+use crate::common::intrinsic_helpers::TypeKind;
 
 // The number of times each intrinsic will be called.
 pub(crate) const PASSES: u32 = 20;
+
+// we need a reflexive equality relation, so treat NaNs as equal
+const COMMON_RUST_DEFINITIONS: &str = r#"
+macro_rules! wrap_partialeq {
+    ($($wrapper:ident ($inner:ty)),*) => {$(
+        #[derive(Debug, Copy, Clone)]
+        #[repr(transparent)]
+        pub struct $wrapper($inner);
+
+        impl PartialEq for $wrapper {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0 || (self.0.is_nan() && other.0.is_nan())
+            }
+        }
+
+        impl Eq for $wrapper {}
+    )*}
+}
+
+wrap_partialeq!(NanEqF16(f16), NanEqF32(f32), NanEqF64(f64));
+"#;
 
 macro_rules! concatln {
     ($($lines:expr),* $(,)?) => {
@@ -14,8 +36,19 @@ macro_rules! concatln {
     };
 }
 
-fn write_cargo_toml_header(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
-    writeln!(
+pub fn write_bin_cargo_toml(
+    w: &mut impl std::io::Write,
+    module_count: usize,
+) -> std::io::Result<()> {
+    write!(w, concatln!("[workspace]", "members = ["))?;
+    for i in 0..module_count {
+        writeln!(w, "    \"mod_{i}\",")?;
+    }
+    writeln!(w, "]")
+}
+
+pub fn write_lib_cargo_toml(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
+    write!(
         w,
         concatln!(
             "[package]",
@@ -24,6 +57,12 @@ fn write_cargo_toml_header(w: &mut impl std::io::Write, name: &str) -> std::io::
             "authors = [{authors}]",
             "license = \"{license}\"",
             "edition = \"2018\"",
+            "",
+            "[dependencies]",
+            "core_arch = {{ path = \"../../crates/core_arch\" }}",
+            "",
+            "[build-dependencies]",
+            "cc = \"1\""
         ),
         name = name,
         version = env!("CARGO_PKG_VERSION"),
@@ -34,36 +73,12 @@ fn write_cargo_toml_header(w: &mut impl std::io::Write, name: &str) -> std::io::
     )
 }
 
-pub fn write_bin_cargo_toml(
-    w: &mut impl std::io::Write,
-    module_count: usize,
-) -> std::io::Result<()> {
-    write_cargo_toml_header(w, "intrinsic-test-programs")?;
-
-    writeln!(w, "[dependencies]")?;
-    writeln!(w, "core_arch = {{ path = \"../crates/core_arch\" }}")?;
-
-    for i in 0..module_count {
-        writeln!(w, "mod_{i} = {{ path = \"mod_{i}/\" }}")?;
-    }
-
-    Ok(())
-}
-
-pub fn write_lib_cargo_toml(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
-    write_cargo_toml_header(w, name)?;
-
-    writeln!(w, "[dependencies]")?;
-    writeln!(w, "core_arch = {{ path = \"../../crates/core_arch\" }}")?;
-
-    Ok(())
-}
-
 pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     notice: &str,
     cfg: &str,
     definitions: &str,
+    i: usize,
     intrinsics: &[Intrinsic<T>],
 ) -> std::io::Result<()> {
     write!(w, "{notice}")?;
@@ -78,6 +93,8 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     writeln!(w, "#![allow(non_snake_case)]")?;
 
     writeln!(w, "{cfg}")?;
+
+    writeln!(w, "{}", COMMON_RUST_DEFINITIONS)?;
 
     writeln!(w, "{definitions}")?;
 
@@ -95,124 +112,185 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
         }
     }
 
+    write_bindings_rust(w, i, intrinsics)?;
+
     for intrinsic in intrinsics {
-        crate::common::gen_rust::create_rust_test_module(w, intrinsic)?;
+        create_rust_test(w, intrinsic)?;
     }
 
     Ok(())
 }
 
-pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
+fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     intrinsic: &Intrinsic<T>,
-    indentation: Indentation,
-    specializations: &[Vec<i32>],
     passes: u32,
 ) -> std::io::Result<()> {
     let intrinsic_name = &intrinsic.name;
 
     // Each function (and each specialization) has its own type. Erase that type with a cast.
-    let mut coerce = String::from("unsafe fn(");
+    let mut coerce = String::from("fn(");
     for _ in intrinsic.arguments.iter().filter(|a| !a.has_constraint()) {
         coerce += "_, ";
     }
     coerce += ") -> _";
 
-    match specializations {
-        [] => {
-            writeln!(w, "    let specializations = [(\"\", {intrinsic_name})];")?;
-        }
-        [const_args] if const_args.is_empty() => {
-            writeln!(w, "    let specializations = [(\"\", {intrinsic_name})];")?;
-        }
-        _ => {
-            writeln!(w, "    let specializations = [")?;
+    if intrinsic
+        .arguments
+        .iter()
+        .filter(|arg| arg.has_constraint())
+        .count()
+        == 0
+    {
+        writeln!(
+            w,
+            "    let specializations = [(\"\", {intrinsic_name}, {intrinsic_name}_wrapper)];"
+        )?;
+    } else {
+        writeln!(w, "    let specializations = [")?;
 
-            for specialization in specializations {
-                let mut specialization: Vec<_> =
-                    specialization.iter().map(|d| d.to_string()).collect();
+        intrinsic.iter_specializations(|imm_values| {
+            writeln!(
+                w,
+                "        (\"{const_args}\", {intrinsic_name}::<{const_args}> as unsafe {coerce}, {intrinsic_name}_wrapper_{c_const_args} as unsafe extern \"C\" {coerce}),",
+                const_args = imm_values.iter().join(","),
+                c_const_args = imm_values.iter().join("_"),
+            )
+        })?;
 
-                let const_args = specialization.join(",");
-
-                // The identifier is reversed.
-                specialization.reverse();
-                let id = specialization.join("-");
-
-                writeln!(
-                    w,
-                    "        (\"-{id}\", {intrinsic_name}::<{const_args}> as {coerce}),"
-                )?;
-            }
-
-            writeln!(w, "    ];")?;
-        }
+        writeln!(w, "    ];")?;
     }
+
+    let (cast_prefix, cast_suffix) = if intrinsic.results.is_simd() {
+        (
+            format!(
+                "std::mem::transmute::<_, [{}; {}]>(",
+                intrinsic.results.rust_scalar_type().replace("f", "NanEqF"),
+                intrinsic.results.num_lanes() * intrinsic.results.num_vectors()
+            ),
+            ")",
+        )
+    } else if intrinsic.results.kind == TypeKind::Float {
+        (
+            match intrinsic.results.inner_size() {
+                16 => format!("NanEqF16("),
+                32 => format!("NanEqF32("),
+                64 => format!("NanEqF64("),
+                _ => unimplemented!(),
+            },
+            ")",
+        )
+    } else {
+        ("".to_string(), "")
+    };
 
     write!(
         w,
         concatln!(
-            "    for (id, f) in specializations {{",
+            "    for (id, rust, c) in specializations {{",
             "        for i in 0..{passes} {{",
             "            unsafe {{",
             "{loaded_args}",
-            "                let __return_value = f({args});",
-            "                println!(\"Result {{id}}-{{}}: {{:?}}\", i + 1, {return_value});",
+            "                let __rust_return_value = rust({args});",
+            "                let __c_return_value = c({args});",
+            "                assert_eq!({cast_prefix}__rust_return_value{cast_suffix}, {cast_prefix}__c_return_value{cast_suffix}, \"{{id}}\");",
             "            }}",
             "        }}",
             "    }}",
         ),
-        loaded_args = intrinsic.arguments.load_values_rust(indentation.nest_by(4)),
+        loaded_args = intrinsic
+            .arguments
+            .load_values_rust(Indentation::default().nest_by(4)),
         args = intrinsic.arguments.as_call_param_rust(),
-        return_value = intrinsic.results.print_result_rust(),
         passes = passes,
+        cast_prefix = cast_prefix,
+        cast_suffix = cast_suffix,
     )
 }
 
-/// Generate the specializations (unique sequences of const-generic arguments) for this intrinsic.
-fn generate_rust_specializations(
-    constraints: &mut impl Iterator<Item = impl Iterator<Item = i64>>,
-) -> Vec<Vec<i32>> {
-    let mut specializations = vec![vec![]];
-
-    for constraint in constraints {
-        specializations = constraint
-            .flat_map(|right| {
-                specializations.iter().map(move |left| {
-                    let mut left = left.clone();
-                    left.push(i32::try_from(right).unwrap());
-                    left
-                })
-            })
-            .collect();
-    }
-
-    specializations
-}
-
-// Top-level function to create complete test program
-pub fn create_rust_test_module<T: IntrinsicTypeDefinition>(
+fn create_rust_test<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     intrinsic: &Intrinsic<T>,
 ) -> std::io::Result<()> {
     trace!("generating `{}`", intrinsic.name);
-    let indentation = Indentation::default();
 
-    writeln!(w, "pub fn run_{}() {{", intrinsic.name)?;
+    write!(
+        w,
+        concatln!("#[test]", "fn test_{intrinsic_name}() {{"),
+        intrinsic_name = intrinsic.name,
+    )?;
 
     // Define the arrays of arguments.
     let arguments = &intrinsic.arguments;
-    arguments.gen_arglists_rust(w, indentation.nested(), PASSES)?;
+    arguments.gen_arglists_rust(w, Indentation::default().nested(), PASSES)?;
 
-    // Define any const generics as `const` items, then generate the actual test loop.
-    let specializations = generate_rust_specializations(
-        &mut arguments
-            .iter()
-            .filter_map(|i| i.constraint.as_ref().map(|v| v.iter())),
-    );
-
-    generate_rust_test_loop(w, intrinsic, indentation, &specializations, PASSES)?;
+    generate_rust_test_loop(w, intrinsic, PASSES)?;
 
     writeln!(w, "}}")?;
 
     Ok(())
+}
+
+pub fn write_bindings_rust<T: IntrinsicTypeDefinition>(
+    w: &mut impl std::io::Write,
+    i: usize,
+    intrinsics: &[Intrinsic<T>],
+) -> std::io::Result<()> {
+    write!(
+        w,
+        concatln!(
+            "#[allow(improper_ctypes)]",
+            "#[link(name = \"wrapper_{i}\")]",
+            "unsafe extern \"C\" {{"
+        ),
+        i = i
+    )?;
+
+    for intrinsic in intrinsics {
+        intrinsic.iter_specializations(|imm_values| {
+            writeln!(
+                w,
+                "    fn {name}_wrapper{imm_arglist}({arglist}) -> {return_ty};",
+                return_ty = intrinsic.results.rust_type(),
+                name = intrinsic.name,
+                imm_arglist = imm_values
+                    .iter()
+                    .format_with("", |i, fmt| fmt(&format_args!("_{i}"))),
+                arglist = intrinsic.arguments.as_non_imm_arglist_rust(),
+            )
+        })?;
+    }
+
+    writeln!(w, "}}")
+}
+
+pub fn write_build_rs(
+    w: &mut impl std::io::Write,
+    i: usize,
+    arch_flags: &[&str],
+) -> std::io::Result<()> {
+    const COMMON_FLAGS: &[&str] = &["-ffp-contract=off", "-ffp-model=strict", "-Wno-narrowing"];
+
+    write!(
+        w,
+        concatln!(
+            "fn main() {{",
+            "    cc::Build::new()",
+            "    .file(\"../../c_programs/wrapper_{i}.c\")",
+            "    .opt_level(2)",
+            "    .flags(&[",
+        ),
+        i = i
+    )?;
+
+    let indentation = Indentation::default().nest_by(2);
+    for flag in COMMON_FLAGS.iter().chain(arch_flags) {
+        writeln!(w, "{indentation}\"{flag}\",")?;
+    }
+
+    write!(
+        w,
+        concatln!("    ])", "    .compile(\"wrapper_{i}\");", "}}"),
+        i = i
+    )
 }

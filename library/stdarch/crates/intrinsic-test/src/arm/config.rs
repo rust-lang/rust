@@ -16,7 +16,6 @@ pub const PLATFORM_RUST_CFGS: &str = r#"
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_feat_lut))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fp8))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(faminmax))]
-#![feature(fmt_helpers_for_derive)]
 #![feature(stdarch_neon_f16)]
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]

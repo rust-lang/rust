@@ -23,6 +23,30 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             .replace("const ", "")
     }
 
+    fn rust_type(&self) -> String {
+        let type_data = &*self.param.type_data;
+        if type_data.starts_with("__m") {
+            return type_data.to_owned();
+        }
+        match &*type_data.replace("const ", "") {
+            "_Float16" => "f16",
+            "__bfloat16" => "bf16",
+            "float" => "f32",
+            "double" => "f64",
+            "__int8" | "char" => "i8",
+            "unsigned char" => "u8",
+            "__int16" | "short" => "i16",
+            "unsigned short" => "u16",
+            "__int32" | "int" => "i32",
+            "unsigned __int32" | "unsigned int" | "unsigned long" => "u32",
+            "__int64" | "long long" => "i64",
+            "unsigned __int64" => "u64",
+            "size_t" => "usize",
+            _ => todo!("unknown type {type_data}"),
+        }
+        .to_string()
+    }
+
     /// Determines the load function for this type.
     fn get_load_function(&self) -> String {
         let type_value = self.param.type_data.clone();
@@ -92,35 +116,15 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
     }
 
     fn rust_scalar_type(&self) -> String {
-        let prefix = match self.data.kind {
-            TypeKind::Mask => String::from("__mmask"),
-            TypeKind::Vector => String::from("i"),
-            _ => self.kind().rust_prefix().to_string(),
-        };
-
-        let bits = if self.inner_size() >= 128 {
-            32
+        if self.is_simd() {
+            format!(
+                "{prefix}{bits}",
+                prefix = self.kind().rust_prefix(),
+                bits = self.inner_size()
+            )
         } else {
-            self.inner_size()
-        };
-        format!("{prefix}{bits}")
-    }
-
-    fn print_result_rust(&self) -> String {
-        let return_value = match self.kind() {
-            // `_mm{256}_cvtps_ph` has return type __m128i but contains f16 values
-            TypeKind::Float if self.param.type_data == "__m128i" => {
-                "format_args!(\"{:.150?}\", debug_as::<_, f16>(__return_value))".to_string()
-            }
-            TypeKind::Int(_)
-                if ["__m128i", "__m256i", "__m512i"].contains(&self.param.type_data.as_str()) =>
-            {
-                format!("debug_as::<_, u{}>(__return_value)", self.inner_size())
-            }
-            _ => "format_args!(\"{__return_value:.150?}\")".to_string(),
-        };
-
-        return_value
+            self.rust_type().replace("__mmask", "u")
+        }
     }
 }
 
