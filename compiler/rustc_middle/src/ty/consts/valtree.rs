@@ -238,9 +238,8 @@ impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
 impl<'tcx> fmt::Display for Value<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(move |tcx| {
-            let cv = tcx.lift(*self).unwrap();
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
-            p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
+            p.pretty_print_const_valtree(tcx.lift(*self), /*print_ty*/ true)?;
             f.write_str(&p.into_buffer())
         })
     }

@@ -223,10 +223,8 @@ impl<'tcx> TyCtxt<'tcx> {
         T: Copy + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
     {
         let mut type_limit = 50;
-        let regular = FmtPrinter::print_string(self, ns, |p| {
-            self.lift(t).expect("could not lift for printing").print(p)
-        })
-        .expect("could not write to `String`");
+        let regular = FmtPrinter::print_string(self, ns, |p| self.lift(t).print(p))
+            .expect("could not write to `String`");
         if regular.len() <= length_limit {
             return regular;
         }
@@ -235,10 +233,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // Look for the longest properly trimmed path that still fits in length_limit.
             short = with_forced_trimmed_paths!({
                 let mut p = FmtPrinter::new_with_limit(self, ns, Limit(type_limit));
-                self.lift(t)
-                    .expect("could not lift for printing")
-                    .print(&mut p)
-                    .expect("could not print type");
+                self.lift(t).print(&mut p).expect("could not print type");
                 p.into_buffer()
             });
             if short.len() <= length_limit || type_limit == 0 {
@@ -273,10 +268,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: Copy + Hash + for<'a, 'b> Lift<TyCtxt<'b>, Lifted: Print<'b, FmtPrinter<'a, 'b>>>,
     {
-        let regular = FmtPrinter::print_string(self, namespace, |p| {
-            self.lift(t).expect("could not lift for printing").print(p)
-        })
-        .expect("could not write to `String`");
+        let regular = FmtPrinter::print_string(self, namespace, |p| self.lift(t).print(p))
+            .expect("could not write to `String`");
 
         if !self.sess.opts.unstable_opts.write_long_types_to_disk || self.sess.opts.verbose {
             return regular;

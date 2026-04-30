@@ -418,7 +418,7 @@ where
     fn print(t: &T, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         ty::tls::with(|tcx| {
             let mut p = FmtPrinter::new(tcx, Namespace::TypeNS);
-            tcx.lift(*t).expect("could not lift for printing").print(&mut p)?;
+            tcx.lift(*t).print(&mut p)?;
             fmt.write_str(&p.into_buffer())?;
             Ok(())
         })
