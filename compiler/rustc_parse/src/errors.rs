@@ -4,8 +4,7 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, Token};
-use rustc_ast::util::parser::ExprPrecedence;
-use rustc_ast::{Path, Visibility};
+use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
@@ -657,7 +656,7 @@ pub(crate) struct ExpectedStructField {
     #[primary_span]
     #[label("expected one of `,`, `:`, or `{\"}\"}`")]
     pub span: Span,
-    pub token: Token,
+    pub token: Cow<'static, str>,
     #[label("while parsing this struct field")]
     pub ident_span: Span,
 }
@@ -875,7 +874,7 @@ pub(crate) struct ComparisonInterpretedAsGeneric {
     #[primary_span]
     #[label("not interpreted as comparison")]
     pub comparison: Span,
-    pub r#type: Path,
+    pub r#type: String,
     #[label("interpreted as generic arguments")]
     pub args: Span,
     #[subdiagnostic]
@@ -897,7 +896,7 @@ pub(crate) struct ShiftInterpretedAsGeneric {
     #[primary_span]
     #[label("not interpreted as shift")]
     pub shift: Span,
-    pub r#type: Path,
+    pub r#type: String,
     #[label("interpreted as generic arguments")]
     pub args: Span,
     #[subdiagnostic]
@@ -919,7 +918,7 @@ pub(crate) struct FoundExprWouldBeStmt {
     #[primary_span]
     #[label("expected expression")]
     pub span: Span,
-    pub token: Token,
+    pub token: Cow<'static, str>,
     #[subdiagnostic]
     pub suggestion: ExprParenthesesNeeded,
 }
@@ -1028,7 +1027,7 @@ pub(crate) struct ParenthesesWithStructFields {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct BracesForStructLiteral {
-    pub r#type: Path,
+    pub r#type: String,
     #[suggestion_part(code = " {{ ")]
     pub first: Span,
     #[suggestion_part(code = " }}")]
@@ -1041,7 +1040,7 @@ pub(crate) struct BracesForStructLiteral {
     applicability = "maybe-incorrect"
 )]
 pub(crate) struct NoFieldsForFnCall {
-    pub r#type: Path,
+    pub r#type: String,
     #[suggestion_part(code = "")]
     pub fields: Vec<Span>,
 }
@@ -1511,7 +1510,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
         );
         diag.span(self.span);
         if add_token {
-            diag.arg("token", self.token);
+            diag.arg("token", pprust::token_to_string(&self.token));
         }
 
         if let Some(sugg) = self.suggest_raw {
@@ -1577,7 +1576,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
         );
         diag.span(self.span);
         if add_token {
-            diag.arg("token", self.token);
+            diag.arg("token", pprust::token_to_string(&self.token));
         }
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
@@ -2218,7 +2217,7 @@ pub(crate) struct VisibilityNotFollowedByItem {
     #[primary_span]
     #[label("the visibility")]
     pub span: Span,
-    pub vis: Visibility,
+    pub vis: String,
 }
 
 #[derive(Diagnostic)]
@@ -2533,14 +2532,14 @@ pub(crate) enum UnexpectedTokenAfterStructName {
         #[primary_span]
         #[label("expected `where`, `{\"{\"}`, `(`, or `;` after struct name")]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
     #[diag("expected `where`, `{\"{\"}`, `(`, or `;` after struct name, found keyword `{$token}`")]
     Keyword {
         #[primary_span]
         #[label("expected `where`, `{\"{\"}`, `(`, or `;` after struct name")]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
     #[diag(
         "expected `where`, `{\"{\"}`, `(`, or `;` after struct name, found reserved keyword `{$token}`"
@@ -2549,7 +2548,7 @@ pub(crate) enum UnexpectedTokenAfterStructName {
         #[primary_span]
         #[label("expected `where`, `{\"{\"}`, `(`, or `;` after struct name")]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
     #[diag(
         "expected `where`, `{\"{\"}`, `(`, or `;` after struct name, found doc comment `{$token}`"
@@ -2558,7 +2557,7 @@ pub(crate) enum UnexpectedTokenAfterStructName {
         #[primary_span]
         #[label("expected `where`, `{\"{\"}`, `(`, or `;` after struct name")]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
     #[diag("expected `where`, `{\"{\"}`, `(`, or `;` after struct name, found metavar")]
     MetaVar {
@@ -2571,13 +2570,14 @@ pub(crate) enum UnexpectedTokenAfterStructName {
         #[primary_span]
         #[label("expected `where`, `{\"{\"}`, `(`, or `;` after struct name")]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
 }
 
 impl UnexpectedTokenAfterStructName {
-    pub(crate) fn new(span: Span, token: Token) -> Self {
-        match TokenDescription::from_token(&token) {
+    pub(crate) fn new(span: Span, orig_token: Token) -> Self {
+        let token = pprust::token_to_string(&orig_token);
+        match TokenDescription::from_token(&orig_token) {
             Some(TokenDescription::ReservedIdentifier) => Self::ReservedIdentifier { span, token },
             Some(TokenDescription::Keyword) => Self::Keyword { span, token },
             Some(TokenDescription::ReservedKeyword) => Self::ReservedKeyword { span, token },
@@ -2630,13 +2630,13 @@ pub(crate) enum UnexpectedNonterminal {
     Ident {
         #[primary_span]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
     #[diag("expected a lifetime, found `{$token}`")]
     Lifetime {
         #[primary_span]
         span: Span,
-        token: Token,
+        token: Cow<'static, str>,
     },
 }
 
@@ -3212,7 +3212,7 @@ pub(crate) struct UnexpectedVertVertInPattern {
 pub(crate) struct TrailingVertSuggestion {
     #[primary_span]
     pub span: Span,
-    pub token: Token,
+    pub token: Cow<'static, str>,
 }
 
 #[derive(Diagnostic)]
@@ -3224,7 +3224,7 @@ pub(crate) struct TrailingVertNotAllowed {
     pub suggestion: TrailingVertSuggestion,
     #[label("while parsing this or-pattern starting here")]
     pub start: Option<Span>,
-    pub token: Token,
+    pub token: Cow<'static, str>,
     #[note("alternatives in or-patterns are separated with `|`, not `||`")]
     pub note_double_vert: bool,
 }
@@ -3441,8 +3441,10 @@ pub(crate) struct UnexpectedExpressionInPattern {
     pub span: Span,
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
-    /// The unexpected expr's precedence (used in match arm guard suggestions).
-    pub expr_precedence: ExprPrecedence,
+    /// The unexpected expr's precedence. Not used directly in the error message, but needed for
+    /// the stashing of this error to work correctly. We store a `u32` rather than an
+    /// `ExprPrecedence` to avoid having to impl `IntoDiagArg` for `ExprPrecedence`.
+    pub expr_precedence: u32,
 }
 
 #[derive(Subdiagnostic)]

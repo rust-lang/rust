@@ -1,7 +1,6 @@
 //! Errors emitted by ast_passes.
 
 use rustc_abi::ExternAbi;
-use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -632,8 +631,8 @@ pub(crate) struct OutOfOrderParams<'a> {
         applicability = "machine-applicable"
     )]
     pub sugg_span: Span,
-    pub param_ord: &'a ParamKindOrd,
-    pub max_param: &'a ParamKindOrd,
+    pub param_ord: String,
+    pub max_param: String,
     pub ordered_params: &'a str,
 }
 
