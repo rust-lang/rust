@@ -2118,6 +2118,24 @@ rustc_queries! {
         desc { "listing captured lifetimes for opaque `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// For an opaque type, return the list of potentially live args from the set of outlives bounds on that opaque.
+    /// ```ignore (illustrative)
+    /// // Edition 2024: all args are captured
+    /// fn foo<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized + 'a {}
+    /// fn bar<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized + 'static {}
+    /// fn baz<'a, 'b, T: 'static>(&'a &'b T) -> impl Sized {}
+    /// ```
+    ///
+    /// In the above:
+    ///   - `foo` outlives `'a`, but we know that `'b: 'a` holds, so `'b` is *also* potentially live
+    ///   - `bar` outlives `'static`, so we know that all lifetimes are potentially live and we can return an empty set
+    ///   - `baz` has not outlives bound, so return `None` and let the caller decide what to do
+    query live_regions_for_opaque_from_outlives_bounds(def_id: DefId) -> &'tcx Option<ty::EarlyBinder<'tcx, Vec<ty::Region<'tcx>>>> {
+        arena_cache
+        desc { "identifying live args for opaque `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     /// Computes the visibility of the provided `def_id`.
     ///
     /// If the item from the `def_id` doesn't have a visibility, it will panic. For example

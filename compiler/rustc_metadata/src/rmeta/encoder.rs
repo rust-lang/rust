@@ -1620,6 +1620,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                         <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
+                record!(self.tables.live_regions_for_opaque_from_outlives_bounds[def_id] <- tcx.live_regions_for_opaque_from_outlives_bounds(def_id));
             }
             if let DefKind::AnonConst = def_kind {
                 record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
