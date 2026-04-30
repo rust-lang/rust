@@ -961,15 +961,15 @@ fn execute_copy_from_cache_work_item(
 }
 
 fn do_fat_lto<B: WriteBackendMethods>(
+    sess: &Session,
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     shared_emitter: SharedEmitter,
     tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     needs_fat_lto: Vec<FatLtoInput<B>>,
 ) -> CompiledModule {
-    let _timer = prof.verbose_generic_activity("LLVM_fatlto");
+    let _timer = sess.prof.verbose_generic_activity("LLVM_fatlto");
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
@@ -977,8 +977,8 @@ fn do_fat_lto<B: WriteBackendMethods>(
     check_lto_allowed(&cgcx, dcx);
 
     B::optimize_and_codegen_fat_lto(
+        sess,
         cgcx,
-        prof,
         &shared_emitter,
         tm_factory,
         exported_symbols_for_lto,
@@ -2177,8 +2177,8 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
                 CompiledModules {
                     modules: vec![do_fat_lto(
+                        sess,
                         &cgcx,
-                        &sess.prof,
                         shared_emitter,
                         tm_factory,
                         &exported_symbols_for_lto,

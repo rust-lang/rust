@@ -133,8 +133,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
     fn optimize_and_codegen_fat_lto(
+        sess: &Session,
         cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         exported_symbols_for_lto: &[String],
@@ -143,7 +143,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     ) -> CompiledModule {
         let mut module = back::lto::run_fat(
             cgcx,
-            prof,
+            &sess.prof,
             shared_emitter,
             tm_factory,
             exported_symbols_for_lto,
@@ -153,9 +153,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
 
         let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
         let dcx = dcx.handle();
-        back::lto::run_pass_manager(cgcx, prof, dcx, &mut module, false);
+        back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &mut module, false);
 
-        back::write::codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
+        back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext,

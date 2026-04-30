@@ -30,8 +30,8 @@ pub trait WriteBackendMethods: Clone + 'static {
     /// Performs fat LTO by merging all modules into a single one, running autodiff
     /// if necessary and running any further optimizations
     fn optimize_and_codegen_fat_lto(
+        sess: &Session,
         cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<Self>,
         exported_symbols_for_lto: &[String],
