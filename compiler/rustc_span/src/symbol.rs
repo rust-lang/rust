@@ -1803,6 +1803,8 @@ symbols! {
         rustc_proc_macro_decls,
         rustc_promotable,
         rustc_pub_transparent,
+        rustc_public_hash_changed,
+        rustc_public_hash_unchanged,
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
