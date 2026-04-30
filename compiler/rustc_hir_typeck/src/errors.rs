@@ -1392,7 +1392,7 @@ pub(crate) struct ProjectOnNonPinProjectType {
 }
 
 #[derive(Diagnostic)]
-#[diag("cannot directly pin an ADT that is not `#[pin_v2]`")]
+#[diag("cannot directly pin a type that is not structurally pinnable")]
 pub(crate) struct DirectPinBorrowOfNonPinProjectType {
     #[primary_span]
     pub span: Span,

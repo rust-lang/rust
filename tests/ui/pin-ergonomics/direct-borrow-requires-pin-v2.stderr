@@ -1,35 +1,109 @@
-error: cannot directly pin an ADT that is not `#[pin_v2]`
-  --> $DIR/direct-borrow-requires-pin-v2.rs:8:13
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:40:13
+   |
+LL |     let _ = &pin mut NotUnpin { _pin: PhantomPinned };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/direct-borrow-requires-pin-v2.rs:10:1
+   |
+LL | struct NotUnpin {
+   | ^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotUnpin {
+   |
+
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:45:13
+   |
+LL |     let _ = &pin const NotUnpin { _pin: PhantomPinned };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/direct-borrow-requires-pin-v2.rs:10:1
+   |
+LL | struct NotUnpin {
+   | ^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct NotUnpin {
+   |
+
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:58:13
    |
 LL |     let _ = &pin mut value;
    |             ^^^^^^^^^^^^^^
    |
 note: type defined here
-  --> $DIR/direct-borrow-requires-pin-v2.rs:5:1
+  --> $DIR/direct-borrow-requires-pin-v2.rs:19:1
    |
-LL | struct NotPinV2;
-   | ^^^^^^^^^^^^^^^
+LL | struct GenericAdt<T> {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: add `#[pin_v2]` here
    |
 LL + #[pin_v2]
-LL | struct NotPinV2;
+LL | struct GenericAdt<T> {
    |
 
-error: cannot directly pin an ADT that is not `#[pin_v2]`
-  --> $DIR/direct-borrow-requires-pin-v2.rs:13:13
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:63:13
    |
 LL |     let _ = &pin const value;
    |             ^^^^^^^^^^^^^^^^
    |
 note: type defined here
-  --> $DIR/direct-borrow-requires-pin-v2.rs:5:1
+  --> $DIR/direct-borrow-requires-pin-v2.rs:19:1
    |
-LL | struct NotPinV2;
-   | ^^^^^^^^^^^^^^^
+LL | struct GenericAdt<T> {
+   | ^^^^^^^^^^^^^^^^^^^^
 help: add `#[pin_v2]` here
    |
 LL + #[pin_v2]
-LL | struct NotPinV2;
+LL | struct GenericAdt<T> {
    |
 
-error: aborting due to 2 previous errors
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:68:5
+   |
+LL |     &pin mut input.x
+   |     ^^^^^^^^^^^^^^^^
+
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:74:13
+   |
+LL |     let _ = &pin mut value;
+   |             ^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/direct-borrow-requires-pin-v2.rs:19:1
+   |
+LL | struct GenericAdt<T> {
+   | ^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct GenericAdt<T> {
+   |
+
+error: cannot directly pin a type that is not structurally pinnable
+  --> $DIR/direct-borrow-requires-pin-v2.rs:79:25
+   |
+LL |     let _: &pin mut _ = &pin mut input;
+   |                         ^^^^^^^^^^^^^^
+   |
+note: type defined here
+  --> $DIR/direct-borrow-requires-pin-v2.rs:25:1
+   |
+LL | struct DropGenericAdt<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+help: add `#[pin_v2]` here
+   |
+LL + #[pin_v2]
+LL | struct DropGenericAdt<T>(T);
+   |
+
+error: aborting due to 7 previous errors
