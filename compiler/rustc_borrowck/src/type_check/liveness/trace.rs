@@ -2,7 +2,6 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, HasLocalDecls, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::relate::Relate;
@@ -14,6 +13,7 @@ use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::outlives_for_liveness::FreeRegionsVisitor;
 use rustc_trait_selection::traits::query::dropck_outlives;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOp, TypeOpOutput};
 use tracing::debug;
@@ -611,7 +611,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             values::pretty_print_points(location_map, live_at.iter()),
         );
 
-        value.visit_with(&mut for_liveness::FreeRegionsVisitor {
+        value.visit_with(&mut FreeRegionsVisitor {
             tcx: typeck.tcx(),
             param_env: typeck.infcx.param_env,
             op: |r| {
