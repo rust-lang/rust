@@ -1,4 +1,4 @@
-use rustc_abi::{Align, BackendRepr, Endian, HasDataLayout, Primitive, Size};
+use rustc_abi::{Align, BackendRepr, CVariadicStatus, Endian, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::OperandRef;
@@ -1038,6 +1038,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     assert!(!bx.layout_of(target_ty).is_zst());
 
     let target = &bx.cx.tcx.sess.target;
+    let stability = target.supports_c_variadic_definitions();
+
     match target.arch {
         Arch::X86 => emit_ptr_va_arg(
             bx,
@@ -1094,6 +1096,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             ForceRightAdjust::Yes,
         ),
         Arch::RiscV32 if target.llvm_abiname == LlvmAbi::Ilp32e => {
+            std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
             // FIXME: clang manually adjusts the alignment for this ABI. It notes:
             //
             // > To be compatible with GCC's behaviors, we force arguments with
@@ -1215,10 +1218,15 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
         Arch::SpirV => bug!("spirv does not support c-variadic functions"),
 
         Arch::Sparc | Arch::Avr | Arch::M68k | Arch::Msp430 => {
+            std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
+
             // Clang uses the LLVM implementation for these architectures.
             bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx))
         }
+
         Arch::Other(ref arch) => {
+            std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
+
             // Just to be safe we error out explicitly here, instead of crossing our fingers that
             // the default LLVM implementation has the correct behavior for this target.
             bug!("c-variadic functions are not currently implemented for custom target {arch}")

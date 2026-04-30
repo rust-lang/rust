@@ -261,6 +261,7 @@ impl StableOrd for ExternAbi {
 rustc_error_messages::into_diag_arg_using_display!(ExternAbi);
 
 #[cfg(feature = "nightly")]
+#[derive(Debug)]
 pub enum CVariadicStatus {
     NotSupported,
     Stable,

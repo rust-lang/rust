@@ -762,12 +762,23 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
-                if !self.sess.target.supports_c_variadic_definitions() {
-                    self.dcx().emit_err(errors::CVariadicNotSupported {
-                        variadic_span: variadic_param.span,
-                        target: &*self.sess.target.llvm_target,
-                    });
-                    return;
+                match self.sess.target.supports_c_variadic_definitions() {
+                    CVariadicStatus::NotSupported => {
+                        self.dcx().emit_err(errors::CVariadicNotSupported {
+                            variadic_span: variadic_param.span,
+                            target: &*self.sess.target.llvm_target,
+                        });
+                        return;
+                    }
+                    CVariadicStatus::Unstable { feature } if !self.features.enabled(feature) => {
+                        let msg =
+                            format!("C-variadic function definitions on this target are unstable");
+                        feature_err(&self.sess, feature, variadic_param.span, msg).emit();
+                        return;
+                    }
+                    CVariadicStatus::Unstable { .. } | CVariadicStatus::Stable => {
+                        /* fall through */
+                    }
                 }
 
                 match sig.header.ext {

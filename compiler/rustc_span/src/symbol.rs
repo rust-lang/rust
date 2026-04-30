@@ -548,6 +548,7 @@ symbols! {
         c_str_literals,
         c_unwind,
         c_variadic,
+        c_variadic_experimental_arch,
         c_variadic_naked_functions,
         c_void,
         call,
