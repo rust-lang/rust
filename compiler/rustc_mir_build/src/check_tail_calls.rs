@@ -168,7 +168,6 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             let cause = ObligationCause::misc(expr.span, self.caller_def_id);
 
             // Erase safety, as it never affects ABI and is thus irrelevant for tail calls
-            // TODO: check if there is a test for this
             let caller_sig = caller_sig.set_safety(Safety::Safe);
             let callee_sig = callee_sig.set_safety(Safety::Safe);
 
