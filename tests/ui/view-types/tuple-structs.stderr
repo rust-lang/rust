@@ -1,0 +1,23 @@
+error: expected parameter name, found `{`
+  --> $DIR/tuple-structs.rs:7:22
+   |
+LL |     fn foo(&mut self.{ 0, 1 }) {}
+   |                      ^ expected parameter name
+
+error: expected one of `)` or `,`, found `.`
+  --> $DIR/tuple-structs.rs:7:21
+   |
+LL |     fn foo(&mut self.{ 0, 1 }) {}
+   |                     ^
+   |                     |
+   |                     expected one of `)` or `,`
+   |                     help: missing `,`
+
+error: expected identifier, found `0`
+  --> $DIR/tuple-structs.rs:10:31
+   |
+LL |     fn bar(_pair: &mut Pair.{ 0, 1 }) {}
+   |                               ^ expected identifier
+
+error: aborting due to 3 previous errors
+
