@@ -1,0 +1,16 @@
+error[E0432]: unresolved import `std::view`
+  --> $DIR/must-be-struct.rs:7:10
+   |
+LL | use std::view::view_type;
+   |          ^^^^ could not find `view` in `std`
+
+error[E0635]: unknown feature `view_type_macro`
+  --> $DIR/must-be-struct.rs:3:24
+   |
+LL | #![feature(view_types, view_type_macro)]
+   |                        ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0635.
+For more information about an error, try `rustc --explain E0432`.

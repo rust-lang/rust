@@ -1579,6 +1579,13 @@ Tests on `enum` variants.
 
 **FIXME**: Should be rehomed with `tests/ui/enum/`.
 
+## `tests/ui/view-types`
+
+Anything related to view types.
+
+See
+[Tracking Issue for view types](https://github.com/rust-lang/rust/issues/155938).
+
 ## `tests/ui/wasm/`
 
 These tests target the `wasm32` architecture specifically. They are usually regression tests for WASM-specific bugs which were observed in the past.

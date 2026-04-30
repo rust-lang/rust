@@ -1,0 +1,43 @@
+error[E0432]: unresolved import `std::view`
+  --> $DIR/syntax-errors.rs:5:10
+   |
+LL | use std::view::view_type;
+   |          ^^^^ could not find `view` in `std`
+
+error[E0635]: unknown feature `view_type_macro`
+  --> $DIR/syntax-errors.rs:1:24
+   |
+LL | #![feature(view_types, view_type_macro)]
+   |                        ^^^^^^^^^^^^^^^
+
+error[E0307]: invalid `self` parameter type: `&mut ()`
+  --> $DIR/syntax-errors.rs:14:26
+   |
+LL |     fn not_a_field(self: &mut view_type!(Foo.{ _ }), _: &mut view_type!(Foo.{ _ })) {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0307]: invalid `self` parameter type: `&mut ()`
+  --> $DIR/syntax-errors.rs:17:22
+   |
+LL |     fn keyword(self: &mut view_type!(Foo.{ where }), _: &mut view_type!(Foo.{ for })) {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0307]: invalid `self` parameter type: `&mut ()`
+  --> $DIR/syntax-errors.rs:20:23
+   |
+LL |     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0307, E0432, E0635.
+For more information about an error, try `rustc --explain E0307`.
