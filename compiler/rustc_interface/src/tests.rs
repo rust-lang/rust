@@ -772,6 +772,7 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(codegen_emit_retag, Some(CodegenRetagOptions::default()));
     tracked!(
         coverage_options,
         CoverageOptions {

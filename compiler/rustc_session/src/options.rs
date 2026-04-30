@@ -783,6 +783,8 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
+    pub(crate) const parse_codegen_retag_options: &str =
+        "either no value or a comma-separated list of settings: `no-precise-im`, `no-precise-pin`";
     pub(crate) const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -1523,6 +1525,29 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_codegen_retag_options(
+        slot: &mut Option<CodegenRetagOptions>,
+        v: Option<&str>,
+    ) -> bool {
+        let Some(v) = v else { return true };
+        let mut no_precise_im = false;
+        let mut no_precise_pin = false;
+
+        for option in v.split(',') {
+            match option {
+                "no-precise-im" => {
+                    no_precise_im = true;
+                }
+                "no-precise-pin" => {
+                    no_precise_pin = true;
+                }
+                _ => return false,
+            }
+        }
+        *slot = Some(CodegenRetagOptions { no_precise_im, no_precise_pin });
+        true
+    }
+
     pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
         let Some(v) = v else { return true };
 
@@ -2242,6 +2267,8 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    codegen_emit_retag: Option<CodegenRetagOptions> = (None, parse_codegen_retag_options, [TRACKED],
+        "emit retag function calls in generated code"),
     codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
         "emit mono items in the order of spans in source files (default: no)"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
