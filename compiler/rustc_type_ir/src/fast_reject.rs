@@ -55,7 +55,7 @@ impl<DefId: HashStable> ToStableHashKey for SimplifiedType<DefId> {
     #[inline]
     fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        self.hash_stable(hcx, &mut hasher);
+        self.stable_hash(hcx, &mut hasher);
         hasher.finish()
     }
 }

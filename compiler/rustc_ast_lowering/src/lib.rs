@@ -523,7 +523,7 @@ fn compute_hir_hash(
 
     tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
+        hir_body_nodes.stable_hash(&mut hcx, &mut stable_hasher);
         stable_hasher.finish()
     })
 }

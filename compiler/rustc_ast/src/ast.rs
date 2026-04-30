@@ -121,10 +121,10 @@ impl PartialEq<&[Symbol]> for Path {
 }
 
 impl HashStable for Path {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.segments.len().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.segments.len().stable_hash(hcx, hasher);
         for segment in &self.segments {
-            segment.ident.hash_stable(hcx, hasher);
+            segment.ident.stable_hash(hcx, hasher);
         }
     }
 }

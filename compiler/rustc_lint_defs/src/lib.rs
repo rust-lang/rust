@@ -138,12 +138,12 @@ impl LintExpectationId {
 
 impl HashStable for LintExpectationId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                hir_id.hash_stable(hcx, hasher);
-                attr_index.hash_stable(hcx, hasher);
-                lint_index.hash_stable(hcx, hasher);
+                hir_id.stable_hash(hcx, hasher);
+                attr_index.stable_hash(hcx, hasher);
+                lint_index.stable_hash(hcx, hasher);
             }
             _ => {
                 unreachable!(
@@ -618,8 +618,8 @@ impl LintId {
 
 impl HashStable for LintId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.lint_name_raw().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.lint_name_raw().stable_hash(hcx, hasher);
     }
 }
 

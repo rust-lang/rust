@@ -27,7 +27,7 @@ pub(super) fn mangle<'tcx>(
 
     let hash = tcx.with_stable_hashing_context(|mut hcx| {
         let mut hasher = StableHasher::new();
-        full_mangling_name().hash_stable(&mut hcx, &mut hasher);
+        full_mangling_name().stable_hash(&mut hcx, &mut hasher);
         hasher.finish::<Hash64>().as_u64()
     });
 

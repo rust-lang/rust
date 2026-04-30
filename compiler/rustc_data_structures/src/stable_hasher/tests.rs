@@ -25,7 +25,7 @@ impl HashStableContext for () {
 fn hash<T: HashStable>(t: &T) -> Hash128 {
     let mut h = StableHasher::new();
     let hcx = &mut ();
-    t.hash_stable(hcx, &mut h);
+    t.stable_hash(hcx, &mut h);
     h.finish()
 }
 
@@ -60,13 +60,13 @@ fn test_attribute_permutation() {
             }
 
             impl HashStable for Foo {
-                fn hash_stable<Hcx: HashStableContext>(
+                fn stable_hash<Hcx: HashStableContext>(
                     &self,
                     hcx: &mut Hcx,
                     hasher: &mut StableHasher,
                 ) {
-                    self.a.hash_stable(hcx, hasher);
-                    self.b.hash_stable(hcx, hasher);
+                    self.a.stable_hash(hcx, hasher);
+                    self.b.stable_hash(hcx, hasher);
                 }
             }
 

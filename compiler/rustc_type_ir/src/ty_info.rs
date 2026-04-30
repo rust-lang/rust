@@ -84,7 +84,7 @@ impl<T: Hash> Hash for WithCachedTypeInfo<T> {
 
 #[cfg(feature = "nightly")]
 impl<T: HashStable> HashStable for WithCachedTypeInfo<T> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.internee.hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.internee.stable_hash(hcx, hasher);
     }
 }

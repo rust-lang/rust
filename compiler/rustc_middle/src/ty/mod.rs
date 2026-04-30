@@ -558,8 +558,8 @@ impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
 }
 
 impl<'tcx> HashStable for Term<'tcx> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.kind().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.kind().stable_hash(hcx, hasher);
     }
 }
 

@@ -225,24 +225,24 @@ where
     I::Symbol: HashStable,
 {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).stable_hash(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
             ReBound(d, r) => {
-                d.hash_stable(hcx, hasher);
-                r.hash_stable(hcx, hasher);
+                d.stable_hash(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             ReEarlyParam(r) => {
-                r.hash_stable(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             ReLateParam(r) => {
-                r.hash_stable(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             RePlaceholder(r) => {
-                r.hash_stable(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             ReVar(_) => {
                 panic!("region variables should not be hashed: {self:?}")

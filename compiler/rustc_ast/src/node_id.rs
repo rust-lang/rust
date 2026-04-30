@@ -21,7 +21,7 @@ rustc_index::newtype_index! {
 
 impl HashStable for NodeId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
         // This impl is never called but is necessary for types implementing `HashStable` such as
         // `MainDefinition` and `DocLinkResMap` (both of which occur in `ResolverGlobalCtxt`).
         panic!("Node IDs should not appear in incremental state");

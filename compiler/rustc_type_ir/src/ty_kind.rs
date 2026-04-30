@@ -708,14 +708,14 @@ impl UnifyKey for FloatVid {
 
 #[cfg(feature = "nightly")]
 impl HashStable for InferTy {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         use InferTy::*;
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        std::mem::discriminant(self).stable_hash(hcx, hasher);
         match self {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
             }
-            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(hcx, hasher),
+            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.stable_hash(hcx, hasher),
         }
     }
 }

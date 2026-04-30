@@ -153,7 +153,7 @@ impl Hash for AdtDefData {
 }
 
 impl HashStable for AdtDefData {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
         }
@@ -165,16 +165,16 @@ impl HashStable for AdtDefData {
                 let ty::AdtDefData { did, ref variants, ref flags, ref repr } = *self;
 
                 let mut hasher = StableHasher::new();
-                did.hash_stable(hcx, &mut hasher);
-                variants.hash_stable(hcx, &mut hasher);
-                flags.hash_stable(hcx, &mut hasher);
-                repr.hash_stable(hcx, &mut hasher);
+                did.stable_hash(hcx, &mut hasher);
+                variants.stable_hash(hcx, &mut hasher);
+                flags.stable_hash(hcx, &mut hasher);
+                repr.stable_hash(hcx, &mut hasher);
 
                 hasher.finish()
             })
         });
 
-        hash.hash_stable(hcx, hasher);
+        hash.stable_hash(hcx, hasher);
     }
 }
 

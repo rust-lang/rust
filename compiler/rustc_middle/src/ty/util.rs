@@ -138,7 +138,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         self.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
-            hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
+            hcx.while_hashing_spans(false, |hcx| ty.stable_hash(hcx, &mut hasher));
             hasher.finish()
         })
     }

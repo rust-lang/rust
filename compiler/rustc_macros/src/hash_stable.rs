@@ -82,7 +82,7 @@ fn hash_stable_derive_with_mode(
         quote!(::rustc_data_structures::stable_hasher::HashStable),
         quote! {
             #[inline]
-            fn hash_stable<__Hcx: ::rustc_data_structures::stable_hasher::HashStableContext>(
+            fn stable_hash<__Hcx: ::rustc_data_structures::stable_hasher::HashStableContext>(
                 &self,
                 __hcx: &mut __Hcx,
                 __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher
@@ -97,7 +97,7 @@ fn hash_stable_derive_with_mode(
 fn hash_stable_discriminant(s: &mut synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     match s.ast().data {
         syn::Data::Enum(_) => quote! {
-            ::std::mem::discriminant(self).hash_stable(__hcx, __hasher);
+            ::std::mem::discriminant(self).stable_hash(__hcx, __hasher);
         },
         syn::Data::Struct(_) => quote! {},
         syn::Data::Union(_) => panic!("cannot derive on union"),
@@ -111,11 +111,11 @@ fn hash_stable_body(s: &mut synstructure::Structure<'_>) -> proc_macro2::TokenSt
             quote! {}
         } else if let Some(project) = attrs.project {
             quote! {
-                (&#bi.#project).hash_stable(__hcx, __hasher);
+                (&#bi.#project).stable_hash(__hcx, __hasher);
             }
         } else {
             quote! {
-                #bi.hash_stable(__hcx, __hasher);
+                #bi.stable_hash(__hcx, __hasher);
             }
         }
     })

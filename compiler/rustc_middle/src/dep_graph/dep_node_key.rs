@@ -40,7 +40,7 @@ where
     default fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         tcx.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
-            self.hash_stable(&mut hcx, &mut hasher);
+            self.stable_hash(&mut hcx, &mut hasher);
             hasher.finish()
         })
     }

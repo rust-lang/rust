@@ -152,18 +152,18 @@ impl Parse for Newtype {
             quote! {}
         };
 
-        let hash_stable = if stable_hash {
+        let hash_stable_impl = if stable_hash {
             quote! {
                 #gate_rustc_only
                 impl ::rustc_data_structures::stable_hasher::HashStable for #name {
-                    fn hash_stable<
+                    fn stable_hash<
                         __Hcx: ::rustc_data_structures::stable_hasher::HashStableContext
                     >(
                         &self,
                         hcx: &mut __Hcx,
                         hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher
                     ) {
-                        self.as_u32().hash_stable(hcx, hasher)
+                        self.as_u32().stable_hash(hcx, hasher)
                     }
                 }
             }
@@ -307,7 +307,7 @@ impl Parse for Newtype {
 
             #step
 
-            #hash_stable
+            #hash_stable_impl
 
             impl From<#name> for u32 {
                 #[inline]

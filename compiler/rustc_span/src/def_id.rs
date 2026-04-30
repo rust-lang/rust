@@ -429,22 +429,22 @@ rustc_data_structures::define_id_collections!(
 
 impl HashStable for DefId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for LocalDefId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.to_stable_hash_key(hcx).local_hash().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).local_hash().stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for CrateNum {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().stable_hash(hcx, hasher);
     }
 }
 

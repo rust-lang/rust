@@ -72,7 +72,7 @@ impl<T> Steal<T> {
 }
 
 impl<T: HashStable> HashStable for Steal<T> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.borrow().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.borrow().stable_hash(hcx, hasher);
     }
 }

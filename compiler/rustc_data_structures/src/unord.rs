@@ -422,7 +422,7 @@ impl<V: Hash + Eq, I: Iterator<Item = V>> From<UnordItems<V, I>> for UnordSet<V>
 
 impl<V: Hash + Eq + HashStable> HashStable for UnordSet<V> {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -652,7 +652,7 @@ where
 
 impl<K: Hash + Eq + HashStable, V: HashStable> HashStable for UnordMap<K, V> {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -715,7 +715,7 @@ impl<T, I: Iterator<Item = T>> From<UnordItems<T, I>> for UnordBag<T> {
 
 impl<V: Hash + Eq + HashStable> HashStable for UnordBag<V> {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
     }
 }
@@ -752,7 +752,7 @@ fn hash_iter_order_independent<
     hasher: &mut StableHasher,
 ) {
     let len = it.len();
-    len.hash_stable(hcx, hasher);
+    len.stable_hash(hcx, hasher);
 
     match len {
         0 => {
@@ -760,17 +760,17 @@ fn hash_iter_order_independent<
         }
         1 => {
             // No need to instantiate a hasher
-            it.next().unwrap().hash_stable(hcx, hasher);
+            it.next().unwrap().stable_hash(hcx, hasher);
         }
         _ => {
             let mut accumulator = Fingerprint::ZERO;
             for item in it {
                 let mut item_hasher = StableHasher::new();
-                item.hash_stable(hcx, &mut item_hasher);
+                item.stable_hash(hcx, &mut item_hasher);
                 let item_fingerprint: Fingerprint = item_hasher.finish();
                 accumulator = accumulator.combine_commutative(item_fingerprint);
             }
-            accumulator.hash_stable(hcx, hasher);
+            accumulator.stable_hash(hcx, hasher);
         }
     }
 }

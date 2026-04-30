@@ -281,8 +281,8 @@ impl<Id> Default for EffectiveVisibilities<Id> {
 }
 
 impl HashStable for EffectiveVisibilities {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EffectiveVisibilities { ref map } = *self;
-        map.hash_stable(hcx, hasher);
+        map.stable_hash(hcx, hasher);
     }
 }

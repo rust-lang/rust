@@ -18,7 +18,7 @@ impl<'tcx, H, T> HashStable for &'tcx ty::list::RawList<H, T>
 where
     T: HashStable,
 {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // Note: this cache makes an *enormous* performance difference on certain benchmarks. E.g.
         // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
         // `deeply-nested-multi` can be ~4,000x slower(!)
@@ -34,14 +34,14 @@ where
             }
 
             let mut hasher = StableHasher::new();
-            self[..].hash_stable(hcx, &mut hasher);
+            self[..].stable_hash(hcx, &mut hasher);
 
             let hash: Fingerprint = hasher.finish();
             cache.borrow_mut().insert(key, hash);
             hash
         });
 
-        hash.hash_stable(hcx, hasher);
+        hash.stable_hash(hcx, hasher);
     }
 }
 
@@ -54,31 +54,31 @@ where
     #[inline]
     fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
-        self.hash_stable(hcx, &mut hasher);
+        self.stable_hash(hcx, &mut hasher);
         hasher.finish()
     }
 }
 
 impl<'tcx> HashStable for ty::GenericArg<'tcx> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.kind().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.kind().stable_hash(hcx, hasher);
     }
 }
 
 // AllocIds get resolved to whatever they point to (to be stable)
 impl HashStable for mir::interpret::AllocId {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            tcx.try_get_global_alloc(*self).hash_stable(hcx, hasher);
+            tcx.try_get_global_alloc(*self).stable_hash(hcx, hasher);
         });
     }
 }
 
 impl HashStable for mir::interpret::CtfeProvenance {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.into_parts().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.into_parts().stable_hash(hcx, hasher);
     }
 }
 

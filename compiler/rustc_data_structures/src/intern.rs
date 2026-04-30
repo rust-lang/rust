@@ -107,8 +107,8 @@ impl<T> HashStable for Interned<'_, T>
 where
     T: HashStable,
 {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.0.hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.0.stable_hash(hcx, hasher);
     }
 }
 

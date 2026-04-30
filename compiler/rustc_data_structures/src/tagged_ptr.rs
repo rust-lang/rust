@@ -264,9 +264,9 @@ where
     P: HashStable + Aligned + ?Sized,
     T: Tag + HashStable,
 {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.pointer().hash_stable(hcx, hasher);
-        self.tag().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.pointer().stable_hash(hcx, hasher);
+        self.tag().stable_hash(hcx, hasher);
     }
 }
 

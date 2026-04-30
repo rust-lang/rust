@@ -584,7 +584,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
                 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
                 let local_hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                     let mut hasher = StableHasher::new();
-                    expn_id.expn_data().hash_stable(&mut hcx, &mut hasher);
+                    expn_id.expn_data().stable_hash(&mut hcx, &mut hasher);
                     hasher.finish()
                 });
                 debug_assert_eq!(hash.local_hash(), local_hash);

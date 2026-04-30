@@ -153,17 +153,17 @@ pub struct ScalarInt {
 // Cannot derive these, as the derives take references to the fields, and we
 // can't take references to fields of packed structs.
 impl HashStable for ScalarInt {
-    fn hash_stable<Hcx: HashStableContext>(
+    fn stable_hash<Hcx: HashStableContext>(
         &self,
         hcx: &mut Hcx,
         hasher: &mut crate::ty::StableHasher,
     ) {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
-        // directly, because `hash_stable` takes `&self` and would thus borrow `self.data`.
+        // directly, because `stable_hash` takes `&self` and would thus borrow `self.data`.
         // Since `Self` is a packed struct, that would create a possibly unaligned reference,
         // which is UB.
-        { self.data }.hash_stable(hcx, hasher);
-        self.size.get().hash_stable(hcx, hasher);
+        { self.data }.stable_hash(hcx, hasher);
+        self.size.get().stable_hash(hcx, hasher);
     }
 }
 

@@ -96,8 +96,8 @@ impl<'a> HashStableContext for StableHashingContext<'a> {
 
         let span = Span::from_raw_span(raw_span);
         let span = span.data_untracked();
-        span.ctxt.hash_stable(self, hasher);
-        span.parent.hash_stable(self, hasher);
+        span.ctxt.stable_hash(self, hasher);
+        span.parent.stable_hash(self, hasher);
 
         if span.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
@@ -112,8 +112,8 @@ impl<'a> HashStableContext for StableHashingContext<'a> {
             // a subset of the cases from the `file.contains(parent.lo)`. But we can do this check
             // cheaply without the expensive `span_data_to_lines_and_cols` query.
             Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            (span.lo - parent.lo).to_u32().hash_stable(self, hasher);
-            (span.hi - parent.lo).to_u32().hash_stable(self, hasher);
+            (span.lo - parent.lo).to_u32().stable_hash(self, hasher);
+            (span.hi - parent.lo).to_u32().stable_hash(self, hasher);
             return;
         }
 

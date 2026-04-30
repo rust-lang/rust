@@ -121,28 +121,28 @@ impl Features {
 }
 
 impl HashStable for Features {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `enabled_features` is skipped because it's the sum of the lang and lib features.
         let Features { enabled_lang_features, enabled_lib_features, enabled_features: _ } = self;
-        enabled_lang_features.hash_stable(hcx, hasher);
-        enabled_lib_features.hash_stable(hcx, hasher);
+        enabled_lang_features.stable_hash(hcx, hasher);
+        enabled_lib_features.stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for EnabledLangFeature {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EnabledLangFeature { gate_name, attr_sp, stable_since } = self;
-        gate_name.hash_stable(hcx, hasher);
-        attr_sp.hash_stable(hcx, hasher);
-        stable_since.hash_stable(hcx, hasher);
+        gate_name.stable_hash(hcx, hasher);
+        attr_sp.stable_hash(hcx, hasher);
+        stable_since.stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for EnabledLibFeature {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EnabledLibFeature { gate_name, attr_sp } = self;
-        gate_name.hash_stable(hcx, hasher);
-        attr_sp.hash_stable(hcx, hasher);
+        gate_name.stable_hash(hcx, hasher);
+        attr_sp.stable_hash(hcx, hasher);
     }
 }
 

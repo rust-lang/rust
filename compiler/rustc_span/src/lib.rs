@@ -2788,7 +2788,7 @@ impl InnerSpan {
 }
 
 impl HashStable for Span {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
         hcx.span_hash_stable(self.to_raw_span(), hasher)
     }

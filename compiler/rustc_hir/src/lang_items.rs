@@ -145,7 +145,7 @@ macro_rules! language_item_table {
 }
 
 impl HashStable for LangItem {
-    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }
 }

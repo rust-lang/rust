@@ -244,7 +244,7 @@ impl Hash for ExternAbi {
 #[cfg(feature = "nightly")]
 impl HashStable for ExternAbi {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
         Hash::hash(self, hasher);
     }
 }

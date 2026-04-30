@@ -46,7 +46,7 @@ enum OngoingModuleCodegen {
 }
 
 impl HashStable for OngoingModuleCodegen {
-    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
         // do nothing
     }
 }

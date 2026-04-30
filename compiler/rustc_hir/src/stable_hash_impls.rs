@@ -66,28 +66,28 @@ impl ToStableHashKey for ForeignItemId {
 // in "DefPath Mode".
 
 impl<'tcx> HashStable for OwnerNodes<'tcx> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
         // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
         // the body satisfies the condition of two nodes being different have different
-        // `hash_stable` results.
+        // `stable_hash` results.
         let OwnerNodes { opt_hash_including_bodies, nodes: _, bodies: _ } = *self;
-        opt_hash_including_bodies.unwrap().hash_stable(hcx, hasher);
+        opt_hash_including_bodies.unwrap().stable_hash(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable for AttributeMap<'tcx> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
         let AttributeMap { opt_hash, define_opaque: _, map: _ } = *self;
-        opt_hash.unwrap().hash_stable(hcx, hasher);
+        opt_hash.unwrap().stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for HashIgnoredAttrId {
-    fn hash_stable<Hcx: HashStableContext>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
         /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }

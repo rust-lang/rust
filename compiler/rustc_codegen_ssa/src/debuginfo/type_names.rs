@@ -734,7 +734,7 @@ fn push_debuginfo_const_name<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, outpu
                     // avoiding collisions and will make the emitted type names shorter.
                     let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                         let mut hasher = StableHasher::new();
-                        hcx.while_hashing_spans(false, |hcx| cv.hash_stable(hcx, &mut hasher));
+                        hcx.while_hashing_spans(false, |hcx| cv.stable_hash(hcx, &mut hasher));
                         hasher.finish::<Hash64>()
                     });
 

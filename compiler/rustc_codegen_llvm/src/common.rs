@@ -308,7 +308,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             {
                                 let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                                     let mut hasher = StableHasher::new();
-                                    alloc.hash_stable(&mut hcx, &mut hasher);
+                                    alloc.stable_hash(&mut hcx, &mut hasher);
                                     hasher.finish::<Hash128>()
                                 });
                                 llvm::set_value_name(

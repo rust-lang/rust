@@ -126,7 +126,7 @@ where
     R: HashStable,
 {
     let mut stable_hasher = StableHasher::new();
-    result.hash_stable(hcx, &mut stable_hasher);
+    result.stable_hash(hcx, &mut stable_hasher);
     stable_hasher.finish()
 }
 

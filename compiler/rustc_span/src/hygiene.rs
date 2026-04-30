@@ -1106,7 +1106,7 @@ impl ExpnData {
     #[inline]
     fn hash_expn(&self, hcx: &mut impl HashStableContext) -> Hash64 {
         let mut hasher = StableHasher::new();
-        self.hash_stable(hcx, &mut hasher);
+        self.stable_hash(hcx, &mut hasher);
         hasher.finish()
     }
 }
@@ -1520,23 +1520,23 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
 }
 
 impl HashStable for SyntaxContext {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
         if self.is_root() {
-            TAG_NO_EXPANSION.hash_stable(hcx, hasher);
+            TAG_NO_EXPANSION.stable_hash(hcx, hasher);
         } else {
-            TAG_EXPANSION.hash_stable(hcx, hasher);
+            TAG_EXPANSION.stable_hash(hcx, hasher);
             let (expn_id, transparency) = self.outer_mark();
-            expn_id.hash_stable(hcx, hasher);
-            transparency.hash_stable(hcx, hasher);
+            expn_id.stable_hash(hcx, hasher);
+            transparency.stable_hash(hcx, hasher);
         }
     }
 }
 
 impl HashStable for ExpnId {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hcx.assert_default_hashing_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
@@ -1545,12 +1545,12 @@ impl HashStable for ExpnId {
             self.expn_hash().0
         };
 
-        hash.hash_stable(hcx, hasher);
+        hash.stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for LocalExpnId {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.to_expn_id().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_expn_id().stable_hash(hcx, hasher);
     }
 }

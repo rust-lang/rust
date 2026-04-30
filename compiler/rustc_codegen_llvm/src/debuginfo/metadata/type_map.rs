@@ -130,7 +130,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
         let mut hasher = StableHasher::new();
         tcx.with_stable_hashing_context(|mut hcx| {
-            hcx.while_hashing_spans(false, |hcx| self.hash_stable(hcx, &mut hasher))
+            hcx.while_hashing_spans(false, |hcx| self.stable_hash(hcx, &mut hasher))
         });
         hasher.finish::<Fingerprint>().to_hex()
     }

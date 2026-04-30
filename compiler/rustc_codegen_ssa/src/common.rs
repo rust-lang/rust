@@ -103,7 +103,7 @@ mod temp_stable_hash_impls {
     use crate::ModuleCodegen;
 
     impl<M> HashStable for ModuleCodegen<M> {
-        fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
+        fn stable_hash<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
             // do nothing
         }
     }

@@ -118,12 +118,12 @@ impl fmt::Debug for InferConst {
 
 #[cfg(feature = "nightly")]
 impl HashStable for InferConst {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) => {
                 panic!("const variables should not be hashed: {self:?}")
             }
-            InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
+            InferConst::Fresh(i) => i.stable_hash(hcx, hasher),
         }
     }
 }
