@@ -2232,6 +2232,7 @@ symbols! {
         verbatim,
         version,
         vfp2,
+        view_types,
         vis,
         visible_private_types,
         volatile,
