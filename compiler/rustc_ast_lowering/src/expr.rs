@@ -1693,7 +1693,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             && !self.tcx.features().coroutines()
             && !self.tcx.features().gen_blocks()
         {
-            rustc_session::parse::feature_err(
+            rustc_session::errors::feature_err(
                 &self.tcx.sess,
                 sym::yield_expr,
                 span,

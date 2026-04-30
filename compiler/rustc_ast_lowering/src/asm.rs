@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_session::parse::feature_err;
+use rustc_session::errors::feature_err;
 use rustc_span::{Span, sym};
 use rustc_target::asm;
 

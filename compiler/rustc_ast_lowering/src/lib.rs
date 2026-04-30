@@ -62,7 +62,7 @@ use rustc_macros::extension;
 use rustc_middle::hir::{self as mid_hir};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{DelegationInfo, ResolverAstLowering, TyCtxt};
-use rustc_session::parse::add_feature_diagnostics;
+use rustc_session::errors::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::SmallVec;

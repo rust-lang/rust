@@ -39,8 +39,8 @@ use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
+use rustc_session::errors::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
-use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,

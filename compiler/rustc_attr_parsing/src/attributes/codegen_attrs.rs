@@ -1,5 +1,5 @@
 use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
-use rustc_session::parse::feature_err;
+use rustc_session::errors::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
 use super::prelude::*;

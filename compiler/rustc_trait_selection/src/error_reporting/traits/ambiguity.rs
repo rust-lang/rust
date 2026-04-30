@@ -13,7 +13,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::PrintPolyTraitPredicateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _, Unnormalized};
-use rustc_session::parse::feature_err_unstable_feature_bound;
+use rustc_session::errors::feature_err_unstable_feature_bound;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 

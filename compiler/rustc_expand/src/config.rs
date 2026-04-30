@@ -27,7 +27,7 @@ use rustc_hir::{
 };
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
-use rustc_session::parse::feature_err;
+use rustc_session::errors::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 

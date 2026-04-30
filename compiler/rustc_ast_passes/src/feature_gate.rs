@@ -6,7 +6,7 @@ use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Feat
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
-use rustc_session::parse::{feature_err, feature_warn};
+use rustc_session::errors::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
