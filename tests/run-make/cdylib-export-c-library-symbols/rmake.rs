@@ -7,11 +7,12 @@
 //@ ignore-apple
 // Reason: the compiled binary is executed
 
-use run_make_support::{build_native_static_lib, cc, dynamic_lib_name, is_darwin, llvm_nm, rustc};
+use run_make_support::{cc, dynamic_lib_name, is_darwin, llvm_ar, llvm_nm, rustc, static_lib_name};
 
 fn main() {
-    cc().input("foo.c").arg("-c").out_exe("foo.o").run();
-    build_native_static_lib("foo");
+    // Compile C code without LTO
+    cc().input("foo.c").arg("-c").arg("-fno-lto").out_exe("foo.o").run();
+    llvm_ar().obj_to_ar().output_input(&static_lib_name("foo"), "foo.o").run();
 
     rustc().input("foo.rs").arg("-lstatic=foo").crate_type("cdylib").run();
 
