@@ -14,14 +14,14 @@
 use std::fmt;
 
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 #[cfg(feature = "nightly")]
 use rustc_span::{Symbol, sym};
 
 pub mod visit;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum IntTy {
     Isize,
     I8,
@@ -97,7 +97,7 @@ impl fmt::Debug for IntTy {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum UintTy {
     Usize,
     U8,
@@ -173,7 +173,7 @@ impl fmt::Debug for UintTy {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum FloatTy {
     F16,
     F32,
@@ -220,7 +220,7 @@ impl fmt::Debug for FloatTy {
 /// The movability of a coroutine / closure literal:
 /// whether a coroutine contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -229,7 +229,7 @@ pub enum Movability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum Mutability {
     // N.B. Order is deliberate, so that Not < Mut
     Not,
@@ -288,7 +288,7 @@ impl Mutability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]
 pub enum Pinnedness {
     Not,
     Pinned,

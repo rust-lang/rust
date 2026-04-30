@@ -6,7 +6,7 @@ use std::ops::{Range, RangeBounds};
 
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::trace;
 
@@ -17,7 +17,7 @@ use crate::mir::interpret::{AllocError, AllocResult};
 /// If the bytes are re-assembled in their original order, the pointer can be used again.
 /// Wildcard provenance is allowed to have index 0 everywhere.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct PointerFrag<Prov> {
     /// The position of this fragment inside the pointer (in `0..8`).
     pub idx: u8,
@@ -32,7 +32,7 @@ pub struct PointerFrag<Prov> {
 
 /// Stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct ProvenanceMap<Prov = CtfeProvenance> {
     /// `Provenance` in this map applies from the given offset for an entire pointer-size worth of
     /// bytes. Two entries in this map are always at least a pointer size apart.

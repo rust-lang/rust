@@ -12,7 +12,7 @@ use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir::LangItem;
-use rustc_macros::{Decodable, Encodable, HashStable, PrintAttribute};
+use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
@@ -24,7 +24,7 @@ use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {
     /// Usually, finding the extern item that an EII implementation implements means finding
     /// the defid of the associated attribute macro, and looking at *its* attributes to find
@@ -37,7 +37,7 @@ pub enum EiiImplResolution {
     Error(ErrorGuaranteed),
 }
 
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct EiiImpl {
     pub resolution: EiiImplResolution,
     pub impl_marked_unsafe: bool,
@@ -46,7 +46,7 @@ pub struct EiiImpl {
     pub is_default: bool,
 }
 
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct EiiDecl {
     pub foreign_item: DefId,
     /// whether or not it is unsafe to implement this EII
@@ -54,7 +54,7 @@ pub struct EiiDecl {
     pub name: Ident,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable, PrintAttribute)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
 pub enum CguKind {
     No,
     PreDashLto,
@@ -62,7 +62,7 @@ pub enum CguKind {
     Any,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable, PrintAttribute)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
 pub enum CguFields {
     PartitionReused { cfg: Symbol, module: Symbol },
     PartitionCodegened { cfg: Symbol, module: Symbol },
@@ -70,7 +70,7 @@ pub enum CguFields {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, PrintAttribute)]
-#[derive(HashStable, Encodable, Decodable)]
+#[derive(StableHash, Encodable, Decodable)]
 pub enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
     ToUnit,
@@ -82,7 +82,7 @@ pub enum DivergingFallbackBehavior {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, PrintAttribute, Default)]
-#[derive(HashStable, Encodable, Decodable)]
+#[derive(StableHash, Encodable, Decodable)]
 pub enum DivergingBlockBehavior {
     /// This is the current stable behavior:
     ///
@@ -105,7 +105,7 @@ pub enum DivergingBlockBehavior {
     Unit,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable, PrintAttribute)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -129,14 +129,14 @@ impl InlineAttr {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable, PrintAttribute)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, PartialEq, Eq, StableHash, PrintAttribute)]
 pub enum InstructionSetAttr {
     ArmA32,
     ArmT32,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
-#[derive(Encodable, Decodable, HashStable)]
+#[derive(Encodable, Decodable, StableHash)]
 pub enum OptimizeAttr {
     /// No `#[optimize(..)]` attribute
     #[default]
@@ -155,7 +155,7 @@ impl OptimizeAttr {
     }
 }
 
-#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, HashStable, PrintAttribute)]
+#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, StableHash, PrintAttribute)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
@@ -172,13 +172,13 @@ pub enum TransparencyError {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-#[derive(Encodable, Decodable, HashStable, PrintAttribute)]
+#[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy),
 }
 
-#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable, PrintAttribute)]
+#[derive(Copy, Debug, Encodable, Decodable, Clone, StableHash, PrintAttribute)]
 pub struct Deprecation {
     pub since: DeprecatedSince,
     /// The note to issue a reason.
@@ -190,7 +190,7 @@ pub struct Deprecation {
 }
 
 /// Release in which an API is deprecated.
-#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable, PrintAttribute)]
+#[derive(Copy, Debug, Encodable, Decodable, Clone, StableHash, PrintAttribute)]
 pub enum DeprecatedSince {
     RustcVersion(RustcVersion),
     /// Deprecated in the future ("to be determined").
@@ -207,7 +207,7 @@ pub enum DeprecatedSince {
 
 /// Successfully-parsed value of a `#[coverage(..)]` attribute.
 #[derive(Copy, Debug, Eq, PartialEq, Encodable, Decodable, Clone)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum CoverageAttrKind {
     On,
     Off,
@@ -215,7 +215,7 @@ pub enum CoverageAttrKind {
 
 /// Successfully-parsed value of a `#[rustc_abi(..)]` attribute.
 #[derive(Copy, Debug, Eq, PartialEq, Encodable, Decodable, Clone)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum RustcAbiAttrKind {
     Debug,
     AssertEq,
@@ -246,7 +246,7 @@ impl Deprecation {
 /// `#[used(compiler)]`
 /// `#[used(linker)]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum UsedBy {
     Default,
     Compiler,
@@ -254,7 +254,7 @@ pub enum UsedBy {
 }
 
 #[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum MacroUseArgs {
     UseAll,
     UseSpecific(ThinVec<Ident>),
@@ -266,7 +266,7 @@ impl Default for MacroUseArgs {
     }
 }
 
-#[derive(Debug, Clone, Encodable, Decodable, HashStable)]
+#[derive(Debug, Clone, Encodable, Decodable, StableHash)]
 pub struct StrippedCfgItem<ScopeId = DefId> {
     pub parent_scope: ScopeId,
     pub ident: Ident,
@@ -284,7 +284,7 @@ impl<ScopeId> StrippedCfgItem<ScopeId> {
 ///
 /// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
 #[derive(Encodable, Decodable, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum Linkage {
     AvailableExternally,
     Common,
@@ -298,7 +298,7 @@ pub enum Linkage {
 }
 
 #[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum MirDialect {
     Analysis,
     Built,
@@ -317,7 +317,7 @@ impl IntoDiagArg for MirDialect {
 }
 
 #[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 pub enum MirPhase {
     Initial,
     PostCleanup,
@@ -337,7 +337,7 @@ impl IntoDiagArg for MirPhase {
 
 /// Different ways that the PE Format can decorate a symbol name.
 /// From <https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-name-type>
-#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable, PartialEq, Eq, PrintAttribute)]
+#[derive(Copy, Clone, Debug, Encodable, Decodable, StableHash, PartialEq, Eq, PrintAttribute)]
 pub enum PeImportNameType {
     /// IMPORT_ORDINAL
     /// Uses the ordinal (i.e., a number) rather than the name.
@@ -367,7 +367,7 @@ pub enum PeImportNameType {
     Decodable,
     PrintAttribute
 )]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub enum NativeLibKind {
     /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC)
     Static {
@@ -435,7 +435,7 @@ impl NativeLibKind {
     }
 }
 
-#[derive(Debug, Encodable, Decodable, Clone, HashStable, PrintAttribute)]
+#[derive(Debug, Encodable, Decodable, Clone, StableHash, PrintAttribute)]
 pub struct LinkEntry {
     pub span: Span,
     pub kind: NativeLibKind,
@@ -445,14 +445,14 @@ pub struct LinkEntry {
     pub import_name_type: Option<(PeImportNameType, Span)>,
 }
 
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
 pub enum DebuggerVisualizerType {
     Natvis,
     GdbPrettyPrinter,
 }
 
-#[derive(Debug, Encodable, Decodable, Clone, HashStable, PrintAttribute)]
+#[derive(Debug, Encodable, Decodable, Clone, StableHash, PrintAttribute)]
 pub struct DebugVisualizer {
     pub span: Span,
     pub visualizer_type: DebuggerVisualizerType,
@@ -460,7 +460,7 @@ pub struct DebugVisualizer {
 }
 
 #[derive(Clone, Copy, Debug, Decodable, Encodable, Eq, PartialEq)]
-#[derive(HashStable, PrintAttribute)]
+#[derive(StableHash, PrintAttribute)]
 #[derive_const(Default)]
 pub enum RtsanSetting {
     Nonblocking,
@@ -470,7 +470,7 @@ pub enum RtsanSetting {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-#[derive(Encodable, Decodable, HashStable, PrintAttribute)]
+#[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum WindowsSubsystemKind {
     Console,
     Windows,
@@ -486,20 +486,20 @@ impl WindowsSubsystemKind {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum DocInline {
     Inline,
     NoInline,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum HideOrShow {
     Hide,
     Show,
 }
 
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct CfgInfo {
     pub name: Symbol,
     pub name_span: Span,
@@ -516,13 +516,13 @@ impl CfgInfo {
     }
 }
 
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct CfgHideShow {
     pub kind: HideOrShow,
     pub values: ThinVec<CfgInfo>,
 }
 
-#[derive(Clone, Debug, Default, HashStable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, Default, StableHash, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub first_span: Span,
 
@@ -626,7 +626,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
 /// | external      | no  | if-ext        | if-ext   | yes |
 /// | yes           | yes | yes           | yes      | yes |
 #[derive(Copy, Clone, Debug, Hash, PartialEq)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum CollapseMacroDebuginfo {
     /// Don't collapse debuginfo for the macro
     No = 0,
@@ -640,7 +640,7 @@ pub enum CollapseMacroDebuginfo {
 
 /// Crate type, as specified by `#![crate_type]`
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Default, PartialOrd, Eq, Ord)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum CrateType {
     /// `#![crate_type = "bin"]`
     Executable,
@@ -740,7 +740,7 @@ impl IntoDiagArg for CrateType {
     }
 }
 
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum RustcDumpLayoutKind {
     Align,
     BackendRepr,
@@ -749,7 +749,7 @@ pub enum RustcDumpLayoutKind {
     Size,
 }
 
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
 pub enum RustcMirKind {
     PeekMaybeInit,
     PeekMaybeUninit,
@@ -759,13 +759,13 @@ pub enum RustcMirKind {
     BorrowckGraphvizFormat { format: BorrowckGraphvizFormatKind },
 }
 
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
 pub enum BorrowckGraphvizFormatKind {
     TwoPhase,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct RustcCleanAttribute {
     pub span: Span,
     pub cfg: Symbol,
@@ -775,14 +775,14 @@ pub struct RustcCleanAttribute {
 
 /// Represents the `except=` or `loaded_from_disk=` argument of `#[rustc_clean]`
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct RustcCleanQueries {
     pub entries: ThinVec<Symbol>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct RustcAutodiff {
     /// Conceptually either forward or reverse mode AD, as described in various autodiff papers and
     /// e.g. in the [JAX
@@ -858,7 +858,7 @@ impl RustcAutodiff {
 }
 
 /// We generate one of these structs for each `#[autodiff(...)]` attribute.
-#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable)]
+#[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, StableHash)]
 pub struct AutoDiffItem {
     /// The name of the function getting differentiated
     pub source: String,
@@ -878,7 +878,7 @@ impl fmt::Display for AutoDiffItem {
     }
 }
 
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct UnstableRemovedFeature {
     pub feature: Symbol,
     pub reason: Symbol,
@@ -935,7 +935,7 @@ pub struct UnstableRemovedFeature {
 /// [`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 /// [`rustc_codegen_ssa`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/index.html
 /// [`rustc_attr_parsing`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html
-#[derive(Clone, Debug, HashStable, Encodable, Decodable, PrintAttribute)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
     /// Represents `#[allow_internal_unsafe]`.

@@ -6,14 +6,14 @@ use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableHashCtxt, StableHasher, ToStableHashKey,
+    StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
 use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::SymbolVisibility;
@@ -49,10 +49,10 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, StableHash, TyEncodable, TyDecodable)]
 pub struct NormalizationErrorInMono;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, StableHash, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -336,13 +336,13 @@ impl ToStableHashKey for MonoItem<'_> {
     }
 }
 
-#[derive(Debug, HashStable, Copy, Clone)]
+#[derive(Debug, StableHash, Copy, Clone)]
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Debug, StableHash)]
 pub struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
     /// name be unique amongst **all** crates. Therefore, it should
@@ -358,7 +358,7 @@ pub struct CodegenUnit<'tcx> {
 }
 
 /// Auxiliary info about a `MonoItem`.
-#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, StableHash)]
 pub struct MonoItemData {
     /// A cached copy of the result of `MonoItem::instantiation_mode`, where
     /// `GloballyShared` maps to `false` and `LocalCopy` maps to `true`.
@@ -376,7 +376,7 @@ pub struct MonoItemData {
 /// Visibility doesn't have any effect when linkage is internal.
 ///
 /// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
-#[derive(Copy, Clone, PartialEq, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, StableHash, TyEncodable, TyDecodable)]
 pub enum Visibility {
     /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
     /// the DSO if the object file format supports this.
@@ -692,7 +692,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
 }
 
 /// See module-level docs of `rustc_monomorphize::collector` on some context for "mentioned" items.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum CollectionMode {
     /// Collect items that are used, i.e., actually needed for codegen.
     ///

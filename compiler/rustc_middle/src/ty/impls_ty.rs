@@ -1,4 +1,4 @@
-//! This module contains `HashStable` implementations for various data types
+//! This module contains `StableHash` implementations for various data types
 //! from `rustc_middle::ty` in no particular order.
 
 use std::cell::RefCell;
@@ -7,16 +7,16 @@ use std::ptr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashingControls, StableHashCtxt, StableHasher, ToStableHashKey,
+    HashingControls, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use tracing::trace;
 
 use crate::middle::region;
 use crate::{mir, ty};
 
-impl<'tcx, H, T> HashStable for &'tcx ty::list::RawList<H, T>
+impl<'tcx, H, T> StableHash for &'tcx ty::list::RawList<H, T>
 where
-    T: HashStable,
+    T: StableHash,
 {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // Note: this cache makes an *enormous* performance difference on certain benchmarks. E.g.
@@ -47,7 +47,7 @@ where
 
 impl<'tcx, H, T> ToStableHashKey for &'tcx ty::list::RawList<H, T>
 where
-    T: HashStable,
+    T: StableHash,
 {
     type KeyType = Fingerprint;
 
@@ -59,14 +59,14 @@ where
     }
 }
 
-impl<'tcx> HashStable for ty::GenericArg<'tcx> {
+impl<'tcx> StableHash for ty::GenericArg<'tcx> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.kind().stable_hash(hcx, hasher);
     }
 }
 
 // AllocIds get resolved to whatever they point to (to be stable)
-impl HashStable for mir::interpret::AllocId {
+impl StableHash for mir::interpret::AllocId {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
@@ -76,7 +76,7 @@ impl HashStable for mir::interpret::AllocId {
     }
 }
 
-impl HashStable for mir::interpret::CtfeProvenance {
+impl StableHash for mir::interpret::CtfeProvenance {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.into_parts().stable_hash(hcx, hasher);
     }

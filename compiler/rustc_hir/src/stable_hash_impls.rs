@@ -1,5 +1,5 @@
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableHashCtxt, StableHasher, ToStableHashKey,
+    StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_span::def_id::DefPathHash;
 
@@ -55,14 +55,14 @@ impl ToStableHashKey for ForeignItemId {
     }
 }
 
-// The following implementations of HashStable for `ItemId`, `TraitItemId`, and
+// The following implementations of StableHash for `ItemId`, `TraitItemId`, and
 // `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within
 // the HIR, since they just signify a HIR nodes own path. But `ItemId` et al
 // are used when another item in the HIR is *referenced* and we certainly
 // want to pick up on a reference changing its target, so we hash the NodeIds
 // in "DefPath Mode".
 
-impl<'tcx> HashStable for OwnerNodes<'tcx> {
+impl<'tcx> StableHash for OwnerNodes<'tcx> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
@@ -74,7 +74,7 @@ impl<'tcx> HashStable for OwnerNodes<'tcx> {
     }
 }
 
-impl<'tcx> HashStable for AttributeMap<'tcx> {
+impl<'tcx> StableHash for AttributeMap<'tcx> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
@@ -83,7 +83,7 @@ impl<'tcx> HashStable for AttributeMap<'tcx> {
     }
 }
 
-impl HashStable for HashIgnoredAttrId {
+impl StableHash for HashIgnoredAttrId {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
         /* we don't hash HashIgnoredAttrId, we ignore them */
     }

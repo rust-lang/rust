@@ -454,7 +454,7 @@ impl VariantDef {
 
 /*
 /// Definition of a variant -- a struct's fields or an enum variant.
-#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, StableHash, TyEncodable, TyDecodable)]
 pub struct VariantDef {
     /// `DefId` that identifies the variant itself.
     /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.

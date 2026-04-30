@@ -4,7 +4,7 @@ use std::hash::Hash;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableHash_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
@@ -25,7 +25,7 @@ pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[cfg_attr(feature = "nightly", derive(HashStable))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct NoSolution;
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
@@ -38,7 +38,7 @@ pub struct NoSolution;
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub struct Goal<I: Interner, P> {
     pub param_env: I::ParamEnv,
@@ -67,7 +67,7 @@ impl<I: Interner, P> Goal<I, P> {
 ///
 /// It is also used by proof tree visitors, e.g. for diagnostics purposes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum GoalSource {
     Misc,
     /// A nested goal required to prove that types are equal/subtypes.
@@ -100,7 +100,7 @@ pub enum GoalSource {
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
@@ -217,7 +217,7 @@ pub enum AliasBoundKind {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable, Encodable_NoContext, Decodable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash, Encodable_NoContext, Decodable_NoContext))]
 pub enum BuiltinImplSource {
     /// A built-in impl that is considered trivial, without any nested requirements. They
     /// are preferred over where-clauses, and we want to track them explicitly.
@@ -235,7 +235,7 @@ pub enum BuiltinImplSource {
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
     pub var_values: CanonicalVarValues<I>,
@@ -248,7 +248,7 @@ impl<I: Interner> Eq for Response<I> {}
 /// Additional constraints returned on success.
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
     pub region_constraints: Vec<ty::RegionConstraint<I>>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
@@ -267,7 +267,7 @@ impl<I: Interner> ExternalConstraintsData<I> {
 
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
 
 impl<I: Interner> Eq for NestedNormalizationGoals<I> {}
@@ -283,14 +283,14 @@ impl<I: Interner> NestedNormalizationGoals<I> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Certainty {
     Yes,
     Maybe(MaybeInfo),
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct MaybeInfo {
     pub cause: MaybeCause,
     pub opaque_types_jank: OpaqueTypesJank,
@@ -350,7 +350,7 @@ impl MaybeInfo {
 /// a goal. It is good enough for now and only matters for very rare type inference
 /// edge cases. We can improve this later on if necessary.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum OpaqueTypesJank {
     AllGood,
     ErrorIfRigidSelfTy,
@@ -378,7 +378,7 @@ impl OpaqueTypesJank {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub enum StalledOnCoroutines {
     Yes,
     No,
@@ -439,7 +439,7 @@ impl Certainty {
 
 /// Why we failed to evaluate a goal.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either
     /// be a true ambiguity, i.e. there are multiple different answers,
@@ -512,7 +512,7 @@ pub enum AdtDestructorKind {
 /// Which sizedness trait - `Sized`, `MetaSized`? `PointeeSized` is omitted as it is removed during
 /// lowering.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "nightly", derive(HashStable))]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum SizedTraitKind {
     /// `Sized` trait
     Sized,

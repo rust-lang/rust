@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, kw};
 use tracing::instrument;
 
@@ -9,7 +9,7 @@ use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt, Unn
 use crate::ty;
 use crate::ty::{EarlyBinder, GenericArgsRef};
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
@@ -48,7 +48,7 @@ impl GenericParamDefKind {
     }
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct GenericParamDef {
     pub name: Symbol,
     pub def_id: DefId,
@@ -114,7 +114,7 @@ pub struct GenericParamCount {
 ///
 /// The ordering of parameters is the same as in [`ty::GenericArg`] (excluding child generics):
 /// `Self` (optionally), `Lifetime` params..., `Type` params...
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct Generics {
     pub parent: Option<DefId>,
     pub parent_count: usize,
@@ -362,7 +362,7 @@ impl<'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Clause<'tcx>, Span)],
@@ -442,7 +442,7 @@ impl<'tcx> GenericPredicates<'tcx> {
 /// `GenericPredicates`, where you can either choose to only instantiate the "own"
 /// bounds or all of the bounds including those from the parent. This distinction
 /// is necessary for code like `compare_method_predicate_entailment`.
-#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct ConstConditions<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(ty::PolyTraitRef<'tcx>, Span)],

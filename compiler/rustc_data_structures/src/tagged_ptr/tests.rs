@@ -3,7 +3,7 @@ use std::ptr;
 use rustc_hashes::Hash128;
 
 use super::*;
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{StableHash, StableHasher};
 
 /// A tag type used in [`TaggedRef`] tests.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -32,7 +32,7 @@ unsafe impl Tag for Tag2 {
     }
 }
 
-impl HashStable for Tag2 {
+impl StableHash for Tag2 {
     fn stable_hash<Hcx: StableHashCtxt>(
         &self,
         hcx: &mut Hcx,

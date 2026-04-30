@@ -3,7 +3,7 @@ use std::num::NonZero;
 
 use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::static_assert_size;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 
 use super::AllocId;
 
@@ -222,7 +222,7 @@ impl Provenance for AllocId {
 ///
 /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
 #[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct Pointer<Prov = CtfeProvenance> {
     pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Prov` type)
     pub provenance: Prov,

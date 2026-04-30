@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_span::LocalExpnId;
 
 rustc_index::newtype_index! {
@@ -19,10 +19,10 @@ rustc_index::newtype_index! {
     }
 }
 
-impl HashStable for NodeId {
+impl StableHash for NodeId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, _: &mut StableHasher) {
-        // This impl is never called but is necessary for types implementing `HashStable` such as
+        // This impl is never called but is necessary for types implementing `StableHash` such as
         // `MainDefinition` and `DocLinkResMap` (both of which occur in `ResolverGlobalCtxt`).
         panic!("Node IDs should not appear in incremental state");
     }

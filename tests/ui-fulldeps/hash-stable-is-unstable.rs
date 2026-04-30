@@ -12,17 +12,17 @@ extern crate rustc_middle;
 //~| NOTE: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
 //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 //~^ ERROR use of unstable library feature `rustc_private`
 //~| NOTE: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
 //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-#[derive(HashStable)]
+#[derive(StableHash)]
 //~^ ERROR use of unstable library feature `rustc_private`
-//~| NOTE: in this expansion of #[derive(HashStable)]
-//~| NOTE: in this expansion of #[derive(HashStable)]
-//~| NOTE: in this expansion of #[derive(HashStable)]
-//~| NOTE: in this expansion of #[derive(HashStable)]
+//~| NOTE: in this expansion of #[derive(StableHash)]
+//~| NOTE: in this expansion of #[derive(StableHash)]
+//~| NOTE: in this expansion of #[derive(StableHash)]
+//~| NOTE: in this expansion of #[derive(StableHash)]
 //~| NOTE: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
 //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 struct Test;

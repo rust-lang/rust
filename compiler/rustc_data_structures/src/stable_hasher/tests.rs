@@ -22,7 +22,7 @@ impl StableHashCtxt for () {
     }
 }
 
-fn hash<T: HashStable>(t: &T) -> Hash128 {
+fn hash<T: StableHash>(t: &T) -> Hash128 {
     let mut h = StableHasher::new();
     let hcx = &mut ();
     t.stable_hash(hcx, &mut h);
@@ -59,7 +59,7 @@ fn test_attribute_permutation() {
                 b: $ty,
             }
 
-            impl HashStable for Foo {
+            impl StableHash for Foo {
                 fn stable_hash<Hcx: StableHashCtxt>(
                     &self,
                     hcx: &mut Hcx,

@@ -4,7 +4,7 @@ use std::ops::Index;
 use arrayvec::ArrayVec;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
@@ -17,7 +17,7 @@ use crate::{self as ty, Interner, TypingModeEqWrapper, UniverseIndex};
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct CanonicalQueryInput<I: Interner, V> {
     pub canonical: Canonical<I, V>,
@@ -33,7 +33,7 @@ impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
@@ -91,7 +91,7 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
 #[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+    derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub enum CanonicalVarKind<I: Interner> {
     /// General type variable `?T` that can be unified with arbitrary types.
@@ -220,7 +220,7 @@ impl<I: Interner> CanonicalVarKind<I> {
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 pub struct CanonicalVarValues<I: Interner> {

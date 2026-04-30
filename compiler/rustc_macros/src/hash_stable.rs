@@ -48,17 +48,17 @@ pub(crate) fn hash_stable_no_context_derive(
 }
 
 enum HashStableMode {
-    // Do a normal derive, where any generic type parameter gets a `HashStable` bound.
-    // For example, in `struct Abc<T, U>(T, U)` the added bounds are `T: HashStable` and
-    // `U: HashStable`.
+    // Do a normal derive, where any generic type parameter gets a `StableHash` bound.
+    // For example, in `struct Abc<T, U>(T, U)` the added bounds are `T: StableHash` and
+    // `U: StableHash`.
     Normal,
 
     // Do an (almost-)perfect derive, where any field with a generic type parameter gets a
-    // `HashStable` bound. For example, in `struct Def<T, U>(T, U::Assoc)` the added bounds are
-    // `T::HashStable` and `U::Assoc: HashStable` (not `U: HashStable`).
+    // `StableHash` bound. For example, in `struct Def<T, U>(T, U::Assoc)` the added bounds are
+    // `T::StableHash` and `U::Assoc: StableHash` (not `U: StableHash`).
     //
     // This is used most commonly in `rustc_type_ir` for types like `TyKind<I: Interner>`.
-    // `Interner` does not impl `HashStable`, but the fields of `TyKind` do not use `I` itself,
+    // `Interner` does not impl `StableHash`, but the fields of `TyKind` do not use `I` itself,
     // instead only using associated types from `I` such as `I::Region`. On types like `TyKind` we
     // typically also see the use of `derive_where` for built-in traits such as `Debug`.
     NoContext,
@@ -79,7 +79,7 @@ fn hash_stable_derive_with_mode(
     let body = hash_stable_body(&mut s);
 
     s.bound_impl(
-        quote!(::rustc_data_structures::stable_hasher::HashStable),
+        quote!(::rustc_data_structures::stable_hasher::StableHash),
         quote! {
             #[inline]
             fn stable_hash<__Hcx: ::rustc_data_structures::stable_hasher::StableHashCtxt>(

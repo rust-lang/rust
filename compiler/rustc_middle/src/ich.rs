@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashingControls, RawDefId, RawDefPathHash, RawSpan, StableHashCtxt, StableHasher,
+    HashingControls, RawDefId, RawDefPathHash, RawSpan, StableHash, StableHashCtxt, StableHasher,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;

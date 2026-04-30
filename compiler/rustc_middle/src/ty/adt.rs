@@ -8,14 +8,14 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashingControls, StableHashCtxt, StableHasher,
+    HashingControls, StableHash, StableHashCtxt, StableHasher,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
 use rustc_span::sym;
 use rustc_type_ir::FieldInfo;
@@ -29,7 +29,7 @@ use crate::mir::interpret::ErrorHandled;
 use crate::ty::util::{Discr, IntTypeExt};
 use crate::ty::{self, ConstKind};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
 bitflags::bitflags! {
     impl AdtFlags: u16 {
@@ -152,7 +152,7 @@ impl Hash for AdtDefData {
     }
 }
 
-impl HashStable for AdtDefData {
+impl StableHash for AdtDefData {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
@@ -178,7 +178,7 @@ impl HashStable for AdtDefData {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
@@ -316,7 +316,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, StableHash, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
     Union,

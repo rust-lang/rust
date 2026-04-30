@@ -1,4 +1,4 @@
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use smallvec::SmallVec;
 use tracing::instrument;
 
@@ -9,7 +9,7 @@ use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TyCtxt, TypingEnv, Unnormalized}
 /// containing either of those types.
 /// A type's inhabitedness may depend on the `ParamEnv` as well as what types
 /// are visible in the current module.
-#[derive(Clone, Copy, Debug, PartialEq, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, StableHash)]
 pub enum InhabitedPredicate<'tcx> {
     /// Inhabited
     True,

@@ -1,7 +1,7 @@
 use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Symbol, kw, sym};
 use rustc_type_ir::RegionKind as IrRegionKind;
 pub use rustc_type_ir::RegionVid;
@@ -12,7 +12,7 @@ use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 
 /// Use this rather than `RegionKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
@@ -347,7 +347,7 @@ impl<'tcx> Region<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct EarlyParamRegion {
     pub index: u32,
     pub name: Symbol,
@@ -374,7 +374,7 @@ impl std::fmt::Debug for EarlyParamRegion {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 /// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
 ///
@@ -393,7 +393,7 @@ pub struct LateParamRegion {
 /// otherwise end up liberating multiple bound regions to the same
 /// late-bound region.
 #[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub enum LateParamRegionKind {
     /// An anonymous region parameter for a given fn (&T)
     ///

@@ -4,19 +4,19 @@ use std::fmt::{self, Display};
 
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{AssocItemKind, ForeignItemKind, ast};
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 
 use crate::def::DefKind;
 use crate::{Item, ItemKind, TraitItem, TraitItemKind, hir};
 
-#[derive(Copy, Clone, PartialEq, Debug, Eq, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum GenericParamKind {
     Type,
     Lifetime,
     Const,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, Eq, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum MethodKind {
     /// Method in a `trait Trait` block
     Trait {
@@ -29,7 +29,7 @@ pub enum MethodKind {
     Inherent,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, Eq, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum Target {
     ExternCrate,
     Use,

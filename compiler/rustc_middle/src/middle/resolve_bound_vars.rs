@@ -4,11 +4,11 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::ItemLocalId;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
-use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable, Encodable, StableHash, TyDecodable, TyEncodable};
 
 use crate::ty;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, StableHash)]
 pub enum ResolvedArg {
     StaticLifetime,
     EarlyBound(/* decl */ LocalDefId),
@@ -20,7 +20,7 @@ pub enum ResolvedArg {
 /// A set containing, at most, one known element.
 /// If two distinct values are inserted into a set, then it
 /// becomes `Many`, which can be used to detect ambiguities.
-#[derive(Copy, Clone, PartialEq, Eq, TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, TyEncodable, TyDecodable, Debug, StableHash)]
 pub enum Set1<T> {
     Empty,
     One(T),
@@ -37,7 +37,7 @@ impl<T: PartialEq> Set1<T> {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable)]
 pub enum ObjectLifetimeDefault {
     Empty,
     Static,
@@ -47,7 +47,7 @@ pub enum ObjectLifetimeDefault {
 
 /// Maps the id of each bound variable reference to the variable decl
 /// that it corresponds to.
-#[derive(Debug, Default, HashStable)]
+#[derive(Debug, Default, StableHash)]
 pub struct ResolveBoundVars<'tcx> {
     // Maps from every use of a named (not anonymous) bound var to a
     // `ResolvedArg` describing how that variable is bound.

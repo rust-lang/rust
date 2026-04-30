@@ -5,7 +5,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, DiagLocation, Diagnostic, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_lint_defs::EditionFcw;
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_session::Session;
 use rustc_session::lint::{
     FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId, builtin,
@@ -16,7 +16,7 @@ use tracing::instrument;
 use crate::ty::TyCtxt;
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, StableHash, Debug)]
 pub enum LintLevelSource {
     /// Lint is at the default level as declared in rustc.
     Default,
@@ -54,7 +54,7 @@ impl LintLevelSource {
 }
 
 /// Convenience helper for moving things around together that frequently are paired
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct LevelAndSource {
     pub level: Level,
     pub lint_id: Option<LintExpectationId>,
@@ -65,7 +65,7 @@ pub struct LevelAndSource {
 ///
 /// This map represents the set of allowed lints and allowance levels given
 /// by the attributes for *a single HirId*.
-#[derive(Default, Debug, HashStable)]
+#[derive(Default, Debug, StableHash)]
 pub struct ShallowLintLevelMap {
     pub expectations: Vec<(LintExpectationId, LintExpectation)>,
     pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelAndSource>>,
@@ -197,7 +197,7 @@ impl TyCtxt<'_> {
 /// This struct represents a lint expectation and holds all required information
 /// to emit the `unfulfilled_lint_expectations` lint if it is unfulfilled after
 /// the `LateLintPass` has completed.
-#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, StableHash)]
 pub struct LintExpectation {
     /// The reason for this expectation that can optionally be added as part of
     /// the attribute. It will be displayed as part of the lint message.

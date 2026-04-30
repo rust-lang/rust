@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
@@ -216,13 +216,13 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 }
 
 #[cfg(feature = "nightly")]
-// This is not a derived impl because a derive would require `I: HashStable`
-impl<I: Interner> HashStable for RegionKind<I>
+// This is not a derived impl because a derive would require `I: StableHash`
+impl<I: Interner> StableHash for RegionKind<I>
 where
-    I::EarlyParamRegion: HashStable,
-    I::LateParamRegion: HashStable,
-    I::DefId: HashStable,
-    I::Symbol: HashStable,
+    I::EarlyParamRegion: StableHash,
+    I::LateParamRegion: StableHash,
+    I::DefId: StableHash,
+    I::Symbol: StableHash,
 {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {

@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirId, ItemLocalMap, Node};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
@@ -81,7 +81,7 @@ use crate::ty::{self, TyCtxt};
 // actually attach a more meaningful ordering to scopes than the one
 // generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct Scope {
     pub local_id: hir::ItemLocalId,
     pub data: ScopeData,
@@ -108,7 +108,7 @@ impl fmt::Debug for Scope {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub enum ScopeData {
     Node,
 
@@ -204,7 +204,7 @@ impl Scope {
 }
 
 /// The region scope tree encodes information about region relationships.
-#[derive(Default, Debug, HashStable)]
+#[derive(Default, Debug, StableHash)]
 pub struct ScopeTree {
     /// If not empty, this body is the root of this region hierarchy.
     pub root_body: Option<HirId>,
@@ -235,7 +235,7 @@ pub struct ScopeTree {
 }
 
 /// Temporary lifetime information for expressions, used when lowering to MIR.
-#[derive(Clone, Copy, Debug, HashStable)]
+#[derive(Clone, Copy, Debug, StableHash)]
 pub struct TempLifetime {
     /// The scope in which a temporary should be dropped. If `None`, no drop is scheduled; this is
     /// the case for lifetime-extended temporaries extended by a const/static item or const block.

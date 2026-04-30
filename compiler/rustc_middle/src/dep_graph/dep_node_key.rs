@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
@@ -29,7 +29,7 @@ pub trait DepNodeKey<'tcx>: Debug + Sized {
 // Blanket impl of `DepNodeKey`, which is specialized by other impls elsewhere.
 impl<'tcx, T> DepNodeKey<'tcx> for T
 where
-    T: HashStable + Debug,
+    T: StableHash + Debug,
 {
     #[inline(always)]
     default fn key_fingerprint_style() -> KeyFingerprintStyle {

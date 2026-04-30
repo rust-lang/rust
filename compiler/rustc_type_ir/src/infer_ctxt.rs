@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -39,7 +39,7 @@ use crate::{self as ty, Interner, TyVid};
 #[derive_where(Clone, Copy, Hash, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 #[cfg_attr(feature = "nightly", rustc_must_match_exhaustively)]
 pub enum TypingMode<I: Interner> {
@@ -117,7 +117,7 @@ pub enum TypingMode<I: Interner> {
 #[derive_where(Clone, Copy, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct TypingModeEqWrapper<I: Interner>(pub TypingMode<I>);
 

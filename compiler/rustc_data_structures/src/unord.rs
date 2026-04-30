@@ -13,7 +13,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use crate::fingerprint::Fingerprint;
 use crate::fx::{FxBuildHasher, FxHashMap, FxHashSet};
 use crate::stable_hasher::{
-    HashStable, StableCompare, StableHashCtxt, StableHasher, ToStableHashKey,
+    StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
@@ -420,7 +420,7 @@ impl<V: Hash + Eq, I: Iterator<Item = V>> From<UnordItems<V, I>> for UnordSet<V>
     }
 }
 
-impl<V: Hash + Eq + HashStable> HashStable for UnordSet<V> {
+impl<V: Hash + Eq + StableHash> StableHash for UnordSet<V> {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
@@ -650,7 +650,7 @@ where
     }
 }
 
-impl<K: Hash + Eq + HashStable, V: HashStable> HashStable for UnordMap<K, V> {
+impl<K: Hash + Eq + StableHash, V: StableHash> StableHash for UnordMap<K, V> {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
@@ -713,7 +713,7 @@ impl<T, I: Iterator<Item = T>> From<UnordItems<T, I>> for UnordBag<T> {
     }
 }
 
-impl<V: Hash + Eq + HashStable> HashStable for UnordBag<V> {
+impl<V: Hash + Eq + StableHash> StableHash for UnordBag<V> {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hash_iter_order_independent(self.inner.iter(), hcx, hasher);
@@ -744,7 +744,7 @@ where
 
 fn hash_iter_order_independent<
     Hcx: StableHashCtxt,
-    T: HashStable,
+    T: StableHash,
     I: Iterator<Item = T> + ExactSizeIterator,
 >(
     mut it: I,

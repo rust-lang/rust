@@ -1,9 +1,9 @@
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 
 use crate::ty::{Ty, TyCtxt, TypingEnv};
 
 /// Summarizes how a parameter (a return place or an argument) is used inside a MIR body.
-#[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, StableHash)]
 pub struct UsageSummary(u8);
 
 bitflags::bitflags! {
@@ -28,7 +28,7 @@ bitflags::bitflags! {
 ///
 /// Right now, we have `readonly` and `captures(none)`, but `no_alias` might be useful in the
 /// future.
-#[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Debug, Decodable, Encodable, StableHash)]
 pub struct DeducedParamAttrs {
     pub usage: UsageSummary,
 }

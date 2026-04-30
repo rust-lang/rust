@@ -1,11 +1,11 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use rustc_span::Symbol;
 use rustc_span::def_id::DefIdMap;
 
 use crate::def_id::DefId;
 
-#[derive(Debug, Default, HashStable)]
+#[derive(Debug, Default, StableHash)]
 pub struct DiagnosticItems {
     #[stable_hasher(ignore)]
     pub id_to_name: DefIdMap<Symbol>,

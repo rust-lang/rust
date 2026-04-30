@@ -25,7 +25,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TypeFoldable, TypeVisitable};
 pub use rustc_type_ir as ir;
 use smallvec::SmallVec;
 
@@ -67,7 +67,7 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
 /// After we execute a query with a canonicalized key, we get back a
 /// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
-#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
@@ -77,7 +77,7 @@ pub struct QueryResponse<'tcx, R> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
+#[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
@@ -100,7 +100,7 @@ pub type CanonicalQueryResponse<'tcx, T> = &'tcx Canonical<'tcx, QueryResponse<'
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub enum Certainty {
     /// The query is known to be true, presuming that you apply the
     /// given `var_values` and the region-constraints are satisfied.

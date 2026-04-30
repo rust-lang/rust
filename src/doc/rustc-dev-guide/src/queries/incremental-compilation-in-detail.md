@@ -264,7 +264,7 @@ the `LocalId`s within it are still the same.
 
 
 
-### Checking query results for changes: `HashStable` and `Fingerprint`s
+### Checking query results for changes: `StableHash` and `Fingerprint`s
 
 In order to do red-green-marking we often need to check if the result of a
 query has changed compared to the result it had during the previous compilation session.
@@ -285,7 +285,7 @@ We call this hash value "the `Fingerprint` of the query result".
 The hashing is (and has to be) done "in a stable way".
 This means that whenever something is hashed that might change in between compilation
 sessions (e.g. a `DefId`), we instead hash its stable equivalent
-(e.g. the corresponding `DefPath`). That's what the whole `HashStable`
+(e.g. the corresponding `DefPath`). That's what the whole `StableHash`
 infrastructure is for.
 This way `Fingerprint`s computed in two different compilation sessions are still comparable.
 
