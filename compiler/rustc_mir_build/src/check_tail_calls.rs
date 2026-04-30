@@ -29,8 +29,12 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         tcx,
         thir,
         found_errors: Ok(()),
-        // FIXME(#132279): we're clearly in a body here.
-        typing_env: ty::TypingEnv::non_body_analysis(tcx, def),
+        // FIXME(explicit_tail_calls): we are blocked on next trait solver ^^'
+        typing_env: if tcx.next_trait_solver_globally() {
+            ty::TypingEnv::new(ty::ParamEnv::empty(), ty::TypingMode::borrowck(tcx, def))
+        } else {
+            ty::TypingEnv::non_body_analysis(tcx, def)
+        },
         is_closure,
         caller_def_id: def,
     };
@@ -155,14 +159,6 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             return;
         }
 
-        // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
-        // e.g.
-        // ```
-        // fn a() -> impl Sized { become b() } // ICE
-        // fn b() -> u8 { 0 }
-        // ```
-        // we should think what is the expected behavior here.
-        // (we should probably just accept this by revealing opaques?)
         // Checks that the signatures of the caller and callee match (as a proxy to check that they
         // are ABI compatible and tail calls can always happen).
         //

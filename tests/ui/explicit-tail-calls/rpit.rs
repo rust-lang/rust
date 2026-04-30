@@ -1,3 +1,8 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+
 #![feature(explicit_tail_calls)]
 #![expect(incomplete_features)]
 
@@ -12,7 +17,7 @@ fn foo(x: u32, y: u32) -> u32 {
 
 fn bar(x: u32, y: u32) -> impl ToString {
     become foo(x, y);
-    //~^ ERROR mismatched signatures
+    //[current]~^ ERROR mismatched signatures
 }
 
 fn main() {
