@@ -44,7 +44,7 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
         self
     }
 
-    fn lift<T: ty::Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted> {
+    fn lift<T: ty::Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted {
         TyCtxt::lift(self, value)
     }
 

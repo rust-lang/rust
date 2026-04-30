@@ -782,8 +782,8 @@ pub struct FnSigKind<I: Interner> {
 
 impl<I: Interner, J: Interner> crate::lift::Lift<J> for FnSigKind<I> {
     type Lifted = FnSigKind<J>;
-    fn lift_to_interner(self, _cx: J) -> Option<Self::Lifted> {
-        Some(FnSigKind { flags: self.flags, _marker: PhantomData })
+    fn lift_to_interner(self, _cx: J) -> Self::Lifted {
+        FnSigKind { flags: self.flags, _marker: PhantomData }
     }
 }
 

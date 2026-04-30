@@ -381,8 +381,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
-            let instance = tcx.lift(*self).expect("could not lift for printing");
-            instance.print(&mut p)?;
+            tcx.lift(*self).print(&mut p)?;
             let s = p.into_buffer();
             f.write_str(&s)
         })

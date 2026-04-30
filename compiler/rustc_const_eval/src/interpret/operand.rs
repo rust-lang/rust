@@ -216,14 +216,11 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
         ty::tls::with(|tcx| {
             match self.imm {
                 Immediate::Scalar(s) => {
-                    if let Some(ty) = tcx.lift(self.layout.ty) {
-                        let s = FmtPrinter::print_string(tcx, Namespace::ValueNS, |p| {
-                            print_scalar(p, s, ty)
-                        })?;
-                        f.write_str(&s)?;
-                        return Ok(());
-                    }
-                    write!(f, "{:x}: {}", s, self.layout.ty)
+                    let ty = tcx.lift(self.layout.ty);
+                    let s = FmtPrinter::print_string(tcx, Namespace::ValueNS, |p| {
+                        print_scalar(p, s, ty)
+                    })?;
+                    f.write_str(&s)
                 }
                 Immediate::ScalarPair(a, b) => {
                     // FIXME(oli-obk): at least print tuples and slices nicely

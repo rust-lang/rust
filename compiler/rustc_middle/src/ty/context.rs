@@ -958,7 +958,7 @@ impl<'tcx> TyCtxt<'tcx> {
         (start, end)
     }
 
-    pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted> {
+    pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted {
         value.lift_to_interner(self)
     }
 
@@ -1689,7 +1689,8 @@ macro_rules! nop_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for $ty {
             type Lifted = $lifted;
-            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+            #[track_caller]
+            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
                 // Assert that the set has the right type.
                 // Given an argument that has an interned type, the return type has the type of
                 // the corresponding interner set. This won't actually return anything, we're
@@ -1709,12 +1710,10 @@ macro_rules! nop_lift {
                     _type_eq(&interner, &tcx.interners.$set);
                 }
 
-                tcx.interners
-                    .$set
-                    .contains_pointer_to(&InternedInSet(&*self.0.0))
-                    // SAFETY: `self` is interned and therefore valid
-                    // for the entire lifetime of the `TyCtxt`.
-                    .then(|| unsafe { mem::transmute(self) })
+                assert!(tcx.interners.$set.contains_pointer_to(&InternedInSet(&*self.0.0)));
+                // SAFETY: we just checked that `self` is interned and therefore is valid for the
+                // entire lifetime of the `TyCtxt`.
+                unsafe { mem::transmute(self) }
             }
         }
     };
@@ -1724,19 +1723,19 @@ macro_rules! nop_list_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a List<$ty> {
             type Lifted = &'tcx List<$lifted>;
-            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
                 // Assert that the set has the right type.
                 if false {
                     let _x: &InternedSet<'tcx, List<$lifted>> = &tcx.interners.$set;
                 }
 
                 if self.is_empty() {
-                    return Some(List::empty());
+                    return List::empty();
                 }
-                tcx.interners
-                    .$set
-                    .contains_pointer_to(&InternedInSet(self))
-                    .then(|| unsafe { mem::transmute(self) })
+                assert!(tcx.interners.$set.contains_pointer_to(&InternedInSet(self)));
+                // SAFETY: we just checked that `self` is interned and therefore is valid for the
+                // entire lifetime of the `TyCtxt`.
+                unsafe { mem::transmute(self) }
             }
         }
     };

@@ -864,7 +864,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let id = tables.intern_mir_const(cx.lift(*self).unwrap());
+        let id = tables.intern_mir_const(cx.lift(*self));
         match *self {
             mir::Const::Ty(ty, c) => MirConst::new(
                 crate::ty::ConstantKind::Ty(c.stable(tables, cx)),
@@ -885,8 +885,8 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                 MirConst::new(ConstantKind::ZeroSized, ty, id)
             }
             mir::Const::Val(val, ty) => {
-                let ty = cx.lift(ty).unwrap();
-                let val = cx.lift(val).unwrap();
+                let ty = cx.lift(ty);
+                let val = cx.lift(val);
                 let kind = ConstantKind::Allocated(alloc::new_allocation(ty, val, tables, cx));
                 let ty = ty.stable(tables, cx);
                 MirConst::new(kind, ty, id)

@@ -49,9 +49,9 @@ impl RustcInternal for DefId {
     fn internal<'tcx>(
         &self,
         tables: &mut Tables<'_, BridgeTys>,
-        tcx: impl InternalCx<'tcx>,
+        _tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        tcx.lift(tables.def_ids[*self]).unwrap()
+        tables.def_ids[*self]
     }
 }
 
@@ -78,7 +78,7 @@ impl RustcInternal for GenericArgKind {
             GenericArgKind::Type(ty) => ty.internal(tables, tcx).into(),
             GenericArgKind::Const(cnst) => cnst.internal(tables, tcx).into(),
         };
-        tcx.lift(arg).unwrap()
+        arg
     }
 }
 
@@ -101,7 +101,7 @@ impl RustcInternal for Ty {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        tcx.lift(tables.types[*self]).unwrap()
+        tcx.lift(tables.types[*self])
     }
 }
 
@@ -112,7 +112,7 @@ impl RustcInternal for TyConst {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        tcx.lift(tables.ty_consts[self.id]).unwrap()
+        tcx.lift(tables.ty_consts[self.id])
     }
 }
 
@@ -316,11 +316,10 @@ impl RustcInternal for FnSig {
             .set_abi(self.abi.internal(tables, tcx))
             .set_safety(self.safety.internal(tables, tcx))
             .set_c_variadic(self.c_variadic);
-        tcx.lift(rustc_ty::FnSig {
+        rustc_ty::FnSig {
             inputs_and_output: tcx.mk_type_list(&self.inputs_and_output.internal(tables, tcx)),
             fn_sig_kind,
-        })
-        .unwrap()
+        }
     }
 }
 
@@ -358,16 +357,13 @@ impl RustcInternal for MirConst {
         let constant = tables.mir_consts[self.id];
         match constant {
             rustc_middle::mir::Const::Ty(ty, ct) => {
-                rustc_middle::mir::Const::Ty(tcx.lift(ty).unwrap(), tcx.lift(ct).unwrap())
+                rustc_middle::mir::Const::Ty(tcx.lift(ty), tcx.lift(ct))
             }
             rustc_middle::mir::Const::Unevaluated(uneval, ty) => {
-                rustc_middle::mir::Const::Unevaluated(
-                    tcx.lift(uneval).unwrap(),
-                    tcx.lift(ty).unwrap(),
-                )
+                rustc_middle::mir::Const::Unevaluated(tcx.lift(uneval), tcx.lift(ty))
             }
             rustc_middle::mir::Const::Val(const_val, ty) => {
-                rustc_middle::mir::Const::Val(tcx.lift(const_val).unwrap(), tcx.lift(ty).unwrap())
+                rustc_middle::mir::Const::Val(tcx.lift(const_val), tcx.lift(ty))
             }
         }
     }
@@ -400,7 +396,7 @@ impl RustcInternal for Instance {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        tcx.lift(tables.instances[self.def]).unwrap()
+        tcx.lift(tables.instances[self.def])
     }
 }
 
@@ -553,9 +549,9 @@ impl RustcInternal for AllocId {
     fn internal<'tcx>(
         &self,
         tables: &mut Tables<'_, BridgeTys>,
-        tcx: impl InternalCx<'tcx>,
+        _tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        tcx.lift(tables.alloc_ids[*self]).unwrap()
+        tables.alloc_ids[*self]
     }
 }
 
@@ -691,7 +687,7 @@ impl RustcInternal for Layout {
         tables: &mut Tables<'_, BridgeTys>,
         tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        tcx.lift(tables.layouts[*self]).unwrap()
+        tcx.lift(tables.layouts[*self])
     }
 }
 

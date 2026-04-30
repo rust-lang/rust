@@ -45,11 +45,11 @@ where
 {
     type Lifted = Binder<U, T::Lifted>;
 
-    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
-        Some(Binder {
-            value: self.value.lift_to_interner(cx)?,
-            bound_vars: self.bound_vars.lift_to_interner(cx)?,
-        })
+    fn lift_to_interner(self, cx: U) -> Self::Lifted {
+        Binder {
+            value: self.value.lift_to_interner(cx),
+            bound_vars: self.bound_vars.lift_to_interner(cx),
+        }
     }
 }
 
@@ -991,12 +991,12 @@ where
 {
     type Lifted = Placeholder<U, T::Lifted>;
 
-    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
-        Some(Placeholder {
+    fn lift_to_interner(self, cx: U) -> Self::Lifted {
+        Placeholder {
             universe: self.universe,
-            bound: self.bound.lift_to_interner(cx)?,
+            bound: self.bound.lift_to_interner(cx),
             _tcx: PhantomData,
-        })
+        }
     }
 }
 
@@ -1186,8 +1186,8 @@ where
 {
     type Lifted = BoundTy<U>;
 
-    fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
-        Some(BoundTy { var: self.var, kind: self.kind.lift_to_interner(cx)? })
+    fn lift_to_interner(self, cx: U) -> Self::Lifted {
+        BoundTy { var: self.var, kind: self.kind.lift_to_interner(cx) }
     }
 }
 

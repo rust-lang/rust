@@ -9,13 +9,13 @@
 /// It would be more efficient if `TypedArena` provided a way to
 /// determine whether the address is in the allocated range.
 ///
-/// `None` is returned if the value or one of the components is not part
+/// Panics if the value or one of the components is not part
 /// of the provided context.
-/// For `Ty`, `None` can be returned if either the type interner doesn't
+/// For `Ty`, this can happen if either the type interner doesn't
 /// contain the `TyKind` key or if the address of the interned
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g., `()` or `u8`, was interned in a different context.
 pub trait Lift<I>: std::fmt::Debug {
     type Lifted: std::fmt::Debug;
-    fn lift_to_interner(self, cx: I) -> Option<Self::Lifted>;
+    fn lift_to_interner(self, cx: I) -> Self::Lifted;
 }

@@ -168,7 +168,7 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
             wc.push(parse_quote! { #ty: ::rustc_type_ir::lift::Lift<J, Lifted = #lifted_ty> });
             let bind = &bindings[index];
             quote! {
-                #bind.lift_to_interner(interner)?
+                #bind.lift_to_interner(interner)
             }
         })
     });
@@ -189,8 +189,8 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
             fn lift_to_interner(
                 self,
                 interner: J,
-            ) -> Option<Self::Lifted> {
-                Some(match self { #body_fold })
+            ) -> Self::Lifted {
+                match self { #body_fold }
             }
         },
     )
