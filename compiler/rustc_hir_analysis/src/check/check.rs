@@ -1709,6 +1709,10 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     "`repr(C)` types",
                     "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
                 ),
+                UnsuitedReason::Array => (
+                    "array types with non-trivial element types",
+                    "is an array with a non-trivial element type, so it is not guaranteed to have a trivial ABI in all situations.",
+                ),
             };
             Diag::new(
                 dcx,
@@ -1785,6 +1789,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         NonExhaustive,
         PrivateField,
         ReprC,
+        Array,
     }
 
     fn check_unsuited<'tcx>(
@@ -1797,7 +1802,15 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match ty.kind() {
             ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
-            ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
+            ty::Array(elem_ty, _) => {
+                let elem_layout = tcx.layout_of(typing_env.as_query_input(*elem_ty));
+                let elem_trivial = elem_layout.is_ok_and(|layout| layout.is_1zst());
+                if elem_trivial {
+                    check_unsuited(tcx, typing_env, *elem_ty)
+                } else {
+                    return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::Array });
+                }
+            }
             ty::Adt(def, args) => {
                 if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()

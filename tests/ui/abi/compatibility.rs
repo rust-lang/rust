@@ -145,11 +145,13 @@ macro_rules! test_abi_compatible {
             use super::*;
             // Declaring a `type` doesn't even check well-formedness, so we also declare a function.
             fn check_wf(_x: $t1, _y: $t2) {}
-            // Test argument and return value, `Rust` and `C` ABIs.
+            // Test argument and return value in various ABIs.
             #[rustc_abi(assert_eq)]
             type TestRust = (fn($t1) -> $t1, fn($t2) -> $t2);
             #[rustc_abi(assert_eq)]
             type TestC = (extern "C" fn($t1) -> $t1, extern "C" fn($t2) -> $t2);
+            #[rustc_abi(assert_eq)]
+            type TestSystem = (extern "system" fn($t1) -> $t1, extern "system" fn($t2) -> $t2);
         }
     };
 }
@@ -200,7 +202,8 @@ test_abi_compatible!(isize_int, isize, i64);
 
 // Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
-test_abi_compatible!(zst_array, Zst, [u8; 0]);
+test_abi_compatible!(zst_array, Zst, [(); 0]);
+test_abi_compatible!(zst_array_2, Zst, [(); 42]);
 test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
 // `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
@@ -220,7 +223,7 @@ struct TransparentWrapper1<T: ?Sized>(T);
 #[repr(transparent)]
 struct TransparentWrapper2<T: ?Sized>((), Zst, T);
 #[repr(transparent)]
-struct TransparentWrapper3<T>(T, [u8; 0], PhantomData<u64>);
+struct TransparentWrapper3<T>(T, [Zst; 42], PhantomData<u64>);
 #[repr(transparent)]
 union TransparentWrapperUnion<T> {
     nothing: (),
@@ -299,14 +302,14 @@ macro_rules! test_nonnull {
             test_abi_compatible!(result_ok_unit, Result<(), $t>, $t);
             test_abi_compatible!(result_err_zst, Result<$t, Zst>, $t);
             test_abi_compatible!(result_ok_zst, Result<Zst, $t>, $t);
-            test_abi_compatible!(result_err_arr, Result<$t, [i8; 0]>, $t);
-            test_abi_compatible!(result_ok_arr, Result<[i8; 0], $t>, $t);
+            test_abi_compatible!(result_err_arr, Result<$t, [(); 42]>, $t);
+            test_abi_compatible!(result_ok_arr, Result<[(); 42], $t>, $t);
             test_abi_compatible!(result_err_void, Result<$t, Void>, $t);
             test_abi_compatible!(result_ok_void, Result<Void, $t>, $t);
             test_abi_compatible!(either_err_zst, Either<$t, Zst>, $t);
             test_abi_compatible!(either_ok_zst, Either<Zst, $t>, $t);
             test_abi_compatible!(either2_err_zst, Either2<$t, Zst>, $t);
-            test_abi_compatible!(either2_err_arr, Either2<$t, [i8; 0]>, $t);
+            test_abi_compatible!(either2_err_arr, Either2<$t, [(); 42]>, $t);
         }
     }
 }
