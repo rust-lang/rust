@@ -32,6 +32,8 @@ pub(crate) struct GenericParamsFromOuterItem {
     #[subdiagnostic]
     pub(crate) refer_to_type_directly: Option<UseTypeDirectly>,
     #[subdiagnostic]
+    pub(crate) use_let: Option<GenericParamsFromOuterItemUseLet>,
+    #[subdiagnostic]
     pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
     #[subdiagnostic]
     pub(crate) static_or_const: Option<GenericParamsFromOuterItemStaticOrConst>,
@@ -86,6 +88,19 @@ pub(crate) struct GenericParamsFromOuterItemSugg {
     pub(crate) span: Span,
     pub(crate) snippet: String,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "try using a local `let` binding instead",
+    code = "let",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct GenericParamsFromOuterItemUseLet {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[suggestion(
     "refer to the type directly here instead",
