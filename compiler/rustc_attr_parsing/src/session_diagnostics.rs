@@ -50,7 +50,7 @@ pub(crate) struct DocAliasStartEnd<'a> {
 
 #[derive(Diagnostic)]
 #[diag("`#[{$name})]` is missing a `{$field}` argument")]
-pub(crate) struct CguFieldsMissing<'a> {
+pub(crate) struct FieldsMissing<'a> {
     #[primary_span]
     pub span: Span,
     pub name: &'a AttrPath,

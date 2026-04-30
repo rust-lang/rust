@@ -7,6 +7,7 @@ mod data;
 mod file_format;
 mod fs;
 mod load;
+mod rdr_hashes;
 mod save;
 mod work_product;
 

@@ -762,6 +762,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_partition_reused),
     rustc_attr!(TEST, rustc_partition_codegened),
     rustc_attr!(TEST, rustc_expected_cgu_reuse),
+    rustc_attr!(TEST, rustc_public_hash_changed),
+    rustc_attr!(TEST, rustc_public_hash_unchanged),
     rustc_attr!(TEST, rustc_dump_symbol_name),
     rustc_attr!(TEST, rustc_dump_def_path),
     rustc_attr!(TEST, rustc_mir),

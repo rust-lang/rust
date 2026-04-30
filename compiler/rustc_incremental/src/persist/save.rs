@@ -12,7 +12,7 @@ use tracing::debug;
 
 use super::data::*;
 use super::fs::*;
-use super::{clean, file_format, work_product};
+use super::{clean, file_format, rdr_hashes, work_product};
 use crate::assert_dep_graph::assert_dep_graph;
 use crate::errors;
 
@@ -41,6 +41,7 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
 
         sess.time("assert_dep_graph", || assert_dep_graph(tcx));
         sess.time("check_clean", || clean::check_clean_annotations(tcx));
+        sess.time("check_rdr_hashes", || rdr_hashes::check_rdr_test_attrs(tcx));
 
         par_join(
             move || {
