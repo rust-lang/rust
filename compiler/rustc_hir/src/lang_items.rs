@@ -8,7 +8,7 @@
 //! * Functions called by the compiler itself.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHashCtxt, StableHasher};
 use rustc_macros::{BlobDecodable, Encodable, HashStable, PrintAttribute};
 use rustc_span::{Symbol, kw, sym};
 
@@ -145,7 +145,7 @@ macro_rules! language_item_table {
 }
 
 impl HashStable for LangItem {
-    fn stable_hash<Hcx: HashStableContext>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }
 }

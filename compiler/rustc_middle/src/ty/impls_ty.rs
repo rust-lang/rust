@@ -7,7 +7,7 @@ use std::ptr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, HashingControls, StableHasher, ToStableHashKey,
+    HashStable, HashingControls, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use tracing::trace;
 
@@ -18,7 +18,7 @@ impl<'tcx, H, T> HashStable for &'tcx ty::list::RawList<H, T>
 where
     T: HashStable,
 {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // Note: this cache makes an *enormous* performance difference on certain benchmarks. E.g.
         // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
         // `deeply-nested-multi` can be ~4,000x slower(!)
@@ -52,7 +52,7 @@ where
     type KeyType = Fingerprint;
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Fingerprint {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
         self.stable_hash(hcx, &mut hasher);
         hasher.finish()
@@ -60,14 +60,14 @@ where
 }
 
 impl<'tcx> HashStable for ty::GenericArg<'tcx> {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.kind().stable_hash(hcx, hasher);
     }
 }
 
 // AllocIds get resolved to whatever they point to (to be stable)
 impl HashStable for mir::interpret::AllocId {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
@@ -77,7 +77,7 @@ impl HashStable for mir::interpret::AllocId {
 }
 
 impl HashStable for mir::interpret::CtfeProvenance {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.into_parts().stable_hash(hcx, hasher);
     }
 }

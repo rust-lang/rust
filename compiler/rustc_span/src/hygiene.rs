@@ -31,7 +31,7 @@ use std::{fmt, iter, mem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+    HashStable, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
@@ -209,7 +209,7 @@ impl LocalExpnId {
         })
     }
 
-    pub fn fresh(mut expn_data: ExpnData, hcx: impl HashStableContext) -> LocalExpnId {
+    pub fn fresh(mut expn_data: ExpnData, hcx: impl StableHashCtxt) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, hcx);
         HygieneData::with(|data| {
@@ -233,7 +233,7 @@ impl LocalExpnId {
     }
 
     #[inline]
-    pub fn set_expn_data(self, mut expn_data: ExpnData, hcx: impl HashStableContext) {
+    pub fn set_expn_data(self, mut expn_data: ExpnData, hcx: impl StableHashCtxt) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, hcx);
         HygieneData::with(|data| {
@@ -952,7 +952,7 @@ impl Span {
         allow_internal_unstable: Option<Arc<[Symbol]>>,
         reason: DesugaringKind,
         edition: Edition,
-        hcx: impl HashStableContext,
+        hcx: impl StableHashCtxt,
     ) -> Span {
         let expn_data = ExpnData {
             allow_internal_unstable,
@@ -1104,7 +1104,7 @@ impl ExpnData {
     }
 
     #[inline]
-    fn hash_expn(&self, hcx: &mut impl HashStableContext) -> Hash64 {
+    fn hash_expn(&self, hcx: &mut impl StableHashCtxt) -> Hash64 {
         let mut hasher = StableHasher::new();
         self.stable_hash(hcx, &mut hasher);
         hasher.finish()
@@ -1484,7 +1484,7 @@ pub fn raw_encode_syntax_context(
 /// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
 /// from another crate's metadata - since `ExpnHash` includes the stable crate id,
 /// collisions are only possible between `ExpnId`s within the same crate.
-fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContext) -> ExpnHash {
+fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
     hcx.assert_default_hashing_controls("ExpnData (disambiguator)");
@@ -1520,7 +1520,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
 }
 
 impl HashStable for SyntaxContext {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1536,7 +1536,7 @@ impl HashStable for SyntaxContext {
 }
 
 impl HashStable for ExpnId {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hcx.assert_default_hashing_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
@@ -1550,7 +1550,7 @@ impl HashStable for ExpnId {
 }
 
 impl HashStable for LocalExpnId {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_expn_id().stable_hash(hcx, hasher);
     }
 }

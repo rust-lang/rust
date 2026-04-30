@@ -82,7 +82,7 @@ fn hash_stable_derive_with_mode(
         quote!(::rustc_data_structures::stable_hasher::HashStable),
         quote! {
             #[inline]
-            fn stable_hash<__Hcx: ::rustc_data_structures::stable_hasher::HashStableContext>(
+            fn stable_hash<__Hcx: ::rustc_data_structures::stable_hasher::StableHashCtxt>(
                 &self,
                 __hcx: &mut __Hcx,
                 __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher

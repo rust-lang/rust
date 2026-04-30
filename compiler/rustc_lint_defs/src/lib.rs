@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
+    HashStable, StableCompare, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HirId, ItemLocalId};
@@ -138,7 +138,7 @@ impl LintExpectationId {
 
 impl HashStable for LintExpectationId {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.stable_hash(hcx, hasher);
@@ -158,7 +158,7 @@ impl ToStableHashKey for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
@@ -618,7 +618,7 @@ impl LintId {
 
 impl HashStable for LintId {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().stable_hash(hcx, hasher);
     }
 }

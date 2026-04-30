@@ -33,7 +33,7 @@ unsafe impl Tag for Tag2 {
 }
 
 impl HashStable for Tag2 {
-    fn stable_hash<Hcx: HashStableContext>(
+    fn stable_hash<Hcx: StableHashCtxt>(
         &self,
         hcx: &mut Hcx,
         hasher: &mut crate::stable_hasher::StableHasher,

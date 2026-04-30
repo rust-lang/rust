@@ -8,7 +8,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, HashingControls, StableHasher,
+    HashStable, HashingControls, StableHashCtxt, StableHasher,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -153,7 +153,7 @@ impl Hash for AdtDefData {
 }
 
 impl HashStable for AdtDefData {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
         }

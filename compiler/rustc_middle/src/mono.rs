@@ -6,7 +6,7 @@ use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+    HashStable, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
@@ -329,7 +329,7 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
 impl ToStableHashKey for MonoItem<'_> {
     type KeyType = Fingerprint;
 
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Self::KeyType {
         let mut hasher = StableHasher::new();
         self.stable_hash(hcx, &mut hasher);
         hasher.finish()

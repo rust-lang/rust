@@ -8,7 +8,7 @@ use std::{fmt, str};
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
+    HashStable, StableCompare, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, HashStable, symbols};
@@ -2635,7 +2635,7 @@ impl fmt::Display for Symbol {
 
 impl HashStable for Symbol {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_str().stable_hash(hcx, hasher);
     }
 }
@@ -2695,7 +2695,7 @@ impl fmt::Debug for ByteSymbol {
 
 impl HashStable for ByteSymbol {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_byte_str().stable_hash(hcx, hasher);
     }
 }

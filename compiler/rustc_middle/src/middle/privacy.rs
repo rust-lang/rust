@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_macros::HashStable;
@@ -281,7 +281,7 @@ impl<Id> Default for EffectiveVisibilities<Id> {
 }
 
 impl HashStable for EffectiveVisibilities {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EffectiveVisibilities { ref map } = *self;
         map.stable_hash(hcx, hasher);
     }

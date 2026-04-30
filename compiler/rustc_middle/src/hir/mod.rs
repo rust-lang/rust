@@ -12,7 +12,7 @@ use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
@@ -77,7 +77,7 @@ impl<'hir> Crate<'hir> {
 }
 
 impl HashStable for Crate<'_> {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let Crate { opt_hir_hash, .. } = self;
         opt_hir_hash.unwrap().stable_hash(hcx, hasher)
     }

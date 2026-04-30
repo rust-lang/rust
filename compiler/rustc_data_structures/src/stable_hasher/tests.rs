@@ -7,7 +7,7 @@ use super::*;
 // ways). The expected values depend on the hashing algorithm used, so they
 // need to be updated whenever StableHasher changes its hashing algorithm.
 
-impl HashStableContext for () {
+impl StableHashCtxt for () {
     fn span_hash_stable(&mut self, _: RawSpan, _: &mut StableHasher) {
         panic!();
     }
@@ -60,7 +60,7 @@ fn test_attribute_permutation() {
             }
 
             impl HashStable for Foo {
-                fn stable_hash<Hcx: HashStableContext>(
+                fn stable_hash<Hcx: StableHashCtxt>(
                     &self,
                     hcx: &mut Hcx,
                     hasher: &mut StableHasher,

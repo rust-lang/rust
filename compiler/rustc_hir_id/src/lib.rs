@@ -7,7 +7,7 @@
 use std::fmt::{self, Debug};
 
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableHasher, StableOrd, ToStableHashKey,
+    HashStable, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
@@ -57,7 +57,7 @@ impl rustc_index::Idx for OwnerId {
 
 impl HashStable for OwnerId {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).stable_hash(hcx, hasher);
     }
 }
@@ -66,7 +66,7 @@ impl ToStableHashKey for OwnerId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.to_def_id().to_stable_hash_key(hcx)
     }
 }
@@ -181,10 +181,7 @@ impl ToStableHashKey for HirId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(
-        &self,
-        hcx: &mut Hcx,
-    ) -> (DefPathHash, ItemLocalId) {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
         let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
         (def_path_hash, self.local_id)
     }

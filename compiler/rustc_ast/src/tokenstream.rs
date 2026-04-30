@@ -10,7 +10,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
 
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, HashStable, Walkable};
 use rustc_serialize::{Decodable, Encodable};
@@ -139,7 +139,7 @@ impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
 }
 
 impl HashStable for LazyAttrTokenStream {
-    fn stable_hash<Hcx: HashStableContext>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }
@@ -825,7 +825,7 @@ impl FromIterator<TokenTree> for TokenStream {
 }
 
 impl HashStable for TokenStream {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         for sub_tt in self.iter() {
             sub_tt.stable_hash(hcx, hasher);
         }

@@ -157,7 +157,7 @@ impl Parse for Newtype {
                 #gate_rustc_only
                 impl ::rustc_data_structures::stable_hasher::HashStable for #name {
                     fn stable_hash<
-                        __Hcx: ::rustc_data_structures::stable_hasher::HashStableContext
+                        __Hcx: ::rustc_data_structures::stable_hasher::StableHashCtxt
                     >(
                         &self,
                         hcx: &mut __Hcx,

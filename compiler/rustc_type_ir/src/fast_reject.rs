@@ -8,7 +8,7 @@ use rustc_ast_ir::Mutability;
 use rustc_data_structures::fingerprint::Fingerprint;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+    HashStable, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable};
@@ -53,7 +53,7 @@ impl<DefId: HashStable> ToStableHashKey for SimplifiedType<DefId> {
     type KeyType = Fingerprint;
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Fingerprint {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
         self.stable_hash(hcx, &mut hasher);
         hasher.finish()

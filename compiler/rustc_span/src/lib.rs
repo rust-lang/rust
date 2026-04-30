@@ -31,7 +31,7 @@
 extern crate self as rustc_span;
 
 use derive_where::derive_where;
-use rustc_data_structures::stable_hasher::HashStableContext;
+use rustc_data_structures::stable_hasher::StableHashCtxt;
 use rustc_data_structures::{AtomicRef, outline};
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -2788,7 +2788,7 @@ impl InnerSpan {
 }
 
 impl HashStable for Span {
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
         hcx.span_hash_stable(self.to_raw_span(), hasher)
     }

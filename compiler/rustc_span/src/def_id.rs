@@ -4,8 +4,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, RawDefId, RawDefPathHash, StableHasher, StableOrd,
-    ToStableHashKey,
+    HashStable, RawDefId, RawDefPathHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
@@ -429,21 +428,21 @@ rustc_data_structures::define_id_collections!(
 
 impl HashStable for DefId {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for LocalDefId {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).local_hash().stable_hash(hcx, hasher);
     }
 }
 
 impl HashStable for CrateNum {
     #[inline]
-    fn stable_hash<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_def_id().to_stable_hash_key(hcx).stable_crate_id().stable_hash(hcx, hasher);
     }
 }
@@ -452,7 +451,7 @@ impl ToStableHashKey for DefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
         DefPathHash::from_raw_def_path_hash(hcx.def_path_hash(self.to_raw_def_id()))
     }
 }
@@ -461,7 +460,7 @@ impl ToStableHashKey for LocalDefId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.to_def_id().to_stable_hash_key(hcx)
     }
 }
@@ -470,7 +469,7 @@ impl ToStableHashKey for CrateNum {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> DefPathHash {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
     }
 }
