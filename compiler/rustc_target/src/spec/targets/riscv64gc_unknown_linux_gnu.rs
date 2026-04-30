@@ -1,8 +1,4 @@
-use std::borrow::Cow;
-
-use crate::spec::{
-    Arch, CodeModel, LlvmAbi, SplitDebuginfo, Target, TargetMetadata, TargetOptions, base,
-};
+use crate::spec::{Arch, CodeModel, LlvmAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -22,7 +18,6 @@ pub(crate) fn target() -> Target {
             features: "+m,+a,+f,+d,+c,+zicsr,+zifencei".into(),
             llvm_abiname: LlvmAbi::Lp64d,
             max_atomic_width: Some(64),
-            supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             ..base::linux_gnu::opts()
         },
     }
