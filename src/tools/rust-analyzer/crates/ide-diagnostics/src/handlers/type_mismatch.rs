@@ -51,10 +51,10 @@ pub(crate) fn type_mismatch(
             format!(
                 "expected {}, found {}",
                 d.expected
-                    .display(ctx.sema.db, ctx.display_target)
+                    .display(ctx.db(), ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId),
                 d.actual
-                    .display(ctx.sema.db, ctx.display_target)
+                    .display(ctx.db(), ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId),
             ),
             display_range,
@@ -89,7 +89,7 @@ fn add_reference(
 
     let (_, mutability) = d.expected.as_reference()?;
     let actual_with_ref = d.actual.add_reference(ctx.db(), mutability);
-    if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
+    if !actual_with_ref.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
 
@@ -107,7 +107,7 @@ fn add_missing_ok_or_some(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range: expr_range } =
         ctx.sema.original_range_opt(expr.syntax())?;
@@ -126,14 +126,13 @@ fn add_missing_ok_or_some(
 
     let variant_name = if Some(expected_enum) == core_result { "Ok" } else { "Some" };
 
-    let wrapped_actual_ty =
-        expected_adt.ty(ctx.sema.db).instantiate(std::iter::once(d.actual.clone()));
+    let wrapped_actual_ty = expected_adt.ty(ctx.db()).instantiate([d.actual.clone()]);
 
-    if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
+    if !d.expected.could_unify_with(ctx.db(), &wrapped_actual_ty) {
         return None;
     }
 
-    let file_id = file_id.file_id(ctx.sema.db);
+    let file_id = file_id.file_id(ctx.db());
 
     if d.actual.is_unit() {
         if let Expr::BlockExpr(block) = &expr {
@@ -202,7 +201,7 @@ fn remove_unnecessary_wrapper(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let db = ctx.sema.db;
+    let db = ctx.db();
     let root = db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     // FIXME: support inside MacroCall?
@@ -233,7 +232,7 @@ fn remove_unnecessary_wrapper(
     let inner_arg = call_expr.arg_list()?.args().next()?;
 
     let file_id = expr_ptr.file_id.original_file(db);
-    let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.sema.db));
+    let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.db()));
     let editor;
     match inner_arg {
         // We're returning `()`
@@ -267,7 +266,7 @@ fn remove_unnecessary_wrapper(
         }
     }
 
-    builder.add_file_edits(file_id.file_id(ctx.sema.db), editor);
+    builder.add_file_edits(file_id.file_id(ctx.db()), editor);
     let name = format!("Remove unnecessary {}() wrapper", variant.name(db).as_str());
     acc.push(fix(
         "remove_unnecessary_wrapper",
@@ -284,7 +283,7 @@ fn remove_semicolon(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     if !d.actual.is_unit() {
         return None;
@@ -294,14 +293,14 @@ fn remove_semicolon(
     let expr_before_semi =
         block.statements().last().and_then(|s| ExprStmt::cast(s.syntax().clone()))?;
     let type_before_semi = ctx.sema.type_of_expr(&expr_before_semi.expr()?)?.original();
-    if !type_before_semi.could_coerce_to(ctx.sema.db, &d.expected) {
+    if !type_before_semi.could_coerce_to(ctx.db(), &d.expected) {
         return None;
     }
     let semicolon_range = expr_before_semi.semicolon_token()?.text_range();
 
     let edit = TextEdit::delete(semicolon_range);
     let source_change = SourceChange::from_text_edit(
-        expr_ptr.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
+        expr_ptr.file_id.original_file(ctx.db()).file_id(ctx.db()),
         edit,
     );
 
@@ -315,21 +314,21 @@ fn str_ref_to_owned(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let expected = d.expected.display(ctx.sema.db, ctx.display_target);
+    let expected = d.expected.display(ctx.db(), ctx.display_target);
     // FIXME do this properly
     let is_applicable = d.actual.strip_reference().is_str() && expected.to_string() == "String";
     if !is_applicable {
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = ctx.db().parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
     let hir::FileRange { file_id, range } = ctx.sema.original_range_opt(expr.syntax())?;
 
     let to_owned = ".to_owned()".to_owned();
 
     let edit = TextEdit::insert(range.end(), to_owned);
-    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit);
+    let source_change = SourceChange::from_text_edit(file_id.file_id(ctx.db()), edit);
     acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, range));
 
     Some(())
@@ -484,6 +483,22 @@ fn main() {
     }
 
     #[test]
+    fn add_mutable_reference_to_let_stmt() {
+        check_fix(
+            r#"
+fn main() {
+    let _test: &mut i32 = $0123;
+}
+            "#,
+            r#"
+fn main() {
+    let _test: &mut i32 = &mut 123;
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn add_reference_to_macro_call() {
         check_fix(
             r#"
@@ -506,22 +521,6 @@ macro_rules! thousand {
 fn test(_foo: &u64) {}
 fn main() {
     test(&thousand!());
-}
-            "#,
-        );
-    }
-
-    #[test]
-    fn add_mutable_reference_to_let_stmt() {
-        check_fix(
-            r#"
-fn main() {
-    let _test: &mut i32 = $0123;
-}
-            "#,
-            r#"
-fn main() {
-    let _test: &mut i32 = &mut 123;
 }
             "#,
         );
