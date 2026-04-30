@@ -1,9 +1,11 @@
 use rustc_abi::ExternAbi;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_hir::{LangItem, Safety};
+use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt as _};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::{self, Visitor};
@@ -139,6 +141,20 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             self.report_unsupported_abi(expr.span, callee_sig.abi());
         }
 
+        if caller_sig.c_variadic() {
+            self.report_c_variadic_caller(expr.span);
+        }
+
+        if callee_sig.c_variadic() {
+            self.report_c_variadic_callee(expr.span);
+        }
+
+        if let Err(ErrorGuaranteed { .. }) = self.found_errors {
+            // We do a lot of special-cased errors above; equating signatures below would duplicate
+            // them, so bail out if we emitted any errors so far.
+            return;
+        }
+
         // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
         // e.g.
         // ```
@@ -147,17 +163,33 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         // ```
         // we should think what is the expected behavior here.
         // (we should probably just accept this by revealing opaques?)
-        if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
-            let caller_ty = self.tcx.type_of(self.caller_def_id).skip_binder();
+        // Checks that the signatures of the caller and callee match (as a proxy to check that they
+        // are ABI compatible and tail calls can always happen).
+        //
+        // This ignores lifetimes and safety, as those do not affect ABI.
+        {
+            let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+            let cause = ObligationCause::misc(expr.span, self.caller_def_id);
 
-            self.report_signature_mismatch(
-                expr.span,
-                self.tcx.liberate_late_bound_regions(
-                    CRATE_DEF_ID.to_def_id(),
-                    caller_ty.fn_sig(self.tcx),
-                ),
-                self.tcx.liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
-            );
+            // Erase safety, as it never affects ABI and is thus irrelevant for tail calls
+            // TODO: check if there is a test for this
+            let caller_sig = caller_sig.set_safety(Safety::Safe);
+            let callee_sig = callee_sig.set_safety(Safety::Safe);
+
+            if let Err(_e) =
+                infcx.at(&cause, param_env).sub(DefineOpaqueTypes::No, caller_sig, callee_sig)
+            {
+                let caller_ty = self.tcx.type_of(self.caller_def_id).skip_binder();
+                self.report_signature_mismatch(
+                    expr.span,
+                    self.tcx.liberate_late_bound_regions(
+                        CRATE_DEF_ID.to_def_id(),
+                        caller_ty.fn_sig(self.tcx),
+                    ),
+                    self.tcx
+                        .liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
+                );
+            }
         }
 
         {
@@ -180,14 +212,6 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             if caller_needs_location {
                 self.report_track_caller_caller(expr.span);
             }
-        }
-
-        if caller_sig.c_variadic() {
-            self.report_c_variadic_caller(expr.span);
-        }
-
-        if callee_sig.c_variadic() {
-            self.report_c_variadic_callee(expr.span);
         }
     }
 
