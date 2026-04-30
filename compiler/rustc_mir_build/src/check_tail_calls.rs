@@ -29,7 +29,7 @@ pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), E
         tcx,
         thir,
         found_errors: Ok(()),
-        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_unil_borrowck_for_mir_build(tcx, def),
         is_closure,
         caller_def_id: def,
     };
@@ -154,14 +154,6 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             return;
         }
 
-        // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
-        // e.g.
-        // ```
-        // fn a() -> impl Sized { become b() } // ICE
-        // fn b() -> u8 { 0 }
-        // ```
-        // we should think what is the expected behavior here.
-        // (we should probably just accept this by revealing opaques?)
         // Checks that the signatures of the caller and callee match (as a proxy to check that they
         // are ABI compatible and tail calls can always happen).
         //
