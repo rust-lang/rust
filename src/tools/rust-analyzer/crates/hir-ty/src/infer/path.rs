@@ -11,7 +11,7 @@ use rustc_type_ir::inherent::{SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    InferenceDiagnostic, Span, ValueTyDefId,
+    ExplicitDropMethodUseKind, InferenceDiagnostic, Span, ValueTyDefId,
     infer::{
         InferenceTyLoweringVarsCtx, diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     },
@@ -32,6 +32,14 @@ impl<'db> InferenceContext<'_, 'db> {
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Ty<'db>)> {
         let (value, self_subst) = self.resolve_value_path_inner(path, id, false)?;
+
+        if let ValueNs::FunctionId(f) = value
+            && self.lang_items.Drop_drop.is_some_and(|drop_fn| drop_fn == f)
+        {
+            self.push_diagnostic(InferenceDiagnostic::ExplicitDropMethodUse {
+                kind: ExplicitDropMethodUseKind::Path(id),
+            });
+        }
 
         let (value_def, generic_def, substs) =
             match self.resolve_value_path(path, id, value, self_subst)? {

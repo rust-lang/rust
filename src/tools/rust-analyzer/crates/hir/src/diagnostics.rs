@@ -15,8 +15,9 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile, mod_path::ModPath, name::Name};
 use hir_ty::{
-    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, ParamEnvAndCrate,
-    PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    CastError, ExplicitDropMethodUseKind, InferenceDiagnostic, InferenceTyDiagnosticSource,
+    ParamEnvAndCrate, PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic,
+    TyLoweringDiagnosticKind,
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
     display::{DisplayTarget, HirDisplay},
@@ -106,6 +107,7 @@ diagnostics![AnyDiagnostic<'db> ->
     CastToUnsized<'db>,
     ExpectedArrayOrSlicePat<'db>,
     ExpectedFunction<'db>,
+    ExplicitDropMethodUse,
     FruInDestructuringAssignment,
     FunctionalRecordUpdateOnNonStruct,
     GenericDefaultRefersToSelf,
@@ -323,6 +325,11 @@ pub struct ExpectedFunction<'db> {
 pub struct CannotBeDereferenced<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct ExplicitDropMethodUse {
+    pub expr_or_path: Either<InFile<AstPtr<ast::MethodCallExpr>>, InFile<AstPtr<ast::Path>>>,
 }
 
 #[derive(Debug)]
@@ -1043,6 +1050,25 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::SolverDiagnostic(d) => {
                 let span = span_syntax(d.span)?;
                 Self::solver_diagnostic(db, &d.kind, span, env)?
+            }
+            InferenceDiagnostic::ExplicitDropMethodUse { kind } => {
+                let expr_or_path = match kind {
+                    ExplicitDropMethodUseKind::MethodCall(expr) => {
+                        let expr = expr_syntax(*expr)?;
+                        let expr = expr.with_value(expr.value.cast::<ast::MethodCallExpr>()?);
+                        Either::Left(expr)
+                    }
+                    ExplicitDropMethodUseKind::Path(path_expr_id) => {
+                        let syntax = expr_or_pat_syntax(*path_expr_id)?;
+                        let file_id = syntax.file_id;
+                        let syntax =
+                            syntax.with_value(syntax.value.cast::<ast::PathExpr>()?).to_node(db);
+                        let path = syntax.path()?;
+                        let path = InFile::new(file_id, AstPtr::new(&path));
+                        Either::Right(path)
+                    }
+                };
+                ExplicitDropMethodUse { expr_or_path }.into()
             }
         })
     }
