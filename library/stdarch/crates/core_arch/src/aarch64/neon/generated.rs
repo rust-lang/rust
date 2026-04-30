@@ -26051,11 +26051,11 @@ pub fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
     unsafe {
         simd_select(
             simd_lt::<int8x8_t, int8x8_t>(c, transmute(i8x8::splat(8))),
-            transmute(vqtbx1(
-                transmute(a),
-                transmute(vcombine_s8(b, crate::mem::zeroed())),
-                transmute(c),
-            )),
+            vqtbx1_s8(
+                a,
+                vcombine_s8(b, crate::mem::zeroed()),
+                vreinterpret_u8_s8(c),
+            ),
             a,
         )
     }
@@ -26070,11 +26070,7 @@ pub fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
     unsafe {
         simd_select(
             simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(8))),
-            transmute(vqtbx1(
-                transmute(a),
-                transmute(vcombine_u8(b, crate::mem::zeroed())),
-                c,
-            )),
+            vqtbx1_u8(a, vcombine_u8(b, crate::mem::zeroed()), c),
             a,
         )
     }
@@ -26089,11 +26085,7 @@ pub fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
     unsafe {
         simd_select(
             simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(8))),
-            transmute(vqtbx1(
-                transmute(a),
-                transmute(vcombine_p8(b, crate::mem::zeroed())),
-                c,
-            )),
+            vqtbx1_p8(a, vcombine_p8(b, crate::mem::zeroed()), c),
             a,
         )
     }
@@ -26105,7 +26097,13 @@ pub fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
-    unsafe { vqtbx1(transmute(a), transmute(vcombine_s8(b.0, b.1)), transmute(c)) }
+    unsafe {
+        simd_select(
+            simd_lt::<int8x8_t, int8x8_t>(c, transmute(i8x8::splat(16))),
+            vqtbx1_s8(a, vcombine_s8(b.0, b.1), vreinterpret_u8_s8(c)),
+            a,
+        )
+    }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx2_u8)"]
@@ -26114,7 +26112,13 @@ pub fn vtbx2_s8(a: int8x8_t, b: int8x8x2_t, c: int8x8_t) -> int8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t {
-    unsafe { transmute(vqtbx1(transmute(a), transmute(vcombine_u8(b.0, b.1)), c)) }
+    unsafe {
+        simd_select(
+            simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(16))),
+            vqtbx1_u8(a, vcombine_u8(b.0, b.1), c),
+            a,
+        )
+    }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx2_p8)"]
@@ -26123,7 +26127,13 @@ pub fn vtbx2_u8(a: uint8x8_t, b: uint8x8x2_t, c: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t {
-    unsafe { transmute(vqtbx1(transmute(a), transmute(vcombine_p8(b.0, b.1)), c)) }
+    unsafe {
+        simd_select(
+            simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(16))),
+            vqtbx1_p8(a, vcombine_p8(b.0, b.1), c),
+            a,
+        )
+    }
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbx3_s8)"]
@@ -26137,16 +26147,11 @@ pub fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
         vcombine_s8(b.2, unsafe { crate::mem::zeroed() }),
     );
     unsafe {
-        transmute(simd_select(
-            simd_lt::<int8x8_t, int8x8_t>(transmute(c), transmute(i8x8::splat(24))),
-            transmute(vqtbx2(
-                transmute(a),
-                transmute(x.0),
-                transmute(x.1),
-                transmute(c),
-            )),
+        simd_select(
+            simd_lt::<int8x8_t, int8x8_t>(c, transmute(i8x8::splat(24))),
+            vqtbx2_s8(a, x, vreinterpret_u8_s8(c)),
             a,
-        ))
+        )
     }
 }
 #[doc = "Extended table look-up"]
@@ -26161,11 +26166,11 @@ pub fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t {
         vcombine_u8(b.2, unsafe { crate::mem::zeroed() }),
     );
     unsafe {
-        transmute(simd_select(
-            simd_lt::<uint8x8_t, int8x8_t>(transmute(c), transmute(u8x8::splat(24))),
-            transmute(vqtbx2(transmute(a), transmute(x.0), transmute(x.1), c)),
+        simd_select(
+            simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(24))),
+            vqtbx2_u8(a, x, c),
             a,
-        ))
+        )
     }
 }
 #[doc = "Extended table look-up"]
@@ -26180,11 +26185,11 @@ pub fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
         vcombine_p8(b.2, unsafe { crate::mem::zeroed() }),
     );
     unsafe {
-        transmute(simd_select(
-            simd_lt::<poly8x8_t, int8x8_t>(transmute(c), transmute(u8x8::splat(24))),
-            transmute(vqtbx2(transmute(a), transmute(x.0), transmute(x.1), c)),
+        simd_select(
+            simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(24))),
+            vqtbx2_p8(a, x, c),
             a,
-        ))
+        )
     }
 }
 #[doc = "Extended table look-up"]
@@ -26194,12 +26199,12 @@ pub fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
+    let x = int8x16x2_t(vcombine_s8(b.0, b.1), vcombine_s8(b.2, b.3));
     unsafe {
-        vqtbx2(
-            transmute(a),
-            transmute(vcombine_s8(b.0, b.1)),
-            transmute(vcombine_s8(b.2, b.3)),
-            transmute(c),
+        simd_select(
+            simd_lt::<int8x8_t, int8x8_t>(c, transmute(i8x8::splat(32))),
+            vqtbx2_s8(a, x, vreinterpret_u8_s8(c)),
+            a,
         )
     }
 }
@@ -26210,13 +26215,13 @@ pub fn vtbx4_s8(a: int8x8_t, b: int8x8x4_t, c: int8x8_t) -> int8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t {
+    let x = uint8x16x2_t(vcombine_u8(b.0, b.1), vcombine_u8(b.2, b.3));
     unsafe {
-        transmute(vqtbx2(
-            transmute(a),
-            transmute(vcombine_u8(b.0, b.1)),
-            transmute(vcombine_u8(b.2, b.3)),
-            c,
-        ))
+        simd_select(
+            simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(32))),
+            vqtbx2_u8(a, x, c),
+            a,
+        )
     }
 }
 #[doc = "Extended table look-up"]
@@ -26226,13 +26231,13 @@ pub fn vtbx4_u8(a: uint8x8_t, b: uint8x8x4_t, c: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(test, assert_instr(tbx))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
+    let x = poly8x16x2_t(vcombine_p8(b.0, b.1), vcombine_p8(b.2, b.3));
     unsafe {
-        transmute(vqtbx2(
-            transmute(a),
-            transmute(vcombine_p8(b.0, b.1)),
-            transmute(vcombine_p8(b.2, b.3)),
-            c,
-        ))
+        simd_select(
+            simd_lt::<uint8x8_t, int8x8_t>(c, transmute(u8x8::splat(32))),
+            vqtbx2_p8(a, x, c),
+            a,
+        )
     }
 }
 #[doc = "Transpose vectors"]
