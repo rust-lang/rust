@@ -599,7 +599,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // the user. Avoid that.
         let mut deduplicate_errors = FxIndexSet::default();
 
-        let mut conjunctive_propagated_outlives_requirements =
+        // Each type test introduces one or more OR-constraints (e.g. T: 'a OR T: 'b),
+        // where at least one option in each constraint must be satisfied. All such
+        // constraints must be satisfied simultaneously: i.e., they form a conjunction (AND).
+        // We'll use this conjunctive requirement later on.
+        let mut conjunctive_propagated_outlives_requirement =
             propagated_outlives_requirements.is_some().then_some(vec![]);
 
         for type_test in &self.type_tests {
@@ -616,7 +620,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             if let Some(conjunctive_propagated_outlives_requirements) =
-                &mut conjunctive_propagated_outlives_requirements
+                &mut conjunctive_propagated_outlives_requirement
                 && self.try_promote_type_test(
                     infcx,
                     type_test,
@@ -646,8 +650,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        if let Some(mut conjunctive_requirements) = conjunctive_propagated_outlives_requirements
-            && !conjunctive_requirements.is_empty()
+        if let Some(mut conjunctive_requirement) = conjunctive_propagated_outlives_requirement
+            && !conjunctive_requirement.is_empty()
         {
             // We can simplify this list of list of requirements.
             //
@@ -682,7 +686,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 (ty, subject.outlived_free_region)
             }
 
-            let units: Vec<_> = conjunctive_requirements
+            let units: Vec<_> = conjunctive_requirement
                 .iter()
                 .filter_map(|r| {
                     let [r] = r.as_slice() else { return None };
@@ -691,7 +695,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .collect();
 
             // Remove the `or_requirement`s that contain any of the unit requirements.
-            conjunctive_requirements.retain(|or_requirement| {
+            conjunctive_requirement.retain(|or_requirement| {
                 or_requirement.len() == 1
                     || !or_requirement.iter().any(|r| {
                         let key = requirement_key(*r);
@@ -700,13 +704,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
             assert!(
-                !conjunctive_requirements.is_empty(),
+                !conjunctive_requirement.is_empty(),
                 "It should not be possible to remove every requirement."
             );
             // Propagate all requirements as is.
             propagated_outlives_requirements
                 .expect("conjunctive_requirements is `Some`, so this should be as well")
-                .extend(conjunctive_requirements.into_iter().flatten());
+                .extend(conjunctive_requirement.into_iter().flatten());
         }
     }
 
@@ -799,9 +803,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "There should always be at least 1 minimal region"
         );
 
-        let mut found_outlived_universal_region = false;
         for ur in minimal_universal_regions {
-            found_outlived_universal_region = true;
             debug!("universal_region_outlived_by ur={:?}", ur);
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
             debug!(?non_local_ub);
@@ -826,11 +828,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
             propagated_outlives_requirements.push(or_requirements);
         }
-        // If we succeed to promote the subject, i.e. it only contains non-local regions,
-        // and fail to prove the type test inside of the closure, the `lower_bound` has to
-        // also be at least as large as some universal region, as the type test is otherwise
-        // trivial.
-        assert!(found_outlived_universal_region);
         true
     }
 
