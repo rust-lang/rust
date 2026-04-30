@@ -71,6 +71,13 @@ pub enum CguFields {
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
+pub struct RDRFields {
+    pub crate_name: Symbol,
+    pub cfg: Symbol,
+    pub changed: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, StableHash, PrintAttribute)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -1385,6 +1392,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
     RustcPubTransparent(Span),
+
+    /// Represents `#[rustc_public_hash_changed]` and `#[rustc_public_hash_unchanged]`.
+    RustcRDRTestAttr(ThinVec<(Span, RDRFields)>),
 
     /// Represents `#[rustc_reallocator]`
     RustcReallocator,
