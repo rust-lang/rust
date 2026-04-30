@@ -108,7 +108,7 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_, '_>, kind: ArithKind
 
 fn is_primitive_int(ctx: &AssistContext<'_, '_>, expr: &ast::Expr) -> bool {
     match ctx.sema.type_of_expr(expr) {
-        Some(ty) => ty.adjusted().is_int_or_uint(),
+        Some(ty) => ty.adjusted().strip_references().is_int_or_uint(),
         _ => false,
     }
 }
@@ -195,6 +195,7 @@ mod tests {
         check_assist(
             replace_arith_with_checked,
             r#"
+//- minicore: add, builtin_impls
 fn main() {
     let x = 1 $0+ 2;
 }
@@ -212,6 +213,7 @@ fn main() {
         check_assist(
             replace_arith_with_saturating,
             r#"
+//- minicore: add, builtin_impls
 fn main() {
     let x = 1 $0+ 2;
 }
@@ -229,6 +231,7 @@ fn main() {
         check_assist(
             replace_arith_with_wrapping,
             r#"
+//- minicore: add, builtin_impls
 fn main() {
     let x = 1 $0+ 2;
 }
@@ -246,6 +249,7 @@ fn main() {
         check_assist(
             replace_arith_with_wrapping,
             r#"
+//- minicore: add, builtin_impls
 fn main() {
     let x = 1*3 $0+ 2;
 }
@@ -263,6 +267,7 @@ fn main() {
         check_assist(
             replace_arith_with_wrapping,
             r#"
+//- minicore: add, builtin_impls
 fn main() {
     let mut x = 1;
     x $0+= 2;
@@ -282,6 +287,7 @@ fn main() {
         check_assist_not_applicable(
             replace_arith_with_checked,
             r#"
+//- minicore: add, builtin_impls
 fn main() {
     let x = 1 $0+$0 2;
 }
