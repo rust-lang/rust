@@ -4,6 +4,12 @@ error[E0603]: module `baz` is private
 LL |         use bar::baz::{foo, bar};
    |                  ^^^ private module
    |
+help: consider importing this function through its public re-export instead:
+      bar::foo
+  --> $DIR/privacy1.rs:139:24
+   |
+LL |         use bar::baz::{foo, bar};
+   |                        ^^^
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:57:5
    |
@@ -16,12 +22,17 @@ error[E0603]: module `baz` is private
 LL |         use bar::baz::{foo, bar};
    |                  ^^^ private module
    |
+help: consider importing this function through its public re-export instead:
+      bar::bar
+  --> $DIR/privacy1.rs:139:29
+   |
+LL |         use bar::baz::{foo, bar};
+   |                             ^^^
 note: the module `baz` is defined here
   --> $DIR/privacy1.rs:57:5
    |
 LL |     mod baz {
    |     ^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:148:18
@@ -39,7 +50,9 @@ error[E0603]: module `i` is private
   --> $DIR/privacy1.rs:172:20
    |
 LL |     use self::foo::i::A;
-   |                    ^ private module
+   |                    ^  - struct `A` is not publicly re-exported
+   |                    |
+   |                    private module
    |
 note: the module `i` is defined here
   --> $DIR/privacy1.rs:177:9
