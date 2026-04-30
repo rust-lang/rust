@@ -32,8 +32,34 @@ pub(crate) fn elems_to_string<T>(elems: &SmallVec<[T; 1]>, f: impl Fn(&T) -> Str
     s
 }
 
-pub(crate) fn unreachable_to_string<T>(_: &T) -> String {
-    unreachable!()
+fn fragment_to_string(fragment: &AstFragment) -> String {
+    match fragment {
+        AstFragment::OptExpr(Some(expr))
+        | AstFragment::MethodReceiverExpr(expr)
+        | AstFragment::Expr(expr) => pprust::expr_to_string(expr),
+        AstFragment::Pat(ast) => pprust::pat_to_string(ast),
+        AstFragment::Ty(ast) => pprust::ty_to_string(ast),
+        AstFragment::Stmts(ast) => elems_to_string(ast, pprust::stmt_to_string),
+        AstFragment::Items(ast) => elems_to_string(ast, |ast| pprust::item_to_string(ast)),
+        AstFragment::TraitItems(ast)
+        | AstFragment::ImplItems(ast)
+        | AstFragment::TraitImplItems(ast) => {
+            elems_to_string(ast, |ast| pprust::assoc_item_to_string(ast))
+        }
+        AstFragment::ForeignItems(ast) => {
+            elems_to_string(ast, |ast| pprust::foreign_item_to_string(ast))
+        }
+        AstFragment::OptExpr(None)
+        | AstFragment::Crate(_)
+        | AstFragment::Arms(_)
+        | AstFragment::ExprFields(_)
+        | AstFragment::PatFields(_)
+        | AstFragment::GenericParams(_)
+        | AstFragment::Params(_)
+        | AstFragment::FieldDefs(_)
+        | AstFragment::Variants(_)
+        | AstFragment::WherePredicates(_) => unreachable!(),
+    }
 }
 
 pub(crate) fn update_bang_macro_stats(
@@ -98,7 +124,7 @@ pub(crate) fn update_attr_macro_stats(
     let input = format!(
         "{}\n{}",
         pprust::attribute_to_string(attr),
-        fragment_kind.expect_from_annotatables(iter::once(item)).to_string(),
+        fragment_to_string(&fragment_kind.expect_from_annotatables(iter::once(item))),
     );
     update_macro_stats(ecx, MacroKind::Attr, fragment_kind, span, path, &input, fragment);
 }
@@ -129,7 +155,7 @@ pub(crate) fn update_macro_stats(
     // Measure the size of the output by pretty-printing it and counting
     // the lines and bytes.
     let name = Symbol::intern(&pprust::path_to_string(path));
-    let output = fragment.to_string();
+    let output = fragment_to_string(fragment);
     let num_lines = output.trim_end().split('\n').count();
     let num_bytes = output.len();
 

@@ -55,14 +55,11 @@ macro_rules! ast_fragments {
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
             $(one
-                fn $mut_visit_ast:ident;
                 fn $visit_ast:ident;
-                fn $ast_to_string:path;
             )?
             $(many
                 fn $flat_map_ast_elt:ident;
                 fn $visit_ast_elt:ident($($args:tt)*);
-                fn $ast_to_string_elt:path;
             )?
             fn $make_ast:ident;
         })*
@@ -71,7 +68,6 @@ macro_rules! ast_fragments {
         /// Can also serve as an input and intermediate result for macro expansion operations.
         pub enum AstFragment {
             OptExpr(Option<Box<ast::Expr>>),
-            MethodReceiverExpr(Box<ast::Expr>),
             $($Kind($AstTy),)*
         }
 
@@ -79,7 +75,6 @@ macro_rules! ast_fragments {
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum AstFragmentKind {
             OptExpr,
-            MethodReceiverExpr,
             $($Kind,)*
         }
 
@@ -87,7 +82,6 @@ macro_rules! ast_fragments {
             pub fn name(self) -> &'static str {
                 match self {
                     AstFragmentKind::OptExpr => "expression",
-                    AstFragmentKind::MethodReceiverExpr => "expression",
                     $(AstFragmentKind::$Kind => $kind_name,)*
                 }
             }
@@ -96,8 +90,6 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),
-                    AstFragmentKind::MethodReceiverExpr =>
-                        result.make_expr().map(AstFragment::MethodReceiverExpr),
                     $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
                 }
             }
@@ -120,21 +112,14 @@ macro_rules! ast_fragments {
             pub(crate) fn make_opt_expr(self) -> Option<Box<ast::Expr>> {
                 match self {
                     AstFragment::OptExpr(expr) => expr,
-                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
-                }
-            }
-
-            pub(crate) fn make_method_receiver_expr(self) -> Box<ast::Expr> {
-                match self {
-                    AstFragment::MethodReceiverExpr(expr) => expr,
-                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
+                    _ => panic!("AstFragment::make_opt_expr called on the wrong kind of fragment"),
                 }
             }
 
             $(pub fn $make_ast(self) -> $AstTy {
                 match self {
                     AstFragment::$Kind(ast) => ast,
-                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
+                    _ => panic!("AstFragment::{} called on the wrong kind of fragment", stringify!($make_ast)),
                 }
             })*
 
@@ -149,8 +134,7 @@ macro_rules! ast_fragments {
                             *opt_expr = vis.filter_map_expr(expr)
                         }
                     }
-                    AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
-                    $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
+                    $($(AstFragment::$Kind(ast) => vis.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ast) =>
                         ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast, $($args)*)),)?)*
                 }
@@ -160,26 +144,10 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragment::OptExpr(Some(expr)) => try_visit!(visitor.visit_expr(expr)),
                     AstFragment::OptExpr(None) => {}
-                    AstFragment::MethodReceiverExpr(expr) => try_visit!(visitor.visit_method_receiver_expr(expr)),
                     $($(AstFragment::$Kind(ast) => try_visit!(visitor.$visit_ast(ast)),)?)*
                     $($(AstFragment::$Kind(ast) => walk_list!(visitor, $visit_ast_elt, &ast[..], $($args)*),)?)*
                 }
                 V::Result::output()
-            }
-
-            pub(crate) fn to_string(&self) -> String {
-                match self {
-                    AstFragment::OptExpr(Some(expr)) => pprust::expr_to_string(expr),
-                    AstFragment::OptExpr(None) => unreachable!(),
-                    AstFragment::MethodReceiverExpr(expr) => pprust::expr_to_string(expr),
-                    $($(AstFragment::$Kind(ast) => $ast_to_string(ast),)?)*
-                    $($(
-                        AstFragment::$Kind(ast) => {
-                            // The closure unwraps a `P` if present, or does nothing otherwise.
-                            elems_to_string(&*ast, |ast| $ast_to_string_elt(&*ast))
-                        }
-                    )?)*
-                }
             }
         }
 
@@ -195,94 +163,97 @@ macro_rules! ast_fragments {
 ast_fragments! {
     Expr(Box<ast::Expr>) {
         "expression";
-        one fn visit_expr; fn visit_expr; fn pprust::expr_to_string;
+        one fn visit_expr;
         fn make_expr;
+    }
+    MethodReceiverExpr(Box<ast::Expr>) {
+        "expression";
+        one fn visit_method_receiver_expr;
+        fn make_method_receiver_expr;
     }
     Pat(Box<ast::Pat>) {
         "pattern";
-        one fn visit_pat; fn visit_pat; fn pprust::pat_to_string;
+        one fn visit_pat;
         fn make_pat;
     }
     Ty(Box<ast::Ty>) {
         "type";
-        one fn visit_ty; fn visit_ty; fn pprust::ty_to_string;
+        one fn visit_ty;
         fn make_ty;
     }
     Stmts(SmallVec<[ast::Stmt; 1]>) {
         "statement";
-        many fn flat_map_stmt; fn visit_stmt(); fn pprust::stmt_to_string;
+        many fn flat_map_stmt; fn visit_stmt();
         fn make_stmts;
     }
     Items(SmallVec<[Box<ast::Item>; 1]>) {
         "item";
-        many fn flat_map_item; fn visit_item(); fn pprust::item_to_string;
+        many fn flat_map_item; fn visit_item();
         fn make_items;
     }
     TraitItems(SmallVec<[Box<ast::AssocItem>; 1]>) {
         "trait item";
         many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Trait);
-            fn pprust::assoc_item_to_string;
         fn make_trait_items;
     }
     ImplItems(SmallVec<[Box<ast::AssocItem>; 1]>) {
         "impl item";
         many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Impl { of_trait: false });
-            fn pprust::assoc_item_to_string;
         fn make_impl_items;
     }
     TraitImplItems(SmallVec<[Box<ast::AssocItem>; 1]>) {
         "impl item";
         many fn flat_map_assoc_item; fn visit_assoc_item(AssocCtxt::Impl { of_trait: true });
-            fn pprust::assoc_item_to_string;
         fn make_trait_impl_items;
     }
     ForeignItems(SmallVec<[Box<ast::ForeignItem>; 1]>) {
         "foreign item";
-        many fn flat_map_foreign_item; fn visit_foreign_item(); fn pprust::foreign_item_to_string;
+        many fn flat_map_foreign_item; fn visit_foreign_item();
         fn make_foreign_items;
     }
     Arms(SmallVec<[ast::Arm; 1]>) {
         "match arm";
-        many fn flat_map_arm; fn visit_arm(); fn unreachable_to_string;
+        many fn flat_map_arm; fn visit_arm();
         fn make_arms;
     }
     ExprFields(SmallVec<[ast::ExprField; 1]>) {
         "field expression";
-        many fn flat_map_expr_field; fn visit_expr_field(); fn unreachable_to_string;
+        many fn flat_map_expr_field; fn visit_expr_field();
         fn make_expr_fields;
     }
     PatFields(SmallVec<[ast::PatField; 1]>) {
         "field pattern";
-        many fn flat_map_pat_field; fn visit_pat_field(); fn unreachable_to_string;
+        many fn flat_map_pat_field; fn visit_pat_field();
         fn make_pat_fields;
     }
     GenericParams(SmallVec<[ast::GenericParam; 1]>) {
         "generic parameter";
-        many fn flat_map_generic_param; fn visit_generic_param(); fn unreachable_to_string;
+        many fn flat_map_generic_param; fn visit_generic_param();
         fn make_generic_params;
     }
     Params(SmallVec<[ast::Param; 1]>) {
         "function parameter";
-        many fn flat_map_param; fn visit_param(); fn unreachable_to_string;
+        many fn flat_map_param; fn visit_param();
         fn make_params;
     }
     FieldDefs(SmallVec<[ast::FieldDef; 1]>) {
         "field";
-        many fn flat_map_field_def; fn visit_field_def(); fn unreachable_to_string;
+        many fn flat_map_field_def; fn visit_field_def();
         fn make_field_defs;
     }
     Variants(SmallVec<[ast::Variant; 1]>) {
-        "variant"; many fn flat_map_variant; fn visit_variant(); fn unreachable_to_string;
+        "variant";
+        many fn flat_map_variant; fn visit_variant();
         fn make_variants;
     }
     WherePredicates(SmallVec<[ast::WherePredicate; 1]>) {
         "where predicate";
-        many fn flat_map_where_predicate; fn visit_where_predicate(); fn unreachable_to_string;
+        many fn flat_map_where_predicate; fn visit_where_predicate();
         fn make_where_predicates;
     }
     Crate(ast::Crate) {
         "crate";
-        one fn visit_crate; fn visit_crate; fn unreachable_to_string;
+        one fn visit_crate;
         fn make_crate;
     }
 }
