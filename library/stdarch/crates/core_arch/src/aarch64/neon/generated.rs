@@ -10756,7 +10756,7 @@ pub fn vfmlal_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlal_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_high_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_laneq_high_f16)"]
@@ -10773,7 +10773,7 @@ pub fn vfmlal_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlal_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_high_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_lane_high_f16)"]
@@ -10790,7 +10790,7 @@ pub fn vfmlalq_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlalq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_high_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_laneq_high_f16)"]
@@ -10807,7 +10807,7 @@ pub fn vfmlalq_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlalq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_high_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_lane_low_f16)"]
@@ -10824,7 +10824,7 @@ pub fn vfmlal_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlal_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_low_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_laneq_low_f16)"]
@@ -10841,7 +10841,7 @@ pub fn vfmlal_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlal_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_low_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_lane_low_f16)"]
@@ -10858,7 +10858,7 @@ pub fn vfmlalq_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlalq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_low_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_laneq_low_f16)"]
@@ -10875,7 +10875,7 @@ pub fn vfmlalq_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlalq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_low_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_low_f16)"]
@@ -10964,7 +10964,7 @@ pub fn vfmlsl_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlsl_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_high_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_laneq_high_f16)"]
@@ -10981,7 +10981,7 @@ pub fn vfmlsl_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlsl_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_high_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_lane_high_f16)"]
@@ -10998,7 +10998,7 @@ pub fn vfmlslq_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlslq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_high_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_laneq_high_f16)"]
@@ -11015,7 +11015,7 @@ pub fn vfmlslq_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlslq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_high_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_lane_low_f16)"]
@@ -11032,7 +11032,7 @@ pub fn vfmlsl_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlsl_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_low_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_laneq_low_f16)"]
@@ -11049,7 +11049,7 @@ pub fn vfmlsl_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlsl_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_low_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_lane_low_f16)"]
@@ -11066,7 +11066,7 @@ pub fn vfmlslq_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlslq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_low_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_laneq_low_f16)"]
@@ -11083,7 +11083,7 @@ pub fn vfmlslq_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlslq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_low_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_low_f16)"]
