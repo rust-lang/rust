@@ -396,7 +396,7 @@ pub(crate) fn parse_with_map(
 /// This resolves the [MacroCallId] to check if it is a derive macro if so get the [macro_arg] for the derive.
 /// Other wise return the [macro_arg] for the macro_call_id.
 ///
-/// This is not connected to the database so it does not cached the result. However, the inner [macro_arg] query is
+/// This is not connected to the database so it does not cache the result. However, the inner [macro_arg] query is
 #[allow(deprecated)] // we are macro_arg_considering_derives
 fn macro_arg_considering_derives<'db>(
     db: &'db dyn ExpandDatabase,
