@@ -3,6 +3,7 @@ use std::mem;
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
+use rustc_ast::HasAttrs;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
@@ -63,6 +64,20 @@ impl<'a> Parser<'a> {
         let post_attr_lo = self.token.span;
         let mut items: ThinVec<Box<_>> = ThinVec::new();
 
+        // Collect file/module-level leading comments.
+        let leading_comments: Vec<rustc_ast::Attribute> = if !post_attr_lo.is_dummy() {
+            let file_start =
+                self.psess.source_map().lookup_source_file(post_attr_lo.lo()).start_pos;
+            let first_lo = post_attr_lo.lo();
+            if file_start < first_lo {
+                self.collect_comments_in_range(file_start, first_lo, post_attr_lo)
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
         // There shouldn't be any stray semicolons before or after items.
         // `parse_item` consumes the appropriate semicolons so any leftover is an error.
         loop {
@@ -71,6 +86,37 @@ impl<'a> Parser<'a> {
                 break;
             };
             items.push(item);
+        }
+
+        // Prepend the first comments in a file to the first item.
+        if !leading_comments.is_empty() {
+            if let Some(first_item) = items.first_mut() {
+                (**first_item).visit_attrs(|item_attrs| {
+                    let mut new_attrs = rustc_ast::AttrVec::from(leading_comments.clone());
+                    new_attrs.extend(item_attrs.drain(..));
+                    *item_attrs = new_attrs;
+                });
+            }
+        }
+
+        // Collect trailing comments and attach them to the last item's attrs so
+        // they are preserved in the AST.
+        if !self.prev_token.span.is_dummy() {
+            let anchor = self.prev_token.span;
+            let term_hi = if self.token.kind == token::Eof {
+                self.psess.source_map().lookup_source_file(anchor.lo()).end_position()
+            } else {
+                self.token.span.lo()
+            };
+            let from = items.last().map_or(post_attr_lo.hi(), |i| i.span.hi());
+            if from < term_hi {
+                let trailing = self.collect_comments_in_range(from, term_hi, anchor);
+                if !trailing.is_empty() {
+                    if let Some(last_item) = items.last_mut() {
+                        (**last_item).visit_attrs(|item_attrs| item_attrs.extend(trailing));
+                    }
+                }
+            }
         }
 
         if !self.eat(term) {
@@ -594,7 +640,8 @@ impl<'a> Parser<'a> {
 
     /// Recover if we parsed attributes and expected an item but there was none.
     fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
-        let ([start @ end] | [start, .., end]) = attrs else {
+        let real_attrs: Vec<&Attribute> = attrs.iter().filter(|a| !a.is_comment()).collect();
+        let ([start @ end] | [start, .., end]) = real_attrs.as_slice() else {
             return Ok(());
         };
         let msg = if end.is_doc_comment() {

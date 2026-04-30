@@ -44,7 +44,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
@@ -1109,6 +1109,31 @@ impl<'a> Parser<'a> {
 
         // Diagnostics.
         self.expected_token_types.clear();
+    }
+
+    pub(crate) fn collect_comments_in_range(
+        &self,
+        from: BytePos,
+        to: BytePos,
+        anchor: Span,
+    ) -> Vec<rustc_ast::Attribute> {
+        let all = self.psess.all_comments.lock();
+        all.iter()
+            .filter(|&&(pos, _, _)| pos >= from && pos < to)
+            .map(|&(pos, kind, data)| {
+                let comment_len = match kind {
+                    rustc_ast::token::CommentKind::Line => 2 + data.as_str().len(),
+                    rustc_ast::token::CommentKind::Block => 4 + data.as_str().len(),
+                };
+                let end = BytePos(pos.0 + comment_len as u32);
+                rustc_ast::attr::mk_comment(
+                    &self.psess.attr_id_generator,
+                    kind,
+                    data,
+                    anchor.with_lo(pos).with_hi(end),
+                )
+            })
+            .collect()
     }
 
     /// Advance the parser by one token.

@@ -428,7 +428,7 @@ impl<'a> State<'a> {
             //     let _ = add_attr!(1 + 1);
             //
             // We must pretty-print `#[attr] (1 + 1)` not `#[attr] 1 + 1`.
-            !attrs.is_empty()
+            attrs.iter().any(|a| !a.is_comment())
                 && matches!(
                     expr.kind,
                     ast::ExprKind::Binary(..)

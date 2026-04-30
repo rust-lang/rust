@@ -696,6 +696,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 ));
                 self.hardbreak()
             }
+            ast::AttrKind::Comment(comment_kind, data) => {
+                // Printing here too would duplicate every comment.
+                // Only emit from the AST attribute when there is no source text available.
+                if self.comments().is_some() {
+                    return false;
+                }
+                match comment_kind {
+                    ast::token::CommentKind::Line => {
+                        self.word(format!("//{}", data));
+                    }
+                    ast::token::CommentKind::Block => {
+                        self.word(format!("/*{}*/", data));
+                    }
+                }
+                self.hardbreak()
+            }
         }
         true
     }
@@ -1095,6 +1111,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 doc_comment_to_string(DocFragmentKind::Sugared(comment_kind), attr_style, data)
                     .into()
             }
+            token::Comment(comment_kind, data) => match comment_kind {
+                token::CommentKind::Line => format!("//{data}").into(),
+                token::CommentKind::Block => format!("/*{data}*/").into(),
+            },
             token::Eof => "<eof>".into(),
         }
     }

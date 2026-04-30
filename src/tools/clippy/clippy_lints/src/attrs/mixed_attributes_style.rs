@@ -28,6 +28,7 @@ impl From<&AttrKind> for SimpleAttrKind {
                 Self::Normal(path_symbols)
             },
             AttrKind::DocComment(..) => Self::Doc,
+            AttrKind::Comment(..) => Self::Doc,
         }
     }
 }

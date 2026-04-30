@@ -524,6 +524,10 @@ pub enum TokenKind {
     /// similarly to symbols in string literal tokens.
     DocComment(CommentKind, ast::AttrStyle, Symbol),
 
+    /// A regular (non-doc) comment token.
+    /// `Symbol` is the comment's data excluding its delimiters (`//`, `/*`, `*/`).
+    Comment(CommentKind, Symbol),
+
     /// End Of File
     Eof,
 }
@@ -654,8 +658,8 @@ impl Token {
             | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
             OpenParen | CloseParen | OpenBrace | CloseBrace | OpenBracket | CloseBracket
-            | OpenInvisible(_) | CloseInvisible(_) | Literal(..) | DocComment(..) | Ident(..)
-            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Eof => false,
+            | OpenInvisible(_) | CloseInvisible(_) | Literal(..) | DocComment(..) | Comment(..)
+            | Ident(..) | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Eof => false,
         }
     }
 
@@ -1072,7 +1076,7 @@ impl Token {
                 | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question
                 | OpenParen | CloseParen | OpenBrace | CloseBrace | OpenBracket | CloseBracket
                 | OpenInvisible(_) | CloseInvisible(_) | Literal(..) | Ident(..) | NtIdent(..)
-                | Lifetime(..) | NtLifetime(..) | DocComment(..) | Eof,
+                | Lifetime(..) | NtLifetime(..) | DocComment(..) | Comment(..) | Eof,
                 _,
             ) => {
                 return None;

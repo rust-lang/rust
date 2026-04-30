@@ -62,7 +62,7 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
             AttrKind::Normal(normal) => &normal.item,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => panic!("unexpected (doc) comment"),
         }
     }
 
@@ -71,14 +71,14 @@ impl Attribute {
     pub fn replace_args(&mut self, new_args: AttrItemKind) {
         match &mut self.kind {
             AttrKind::Normal(normal) => normal.item.args = new_args,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => panic!("unexpected (doc) comment"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(normal) => normal.item,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => panic!("unexpected (doc) comment"),
         }
     }
 }
@@ -94,7 +94,7 @@ impl AttributeExt for Attribute {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
-            AttrKind::DocComment(..) => None,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => None,
         }
     }
 
@@ -103,7 +103,7 @@ impl AttributeExt for Attribute {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span> {
         match self.kind {
-            AttrKind::Normal(..) => None,
+            AttrKind::Normal(..) | AttrKind::Comment(..) => None,
             AttrKind::DocComment(..) => Some(self.span),
         }
     }
@@ -118,7 +118,7 @@ impl AttributeExt for Attribute {
                     None
                 }
             }
-            AttrKind::DocComment(..) => None,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => None,
         }
     }
 
@@ -127,14 +127,14 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(p) => {
                 Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
             }
-            AttrKind::DocComment(_, _) => None,
+            AttrKind::DocComment(_, _) | AttrKind::Comment(_, _) => None,
         }
     }
 
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
-            AttrKind::DocComment(_, _) => None,
+            AttrKind::DocComment(_, _) | AttrKind::Comment(_, _) => None,
         }
     }
 
@@ -150,7 +150,7 @@ impl AttributeExt for Attribute {
                         .zip(name)
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
-            AttrKind::DocComment(..) => false,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => false,
         }
     }
 
@@ -176,7 +176,7 @@ impl AttributeExt for Attribute {
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::DocComment(..) => None,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => None,
         }
     }
 
@@ -198,7 +198,7 @@ impl AttributeExt for Attribute {
     fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.value_str(),
-            AttrKind::DocComment(..) => None,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => None,
         }
     }
 
@@ -238,6 +238,7 @@ impl AttributeExt for Attribute {
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
+            AttrKind::Comment(..) => None,
             AttrKind::Normal(normal)
                 if normal.item.path == sym::doc && normal.item.value_str().is_some() =>
             {
@@ -279,6 +280,11 @@ impl Attribute {
         self.style
     }
 
+    /// Returns `true` if this is a regular (non-doc) comment (`//` or `/* */`).
+    pub fn is_comment(&self) -> bool {
+        matches!(self.kind, AttrKind::Comment(..))
+    }
+
     pub fn may_have_doc_links(&self) -> bool {
         self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
             || self.deprecation_note().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
@@ -288,14 +294,14 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
-            AttrKind::DocComment(..) => None,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => None,
         }
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_kind(),
-            AttrKind::DocComment(..) => None,
+            AttrKind::DocComment(..) | AttrKind::Comment(..) => None,
         }
     }
 
@@ -311,6 +317,9 @@ impl Attribute {
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
             )],
+            // Regular comments are never part of any real token stream; returning
+            // an empty vec prevents them from being injected into macro inputs.
+            AttrKind::Comment(..) => vec![],
         }
     }
 
@@ -735,6 +744,20 @@ pub fn mk_doc_comment(
     span: Span,
 ) -> Attribute {
     Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
+}
+
+pub fn mk_comment(
+    g: &AttrIdGenerator,
+    comment_kind: CommentKind,
+    data: Symbol,
+    span: Span,
+) -> Attribute {
+    Attribute {
+        kind: AttrKind::Comment(comment_kind, data),
+        id: g.mk_attr_id(),
+        style: AttrStyle::Outer,
+        span,
+    }
 }
 
 fn mk_attr(

@@ -608,7 +608,7 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
                 AttrKind::Normal(normal_attr) => {
                     !matches!(normal_attr.item.args, AttrItemKind::Unparsed(AttrArgs::Eq { .. }))
                 },
-                AttrKind::DocComment(..) => true,
+                AttrKind::DocComment(..) | AttrKind::Comment(..) => true,
             }
         {
             span_lint_and_help(
