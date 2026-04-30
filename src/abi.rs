@@ -224,15 +224,8 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
         // FIXME(antoyo): Should we do something with `FnAbiGcc::fn_attributes`?
-        let FnAbiGcc { return_type, arguments_type, is_c_variadic, on_stack_param_indices, .. } =
-            self.gcc_type(cx);
-        let pointer_type =
-            cx.context.new_function_pointer_type(None, return_type, &arguments_type, is_c_variadic);
-        cx.on_stack_params.borrow_mut().insert(
-            pointer_type.dyncast_function_ptr_type().expect("function ptr type"),
-            on_stack_param_indices,
-        );
-        pointer_type
+        let FnAbiGcc { return_type, arguments_type, is_c_variadic, .. } = self.gcc_type(cx);
+        cx.context.new_function_pointer_type(None, return_type, &arguments_type, is_c_variadic)
     }
 
     #[cfg(feature = "master")]

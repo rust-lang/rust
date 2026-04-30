@@ -15,6 +15,30 @@
 #![no_core]
 #![allow(dead_code, internal_features, ambiguous_wide_pointer_comparisons)]
 
+#[lang = "pointee_trait"]
+pub trait Pointee: PointeeSized {
+    #[lang = "metadata_type"]
+    // needed so that layout_of will return `TooGeneric` instead of `Unknown`
+    // when asked for the layout of `*const T`. Which is important for making
+    // transmutes between raw pointers (and especially pattern types of raw pointers)
+    // work.
+    type Metadata: Copy + Sync + Unpin + Freeze;
+}
+
+#[lang = "dyn_metadata"]
+pub struct DynMetadata<Dyn: PointeeSized> {
+    _vtable_ptr: NonNull<VTable>,
+    _phantom: PhantomData<Dyn>,
+}
+
+unsafe extern "C" {
+    /// Opaque type for accessing vtables.
+    ///
+    /// Private implementation detail of `DynMetadata::size_of` etc.
+    /// There is conceptually not actually any Abstract Machine memory behind this pointer.
+    type VTable;
+}
+
 #[no_mangle]
 unsafe extern "C" fn _Unwind_Resume() {
     intrinsics::unreachable();
@@ -113,7 +137,7 @@ unsafe impl<'a, T: PointeeSized> Sync for &'a T {}
 unsafe impl Sync for [u8; 16] {}
 
 #[lang = "freeze"]
-unsafe auto trait Freeze {}
+pub unsafe auto trait Freeze {}
 
 unsafe impl<T: PointeeSized> Freeze for PhantomData<T> {}
 unsafe impl<T: PointeeSized> Freeze for *const T {}
@@ -592,6 +616,13 @@ macro_rules! pattern_type {
     };
 }
 
+impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null) where
+    T: Unsize<U>
+{
+}
+
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null) {}
+
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
@@ -604,9 +635,9 @@ impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<Unique<U>> for Unique<T> wh
 impl<T: PointeeSized, U: PointeeSized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized, A: Allocator = Global>(Unique<T>, A);
+pub struct Box<T: ?Sized, A = Global>(Unique<T>, A);
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
 impl<T> Box<T> {
     pub fn new(val: T) -> Box<T> {
@@ -614,16 +645,27 @@ impl<T> Box<T> {
             let size = size_of::<T>();
             let ptr = libc::malloc(size);
             intrinsics::copy(&val as *const T as *const u8, ptr, size);
-            Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, Global)
+            Box(
+                Unique {
+                    pointer: NonNull(intrinsics::transmute::<
+                        *mut u8,
+                        pattern_type!(*const T is !null),
+                    >(ptr)),
+                    _marker: PhantomData,
+                },
+                Global,
+            )
         }
     }
 }
 
-impl<T: ?Sized, A: Allocator> Drop for Box<T, A> {
+impl<T: ?Sized, A> Drop for Box<T, A> {
     fn drop(&mut self) {
-        // inner value is dropped by compiler.
+        // inner value is dropped by compiler
         unsafe {
-            libc::free(self.0.pointer.0 as *mut u8);
+            libc::free(intrinsics::transmute::<pattern_type!(*const T is !null), *const T>(
+                self.0.pointer.0,
+            ) as *mut u8);
         }
     }
 }

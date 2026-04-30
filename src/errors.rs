@@ -23,3 +23,10 @@ pub(crate) struct LtoBitcodeFromRlib {
 #[derive(Diagnostic)]
 #[diag("explicit tail calls with the 'become' keyword are not implemented in the GCC backend")]
 pub(crate) struct ExplicitTailCallsUnsupported;
+
+#[derive(Diagnostic)]
+#[diag("asm contains a NUL byte")]
+pub(crate) struct NulBytesInAsm {
+    #[primary_span]
+    pub span: Span,
+}

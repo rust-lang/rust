@@ -1,12 +1,11 @@
 // Compiler:
-//
-// Run-time:
-//   status: 0
 
 // FIXME: Remove this test once <tests/run-make/simd-ffi/simd.rs> stops
 // ignoring GCC backend.
 
 #![allow(internal_features, non_camel_case_types)]
+#![crate_type = "lib"]
+
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
 #![feature(no_core, auto_traits)]
@@ -93,10 +92,3 @@ macro_rules! Copy {
 macro_rules! derive {
     () => {};
 }
-
-#[lang = "start"]
-fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
-    0
-}
-
-fn main() {}

@@ -48,7 +48,9 @@ jobs:
 
     - name: Install libgccjit12
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: sudo apt-get install libgccjit-12-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgccjit-12-dev
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'

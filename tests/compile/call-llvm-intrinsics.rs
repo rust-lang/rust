@@ -1,12 +1,10 @@
 // Compiler:
-//
-// Run-time:
-//   status: 0
 
 // FIXME: Remove this test once rustc's `./tests/codegen/riscv-abi/call-llvm-intrinsics.rs`
 // stops ignoring GCC backend.
 
 #![feature(link_llvm_intrinsics)]
+#![crate_type = "lib"]
 #![allow(internal_features)]
 
 struct A;
@@ -31,8 +29,4 @@ pub fn do_call() {
         // CHECK: call float @llvm.sqrt.f32(float %{{.}}
         sqrt(4.0);
     }
-}
-
-fn main() {
-    do_call();
 }
