@@ -1289,6 +1289,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ret
     }
 
+    fn get_funclet_cleanuppad(&self, funclet: &Funclet<'ll>) -> &'ll Value {
+        funclet.cleanuppad()
+    }
+
     // Atomic Operations
     fn atomic_cmpxchg(
         &mut self,
