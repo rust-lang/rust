@@ -1016,9 +1016,24 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
 
-            let res = f(tcx);
-            // FIXME maybe run finish even when a fatal error occurred? or at least
-            // tcx.alloc_self_profile_query_strings()?
+            // There are two paths out of `f`.
+            // - Normal exit.
+            // - Panic, e.g. triggered by `abort_if_errors` or a fatal error.
+            //
+            // If a panic occurs, we still need to wind down the self-profiler to correctly record
+            // the query events that are still in flight. Otherwise, they will be invalid and will
+            // show up as "<unknown>" in the profiling data.
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(tcx)));
+            let res = match res {
+                Ok(res) => res,
+                Err(err) => {
+                    tcx.alloc_self_profile_query_strings();
+
+                    // Resume unwinding if a panic happened.
+                    std::panic::resume_unwind(err);
+                }
+            };
+
             tcx.finish();
             res
         },
