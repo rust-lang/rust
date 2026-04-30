@@ -673,9 +673,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // the form (R1 OR ... OR RN), thus if even on R is required on their own (a unit), this
             // whole subexpression can be removed.
             //
+            // Because of the outlives relations, we can actually have a stronger redundancy check,
+            // say we have following requirements that create a conjunctive requirement:
+            // R1: T: 'a
+            // R2: T: 'b OR T: 'c
+            // R: R1 AND R2
+            //
+            // And we have we an assumption in our environment that `'a: 'b`, we can thus remove R2
+            // as well. `T: 'b` is implied by `T: 'a` because of the assumption `'a: 'b`:
+            // T -> 'a -> 'b
+            //
             // So we can filter redundant OR requirements with the following algorithm:
-            // Collect every Unit requirement. Then for every other requirement, if one of the units is
-            // contained within them we can remove the entire requirement from the list.
+            // Collect every Unit requirement. Then for every OR requirement, loop over its
+            // individual requirements and if the region is outlived by the region of one of the
+            // units, remove the entire OR requirement.
 
             fn requirement_key<'a>(subject: ClosureOutlivesRequirement<'a>) -> (Ty<'a>, RegionVid) {
                 let ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy { inner: ty }) =
@@ -698,8 +709,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             conjunctive_requirement.retain(|or_requirement| {
                 or_requirement.len() == 1
                     || !or_requirement.iter().any(|r| {
-                        let key = requirement_key(*r);
-                        units.contains(&key)
+                        let (ty, region) = requirement_key(*r);
+                        units.iter().any(|&(unit_subj, unit_region)| {
+                            // Same type, and the unit region outlives the disjunct region,
+                            // meaning T: unit_region implies T: region.
+                            unit_subj == ty
+                                && self.universal_region_relations.outlives(unit_region, region)
+                        })
                     })
             });
 
