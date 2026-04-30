@@ -430,8 +430,8 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
 
     fn optimize_and_codegen_fat_lto(
+        sess: &Session,
         cgcx: &CodegenContext,
-        prof: &SelfProfilerRef,
         shared_emitter: &SharedEmitter,
         _tm_factory: TargetMachineFactoryFn<Self>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
@@ -439,7 +439,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> CompiledModule {
-        back::lto::run_fat(cgcx, prof, shared_emitter, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(cgcx, &sess.prof, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
