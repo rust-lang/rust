@@ -288,6 +288,20 @@ impl LowerTypeRelativePathMode {
             Self::Const => PermitVariants::No,
         }
     }
+
+    fn inherent_alias_term_kind<'tcx>(self, def_id: DefId) -> ty::AliasTermKind<'tcx> {
+        match self {
+            Self::Type(_) => ty::AliasTermKind::InherentTy { def_id },
+            Self::Const => ty::AliasTermKind::InherentConst { def_id },
+        }
+    }
+
+    fn projection_alias_term_kind<'tcx>(self, def_id: DefId) -> ty::AliasTermKind<'tcx> {
+        match self {
+            Self::Type(_) => ty::AliasTermKind::ProjectionTy { def_id },
+            Self::Const => ty::AliasTermKind::ProjectionConst { def_id },
+        }
+    }
 }
 
 /// Whether to permit a path to resolve to an enum variant.
@@ -299,7 +313,7 @@ pub enum PermitVariants {
 
 #[derive(Debug, Clone, Copy)]
 enum TypeRelativePath<'tcx> {
-    AssocItem(DefId, GenericArgsRef<'tcx>),
+    AssocItem(ty::AliasTermKind<'tcx>, GenericArgsRef<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
     Ctor { ctor_def_id: DefId, args: GenericArgsRef<'tcx> },
 }
@@ -1476,12 +1490,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
-            TypeRelativePath::AssocItem(def_id, args) => {
-                let alias_ty = ty::AliasTy::new_from_args(
-                    tcx,
-                    ty::AliasTyKind::new_from_def_id(tcx, def_id),
-                    args,
-                );
+            TypeRelativePath::AssocItem(kind, args) => {
+                let def_id = kind.def_id();
+                let alias_ty_kind = match kind {
+                    ty::AliasTermKind::ProjectionTy { def_id } => ty::Projection { def_id },
+                    ty::AliasTermKind::InherentTy { def_id } => ty::Inherent { def_id },
+                    ty::AliasTermKind::OpaqueTy { .. }
+                    | ty::AliasTermKind::FreeTy { .. }
+                    | ty::AliasTermKind::ProjectionConst { .. }
+                    | ty::AliasTermKind::InherentConst { .. }
+                    | ty::AliasTermKind::FreeConst { .. }
+                    | ty::AliasTermKind::UnevaluatedConst { .. } => {
+                        unreachable!()
+                    }
+                };
+                let alias_ty = ty::AliasTy::new_from_args(tcx, alias_ty_kind, args);
                 let ty = Ty::new_alias(tcx, alias_ty);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
@@ -1516,12 +1539,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Const,
         )? {
-            TypeRelativePath::AssocItem(def_id, args) => {
-                self.require_type_const_attribute(def_id, span)?;
-                let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
-                let ct = self.check_param_uses_if_mcg(ct, span, false);
-                Ok(ct)
-            }
+            TypeRelativePath::AssocItem(kind, args) => match kind {
+                ty::AliasTermKind::ProjectionConst { def_id }
+                | ty::AliasTermKind::InherentConst { def_id } => {
+                    self.require_type_const_attribute(def_id, span)?;
+                    let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
+                    let ct = self.check_param_uses_if_mcg(ct, span, false);
+                    Ok(ct)
+                }
+                ty::AliasTermKind::ProjectionTy { .. }
+                | ty::AliasTermKind::InherentTy { .. }
+                | ty::AliasTermKind::OpaqueTy { .. }
+                | ty::AliasTermKind::FreeTy { .. }
+                | ty::AliasTermKind::UnevaluatedConst { .. }
+                | ty::AliasTermKind::FreeConst { .. } => span_bug!(
+                    span,
+                    "type-relative const path should only produce \
+                     ProjectionConst or InherentConst, got {kind:?}"
+                ),
+            },
             TypeRelativePath::Ctor { ctor_def_id, args } => match tcx.def_kind(ctor_def_id) {
                 DefKind::Ctor(_, CtorKind::Fn) => {
                     Ok(ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, ctor_def_id, args)))
@@ -1648,7 +1684,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
-            if let Some((did, args)) = self.probe_inherent_assoc_item(
+            if let Some((def_id, args)) = self.probe_inherent_assoc_item(
                 segment,
                 adt_def.did(),
                 self_ty,
@@ -1656,7 +1692,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 mode.assoc_tag(),
             )? {
-                return Ok(TypeRelativePath::AssocItem(did, args));
+                return Ok(TypeRelativePath::AssocItem(
+                    mode.inherent_alias_term_kind(def_id),
+                    args,
+                ));
             }
         }
 
@@ -1690,7 +1729,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(item_def_id, args))
+        Ok(TypeRelativePath::AssocItem(mode.projection_alias_term_kind(item_def_id), args))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.

@@ -209,8 +209,6 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_ty_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTyKind<Self>;
-
     // FIXME: remove in favor of explicit construction
     fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
 
