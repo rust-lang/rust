@@ -194,8 +194,8 @@ LL |     f
    |     - return type was inferred to be `unsafe extern "custom" fn()` here
    |
    = help: the trait `Fn()` is not implemented for `unsafe extern "custom" fn()`
-   = note: unsafe function cannot be called generically without an unsafe block
    = note: wrap the `unsafe extern "custom" fn()` in a closure with no arguments: `|| { /* code */ }`
+   = note: unsafe function cannot be called generically without an unsafe block
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
   --> $DIR/bad-custom.rs:25:1
