@@ -271,6 +271,8 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                 LangItem::SizeOf
             } else if self.tcx.is_intrinsic(fn_def_id, sym::align_of_val) {
                 LangItem::AlignOf
+            } else if self.tcx.is_intrinsic(fn_def_id, sym::layout_of_val) {
+                LangItem::LayoutOf
             } else {
                 return;
             };

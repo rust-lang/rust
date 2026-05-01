@@ -4,6 +4,8 @@
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 
+use std::alloc::Layout;
+
 // EMIT_MIR align_or_size_of_sized_val.align_of_val_sized.InstSimplify-after-simplifycfg.diff
 pub fn align_of_val_sized<T>(val: &T) -> usize {
     // CHECK-LABEL: fn align_of_val_sized
@@ -16,4 +18,11 @@ pub fn size_of_val_sized<T>(val: &T) -> usize {
     // CHECK-LABEL: fn size_of_val_sized
     // CHECK: _0 = const <T as std::mem::SizedTypeProperties>::SIZE;
     unsafe { core::intrinsics::size_of_val(val) }
+}
+
+// EMIT_MIR align_or_size_of_sized_val.layout_of_val_sized.InstSimplify-after-simplifycfg.diff
+pub fn layout_of_val_sized<T>(val: &T) -> Layout {
+    // CHECK-LABEL: fn layout_of_val_sized
+    // CHECK: _0 = const <T as std::mem::SizedTypeProperties>::LAYOUT;
+    unsafe { core::intrinsics::layout_of_val(val) }
 }

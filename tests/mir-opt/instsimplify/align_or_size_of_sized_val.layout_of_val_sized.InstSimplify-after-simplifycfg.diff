@@ -1,0 +1,22 @@
+- // MIR for `layout_of_val_sized` before InstSimplify-after-simplifycfg
++ // MIR for `layout_of_val_sized` after InstSimplify-after-simplifycfg
+  
+  fn layout_of_val_sized(_1: &T) -> Layout {
+      debug val => _1;
+      let mut _0: std::alloc::Layout;
+      let mut _2: *const T;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = &raw const (*_1);
+-         _0 = layout_of_val::<T>(move _2) -> [return: bb1, unwind unreachable];
++         _0 = const <T as std::mem::SizedTypeProperties>::LAYOUT;
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  
