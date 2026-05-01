@@ -35,9 +35,10 @@ use crate::imports::{ImportData, ImportKind, OnUnknownData};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
-    BindingKey, Decl, DeclData, DeclKind, ExternModule, ExternPreludeEntry, Finalize, IdentKey,
-    LocalModule, MacroData, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
-    Resolver, Segment, Used, VisResolutionError, errors,
+    BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
+    ExternPreludeEntry, Finalize, IdentKey, LocalModule, MacroData, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError,
+    errors,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -237,6 +238,111 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
+    pub(crate) fn try_resolve_visibility(
+        &mut self,
+        parent_scope: &ParentScope<'ra>,
+        vis: &ast::Visibility,
+        finalize: bool,
+    ) -> Result<Visibility, VisResolutionError> {
+        match vis.kind {
+            ast::VisibilityKind::Public => Ok(Visibility::Public),
+            ast::VisibilityKind::Inherited => {
+                Ok(match parent_scope.module.kind {
+                    // Any inherited visibility resolved directly inside an enum or trait
+                    // (i.e. variants, fields, and trait items) inherits from the visibility
+                    // of the enum or trait.
+                    ModuleKind::Def(DefKind::Enum | DefKind::Trait, def_id, _) => {
+                        self.tcx.visibility(def_id).expect_local()
+                    }
+                    // Otherwise, the visibility is restricted to the nearest parent `mod` item.
+                    _ => Visibility::Restricted(
+                        parent_scope.module.nearest_parent_mod().expect_local(),
+                    ),
+                })
+            }
+            ast::VisibilityKind::Restricted { ref path, id, .. } => {
+                // For visibilities we are not ready to provide correct implementation of "uniform
+                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
+                // On 2015 edition visibilities are resolved as crate-relative by default,
+                // so we are prepending a root segment if necessary.
+                let ident = path.segments.get(0).expect("empty path in visibility").ident;
+                let crate_root = if ident.is_path_segment_keyword() {
+                    None
+                } else if ident.span.is_rust_2015() {
+                    Some(Segment::from_ident(Ident::new(
+                        kw::PathRoot,
+                        path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
+                    )))
+                } else {
+                    return Err(VisResolutionError::Relative2018(
+                        ident.span,
+                        path.as_ref().clone(),
+                    ));
+                };
+                let segments = crate_root
+                    .into_iter()
+                    .chain(path.segments.iter().map(|seg| seg.into()))
+                    .collect::<Vec<_>>();
+                let expected_found_error = |res| {
+                    Err(VisResolutionError::ExpectedFound(
+                        path.span,
+                        Segment::names_to_string(&segments),
+                        res,
+                    ))
+                };
+                match self.cm().resolve_path(
+                    &segments,
+                    None,
+                    parent_scope,
+                    finalize.then(|| Finalize::new(id, path.span)),
+                    None,
+                    None,
+                ) {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                        let res = module.res().expect("visibility resolved to unnamed block");
+                        if module.is_normal() {
+                            match res {
+                                Res::Err => {
+                                    if finalize {
+                                        self.record_partial_res(id, PartialRes::new(res));
+                                    }
+                                    Ok(Visibility::Public)
+                                }
+                                _ => {
+                                    let vis = Visibility::Restricted(res.def_id());
+                                    if self.is_accessible_from(vis, parent_scope.module) {
+                                        if finalize {
+                                            self.record_partial_res(id, PartialRes::new(res));
+                                        }
+                                        Ok(vis.expect_local())
+                                    } else {
+                                        Err(VisResolutionError::AncestorOnly(path.span))
+                                    }
+                                }
+                            }
+                        } else {
+                            expected_found_error(res)
+                        }
+                    }
+                    PathResult::Module(..) => Err(VisResolutionError::ModuleOnly(path.span)),
+                    PathResult::NonModule(partial_res) => {
+                        expected_found_error(partial_res.expect_full_res())
+                    }
+                    PathResult::Failed {
+                        span, label, suggestion, message, segment_name, ..
+                    } => Err(VisResolutionError::FailedToResolve(
+                        span,
+                        segment_name,
+                        label,
+                        suggestion,
+                        message,
+                    )),
+                    PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
+                }
+            }
+        }
+    }
+
     pub(crate) fn build_reduced_graph_external(&self, module: ExternModule<'ra>) {
         let def_id = module.def_id();
         let children = self.tcx.module_children(def_id);
@@ -364,106 +470,15 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> Visibility {
-        self.try_resolve_visibility(vis, true).unwrap_or_else(|err| {
-            self.r.report_vis_error(err);
-            Visibility::Public
-        })
-    }
-
-    fn try_resolve_visibility<'ast>(
-        &mut self,
-        vis: &'ast ast::Visibility,
-        finalize: bool,
-    ) -> Result<Visibility, VisResolutionError<'ast>> {
-        let parent_scope = &self.parent_scope;
-        match vis.kind {
-            ast::VisibilityKind::Public => Ok(Visibility::Public),
-            ast::VisibilityKind::Inherited => {
-                Ok(match self.parent_scope.module.kind {
-                    // Any inherited visibility resolved directly inside an enum or trait
-                    // (i.e. variants, fields, and trait items) inherits from the visibility
-                    // of the enum or trait.
-                    ModuleKind::Def(DefKind::Enum | DefKind::Trait, def_id, _) => {
-                        self.r.tcx.visibility(def_id).expect_local()
-                    }
-                    // Otherwise, the visibility is restricted to the nearest parent `mod` item.
-                    _ => Visibility::Restricted(
-                        self.parent_scope.module.nearest_parent_mod().expect_local(),
-                    ),
-                })
-            }
-            ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                // For visibilities we are not ready to provide correct implementation of "uniform
-                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
-                // On 2015 edition visibilities are resolved as crate-relative by default,
-                // so we are prepending a root segment if necessary.
-                let ident = path.segments.get(0).expect("empty path in visibility").ident;
-                let crate_root = if ident.is_path_segment_keyword() {
-                    None
-                } else if ident.span.is_rust_2015() {
-                    Some(Segment::from_ident(Ident::new(
-                        kw::PathRoot,
-                        path.span.shrink_to_lo().with_ctxt(ident.span.ctxt()),
-                    )))
-                } else {
-                    return Err(VisResolutionError::Relative2018(ident.span, path));
-                };
-
-                let segments = crate_root
-                    .into_iter()
-                    .chain(path.segments.iter().map(|seg| seg.into()))
-                    .collect::<Vec<_>>();
-                let expected_found_error = |res| {
-                    Err(VisResolutionError::ExpectedFound(
-                        path.span,
-                        Segment::names_to_string(&segments),
-                        res,
-                    ))
-                };
-                match self.r.cm().resolve_path(
-                    &segments,
-                    None,
-                    parent_scope,
-                    finalize.then(|| Finalize::new(id, path.span)),
-                    None,
-                    None,
-                ) {
-                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
-                        let res = module.res().expect("visibility resolved to unnamed block");
-                        if finalize {
-                            self.r.record_partial_res(id, PartialRes::new(res));
-                        }
-                        if module.is_normal() {
-                            match res {
-                                Res::Err => Ok(Visibility::Public),
-                                _ => {
-                                    let vis = Visibility::Restricted(res.def_id());
-                                    if self.r.is_accessible_from(vis, parent_scope.module) {
-                                        Ok(vis.expect_local())
-                                    } else {
-                                        Err(VisResolutionError::AncestorOnly(path.span))
-                                    }
-                                }
-                            }
-                        } else {
-                            expected_found_error(res)
-                        }
-                    }
-                    PathResult::Module(..) => Err(VisResolutionError::ModuleOnly(path.span)),
-                    PathResult::NonModule(partial_res) => {
-                        expected_found_error(partial_res.expect_full_res())
-                    }
-                    PathResult::Failed {
-                        span, label, suggestion, message, segment_name, ..
-                    } => Err(VisResolutionError::FailedToResolve(
-                        span,
-                        segment_name,
-                        label,
-                        suggestion,
-                        message,
-                    )),
-                    PathResult::Indeterminate => Err(VisResolutionError::Indeterminate(path.span)),
-                }
+        match self.r.try_resolve_visibility(&self.parent_scope, vis, true) {
+            Ok(vis) => vis,
+            Err(error) => {
+                self.r.delayed_vis_resolution_errors.push(DelayedVisResolutionError {
+                    vis: vis.clone(),
+                    parent_scope: self.parent_scope,
+                    error,
+                });
+                Visibility::Public
             }
         }
     }
@@ -906,7 +921,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         // correct visibilities for unnamed field placeholders specifically, so the
                         // constructor visibility should still be determined correctly.
                         let field_vis = self
-                            .try_resolve_visibility(&field.vis, false)
+                            .r
+                            .try_resolve_visibility(&self.parent_scope, &field.vis, false)
                             .unwrap_or(Visibility::Public);
                         if ctor_vis.greater_than(field_vis, self.r.tcx) {
                             ctor_vis = field_vis;
@@ -1341,9 +1357,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             let vis = match item.kind {
                 // Visibilities must not be resolved non-speculatively twice
                 // and we already resolved this one as a `fn` item visibility.
-                ItemKind::Fn(..) => {
-                    self.try_resolve_visibility(&item.vis, false).unwrap_or(Visibility::Public)
-                }
+                ItemKind::Fn(..) => self
+                    .r
+                    .try_resolve_visibility(&self.parent_scope, &item.vis, false)
+                    .unwrap_or(Visibility::Public),
                 _ => self.resolve_visibility(&item.vis),
             };
             if !vis.is_public() {

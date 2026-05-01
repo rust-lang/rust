@@ -1,3 +1,15 @@
+error[E0364]: `f` is private, and cannot be re-exported
+  --> $DIR/test.rs:22:24
+   |
+LL |         pub(super) use foo::bar::f as g;
+   |                        ^^^^^^^^^^^^^^^^
+   |
+note: consider marking `f` as `pub` in the imported module
+  --> $DIR/test.rs:22:24
+   |
+LL |         pub(super) use foo::bar::f as g;
+   |                        ^^^^^^^^^^^^^^^^
+
 error[E0433]: cannot find module or crate `bad` in the crate root
   --> $DIR/test.rs:51:12
    |
@@ -14,18 +26,6 @@ error[E0742]: visibilities can only be restricted to ancestor modules
    |
 LL |     pub(in foo) mod m2 {}
    |            ^^^
-
-error[E0364]: `f` is private, and cannot be re-exported
-  --> $DIR/test.rs:22:24
-   |
-LL |         pub(super) use foo::bar::f as g;
-   |                        ^^^^^^^^^^^^^^^^
-   |
-note: consider marking `f` as `pub` in the imported module
-  --> $DIR/test.rs:22:24
-   |
-LL |         pub(super) use foo::bar::f as g;
-   |                        ^^^^^^^^^^^^^^^^
 
 error[E0603]: struct `Crate` is private
   --> $DIR/test.rs:39:25

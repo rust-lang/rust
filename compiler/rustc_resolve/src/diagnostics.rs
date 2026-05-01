@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+use std::mem;
 use std::ops::ControlFlow;
 
 use itertools::Itertools as _;
@@ -48,10 +49,10 @@ use crate::imports::{Import, ImportKind};
 use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
-    Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey, LateDecl, MacroRulesScope,
-    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res,
-    ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
-    errors as errs, path_names_to_string,
+    DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
+    LateDecl, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
+    VisResolutionError, errors as errs, path_names_to_string,
 };
 
 /// A vector of spans and replacements, a message and applicability.
@@ -137,6 +138,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn report_errors(&mut self, krate: &Crate) {
+        self.report_delayed_vis_resolution_errors();
         self.report_with_use_injections(krate);
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
@@ -171,16 +173,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let mut reported_spans = FxHashSet::default();
-        for error in std::mem::take(&mut self.privacy_errors) {
+        for error in mem::take(&mut self.privacy_errors) {
             if reported_spans.insert(error.dedup_span) {
                 self.report_privacy_error(&error);
             }
         }
     }
 
+    fn report_delayed_vis_resolution_errors(&mut self) {
+        for DelayedVisResolutionError { vis, parent_scope, error } in
+            mem::take(&mut self.delayed_vis_resolution_errors)
+        {
+            match self.try_resolve_visibility(&parent_scope, &vis, true) {
+                Ok(_) => self.report_vis_error(error),
+                Err(error) => self.report_vis_error(error),
+            };
+        }
+    }
+
     fn report_with_use_injections(&mut self, krate: &Crate) {
         for UseError { mut err, candidates, def_id, instead, suggestion, path, is_call } in
-            std::mem::take(&mut self.use_injections)
+            mem::take(&mut self.use_injections)
         {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
                 UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id))
@@ -1137,7 +1150,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn report_vis_error(
         &mut self,
-        vis_resolution_error: VisResolutionError<'_>,
+        vis_resolution_error: VisResolutionError,
     ) -> ErrorGuaranteed {
         match vis_resolution_error {
             VisResolutionError::Relative2018(span, path) => {
@@ -1146,7 +1159,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     path_span: path.span,
                     // intentionally converting to String, as the text would also be used as
                     // in suggestion context
-                    path_str: pprust::path_to_string(path),
+                    path_str: pprust::path_to_string(&path),
                 })
             }
             VisResolutionError::AncestorOnly(span) => {
