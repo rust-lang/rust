@@ -2,12 +2,14 @@ use std::time::Duration;
 
 use serde_derive::{Deserialize, Serialize};
 
+/// Metrics that compiletest *emits*.
 pub mod compiletest {
     #[derive(serde_derive::Deserialize, Debug)]
     #[serde(tag = "type", rename_all = "snake_case")]
     pub enum Message {
         Suite(SuiteMessage),
         Test(TestMessage),
+        /// Never emitted; remnant from libtest refactor.
         Bench(BenchOutcome),
         Report(Report),
     }

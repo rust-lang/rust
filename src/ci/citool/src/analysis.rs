@@ -472,7 +472,7 @@ fn report_test_diffs(
         match outcome {
             TestOutcome::Passed => "pass".to_string(),
             TestOutcome::Failed => "fail".to_string(),
-            TestOutcome::FilteredOut => "ignore".to_string(),
+            TestOutcome::FilteredOut => "ignore (filtered out)".to_string(),
             TestOutcome::Ignored { ignore_reason } => {
                 let reason = match ignore_reason {
                     Some(reason) => format!(" ({reason})"),

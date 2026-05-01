@@ -51,8 +51,8 @@ features = [
 ]
 
 [dev-dependencies]
-assert_cmd = "=2.1.1"
-predicates = "3.1.3"
+assert_cmd = "2.1.1"
+predicates = { version = "3.1.3", default-features = false }
 build_helper = { path = "../../build_helper", features = ["metrics"] }
 serde_derive = "1.0.228"
 bstr = "1.12.1"
