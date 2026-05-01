@@ -321,8 +321,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for a in &adj {
             match a.kind {
                 Adjust::NeverToAny => {
-                    if a.target.is_ty_var() {
-                        self.diverging_type_vars.borrow_mut().insert(a.target);
+                    if let ty::Infer(ty::TyVar(a_id)) = a.target.kind() {
+                        self.diverging_type_vars.borrow_mut().push(*a_id);
                         debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                     }
                 }
