@@ -166,33 +166,6 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
-        let mut hasher = StableHasher::new();
-
-        // The new path is in the same crate as `parent`, and will contain the stable_crate_id.
-        // Therefore, we only need to include information of the parent's local hash.
-        parent.local_hash().hash(&mut hasher);
-
-        let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
-
-        std::mem::discriminant(data).hash(&mut hasher);
-        if let Some(name) = data.hashed_symbol() {
-            // Get a stable hash by considering the symbol chars rather than
-            // the symbol index.
-            name.as_str().hash(&mut hasher);
-        }
-
-        disambiguator.hash(&mut hasher);
-
-        let local_hash = hasher.finish();
-
-        // Construct the new DefPathHash, making sure that the `crate_id`
-        // portion of the hash is properly copied from the parent. This way the
-        // `crate_id` part will be recursively propagated from the root to all
-        // DefPathHashes in this DefPathTable.
-        DefPathHash::new(parent.stable_crate_id(), local_hash)
-    }
-
     #[inline]
     pub fn get_opt_name(&self) -> Option<Symbol> {
         self.disambiguated_data.data.get_opt_name()
@@ -212,6 +185,33 @@ pub struct DisambiguatedDefPathData {
 }
 
 impl DisambiguatedDefPathData {
+    pub fn compute_stable_hash(self, parent: DefPathHash) -> DefPathHash {
+        let mut hasher = StableHasher::new();
+
+        // The new path is in the same crate as `parent`, and will contain the stable_crate_id.
+        // Therefore, we only need to include information of the parent's local hash.
+        parent.local_hash().hash(&mut hasher);
+
+        let DisambiguatedDefPathData { data, disambiguator } = self;
+
+        std::mem::discriminant(&data).hash(&mut hasher);
+        if let Some(name) = data.hashed_symbol() {
+            // Get a stable hash by considering the symbol chars rather than
+            // the symbol index.
+            name.as_str().hash(&mut hasher);
+        }
+
+        disambiguator.hash(&mut hasher);
+
+        let local_hash = hasher.finish();
+
+        // Construct the new DefPathHash, making sure that the `crate_id`
+        // portion of the hash is properly copied from the parent. This way the
+        // `crate_id` part will be recursively propagated from the root to all
+        // DefPathHashes in this DefPathTable.
+        DefPathHash::new(parent.stable_crate_id(), local_hash)
+    }
+
     pub fn as_sym(&self, verbose: bool) -> Symbol {
         match self.data.name() {
             DefPathDataName::Named(name) => {
@@ -417,11 +417,10 @@ impl Definitions {
         // The root node must be created in `new()`.
         assert!(data.data != DefPathData::CrateRoot);
 
-        let key = DefKey { parent: Some(parent.local_def_index), disambiguated_data: data };
-
         let parent_hash = self.table.def_path_hash(parent.local_def_index);
-        let def_path_hash = key.compute_stable_hash(parent_hash);
+        let def_path_hash = data.compute_stable_hash(parent_hash);
 
+        let key = DefKey { parent: Some(parent.local_def_index), disambiguated_data: data };
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
