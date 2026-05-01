@@ -72,6 +72,7 @@ fn compiletest() -> Command {
     ]);
 
     compiletest.current_dir(src_root);
+    compiletest.env_remove("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS");
 
     compiletest
 }
