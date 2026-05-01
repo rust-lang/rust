@@ -258,9 +258,7 @@ impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.adcx().expected_no_args(span);
-        }
+        let _ = cx.expect_no_args(args);
         Some(T::CREATE(cx.attr_span))
     }
 }

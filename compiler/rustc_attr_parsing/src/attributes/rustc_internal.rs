@@ -555,7 +555,7 @@ impl SingleAttributeParser for RustcScalableVectorParser {
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        if args.no_args().is_ok() {
+        if args.as_no_args().is_ok() {
             return Some(AttributeKind::RustcScalableVector {
                 element_count: None,
                 span: cx.attr_span,

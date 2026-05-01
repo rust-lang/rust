@@ -294,11 +294,9 @@ impl CombineAttributeParser for FeatureParser {
                 cx.adcx().expected_identifier(elem.span());
                 continue;
             };
-            if let Err(arg_span) = elem.args().no_args() {
-                cx.adcx().expected_no_args(arg_span);
+            let Some(()) = cx.expect_no_args(elem.args()) else {
                 continue;
-            }
-
+            };
             let path = elem.path();
             let Some(ident) = path.word() else {
                 cx.adcx().expected_identifier(path.span());
@@ -340,10 +338,9 @@ impl CombineAttributeParser for RegisterToolParser {
                 cx.adcx().expected_identifier(elem.span());
                 continue;
             };
-            if let Err(arg_span) = elem.args().no_args() {
-                cx.adcx().expected_no_args(arg_span);
+            let Some(()) = cx.expect_no_args(elem.args()) else {
                 continue;
-            }
+            };
 
             let path = elem.path();
             let Some(ident) = path.word() else {

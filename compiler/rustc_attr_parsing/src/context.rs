@@ -562,6 +562,16 @@ impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
     {
         arg.expect_name_value(self, span, name)
     }
+
+    /// Assert that an [`ArgParser`] has no args, or emits an error and return `None`.
+    pub(crate) fn expect_no_args<'arg>(&mut self, arg: &'arg ArgParser) -> Option<()> {
+        if let Err(span) = arg.as_no_args() {
+            self.adcx().expected_no_args(span);
+            return None;
+        }
+
+        Some(())
+    }
 }
 
 pub(crate) trait ExpectNameValue {
