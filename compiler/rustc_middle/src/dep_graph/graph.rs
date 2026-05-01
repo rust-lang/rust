@@ -739,7 +739,7 @@ impl DepGraphData {
                     tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
                 }
                 QuerySideEffect::CreateDef { parent, data } => {
-                    tcx.ensure_done().create_def_raw((*parent, *data));
+                    tcx.untracked().definitions.write().create_def(*parent, *data);
                 }
             }
 
