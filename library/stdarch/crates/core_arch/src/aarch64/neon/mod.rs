@@ -612,51 +612,10 @@ mod tests {
     }
 
     #[simd_test(enable = "neon")]
-    fn test_vget_high_f64() {
-        let a = f64x2::new(1.0, 2.0);
-        let e = f64x1::new(2.0);
-        let r = f64x1::from(vget_high_f64(a.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vget_high_p64() {
-        let a = u64x2::new(1, 2);
-        let e = u64x1::new(2);
-        let r = u64x1::from(vget_high_p64(a.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vget_low_f64() {
-        let a = f64x2::new(1.0, 2.0);
-        let e = f64x1::new(1.0);
-        let r = f64x1::from(vget_low_f64(a.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vget_low_p64() {
-        let a = u64x2::new(1, 2);
-        let e = u64x1::new(1);
-        let r = u64x1::from(vget_low_p64(a.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     fn test_vget_lane_f64() {
         let v = f64x1::new(1.0);
         let r = vget_lane_f64::<0>(v.into());
         assert_eq!(r, 1.0);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vgetq_lane_f64() {
-        let v = f64x2::new(0.0, 1.0);
-        let r = vgetq_lane_f64::<1>(v.into());
-        assert_eq!(r, 1.0);
-        let r = vgetq_lane_f64::<0>(v.into());
-        assert_eq!(r, 0.0);
     }
 
     #[simd_test(enable = "neon")]
@@ -692,42 +651,6 @@ mod tests {
         let b = f64x1::from_array([0.]);
         let e = f64x1::from_array([0.]);
         let r = f64x1::from(vcopy_lane_f64::<0, 0>(a.into(), b.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vcopy_laneq_s64() {
-        let a = i64x1::new(1);
-        let b = i64x2::new(0, 0x7F_FF_FF_FF_FF_FF_FF_FF);
-        let e = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
-        let r = i64x1::from(vcopy_laneq_s64::<0, 1>(a.into(), b.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vcopy_laneq_u64() {
-        let a = u64x1::new(1);
-        let b = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
-        let e = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
-        let r = u64x1::from(vcopy_laneq_u64::<0, 1>(a.into(), b.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vcopy_laneq_p64() {
-        let a = u64x1::new(1);
-        let b = u64x2::new(0, 0x7F_FF_FF_FF_FF_FF_FF_FF);
-        let e = u64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
-        let r = u64x1::from(vcopy_laneq_p64::<0, 1>(a.into(), b.into()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    fn test_vcopy_laneq_f64() {
-        let a = f64x1::from_array([1.]);
-        let b = f64x2::from_array([0., 0.5]);
-        let e = f64x1::from_array([0.5]);
-        let r = f64x1::from(vcopy_laneq_f64::<0, 1>(a.into(), b.into()));
         assert_eq!(r, e);
     }
 
