@@ -104,6 +104,10 @@ aarch64-crc-stable: &aarch64-crc-stable
 neon-unstable-f16: &neon-unstable-f16
   FnCall: [unstable, ['feature = "stdarch_neon_f16"', 'issue = "136306"']]
 
+# all(target_endian = "little")
+all-neon-target-aarch64-arm64ec-little-endian: &all-neon-target-aarch64-arm64ec-little-endian
+  FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}, 'target_endian = "little"']]
+
 intrinsics:
   - name: "vand{neon_type.no}"
     doc: Vector bitwise and
@@ -6139,7 +6143,7 @@ intrinsics:
       - *neon-i8mm
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vusdot]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [usdot]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [usdot]]}]]
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     safety: safe
@@ -6192,7 +6196,7 @@ intrinsics:
       - *neon-i8mm
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsudot, 'LANE = 0']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sudot, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sudot, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
@@ -6796,7 +6800,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ["vsubhn"]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [subhn2]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [subhn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -6992,7 +6996,7 @@ intrinsics:
       - *neon-v8
       - *neon-i8mm
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsudot, 'LANE = 1']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sudot, 'LANE = 3']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sudot, 'LANE = 3']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']]
     static_defs: ["const LANE: i32"]
@@ -7650,7 +7654,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlal, N = 2]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -7669,7 +7673,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlal, N = 1]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -7722,7 +7726,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlsl, N = 2]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -7741,7 +7745,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlsl, N = 1]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -13216,7 +13220,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"{type[3]}"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [raddhn2]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [raddhn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -13243,7 +13247,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"{type[3]}"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [raddhn2]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [raddhn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -14469,7 +14473,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['{type[3]}']] }  ]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['{type[4]}']]}] ]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, { FnCall: [assert_instr, ['{type[4]}']]}] ]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -14525,7 +14529,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['{type[3]}']] }  ]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['{type[4]}']]}] ]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, { FnCall: [assert_instr, ['{type[4]}']]}] ]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -14583,7 +14587,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['vaddhn']] }  ]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['addhn2']]}] ]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, { FnCall: [assert_instr, ['addhn2']]}] ]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe

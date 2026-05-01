@@ -2189,7 +2189,11 @@ pub fn vaddh_f16(a: f16, b: f16) -> f16 {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(addhn2)
 )]
 #[cfg_attr(
@@ -2213,7 +2217,11 @@ pub fn vaddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(addhn2)
 )]
 #[cfg_attr(
@@ -2237,7 +2245,11 @@ pub fn vaddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(addhn2)
 )]
 #[cfg_attr(
@@ -2261,7 +2273,11 @@ pub fn vaddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(addhn2)
 )]
 #[cfg_attr(
@@ -2285,7 +2301,11 @@ pub fn vaddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uint8x16_t
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(addhn2)
 )]
 #[cfg_attr(
@@ -2309,7 +2329,11 @@ pub fn vaddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> uint16x8_
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(addhn2)
 )]
 #[cfg_attr(
@@ -2459,7 +2483,11 @@ pub fn vaddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(saddl2)
 )]
 #[cfg_attr(
@@ -2486,7 +2514,11 @@ pub fn vaddl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(saddl2)
 )]
 #[cfg_attr(
@@ -2513,7 +2545,11 @@ pub fn vaddl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(saddl2)
 )]
 #[cfg_attr(
@@ -2540,7 +2576,11 @@ pub fn vaddl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(uaddl2)
 )]
 #[cfg_attr(
@@ -2567,7 +2607,11 @@ pub fn vaddl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(uaddl2)
 )]
 #[cfg_attr(
@@ -2594,7 +2638,11 @@ pub fn vaddl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(uaddl2)
 )]
 #[cfg_attr(
@@ -2792,7 +2840,11 @@ pub fn vaddq_p128(a: p128, b: p128) -> p128 {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(saddw2)
 )]
 #[cfg_attr(
@@ -2817,7 +2869,11 @@ pub fn vaddw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(saddw2)
 )]
 #[cfg_attr(
@@ -2842,7 +2898,11 @@ pub fn vaddw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(saddw2)
 )]
 #[cfg_attr(
@@ -2867,7 +2927,11 @@ pub fn vaddw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(uaddw2)
 )]
 #[cfg_attr(
@@ -2892,7 +2956,11 @@ pub fn vaddw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(uaddw2)
 )]
 #[cfg_attr(
@@ -2917,7 +2985,11 @@ pub fn vaddw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(uaddw2)
 )]
 #[cfg_attr(
@@ -34881,7 +34953,11 @@ pub fn vqaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlal, N = 2))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sqdmlal, N = 2)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -34904,7 +34980,11 @@ pub fn vqdmlal_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlal, N = 1))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sqdmlal, N = 1)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -35011,7 +35091,11 @@ pub fn vqdmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlsl, N = 2))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sqdmlsl, N = 2)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -35034,7 +35118,11 @@ pub fn vqdmlsl_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqdmlsl, N = 1))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sqdmlsl, N = 1)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -39004,7 +39092,11 @@ pub fn vqsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vraddhn.i16"))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(raddhn2)
 )]
 #[cfg_attr(
@@ -39026,7 +39118,11 @@ pub fn vraddhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vraddhn.i32"))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(raddhn2)
 )]
 #[cfg_attr(
@@ -39048,7 +39144,11 @@ pub fn vraddhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vraddhn.i64"))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(raddhn2)
 )]
 #[cfg_attr(
@@ -39070,7 +39170,11 @@ pub fn vraddhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vraddhn.i16"))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(raddhn2)
 )]
 #[cfg_attr(
@@ -39094,7 +39198,11 @@ pub fn vraddhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vraddhn.i32"))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(raddhn2)
 )]
 #[cfg_attr(
@@ -39118,7 +39226,11 @@ pub fn vraddhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vraddhn.i64"))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(raddhn2)
 )]
 #[cfg_attr(
@@ -69685,7 +69797,11 @@ pub fn vsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(subhn2)
 )]
 #[cfg_attr(
@@ -69707,7 +69823,11 @@ pub fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(subhn2)
 )]
 #[cfg_attr(
@@ -69729,7 +69849,11 @@ pub fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(subhn2)
 )]
 #[cfg_attr(
@@ -69751,7 +69875,11 @@ pub fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(subhn2)
 )]
 #[cfg_attr(
@@ -69773,7 +69901,11 @@ pub fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(subhn2)
 )]
 #[cfg_attr(
@@ -69795,7 +69927,11 @@ pub fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(subhn2)
 )]
 #[cfg_attr(
@@ -70225,7 +70361,11 @@ pub fn vsubw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 0))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sudot, LANE = 0)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -70252,7 +70392,11 @@ pub fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x8_t)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 0))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sudot, LANE = 0)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -70280,7 +70424,11 @@ pub fn vsudotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x8_
 #[target_feature(enable = "neon,i8mm")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 1))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sudot, LANE = 3)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -70300,7 +70448,11 @@ pub fn vsudot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x16_
 #[target_feature(enable = "neon,i8mm")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 1))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(sudot, LANE = 3)
 )]
 #[rustc_legacy_const_generics(3)]
@@ -72296,7 +72448,11 @@ pub fn vusdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x1
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(usdot)
 )]
 #[cfg_attr(
@@ -72325,7 +72481,11 @@ pub fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot))]
 #[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
     assert_instr(usdot)
 )]
 #[cfg_attr(
