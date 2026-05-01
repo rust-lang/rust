@@ -548,6 +548,8 @@ impl File {
     /// consider [`std::fs::read()`][self::read] or
     /// [`std::fs::read_to_string()`][self::read_to_string] instead.
     ///
+    /// This call follows symlinks.
+    ///
     /// # Errors
     ///
     /// This function will return an error if `path` does not already exist.
@@ -579,6 +581,8 @@ impl File {
     /// If you only need to read the entire file contents,
     /// consider [`std::fs::read()`][self::read] or
     /// [`std::fs::read_to_string()`][self::read_to_string] instead.
+    ///
+    /// This call follows symlinks.
     ///
     /// # Errors
     ///
@@ -622,6 +626,8 @@ impl File {
     /// See also [`std::fs::write()`][self::write] for a simple function to
     /// create a file with some given data.
     ///
+    /// This call follows symlinks.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -652,6 +658,8 @@ impl File {
     ///
     /// See also [`std::fs::write()`][self::write] for a simple function to
     /// create a file with some given data.
+    ///
+    /// This call follows symlinks.
     ///
     /// # Examples
     ///
@@ -695,6 +703,8 @@ impl File {
     ///
     /// [`AlreadyExists`]: crate::io::ErrorKind::AlreadyExists
     /// [TOCTOU]: self#time-of-check-to-time-of-use-toctou
+    ///
+    /// This call does not follows symlinks.
     ///
     /// # Examples
     ///
