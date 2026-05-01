@@ -1,7 +1,7 @@
 use base_db::target::TargetData;
 use either::Either;
 use hir_def::{
-    DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, HasModule,
+    DefWithBodyId, HasModule,
     expr_store::Body,
     signatures::{
         EnumSignature, FunctionSignature, StructSignature, TypeAliasSignature, UnionSignature,
@@ -92,13 +92,10 @@ fn eval_goal(
             ),
             Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity().skip_norm_wip(),
         };
-        let param_env = db.trait_environment(
-            match adt_or_type_alias_id {
-                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-            }
-            .into(),
-        );
+        let param_env = db.trait_environment(match adt_or_type_alias_id {
+            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+        });
         let krate = match adt_or_type_alias_id {
             Either::Left(it) => it.krate(&db),
             Either::Right(it) => it.krate(&db),
@@ -145,8 +142,7 @@ fn eval_expr(
             .0;
         let infer = InferenceResult::of(&db, DefWithBodyId::from(function_id));
         let goal_ty = infer.type_of_binding[b].clone();
-        let param_env =
-            db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(function_id)));
+        let param_env = db.trait_environment(function_id.into());
         let krate = function_id.krate(&db);
         db.layout_of_ty(goal_ty, ParamEnvAndCrate { param_env, krate }.store())
     })

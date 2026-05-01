@@ -415,7 +415,7 @@ impl flags::AnalysisStats {
                 hir_def::AdtId::from(a),
                 GenericArgs::empty(interner).store(),
                 hir_ty::ParamEnvAndCrate {
-                    param_env: db.trait_environment(GenericDefId::from(a).into()),
+                    param_env: db.trait_environment(a.into()),
                     krate: a.krate(db).into(),
                 }
                 .store(),

@@ -2927,7 +2927,7 @@ impl Function {
             id.into(),
             GenericArgs::empty(interner).store(),
             ParamEnvAndCrate {
-                param_env: db.trait_environment(GenericDefId::from(id).into()),
+                param_env: db.trait_environment(id.into()),
                 krate: id.module(db).krate(db),
             }
             .store(),
@@ -7456,7 +7456,7 @@ fn param_env_from_resolver<'db>(
     ParamEnvAndCrate {
         param_env: resolver.generic_def().map_or_else(
             || ParamEnv::empty(DbInterner::new_no_crate(db)),
-            |generic_def| db.trait_environment(generic_def.into()),
+            |generic_def| db.trait_environment(generic_def),
         ),
         krate: resolver.krate(),
     }
@@ -7466,14 +7466,17 @@ fn param_env_from_has_crate<'db>(
     db: &'db dyn HirDatabase,
     id: impl hir_def::HasModule + Into<GenericDefId> + Copy,
 ) -> ParamEnvAndCrate<'db> {
-    ParamEnvAndCrate { param_env: db.trait_environment(id.into().into()), krate: id.krate(db) }
+    ParamEnvAndCrate { param_env: db.trait_environment(id.into()), krate: id.krate(db) }
 }
 
 fn body_param_env_from_has_crate<'db>(
     db: &'db dyn HirDatabase,
     id: impl hir_def::HasModule + Into<ExpressionStoreOwnerId> + Copy,
 ) -> ParamEnvAndCrate<'db> {
-    ParamEnvAndCrate { param_env: db.trait_environment(id.into()), krate: id.krate(db) }
+    ParamEnvAndCrate {
+        param_env: db.trait_environment(id.into().generic_def(db)),
+        krate: id.krate(db),
+    }
 }
 
 // FIXME: We probably don't want to expose this.

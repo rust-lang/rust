@@ -2240,12 +2240,7 @@ pub(crate) fn param_env_from_predicates<'db>(
     ParamEnv { clauses }
 }
 
-pub(crate) fn trait_environment<'db>(
-    db: &'db dyn HirDatabase,
-    def: ExpressionStoreOwnerId,
-) -> ParamEnv<'db> {
-    let def = def.generic_def(db);
-
+pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId) -> ParamEnv<'db> {
     return ParamEnv { clauses: trait_environment_query(db, def).as_ref() };
 
     #[salsa::tracked(returns(ref))]

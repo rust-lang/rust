@@ -5,7 +5,7 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    ConstId, EnumVariantId, ExpressionStoreOwnerId, GenericDefId, HasModule, StaticId,
+    ConstId, EnumVariantId, ExpressionStoreOwnerId, HasModule, StaticId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{Expr, ExprId, Literal},
@@ -422,8 +422,11 @@ pub(crate) fn const_eval_discriminant_variant(
     let mir_body = db.monomorphized_mir_body(
         def.into(),
         GenericArgs::empty(interner).store(),
-        ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
-            .store(),
+        ParamEnvAndCrate {
+            param_env: db.trait_environment(def.generic_def(db)),
+            krate: def.krate(db),
+        }
+        .store(),
     )?;
     let c = interpret_mir(db, mir_body, false, None)?.0?;
     let c = if is_signed { allocation_as_isize(c) } else { allocation_as_usize(c) as i128 };
@@ -459,12 +462,8 @@ pub(crate) fn const_eval<'db>(
         let body = db.monomorphized_mir_body(
             def.into(),
             subst,
-            ParamEnvAndCrate {
-                param_env: db
-                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
-                krate: def.krate(db),
-            }
-            .store(),
+            ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
+                .store(),
         )?;
         let c = interpret_mir(db, body, false, trait_env.as_ref().map(|env| env.as_ref()))?.0?;
         Ok(c.store())
@@ -503,7 +502,7 @@ pub(crate) fn anon_const_eval<'db>(
             def.into(),
             subst,
             ParamEnvAndCrate {
-                param_env: db.trait_environment(def.loc(db).owner),
+                param_env: db.trait_environment(def.loc(db).owner.generic_def(db)),
                 krate: def.krate(db),
             }
             .store(),
@@ -541,12 +540,8 @@ pub(crate) fn const_eval_static<'db>(
         let body = db.monomorphized_mir_body(
             def.into(),
             GenericArgs::empty(interner).store(),
-            ParamEnvAndCrate {
-                param_env: db
-                    .trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(def))),
-                krate: def.krate(db),
-            }
-            .store(),
+            ParamEnvAndCrate { param_env: db.trait_environment(def.into()), krate: def.krate(db) }
+                .store(),
         )?;
         let c = interpret_mir(db, body, false, None)?.0?;
         Ok(c.store())

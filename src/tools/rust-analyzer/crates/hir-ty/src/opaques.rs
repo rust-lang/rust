@@ -1,8 +1,8 @@
 //! Handling of opaque types, detection of defining scope and hidden type.
 
 use hir_def::{
-    AssocItemId, AssocItemLoc, DefWithBodyId, ExpressionStoreOwnerId, FunctionId, GenericDefId,
-    HasModule, ItemContainerId, TypeAliasId, signatures::ImplSignature,
+    AssocItemId, AssocItemLoc, DefWithBodyId, FunctionId, HasModule, ItemContainerId, TypeAliasId,
+    signatures::ImplSignature,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -129,8 +129,7 @@ pub(crate) fn tait_hidden_types(
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     let mut ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
-    let param_env =
-        db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(type_alias)));
+    let param_env = db.trait_environment(type_alias.into());
 
     let defining_bodies = tait_defining_bodies(db, loc);
 

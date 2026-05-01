@@ -968,9 +968,7 @@ fn render_const_scalar_inner<'db>(
                         s.fields(f.db),
                         f,
                         field_types,
-                        f.db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(
-                            def,
-                        ))),
+                        f.db.trait_environment(def.into()),
                         &layout,
                         args,
                         b,
@@ -996,9 +994,7 @@ fn render_const_scalar_inner<'db>(
                         var_id.fields(f.db),
                         f,
                         field_types,
-                        f.db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(
-                            def,
-                        ))),
+                        f.db.trait_environment(def.into()),
                         var_layout,
                         args,
                         b,

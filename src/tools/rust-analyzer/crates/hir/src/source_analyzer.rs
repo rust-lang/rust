@@ -332,10 +332,17 @@ impl<'db> SourceAnalyzer<'db> {
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
         self.param_and(self.body_or_sig.as_ref().map_or_else(
             || ParamEnv::empty(DbInterner::new_no_crate(db)),
-            |body_or_sig| match *body_or_sig {
-                BodyOrSig::Body { def, .. } => db.trait_environment(def.into()),
-                BodyOrSig::VariantFields { def, .. } => db.trait_environment(def.into()),
-                BodyOrSig::Sig { def, .. } => db.trait_environment(def.into()),
+            |body_or_sig| {
+                let def = match *body_or_sig {
+                    BodyOrSig::Body { def, .. } => def.generic_def(db),
+                    BodyOrSig::VariantFields { def, .. } => match def {
+                        VariantId::EnumVariantId(def) => def.loc(db).parent.into(),
+                        VariantId::StructId(def) => def.into(),
+                        VariantId::UnionId(def) => def.into(),
+                    },
+                    BodyOrSig::Sig { def, .. } => def,
+                };
+                db.trait_environment(def)
             },
         ))
     }
@@ -1590,7 +1597,7 @@ impl<'db> SourceAnalyzer<'db> {
         func: FunctionId,
         substs: GenericArgs<'db>,
     ) -> (Function, GenericArgs<'db>) {
-        let owner = match self.resolver.expression_store_owner() {
+        let owner = match self.resolver.generic_def() {
             Some(it) => it,
             None => return (func.into(), substs),
         };
@@ -1610,7 +1617,7 @@ impl<'db> SourceAnalyzer<'db> {
         const_id: ConstId,
         subs: GenericArgs<'db>,
     ) -> (ConstId, GenericArgs<'db>) {
-        let owner = match self.resolver.expression_store_owner() {
+        let owner = match self.resolver.generic_def() {
             Some(it) => it,
             None => return (const_id, subs),
         };

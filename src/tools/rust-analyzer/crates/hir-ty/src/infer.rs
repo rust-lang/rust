@@ -1331,7 +1331,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         resolver: Resolver<'db>,
         allow_using_generic_params: bool,
     ) -> Self {
-        let trait_env = db.trait_environment(store_owner);
+        let trait_env = db.trait_environment(generic_def);
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), store_owner);
         let types = crate::next_solver::default_types(db);
         InferenceContext {
