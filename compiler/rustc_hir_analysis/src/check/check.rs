@@ -1871,6 +1871,17 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
+                if matches!(unsuited.reason, UnsuitedReason::Array) {
+                    #[derive(Diagnostic)]
+                    #[diag("😱 Crater REGRESSION 😱")]
+                    struct CraterFail {
+                        #[primary_span]
+                        span: Span,
+                    }
+
+                    tcx.dcx().emit_err(CraterFail { span: field.span });
+                }
+
                 tcx.emit_node_span_lint(
                     REPR_TRANSPARENT_NON_ZST_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
