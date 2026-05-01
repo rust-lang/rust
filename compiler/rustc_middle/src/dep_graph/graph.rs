@@ -19,7 +19,6 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::def_id::LocalDefId;
-use tracing::instrument;
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
 
@@ -739,6 +738,7 @@ impl DepGraphData {
                     tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
                 }
                 QuerySideEffect::CreateDef { parent, data } => {
+                    tracing::trace!("SIDE-EFFECT create_def_raw({parent:?}, {data:?})");
                     tcx.untracked().definitions.write().create_def(*parent, *data);
                 }
             }
@@ -775,6 +775,10 @@ impl DepGraphData {
             };
 
             let value_fingerprint = value_fingerprint.unwrap_or(Fingerprint::ZERO);
+            //tracing::trace!(
+            //    "alloc_and_color_node {key:?} is {}",
+            //    if is_green { "GREEN" } else { "RED" }
+            //);
 
             let dep_node_index = self.current.encoder.send_and_color(
                 prev_index,
@@ -892,19 +896,25 @@ impl DepGraphData {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    #[instrument(skip(self, tcx, prev_dep_node_index, frame), level = "debug")]
     fn try_mark_previous_green<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         prev_dep_node_index: SerializedDepNodeIndex,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<DepNodeIndex> {
+        let _span = tracing::trace_span!(
+            "try_mark_previous_green",
+            dep_node = ?self.previous.index_to_node(prev_dep_node_index),
+        );
+        let _span = _span.enter();
+
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
         debug_assert!(!tcx.is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind));
 
         for parent_dep_node_index in self.previous.edge_targets_from(prev_dep_node_index) {
+            tracing::trace!("EXAMINE {:?}", self.previous.index_to_node(parent_dep_node_index),);
             match self.colors.get(parent_dep_node_index) {
                 // This dependency has been marked as green before, we are still ok and can
                 // continue checking the remaining dependencies.
@@ -912,7 +922,14 @@ impl DepGraphData {
 
                 // This dependency's result is different to the previous compilation session. We
                 // cannot mark this dep_node as green, so stop checking.
-                DepNodeColor::Red => return None,
+                DepNodeColor::Red => {
+                    tracing::trace!(
+                        "RECOMPUTE {:?} BECAUSE KNOWN RED {:?}",
+                        self.previous.index_to_node(prev_dep_node_index),
+                        self.previous.index_to_node(parent_dep_node_index),
+                    );
+                    return None;
+                }
 
                 // We still need to determine this dependency's colour.
                 DepNodeColor::Unknown => {}
@@ -929,12 +946,24 @@ impl DepGraphData {
 
             // We failed to mark it green, so we try to force the query.
             if !tcx.try_force_from_dep_node(*parent_dep_node, parent_dep_node_index, &frame) {
+                tracing::trace!(
+                    "RECOMPUTE {:?} BECAUSE UNFORCEABLE {:?}",
+                    self.previous.index_to_node(prev_dep_node_index),
+                    parent_dep_node,
+                );
                 return None;
             }
 
             match self.colors.get(parent_dep_node_index) {
                 DepNodeColor::Green(_) => continue,
-                DepNodeColor::Red => return None,
+                DepNodeColor::Red => {
+                    tracing::trace!(
+                        "RECOMPUTE {:?} BECAUSE NEWLY RED {:?}",
+                        self.previous.index_to_node(prev_dep_node_index),
+                        parent_dep_node,
+                    );
+                    return None;
+                }
                 DepNodeColor::Unknown => {}
             }
 
