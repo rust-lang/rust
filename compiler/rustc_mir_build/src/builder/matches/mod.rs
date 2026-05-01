@@ -999,7 +999,7 @@ struct PatternExtraData<'tcx> {
 
 impl<'tcx> PatternExtraData<'tcx> {
     fn is_empty(&self) -> bool {
-        self.bindings.is_empty() && self.ascriptions.is_empty()
+        self.bindings.is_empty() && self.ascriptions.is_empty() && self.guard_patterns.is_empty()
     }
 }
 
@@ -1102,11 +1102,12 @@ struct Candidate<'tcx> {
     /// - See [`Builder::remove_never_subcandidates`].
     subcandidates: Vec<Candidate<'tcx>>,
 
-    /// ...and if there are guards they must be evaluated; if they're `false` then branch to `otherwise_block`.
+    /// ...and if there are arm guards they must be evaluated; if they're `false` then branch to
+    /// `otherwise_block`.
     ///
     /// ---
     /// For subcandidates, this is copied from the parent candidate
-    guards: Vec<OrderedPatternData<ExprId>>,
+    guards: Vec<ExprId>,
 
     /// Holds extra pattern data that was prepared by [`FlatPat`], including bindings and
     /// ascriptions that must be established if this candidate succeeds.
@@ -1144,15 +1145,15 @@ impl<'tcx> Candidate<'tcx> {
         // Use `FlatPat` to build simplified match pairs, then immediately
         // incorporate them into a new candidate.
         let flat_pat = FlatPat::new(place, pattern, cx);
-        let mut guards = flat_pat.extra_data.guard_patterns.clone();
+        let mut guards = Vec::new();
         if let HasMatchGuard::Yes(g) = guard {
-            guards.push(OrderedPatternData::One(g));
-        };
+            guards.push(g);
+        }
         Self::from_flat_pat(flat_pat, guards)
     }
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
-    fn from_flat_pat(flat_pat: FlatPat<'tcx>, guards: Vec<OrderedPatternData<ExprId>>) -> Self {
+    fn from_flat_pat(flat_pat: FlatPat<'tcx>, guards: Vec<ExprId>) -> Self {
         let mut this = Candidate {
             match_pairs: flat_pat.match_pairs,
             extra_data: flat_pat.extra_data,
@@ -1513,8 +1514,11 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 .collect(),
             guards: sub_branch_ordered_pat_data(
                 parent_data.iter().map(|parent| parent.guard_patterns.as_slice()),
-                &candidate.guards,
-            ),
+                &candidate.extra_data.guard_patterns,
+            )
+            .into_iter()
+            .chain(candidate.guards)
+            .collect(),
             is_never: candidate.extra_data.is_never,
         }
     }
@@ -2085,7 +2089,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'tcx>) {
         assert!(!candidate.subcandidates.is_empty());
-        if !candidate.guards.is_empty() {
+        if !candidate.guards.is_empty() || !candidate.extra_data.guard_patterns.is_empty() {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
         }
