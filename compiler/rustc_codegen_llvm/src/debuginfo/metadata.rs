@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
@@ -607,8 +606,16 @@ pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFi
         };
         let hash_value = hex_encode(source_file.src_hash.hash_bytes());
 
-        let source =
-            cx.sess().opts.unstable_opts.embed_source.then_some(()).and(source_file.src.as_ref());
+        let mut source = None;
+        let external_src;
+        if cx.sess().opts.unstable_opts.embed_source {
+            source = source_file.src.as_deref().map(String::as_str);
+            if source.is_none() {
+                cx.tcx.sess.source_map().ensure_source_file_source_present(source_file);
+                external_src = source_file.external_src.read();
+                source = external_src.get_source();
+            }
+        }
 
         create_file(DIB(cx), &file_name, &directory, &hash_value, hash_kind, source)
     }
@@ -626,7 +633,7 @@ fn create_file<'ll>(
     directory: &str,
     hash_value: &str,
     hash_kind: llvm::ChecksumKind,
-    source: Option<&Arc<String>>,
+    source: Option<&str>,
 ) -> &'ll DIFile {
     unsafe {
         llvm::LLVMRustDIBuilderCreateFile(
