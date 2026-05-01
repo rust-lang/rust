@@ -845,6 +845,16 @@ rustc_index::newtype_index! {
     }
 }
 
+impl Local {
+    /// Makes a `Local` for the `i`-th argument to a function.
+    ///
+    /// `Local(0)` is the [`RETURN_PLACE`], with the arguments after that,
+    /// so `arg(i)` will give `Local(i + 1)`.
+    pub const fn arg(i: usize) -> Local {
+        Local::from_usize(i + 1)
+    }
+}
+
 impl Atom for Local {
     fn index(self) -> usize {
         Idx::index(self)

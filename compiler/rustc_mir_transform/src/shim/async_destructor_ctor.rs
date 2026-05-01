@@ -74,8 +74,8 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let span = tcx.def_span(def_id);
     let source_info = SourceInfo::outermost(span);
 
-    // The first argument (index 0), but add 1 for the return value.
-    let coroutine_layout = Place::from(Local::new(1 + 0));
+    // The first argument (index 0) which will be local 1 (after the return value).
+    let coroutine_layout = Place::from(Local::arg(0));
     let coroutine_layout_dropee =
         tcx.mk_place_field(coroutine_layout, FieldIdx::new(0), drop_ptr_ty);
 

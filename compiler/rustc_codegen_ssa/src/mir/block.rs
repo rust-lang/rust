@@ -522,7 +522,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
             let va_list_arg_idx = self.fn_abi.args.len();
-            match self.locals[mir::Local::from_usize(1 + va_list_arg_idx)] {
+            match self.locals[mir::Local::arg(va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
                     bx.va_end(va_list.val.llval);
 
