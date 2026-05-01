@@ -54,7 +54,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
-use crate::dep_graph::{DepGraph, DepKindVTable, TaskDepsRef};
+use crate::dep_graph::{DepGraph, DepKindVTable, QuerySideEffect, TaskDepsRef};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -1342,7 +1342,11 @@ impl<'tcx> TyCtxt<'tcx> {
             //
             // In order to make this compatible with the general model of queries, we add
             // additional information which must change at each call.
-            TaskDepsRef::Allow(..) => self.create_def_raw((parent, data)),
+            TaskDepsRef::Allow(..) => {
+                self.dep_graph
+                    .encode_side_effect(self, QuerySideEffect::CreateDef { parent, data });
+                self.create_def_raw((parent, data))
+            }
 
             // If we are not tracking dependencies, we can use global mutable state.
             // This is only an optimization to avoid the cost of registering the dep-node.

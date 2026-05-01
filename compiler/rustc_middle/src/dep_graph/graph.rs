@@ -12,11 +12,13 @@ use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
+use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
+use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -50,6 +52,8 @@ pub enum QuerySideEffect {
     /// if we mark the query as green, as that query will have
     /// the side effect dep node as a dependency.
     CheckFeature { symbol: Symbol },
+    /// Creates a new definition.
+    CreateDef { parent: LocalDefId, data: DisambiguatedDefPathData },
 }
 
 #[derive(Clone)]
@@ -533,7 +537,9 @@ impl DepGraph {
         side_effect: QuerySideEffect,
     ) -> DepNodeIndex {
         if let Some(ref data) = self.data {
-            data.encode_side_effect(tcx, side_effect)
+            let dep_node_index = data.encode_side_effect(tcx, side_effect);
+            self.read_index(dep_node_index);
+            dep_node_index
         } else {
             self.next_virtual_depnode_index()
         }
@@ -724,6 +730,9 @@ impl DepGraphData {
                 }
                 QuerySideEffect::CheckFeature { symbol } => {
                     tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
+                }
+                QuerySideEffect::CreateDef { parent, data } => {
+                    tcx.ensure_done().create_def_raw((*parent, *data));
                 }
             }
 
