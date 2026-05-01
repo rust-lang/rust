@@ -168,8 +168,8 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     tracing::trace!(?place);
 }
 
-const SELF_ARG: Local = Local::from_u32(1);
-const CTX_ARG: Local = Local::from_u32(2);
+const SELF_ARG: Local = Local::arg(0);
+const CTX_ARG: Local = Local::arg(1);
 
 /// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {
