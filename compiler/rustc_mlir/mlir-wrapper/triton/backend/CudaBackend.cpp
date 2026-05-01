@@ -140,20 +140,6 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
     return false;
   };
 
-  // Debug: log all __nv_* declarations found before linking.
-  {
-    bool any = false;
-    for (const auto &F : llvmMod->functions()) {
-      if (F.isDeclaration() && F.getName().starts_with("__nv_")) {
-        llvm::errs() << "[libdevice-dbg] extern decl: " << F.getName() << "\n";
-        any = true;
-      }
-    }
-    if (!any) {
-      llvm::errs() << "[libdevice-dbg] no __nv_* declarations found\n";
-    }
-  }
-
   if (needsLibdevice()) {
     // Prefer the env-var override, then the standard CUDA toolkit path.
     const char *env_path = std::getenv("CUDA_LIBDEVICE_PATH");
@@ -163,11 +149,7 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
     };
     bool found = false;
     for (const char *path : candidates) {
-      bool exists = path && llvm::sys::fs::exists(path);
-      llvm::errs() << "[libdevice-dbg] candidate: "
-                   << (path ? path : "<null>")
-                   << " exists=" << exists << "\n";
-      if (exists) {
+      if (path && llvm::sys::fs::exists(path)) {
         libPaths.push_back(path);
         found = true;
         break;
@@ -181,20 +163,9 @@ LogicalResult CudaBackend::makeLLVMIR(MLIRContext &context, ModuleOp module) {
   }
 
   if (!libPaths.empty()) {
-    llvm::errs() << "[libdevice-dbg] calling linkExternLibs with "
-                 << libPaths.size() << " lib(s)\n";
     auto result = linkExternLibs(llvmContext, *llvmMod, libPaths);
     if (failed(result)) {
-      llvm::errs() << "[libdevice-dbg] linkExternLibs FAILED\n";
       return result;
-    }
-    // Check post-link: are the symbols now defined or still extern?
-    for (const auto &F : llvmMod->functions()) {
-      if (F.getName().starts_with("__nv_")) {
-        llvm::errs() << "[libdevice-dbg] post-link: " << F.getName()
-                     << (F.isDeclaration() ? " => still extern" : " => defined")
-                     << "\n";
-      }
     }
   }
 
@@ -336,7 +307,6 @@ LogicalResult CudaBackend::makeTTIR(MLIRContext &context, ModuleOp module) {
 }
 
 LogicalResult CudaBackend::makeTTGIR(MLIRContext &context, ModuleOp module) {
-  PassManager pm(&context);
   auto capability = getCapability();
   auto capability_major = static_cast<int>(capability) / 10;
   auto op = module.getOperation();
@@ -345,15 +315,22 @@ LogicalResult CudaBackend::makeTTGIR(MLIRContext &context, ModuleOp module) {
   if (m_options.maxnreg.has_value) {
     auto maxnreg = m_options.maxnreg.value;
     OpBuilder builder(&context);
-
     op->setAttr("ttg.maxnreg", builder.getI32IntegerAttr(maxnreg));
   }
 
   std::string capability_str =
       std::string("cuda:").append(std::to_string(static_cast<int>(capability)));
 
-  addPass(pm, MlirPass::ttir_convert_to_ttgpuir, capability_str,
-          m_options.num_warps, 32, m_options.num_ctas);
+  // Run ttir_convert_to_ttgpuir as a separate pass to get early crash detection.
+  {
+    PassManager pm0(&context);
+    addPass(pm0, MlirPass::ttir_convert_to_ttgpuir, capability_str,
+            m_options.num_warps, 32, m_options.num_ctas);
+    auto r = pm0.run(op);
+    if (failed(r)) return r;
+  }
+
+  PassManager pm(&context);
 
   // optimize TTGIR
   addPass(pm, MlirPass::ttgpuir_coalesce);

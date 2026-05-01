@@ -34,6 +34,7 @@ use rustc_mlir::triton::tensor::{
     print as triton_print, reduce, reduce_return, reshape, scan, scan_return, split, splat,
     store, trans, zeros_like,
 };
+use rustc_mlir::triton::{int_to_ptr, pointer_type};
 use rustc_mlir::triton::program::{ProgramAxis, create_get_num_programs};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
@@ -428,18 +429,34 @@ impl<'a> TritonCodegen<'a> {
             elem_mlir_ty
         };
 
-        // Pointer/non-standard element types: return UB tensor.
-        // (splat requires a scalar constant, which we can't create for pointer types.)
-        let type_str = elem_mlir_ty.to_string();
-        if !elem_mlir_ty.is_integer() && !type_str.contains('f') && !type_str.contains("bf16") {
-            eprintln!("[WARN] codegen_zeros: unsupported element type {:?}; returning UB", type_str);
+        // For pointer element types: emit tt.splat(tt.int_to_ptr(0)) — a tensor of null ptrs.
+        // Can't use arith.constant for pointer types (DenseIntOrFPElementsAttr doesn't support
+        // them), and ub.poison causes crashes in later Triton passes.
+        // NOTE: must use is_float() not string heuristics — "!tt.ptr<f32>" contains 'f'.
+        if !elem_mlir_ty.is_integer() && !elem_mlir_ty.is_float() {
+            // Build: %null_i64 = arith.constant 0 : i64
+            let null_i64_op: Operation<'a> =
+                create_int_constant(self.module.context(), location, Int::I64(0))
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let null_i64 = null_i64_op.result(0).expect("null i64").into();
+            mlir_block.append_operation(null_i64_op);
+            // Build: %null_ptr = tt.int_to_ptr %null_i64 : i64 -> <pointer_elem_ty>
+            let null_ptr_op: Operation<'a> =
+                int_to_ptr(self.module.context(), location, null_i64, elem_mlir_ty)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let null_ptr = null_ptr_op.result(0).expect("null ptr").into();
+            mlir_block.append_operation(null_ptr_op);
+            // Build: %result = tt.splat %null_ptr : <pointer_elem_ty> -> tensor<N x <pointer_elem_ty>>
             let tensor_ty = tensor_type(&shape, elem_mlir_ty).into();
-            let ub_op: Operation<'a> = create_ub_poison(self.module.context(), location, tensor_ty)
-                .map_err(|e| MlirError::CreateOperation { err: e })?
-                .into();
-            let result = ub_op.result(0).expect("ub poison result");
-            mlir_block.append_operation(ub_op);
-            return Ok(Some(result.into()));
+            let splat_op: Operation<'a> =
+                splat(self.module.context(), location, null_ptr, tensor_ty)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let result = splat_op.result(0).expect("null ptr tensor").into();
+            mlir_block.append_operation(splat_op);
+            return Ok(Some(result));
         }
 
         // Create a scalar zero constant of the element type.
@@ -501,6 +518,29 @@ impl<'a> TritonCodegen<'a> {
             .try_into()
             .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
         let elem_ty = tensor_ty.element();
+
+        // For pointer element types: splat a null pointer (same logic as codegen_zeros).
+        if !elem_ty.is_integer() && !elem_ty.is_float() {
+            let null_i64_op: Operation<'a> =
+                create_int_constant(self.module.context(), location, Int::I64(0))
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let null_i64 = null_i64_op.result(0).expect("null i64").into();
+            mlir_block.append_operation(null_i64_op);
+            let null_ptr_op: Operation<'a> =
+                int_to_ptr(self.module.context(), location, null_i64, elem_ty)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let null_ptr = null_ptr_op.result(0).expect("null ptr").into();
+            mlir_block.append_operation(null_ptr_op);
+            let splat_op: Operation<'a> =
+                splat(self.module.context(), location, null_ptr, tensor.r#type())
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let result = splat_op.result(0).expect("null ptr tensor").into();
+            mlir_block.append_operation(splat_op);
+            return Ok(Some(result));
+        }
 
         // Create a zero constant of the element type.
         let zero_op: Operation<'a> = if elem_ty.is_integer() {

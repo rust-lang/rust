@@ -142,13 +142,12 @@ mod tests {
         );
     }
 
-    // Bug: a compound 4-condition early return inside a Triton kernel panics with
-    // "cond_br: phi local not in ssa_values" in the Triton codegen backend.
-    // The backend fails to track live locals that cross the conditional branch target
-    // when there are 4+ sub-conditions joined by `||`.
-    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/ops/terminator.rs
+    // Fixed: a compound 4-condition early return inside a Triton kernel previously panicked with
+    // "cond_br: phi local not in ssa_values". The fix tightens the phi-join threshold in
+    // compute_phi_join_locals from `count >= 2` to `count == preds.len()`, eliminating false
+    // phi locals for join blocks with 3+ predecessors.
+    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/mod.rs
     #[test]
-    #[should_panic(expected = "not in ssa_values")]
     fn test_phi_bug_early_return() {
         let _ = fmt()
             .with_env_filter(
@@ -158,16 +157,16 @@ mod tests {
 
         let compiler = LlvmCompiler::new();
         let file = env::current_dir().unwrap().join("tests/data/phi_bug_early_return.rs");
-        let _ = compiler.compile(&file, "nvptx64-nvidia-cuda");
+        let result = compiler.compile(&file, "nvptx64-nvidia-cuda");
+        assert!(result.is_ok(), "phi_bug_early_return compile failed: {:?}", result.err());
     }
 
-    // Bug: a `continue` statement inside a `for` loop in a Triton kernel panics with
-    // "codegen_goto: phi local not in ssa_values at branch to bbN".
-    // The backend fails to include loop-carried tensors in the phi nodes at the
-    // loop header when the loop body contains an early-exit via `continue`.
-    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/ops/terminator.rs
+    // Fixed: a `continue` statement inside a `for` loop in a Triton kernel previously panicked
+    // with "codegen_goto: phi local not in ssa_values at branch to bbN". The fix has two parts:
+    // (1) collect_body_blocks_ordered now follows SwitchInt successors so the loop is detected,
+    // (2) codegen_loop_body_switch_as_scf_if emits scf.if for intra-body SwitchInt targets.
+    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/mod.rs and ops/terminator.rs
     #[test]
-    #[should_panic(expected = "not in ssa_values")]
     fn test_phi_bug_loop_continue() {
         let _ = fmt()
             .with_env_filter(
@@ -177,6 +176,7 @@ mod tests {
 
         let compiler = LlvmCompiler::new();
         let file = env::current_dir().unwrap().join("tests/data/phi_bug_loop_continue.rs");
-        let _ = compiler.compile(&file, "nvptx64-nvidia-cuda");
+        let result = compiler.compile(&file, "nvptx64-nvidia-cuda");
+        assert!(result.is_ok(), "phi_bug_loop_continue compile failed: {:?}", result.err());
     }
 }

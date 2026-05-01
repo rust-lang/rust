@@ -15,13 +15,44 @@
  */
 
 #include <iostream>
+#include <vector>
 
 #include "Backend.h"
 
 #include "llvm/Support/raw_ostream.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/IR/Builders.h"
 
 namespace mlir {
 namespace triton {
+
+/// Replace every `cf.cond_br %c, ^bb, ^bb` with `cf.br ^bb` in the module.
+///
+/// Triton's makeTTIR canonicalization can merge two identical successor blocks
+/// into one, creating degenerate `cf.cond_br %c, ^bb, ^bb` operations.  The
+/// standard MLIR canonicalization pass is expected to fold these, but in
+/// practice it sometimes misses them when the degenerate form is created late
+/// in the same pass run.  This explicit pass ensures the fold always happens
+/// before makeTTGIR, which crashes on degenerate cond_brs.
+static void foldDegenerateCondBranches(ModuleOp module) {
+  std::vector<cf::CondBranchOp> toFold;
+  module.walk([&](cf::CondBranchOp condBr) {
+    if (condBr.getTrueDest() == condBr.getFalseDest()) {
+      auto trueOps = condBr.getTrueDestOperands();
+      auto falseOps = condBr.getFalseDestOperands();
+      if (trueOps.size() == falseOps.size() &&
+          std::equal(trueOps.begin(), trueOps.end(), falseOps.begin())) {
+        toFold.push_back(condBr);
+      }
+    }
+  });
+  for (auto condBr : toFold) {
+    OpBuilder builder(condBr);
+    builder.create<cf::BranchOp>(condBr.getLoc(), condBr.getTrueDest(),
+                                 condBr.getTrueDestOperands());
+    condBr.erase();
+  }
+}
 
 Backend::Backend(std::string target) : m_target(target) {
   // nop
@@ -45,8 +76,26 @@ LogicalResult Backend::applyPasses(MLIRContext &context, ModuleOp module,
     m_result = makeTTIR(context, module);
     CHECK_RESULT(m_result, "Failed to make TTIR module. Aborting translation.");
 
+    // Triton's canonicalization inside makeTTIR can produce degenerate
+    // cf.cond_br %c, ^bb, ^bb operations (both arms the same block).
+    // Fold these to cf.br ^bb before makeTTGIR sees them.
+    foldDegenerateCondBranches(module);
+    // Clean up any dead values created by the fold (e.g., unused comparison
+    // results after a degenerate cond_br is replaced with an unconditional br).
+    // NOTE: SimplifyPassThroughCondBranch in the canonicalizer can collapse
+    // pass-through trampolines into cond_br successors, which may recreate
+    // degenerate cond_brs.  Run the fold a second time to catch those.
+    {
+      PassManager cleanup_pm(&context);
+      cleanup_pm.addPass(createCanonicalizerPass());
+      auto r = cleanup_pm.run(module.getOperation());
+      (void)r; // best-effort
+    }
+    foldDegenerateCondBranches(module);
+
     llvm::raw_string_ostream ttir_os(m_ttir);
     module.print(ttir_os);
+    ttir_os.flush();
 
     m_result = makeTTGIR(context, module);
     CHECK_RESULT(m_result,

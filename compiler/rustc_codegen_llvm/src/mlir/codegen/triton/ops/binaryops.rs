@@ -59,8 +59,6 @@ impl<'a> TritonCodegen<'a> {
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
 
-        println!("[DEBUG] TritonCodegen::codegen_mul_call: arg0: {:?}", arg0);
-        println!("[DEBUG] TritonCodegen::codegen_mul_call: arg1: {:?}", arg1);
 
         let arg0_value = self.codegen_operand(
             tcx,
@@ -106,8 +104,6 @@ impl<'a> TritonCodegen<'a> {
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
 
-        println!("[DEBUG] TritonCodegen::codegen_add_call: arg0: {:?}", arg0);
-        println!("[DEBUG] TritonCodegen::codegen_add_call: arg1: {:?}", arg1);
 
         let lhs = self.codegen_operand(
             tcx,

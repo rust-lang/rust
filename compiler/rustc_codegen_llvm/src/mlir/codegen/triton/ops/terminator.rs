@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use melior::dialect::scf;
 use melior::ir::attribute::IntegerAttribute;
-use melior::ir::operation::OperationLike;
+use melior::ir::operation::{OperationBuilder, OperationLike};
 use melior::ir::r#type::{IntegerType, TupleType};
-use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value, ValueLike};
-use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, SwitchTargets, Terminator, UnwindAction};
+use melior::ir::{Block, BlockLike, BlockRef, Location, Operation, Region, RegionLike, TypeLike, Value, ValueLike};
+use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, SwitchTargets, Terminator, TerminatorKind, UnwindAction};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
 use rustc_mlir::shared::arith::{Predicate, create_cmpi};
@@ -64,8 +64,6 @@ impl<'a> TritonCodegen<'a> {
         state: &mut CodegenState<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
     ) -> Result<(), MlirError> {
-        //println!("[DEBUG] TritonCodegen::codegen_terminator: ssa_values: {:?} terminator: {:?}", state.ssa_values, terminator);
-
         let location =
             span_to_location(self.module.context(), tcx, terminator.source_info.span);
 
@@ -181,10 +179,6 @@ impl<'a> TritonCodegen<'a> {
             _ => format!("XX{:?}", func),
         };
 
-        println!(
-            "[DEBUG] TritonCodegen::codegen_terminator_call: func: {:?} func_name: {:?}",
-            func, func_name
-        );
 
         let method: LocalCallHandler<'a, 'tcx> = match func_name.as_str() {
             "core::ops::Mul::mul" => TritonCodegen::codegen_mul_call as LocalCallHandler<'a, 'tcx>,
@@ -488,7 +482,6 @@ impl<'a> TritonCodegen<'a> {
                     TypingEnv::fully_monomorphized(),
                     EarlyBinder::bind(ty),
                 );
-                println!("[DEBUG] AXM TritonCodegen::codegen_call: ty: {:?}", ty);
                 match ty.kind() {
                     TyKind::FnDef(def_id, substs) => {
                         let typing_env = TypingEnv::post_analysis(tcx, *def_id);
@@ -511,10 +504,6 @@ impl<'a> TritonCodegen<'a> {
             _ => func_name.to_string(),
         };
 
-        eprintln!(
-            "[DEBUG] AXM TritonCodegen::codegen_call: callee_name: {:?} {:?}",
-            func, callee_name
-        );
 
         // Flatten the return type: unit → [], tuple → multiple types, scalar → one type.
         let result_types: Vec<_> = if ret_ty.is_unit() {
@@ -538,7 +527,6 @@ impl<'a> TritonCodegen<'a> {
         .map_err(|e| MlirError::CreateOperation { err: e })?
         .into();
 
-        eprintln!("[DEBUG] AXM TritonCodegen::codegen_call: call_op: {:?}", call_op.to_string());
 
         let result = match result_types.len() {
             0 => None,
@@ -580,10 +568,6 @@ impl<'a> TritonCodegen<'a> {
                 .find(|(val, _)| *val == const_val as u128)
                 .map(|(_, bb)| bb)
                 .unwrap_or_else(|| targets.otherwise());
-            println!(
-                "[DEBUG] codegen_switch_int: constant-folding discriminant (val={}) → {:?}",
-                const_val, target
-            );
             return self.codegen_goto(location, &target, mlir_block, basic_blocks, state);
         }
 
@@ -630,10 +614,44 @@ impl<'a> TritonCodegen<'a> {
                 let cmp_result: Value<'a, 'a> = cmp_op.result(0).expect("cmpi result").into();
                 mlir_block.append_operation(cmp_op);
 
+                // If both branch targets are inside the active scf.for body, a plain
+                // cf.cond_br would point two arms at the same MLIR block (invalid).
+                // Emit scf.if instead, processing each arm's MIR blocks inline.
+                if let Some(header_bb) = state.loop_header_bb {
+                    let true_in_loop =
+                        *target_bb == header_bb || state.loop_body_bbs.contains(target_bb);
+                    let false_in_loop =
+                        otherwise_bb == header_bb || state.loop_body_bbs.contains(&otherwise_bb);
+                    if true_in_loop && false_in_loop {
+                        return self.codegen_loop_body_switch_as_scf_if(
+                            tcx,
+                            instance,
+                            mir,
+                            cmp_result,
+                            *target_bb,
+                            otherwise_bb,
+                            mlir_block,
+                            basic_blocks,
+                            state,
+                            location,
+                        );
+                    }
+                }
+
+                // Degenerate: both arms go to the same block (optimizer merged identical paths).
+                // Emit cf.br instead to avoid Triton's makeTTGIR crashing on a cond_br with
+                // two identical successors.
+                if target_bb == &otherwise_bb {
+                    return self.codegen_goto(location, target_bb, mlir_block, basic_blocks, state);
+                }
+
                 let true_block = *basic_blocks.get(target_bb).expect("switch target block");
                 let false_block = *basic_blocks.get(&otherwise_bb).expect("switch otherwise block");
 
-                // Collect phi args with lazy block-arg creation (same as codegen_goto).
+                // Collect phi args with lazy block-arg creation and stale-value detection.
+                // Mirrors codegen_goto: if the join block was already processed (DFS visited
+                // it before this predecessor), ssa_values may hold the join's own block arg
+                // (stale). Fall back to pre_join_ssa_values in that case.
                 let make_phi_args = |target: &BasicBlock,
                                      target_block: BlockRef<'a, 'a>,
                                      state: &mut CodegenState<'a, 'a>|
@@ -642,15 +660,41 @@ impl<'a> TritonCodegen<'a> {
                         phi_locals
                             .iter()
                             .map(|local| {
-                                let ssa_val = *state.ssa_values.get(local).unwrap_or_else(|| {
-                                    panic!("cond_br: phi local {:?} not in ssa_values", local)
-                                });
-                                if !state.phi_block_args.contains_key(&(*target, *local)) {
+                                if let Some(&existing_arg) =
+                                    state.phi_block_args.get(&(*target, *local))
+                                {
+                                    let current = state.ssa_values.get(local).copied();
+                                    if current == Some(existing_arg) {
+                                        *state
+                                            .pre_join_ssa_values
+                                            .get(&(*target, *local))
+                                            .unwrap_or_else(|| {
+                                                panic!(
+                                                    "cond_br: stale phi local {:?} at {:?} but no pre-join save",
+                                                    local, target
+                                                )
+                                            })
+                                    } else {
+                                        current.unwrap_or_else(|| {
+                                            panic!(
+                                                "cond_br: phi local {:?} not in ssa_values at branch to {:?}",
+                                                local, target
+                                            )
+                                        })
+                                    }
+                                } else {
+                                    let ssa_val =
+                                        *state.ssa_values.get(local).unwrap_or_else(|| {
+                                            panic!(
+                                                "cond_br: phi local {:?} not in ssa_values",
+                                                local
+                                            )
+                                        });
                                     let phi_val =
                                         target_block.add_argument(ssa_val.r#type(), location);
                                     state.phi_block_args.insert((*target, *local), phi_val);
+                                    ssa_val
                                 }
-                                ssa_val
                             })
                             .collect()
                     } else {
@@ -748,10 +792,6 @@ impl<'a> TritonCodegen<'a> {
                             });
                             let phi_val = target_block.add_argument(ssa_val.r#type(), location);
                             state.phi_block_args.insert((*target, *local), phi_val);
-                            println!(
-                                "[PHI] lazy: added arg for local {:?} at {:?} type {:?}",
-                                local, target, ssa_val.r#type()
-                            );
                             ssa_val
                         }
                     })
@@ -765,15 +805,205 @@ impl<'a> TritonCodegen<'a> {
                 .map_err(|e| MlirError::CreateOperation { err: e })?
                 .into()
         } else {
-            println!(
-                "[PHI] codegen_goto: br to {:?} with {} phi args",
-                target,
-                phi_args.len()
-            );
             melior::dialect::cf::br(&*target_block, &phi_args, location)
         };
 
         mlir_block.append_operation(br_op);
         Ok(())
     }
+
+    /// Emit an `scf.if` in place of a `cf.cond_br` when both SwitchInt targets are inside
+    /// the active `scf.for` body. Each arm processes its chain of body blocks inline,
+    /// yielding the current iter-carry values to the `scf.if`. After the `scf.if`, the
+    /// iter-carry locals are updated with the results, and the arm-chain blocks are marked
+    /// as `skip_bbs` so the outer body loop doesn't re-process them.
+    #[allow(clippy::too_many_arguments)]
+    fn codegen_loop_body_switch_as_scf_if<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        cond: Value<'a, 'a>,
+        true_target: BasicBlock,
+        false_target: BasicBlock,
+        mlir_block: &BlockRef<'a, 'a>,
+        basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
+        state: &mut CodegenState<'a, 'a>,
+        location: Location<'a>,
+    ) -> Result<(), MlirError> {
+        let back_edge_bb = state
+            .loop_back_edge_bb
+            .expect("codegen_loop_body_switch_as_scf_if: loop_back_edge_bb not set");
+
+        let loop_body_bbs = state.loop_body_bbs.clone();
+        let iter_carry_locals = state.loop_iter_carry_locals.clone();
+
+        let true_chain = collect_arm_chain(mir, true_target, back_edge_bb, &loop_body_bbs);
+        let false_chain = collect_arm_chain(mir, false_target, back_edge_bb, &loop_body_bbs);
+
+        let iter_carry_types: Vec<melior::ir::Type<'a>> = iter_carry_locals
+            .iter()
+            .map(|local| {
+                state
+                    .ssa_values
+                    .get(local)
+                    .unwrap_or_else(|| {
+                        panic!("scf.if: iter-carry local {:?} not in ssa_values", local)
+                    })
+                    .r#type()
+            })
+            .collect();
+
+        let if_op: Operation<'a> = OperationBuilder::new("scf.if", location)
+            .add_operands(&[cond])
+            .add_results(&iter_carry_types)
+            .add_regions([Region::new(), Region::new()])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+
+        let saved_ssa = state.ssa_values.clone();
+
+        // ── then region (true arm) ──────────────────────────────────────────────
+        let then_region = if_op.region(0).expect("scf.if then region");
+        let then_block_ref = then_region.append_block(Block::new(&[]));
+        for &bb in &true_chain {
+            let bb_data = &mir.basic_blocks[bb];
+            for stmt in &bb_data.statements {
+                self.codegen_statement(tcx, instance, mir, stmt, &then_block_ref, state)?;
+            }
+            // Process Call terminators to execute the computation and store the result
+            // (e.g., `acc = acc + z`). Skip Goto terminators — the scf.yield is emitted below.
+            if let TerminatorKind::Call { func, args, destination, target, unwind, call_source, fn_span } = &bb_data.terminator().kind {
+                let call_loc = span_to_location(self.module.context(), tcx, *fn_span);
+                self.codegen_terminator_call(tcx, instance, mir, func, args, destination, target, unwind, call_source, fn_span, call_loc, &then_block_ref, basic_blocks, state)?;
+            }
+        }
+        let then_yield_vals: Vec<Value<'a, 'a>> = iter_carry_locals
+            .iter()
+            .map(|local| {
+                *state.ssa_values.get(local).unwrap_or_else(|| {
+                    panic!("scf.if then yield: iter-carry {:?} not in ssa_values", local)
+                })
+            })
+            .collect();
+        then_block_ref.append_operation(scf::r#yield(&then_yield_vals, location));
+
+        // Restore snapshot before processing false arm.
+        state.ssa_values = saved_ssa.clone();
+
+        // ── else region (false arm) ─────────────────────────────────────────────
+        let else_region = if_op.region(1).expect("scf.if else region");
+        let else_block_ref = else_region.append_block(Block::new(&[]));
+        for &bb in &false_chain {
+            let bb_data = &mir.basic_blocks[bb];
+            for stmt in &bb_data.statements {
+                self.codegen_statement(tcx, instance, mir, stmt, &else_block_ref, state)?;
+            }
+            if let TerminatorKind::Call { func, args, destination, target, unwind, call_source, fn_span } = &bb_data.terminator().kind {
+                let call_loc = span_to_location(self.module.context(), tcx, *fn_span);
+                self.codegen_terminator_call(tcx, instance, mir, func, args, destination, target, unwind, call_source, fn_span, call_loc, &else_block_ref, basic_blocks, state)?;
+            }
+        }
+        let else_yield_vals: Vec<Value<'a, 'a>> = iter_carry_locals
+            .iter()
+            .map(|local| {
+                *state.ssa_values.get(local).unwrap_or_else(|| {
+                    panic!("scf.if else yield: iter-carry {:?} not in ssa_values", local)
+                })
+            })
+            .collect();
+        else_block_ref.append_operation(scf::r#yield(&else_yield_vals, location));
+
+        // Restore snapshot so post-if state is neutral.
+        state.ssa_values = saved_ssa;
+
+        // Collect results before consuming the op.
+        let if_results: Vec<Value<'a, 'a>> = (0..iter_carry_locals.len())
+            .map(|i| if_op.result(i).expect("scf.if result").into())
+            .collect();
+
+        mlir_block.append_operation(if_op);
+
+        // Update iter-carry locals with scf.if results (then or else path).
+        for (i, &local) in iter_carry_locals.iter().enumerate() {
+            state.ssa_values.insert(local, if_results[i]);
+        }
+
+        // Mark arm-chain blocks so the outer scf.for body loop skips them.
+        let back_edge_was_in_skip = state.skip_bbs.contains(&back_edge_bb);
+        for &bb in &true_chain {
+            state.skip_bbs.insert(bb);
+        }
+        for &bb in &false_chain {
+            state.skip_bbs.insert(bb);
+        }
+
+        // Remove any stale branch_snapshot for back_edge_bb: its SSA state is now
+        // determined by the scf.if result above, not the pre-branch snapshot.
+        state.branch_snapshots.remove(&back_edge_bb);
+
+        // If back_edge_bb was absorbed into one of the arm chains (newly added to skip_bbs),
+        // the outer scf.for body loop will never reach it to emit the back-edge scf.yield.
+        // Emit it here instead, using the iter-carry values updated by the scf.if results.
+        if !back_edge_was_in_skip && state.skip_bbs.contains(&back_edge_bb) {
+            let yield_vals: Vec<Value<'a, 'a>> = state
+                .loop_iter_carry_locals
+                .iter()
+                .map(|local| {
+                    *state.ssa_values.get(local).unwrap_or_else(|| {
+                        panic!(
+                            "scf.yield after absorbed back_edge: iter-carry {:?} not in ssa_values",
+                            local
+                        )
+                    })
+                })
+                .collect();
+            mlir_block.append_operation(scf::r#yield(&yield_vals, location));
+        }
+
+        Ok(())
+    }
+}
+
+/// Collect a linear chain of body blocks starting from `start`, up to and including
+/// `back_edge_bb` if the chain reaches it. Follows Goto and Call (normal) terminators
+/// within the body, stopping at SwitchInt or when the successor leaves the loop body.
+///
+/// Including `back_edge_bb` is important when it contains statements (e.g. `acc = move _9`)
+/// that must execute inside the scf.if arm before the arm's yield collects the updated value.
+fn collect_arm_chain<'tcx>(
+    mir: &Body<'tcx>,
+    start: BasicBlock,
+    back_edge_bb: BasicBlock,
+    body_bbs: &HashSet<BasicBlock>,
+) -> Vec<BasicBlock> {
+    if start == back_edge_bb {
+        return Vec::new();
+    }
+    let mut chain = Vec::new();
+    let mut current = start;
+    let mut visited: HashSet<BasicBlock> = HashSet::new();
+    loop {
+        if !visited.insert(current) {
+            break;
+        }
+        if !body_bbs.contains(&current) {
+            break;
+        }
+        chain.push(current);
+        // Include back_edge_bb for its statements but do not follow its outgoing edge.
+        if current == back_edge_bb {
+            break;
+        }
+        match &mir.basic_blocks[current].terminator().kind {
+            TerminatorKind::Goto { target } => {
+                current = *target;
+            }
+            TerminatorKind::Call { target: Some(target), .. } if body_bbs.contains(target) => {
+                current = *target;
+            }
+            _ => break,
+        }
+    }
+    chain
 }

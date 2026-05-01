@@ -129,6 +129,13 @@ pub(crate) struct CodegenState<'c, 'p> {
     /// MIR body blocks that are merged into the single scf.for body MLIR block.
     /// `codegen_goto` skips `cf.br` when the target is in this set (within-body jumps).
     pub(crate) loop_body_bbs: HashSet<BasicBlock>,
+    /// The back-edge block of the active `scf.for` loop (the block whose `Goto → header_bb`
+    /// triggers `scf.yield` emission). Used by the loop-body SwitchInt handler to determine
+    /// where to stop arm-chain collection.
+    pub(crate) loop_back_edge_bb: Option<BasicBlock>,
+    /// Body blocks already processed inline inside a `scf.if` arm by the loop-body SwitchInt
+    /// handler. `codegen_scf_for_loop` skips these in its outer body loop.
+    pub(crate) skip_bbs: HashSet<BasicBlock>,
     /// Statically-known discriminant values for Option<T> locals (from SetDiscriminant).
     /// Used by `codegen_switch_int` to constant-fold branches on Option discriminants.
     pub(crate) const_disc_locals: ConstDiscLocals,
@@ -162,6 +169,8 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             loop_header_bb: None,
             loop_iter_carry_locals: Vec::new(),
             loop_body_bbs: HashSet::new(),
+            loop_back_edge_bb: None,
+            skip_bbs: HashSet::new(),
             const_disc_locals: HashMap::new(),
             phi_join_locals: HashMap::new(),
             phi_block_args: HashMap::new(),
@@ -351,7 +360,6 @@ pub(crate) fn extract_switch_const<'tcx>(
         }
         _ => None,
     };
-    println!("[SWITCH-CONST] discr={:?} → {:?}", discr, result);
     result
 }
 
@@ -367,7 +375,6 @@ fn compute_reachable_blocks<'tcx>(
 ) -> (HashSet<BasicBlock>, Vec<BasicBlock>) {
     use rustc_middle::mir::TerminatorKind;
 
-    println!("[REACH-START] total blocks={}", mir.basic_blocks.len());
     let mut reachable: HashSet<BasicBlock> = HashSet::new();
     let mut ordered: Vec<BasicBlock> = Vec::new();
     let mut queue: Vec<BasicBlock> = vec![BasicBlock::from_u32(0)];
@@ -378,22 +385,11 @@ fn compute_reachable_blocks<'tcx>(
         }
         ordered.push(bb);
         let bb_data = &mir.basic_blocks[bb];
-        println!("[REACH-TERM] bb={:?} kind={}", bb, match &bb_data.terminator().kind {
-            TerminatorKind::Goto { .. } => "Goto",
-            TerminatorKind::SwitchInt { .. } => "SwitchInt",
-            TerminatorKind::Return => "Return",
-            TerminatorKind::Unreachable => "Unreachable",
-            TerminatorKind::Call { .. } => "Call",
-            TerminatorKind::Drop { .. } => "Drop",
-            TerminatorKind::Assert { .. } => "Assert",
-            _ => "Other",
-        });
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
                 queue.push(*target);
             }
             TerminatorKind::SwitchInt { discr, targets } => {
-                println!("[REACH-BFS] SwitchInt at {:?}: discr={:?}", bb, discr);
                 // Constant-fold when the discriminant is statically known.
                 if let Some(const_val) = extract_switch_const(tcx, instance, discr, const_disc_locals) {
                     let target = targets
@@ -401,10 +397,6 @@ fn compute_reachable_blocks<'tcx>(
                         .find(|(val, _)| *val == const_val as u128)
                         .map(|(_, bb)| bb)
                         .unwrap_or_else(|| targets.otherwise());
-                    println!(
-                        "[REACH] constant-folding SwitchInt: discr const={} → {:?}",
-                        const_val, target
-                    );
                     queue.push(target);
                     continue;
                 }
@@ -610,8 +602,8 @@ fn compute_phi_join_locals<'tcx>(
             }
             let mut phi_locals: Vec<Local> = Vec::new();
             for local in local_order {
-                if chain_count[&local] < 2 {
-                    continue; // Only redefined on one path — no phi needed.
+                if chain_count[&local] < preds.len() {
+                    continue; // Only redefined on some paths — no phi needed at this join.
                 }
                 let raw_ty = mir.local_decls[local].ty;
                 // Skip Option and Tuple locals — tracked in separate tables.
@@ -624,12 +616,6 @@ fn compute_phi_join_locals<'tcx>(
                 phi_locals.push(local);
             }
             if !phi_locals.is_empty() {
-                println!(
-                    "[PHI] join block {:?} has {} phi locals: {:?}",
-                    join_bb,
-                    phi_locals.len(),
-                    phi_locals
-                );
                 new_result.insert(*join_bb, phi_locals);
             }
         }
@@ -1010,6 +996,13 @@ fn collect_body_blocks_ordered<'tcx>(
             }
             TerminatorKind::Assert { target, .. } if *target != header_bb => {
                 queue.push(*target);
+            }
+            TerminatorKind::SwitchInt { targets, .. } => {
+                for &target in targets.all_targets() {
+                    if target != header_bb {
+                        queue.push(target);
+                    }
+                }
             }
             _ => {}
         }
@@ -1436,9 +1429,14 @@ impl<'a> TritonCodegen<'a> {
         state.loop_header_bb = Some(loop_info.header_bb);
         state.loop_iter_carry_locals = loop_info.iter_carry_locals.clone();
         state.loop_body_bbs = loop_info.body_bbs.iter().copied().collect();
+        state.loop_back_edge_bb = Some(loop_info.back_edge_bb);
 
         // Process each body block in execution order.
         for &body_bb in &loop_info.body_bbs {
+            if state.skip_bbs.contains(&body_bb) {
+                // Already processed inline inside a scf.if arm by the loop-body SwitchInt handler.
+                continue;
+            }
             let bb_data = &mir.basic_blocks[body_bb];
             self.codegen_basic_block(
                 tcx,
@@ -1456,6 +1454,8 @@ impl<'a> TritonCodegen<'a> {
         state.loop_header_bb = None;
         state.loop_iter_carry_locals.clear();
         state.loop_body_bbs.clear();
+        state.loop_back_edge_bb = None;
+        state.skip_bbs.clear();
 
         // Collect scf.for results before moving the op.
         let for_results: Vec<Value<'a, 'a>> = (0..loop_info.iter_carry_locals.len())
@@ -1679,10 +1679,6 @@ impl<'a> TritonCodegen<'a> {
             func_name.to_string()
         };
 
-        eprintln!(
-            "[DEBUG] TritonCodegen codegen_function: function name: {} (raw symbol: {})",
-            friendly_name, func_name
-        );
 
         // Skip Triton intrinsic function bodies — calls to these are intercepted at call-sites
         // by the codegen dispatch table, so the actual body is never compiled for GPU execution.
@@ -1690,10 +1686,6 @@ impl<'a> TritonCodegen<'a> {
         if fn_sig.inputs().iter().any(|ty| {
             matches!(ty.kind(), TyKind::Ref(_, inner, _) if matches!(inner.kind(), TyKind::Slice(_)))
         }) {
-            eprintln!(
-                "[DEBUG] TritonCodegen codegen_function: skipping intrinsic stub (has &[T] param): {}",
-                friendly_name
-            );
             return Ok(());
         }
 
@@ -1727,22 +1719,8 @@ impl<'a> TritonCodegen<'a> {
         // their generic tensor parameters have no statically-known shape and cannot be verified.
         let has_dynamic_tensor = arg_types.iter().chain(ret_types.iter()).any(|ty| ty.is_tensor());
         if has_dynamic_tensor {
-            eprintln!(
-                "[DEBUG] TritonCodegen codegen_function: skipping stub (has tensor<> param): {}",
-                friendly_name
-            );
             return Ok(());
         }
-
-        // DEBUG output: print argument and result types
-        eprintln!("[DEBUG] TritonCodegen: instance function signature (argument types):");
-        for (i, arg_ty) in arg_types.iter().enumerate() {
-            eprintln!("    arg[{}]: {}", i, arg_ty);
-        }
-        eprintln!(
-            "[DEBUG] TritonCodegen: instance function signature (return type): {:?}",
-            ret_types
-        );
 
         // Iterate over MIR basic blocks and codegen each one
         let visibility = if func_name.ends_with("entry_point") { "public" } else { "private" };
@@ -1765,10 +1743,6 @@ impl<'a> TritonCodegen<'a> {
         let location = func_loc;
 
         if func_name.contains("program_id") {
-            println!(
-                "[DEBUG] TritonCodegen::codegen_function: func_name: {:?}, arg_types: {:?}",
-                func_name, arg_types
-            );
             //println!("[DEBUG] TritonCodegen::codegen_function: mir: {:?}", mir);
         }
 
@@ -1783,11 +1757,6 @@ impl<'a> TritonCodegen<'a> {
         // from predecessor blocks are already in state.ssa_values).
         let (reachable_bbs, bfs_ordered_bbs) =
             compute_reachable_blocks(tcx, instance, mir, &const_disc_locals);
-        println!(
-            "[DEBUG] TritonCodegen: reachable_bbs: {:?} (total MIR blocks: {})",
-            reachable_bbs,
-            mir.basic_blocks.len()
-        );
 
         // Detect all Range-based `for` loops. Loop body blocks live in the scf.for region, not
         // in the function region, so we skip creating MLIR blocks for them here.
@@ -1853,11 +1822,6 @@ impl<'a> TritonCodegen<'a> {
                 while_loop_init_bb_map.insert(init_bb, loop_idx);
             }
         }
-
-        println!(
-            "[DEBUG] TritonCodegen: loop_infos count={}, while_loop_infos count={}, loop_init_bb_map: {:?}",
-            loop_infos.len(), while_loop_infos.len(), loop_init_bb_map
-        );
 
         // Compute phi (block-argument) locals for join blocks in the non-loop CFG.
         let phi_join_locals =
@@ -1974,7 +1938,6 @@ impl<'a> TritonCodegen<'a> {
             )?;
         }
 
-        println!("[DEBUG] TritonCodegen::codegen_function end: ssa_values: {:?}", state.ssa_values);
         self.module.mlir.body().append_operation(func_op.into());
 
         Ok(())
@@ -2202,15 +2165,9 @@ impl<'a> TritonCodegen<'a> {
                     mlir_block,
                     state,
                 )?;
-                println!(
-                    "[DEBUG] TritonCodegen::codegen_assign ssa_values_insert 1: result: Place: {:?}, Result: {:?}",
-                    place, result
-                );
                 state.ssa_values.insert(place.local, result);
             }
             Rvalue::Cast(cast_kind, operand, ty) => {
-                println!("Cast cast_kind: {:?}, operand: {:?}, ty: {:?}", cast_kind, operand, ty);
-
                 // PtrToPtr cast on a const-array pointer — propagate the side-table entry
                 // without emitting an MLIR op (const arrays have no MLIR value).
                 if matches!(cast_kind, CastKind::PtrToPtr) {
@@ -2251,26 +2208,17 @@ impl<'a> TritonCodegen<'a> {
                             // Fall through to codegen_cast to emit the i64 placeholder value.
                         }
                     } else if let Operand::Copy(p) | Operand::Move(p) = operand {
-                        println!(
-                            "[DEBUG-UNSIZE] PointerCoercion dynamic: place={:?} p.local={:?} proj_empty={} ptr_to_dyn={:?} ptr_to_const={:?}",
-                            place.local, p.local, p.projection.is_empty(),
-                            state.ptr_to_dyn_array.get(&p.local),
-                            state.ptr_to_const_array.get(&p.local),
-                        );
                         if p.projection.is_empty() {
                             // Dynamic pointer (from a dyn_array via Ref) → slice_dyn_values.
                             if let Some(&arr_local) = state.ptr_to_dyn_array.get(&p.local) {
                                 if let Some(vals) = state.dyn_arrays.get(&arr_local).cloned() {
-                                    println!("[DEBUG-UNSIZE] inserting slice_dyn_values[{:?}] = {} vals", place.local, vals.len());
                                     state.slice_dyn_values.insert(place.local, vals);
                                 } else {
-                                    println!("[DEBUG-UNSIZE] arr_local={:?} NOT in dyn_arrays", arr_local);
                                 }
                             }
                             // Static pointer (from a const_array via Ref) → slice_shape.
                             if let Some(&arr_local) = state.ptr_to_const_array.get(&p.local) {
                                 if let Some(shape) = state.const_arrays.get(&arr_local).cloned() {
-                                    println!("[DEBUG-UNSIZE] inserting slice_shape[{:?}] = {:?}", place.local, shape);
                                     state.slice_shape.insert(place.local, shape);
                                 }
                             }
@@ -2286,22 +2234,10 @@ impl<'a> TritonCodegen<'a> {
                     tcx, instance, cast_kind, operand, ty, location, mlir_block, state,
                 )?;
 
-                println!(
-                    "[DEBUG] TritonCodegen::codegen_assign ssa_values_insert 2: result: Place: {:?}, Result: {:?}",
-                    place, result
-                );
 
                 state.ssa_values.insert(place.local, result);
             }
             Rvalue::Aggregate(aggregate_kind, index_vec) => {
-                println!(
-                    "[DEBUG] TritonCodegen::codegen_assign: Aggregate: {:?}, index_vec: {:?}",
-                    aggregate_kind, index_vec
-                );
-                println!(
-                    "[DEBUG] TritonCodegen::codegen_assign: ssa_values: {:?}",
-                    state.ssa_values
-                );
 
                 // Route Option<T> aggregates (Some/None) into the option_table.
                 if let AggregateKind::Adt(def_id, variant_index, _, _, _) = aggregate_kind.as_ref()
@@ -2399,7 +2335,6 @@ impl<'a> TritonCodegen<'a> {
                         })
                         .collect();
                     let dyn_elems = dyn_elems?;
-                    println!("[DEBUG-ARR] dyn_arrays[{:?}] = {} elems", place.local, dyn_elems.len());
                     state.dyn_arrays.insert(place.local, dyn_elems);
                     return Ok(());
                 }
@@ -2447,22 +2382,10 @@ impl<'a> TritonCodegen<'a> {
                     mlir_block,
                     state,
                 )?;
-                println!(
-                    "[DEBUG] TritonCodegen::codegen_assign ssa_values_insert 3: result: Place: {:?}, Result: {:?}",
-                    place, result
-                );
 
                 if let Some(result) = result {
-                    println!(
-                        "codegen_aggregate_create: result: ** {:?} ** {:?}",
-                        place.local, result
-                    );
                     state.ssa_values.insert(place.local, result);
                 } else {
-                    println!(
-                        "[DEBUG] TritonCodegen::codegen_assign: result is None: {:?} {:?}",
-                        place.local, rvalue
-                    );
                 }
             }
             Rvalue::Repeat(operand, _) => todo!("Repeat: {:?}", operand),
@@ -2471,12 +2394,10 @@ impl<'a> TritonCodegen<'a> {
                 // downstream slice-coercion and `make_tensor_descriptor` can recover the values.
                 if src_place.projection.is_empty() {
                     if state.const_arrays.contains_key(&src_place.local) {
-                        println!("[DEBUG-REF] ptr_to_const_array[{:?}] = {:?}", place.local, src_place.local);
                         state.ptr_to_const_array.insert(place.local, src_place.local);
                         return Ok(());
                     }
                     if state.dyn_arrays.contains_key(&src_place.local) {
-                        println!("[DEBUG-REF] ptr_to_dyn_array[{:?}] = {:?}", place.local, src_place.local);
                         state.ptr_to_dyn_array.insert(place.local, src_place.local);
                         return Ok(());
                     }
@@ -2631,7 +2552,6 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        println!("codegen_aggregate_assign: {:?} {:?} {:?}", aggregate_kind, index_vec, mlir_block);
 
         match aggregate_kind {
             AggregateKind::Adt(def_id, _, raw_list, _, _) => {
@@ -2905,7 +2825,6 @@ impl<'a> TritonCodegen<'a> {
         _local: Local,
         _mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<(), MlirError> {
-        println!("[DEBUG] TritonCodegen::codegen_storage_live: local: {:?}", _local);
         // NO-OP: In the context of Triton and MLIR, storage live is a no-op.
         Ok(())
     }
@@ -2916,7 +2835,6 @@ impl<'a> TritonCodegen<'a> {
         _local: Local,
         _mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<(), MlirError> {
-        println!("[DEBUG] TritonCodegen::codegen_storage_dead: local: {:?}", _local);
         // NO-OP: In the context of Triton and MLIR, storage dead is a no-op.
         Ok(())
     }
@@ -3014,10 +2932,6 @@ impl<'a> TritonCodegen<'a> {
             EarlyBinder::bind(*ty),
         );
 
-        println!(
-            "[DEBUG] TritonCodegen::codegen_pointer_with_exposed_provenance: provenance: {:?} ty: {:?} normalized: {:?}",
-            operand, ty, normalized_ty
-        );
 
         self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)
     }
@@ -3193,12 +3107,6 @@ impl<'a> TritonCodegen<'a> {
         place: &Place<'tcx>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        eprintln!("[DEBUG-COPY] codegen_copy: Local: {:?}, proj_len={}, in_ssa={}, in_dyn={}, in_ptr_dyn={}, in_slice_dyn={}",
-            place.local, place.projection.len(),
-            state.ssa_values.contains_key(&place.local),
-            state.dyn_arrays.contains_key(&place.local),
-            state.ptr_to_dyn_array.contains_key(&place.local),
-            state.slice_dyn_values.contains_key(&place.local));
 
         // Handle Option downcast+field projection: `(_opt as Some).0` — extract the inner value.
         if let [ProjectionElem::Downcast(_, _), ProjectionElem::Field(_, _)]
@@ -3246,10 +3154,6 @@ impl<'a> TritonCodegen<'a> {
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_constant_cast: {:?}, {:?}",
-            const_operand, normalized_ty
-        );
 
         match const_operand.const_ {
             Const::Val(const_val, ty) => {
@@ -3258,7 +3162,6 @@ impl<'a> TritonCodegen<'a> {
 
                 match normalized_ty.kind() {
                     TyKind::RawPtr(_, _) => {
-                        println!("[DEBUG] TritonCodegen::codegen_constant_cast: RawPtr");
                         let value_ty = value.r#type();
                         debug_assert!(
                             value_ty.is_integer(),
@@ -3276,7 +3179,6 @@ impl<'a> TritonCodegen<'a> {
                         Ok(result.into())
                     }
                     TyKind::Adt(adt_def, args) => {
-                        println!("[DEBUG] TritonCodegen::codegen_constant_cast: Adt");
                         let result = self.codegen_const_adt(
                             tcx,
                             instance,
@@ -3455,10 +3357,6 @@ impl<'a> TritonCodegen<'a> {
                     Ok(result.into())
                 }
                 TyKind::Adt(adt_def, args) => {
-                    println!(
-                        "[DEBUG] TritonCodegen::codegen_scalar_const_value: Adt: {:?} {:?} {:?}",
-                        scalar, adt_def, args
-                    );
 
                     let scalar_int = match scalar {
                         Scalar::Int(s) => s,
