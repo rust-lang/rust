@@ -150,7 +150,7 @@ impl DocParser {
 
         match path.word_sym() {
             Some(sym::no_crate_inject) => {
-                if let Err(span) = args.no_args() {
+                if let Err(span) = args.as_no_args() {
                     expected_no_args(cx, span);
                     return;
                 }
@@ -280,7 +280,7 @@ impl DocParser {
         args: &ArgParser,
         inline: DocInline,
     ) {
-        if let Err(span) = args.no_args() {
+        if let Err(span) = args.as_no_args() {
             expected_no_args(cx, span);
             return;
         }
@@ -426,7 +426,7 @@ impl DocParser {
 
         macro_rules! no_args {
             ($ident: ident) => {{
-                if let Err(span) = args.no_args() {
+                if let Err(span) = args.as_no_args() {
                     expected_no_args(cx, span);
                     return;
                 }
@@ -445,7 +445,7 @@ impl DocParser {
         }
         macro_rules! no_args_and_not_crate_level {
             ($ident: ident) => {{
-                if let Err(span) = args.no_args() {
+                if let Err(span) = args.as_no_args() {
                     expected_no_args(cx, span);
                     return;
                 }
@@ -461,7 +461,7 @@ impl DocParser {
                 no_args_and_crate_level!($ident, |span| {});
             }};
             ($ident: ident, |$span:ident| $extra_validation:block) => {{
-                if let Err(span) = args.no_args() {
+                if let Err(span) = args.as_no_args() {
                     expected_no_args(cx, span);
                     return;
                 }

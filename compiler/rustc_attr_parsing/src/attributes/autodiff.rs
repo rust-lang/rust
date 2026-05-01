@@ -52,10 +52,7 @@ impl SingleAttributeParser for RustcAutodiffParser {
             cx.adcx().expected_identifier(mode.span());
             return None;
         };
-        let Ok(()) = mode.args().no_args() else {
-            cx.adcx().expected_identifier(mode.span());
-            return None;
-        };
+        cx.expect_no_args(mode.args())?;
         let Some(mode) = mode.path().word() else {
             cx.adcx().expected_identifier(mode.span());
             return None;
@@ -85,11 +82,7 @@ impl SingleAttributeParser for RustcAutodiffParser {
                     .expected_specific_argument(activity.span(), DiffActivity::all_activities());
                 return None;
             };
-            let Ok(()) = activity.args().no_args() else {
-                cx.adcx()
-                    .expected_specific_argument(activity.span(), DiffActivity::all_activities());
-                return None;
-            };
+            cx.expect_no_args(activity.args())?;
             let Some(activity) = activity.path().word() else {
                 cx.adcx()
                     .expected_specific_argument(activity.span(), DiffActivity::all_activities());

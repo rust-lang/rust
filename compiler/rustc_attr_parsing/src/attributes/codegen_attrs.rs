@@ -195,10 +195,9 @@ pub(crate) struct NakedParser {
 impl AttributeParser for NakedParser {
     const ATTRIBUTES: AcceptMapping<Self> =
         &[(&[sym::naked], template!(Word), |this, cx, args| {
-            if let Err(span) = args.no_args() {
-                cx.adcx().expected_no_args(span);
+            let Some(()) = cx.expect_no_args(args) else {
                 return;
-            }
+            };
 
             if let Some(earlier) = this.span {
                 let span = cx.attr_span;
