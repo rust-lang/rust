@@ -224,6 +224,13 @@ impl DepGraph {
         with_deps(TaskDepsRef::Ignore, op)
     }
 
+    pub fn with_replay<OP, R>(&self, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        with_deps(TaskDepsRef::Replay, op)
+    }
+
     /// Used to wrap the deserialization of a query result from disk,
     /// This method enforces that no new `DepNodes` are created during
     /// query result deserialization.
@@ -462,7 +469,7 @@ impl DepGraph {
                         // queries. They are re-evaluated unconditionally anyway.
                         return;
                     }
-                    TaskDepsRef::Ignore => return,
+                    TaskDepsRef::Ignore | TaskDepsRef::Replay => return,
                     TaskDepsRef::Forbid => {
                         // Reading is forbidden in this context. ICE with a useful error message.
                         panic_on_forbidden_read(data, dep_node_index)
@@ -512,7 +519,7 @@ impl DepGraph {
     pub fn record_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
             read_deps(|task_deps| match task_deps {
-                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore | TaskDepsRef::Replay => return,
                 TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
                     let dep_node_index = data
                         .encode_side_effect(tcx, QuerySideEffect::Diagnostic(diagnostic.clone()));
@@ -606,7 +613,7 @@ impl DepGraph {
                 TaskDepsRef::EvalAlways => {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);
                 }
-                TaskDepsRef::Ignore => {}
+                TaskDepsRef::Ignore | TaskDepsRef::Replay => {}
                 TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
@@ -1220,6 +1227,9 @@ pub enum TaskDepsRef<'a> {
     EvalAlways,
     /// New dependencies are ignored. This is also used for `dep_graph.with_ignore`.
     Ignore,
+    /// This query has already been marked green, its dependency graph is recorded,
+    /// but we need to re-run the code to get its result.
+    Replay,
     /// Any attempt to add new dependencies will cause a panic.
     /// This is used when decoding a query result from disk,
     /// to ensure that the decoding process doesn't itself
