@@ -268,10 +268,7 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
         type Args = ();
         type Error = ();
 
-        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error>
-        where
-            Self: Sized,
-        {
+        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error> {
             let locale = icu_locale_from_unic_langid(lang)
                 .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
             let list_formatter = icu_list::ListFormatter::try_new_and_unstable(

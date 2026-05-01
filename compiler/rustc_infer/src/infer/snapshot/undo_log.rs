@@ -126,7 +126,6 @@ where
 
     fn extend<J>(&mut self, undos: J)
     where
-        Self: Sized,
         J: IntoIterator<Item = T>,
     {
         if self.in_snapshot() {
