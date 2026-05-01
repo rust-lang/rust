@@ -31,6 +31,11 @@ pub(crate) fn target() -> Target {
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],
+        // Explicitly override the `base::wasm`'s `llvm_args` back to empty. The
+        // base is to force using the most standard exception-handling
+        // instructions, when enabled, but this target is intended to follow
+        // Emscripten, which is whatever LLVM defaults to.
+        llvm_args: cvs![],
         ..base::wasm::options()
     };
     Target {
