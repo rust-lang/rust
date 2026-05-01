@@ -141,4 +141,42 @@ mod tests {
             unresolved.join("\n")
         );
     }
+
+    // Bug: a compound 4-condition early return inside a Triton kernel panics with
+    // "cond_br: phi local not in ssa_values" in the Triton codegen backend.
+    // The backend fails to track live locals that cross the conditional branch target
+    // when there are 4+ sub-conditions joined by `||`.
+    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/ops/terminator.rs
+    #[test]
+    #[should_panic(expected = "not in ssa_values")]
+    fn test_phi_bug_early_return() {
+        let _ = fmt()
+            .with_env_filter(
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+            )
+            .try_init();
+
+        let compiler = LlvmCompiler::new();
+        let file = env::current_dir().unwrap().join("tests/data/phi_bug_early_return.rs");
+        let _ = compiler.compile(&file, "nvptx64-nvidia-cuda");
+    }
+
+    // Bug: a `continue` statement inside a `for` loop in a Triton kernel panics with
+    // "codegen_goto: phi local not in ssa_values at branch to bbN".
+    // The backend fails to include loop-carried tensors in the phi nodes at the
+    // loop header when the loop body contains an early-exit via `continue`.
+    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/ops/terminator.rs
+    #[test]
+    #[should_panic(expected = "not in ssa_values")]
+    fn test_phi_bug_loop_continue() {
+        let _ = fmt()
+            .with_env_filter(
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+            )
+            .try_init();
+
+        let compiler = LlvmCompiler::new();
+        let file = env::current_dir().unwrap().join("tests/data/phi_bug_loop_continue.rs");
+        let _ = compiler.compile(&file, "nvptx64-nvidia-cuda");
+    }
 }
