@@ -1,0 +1,16 @@
+error[E0499]: cannot borrow `*a` as mutable more than once at a time
+  --> $DIR/nll-problem-case-2-issue-92038.rs:16:26
+   |
+LL | fn reborrow(a: &mut u8) -> &mut u8 {
+   |                - let's call the lifetime of this reference `'1`
+LL |     let b = &mut *a;
+   |             ------- first mutable borrow occurs here
+LL |     if true { b } else { a }
+   |     ---------------------^--
+   |     |                    |
+   |     |                    second mutable borrow occurs here
+   |     returning this value requires that `*a` is borrowed for `'1`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.
