@@ -49,6 +49,8 @@ unsafe extern "C" {
 }
 
 /// Synchronizes all threads in the block.
+///
+#[doc = include_str!("../amdgpu/intrinsic_is_convergent.md")]
 #[inline]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn _syncthreads() -> () {
