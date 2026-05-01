@@ -62,12 +62,15 @@ pub(crate) use self::types::*;
 pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
-use crate::visit_ast::Module as DocModule;
+use crate::visit_ast;
 
-pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+pub(crate) fn clean_doc_module<'tcx>(
+    doc: &visit_ast::Module<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
-    items.extend(doc.foreigns.iter().map(|(item, renamed, import_id)| {
+    items.extend(doc.foreigns.iter().map(|visit_ast::Foreign { item, renamed, import_id }| {
         let item = clean_maybe_renamed_foreign_item(cx, item, *renamed, *import_id);
         if let Some(name) = item.name
             && (cx.document_hidden() || !item.is_doc_hidden())
@@ -95,52 +98,56 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.values().flat_map(|entry| {
-        // First, lower everything other than glob imports.
-        let item = entry.item;
-        if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-            return Vec::new();
-        }
-        let v = clean_maybe_renamed_item(cx, item, entry.renamed, &entry.import_ids);
-        for item in &v {
-            if let Some(name) = item.name
-                && (cx.document_hidden() || !item.is_doc_hidden())
-            {
-                inserted.insert((item.type_(), name));
+    items.extend(doc.items.values().flat_map(
+        |visit_ast::ItemEntry { item, renamed, import_ids }| {
+            // First, lower everything other than glob imports.
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                return Vec::new();
             }
-        }
-        v
-    }));
-    items.extend(doc.inlined_foreigns.iter().flat_map(|((_, renamed), (res, local_import_id))| {
-        let Some(def_id) = res.opt_def_id() else { return Vec::new() };
-        let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
-        let import = cx.tcx.hir_expect_item(*local_import_id);
-        match import.kind {
-            hir::ItemKind::Use(path, kind) => {
-                let hir::UsePath { segments, span, .. } = *path;
-                let path = hir::Path { segments, res: *res, span };
-                clean_use_statement_inner(
-                    import,
-                    Some(name),
-                    &path,
-                    kind,
-                    cx,
-                    &mut Default::default(),
-                )
+            let v = clean_maybe_renamed_item(cx, item, *renamed, import_ids);
+            for item in &v {
+                if let Some(name) = item.name
+                    && (cx.document_hidden() || !item.is_doc_hidden())
+                {
+                    inserted.insert((item.type_(), name));
+                }
             }
-            _ => unreachable!(),
-        }
-    }));
-    items.extend(doc.items.values().flat_map(|entry| {
-        // Now we actually lower the imports, skipping everything else.
-        let item = entry.item;
-        if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-            clean_use_statement(item, entry.renamed, path, hir::UseKind::Glob, cx, &mut inserted)
-        } else {
-            // skip everything else
-            Vec::new()
-        }
-    }));
+            v
+        },
+    ));
+    items.extend(doc.inlined_foreigns.iter().flat_map(
+        |((_, renamed), visit_ast::InlinedForeign { res, import_id })| {
+            let Some(def_id) = res.opt_def_id() else { return Vec::new() };
+            let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
+            let import = cx.tcx.hir_expect_item(*import_id);
+            match import.kind {
+                hir::ItemKind::Use(path, kind) => {
+                    let hir::UsePath { segments, span, .. } = *path;
+                    let path = hir::Path { segments, res: *res, span };
+                    clean_use_statement_inner(
+                        import,
+                        Some(name),
+                        &path,
+                        kind,
+                        cx,
+                        &mut Default::default(),
+                    )
+                }
+                _ => unreachable!(),
+            }
+        },
+    ));
+    items.extend(doc.items.values().flat_map(
+        |visit_ast::ItemEntry { item, renamed, import_ids: _ }| {
+            // Now we actually lower the imports, skipping everything else.
+            if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
+                clean_use_statement(item, *renamed, path, hir::UseKind::Glob, cx, &mut inserted)
+            } else {
+                // skip everything else
+                Vec::new()
+            }
+        },
+    ));
 
     // determine if we should display the inner contents or
     // the outer `mod` item for the source code.
