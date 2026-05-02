@@ -14,8 +14,11 @@ use crate::{
     RemapScheme, TargetSelection, command, prepare_behaviour_dump_dir, t,
 };
 
-/// Represents flag values in `String` form with whitespace delimiter to pass it to the compiler
-/// later.
+/// Represents flag values in `String` form with a `\x1f` delimiter to pass to the compiler later.
+///
+/// Flags are are emitted via `CARGO_ENCODED_RUSTFLAGS` / `CARGO_ENCODED_RUSTDOCFLAGS`,
+/// which use `\x1f` (ASCII Unit Separator) as the delimiter and therefore allow spaces
+/// within individual flag values.
 ///
 /// `-Z crate-attr` flags will be applied recursively on the target code using the
 /// `rustc_parse::parser::Parser`. See `rustc_builtin_macros::cmdline_attrs::inject` for more
@@ -51,11 +54,17 @@ impl Rustflags {
     }
 
     fn arg(&mut self, arg: &str) -> &mut Self {
-        assert_eq!(arg.split(' ').count(), 1);
-        if !self.0.is_empty() {
-            self.0.push(' ');
+        assert!(
+            !arg.contains('\x1f'),
+            "rustflag must not contain the ASCII unit separator (\\x1f): {arg:?}"
+        );
+        if !arg.is_empty() {
+            self.0.reserve(arg.len() + (!self.0.is_empty()) as usize);
+            if !self.0.is_empty() {
+                self.0.push('\x1f');
+            }
+            self.0.push_str(arg);
         }
-        self.0.push_str(arg);
         self
     }
 
@@ -459,12 +468,12 @@ impl From<Cargo> for BootstrapCommand {
 
         let rustflags = &cargo.rustflags.0;
         if !rustflags.is_empty() {
-            cargo.command.env("RUSTFLAGS", rustflags);
+            cargo.command.env("CARGO_ENCODED_RUSTFLAGS", rustflags);
         }
 
         let rustdocflags = &cargo.rustdocflags.0;
         if !rustdocflags.is_empty() {
-            cargo.command.env("RUSTDOCFLAGS", rustdocflags);
+            cargo.command.env("CARGO_ENCODED_RUSTDOCFLAGS", rustdocflags);
         }
 
         let encoded_hostflags = cargo.hostflags.encode();
