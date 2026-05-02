@@ -1,9 +1,10 @@
 //@ ignore-compare-mode-next-solver (explicit)
 //@ compile-flags: -Znext-solver
 
-// Make sure that stepping into impl where-clauses of `NormalizesTo`
-// goals is unproductive. This must not compile, see the inline
-// comments.
+// A test for the cycle handling when stepping into where-clauses of `NormalizesTo`.
+// Whether stepping into where-clauses is productive depends on how they are used.
+//
+// In this concrete test, the cycle must not be productive.
 
 trait Bound {
     fn method();
@@ -30,7 +31,7 @@ fn impls_bound<T: Bound>() {
 
 // The where-clause requires `Foo: Trait<T>` to hold to be wf.
 // If stepping into where-clauses during normalization is considered
-// to be productive, this would be the case:
+// to be productive here, this would be the case:
 //
 // - `Foo: Trait<T>`
 //   - via blanket impls, requires `Foo: Bound`
@@ -40,12 +41,13 @@ fn impls_bound<T: Bound>() {
 fn generic<T>()
 where
     <Foo as Trait<T>>::Assoc: Bound,
-    //~^ ERROR the trait bound `Foo: Bound` is not satisfied
+    //~^ ERROR overflow evaluating the requirement `<Foo as Trait<T>>::Assoc: Bound`
+    //~| ERROR overflow evaluating whether `<Foo as Trait<T>>::Assoc` is well-formed
 {
     // Requires proving `Foo: Bound` by normalizing
     // `<Foo as Trait<T>>::Assoc` to `Foo`.
     impls_bound::<Foo>();
-    //~^ ERROR the trait bound `Foo: Bound` is not satisfied
+    //~^ ERROR  overflow evaluating the requirement `Foo: Bound`
 }
 fn main() {
     // Requires proving `<Foo as Trait<u32>>::Assoc: Bound`.
