@@ -2718,7 +2718,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
-        find_attr!(self, def_id, DoNotRecommend { .. })
+        find_attr!(self, def_id, DoNotRecommend)
     }
 
     pub fn is_trivial_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {

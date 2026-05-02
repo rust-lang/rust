@@ -40,6 +40,6 @@ impl SingleAttributeParser for DoNotRecommendParser {
             return None;
         }
 
-        Some(AttributeKind::DoNotRecommend { attr_span })
+        Some(AttributeKind::DoNotRecommend)
     }
 }

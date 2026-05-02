@@ -7,5 +7,5 @@ impl NoArgsAttributeParser for NoImplicitPreludeParser {
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Mod), Allow(Target::Crate)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoImplicitPrelude;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoImplicitPrelude;
 }

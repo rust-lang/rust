@@ -349,7 +349,7 @@ impl AdtDefData {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
-        if find_attr!(tcx, did, PinV2(..)) {
+        if find_attr!(tcx, did, PinV2) {
             debug!("found pin-project type {:?}", did);
             flags |= AdtFlags::IS_PIN_PROJECT;
         }

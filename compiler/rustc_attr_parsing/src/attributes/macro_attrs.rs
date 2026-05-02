@@ -8,7 +8,7 @@ impl NoArgsAttributeParser for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::MacroEscape;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::MacroEscape;
 }
 
 /// `#[macro_use]` attributes can either:

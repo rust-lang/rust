@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
 fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
-            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue(_)) => {
+            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue) => {
                 let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
@@ -51,7 +51,7 @@ fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Optio
                 if let ty::Adt(adt, args) =
                     cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                 {
-                    if find_attr!(cx.tcx, adt.did(), RustcPassByValue(_)) {
+                    if find_attr!(cx.tcx, adt.did(), RustcPassByValue) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }
                 }

@@ -716,7 +716,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                     };
                     let selection = SelectionContext::new(&infcx).select(&obligation);
                     let derived = if let Ok(Some(Selection::UserDefined(data))) = selection {
-                        find_attr!(tcx, data.impl_def_id, AutomaticallyDerived(..))
+                        find_attr!(tcx, data.impl_def_id, AutomaticallyDerived)
                     } else {
                         false
                     };

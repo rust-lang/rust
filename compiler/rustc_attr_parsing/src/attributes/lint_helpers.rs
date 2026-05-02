@@ -10,7 +10,7 @@ impl NoArgsAttributeParser for RustcAsPtrParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcAsPtr;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAsPtr;
 }
 
 pub(crate) struct RustcPubTransparentParser;
@@ -32,7 +32,7 @@ impl NoArgsAttributeParser for RustcPassByValueParser {
         Allow(Target::Enum),
         Allow(Target::TyAlias),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassByValue;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPassByValue;
 }
 
 pub(crate) struct RustcShouldNotBeCalledOnConstItemsParser;
@@ -42,7 +42,7 @@ impl NoArgsAttributeParser for RustcShouldNotBeCalledOnConstItemsParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcShouldNotBeCalledOnConstItems;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcShouldNotBeCalledOnConstItems;
 }
 
 pub(crate) struct AutomaticallyDerivedParser;
@@ -54,5 +54,5 @@ impl NoArgsAttributeParser for AutomaticallyDerivedParser {
         Error(Target::Crate),
         Error(Target::WherePredicate),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::AutomaticallyDerived;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AutomaticallyDerived;
 }

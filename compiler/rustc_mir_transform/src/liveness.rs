@@ -69,7 +69,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
     // Don't run unused pass for #[derive]
     let parent = tcx.local_parent(tcx.typeck_root_def_id_local(def_id));
     if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent)
-        && find_attr!(tcx, parent, AutomaticallyDerived(..))
+        && find_attr!(tcx, parent, AutomaticallyDerived)
     {
         return DenseBitSet::new_empty(0);
     }

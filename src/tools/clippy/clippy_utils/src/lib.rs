@@ -1736,8 +1736,9 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| {
             find_attr!(
-                tcx.hir_attrs(tcx.local_def_id_to_hir_id(id.def_id)),
-                AutomaticallyDerived(..)
+                tcx,
+                id.def_id,
+                AutomaticallyDerived
             )
         })
 }
@@ -2101,11 +2102,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    find_attr!(cx.tcx, crate, NoStd(..))
+    find_attr!(cx.tcx, crate, NoStd)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    find_attr!(cx.tcx, crate, NoCore(..))
+    find_attr!(cx.tcx, crate, NoCore)
 }
 
 /// Check if parent of a hir node is a trait implementation block.

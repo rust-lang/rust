@@ -57,11 +57,8 @@ impl AttributeParser for OnUnknownParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        if let Some(span) = self.span {
-            Some(AttributeKind::OnUnknown {
-                span,
-                directive: self.directive.map(|d| Box::new(d.1)),
-            })
+        if let Some(_span) = self.span {
+            Some(AttributeKind::OnUnknown { directive: self.directive.map(|d| Box::new(d.1)) })
         } else {
             None
         }

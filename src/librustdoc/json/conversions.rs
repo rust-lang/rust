@@ -932,14 +932,14 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             item_id.as_def_id().expect("all items that could have #[repr] have a DefId"),
         ),
         AK::ExportName { name, span: _ } => Attribute::ExportName(name.to_string()),
-        AK::LinkSection { name, span: _ } => Attribute::LinkSection(name.to_string()),
+        AK::LinkSection { name } => Attribute::LinkSection(name.to_string()),
         AK::TargetFeature { features, .. } => Attribute::TargetFeature {
             enable: features.iter().map(|(feat, _span)| feat.to_string()).collect(),
         },
 
         AK::NoMangle(_) => Attribute::NoMangle,
         AK::NonExhaustive(_) => Attribute::NonExhaustive,
-        AK::AutomaticallyDerived(_) => Attribute::AutomaticallyDerived,
+        AK::AutomaticallyDerived => Attribute::AutomaticallyDerived,
         AK::Doc(d) => {
             fn toggle_attr(ret: &mut Vec<Attribute>, name: &str, v: &Option<rustc_span::Span>) {
                 if v.is_some() {

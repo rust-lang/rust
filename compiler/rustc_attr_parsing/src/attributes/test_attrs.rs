@@ -58,7 +58,6 @@ impl SingleAttributeParser for ShouldPanicParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
-            span: cx.attr_span,
             reason: match args {
                 ArgParser::NoArgs => None,
                 ArgParser::NameValue(name_value) => {

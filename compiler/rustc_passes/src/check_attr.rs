@@ -125,10 +125,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
-                Attribute::Parsed(AttributeKind::ProcMacro(_)) => {
+                Attribute::Parsed(AttributeKind::ProcMacro) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
                 }
-                Attribute::Parsed(AttributeKind::ProcMacroAttribute(_)) => {
+                Attribute::Parsed(AttributeKind::ProcMacroAttribute) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Attribute);
                 }
                 Attribute::Parsed(AttributeKind::ProcMacroDerive { .. }) => {
@@ -199,36 +199,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
-                Attribute::Parsed(AttributeKind::OnUnimplemented{directive,..}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
+                Attribute::Parsed(AttributeKind::OnUnimplemented{directive}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)},
-                Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
+                Attribute::Parsed(AttributeKind::OnMove { directive }) => {
                     self.check_diagnostic_on_move(hir_id, directive.as_deref())
                 },
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
-                    | AttributeKind::AutomaticallyDerived(..)
+                    | AttributeKind::AutomaticallyDerived
                     | AttributeKind::CfgAttrTrace
                     | AttributeKind::CfgTrace(..)
                     | AttributeKind::CfiEncoding { .. }
-                    | AttributeKind::Cold(..)
+                    | AttributeKind::Cold
                     | AttributeKind::CollapseDebugInfo(..)
                     | AttributeKind::CompilerBuiltins
-                    | AttributeKind::Coroutine(..)
+                    | AttributeKind::Coroutine
                     | AttributeKind::Coverage (..)
                     | AttributeKind::CrateName { .. }
                     | AttributeKind::CrateType(..)
                     | AttributeKind::CustomMir(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::DefaultLibAllocator
-                    | AttributeKind::DoNotRecommend {..}
+                    | AttributeKind::DoNotRecommend
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
                     | AttributeKind::EiiDeclaration { .. }
                     | AttributeKind::ExportName { .. }
                     | AttributeKind::ExportStable
                     | AttributeKind::Feature(..)
-                    | AttributeKind::FfiConst(..)
+                    | AttributeKind::FfiConst
                     | AttributeKind::Fundamental
                     | AttributeKind::Ignore { .. }
                     | AttributeKind::InstructionSet(..)
@@ -237,9 +237,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkOrdinal { .. }
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::Linkage(..)
-                    | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::MacroEscape
                     | AttributeKind::MacroUse { .. }
-                    | AttributeKind::Marker(..)
+                    | AttributeKind::Marker
                     | AttributeKind::MoveSizeLimit { .. }
                     | AttributeKind::MustNotSupend { .. }
                     | AttributeKind::MustUse { .. }
@@ -247,7 +247,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NeedsPanicRuntime
                     | AttributeKind::NoBuiltins
                     | AttributeKind::NoCore { .. }
-                    | AttributeKind::NoImplicitPrelude(..)
+                    | AttributeKind::NoImplicitPrelude
                     | AttributeKind::NoLink
                     | AttributeKind::NoMain
                     | AttributeKind::NoMangle(..)
@@ -259,7 +259,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::PatchableFunctionEntry { .. }
                     | AttributeKind::Path(..)
                     | AttributeKind::PatternComplexityLimit { .. }
-                    | AttributeKind::PinV2(..)
+                    | AttributeKind::PinV2
                     | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }
@@ -271,22 +271,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcAllocator
                     | AttributeKind::RustcAllocatorZeroed
                     | AttributeKind::RustcAllocatorZeroedVariant { .. }
-                    | AttributeKind::RustcAsPtr(..)
+                    | AttributeKind::RustcAsPtr
                     | AttributeKind::RustcAutodiff(..)
                     | AttributeKind::RustcBodyStability { .. }
                     | AttributeKind::RustcBuiltinMacro { .. }
                     | AttributeKind::RustcCaptureAnalysis
                     | AttributeKind::RustcCguTestAttr(..)
                     | AttributeKind::RustcClean(..)
-                    | AttributeKind::RustcCoherenceIsCore(..)
-                    | AttributeKind::RustcCoinductive(..)
+                    | AttributeKind::RustcCoherenceIsCore
+                    | AttributeKind::RustcCoinductive
                     | AttributeKind::RustcConfusables { .. }
                     | AttributeKind::RustcConstStability { .. }
                     | AttributeKind::RustcConstStableIndirect
                     | AttributeKind::RustcConversionSuggestion
                     | AttributeKind::RustcDeallocator
                     | AttributeKind::RustcDelayedBugFromInsideQuery
-                    | AttributeKind::RustcDenyExplicitImpl(..)
+                    | AttributeKind::RustcDenyExplicitImpl
                     | AttributeKind::RustcDeprecatedSafe2024 {..}
                     | AttributeKind::RustcDiagnosticItem(..)
                     | AttributeKind::RustcDoNotConstCheck
@@ -336,8 +336,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcObjcClass { .. }
                     | AttributeKind::RustcObjcSelector { .. }
                     | AttributeKind::RustcOffloadKernel
-                    | AttributeKind::RustcParenSugar(..)
-                    | AttributeKind::RustcPassByValue (..)
+                    | AttributeKind::RustcParenSugar
+                    | AttributeKind::RustcPassByValue
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::RustcPreserveUbChecks
                     | AttributeKind::RustcProcMacroDecls
@@ -345,16 +345,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcRegions
                     | AttributeKind::RustcReservationImpl(..)
                     | AttributeKind::RustcScalableVector { .. }
-                    | AttributeKind::RustcShouldNotBeCalledOnConstItems(..)
+                    | AttributeKind::RustcShouldNotBeCalledOnConstItems
                     | AttributeKind::RustcSimdMonomorphizeLaneLimit(..)
                     | AttributeKind::RustcSkipDuringMethodDispatch { .. }
-                    | AttributeKind::RustcSpecializationTrait(..)
-                    | AttributeKind::RustcStdInternalSymbol (..)
+                    | AttributeKind::RustcSpecializationTrait
+                    | AttributeKind::RustcStdInternalSymbol
                     | AttributeKind::RustcStrictCoherence(..)
                     | AttributeKind::RustcTestMarker(..)
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads
-                    | AttributeKind::RustcUnsafeSpecializationMarker(..)
+                    | AttributeKind::RustcUnsafeSpecializationMarker
                     | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::Stability { .. }
                     | AttributeKind::TestRunner(..)
@@ -724,7 +724,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Fn => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
                 // `extern` declarations and `#[track_caller]` would alter their ABI.
-                if let Some(item) = find_attr!(attrs, Lang(item, _) => item)
+                if let Some(item) = find_attr!(attrs, Lang(item) => item)
                     && item.is_weak()
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
@@ -795,7 +795,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
             | Target::Fn => {
                 // `#[target_feature]` is not allowed in lang items.
-                if let Some(lang_item) = find_attr!(attrs, Lang(lang, _) => lang)
+                if let Some(lang_item) = find_attr!(attrs, Lang(lang ) => lang)
                     // Calling functions with `#[target_feature]` is
                     // not unsafe on WASM, see #84988
                     && !self.tcx.sess.target.is_like_wasm
@@ -1093,7 +1093,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
-        if find_attr!(attrs, FfiConst(_)) {
+        if find_attr!(attrs, FfiConst) {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
         }

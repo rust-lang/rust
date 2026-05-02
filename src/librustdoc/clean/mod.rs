@@ -1076,11 +1076,11 @@ fn clean_fn_or_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir_attrs(item.hir_id());
-    let macro_kind = if find_attr!(attrs, ProcMacro(..)) {
+    let macro_kind = if find_attr!(attrs, ProcMacro) {
         Some(MacroKind::Bang)
     } else if find_attr!(attrs, ProcMacroDerive { .. }) {
         Some(MacroKind::Derive)
-    } else if find_attr!(attrs, ProcMacroAttribute(..)) {
+    } else if find_attr!(attrs, ProcMacroAttribute) {
         Some(MacroKind::Attr)
     } else {
         None

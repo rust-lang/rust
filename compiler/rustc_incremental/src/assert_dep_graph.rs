@@ -129,10 +129,7 @@ impl<'tcx> IfThisChanged<'tcx> {
                     }
                 };
                 self.if_this_changed.push((span, def_id.to_def_id(), dep_node));
-            } else if let Attribute::Parsed(AttributeKind::RustcThenThisWouldNeed(
-                _,
-                ref dep_nodes,
-            )) = *attr
+            } else if let Attribute::Parsed(AttributeKind::RustcThenThisWouldNeed(dep_nodes)) = attr
             {
                 for &n in dep_nodes {
                     let Ok(dep_node) =

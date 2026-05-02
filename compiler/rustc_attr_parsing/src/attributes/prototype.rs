@@ -56,7 +56,7 @@ impl SingleAttributeParser for CustomMirParser {
             return None;
         }
 
-        Some(AttributeKind::CustomMir(dialect, phase, cx.attr_span))
+        Some(AttributeKind::CustomMir(dialect, phase))
     }
 }
 
