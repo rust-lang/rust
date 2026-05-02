@@ -478,6 +478,12 @@ impl From<Local> for Place<'_> {
 }
 
 impl<'tcx> PlaceRef<'tcx> {
+    pub fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool {
+        self.local == other.local
+            && self.projection.len() <= other.projection.len()
+            && self.projection == &other.projection[..self.projection.len()]
+    }
+
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     pub fn local_or_deref_local(&self) -> Option<Local> {

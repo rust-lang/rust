@@ -426,19 +426,13 @@ impl ToElementIndex<'_> for RegionVid {
 }
 
 impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<'tcx> {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool
-    where
-        Self: Into<ty::PlaceholderRegion<'tcx>>,
-    {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool {
         let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
         let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.insert(row, index)
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool
-    where
-        Self: Into<ty::PlaceholderRegion<'tcx>>,
-    {
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool {
         let placeholder: ty::PlaceholderRegion<'tcx> = self.into();
         let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.contains(row, index)
