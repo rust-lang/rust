@@ -25,6 +25,46 @@ use rustc_mlir::triton::TritonCompiler;
 
 use crate::mlir::backend::MlirCodegenBackend;
 
+/// Resource metadata for a compiled GPU kernel, recovered by parsing the
+/// structured `// meta:key=value` comments appended to the PTX by CudaBackend.
+#[derive(Debug, Default, Clone)]
+pub struct KernelMetadata {
+    pub name: String,
+    pub num_warps: i32,
+    pub num_ctas: i32,
+    pub shared: i32,
+    pub tmem_size: i32,
+    pub global_scratch_size: i32,
+    pub global_scratch_align: i32,
+    pub profile_scratch_size: i32,
+    pub profile_scratch_align: i32,
+}
+
+impl KernelMetadata {
+    /// Parse `// meta:key=value` lines from PTX output.
+    /// Lines that don't match the pattern are silently ignored.
+    pub fn parse(ptx: &str) -> Self {
+        let mut meta = KernelMetadata { num_ctas: 1, global_scratch_align: 1, profile_scratch_align: 1, ..Default::default() };
+        for line in ptx.lines() {
+            let Some(rest) = line.trim().strip_prefix("// meta:") else { continue };
+            let Some((key, val)) = rest.split_once('=') else { continue };
+            match key {
+                "name"                  => meta.name = val.to_owned(),
+                "num_warps"             => meta.num_warps            = val.parse().unwrap_or(0),
+                "num_ctas"              => meta.num_ctas             = val.parse().unwrap_or(1),
+                "shared"               => meta.shared               = val.parse().unwrap_or(0),
+                "tmem_size"             => meta.tmem_size            = val.parse().unwrap_or(0),
+                "global_scratch_size"   => meta.global_scratch_size  = val.parse().unwrap_or(0),
+                "global_scratch_align"  => meta.global_scratch_align = val.parse().unwrap_or(1),
+                "profile_scratch_size"  => meta.profile_scratch_size = val.parse().unwrap_or(0),
+                "profile_scratch_align" => meta.profile_scratch_align= val.parse().unwrap_or(1),
+                _ => {}
+            }
+        }
+        meta
+    }
+}
+
 /// Represents an MLIR module during codegen
 pub struct MlirModule<'c> {
     pub name: String,
@@ -36,6 +76,8 @@ pub struct MlirModule<'c> {
     pub ptx_asm: Option<String>,
     /// MLIR source captured after cleanup passes, before Triton passes run.
     pub mlir_source: Option<String>,
+    /// Kernel metadata parsed from the PTX comment block appended by CudaBackend.
+    pub kernel_metadata: Option<KernelMetadata>,
 }
 
 unsafe impl<'c> Send for MlirModule<'c> {}
@@ -57,7 +99,7 @@ impl<'c> MlirModule<'c> {
         let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
 
-        Self { name: mod_name.to_string(), mlir: module, compiler, context, ptx_asm: None, mlir_source: None }
+        Self { name: mod_name.to_string(), mlir: module, compiler, context, ptx_asm: None, mlir_source: None, kernel_metadata: None }
     }
 
     pub fn context(&self) -> &Context {
@@ -84,6 +126,7 @@ impl<'c> MlirModule<'c> {
             compiler,
             ptx_asm: None,
             mlir_source: None,
+            kernel_metadata: None,
         }
     }
 

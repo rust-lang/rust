@@ -38,6 +38,26 @@ namespace triton {
 namespace ttng = mlir::triton::nvidia_gpu;
 
 // ---------------------------------------------------------------------------
+// Kernel metadata collected during lowering
+// ---------------------------------------------------------------------------
+
+/// Resource metadata for a compiled GPU kernel. Populated by makeLLIR (from
+/// MLIR module attributes written by the allocation passes) and makeASM (kernel
+/// name extracted from PTX). Appended to m_asm as PTX line comments so that
+/// the Rust side can parse them without an extra FFI channel.
+struct KernelMetadata {
+  std::string name;
+  int32_t num_warps            = 0;
+  int32_t num_ctas             = 1;
+  int32_t shared               = 0;  // shared memory in bytes
+  int32_t tmem_size            = 0;  // tensor memory (Blackwell SM100+)
+  int32_t global_scratch_size  = 0;
+  int32_t global_scratch_align = 1;
+  int32_t profile_scratch_size  = 0;
+  int32_t profile_scratch_align = 1;
+};
+
+// ---------------------------------------------------------------------------
 // FFI-safe helper types
 // These map directly to #[repr(C)] Rust structs with equivalent fields.
 // ---------------------------------------------------------------------------
@@ -216,6 +236,7 @@ private:
 
   CudaCompileOptions m_options;
   Capability m_capability;
+  KernelMetadata m_metadata;
 
   std::unordered_map<CudaPass, std::unique_ptr<Pass> (*)()> m_nvidia_pass_fns =
       {

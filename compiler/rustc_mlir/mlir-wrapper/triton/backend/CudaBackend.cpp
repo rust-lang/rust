@@ -219,6 +219,7 @@ LogicalResult CudaBackend::makeASM(MLIRContext &context, ModuleOp module) {
     llvm::errs() << "Could not find kernel name in PTX output\n";
     return LogicalResult::failure();
   }
+  m_metadata.name = kernel_name;
 
   // 4. Post-process version and target
   char ptx_major_minor[8];
@@ -232,6 +233,20 @@ LogicalResult CudaBackend::makeASM(MLIRContext &context, ModuleOp module) {
   // 5. Remove debug flag if desired
   // No 'knobs' defined; always remove for now or leave as TODO.
   ret = std::regex_replace(ret, std::regex(R"(,\s*debug|debug,\s*)"), "");
+
+  // 6. Append kernel metadata as PTX line comments. PTX comments are ignored
+  //    by ptxas and the CUDA driver, so this is safe. The Rust side parses
+  //    these lines to recover launch parameters without a separate FFI channel.
+  ret += "\n// --- triton-metadata ---\n";
+  ret += "// meta:name="                  + m_metadata.name + "\n";
+  ret += "// meta:num_warps="             + std::to_string(m_metadata.num_warps) + "\n";
+  ret += "// meta:num_ctas="              + std::to_string(m_metadata.num_ctas) + "\n";
+  ret += "// meta:shared="               + std::to_string(m_metadata.shared) + "\n";
+  ret += "// meta:tmem_size="             + std::to_string(m_metadata.tmem_size) + "\n";
+  ret += "// meta:global_scratch_size="   + std::to_string(m_metadata.global_scratch_size) + "\n";
+  ret += "// meta:global_scratch_align="  + std::to_string(m_metadata.global_scratch_align) + "\n";
+  ret += "// meta:profile_scratch_size="  + std::to_string(m_metadata.profile_scratch_size) + "\n";
+  ret += "// meta:profile_scratch_align=" + std::to_string(m_metadata.profile_scratch_align) + "\n";
 
   // 7. Save PTX (exposed via getASM())
   m_asm = std::move(ret);
@@ -474,45 +489,30 @@ LogicalResult CudaBackend::makeLLIR(MLIRContext &context, ModuleOp module) {
     // CUDABackend.instrumentation.patch("llvmir_to_llvm", pm, mod.context)
   }
 
-  return pm.run(op);
+  auto result = pm.run(op);
+  if (succeeded(result)) {
+    // Read resource metadata written by the allocation passes as MLIR module
+    // attributes. These are later appended to the PTX as comments so Rust can
+    // recover them without a separate FFI channel.
+    auto getInt = [&](llvm::StringRef key, int32_t def = 0) -> int32_t {
+      auto attr = op->getAttrOfType<mlir::IntegerAttr>(key);
+      return attr ? static_cast<int32_t>(attr.getInt()) : def;
+    };
 
-  //  # LLVM-IR (MLIR) -> LLVM-IR (LLVM)
-  //       llvm.init_targets()
-  //       context = llvm.context()
-  //       if knobs.compilation.enable_asan:
-  //           raise RuntimeError(
-  //               "Address Sanitizer Error: Address sanitizer is currently only
-  //               supported on the AMD backend")
-  //       llvm_mod = llvm.to_module(mod, context)
-  //       proc = sm_arch_from_capability(capability)
-  //       features = get_features(options, self.target.arch)
-  //       triple = 'nvptx64-nvidia-cuda'
-  //       nvidia.set_short_ptr()
-  //       llvm.attach_datalayout(llvm_mod, triple, proc, features)
-  //       nvidia.set_nvvm_reflect_ftz(llvm_mod)
-
-  //       if options.extern_libs and nvidia.has_extern_deps(llvm_mod):
-  //           paths = [path for (name, path) in options.extern_libs]
-  //           llvm.link_extern_libs(llvm_mod, paths)
-
-  //       llvm.optimize_module(llvm_mod, llvm.OPTIMIZE_O3)
-
-  //       # Get some metadata
-  //       # warp-specialization mutates num_warps
-  //       total_num_warps = src.get_int_attr("ttg.total-num-warps")
-  //       if total_num_warps is not None:
-  //           metadata["num_warps"] = total_num_warps
-  //       metadata["shared"] = src.get_int_attr("ttg.shared")
-  //       metadata["tmem_size"] = src.get_int_attr("ttg.tensor_memory_size")
-  //       metadata["global_scratch_size"] =
-  //       src.get_int_attr("ttg.global_scratch_memory_size")
-  //       metadata["global_scratch_align"] =
-  //       src.get_int_attr("ttg.global_scratch_memory_alignment")
-  //       metadata["profile_scratch_size"] =
-  //       src.get_int_attr("ttg.profile_scratch_memory_size") or 0
-  //       metadata["profile_scratch_align"] =
-  //       src.get_int_attr("ttg.profile_scratch_memory_alignment") or 1 ret =
-  //       str(llvm_mod) del llvm_mod del context return ret
+    // Warp-specialization may have mutated the warp count, so prefer the
+    // post-pipeline attribute over the original options value.
+    auto totalWarps = op->getAttrOfType<mlir::IntegerAttr>("ttg.total-num-warps");
+    m_metadata.num_warps   = totalWarps ? static_cast<int32_t>(totalWarps.getInt())
+                                        : m_options.num_warps;
+    m_metadata.num_ctas              = m_options.num_ctas;
+    m_metadata.shared                = getInt("ttg.shared");
+    m_metadata.tmem_size             = getInt("ttg.tensor_memory_size");
+    m_metadata.global_scratch_size   = getInt("ttg.global_scratch_memory_size");
+    m_metadata.global_scratch_align  = getInt("ttg.global_scratch_memory_alignment", 1);
+    m_metadata.profile_scratch_size  = getInt("ttg.profile_scratch_memory_size");
+    m_metadata.profile_scratch_align = getInt("ttg.profile_scratch_memory_alignment", 1);
+  }
+  return result;
 }
 
 std::unique_ptr<mlir::Pass>

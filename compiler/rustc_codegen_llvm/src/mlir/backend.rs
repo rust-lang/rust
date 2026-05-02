@@ -206,6 +206,18 @@ fn compile_module(mlir_module: &mut MlirModule<'static>) -> Result<(), MlirError
         .to_owned();
 
     eprintln!("Triton PTX output ({} bytes): {}", ptx.len(), ptx);
+
+    let metadata = crate::mlir::module::KernelMetadata::parse(&ptx);
+    eprintln!(
+        "Kernel metadata: name={:?} num_warps={} num_ctas={} shared={}B tmem={}B scratch={}B",
+        metadata.name,
+        metadata.num_warps,
+        metadata.num_ctas,
+        metadata.shared,
+        metadata.tmem_size,
+        metadata.global_scratch_size,
+    );
+    mlir_module.kernel_metadata = Some(metadata);
     mlir_module.ptx_asm = Some(ptx);
     Ok(())
 }
