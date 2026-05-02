@@ -58,7 +58,7 @@ fn parse_derive_like(
 ) -> Option<(Option<Symbol>, ThinVec<Symbol>)> {
     let Some(list) = args.as_list() else {
         // For #[rustc_builtin_macro], it is permitted to leave out the trait name
-        if args.no_args().is_ok() && !trait_name_mandatory {
+        if args.as_no_args().is_ok() && !trait_name_mandatory {
             return Some((None, ThinVec::new()));
         }
         let attr_span = cx.attr_span;
@@ -84,10 +84,7 @@ fn parse_derive_like(
         cx.adcx().expected_identifier(trait_ident.span);
         return None;
     }
-    if let Err(e) = trait_attr.args().no_args() {
-        cx.adcx().expected_no_args(e);
-        return None;
-    };
+    cx.expect_no_args(trait_attr.args())?;
 
     // Parse optional attributes
     let mut attributes = ThinVec::new();
@@ -108,10 +105,7 @@ fn parse_derive_like(
                 cx.adcx().expected_identifier(attr.span());
                 return None;
             };
-            if let Err(e) = attr.args().no_args() {
-                cx.adcx().expected_no_args(e);
-                return None;
-            };
+            cx.expect_no_args(attr.args())?;
             let Some(ident) = attr.path().word() else {
                 cx.adcx().expected_identifier(attr.path().span());
                 return None;

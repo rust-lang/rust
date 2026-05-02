@@ -27,9 +27,7 @@ impl SingleAttributeParser for RustcSkipDuringMethodDispatchParser {
                 cx.adcx().expected_not_literal(arg.span());
                 continue;
             };
-            if let Err(span) = arg.args().no_args() {
-                cx.adcx().expected_no_args(span);
-            }
+            let _ = cx.expect_no_args(arg.args());
             let path = arg.path();
             let (key, skip): (Symbol, &mut bool) = match path.word_sym() {
                 Some(key @ sym::array) => (key, &mut array),
