@@ -920,26 +920,26 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     #[allow(deprecated)]
     let attrs = tcx.get_all_attrs(def_id);
 
-    let paren_sugar = find_attr!(attrs, RustcParenSugar(_));
+    let paren_sugar = find_attr!(attrs, RustcParenSugar);
     if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     // Only regular traits can be marker.
-    let is_marker = !is_alias && find_attr!(attrs, Marker(_));
+    let is_marker = !is_alias && find_attr!(attrs, Marker);
 
-    let rustc_coinductive = find_attr!(attrs, RustcCoinductive(_));
+    let rustc_coinductive = find_attr!(attrs, RustcCoinductive);
     let is_fundamental = find_attr!(attrs, Fundamental);
 
     let [skip_array_during_method_dispatch, skip_boxed_slice_during_method_dispatch] = find_attr!(
         attrs,
-        RustcSkipDuringMethodDispatch { array, boxed_slice, span: _ } => [*array, *boxed_slice]
+        RustcSkipDuringMethodDispatch { array, boxed_slice } => [*array, *boxed_slice]
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind = if find_attr!(attrs, RustcUnsafeSpecializationMarker(_)) {
+    let specialization_kind = if find_attr!(attrs, RustcUnsafeSpecializationMarker) {
         ty::trait_def::TraitSpecializationKind::Marker
-    } else if find_attr!(attrs, RustcSpecializationTrait(_)) {
+    } else if find_attr!(attrs, RustcSpecializationTrait) {
         ty::trait_def::TraitSpecializationKind::AlwaysApplicable
     } else {
         ty::trait_def::TraitSpecializationKind::None
@@ -954,7 +954,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 .collect::<Box<[_]>>()
     );
 
-    let deny_explicit_impl = find_attr!(attrs, RustcDenyExplicitImpl(_));
+    let deny_explicit_impl = find_attr!(attrs, RustcDenyExplicitImpl);
     let force_dyn_incompatible = find_attr!(attrs, RustcDynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {

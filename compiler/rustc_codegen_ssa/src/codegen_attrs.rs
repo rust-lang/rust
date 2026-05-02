@@ -69,7 +69,7 @@ fn process_builtin_attrs(
         .filter_map(|attr| if let hir::Attribute::Parsed(attr) = attr { Some(attr) } else { None });
     for attr in parsed_attrs {
         match attr {
-            AttributeKind::Cold(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
+            AttributeKind::Cold => codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD,
             AttributeKind::ExportName { name, .. } => codegen_fn_attrs.symbol_name = Some(*name),
             AttributeKind::Inline(inline, span) => {
                 codegen_fn_attrs.inline = *inline;
@@ -88,7 +88,7 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.link_ordinal = Some(*ordinal);
                 interesting_spans.link_ordinal = Some(*span);
             }
-            AttributeKind::LinkSection { name, .. } => codegen_fn_attrs.link_section = Some(*name),
+            AttributeKind::LinkSection { name } => codegen_fn_attrs.link_section = Some(*name),
             AttributeKind::NoMangle(attr_span) => {
                 interesting_spans.no_mangle = Some(*attr_span);
                 if tcx.opt_item_name(did.to_def_id()).is_some() {
@@ -167,7 +167,7 @@ fn process_builtin_attrs(
                 }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
             }
-            AttributeKind::Used { used_by, .. } => match used_by {
+            AttributeKind::Used { used_by } => match used_by {
                 UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                 UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
                 UsedBy::Default => {
@@ -184,9 +184,9 @@ fn process_builtin_attrs(
                     codegen_fn_attrs.flags |= used_form;
                 }
             },
-            AttributeKind::FfiConst(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
+            AttributeKind::FfiConst => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST,
             AttributeKind::FfiPure(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE,
-            AttributeKind::RustcStdInternalSymbol(_) => {
+            AttributeKind::RustcStdInternalSymbol => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
             }
             AttributeKind::Linkage(linkage, span) => {
@@ -214,10 +214,10 @@ fn process_builtin_attrs(
             AttributeKind::Sanitize { span, .. } => {
                 interesting_spans.sanitize = Some(*span);
             }
-            AttributeKind::RustcObjcClass { classname, .. } => {
+            AttributeKind::RustcObjcClass { classname } => {
                 codegen_fn_attrs.objc_class = Some(*classname);
             }
-            AttributeKind::RustcObjcSelector { methname, .. } => {
+            AttributeKind::RustcObjcSelector { methname } => {
                 codegen_fn_attrs.objc_selector = Some(*methname);
             }
             AttributeKind::RustcEiiForeignItem => {
@@ -508,7 +508,7 @@ fn handle_lang_items(
     attrs: &[Attribute],
     codegen_fn_attrs: &mut CodegenFnAttrs,
 ) {
-    let lang_item = find_attr!(attrs, Lang(lang, _) => lang);
+    let lang_item = find_attr!(attrs, Lang(lang) => lang);
 
     // Weak lang items have the same semantics as "std internal" symbols in the
     // sense that they're preserved through all our LTO passes and only

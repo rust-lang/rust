@@ -1426,7 +1426,7 @@ impl AttributeExt for Attribute {
     }
 
     fn is_automatically_derived_attr(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived(..)))
+        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived))
     }
 
     #[inline]
@@ -1453,8 +1453,8 @@ impl AttributeExt for Attribute {
         matches!(
             self,
             Attribute::Parsed(
-                AttributeKind::ProcMacro(..)
-                    | AttributeKind::ProcMacroAttribute(..)
+                AttributeKind::ProcMacro
+                    | AttributeKind::ProcMacroAttribute
                     | AttributeKind::ProcMacroDerive { .. }
             )
         )

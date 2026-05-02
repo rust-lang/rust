@@ -54,7 +54,7 @@ impl NoArgsAttributeParser for ColdParser {
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Cold;
 }
 
 pub(crate) struct CoverageParser;
@@ -94,7 +94,7 @@ impl SingleAttributeParser for CoverageParser {
             }
         };
 
-        Some(AttributeKind::Coverage(cx.attr_span, kind))
+        Some(AttributeKind::Coverage(kind))
     }
 }
 
@@ -156,7 +156,7 @@ impl SingleAttributeParser for RustcObjcClassParser {
             cx.emit_err(NullOnObjcClass { span: nv.value_span });
             return None;
         }
-        Some(AttributeKind::RustcObjcClass { classname, span: cx.attr_span })
+        Some(AttributeKind::RustcObjcClass { classname })
     }
 }
 
@@ -183,7 +183,7 @@ impl SingleAttributeParser for RustcObjcSelectorParser {
             cx.emit_err(NullOnObjcSelector { span: nv.value_span });
             return None;
         }
-        Some(AttributeKind::RustcObjcSelector { methname, span: cx.attr_span })
+        Some(AttributeKind::RustcObjcSelector { methname })
     }
 }
 
@@ -436,9 +436,9 @@ impl AttributeParser for UsedParser {
         // If a specific form of `used` is specified, it takes precedence over generic `#[used]`.
         // If both `linker` and `compiler` are specified, use `linker`.
         Some(match (self.first_compiler, self.first_linker, self.first_default) {
-            (_, Some(span), _) => AttributeKind::Used { used_by: UsedBy::Linker, span },
-            (Some(span), _, _) => AttributeKind::Used { used_by: UsedBy::Compiler, span },
-            (_, _, Some(span)) => AttributeKind::Used { used_by: UsedBy::Default, span },
+            (_, Some(_), _) => AttributeKind::Used { used_by: UsedBy::Linker },
+            (Some(_), _, _) => AttributeKind::Used { used_by: UsedBy::Compiler },
+            (_, _, Some(_)) => AttributeKind::Used { used_by: UsedBy::Default },
             (None, None, None) => return None,
         })
     }

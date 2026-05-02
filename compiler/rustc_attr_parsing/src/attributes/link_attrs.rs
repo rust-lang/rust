@@ -521,7 +521,7 @@ impl SingleAttributeParser for LinkSectionParser {
             BinaryFormat::Coff | BinaryFormat::Elf | BinaryFormat::Wasm | BinaryFormat::Xcoff => {}
         }
 
-        Some(LinkSection { name, span: cx.attr_span })
+        Some(LinkSection { name })
     }
 }
 
@@ -537,7 +537,7 @@ impl NoArgsAttributeParser for FfiConstParser {
     const PATH: &[Symbol] = &[sym::ffi_const];
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::FfiConst;
 }
 
 pub(crate) struct FfiPureParser;
@@ -557,7 +557,7 @@ impl NoArgsAttributeParser for RustcStdInternalSymbolParser {
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcStdInternalSymbol;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcStdInternalSymbol;
 }
 
 pub(crate) struct LinkOrdinalParser;

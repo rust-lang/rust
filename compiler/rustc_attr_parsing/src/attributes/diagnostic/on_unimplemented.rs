@@ -54,9 +54,8 @@ impl AttributeParser for OnUnimplementedParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        if let Some(span) = self.span {
+        if let Some(_span) = self.span {
             Some(AttributeKind::OnUnimplemented {
-                span,
                 directive: self.directive.map(|d| Box::new(d.1)),
             })
         } else {

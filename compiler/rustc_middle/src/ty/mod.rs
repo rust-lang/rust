@@ -1479,7 +1479,7 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        let elt = find_attr!(self, did, RustcScalableVector { element_count, .. } => element_count
+        let elt = find_attr!(self, did, RustcScalableVector { element_count } => element_count
         )
         .map(|elt| match elt {
             Some(n) => ScalableElt::ElementCount(*n),
@@ -2021,7 +2021,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`.
     pub fn is_automatically_derived(self, def_id: DefId) -> bool {
-        find_attr!(self, def_id, AutomaticallyDerived(..))
+        find_attr!(self, def_id, AutomaticallyDerived)
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

@@ -1459,7 +1459,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             && let ty::ImplPolarity::Reservation = tcx.impl_polarity(def_id)
         {
             if let Some(intercrate_ambiguity_clauses) = &mut self.intercrate_ambiguity_causes {
-                let message = find_attr!(tcx, def_id, RustcReservationImpl(_, message) => *message);
+                let message = find_attr!(tcx, def_id, RustcReservationImpl(message) => *message);
                 if let Some(message) = message {
                     debug!(
                         "filter_reservation_impls: \

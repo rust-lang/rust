@@ -945,7 +945,7 @@ pub enum AttributeKind {
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
 
     /// Represents `#[automatically_derived]`
-    AutomaticallyDerived(Span),
+    AutomaticallyDerived,
 
     /// Represents the trace attribute of `#[cfg_attr]`
     CfgAttrTrace,
@@ -959,7 +959,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[cold]`.
-    Cold(Span),
+    Cold,
 
     /// Represents `#[collapse_debuginfo]`.
     CollapseDebugInfo(CollapseMacroDebuginfo),
@@ -971,10 +971,10 @@ pub enum AttributeKind {
     ConstContinue(Span),
 
     /// Represents `#[coroutine]`.
-    Coroutine(Span),
+    Coroutine,
 
     /// Represents `#[coverage(..)]`.
-    Coverage(Span, CoverageAttrKind),
+    Coverage(CoverageAttrKind),
 
     /// Represents `#[crate_name = ...]`
     CrateName {
@@ -987,7 +987,7 @@ pub enum AttributeKind {
     CrateType(ThinVec<CrateType>),
 
     /// Represents `#[custom_mir]`.
-    CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
+    CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>),
 
     /// Represents `#[debugger_visualizer]`.
     DebuggerVisualizer(ThinVec<DebugVisualizer>),
@@ -1002,9 +1002,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[diagnostic::do_not_recommend]`.
-    DoNotRecommend {
-        attr_span: Span,
-    },
+    DoNotRecommend,
 
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     /// Represents all other uses of the [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html)
@@ -1041,7 +1039,7 @@ pub enum AttributeKind {
     Feature(ThinVec<Ident>, Span),
 
     /// Represents `#[ffi_const]`.
-    FfiConst(Span),
+    FfiConst,
 
     /// Represents `#[ffi_pure]`.
     FfiPure(Span),
@@ -1063,7 +1061,7 @@ pub enum AttributeKind {
     InstructionSet(InstructionSetAttr),
 
     /// Represents `#[lang]`
-    Lang(LangItem, Span),
+    Lang(LangItem),
 
     /// Represents `#[link]`.
     Link(ThinVec<LinkEntry>, Span),
@@ -1082,7 +1080,6 @@ pub enum AttributeKind {
 
     /// Represents [`#[link_section]`](https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute)
     LinkSection {
-        span: Span,
         name: Symbol,
     },
 
@@ -1093,7 +1090,7 @@ pub enum AttributeKind {
     LoopMatch(Span),
 
     /// Represents `#[macro_escape]`.
-    MacroEscape(Span),
+    MacroEscape,
 
     /// Represents [`#[macro_export]`](https://doc.rust-lang.org/reference/macros-by-example.html#r-macro.decl.scope.path).
     MacroExport {
@@ -1108,15 +1105,13 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[marker]`.
-    Marker(Span),
+    Marker,
 
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
 
     /// Represents `#[move_size_limit]`
     MoveSizeLimit {
-        attr_span: Span,
-        limit_span: Span,
         limit: Limit,
     },
 
@@ -1127,6 +1122,7 @@ pub enum AttributeKind {
 
     /// Represents `#[must_use]`.
     MustUse {
+        /// Used by `clippy`.
         span: Span,
         /// must_use can optionally have a reason: `#[must_use = "reason this must be used"]`
         reason: Option<Symbol>,
@@ -1145,10 +1141,10 @@ pub enum AttributeKind {
     NoBuiltins,
 
     /// Represents `#[no_core]`
-    NoCore(Span),
+    NoCore,
 
     /// Represents `#[no_implicit_prelude]`
-    NoImplicitPrelude(Span),
+    NoImplicitPrelude,
 
     /// Represents `#[no_link]`
     NoLink,
@@ -1160,7 +1156,7 @@ pub enum AttributeKind {
     NoMangle(Span),
 
     /// Represents `#[no_std]`
-    NoStd(Span),
+    NoStd,
 
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
@@ -1174,27 +1170,23 @@ pub enum AttributeKind {
 
     /// Represents `#[diagnostic::on_move]`
     OnMove {
-        span: Span,
         directive: Option<Box<Directive>>,
     },
 
     /// Represents `#[rustc_on_unimplemented]` and `#[diagnostic::on_unimplemented]`.
     OnUnimplemented {
-        span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
 
     /// Represents `#[diagnostic::on_unknown]`
     OnUnknown {
-        span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
 
     /// Represents `#[diagnostic::on_unmatch_args]`.
     OnUnmatchArgs {
-        span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
@@ -1212,32 +1204,29 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[path]`
-    Path(Symbol, Span),
+    Path(Symbol),
 
     /// Represents `#[pattern_complexity_limit]`
     PatternComplexityLimit {
-        attr_span: Span,
-        limit_span: Span,
         limit: Limit,
     },
 
     /// Represents `#[pin_v2]`
-    PinV2(Span),
+    PinV2,
 
     /// Represents `#[prelude_import]`
     PreludeImport,
 
     /// Represents `#[proc_macro]`
-    ProcMacro(Span),
+    ProcMacro,
 
     /// Represents `#[proc_macro_attribute]`
-    ProcMacroAttribute(Span),
+    ProcMacroAttribute,
 
     /// Represents `#[proc_macro_derive]`
     ProcMacroDerive {
         trait_name: Symbol,
         helper_attrs: ThinVec<Symbol>,
-        span: Span,
     },
 
     /// Represents `#[profiler_runtime]`
@@ -1245,8 +1234,6 @@ pub enum AttributeKind {
 
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
     RecursionLimit {
-        attr_span: Span,
-        limit_span: Span,
         limit: Limit,
     },
 
@@ -1254,7 +1241,7 @@ pub enum AttributeKind {
     ReexportTestHarnessMain(Symbol),
 
     /// Represents `#[register_tool]`
-    RegisterTool(ThinVec<Ident>, Span),
+    RegisterTool(ThinVec<Ident>),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr {
@@ -1293,7 +1280,7 @@ pub enum AttributeKind {
     RustcAllowIncoherentImpl(Span),
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr(Span),
+    RustcAsPtr,
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
@@ -1308,7 +1295,6 @@ pub enum AttributeKind {
     RustcBuiltinMacro {
         builtin_name: Option<Symbol>,
         helper_attrs: ThinVec<Symbol>,
-        span: Span,
     },
     /// Represents `#[rustc_capture_analysis]`
     RustcCaptureAnalysis,
@@ -1320,10 +1306,10 @@ pub enum AttributeKind {
     RustcClean(ThinVec<RustcCleanAttribute>),
 
     /// Represents `#[rustc_coherence_is_core]`
-    RustcCoherenceIsCore(Span),
+    RustcCoherenceIsCore,
 
     /// Represents `#[rustc_coinductive]`.
-    RustcCoinductive(Span),
+    RustcCoinductive,
 
     /// Represents `#[rustc_confusables]`.
     RustcConfusables {
@@ -1349,7 +1335,7 @@ pub enum AttributeKind {
     RustcDelayedBugFromInsideQuery,
 
     /// Represents `#[rustc_deny_explicit_impl]`.
-    RustcDenyExplicitImpl(Span),
+    RustcDenyExplicitImpl,
 
     /// Represents `#[rustc_deprecated_safe_2024]`
     RustcDeprecatedSafe2024 {
@@ -1512,23 +1498,21 @@ pub enum AttributeKind {
     /// Represents `#[rustc_objc_class]`
     RustcObjcClass {
         classname: Symbol,
-        span: Span,
     },
 
     /// Represents `#[rustc_objc_selector]`
     RustcObjcSelector {
         methname: Symbol,
-        span: Span,
     },
 
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
 
     /// Represents `#[rustc_paren_sugar]`.
-    RustcParenSugar(Span),
+    RustcParenSugar,
 
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
-    RustcPassByValue(Span),
+    RustcPassByValue,
 
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
@@ -1549,18 +1533,17 @@ pub enum AttributeKind {
     RustcRegions,
 
     /// Represents `#[rustc_reservation_impl]`
-    RustcReservationImpl(Span, Symbol),
+    RustcReservationImpl(Symbol),
 
     /// Represents `#[rustc_scalable_vector(N)]`
     RustcScalableVector {
         /// The base multiple of lanes that are in a scalable vector, if provided. `element_count`
         /// is not provided for representing tuple types.
         element_count: Option<u16>,
-        span: Span,
     },
 
     /// Represents `#[rustc_should_not_be_called_on_const_items]`
-    RustcShouldNotBeCalledOnConstItems(Span),
+    RustcShouldNotBeCalledOnConstItems,
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
@@ -1569,14 +1552,13 @@ pub enum AttributeKind {
     RustcSkipDuringMethodDispatch {
         array: bool,
         boxed_slice: bool,
-        span: Span,
     },
 
     /// Represents `#[rustc_specialization_trait]`.
-    RustcSpecializationTrait(Span),
+    RustcSpecializationTrait,
 
     /// Represents `#[rustc_std_internal_symbol]`.
-    RustcStdInternalSymbol(Span),
+    RustcStdInternalSymbol,
 
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
@@ -1585,13 +1567,13 @@ pub enum AttributeKind {
     RustcTestMarker(Symbol),
 
     /// Represents `#[rustc_then_this_would_need]`
-    RustcThenThisWouldNeed(Span, ThinVec<Ident>),
+    RustcThenThisWouldNeed(ThinVec<Ident>),
 
     /// Represents `#[rustc_trivial_field_reads]`
     RustcTrivialFieldReads,
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
-    RustcUnsafeSpecializationMarker(Span),
+    RustcUnsafeSpecializationMarker,
 
     /// Represents `#[sanitize]`
     ///
@@ -1608,7 +1590,6 @@ pub enum AttributeKind {
     /// Represents `#[should_panic]`
     ShouldPanic {
         reason: Option<Symbol>,
-        span: Span,
     },
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
@@ -1637,8 +1618,6 @@ pub enum AttributeKind {
 
     /// Represents `#[type_length_limit]`
     TypeLengthLimit {
-        attr_span: Span,
-        limit_span: Span,
         limit: Limit,
     },
 
@@ -1651,10 +1630,9 @@ pub enum AttributeKind {
     /// Represents `#[used]`
     Used {
         used_by: UsedBy,
-        span: Span,
     },
 
     /// Represents `#[windows_subsystem]`.
-    WindowsSubsystem(WindowsSubsystemKind, Span),
+    WindowsSubsystem(WindowsSubsystemKind),
     // tidy-alphabetical-end
 }

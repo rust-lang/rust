@@ -9,14 +9,14 @@ pub(crate) struct ProcMacroParser;
 impl NoArgsAttributeParser for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacro;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProcMacro;
 }
 
 pub(crate) struct ProcMacroAttributeParser;
 impl NoArgsAttributeParser for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacroAttribute;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProcMacroAttribute;
 }
 
 pub(crate) struct ProcMacroDeriveParser;
@@ -33,7 +33,6 @@ impl SingleAttributeParser for ProcMacroDeriveParser {
         Some(AttributeKind::ProcMacroDerive {
             trait_name: trait_name.expect("Trait name is mandatory, so it is present"),
             helper_attrs,
-            span: cx.attr_span,
         })
     }
 }
@@ -47,7 +46,7 @@ impl SingleAttributeParser for RustcBuiltinMacroParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;
-        Some(AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs, span: cx.attr_span })
+        Some(AttributeKind::RustcBuiltinMacro { builtin_name, helper_attrs })
     }
 }
 

@@ -2016,9 +2016,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = tcx.hir_attrs(proc_macro);
-                let macro_kind = if find_attr!(attrs, ProcMacro(..)) {
+                let macro_kind = if find_attr!(attrs, ProcMacro) {
                     MacroKind::Bang
-                } else if find_attr!(attrs, ProcMacroAttribute(..)) {
+                } else if find_attr!(attrs, ProcMacroAttribute) {
                     MacroKind::Attr
                 } else if let Some(trait_name) =
                     find_attr!(attrs, ProcMacroDerive { trait_name, ..} => trait_name)

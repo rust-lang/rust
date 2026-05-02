@@ -19,6 +19,6 @@ impl SingleAttributeParser for PathParser {
             return None;
         };
 
-        Some(AttributeKind::Path(path, cx.attr_span))
+        Some(AttributeKind::Path(path))
     }
 }

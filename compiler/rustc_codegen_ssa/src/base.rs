@@ -909,7 +909,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind, _) => *kind);
+        let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind) => *kind);
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the
