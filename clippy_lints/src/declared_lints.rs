@@ -503,6 +503,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::methods::UNBUFFERED_BYTES_INFO,
     crate::methods::UNINIT_ASSUMED_INIT_INFO,
     crate::methods::UNIT_HASH_INFO,
+    crate::methods::UNNECESSARY_AS_SLICE_INFO,
     crate::methods::UNNECESSARY_FALLIBLE_CONVERSIONS_INFO,
     crate::methods::UNNECESSARY_FILTER_MAP_INFO,
     crate::methods::UNNECESSARY_FIND_MAP_INFO,
