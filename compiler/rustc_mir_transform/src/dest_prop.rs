@@ -153,7 +153,7 @@ pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        false && sess.mir_opt_level() >= 2
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]

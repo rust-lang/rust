@@ -208,6 +208,26 @@ impl<I: Idx> IntervalSet<I> {
         needle <= *prev_end
     }
 
+    /// Returns whether any point in `range` is contained in the set.
+    pub fn intersects_range(&self, range: impl RangeBounds<I> + Clone) -> bool {
+        let start = inclusive_start(range.clone());
+        let Some(end) = inclusive_end(self.domain, range) else {
+            // empty range
+            return false;
+        };
+        if start > end {
+            return false;
+        }
+
+        // Find the last interval whose start is <= end.
+        let Some(last) = self.map.partition_point(|r| r.0 <= end).checked_sub(1) else {
+            // All ranges in the map start after the new range's end
+            return false;
+        };
+        let (_, prev_end) = &self.map[last];
+        start <= *prev_end
+    }
+
     pub fn superset(&self, other: &IntervalSet<I>) -> bool
     where
         I: Step,

@@ -324,6 +324,15 @@ impl<T: Idx> DenseBitSet<T> {
         // out-of-domain bits, so we need to clear them.
         self.clear_excess_bits();
     }
+
+    /// Sets `self = self & (a | b)` without allocating a temporary for `a | b`.
+    ///
+    /// Returns `true` if `self` changed.
+    pub fn intersect_with_union(&mut self, a: &DenseBitSet<T>, b: &DenseBitSet<T>) -> bool {
+        assert_eq!(self.domain_size, a.domain_size);
+        assert_eq!(self.domain_size, b.domain_size);
+        bitwise3(&mut self.words, &a.words, &b.words, |s, a, b| s & (a | b))
+    }
 }
 
 // dense REL dense
@@ -1079,6 +1088,23 @@ where
         // in practice this code gets auto-vectorized by the compiler for most
         // operators. Using != here causes us to generate quite poor code as the
         // compiler tries to go back to a boolean on each loop iteration.
+        changed |= old_val ^ new_val;
+    }
+    changed != 0
+}
+
+#[inline]
+fn bitwise3<Op>(out_vec: &mut [Word], in_vec1: &[Word], in_vec2: &[Word], op: Op) -> bool
+where
+    Op: Fn(Word, Word, Word) -> Word,
+{
+    assert_eq!(out_vec.len(), in_vec1.len());
+    assert_eq!(out_vec.len(), in_vec2.len());
+    let mut changed = 0;
+    for ((out_elem, in_elem1), in_elem2) in iter::zip(iter::zip(out_vec, in_vec1), in_vec2) {
+        let old_val = *out_elem;
+        let new_val = op(old_val, *in_elem1, *in_elem2);
+        *out_elem = new_val;
         changed |= old_val ^ new_val;
     }
     changed != 0
