@@ -2,8 +2,8 @@
 #![feature(pin_ergonomics)]
 #![allow(dead_code, incomplete_features)]
 
-// This test ensures that the place cannot be mutably borrowed or moved after pinned
-// no matter if `place` is `Unpin` or not.
+// This test ensures `!Unpin` places cannot be mutably borrowed or moved after pinning.
+// `Unpin` places still obey ordinary borrow rules, but expired `&pin` borrows do not pin.
 
 use std::marker::PhantomPinned;
 use std::pin::Pin;
@@ -27,7 +27,7 @@ fn foo_move(_: Foo) {}
 fn immutable_pin_mut_then_move() {
     let mut foo = Foo::default();
     foo_pin_mut(&pin mut foo); // ok
-    foo_move(foo); //~ ERROR cannot move out of `foo` because it is pinned
+    foo_move(foo); //[pinned]~ ERROR cannot move out of `foo` because it is pinned
 
     let mut foo = Foo::default();
     let x = &pin mut foo;
@@ -38,7 +38,7 @@ fn immutable_pin_mut_then_move() {
 fn pin_mut_then_move() {
     let mut foo = Foo::default();
     foo_pin_mut(&pin mut foo); // ok
-    foo_move(foo); //~ ERROR cannot move out of `foo` because it is pinned
+    foo_move(foo); //[pinned]~ ERROR cannot move out of `foo` because it is pinned
 
     let mut foo = Foo::default();
     let x = &pin mut foo; // ok
@@ -49,7 +49,7 @@ fn pin_mut_then_move() {
 fn pin_ref_then_move() {
     let foo = Foo::default();
     foo_pin_ref(&pin const foo); // ok
-    foo_move(foo); //~ ERROR cannot move out of `foo` because it is pinned
+    foo_move(foo); //[pinned]~ ERROR cannot move out of `foo` because it is pinned
 
     let foo = Foo::default();
     let x = &pin const foo; // ok

@@ -80,4 +80,28 @@ fn direct_pin_mut_drop_generic(mut input: DropGenericAdt<NotUnpin>) {
     //~^ ERROR cannot directly pin a type that is not structurally pinnable
 }
 
+fn direct_pin_mut_unpin_then_mut_borrow_and_move() {
+    let mut value = UnpinAdt;
+    {
+        let _ = &pin mut value;
+    }
+    let _ = &mut value;
+    let _ = value;
+}
+
+fn direct_pin_const_unpin_then_move() {
+    let value = UnpinAdt;
+    {
+        let _ = &pin const value;
+    }
+    let _ = value;
+}
+
+fn direct_pin_mut_generic_unpin_bound_then_move<T: Unpin>(mut value: T) {
+    {
+        let _ = &pin mut value;
+    }
+    let _ = value;
+}
+
 fn main() {}

@@ -6,10 +6,11 @@
 // of `pair.0` until reassignment.
 
 #[pin_v2]
-struct Foo;
+#[derive(Default)]
+struct Foo(std::marker::PhantomPinned);
 
 fn mutable_borrow_of_pinned_projection() {
-    let mut pair = (Foo, Foo);
+    let mut pair = (Foo::default(), Foo::default());
 
     {
         let _pin = &pin mut pair.0;
@@ -21,7 +22,7 @@ fn mutable_borrow_of_pinned_projection() {
 }
 
 fn move_of_pinned_projection() {
-    let mut pair = (Foo, Foo);
+    let mut pair = (Foo::default(), Foo::default());
 
     {
         let _pin = &pin mut pair.0;
@@ -30,6 +31,30 @@ fn move_of_pinned_projection() {
     let _other = &mut pair.1;
     let _moved = pair.0;
     //~^ ERROR cannot move out of `pair.0` because it is pinned
+}
+
+#[pin_v2]
+struct ContainsUnpinField {
+    field: String,
+    _pin: std::marker::PhantomPinned,
+}
+
+fn pinned_parent_still_blocks_unpin_field_move(mut value: ContainsUnpinField) {
+    {
+        let _ = &pin mut value;
+    }
+
+    let _moved = value.field;
+    //~^ ERROR cannot move out of `value.field` because it is pinned
+}
+
+fn pinned_parent_still_blocks_unpin_field_mut_borrow(mut value: ContainsUnpinField) {
+    {
+        let _ = &pin mut value;
+    }
+
+    let _ = &mut value.field;
+    //~^ ERROR cannot borrow `value.field` as mutable because it is pinned
 }
 
 fn main() {}

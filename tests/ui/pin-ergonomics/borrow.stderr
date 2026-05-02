@@ -1,5 +1,5 @@
 error: cannot borrow `x` as mutable because it is pinned
-  --> $DIR/borrow.rs:32:14
+  --> $DIR/borrow.rs:34:14
    |
 LL |         let _x = &pin mut x;
    |                  ---------- pin of `x` occurs here
@@ -8,7 +8,7 @@ LL |     let _x = &mut x;
    |              ^^^^^^ borrow of `x` as mutable occurs here
 
 error: cannot move out of `x` because it is pinned
-  --> $DIR/borrow.rs:33:14
+  --> $DIR/borrow.rs:35:14
    |
 LL |         let _x = &pin mut x;
    |                  ---------- pin of `x` occurs here
@@ -17,7 +17,7 @@ LL |     let _x = x;
    |              ^ move out of `x` occurs here
 
 error: cannot borrow `y` as mutable because it is pinned
-  --> $DIR/borrow.rs:41:14
+  --> $DIR/borrow.rs:43:14
    |
 LL |         let _y = &pin const y;
    |                  ------------ pin of `y` occurs here
@@ -26,7 +26,7 @@ LL |     let _y = &mut y;
    |              ^^^^^^ borrow of `y` as mutable occurs here
 
 error: cannot move out of `y` because it is pinned
-  --> $DIR/borrow.rs:42:14
+  --> $DIR/borrow.rs:44:14
    |
 LL |         let _y = &pin const y;
    |                  ------------ pin of `y` occurs here

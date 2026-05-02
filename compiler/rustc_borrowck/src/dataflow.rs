@@ -760,7 +760,10 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
                 if let mir::Rvalue::Ref(_, mir::BorrowKind::Pinned(_, kind), place) = rhs
                     && matches!(*kind, mir::PinBorrowKind::Persistent)
                 {
-                    self.gen_pins_on_place(state, *place);
+                    let place_ty = place.ty(self.body, self.tcx).ty;
+                    if !place_ty.is_unpin(self.tcx, self.body.typing_env(self.tcx)) {
+                        self.gen_pins_on_place(state, *place);
+                    }
                 }
             }
 

@@ -1275,17 +1275,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         &self,
         state: &'s BorrowckDomain,
     ) -> Option<&'s MixedBitSet<BorrowIndex>> {
-        // FIXME(pin_ergonomics): borrowck behaviors depend on a safe trait
-        // which should not contain any safety invariants.
-        // if place
-        //     .ty(self.body, self.infcx.tcx)
-        //     .ty
-        //     .is_unpin(self.infcx.tcx, self.body.typing_env(self.infcx.tcx))
-        // {
-        //     None
-        // } else {
         Some(&state.pinned_borrows)
-        // }
     }
 
     #[instrument(level = "debug", skip(self, state))]
