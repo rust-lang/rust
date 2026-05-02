@@ -142,20 +142,18 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb4: {
         StorageLive(_23);
-        StorageLive(_12);
-        StorageLive(_13);
-        StorageLive(_19);
         StorageLive(_20);
-        StorageLive(_14);
-        StorageLive(_22);
         StorageLive(_15);
+        StorageLive(_12);
         _12 = copy _8;
+        StorageLive(_13);
         _13 = copy _11;
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb8];
     }
 
     bb5: {
         StorageLive(_17);
+        StorageLive(_14);
         _14 = copy _13 as std::ptr::NonNull<T> (Transmute);
         _15 = copy _12 as *mut T (Transmute);
         StorageLive(_16);
@@ -166,6 +164,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb6: {
+        StorageDead(_14);
         StorageDead(_17);
         StorageLive(_18);
         _18 = Offset(copy _15, const 1_usize);
@@ -175,27 +174,27 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb7: {
+        StorageDead(_14);
         StorageDead(_17);
         goto -> bb10;
     }
 
     bb8: {
+        StorageLive(_19);
         _19 = copy _13 as usize (Transmute);
         switchInt(copy _19) -> [0: bb9, otherwise: bb12];
     }
 
     bb9: {
+        StorageDead(_19);
         goto -> bb10;
     }
 
     bb10: {
-        StorageDead(_15);
-        StorageDead(_22);
-        StorageDead(_14);
-        StorageDead(_20);
-        StorageDead(_19);
         StorageDead(_13);
         StorageDead(_12);
+        StorageDead(_15);
+        StorageDead(_20);
         StorageDead(_23);
         drop(_2) -> [return: bb11, unwind unreachable];
     }
@@ -207,22 +206,23 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb12: {
         _20 = SubUnchecked(copy _19, const 1_usize);
         _11 = copy _20 as *const T (Transmute);
+        StorageDead(_19);
         goto -> bb13;
     }
 
     bb13: {
+        StorageLive(_22);
         StorageLive(_21);
         _21 = copy _12 as *const T (Transmute);
         _22 = &(*_21);
         StorageDead(_21);
         _23 = Option::<&T>::Some(copy _22);
-        StorageDead(_15);
         StorageDead(_22);
-        StorageDead(_14);
-        StorageDead(_20);
-        StorageDead(_19);
         StorageDead(_13);
         StorageDead(_12);
+        StorageDead(_15);
+        StorageDead(_20);
+        StorageLive(_24);
         _24 = copy ((_23 as Some).0: &T);
         StorageLive(_25);
         _25 = &_2;
@@ -234,6 +234,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     bb14: {
         StorageDead(_26);
         StorageDead(_25);
+        StorageDead(_24);
         StorageDead(_23);
         goto -> bb4;
     }

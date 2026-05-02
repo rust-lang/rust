@@ -73,16 +73,13 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
     }
 
     bb0: {
-        StorageLive(_9);
-        StorageLive(_8);
-        StorageLive(_3);
         StorageLive(_2);
-        StorageLive(_21);
         StorageLive(_7);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
+        StorageLive(_3);
         _2 = copy ((*_1).1: *mut T);
         _3 = copy _2 as std::ptr::NonNull<T> (Transmute);
         StorageLive(_5);
@@ -95,13 +92,18 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         _7 = Eq(copy _5, copy _6);
         StorageDead(_6);
         StorageDead(_5);
+        StorageDead(_3);
         goto -> bb3;
     }
 
     bb2: {
+        StorageLive(_9);
+        StorageLive(_8);
         _8 = copy ((*_1).1: *mut T);
         _9 = copy _8 as usize (Transmute);
+        StorageDead(_8);
         _7 = Eq(copy _9, const 0_usize);
+        StorageDead(_9);
         goto -> bb3;
     }
 
@@ -110,6 +112,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
     }
 
     bb4: {
+        StorageLive(_21);
         StorageLive(_15);
         StorageLive(_17);
         StorageLive(_11);
@@ -169,6 +172,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
         StorageDead(_20);
         StorageDead(_15);
         _0 = Option::<&mut T>::Some(copy _21);
+        StorageDead(_21);
         goto -> bb11;
     }
 
@@ -179,11 +183,7 @@ fn slice_iter_mut_next_back(_1: &mut std::slice::IterMut<'_, T>) -> Option<&mut 
 
     bb11: {
         StorageDead(_7);
-        StorageDead(_21);
         StorageDead(_2);
-        StorageDead(_3);
-        StorageDead(_8);
-        StorageDead(_9);
         return;
     }
 }
