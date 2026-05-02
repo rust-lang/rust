@@ -29,7 +29,7 @@ use rustc_mlir::shared::arith::{
     create_xori,
 };
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
-use rustc_mlir::triton::tensor::add_ptr;
+use rustc_mlir::triton::tensor::{add_ptr, broadcast};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
@@ -666,6 +666,61 @@ impl<'a> TritonCodegen<'a> {
         self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::ONE, Predicate::NE, location, mlir_block, state)
     }
 
+    /// When both operands are ranked tensors with differing shapes, broadcast
+    /// both to their common shape (each dim is the max of the two, requiring
+    /// the smaller dim to be 1).  Returns the pair unchanged when shapes already
+    /// match or broadcasting is not applicable.
+    fn maybe_broadcast_pair(
+        &self,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<(Value<'a, 'a>, Value<'a, 'a>), MlirError> {
+        let lhs_t: RankedTensorType<'a> = match lhs.r#type().try_into() {
+            Ok(t) => t,
+            Err(_) => return Ok((lhs, rhs)),
+        };
+        let rhs_t: RankedTensorType<'a> = match rhs.r#type().try_into() {
+            Ok(t) => t,
+            Err(_) => return Ok((lhs, rhs)),
+        };
+        let ld = lhs_t.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+        let rd = rhs_t.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+
+        if ld == rd || ld.len() != rd.len() {
+            return Ok((lhs, rhs));
+        }
+
+        let bd: Vec<i64> = ld.iter().zip(rd.iter())
+            .map(|(&l, &r)| if l == r || r < 0 { l } else if l < 0 { r } else { l.max(r) })
+            .collect();
+
+        // Both sides must satisfy the broadcast rule.
+        let ok = |dims: &[i64], target: &[i64]| {
+            dims.iter().zip(target).all(|(&s, &t)| s == 1 || s == t || s < 0 || t < 0)
+        };
+        if !ok(&ld, &bd) || !ok(&rd, &bd) {
+            return Ok((lhs, rhs));
+        }
+
+        let result_ty = tensor_type(&bd, lhs_t.element()).into();
+
+        let do_broadcast = |v: Value<'a, 'a>, dims: &[i64]| -> Result<Value<'a, 'a>, MlirError> {
+            if dims == bd {
+                return Ok(v);
+            }
+            let op: Operation<'a> = broadcast(self.module.context(), location, v, result_ty)
+                .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?
+                .into();
+            let r = op.result(0).expect("broadcast result").into();
+            mlir_block.append_operation(op);
+            Ok(r)
+        };
+
+        Ok((do_broadcast(lhs, &ld)?, do_broadcast(rhs, &rd)?))
+    }
+
     pub fn codegen_mul<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -681,7 +736,7 @@ impl<'a> TritonCodegen<'a> {
         let rhs_is_tensor = rhs_ty.is_tensor();
 
         let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
-            (true, true) => (lhs, rhs),
+            (true, true) => self.maybe_broadcast_pair(location, lhs, rhs, mlir_block)?,
             (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
             (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
             (false, false) => {
@@ -742,7 +797,7 @@ impl<'a> TritonCodegen<'a> {
         let rhs_is_tensor = rhs_ty.is_tensor();
 
         let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
-            (true, true) => (lhs, rhs),
+            (true, true) => self.maybe_broadcast_pair(location, lhs, rhs, mlir_block)?,
             (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
             (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
             (false, false) => {
@@ -802,7 +857,7 @@ impl<'a> TritonCodegen<'a> {
         let rhs_is_tensor = rhs_ty.is_tensor();
 
         let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
-            (true, true) => (lhs, rhs),
+            (true, true) => self.maybe_broadcast_pair(location, lhs, rhs, mlir_block)?,
             (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
             (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
             (false, false) => {
@@ -867,7 +922,7 @@ impl<'a> TritonCodegen<'a> {
         let rhs_is_tensor = rhs_ty.is_tensor();
 
         let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
-            (true, true) => (lhs, rhs),
+            (true, true) => self.maybe_broadcast_pair(location, lhs, rhs, mlir_block)?,
             (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
             (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
             (false, false) => {
