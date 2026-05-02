@@ -26,27 +26,39 @@ LL |     f(unsafe { String::new().as_str() }.len());
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:31:9
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:31:32
    |
-LL |         &mut || 0
-   |         ^^^^^^^^^
-   |         |
-   |         this temporary value will be dropped at the end of the block
+LL |         std::convert::identity(&mut || 0)
+   |         -----------------------^^^^^^^^^-
+   |         |                      |
+   |         |                      this temporary value will be dropped at the end of the block
    |         borrow later used here
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:43:9
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:43:32
    |
-LL |     g({ &f() });
-   |     -   ^^^^ this temporary value will be dropped at the end of the block
+LL |     g({ std::convert::identity(&f()) });
+   |     -                          ^^^^ this temporary value will be dropped at the end of the block
    |     |
    |     borrow later used by call
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 
-error: aborting due to 4 previous errors
+error: relative drop order changing in Rust 2024
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:58:34
+   |
+LL |     f({ std::convert::identity({ &mut || 0 }) });
+   |         -------------------------^^^^^^^^^---
+   |         |                        |
+   |         |                        this temporary value will be dropped at the end of the block
+   |         borrow later used here
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+
+error: aborting due to 5 previous errors
 
