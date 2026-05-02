@@ -1,0 +1,12 @@
+warning: higher-ranked trait bound `Subtrait` loses implied lifetime bounds when elaborated to supertrait `Supertrait`
+  --> $DIR/implied-bounds-on-trait-hierarchy-2.rs:10:8
+   |
+LL |     S: for<'a, 'b> Subtrait<'a, 'b, &'b &'a ()>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #84591 <https://github.com/rust-lang/rust/issues/84591>
+   = note: `#[warn(hrtb_supertrait_lost_implied_bounds)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

@@ -16,7 +16,7 @@ use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
-use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
+use rustc_lint_defs::builtin::{HRTB_SUPERTRAIT_LOST_IMPLIED_BOUNDS, SHADOWING_SUPERTRAIT_ITEMS};
 use rustc_macros::Diagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
@@ -1687,6 +1687,166 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
     let obligations: Vec<_> =
         wf_obligations.chain(default_obligations).chain(assoc_const_obligations).collect();
     wfcx.register_obligations(obligations);
+
+    lint_hrtb_supertrait_implied_bounds(wfcx.tcx(), def_id);
+}
+
+/// Returns `true` if `ty` (inside a binder) contains a nested reference like `&'a &'b T`
+/// where `'a` and `'b` are DISTINCT bound regions at `INNERMOST`. This means the WF of `ty`
+/// implies an outlives relationship `'b: 'a` between two different bound lifetimes.
+///
+/// We require the outer and inner bound regions to be DISTINCT because a type like
+/// `&'a Bridge<'a>` (one bound variable) does not create cross-lifetime implied bounds.
+fn has_bound_region_implied_outlives<'tcx>(ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Ref(outer_region, inner_ty, _) => {
+            if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), outer_bv) =
+                outer_region.kind()
+            {
+                if debruijn == ty::INNERMOST {
+                    // Check if inner type contains a DIFFERENT bound region
+                    let inner_has_different_bound_region = inner_ty.walk().any(|arg| {
+                        if let GenericArgKind::Lifetime(r) = arg.kind() {
+                            if let ty::ReBound(
+                                ty::BoundVarIndexKind::Bound(inner_debruijn),
+                                inner_bv,
+                            ) = r.kind()
+                            {
+                                // Must be a different bound variable than the outer region
+                                inner_debruijn == ty::INNERMOST && inner_bv != outer_bv
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    });
+                    if inner_has_different_bound_region {
+                        return true;
+                    }
+                }
+            }
+            has_bound_region_implied_outlives(*inner_ty)
+        }
+        _ => ty.walk().skip(1).any(|arg| {
+            if let GenericArgKind::Type(inner_ty) = arg.kind() {
+                has_bound_region_implied_outlives(inner_ty)
+            } else {
+                false
+            }
+        }),
+    }
+}
+
+fn lint_hrtb_supertrait_implied_bounds<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    let predicates = tcx.predicates_of(def_id.to_def_id());
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+
+    for &(pred, span) in predicates.predicates {
+        let Some(poly_trait_pred) = pred.as_trait_clause() else { continue };
+
+        let bound_vars = poly_trait_pred.bound_vars();
+        let has_bound_regions =
+            bound_vars.iter().any(|v| matches!(v, ty::BoundVariableKind::Region(_)));
+        if !has_bound_regions {
+            continue;
+        }
+
+        let trait_pred = poly_trait_pred.skip_binder();
+        let trait_ref = trait_pred.trait_ref;
+        let trait_def_id = trait_ref.def_id;
+
+        // Collect parameter indices used across all super predicates (un-instantiated).
+        // Parameters not used in any supertrait will be dropped during elaboration.
+        // Only consider supertraits that have associated items (methods, types, consts),
+        // since marker traits with no items cannot exploit dropped implied bounds.
+        let super_predicates = tcx.explicit_super_predicates_of(trait_def_id).skip_binder();
+
+        let exploitable_super_traits: Vec<_> = super_predicates
+            .iter()
+            .filter(|(sp, _)| {
+                if let Some(tc) = sp.as_trait_clause() {
+                    let super_def_id = tc.skip_binder().trait_ref.def_id;
+                    let assoc_items = tcx.associated_items(super_def_id);
+                    assoc_items.in_definition_order().next().is_some()
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        // If no supertrait has associated items, there's nothing to exploit
+        if exploitable_super_traits.is_empty() {
+            continue;
+        }
+
+        let mut used_param_indices: FxHashSet<u32> = FxHashSet::default();
+        used_param_indices.insert(0);
+
+        for &(super_pred, _) in super_predicates {
+            let Some(super_trait_clause) = super_pred.as_trait_clause() else { continue };
+            let super_trait_ref = super_trait_clause.skip_binder().trait_ref;
+            for arg in super_trait_ref.args.iter() {
+                match arg.kind() {
+                    GenericArgKind::Lifetime(r) => {
+                        if let ty::ReEarlyParam(ep) = r.kind() {
+                            used_param_indices.insert(ep.index);
+                        }
+                    }
+                    GenericArgKind::Type(ty) => {
+                        for inner_arg in ty.walk() {
+                            match inner_arg.kind() {
+                                GenericArgKind::Lifetime(r) => {
+                                    if let ty::ReEarlyParam(ep) = r.kind() {
+                                        used_param_indices.insert(ep.index);
+                                    }
+                                }
+                                GenericArgKind::Type(inner_ty) => {
+                                    if let ty::Param(p) = inner_ty.kind() {
+                                        used_param_indices.insert(p.index);
+                                    }
+                                }
+                                GenericArgKind::Const(_) => {}
+                            }
+                        }
+                    }
+                    GenericArgKind::Const(_) => {}
+                }
+            }
+        }
+
+        for (idx, arg) in trait_ref.args.iter().enumerate().skip(1) {
+            if used_param_indices.contains(&(idx as u32)) {
+                continue;
+            }
+
+            // Arg is dropped during supertrait elaboration — check if it carries
+            // implied outlives bounds between bound lifetime variables.
+            if let GenericArgKind::Type(ty) = arg.kind() {
+                let has_implied_outlives = has_bound_region_implied_outlives(ty);
+                if has_implied_outlives {
+                    let super_trait_name = exploitable_super_traits
+                        .iter()
+                        .find_map(|(sp, _)| {
+                            sp.as_trait_clause()
+                                .map(|tc| tcx.def_path_str(tc.skip_binder().trait_ref.def_id))
+                        })
+                        .unwrap_or_default();
+
+                    tcx.emit_node_span_lint(
+                        HRTB_SUPERTRAIT_LOST_IMPLIED_BOUNDS,
+                        hir_id,
+                        span,
+                        crate::errors::HrtbSupertraitLostImpliedBounds {
+                            sub_trait: tcx.def_path_str(trait_def_id),
+                            super_trait: super_trait_name,
+                        },
+                    );
+                    break;
+                }
+            }
+        }
+    }
 }
 
 #[instrument(level = "debug", skip(wfcx, hir_decl))]

@@ -1968,3 +1968,12 @@ pub(crate) struct EiiDefkindMismatchStaticSafety {
     pub span: Span,
     pub eii_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(
+    "higher-ranked trait bound `{$sub_trait}` loses implied lifetime bounds when elaborated to supertrait `{$super_trait}`"
+)]
+pub(crate) struct HrtbSupertraitLostImpliedBounds {
+    pub sub_trait: String,
+    pub super_trait: String,
+}

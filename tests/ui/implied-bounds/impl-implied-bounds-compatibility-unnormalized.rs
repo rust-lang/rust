@@ -11,6 +11,7 @@ impl Trait for () {
     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {
         //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter 's in generic type due to conflicting requirements
         s
+        //~^ ERROR lifetime may not live long enough
     }
 }
 fn main() {

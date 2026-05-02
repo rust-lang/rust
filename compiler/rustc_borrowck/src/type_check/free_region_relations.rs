@@ -236,11 +236,23 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         for ty in unnormalized_input_output_tys {
             debug!("build: input_or_output={:?}", ty);
+            let is_assoc_item = matches!(
+                tcx.def_kind(defining_ty_def_id),
+                DefKind::AssocFn | DefKind::AssocConst { .. }
+            );
+            let is_top_level_projection =
+                matches!(ty.kind(), ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }));
             // We add implied bounds from both the unnormalized and normalized ty.
             // See issue #87748
-            let constraints_unnorm = self.add_implied_bounds(ty, span);
-            if let Some(c) = constraints_unnorm {
-                constraints.push(c)
+            // #25860 V3: For assoc item signatures, a top-level projection may be the impl
+            // `Self` type. If the projection does not normalize, its args are not necessarily
+            // WF; blanket impls like `impl<T> Trait for T` can satisfy the projection without
+            // requiring WF of `T`. Do not extract implied bounds from that unnormalized shape.
+            if !(is_assoc_item && is_top_level_projection) {
+                let constraints_unnorm = self.add_implied_bounds(ty, span);
+                if let Some(c) = constraints_unnorm {
+                    constraints.push(c)
+                }
             }
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } =
                 param_env
@@ -298,7 +310,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         //   the types of the locals corresponding to the inputs and outputs of the item. (#136547)
         if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst { .. })
         {
-            for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
+            let parent = tcx.local_parent(defining_ty_def_id);
+            let assumed_wf = tcx.assumed_wf_types(parent);
+            for &(ty, _) in assumed_wf {
                 let result: Result<_, ErrorGuaranteed> = param_env
                     .and(DeeplyNormalize { value: ty })
                     .fully_perform(self.infcx, self.infcx.root_def_id, span);
@@ -306,10 +320,17 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     continue;
                 };
 
+                // #25860 V3: Skip projections that didn't normalize. The args of an
+                // unresolved projection cannot be assumed to be WF (the impl satisfying
+                // the trait might not require WF of the args, e.g., `impl<T> Trait for T`).
+                // Extracting implied bounds from such projection args is unsound.
+                if let ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) = norm_ty.kind() {
+                    constraints.extend(c);
+                    continue;
+                }
+
                 constraints.extend(c);
 
-                // We currently add implied bounds from the normalized ty only.
-                // This is more conservative and matches wfcheck behavior.
                 let c = self.add_implied_bounds(norm_ty, span);
                 constraints.extend(c);
             }

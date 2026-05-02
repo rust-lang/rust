@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/triple-nested-reference-cast.rs:7:12
+   |
+LL | fn exploit<'a, 'c, T>(x: &'a T) -> &'c T {
+   |            --  -- lifetime `'c` defined here
+   |            |
+   |            lifetime `'a` defined here
+LL |     let f: fn(_, &'a T) -> &'c T = triple;
+   |            ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'c`
+   |
+   = help: consider adding the following bound: `'a: 'c`
+
+error: aborting due to 1 previous error
+

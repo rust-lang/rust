@@ -1,5 +1,4 @@
 //@ check-pass
-//@ known-bug: #84591
 
 trait Subtrait<'a, 'b, R>: Supertrait<'a, 'b> {}
 trait Supertrait<'a, 'b> {
@@ -9,6 +8,8 @@ trait Supertrait<'a, 'b> {
 fn need_hrtb_subtrait<'a_, 'b_, S, T: ?Sized>(x: &'a_ T) -> &'b_ T
 where
     S: for<'a, 'b> Subtrait<'a, 'b, &'b &'a ()>,
+    //~^ WARN higher-ranked trait bound `Subtrait` loses implied lifetime bounds when elaborated to supertrait `Supertrait`
+    //~| WARN this was previously accepted by the compiler but is being phased out
 {
     need_hrtb_supertrait::<S, T>(x)
     // This call works and drops the implied bound `'a: 'b`

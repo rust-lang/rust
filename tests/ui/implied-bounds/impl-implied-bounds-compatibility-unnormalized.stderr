@@ -23,6 +23,15 @@ note: ...so that the reference type `&'static &()` does not outlive the data it 
 LL |     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/impl-implied-bounds-compatibility-unnormalized.rs:13:9
+   |
+LL |     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {
+   |            -- lifetime `'s` defined here
+LL |
+LL |         s
+   |         ^ returning this value requires that `'s` must outlive `'static`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0803`.

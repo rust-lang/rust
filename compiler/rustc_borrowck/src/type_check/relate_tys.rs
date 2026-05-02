@@ -12,7 +12,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::relate_args_invariantly;
-use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, FnMutDelegate, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
@@ -45,6 +45,64 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         Ok(())
     }
 
+    /// Checks that a fn-item-to-fn-pointer cast preserves WF-implied bounds
+    /// from the source signature. Normal higher-ranked subtyping relates the
+    /// source and target binders, but it does not carry source implied bounds
+    /// (for example, `'b: 'a` from `&'a &'b ()`) through that relation.
+    ///
+    /// We open the target binder with placeholders and the source binder with
+    /// existential NLL variables in the same universe context, relate the two
+    /// signatures, then post WF obligations for the constrained source
+    /// components. If the target erased a source implied bound, those WF
+    /// obligations are expressed in terms of target placeholders and fail.
+    pub(super) fn check_reify_fn_pointer_implied_bounds(
+        &mut self,
+        src_sig: ty::PolyFnSig<'tcx>,
+        target_sig: ty::PolyFnSig<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory<'tcx>,
+    ) -> Result<(), NoSolution> {
+        if !fn_sig_has_bound_region_implied_outlives(src_sig) {
+            return Ok(());
+        }
+
+        let constrained_src_sig = {
+            let mut relating = NllTypeRelating::new(
+                self,
+                locations,
+                category,
+                UniverseInfo::other(),
+                ty::Covariant,
+            );
+
+            relating.enter_forall(target_sig, |this, placeholder_target_sig| {
+                let existential_src_sig = this.instantiate_binder_with_existentials(src_sig);
+                let existential_src_ty =
+                    Ty::new_fn_ptr(this.type_checker.tcx(), ty::Binder::dummy(existential_src_sig));
+                let normalized_src_ty = this.type_checker.normalize(existential_src_ty, locations);
+                let ty::FnPtr(src_fn_tys, src_hdr) = *normalized_src_ty.kind() else {
+                    return Err(NoSolution);
+                };
+                let normalized_src_sig = src_fn_tys.with(src_hdr).skip_binder();
+                this.relate(normalized_src_sig, placeholder_target_sig)?;
+                Ok::<_, NoSolution>(existential_src_sig)
+            })?
+        };
+
+        for input_ty in constrained_src_sig.inputs() {
+            self.prove_predicate(
+                ty::ClauseKind::WellFormed((*input_ty).into()),
+                locations,
+                category,
+            );
+        }
+
+        let output_ty = constrained_src_sig.output();
+        self.prove_predicate(ty::ClauseKind::WellFormed(output_ty.into()), locations, category);
+
+        Ok(())
+    }
+
     /// Add sufficient constraints to ensure `a == b`. See also [Self::relate_types].
     pub(super) fn eq_args(
         &mut self,
@@ -56,6 +114,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         NllTypeRelating::new(self, locations, category, UniverseInfo::other(), ty::Invariant)
             .relate(a, b)?;
         Ok(())
+    }
+}
+
+/// Returns `true` if `sig` contains a nested reference like `&'a &'b T`
+/// where `'a` and `'b` are distinct bound regions at `INNERMOST`. Such a
+/// signature has a WF-implied outlives relationship between bound regions,
+/// which must be preserved when reifying a fn item to a fn pointer.
+fn fn_sig_has_bound_region_implied_outlives<'tcx>(sig: ty::PolyFnSig<'tcx>) -> bool {
+    sig.skip_binder().inputs_and_output.iter().any(has_bound_region_implied_outlives)
+}
+
+fn has_bound_region_implied_outlives<'tcx>(ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Alias(..) if ty.has_bound_regions() => true,
+        ty::Ref(outer_region, inner_ty, _) => {
+            if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), outer_bv) =
+                outer_region.kind()
+                && debruijn == ty::INNERMOST
+            {
+                let inner_has_different_bound_region = inner_ty.walk().any(|arg| {
+                    if let GenericArgKind::Lifetime(r) = arg.kind()
+                        && let ty::ReBound(ty::BoundVarIndexKind::Bound(inner_debruijn), inner_bv) =
+                            r.kind()
+                    {
+                        inner_debruijn == ty::INNERMOST && inner_bv != outer_bv
+                    } else {
+                        false
+                    }
+                });
+                if inner_has_different_bound_region {
+                    return true;
+                }
+            }
+            has_bound_region_implied_outlives(*inner_ty)
+        }
+        _ => ty.walk().skip(1).any(|arg| {
+            if let GenericArgKind::Type(inner_ty) = arg.kind() {
+                has_bound_region_implied_outlives(inner_ty)
+            } else {
+                false
+            }
+        }),
     }
 }
 

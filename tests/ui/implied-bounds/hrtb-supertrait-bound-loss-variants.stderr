@@ -1,0 +1,12 @@
+error: higher-ranked trait bound `SubA` loses implied lifetime bounds when elaborated to supertrait `SuperA`
+  --> $DIR/hrtb-supertrait-bound-loss-variants.rs:12:8
+   |
+LL |     S: for<'a, 'b> SubA<'a, 'b, &'b &'a ()>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #84591 <https://github.com/rust-lang/rust/issues/84591>
+   = note: requested on the command line with `-D hrtb-supertrait-lost-implied-bounds`
+
+error: aborting due to 1 previous error
+

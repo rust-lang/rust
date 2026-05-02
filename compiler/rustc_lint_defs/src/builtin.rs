@@ -52,6 +52,7 @@ declare_lint_pass! {
         FUNCTION_ITEM_REFERENCES,
         FUZZY_PROVENANCE_CASTS,
         HIDDEN_GLOB_REEXPORTS,
+        HRTB_SUPERTRAIT_LOST_IMPLIED_BOUNDS,
         ILL_FORMED_ATTRIBUTE_INPUT,
         INCOMPLETE_INCLUDE,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
@@ -3277,6 +3278,45 @@ declare_lint! {
     pub HIDDEN_GLOB_REEXPORTS,
     Warn,
     "name introduced by a private item shadows a name introduced by a public glob re-export",
+}
+
+declare_lint! {
+    /// The `hrtb_supertrait_lost_implied_bounds` lint detects cases where
+    /// higher-ranked trait bounds lose implied lifetime bounds through
+    /// supertrait elaboration.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(hrtb_supertrait_lost_implied_bounds)]
+    ///
+    /// trait Supertrait<'a, 'b> {}
+    /// trait Subtrait<'a, 'b, R>: Supertrait<'a, 'b> {}
+    ///
+    /// fn foo<S: for<'a, 'b> Subtrait<'a, 'b, &'b &'a ()>>() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When a higher-ranked trait bound like `for<'a, 'b> Subtrait<'a, 'b, &'b &'a ()>`
+    /// is elaborated to its supertrait `for<'a, 'b> Supertrait<'a, 'b>`, the type
+    /// parameter `&'b &'a ()` is dropped. This type carried an implied lifetime bound
+    /// (`'a: 'b` from the well-formedness of `&'b &'a ()`), which is now lost. This can
+    /// be exploited to transmute any lifetime, which is unsound.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error
+    /// in the future. See [issue #84591] for more details.
+    ///
+    /// [issue #84591]: https://github.com/rust-lang/rust/issues/84591
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub HRTB_SUPERTRAIT_LOST_IMPLIED_BOUNDS,
+    Warn,
+    "higher-ranked trait bound loses implied lifetime bounds through supertrait elaboration",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #84591),
+    };
 }
 
 declare_lint! {

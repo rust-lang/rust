@@ -1,0 +1,23 @@
+error: lifetime may not live long enough
+  --> $DIR/soundness-25860-full-coverage.rs:10:12
+   |
+LL | fn v1_exploit<'a, T>(x: &'a T) -> &'static T {
+   |               -- lifetime `'a` defined here
+LL |     let f: fn(_, &'a T, &()) -> &'static T = v1_source;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/soundness-25860-full-coverage.rs:27:9
+   |
+LL | impl<'a, 'b> Extend<'a, 'b> for <&'b &'a () as Proj>::Out
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |         s
+   |         ^ method was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 2 previous errors
+

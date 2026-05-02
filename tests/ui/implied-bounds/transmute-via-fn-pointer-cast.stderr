@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/transmute-via-fn-pointer-cast.rs:9:12
+   |
+LL | fn transmute_lifetime<'a, 'b, T: ?Sized>(x: &'a T) -> &'b T {
+   |                       --  -- lifetime `'b` defined here
+   |                       |
+   |                       lifetime `'a` defined here
+LL |     let f: fn(_, &'a T) -> &'b T = bad;
+   |            ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

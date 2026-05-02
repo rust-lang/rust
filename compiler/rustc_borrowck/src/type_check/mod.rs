@@ -27,7 +27,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    GenericArgsRef, Ty, TyCtxt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
@@ -1034,56 +1034,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // binder, and implement a higher-ranked subtyping algorithm that actually
                         // respects these implied bounds.
                         //
-                        // This protects against the case where we are casting from a higher-ranked
-                        // fn item to a non-higher-ranked fn pointer, where the cast throws away
-                        // implied bounds that would've needed to be checked at the call site. This
-                        // only works when we're casting to a non-higher-ranked fn ptr, since
-                        // placeholders in the target signature could have untracked implied
-                        // bounds, resulting in incorrect errors.
-                        //
-                        // We check that this signature is WF before subtyping the signature with
-                        // the target fn sig.
-                        if src_sig.has_bound_regions()
-                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
-                            && let target_sig = target_fn_tys.with(target_hdr)
-                            && let Some(target_sig) = target_sig.no_bound_vars()
-                        {
-                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
-                                span,
-                                BoundRegionConversionTime::HigherRankedType,
-                                src_sig,
-                            );
-                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
-                            self.prove_predicate(
-                                ty::ClauseKind::WellFormed(src_ty.into()),
-                                location.to_locations(),
-                                ConstraintCategory::Cast {
-                                    is_raw_ptr_dyn_type_cast: false,
-                                    is_implicit_coercion,
-                                    unsize_to: None,
-                                },
-                            );
-
-                            let src_ty = self.normalize(src_ty, location);
-                            if let Err(terr) = self.sub_types(
-                                src_ty,
-                                *ty,
-                                location.to_locations(),
-                                ConstraintCategory::Cast {
-                                    is_raw_ptr_dyn_type_cast: false,
-                                    is_implicit_coercion,
-                                    unsize_to: None,
-                                },
-                            ) {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "equating {:?} with {:?} yields {:?}",
-                                    target_sig,
-                                    src_sig,
-                                    terr
-                                );
+                        // #25860: Relate the source and target higher-ranked binders while
+                        // separately proving WF of the constrained source signature. This catches
+                        // implied bounds from nested references that normal fn-item-to-fn-pointer
+                        // subtyping would otherwise erase.
+                        if let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind() {
+                            let target_sig = target_fn_tys.with(target_hdr);
+                            let category = ConstraintCategory::Cast {
+                                is_raw_ptr_dyn_type_cast: false,
+                                is_implicit_coercion,
+                                unsize_to: None,
                             };
+                            if let Err(terr) = self.check_reify_fn_pointer_implied_bounds(
+                                src_sig,
+                                target_sig,
+                                location.to_locations(),
+                                category,
+                            ) {
+                                debug!(
+                                    ?src_sig,
+                                    ?target_sig,
+                                    ?terr,
+                                    "unable to run #25860 implied-bound check"
+                                );
+                            }
                         }
 
                         let src_ty = Ty::new_fn_ptr(tcx, src_sig);
@@ -1107,7 +1081,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
                         let src_ty = self.normalize(src_ty, location);
-                        if let Err(terr) = self.sub_types(
+                        let final_sub_result = self.sub_types(
                             src_ty,
                             *ty,
                             location.to_locations(),
@@ -1116,7 +1090,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 is_implicit_coercion,
                                 unsize_to: None,
                             },
-                        ) {
+                        );
+                        if let Err(terr) = final_sub_result {
                             span_mirbug!(
                                 self,
                                 rvalue,
