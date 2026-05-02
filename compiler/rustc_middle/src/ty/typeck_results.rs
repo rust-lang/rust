@@ -13,7 +13,7 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -27,7 +27,7 @@ use crate::ty::{
     GenericArgsRef, Ty, UserArgs, tls,
 };
 
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: OwnerId,
@@ -728,7 +728,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
@@ -741,7 +741,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
 pub struct UserType<'tcx> {
     pub kind: UserTypeKind<'tcx>,
     pub bounds: ty::Clauses<'tcx>,
@@ -763,7 +763,7 @@ impl<'tcx> UserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
 pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -851,7 +851,7 @@ impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
 
 /// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
 /// emitted during THIR construction.
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+#[derive(TyEncodable, TyDecodable, Debug, StableHash)]
 pub struct Rust2024IncompatiblePatInfo {
     /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
     pub primary_labels: Vec<(Span, String)>,

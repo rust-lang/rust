@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
@@ -29,7 +29,7 @@ use crate::ty::{
 /// Note: the `Lift` impl is currently not used by rustc, but is used by
 /// rustc_codegen_cranelift when the `jit` feature is enabled.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
+#[derive(StableHash, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {
     pub def: InstanceKind<'tcx>,
     pub args: GenericArgsRef<'tcx>,
@@ -41,7 +41,7 @@ pub struct Instance<'tcx> {
 /// Currently, this is only used when KCFI is enabled, as only KCFI needs to treat those two
 /// `ReifyShim`s differently.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, StableHash)]
 pub enum ReifyReason {
     /// The `ReifyShim` was created to produce a function pointer. This happens when:
     /// * A vtable entry is directly converted to a function call (e.g. creating a fn ptr from a
@@ -58,7 +58,7 @@ pub enum ReifyReason {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub enum InstanceKind<'tcx> {
     /// A user-defined callable item.
     ///

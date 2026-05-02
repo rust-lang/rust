@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -56,7 +56,7 @@ macro_rules! thir_with_elements {
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
-        #[derive(Debug, HashStable, Clone)]
+        #[derive(Debug, StableHash, Clone)]
         pub struct Thir<'tcx> {
             pub body_type: BodyTy<'tcx>,
             $(
@@ -94,7 +94,7 @@ thir_with_elements! {
     params: ParamId => Param<'tcx> => "p{}",
 }
 
-#[derive(Debug, HashStable, Clone)]
+#[derive(Debug, StableHash, Clone)]
 pub enum BodyTy<'tcx> {
     Const(Ty<'tcx>),
     Fn(FnSig<'tcx>),
@@ -102,7 +102,7 @@ pub enum BodyTy<'tcx> {
 }
 
 /// Description of a type-checked function parameter.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct Param<'tcx> {
     /// The pattern that appears in the parameter list, or None for implicit parameters.
     pub pat: Option<Box<Pat<'tcx>>>,
@@ -116,7 +116,7 @@ pub struct Param<'tcx> {
     pub hir_id: Option<HirId>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`
     /// and `try` blocks.
@@ -136,7 +136,7 @@ pub struct Block {
 
 type UserTy<'tcx> = Option<Box<CanonicalUserType<'tcx>>>;
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct AdtExpr<'tcx> {
     /// The ADT we're constructing.
     pub adt_def: AdtDef<'tcx>,
@@ -153,7 +153,7 @@ pub struct AdtExpr<'tcx> {
     pub base: AdtExprBase<'tcx>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub enum AdtExprBase<'tcx> {
     /// A struct expression where all the fields are explicitly enumerated: `Foo { a, b }`.
     None,
@@ -166,7 +166,7 @@ pub enum AdtExprBase<'tcx> {
     DefaultFields(Box<[Ty<'tcx>]>),
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct ClosureExpr<'tcx> {
     pub closure_id: LocalDefId,
     pub args: UpvarArgs<'tcx>,
@@ -175,7 +175,7 @@ pub struct ClosureExpr<'tcx> {
     pub fake_reads: Vec<(ExprId, FakeReadCause, HirId)>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct InlineAsmExpr<'tcx> {
     pub asm_macro: AsmMacro,
     pub template: &'tcx [InlineAsmTemplatePiece],
@@ -184,7 +184,7 @@ pub struct InlineAsmExpr<'tcx> {
     pub line_spans: &'tcx [Span],
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub enum BlockSafety {
     Safe,
     /// A compiler-generated unsafe block
@@ -193,12 +193,12 @@ pub enum BlockSafety {
     ExplicitUnsafe(HirId),
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub enum StmtKind<'tcx> {
     /// An expression with a trailing semicolon.
     Expr {
@@ -238,11 +238,11 @@ pub enum StmtKind<'tcx> {
     },
 }
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, StableHash, TyEncodable, TyDecodable)]
 pub struct LocalVarId(pub HirId);
 
 /// A THIR expression.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct Expr<'tcx> {
     /// kind of expression
     pub kind: ExprKind<'tcx>,
@@ -259,7 +259,7 @@ pub struct Expr<'tcx> {
     pub span: Span,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub enum ExprKind<'tcx> {
     /// `Scope`s are used to explicitly mark destruction scopes,
     /// and to track the `HirId` of the expressions within the scope.
@@ -551,20 +551,20 @@ pub enum ExprKind<'tcx> {
 /// Represents the association of a field identifier and an expression.
 ///
 /// This is used in struct constructors.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct FieldExpr {
     pub name: FieldIdx,
     pub expr: ExprId,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct FruInfo<'tcx> {
     pub base: ExprId,
     pub field_types: Box<[Ty<'tcx>]>,
 }
 
 /// A `match` arm.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct Arm<'tcx> {
     pub pattern: Box<Pat<'tcx>>,
     pub guard: Option<ExprId>,
@@ -575,14 +575,14 @@ pub struct Arm<'tcx> {
 }
 
 /// The `match` part of a `#[loop_match]`
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub struct LoopMatchMatchData {
     pub scrutinee: ExprId,
     pub arms: Box<[ArmId]>,
     pub span: Span,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub enum LogicalOp {
     /// The `&&` operator.
     And,
@@ -590,7 +590,7 @@ pub enum LogicalOp {
     Or,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Clone, Debug, StableHash)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -627,14 +627,14 @@ pub enum InlineAsmOperand<'tcx> {
     },
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Clone, Debug, StableHash, TypeVisitable)]
 pub struct FieldPat<'tcx> {
     pub field: FieldIdx,
     pub pattern: Pat<'tcx>,
 }
 
 /// Additional per-node data that is not present on most THIR pattern nodes.
-#[derive(Clone, Debug, Default, HashStable, TypeVisitable)]
+#[derive(Clone, Debug, Default, StableHash, TypeVisitable)]
 pub struct PatExtra<'tcx> {
     /// If present, this node represents a named constant that was lowered to
     /// a pattern using `const_to_pat`.
@@ -648,7 +648,7 @@ pub struct PatExtra<'tcx> {
     pub ascriptions: Vec<Ascription<'tcx>>,
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Clone, Debug, StableHash, TypeVisitable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -736,7 +736,7 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Clone, Debug, StableHash, TypeVisitable)]
 pub struct Ascription<'tcx> {
     pub annotation: CanonicalUserTypeAnnotation<'tcx>,
     /// Variance to use when relating the `user_ty` to the **type of the value being
@@ -760,7 +760,7 @@ pub struct Ascription<'tcx> {
     pub variance: ty::Variance,
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Clone, Debug, StableHash, TypeVisitable)]
 pub enum PatKind<'tcx> {
     /// A missing pattern, e.g. for an anonymous param in a bare fn like `fn f(u32)`.
     Missing,
@@ -881,7 +881,7 @@ pub enum PatKind<'tcx> {
     Error(ErrorGuaranteed),
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub enum DerefPatBorrowMode {
     Borrow(Mutability),
     Box,
@@ -889,7 +889,7 @@ pub enum DerefPatBorrowMode {
 
 /// A range pattern.
 /// The boundaries must be of the same type and that type must be numeric.
-#[derive(Clone, Debug, PartialEq, HashStable, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, StableHash, TypeVisitable)]
 pub struct PatRange<'tcx> {
     /// Must not be `PosInfinity`.
     pub lo: PatRangeBoundary<'tcx>,
@@ -1009,7 +1009,7 @@ impl<'tcx> fmt::Display for PatRange<'tcx> {
 
 /// A (possibly open) boundary of a range pattern.
 /// If present, the const must be of a numeric type.
-#[derive(Copy, Clone, Debug, PartialEq, HashStable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, PartialEq, StableHash, TypeVisitable)]
 pub enum PatRangeBoundary<'tcx> {
     /// The type of this valtree is stored in the surrounding `PatRange`.
     Finite(ty::ValTree<'tcx>),

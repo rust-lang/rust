@@ -1,5 +1,5 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable, Encodable, StableHash, TyDecodable, TyEncodable};
 
 use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
 
@@ -8,7 +8,7 @@ use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
 /// kind of crate, including cdylibs which export very few things.
 /// `Rust` will only be exported if the crate produced is a Rust
 /// dylib.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, StableHash)]
 pub enum SymbolExportLevel {
     C,
     Rust,
@@ -22,7 +22,7 @@ impl SymbolExportLevel {
 }
 
 /// Kind of exported symbols.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable, Hash)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, StableHash, Hash)]
 pub enum SymbolExportKind {
     Text,
     Data,
@@ -34,7 +34,7 @@ pub enum SymbolExportKind {
 ///
 /// The difference between `used` and `rustc_std_internal_symbol` is that the
 /// former is exported by LTO while the latter isn't.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, StableHash)]
 pub struct SymbolExportInfo {
     pub level: SymbolExportLevel,
     pub kind: SymbolExportKind,
@@ -45,7 +45,7 @@ pub struct SymbolExportInfo {
     pub rustc_std_internal_symbol: bool,
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, StableHash)]
 pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
     Generic(DefId, GenericArgsRef<'tcx>),

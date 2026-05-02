@@ -1,5 +1,5 @@
 use rustc_hir::def::Res;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::Ident;
 use rustc_span::def_id::DefId;
 use smallvec::SmallVec;
@@ -8,7 +8,7 @@ use crate::ty;
 
 /// A simplified version of `ImportKind` from resolve.
 /// `DefId`s here correspond to `use` and `extern crate` items themselves, not their targets.
-#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash)]
 pub enum Reexport {
     Single(DefId),
     Glob(DefId),
@@ -31,7 +31,7 @@ impl Reexport {
 /// need to add more data in the future to correctly support macros 2.0, for example.
 /// Module child can be either a proper item or a reexport (including private imports).
 /// In case of reexport all the fields describe the reexport item itself, not what it refers to.
-#[derive(Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct ModChild {
     /// Name of the item.
     pub ident: Ident,
@@ -46,7 +46,7 @@ pub struct ModChild {
 }
 
 /// Same as `ModChild`, however, it includes ambiguity error.
-#[derive(Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct AmbigModChild {
     pub main: ModChild,
     pub second: ModChild,

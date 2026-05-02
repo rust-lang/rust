@@ -1,4 +1,4 @@
-use crate::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use crate::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use crate::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, RwLock, WriteGuard};
 
 /// The `Steal` struct is intended to used as the value for a query.
@@ -71,8 +71,8 @@ impl<T> Steal<T> {
     }
 }
 
-impl<T: HashStable> HashStable for Steal<T> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.borrow().hash_stable(hcx, hasher);
+impl<T: StableHash> StableHash for Steal<T> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.borrow().stable_hash(hcx, hasher);
     }
 }

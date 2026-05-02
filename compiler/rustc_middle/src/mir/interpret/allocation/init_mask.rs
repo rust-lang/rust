@@ -5,7 +5,7 @@ use std::ops::Range;
 use std::{hash, iter};
 
 use rustc_abi::Size;
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::AllocRange;
@@ -18,13 +18,13 @@ type Block = u64;
 /// possible. Currently, if all the blocks have the same value, then the mask represents either a
 /// fully initialized or fully uninitialized const allocation, so we can only store that single
 /// value.
-#[derive(Clone, Debug, Eq, PartialEq, Encodable_NoContext, Decodable_NoContext, Hash, HashStable)]
+#[derive(Clone, Debug, Eq, PartialEq, Encodable_NoContext, Decodable_NoContext, Hash, StableHash)]
 pub struct InitMask {
     blocks: InitMaskBlocks,
     len: Size,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Encodable_NoContext, Decodable_NoContext, Hash, HashStable)]
+#[derive(Clone, Debug, Eq, PartialEq, Encodable_NoContext, Decodable_NoContext, Hash, StableHash)]
 enum InitMaskBlocks {
     Lazy {
         /// Whether the lazy init mask is fully initialized or uninitialized.
@@ -183,7 +183,7 @@ impl InitMask {
 /// The actual materialized blocks of the bitmask, when we can't keep the `InitMask` lazy.
 // Note: for performance reasons when interning, some of the fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
-#[derive(Clone, Debug, Eq, PartialEq, HashStable)]
+#[derive(Clone, Debug, Eq, PartialEq, StableHash)]
 struct InitMaskMaterialized {
     blocks: Vec<Block>,
 }

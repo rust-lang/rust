@@ -31,9 +31,9 @@
 extern crate self as rustc_span;
 
 use derive_where::derive_where;
-use rustc_data_structures::stable_hasher::HashStableContext;
+use rustc_data_structures::stable_hasher::StableHashCtxt;
 use rustc_data_structures::{AtomicRef, outline};
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::debug;
@@ -81,7 +81,7 @@ use std::sync::Arc;
 use std::{fmt, iter};
 
 use md5::{Digest, Md5};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::{Hash64, Hash128};
@@ -91,7 +91,7 @@ use sha2::Sha256;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable)]
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, StableHash)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -1614,7 +1614,7 @@ impl fmt::Debug for SpanData {
 }
 
 /// Identifies an offset of a multi-byte character in a `SourceFile`.
-#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, StableHash)]
 pub struct MultiByteChar {
     /// The relative offset of the character in the `SourceFile`.
     pub pos: RelativeBytePos,
@@ -1623,7 +1623,7 @@ pub struct MultiByteChar {
 }
 
 /// Identifies an offset of a character that was normalized away from `SourceFile`.
-#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, Encodable, Decodable, Eq, PartialEq, Debug, StableHash)]
 pub struct NormalizedPos {
     /// The relative offset of the character in the `SourceFile`.
     pub pos: RelativeBytePos,
@@ -1666,7 +1666,7 @@ impl ExternalSource {
 pub struct OffsetOverflowError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub enum SourceFileHashAlgorithm {
     Md5,
     Sha1,
@@ -1701,7 +1701,7 @@ impl FromStr for SourceFileHashAlgorithm {
 
 /// The hash of the on-disk source file used for debug info and cargo freshness checks.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-#[derive(HashStable, Encodable, Decodable)]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct SourceFileHash {
     pub kind: SourceFileHashAlgorithm,
     value: [u8; 32],
@@ -2084,7 +2084,7 @@ impl fmt::Debug for SourceFile {
 /// When `SourceFile`s are exported in crate metadata, the `StableSourceFileId`
 /// is updated to incorporate the `StableCrateId` of the exporting crate.
 #[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, HashStable, Encodable, Decodable, Default, PartialOrd,
+    Debug, Clone, Copy, Hash, PartialEq, Eq, StableHash, Encodable, Decodable, Default, PartialOrd,
     Ord
 )]
 pub struct StableSourceFileId(Hash128);
@@ -2656,7 +2656,7 @@ impl_pos! {
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, HashStable)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, StableHash)]
     pub struct RelativeBytePos(pub u32);
 
     /// A character offset.
@@ -2787,8 +2787,8 @@ impl InnerSpan {
     }
 }
 
-impl HashStable for Span {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl StableHash for Span {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
         hcx.span_hash_stable(self.to_raw_span(), hasher)
     }
@@ -2800,7 +2800,7 @@ impl HashStable for Span {
 /// The `()` field is necessary: it is non-`pub`, which means values of this
 /// type cannot be constructed outside of this crate.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct ErrorGuaranteed(());
 
 impl ErrorGuaranteed {

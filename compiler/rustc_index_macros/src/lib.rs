@@ -25,7 +25,7 @@ mod newtype;
 /// The impls provided by default are Clone, Copy, PartialEq, Eq, and Hash.
 ///
 /// Accepted attributes for customization:
-/// - `#[derive(HashStable)]`: derives `HashStable`, as normal.
+/// - `#[stable_hash]`: derives `StableHash`.
 /// - `#[encodable]`: derives `Encodable`/`Decodable`.
 /// - `#[orderable]`: derives `PartialOrd`/`Ord`, plus step-related methods.
 /// - `#[debug_format = "Foo({})"]`: derives `Debug` with particular output.

@@ -7,7 +7,7 @@ use either::Either;
 use rustc_abi::{Align, Size, VariantIdx};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgValue, ErrorGuaranteed, IntoDiagArg};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -18,7 +18,7 @@ use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
@@ -55,7 +55,7 @@ impl ErrorHandled {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
     /// Whether this error is allowed to show up even in otherwise "infallible" promoteds.
@@ -97,7 +97,7 @@ impl From<ReportedErrorInfo> for ErrorGuaranteed {
 
 /// An error type for the `const_to_valtree` query. Some error should be reported with a "use-site span",
 /// which means the query cannot emit the error, so those errors are represented as dedicated variants here.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub enum ValTreeCreationError<'tcx> {
     /// The constant is too big to be valtree'd.
     NodesOverflow,

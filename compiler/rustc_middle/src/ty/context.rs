@@ -23,7 +23,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
-use rustc_data_structures::stable_hasher::HashStable;
+use rustc_data_structures::stable_hasher::StableHash;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
@@ -546,7 +546,7 @@ pub struct TyCtxtFeed<'tcx, K: Copy> {
 }
 
 /// Only queries that create a `DefId` are allowed to feed queries for that `DefId`.
-impl<K: Copy> !HashStable for TyCtxtFeed<'_, K> {}
+impl<K: Copy> !StableHash for TyCtxtFeed<'_, K> {}
 
 /// Some workarounds to use cases that cannot use `create_def`.
 /// Do not add new ways to create `TyCtxtFeed` without consulting

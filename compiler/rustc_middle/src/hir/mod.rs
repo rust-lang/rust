@@ -12,14 +12,14 @@ use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
@@ -76,16 +76,16 @@ impl<'hir> Crate<'hir> {
     }
 }
 
-impl HashStable for Crate<'_> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl StableHash for Crate<'_> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let Crate { opt_hir_hash, .. } = self;
-        opt_hir_hash.unwrap().hash_stable(hcx, hasher)
+        opt_hir_hash.unwrap().stable_hash(hcx, hasher)
     }
 }
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
-#[derive(Debug, HashStable, Encodable, Decodable)]
+#[derive(Debug, StableHash, Encodable, Decodable)]
 pub struct ModuleItems {
     /// Whether this represents the whole crate, in which case we need to add `CRATE_OWNER_ID` to
     /// the iterators if we want to account for the crate root.
@@ -243,16 +243,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
         self.with_stable_hashing_context(|mut hcx| {
             let mut stable_hasher = StableHasher::new();
-            node.hash_stable(&mut hcx, &mut stable_hasher);
+            node.stable_hash(&mut hcx, &mut stable_hasher);
             // Bodies are stored out of line, so we need to pull them explicitly in the hash.
-            bodies.hash_stable(&mut hcx, &mut stable_hasher);
+            bodies.stable_hash(&mut hcx, &mut stable_hasher);
             let h1 = stable_hasher.finish();
 
             let mut stable_hasher = StableHasher::new();
-            attrs.hash_stable(&mut hcx, &mut stable_hasher);
+            attrs.stable_hash(&mut hcx, &mut stable_hasher);
 
             // Hash the defined opaque types, which are not present in the attrs.
-            define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+            define_opaque.stable_hash(&mut hcx, &mut stable_hasher);
 
             let h2 = stable_hasher.finish();
 

@@ -33,7 +33,7 @@ use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
@@ -46,7 +46,7 @@ use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
-    BlobDecodable, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
+    BlobDecodable, Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable,
     TypeVisitable, extension,
 };
 use rustc_serialize::{Decodable, Encodable};
@@ -173,7 +173,7 @@ mod visit;
 
 // Data types
 
-#[derive(Debug, HashStable)]
+#[derive(Debug, StableHash)]
 pub struct ResolverGlobalCtxt {
     pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
@@ -237,7 +237,7 @@ pub struct DelegationInfo {
     pub resolution_node: ast::NodeId,
 }
 
-#[derive(Clone, Copy, Debug, HashStable)]
+#[derive(Clone, Copy, Debug, StableHash)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
@@ -250,7 +250,7 @@ impl MainDefinition {
     }
 }
 
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
@@ -258,7 +258,7 @@ pub struct ImplTraitHeader<'tcx> {
     pub constness: hir::Constness,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash, Debug)]
 #[derive(TypeFoldable, TypeVisitable, Default)]
 pub enum Asyncness {
     Yes,
@@ -272,7 +272,7 @@ impl Asyncness {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, StableHash)]
 pub enum Visibility<Id = LocalDefId> {
     /// Visible everywhere (including in other crates).
     Public,
@@ -300,7 +300,7 @@ impl Visibility {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ClosureSizeProfileData<'tcx> {
     /// Tuple containing the types of closure captures before the feature `capture_disjoint_fields`
@@ -455,7 +455,7 @@ impl Visibility<DefId> {
 /// HIR of every item in the local crate. Instead, use
 /// `tcx.variances_of()` to get the variance for a *particular*
 /// item.
-#[derive(HashStable, Debug)]
+#[derive(StableHash, Debug)]
 pub struct CrateVariancesMap<'tcx> {
     /// For each item with generics, maps to a vector of the variance
     /// of its generics. If an item has no generics, it will have no
@@ -472,7 +472,7 @@ pub struct CReaderCacheKey {
 }
 
 /// Use this rather than `TyKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
@@ -501,7 +501,7 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 /// HIR of every item in the local crate. Instead, use
 /// `tcx.inferred_outlives_of()` to get the outlives for a *particular*
 /// item.
-#[derive(HashStable, Debug)]
+#[derive(StableHash, Debug)]
 pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
@@ -557,9 +557,9 @@ impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> HashStable for Term<'tcx> {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.kind().hash_stable(hcx, hasher);
+impl<'tcx> StableHash for Term<'tcx> {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.kind().stable_hash(hcx, hasher);
     }
 }
 
@@ -782,7 +782,7 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, StableHash, TyEncodable, TyDecodable)]
 pub struct ProvisionalHiddenType<'tcx> {
     /// The span of this particular definition of the opaque type. So
     /// for example:
@@ -893,7 +893,7 @@ impl<'tcx> ProvisionalHiddenType<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, StableHash, TyEncodable, TyDecodable)]
 pub struct DefinitionSiteHiddenType<'tcx> {
     /// The span of the definition of the opaque type. So for example:
     ///
@@ -962,7 +962,7 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
 ///
 /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-#[derive(HashStable, TypeVisitable, TypeFoldable)]
+#[derive(StableHash, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'tcx> {
     /// Caller bounds are `Obligation`s that the caller must satisfy. This is
     /// basically the set of bounds on the in-scope type parameters, translated
@@ -1008,7 +1008,7 @@ impl<'tcx> ParamEnv<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
-#[derive(HashStable)]
+#[derive(StableHash)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,
@@ -1024,7 +1024,7 @@ pub struct ParamEnvAnd<'tcx, T> {
 /// able to use the trait system they have to be able to initialize
 /// such an `InferCtxt` with the right `typing_mode`, so they need
 /// to track both.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct TypingEnv<'tcx> {
     #[type_foldable(identity)]
@@ -1127,26 +1127,26 @@ impl<'tcx> TypingEnv<'tcx> {
 /// This should be created by using `infcx.pseudo_canonicalize_query(param_env, value)`
 /// or by using `typing_env.as_query_input(value)`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable, TypeVisitable, TypeFoldable)]
+#[derive(StableHash, TypeVisitable, TypeFoldable)]
 pub struct PseudoCanonicalInput<'tcx, T> {
     pub typing_env: TypingEnv<'tcx>,
     pub value: T,
 }
 
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct Destructor {
     /// The `DefId` of the destructor method
     pub did: DefId,
 }
 
 // FIXME: consider combining this definition with regular `Destructor`
-#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct AsyncDestructor {
     /// The `DefId` of the `impl AsyncDrop`
     pub impl_did: DefId,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub struct VariantFlags(u8);
 bitflags::bitflags! {
     impl VariantFlags: u8 {
@@ -1158,7 +1158,7 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { VariantFlags }
 
 /// Definition of a variant -- a struct's fields or an enum variant.
-#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, StableHash, TyEncodable, TyDecodable)]
 pub struct VariantDef {
     /// `DefId` that identifies the variant itself.
     /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.
@@ -1354,7 +1354,7 @@ impl Hash for VariantDef {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, StableHash)]
 pub enum VariantDiscr {
     /// Explicit value for this variant, i.e., `X = 123`.
     /// The `DefId` corresponds to the embedded constant.
@@ -1367,7 +1367,7 @@ pub enum VariantDiscr {
     Relative(u32),
 }
 
-#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
+#[derive(Debug, StableHash, TyEncodable, TyDecodable)]
 pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
@@ -1445,7 +1445,7 @@ pub enum ImplOverlapKind {
 
 /// Useful source information about where a desugared associated type for an
 /// RPITIT originated from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum ImplTraitInTraitData {
     Trait { fn_def_id: DefId, opaque_def_id: DefId },
     Impl { fn_def_id: DefId },
@@ -2264,13 +2264,13 @@ pub fn provide(providers: &mut Providers) {
 /// rather, you should request the vector for a specific type via
 /// `tcx.inherent_impls(def_id)` so as to minimize your dependencies
 /// (constructing this map requires touching the entire crate).
-#[derive(Clone, Debug, Default, HashStable)]
+#[derive(Clone, Debug, Default, StableHash)]
 pub struct CrateInherentImpls {
     pub inherent_impls: FxIndexMap<LocalDefId, Vec<DefId>>,
     pub incoherent_impls: FxIndexMap<SimplifiedType, Vec<LocalDefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, StableHash)]
 pub struct SymbolName<'tcx> {
     /// `&str` gives a consistent ordering, which ensures reproducible builds.
     pub name: &'tcx str,
@@ -2295,7 +2295,7 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 }
 
 /// The constituent parts of a type level constant of kind ADT or array.
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, StableHash)]
 pub struct DestructuredAdtConst<'tcx> {
     pub variant: VariantIdx,
     pub fields: &'tcx [ty::Const<'tcx>],

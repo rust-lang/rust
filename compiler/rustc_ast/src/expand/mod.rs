@@ -1,6 +1,6 @@
 //! Definitions shared by macros / syntax extensions and e.g. `rustc_middle`.
 
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 
 pub mod allocator;
 pub mod autodiff_attrs;

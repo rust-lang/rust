@@ -10,9 +10,9 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
 
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync;
-use rustc_macros::{Decodable, Encodable, HashStable, Walkable};
+use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use thin_vec::ThinVec;
@@ -23,7 +23,7 @@ use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `Delimited`.
@@ -138,8 +138,8 @@ impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
     }
 }
 
-impl HashStable for LazyAttrTokenStream {
-    fn hash_stable<Hcx: HashStableContext>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
+impl StableHash for LazyAttrTokenStream {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }
@@ -545,7 +545,7 @@ pub struct AttrsTarget {
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
 /// guide pretty-printing, which is where the `JointHidden` value (which isn't
 /// part of `proc_macro::Spacing`) comes in useful.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub enum Spacing {
     /// The token cannot join with the following token to form a compound
     /// token.
@@ -824,10 +824,10 @@ impl FromIterator<TokenTree> for TokenStream {
     }
 }
 
-impl HashStable for TokenStream {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl StableHash for TokenStream {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         for sub_tt in self.iter() {
-            sub_tt.hash_stable(hcx, hasher);
+            sub_tt.stable_hash(hcx, hasher);
         }
     }
 }
@@ -967,7 +967,7 @@ impl TokenCursor {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(Encodable, Decodable, HashStable, Walkable)]
+#[derive(Encodable, Decodable, StableHash, Walkable)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
@@ -991,7 +991,7 @@ impl DelimSpan {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
 pub struct DelimSpacing {
     pub open: Spacing,
     pub close: Spacing,

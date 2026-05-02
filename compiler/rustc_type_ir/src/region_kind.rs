@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
@@ -216,33 +216,33 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 }
 
 #[cfg(feature = "nightly")]
-// This is not a derived impl because a derive would require `I: HashStable`
-impl<I: Interner> HashStable for RegionKind<I>
+// This is not a derived impl because a derive would require `I: StableHash`
+impl<I: Interner> StableHash for RegionKind<I>
 where
-    I::EarlyParamRegion: HashStable,
-    I::LateParamRegion: HashStable,
-    I::DefId: HashStable,
-    I::Symbol: HashStable,
+    I::EarlyParamRegion: StableHash,
+    I::LateParamRegion: StableHash,
+    I::DefId: StableHash,
+    I::Symbol: StableHash,
 {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).stable_hash(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
             ReBound(d, r) => {
-                d.hash_stable(hcx, hasher);
-                r.hash_stable(hcx, hasher);
+                d.stable_hash(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             ReEarlyParam(r) => {
-                r.hash_stable(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             ReLateParam(r) => {
-                r.hash_stable(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             RePlaceholder(r) => {
-                r.hash_stable(hcx, hasher);
+                r.stable_hash(hcx, hasher);
             }
             ReVar(_) => {
                 panic!("region variables should not be hashed: {self:?}")

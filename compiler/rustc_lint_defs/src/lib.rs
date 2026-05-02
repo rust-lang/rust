@@ -3,11 +3,11 @@ use std::fmt::Display;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
+    StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HirId, ItemLocalId};
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
 use rustc_span::{AttrId, Ident, Symbol, sym};
@@ -136,18 +136,18 @@ impl LintExpectationId {
     }
 }
 
-impl HashStable for LintExpectationId {
+impl StableHash for LintExpectationId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                hir_id.hash_stable(hcx, hasher);
-                attr_index.hash_stable(hcx, hasher);
-                lint_index.hash_stable(hcx, hasher);
+                hir_id.stable_hash(hcx, hasher);
+                attr_index.stable_hash(hcx, hasher);
+                lint_index.stable_hash(hcx, hasher);
             }
             _ => {
                 unreachable!(
-                    "HashStable should only be called for filled and stable `LintExpectationId`"
+                    "StableHash should only be called for filled and stable `LintExpectationId`"
                 )
             }
         }
@@ -158,14 +158,14 @@ impl ToStableHashKey for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
                 (def_path_hash, lint_idx, *attr_index, *lint_index)
             }
             _ => {
-                unreachable!("HashStable should only be called for a filled `LintExpectationId`")
+                unreachable!("StableHash should only be called for a filled `LintExpectationId`")
             }
         }
     }
@@ -175,7 +175,7 @@ impl ToStableHashKey for LintExpectationId {
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
 #[derive(
-    Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable, HashStable
+    Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable, StableHash
 )]
 pub enum Level {
     /// The `allow` level will not issue any message.
@@ -616,10 +616,10 @@ impl LintId {
     }
 }
 
-impl HashStable for LintId {
+impl StableHash for LintId {
     #[inline]
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.lint_name_raw().hash_stable(hcx, hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.lint_name_raw().stable_hash(hcx, hasher);
     }
 }
 

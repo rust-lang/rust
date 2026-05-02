@@ -18,7 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{
-    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
+    Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -39,7 +39,7 @@ use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 ///
 /// We do not want to intern this as there are a lot of obligation causes which
 /// only live for a short period of time.
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
@@ -146,7 +146,7 @@ impl<'tcx> ObligationCause<'tcx> {
 }
 
 /// A compact form of `ObligationCauseCode`.
-#[derive(Clone, PartialEq, Eq, Default, HashStable)]
+#[derive(Clone, PartialEq, Eq, Default, StableHash)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
 pub struct ObligationCauseCodeHandle<'tcx> {
     /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
@@ -178,7 +178,7 @@ impl<'tcx> std::ops::Deref for ObligationCauseCodeHandle<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
@@ -432,7 +432,7 @@ pub enum ObligationCauseCode<'tcx> {
 
 /// Whether a value can be extracted into a const.
 /// Used for diagnostics around array repeat expressions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 pub enum IsConstable {
     No,
     /// Call to a const fn
@@ -445,7 +445,7 @@ pub enum IsConstable {
 /// This information is used to obtain an `hir::Ty`, which
 /// we can walk in order to obtain precise spans for any
 /// 'nested' types (e.g. `Foo` in `Option<Foo>`).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash, Encodable, Decodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub enum WellFormedLoc {
     /// Use the type of the provided definition.
@@ -528,7 +528,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_block_id: Option<HirId>,
@@ -555,7 +555,7 @@ pub struct MatchExpressionArmCause<'tcx> {
 /// Fields here refer to the scrutinee of a pattern.
 /// If the scrutinee isn't given in the diagnostic, then this won't exist.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable, StableHash, TyEncodable, TyDecodable)]
 pub struct PatternOriginExpr {
     /// A span representing the scrutinee expression, with all leading references
     /// peeled from the expression.
@@ -570,7 +570,7 @@ pub struct PatternOriginExpr {
     pub peeled_prefix_suggestion_parentheses: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct DerivedCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
@@ -583,7 +583,7 @@ pub struct DerivedCause<'tcx> {
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct ImplDerivedCause<'tcx> {
     pub derived: DerivedCause<'tcx>,
@@ -597,7 +597,7 @@ pub struct ImplDerivedCause<'tcx> {
     pub span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct DerivedHostCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
@@ -610,7 +610,7 @@ pub struct DerivedHostCause<'tcx> {
     pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct ImplDerivedHostCause<'tcx> {
     pub derived: DerivedHostCause<'tcx>,
@@ -682,7 +682,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `ImplSourceUserDefinedData`.
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub enum ImplSource<'tcx, N> {
     /// ImplSource identifying a particular impl.
@@ -748,7 +748,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
@@ -756,7 +756,7 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub nested: ThinVec<N>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum DynCompatibilityViolation {
     /// Trait is marked `#[rustc_dyn_incompatible_trait]`.
     ExplicitlyDynIncompatible(SmallVec<[Span; 1]>),
@@ -956,7 +956,7 @@ impl DynCompatibilityViolationSolution {
 }
 
 /// Reasons a method might not be dyn-compatible.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum MethodViolation {
     /// e.g., `fn foo()`
     StaticMethod(Option<(/* add &self */ (String, Span), /* add Self: Sized */ (String, Span))>),
@@ -987,7 +987,7 @@ pub enum MethodViolation {
 }
 
 /// Reasons an associated const might not be dyn compatible.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum AssocConstViolation {
     /// Unstable feature `min_generic_const_args` wasn't enabled.
     FeatureNotEnabled,
@@ -1003,7 +1003,7 @@ pub enum AssocConstViolation {
 }
 
 /// These are the error cases for `codegen_select_candidate`.
-#[derive(Copy, Clone, Debug, Hash, HashStable, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, Hash, StableHash, Encodable, Decodable)]
 pub enum CodegenObligationError {
     /// Ambiguity can happen when monomorphizing during trans
     /// expands to some humongous type that never occurred

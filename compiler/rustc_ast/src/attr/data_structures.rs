@@ -1,12 +1,12 @@
 use std::fmt;
 
-use rustc_macros::{Decodable, Encodable, HashStable};
+use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::attr::version::RustcVersion;
 
-#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum CfgEntry {
     All(ThinVec<CfgEntry>, Span),
     Any(ThinVec<CfgEntry>, Span),

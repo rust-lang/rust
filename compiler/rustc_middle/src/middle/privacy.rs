@@ -6,10 +6,10 @@ use std::cmp::Ordering;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind};
-use rustc_macros::HashStable;
+use rustc_macros::StableHash;
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
 use crate::ty::{TyCtxt, Visibility};
@@ -17,7 +17,7 @@ use crate::ty::{TyCtxt, Visibility};
 /// Represents the levels of effective visibility an item can have.
 ///
 /// The variants are sorted in ascending order of directness.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, StableHash)]
 pub enum Level {
     /// Superset of `Reachable` including items leaked through return position `impl Trait`.
     ReachableThroughImplTrait,
@@ -38,7 +38,7 @@ impl Level {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, StableHash)]
 pub struct EffectiveVisibility {
     direct: Visibility,
     reexported: Visibility,
@@ -280,9 +280,9 @@ impl<Id> Default for EffectiveVisibilities<Id> {
     }
 }
 
-impl HashStable for EffectiveVisibilities {
-    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl StableHash for EffectiveVisibilities {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         let EffectiveVisibilities { ref map } = *self;
-        map.hash_stable(hcx, hasher);
+        map.stable_hash(hcx, hasher);
     }
 }
