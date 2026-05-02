@@ -164,16 +164,7 @@ fn compile_codegen_unit_impl(
         triton_codegen.codegen(tcx, mono_item).expect("Failed to generate MLIR for instance");
     }
 
-    let mlir_module_ok = mlir_module.llmod().as_operation().verify();
-    if !mlir_module_ok {
-        panic!("MLIR module failed verification");
-    }
-
-    eprintln!("MLIR module pre-cleanup: {}", mlir_module.llmod().as_operation());
-
     cleanup_mlir_module(&mut mlir_module).expect("MLIR cleanup passes failed");
-
-    eprintln!("MLIR module post-cleanup: {}", mlir_module.llmod().as_operation());
 
     mlir_module.mlir_source = Some(mlir_module.llmod().as_operation().to_string());
 
