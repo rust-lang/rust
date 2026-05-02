@@ -558,7 +558,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 impl<I: Interner> search_graph::Cx for I {
     type Input = CanonicalInput<I>;
     type Result = QueryResult<I>;
-    type AmbiguityInfo = Certainty;
+    type AmbiguityKind = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;
     type Tracked<T: Debug + Clone> = I::Tracked<T>;
