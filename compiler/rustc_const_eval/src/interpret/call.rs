@@ -268,6 +268,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
+    /// Determine whether this argument can be safely ignored.
+    fn is_ignored_arg(arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool {
+        // According to *documentation*, we should ignore nothing here. If we go by what *actually*
+        // gets ignored, we'd check `arg.is_ignore()`; then we'd ignore zero-sized types (on most
+        // targets). But we don't want to accept code that relies on such an undocumented property.
+        // That said, the compiler itself relies on some arguments being ignored when coercing
+        // non-capturing closures to function pointers: the `self` parameter of the closure is just
+        // ignored as part of that coercion. Therefore, we ignore *just* those types, and we
+        // double-check that indeed they do actually get ignored.
+        let can_ignore = matches!(arg.layout.ty.kind(), ty::Closure (_def, closure_args) if {
+            closure_args.as_closure().upvar_tys().is_empty()
+        });
+        if can_ignore {
+            assert!(
+                arg.is_ignore(),
+                "an argument we expected to be ignored has the wrong PassMode: {arg:?}"
+            );
+        }
+        can_ignore
+    }
+
     /// Initialize a single callee argument, checking the types for compatibility.
     fn pass_argument<'x, 'y>(
         &mut self,
@@ -285,7 +306,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         'tcx: 'y,
     {
         assert_eq!(callee_ty, callee_abi.layout.ty);
-        if callee_abi.is_ignore() {
+        if Self::is_ignored_arg(callee_abi) {
             // This one is skipped. Still must be made live though!
             if !already_live {
                 self.storage_live(callee_arg.as_local().unwrap())?;
@@ -444,7 +465,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let mut caller_args = args
             .iter()
             .zip(caller_fn_abi.args.iter())
-            .filter(|arg_and_abi| !arg_and_abi.1.is_ignore());
+            .filter(|arg_and_abi| !Self::is_ignored_arg(arg_and_abi.1));
 
         // Now we have to spread them out across the callee's locals,
         // taking into account the `spread_arg`. If we could write
@@ -475,12 +496,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Consume the remaining arguments by putting them into the variable argument
                 // list.
-                let varargs = self.allocate_varargs(
-                    &mut caller_args,
-                    // "Ignored" arguments aren't actually passed, so the callee should also
-                    // ignore them. (`pass_argument` does this for regular arguments.)
-                    (&mut callee_args_abis).filter(|(_, abi)| !abi.is_ignore()),
-                )?;
+                let varargs = self.allocate_varargs(&mut caller_args, &mut callee_args_abis)?;
                 // When the frame is dropped, these variable arguments are deallocated.
                 self.frame_mut().va_list = varargs.clone();
                 let key = self.va_list_ptr(varargs.into());
