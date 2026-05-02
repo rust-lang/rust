@@ -176,7 +176,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // In MIR, argument N is stored in local N+1.
-            let local = Local::from_usize(argument_index + 1);
+            let local = Local::arg(argument_index);
 
             let mir_input_ty = self.body.local_decls[local].ty;
 

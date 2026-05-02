@@ -1068,7 +1068,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Bind the argument patterns
         for (index, param) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
-            let local = Local::new(index + 1);
+            let local = Local::arg(index);
             let place = Place::from(local);
 
             // Make sure we drop (parts of) the argument even when not matched on.

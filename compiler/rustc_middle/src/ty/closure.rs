@@ -17,7 +17,7 @@ use crate::{mir, ty};
 
 /// Captures are represented using fields inside a structure.
 /// This represents accessing self in the closure structure
-pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
+pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::arg(0);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, StableHash)]
 #[derive(TypeFoldable, TypeVisitable)]
