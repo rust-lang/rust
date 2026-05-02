@@ -164,7 +164,6 @@ struct LoweringContext<'a, 'hir> {
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>) -> Self {
-        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             tcx,
             resolver,
@@ -220,7 +219,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),
-                registered_tools,
+                tcx.registered_tools(()),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             ),
             delayed_lints: Vec::new(),

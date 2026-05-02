@@ -149,7 +149,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let mut parser = AttributeParser::new(
                     &self.r.tcx.sess,
                     self.r.tcx.features(),
-                    Vec::new(),
+                    self.r.tcx().registered_tools(()),
                     ShouldEmit::Nothing,
                 );
                 let attrs = parser.parse_attribute_list(
