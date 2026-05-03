@@ -12,6 +12,7 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
+use rustc_lint::builtin::TRAIT_METHOD_ON_COERCED_NEVER_TYPE;
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -394,6 +395,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         #[diag("type annotations needed")]
         struct MissingTypeAnnot;
 
+        #[derive(Diagnostic)]
+        #[diag("trait method call on a coerced never type")]
+        #[help("consider providing a type annotation")]
+        struct TraitMethodOnCoercedNeverType;
+
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
             self.tcx.mk_predefined_opaques_in_body_from_iter(
@@ -503,6 +509,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .any(|&candidate_id| self.root_var(candidate_id) == ty_id)
             {
+                self.tcx.emit_node_span_lint(
+                    TRAIT_METHOD_ON_COERCED_NEVER_TYPE,
+                    scope_expr_id,
+                    span,
+                    TraitMethodOnCoercedNeverType,
+                );
                 self.demand_eqtype(span, root_ty, self.tcx.types.never);
             } else {
                 let guar = match *ty.kind() {

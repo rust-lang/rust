@@ -15,6 +15,10 @@ impl Trait for ! {
 fn main() {
     let x = loop {};
     x.method();
+    //~^ WARN [trait_method_on_coerced_never_type]
+    //~| WARN previously accepted
 
     { loop {} }.method();
+    //~^ WARN [trait_method_on_coerced_never_type]
+    //~| WARN previously accepted
 }
