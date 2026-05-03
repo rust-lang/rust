@@ -40,6 +40,7 @@
 #![feature(vec_peek_mut)]
 #![feature(vec_try_remove)]
 #![feature(ptr_cast_slice)]
+#![feature(vec_deque_retain_range)]
 #![allow(internal_features)]
 #![deny(implicit_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
