@@ -77,6 +77,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/zero-sized-array-enum-niche.rs:14:1
@@ -177,6 +178,7 @@ error: layout_of(MultipleAlignments) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/zero-sized-array-enum-niche.rs:22:1
@@ -263,6 +265,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/zero-sized-array-enum-niche.rs:38:1
@@ -353,6 +356,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/zero-sized-array-enum-niche.rs:45:1

@@ -62,6 +62,7 @@ error: layout_of(Aligned1) = Layout {
                Align(8 bytes),
            ),
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96185-overaligned-enum.rs:9:1
@@ -139,6 +140,7 @@ error: layout_of(Aligned2) = Layout {
                Align(1 bytes),
            ),
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/issue-96185-overaligned-enum.rs:17:1
