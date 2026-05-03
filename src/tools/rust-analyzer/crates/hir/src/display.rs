@@ -33,7 +33,7 @@ use crate::{
     Adt, AnyFunctionId, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
     EnumVariant, ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl,
     LifetimeParam, Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitPredicate,
-    TraitRef, TupleField, Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union,
+    TraitRef, TupleField, Type, TypeAlias, TypeOrConstParam, TypeParam, Union,
 };
 
 fn write_builtin_derive_impl_method<'db>(
@@ -552,13 +552,7 @@ impl<'db> HirDisplay<'db> for EnumVariant {
 
 impl<'db> HirDisplay<'db> for Type<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
-        self.ty.hir_fmt(f)
-    }
-}
-
-impl<'db> HirDisplay<'db> for TypeNs<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
-        self.ty.hir_fmt(f)
+        self.ty.skip_binder().hir_fmt(f)
     }
 }
 
@@ -598,7 +592,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
         let params = GenericParams::of(f.db, self.id.parent());
         let param_data = &params[self.id.local_id()];
         let krate = self.id.parent().krate(f.db).id;
-        let ty = self.ty(f.db).ty;
+        let ty = self.ty(f.db).ty.skip_binder();
         let predicates = GenericPredicates::query_all(f.db, self.id.parent());
         let predicates = predicates
             .iter_identity()

@@ -67,11 +67,14 @@ pub(crate) fn replace_with_lazy_method(
             let editor = builder.make_editor(call.syntax());
             let add_param = match &*method_name_lazy {
                 "and_then" => true,
-                "or_else" | "unwrap_or_else" => {
-                    FamousDefs(&ctx.sema, scope.krate()).core_result_Result().is_some_and(
-                        |result| result.ty(ctx.db()).could_unify_with(ctx.db(), &receiver_ty),
-                    )
-                }
+                "or_else" | "unwrap_or_else" => FamousDefs(&ctx.sema, scope.krate())
+                    .core_result_Result()
+                    .is_some_and(|result| {
+                        result
+                            .ty(ctx.db())
+                            .instantiate_with_errors()
+                            .could_unify_with(ctx.db(), &receiver_ty)
+                    }),
                 _ => false,
             };
             let closured = into_closure(&last_arg, add_param, editor.make());

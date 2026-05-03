@@ -103,17 +103,18 @@ pub(crate) fn render_variant_pat(
     ))
 }
 
-fn build_completion(
-    ctx: RenderContext<'_, '_>,
+fn build_completion<'db>(
+    ctx: RenderContext<'_, 'db>,
     label: SmolStr,
     lookup: SmolStr,
     pat: String,
     def: impl HasDocs,
-    adt_ty: hir::Type<'_>,
+    adt_ty: hir::Type<'db>,
     // Missing in context of match statement completions
     is_variant_missing: bool,
 ) -> CompletionItem {
     let mut relevance = ctx.completion_relevance();
+    let adt_ty = ctx.completion.rebase_ty(&adt_ty);
 
     if is_variant_missing {
         relevance.type_match = super::compute_type_match(ctx.completion, &adt_ty);

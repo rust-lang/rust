@@ -522,11 +522,11 @@ fn rename_to_self(
     };
     let first_param_ty = first_param.ty();
     let impl_ty = impl_.self_ty(sema.db);
-    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
+    let (ty, self_param) = if impl_ty.is_reference() {
         // if the impl is a ref to the type we can just match the `&T` with self directly
         (first_param_ty.clone(), "self")
     } else {
-        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
+        first_param_ty.as_reference_inner().map_or((first_param_ty.clone(), "self"), |ty| {
             (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
         })
     };

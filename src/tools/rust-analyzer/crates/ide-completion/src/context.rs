@@ -729,6 +729,13 @@ impl<'db> CompletionContext<'_, 'db> {
             vec![]
         }
     }
+
+    pub(crate) fn rebase_ty(&self, ty: &hir::Type<'db>) -> hir::Type<'db> {
+        self.scope
+            .generic_def()
+            .and_then(|def| ty.try_rebase_into_owner(self.db, def))
+            .unwrap_or_else(|| ty.instantiate_with_errors())
+    }
 }
 
 // CompletionContext construction
