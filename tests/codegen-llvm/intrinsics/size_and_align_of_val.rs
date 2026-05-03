@@ -13,41 +13,32 @@ use std::intrinsics::{align_of_val, size_of_val};
 #[no_mangle]
 pub unsafe fn align_of_array(x: &[u16; 7]) -> usize {
     // CHECK: start:
-    // CHECK: %0 = alloca [8 x i8]
-    // CHECK: store i64 2, ptr %0
-    // CHECK: [[R:%.+]] = load i64, ptr %0
-    // CHECK: ret i64 [[R]]
+    // CHECK-NEXT: ret i64 2
     align_of_val(x)
 }
 
 // CHECK-LABEL: @size_of_array(
 #[no_mangle]
 pub unsafe fn size_of_array(x: &[u16; 7]) -> usize {
-    // CHECK: %0 = alloca [8 x i8]
-    // CHECK: store i64 14, ptr %0
-    // CHECK: [[R:%.+]] = load i64, ptr %0
-    // CHECK: ret i64 [[R]]
+    // CHECK: start:
+    // CHECK-NEXT: ret i64 14
     size_of_val(x)
 }
 
 // CHECK-LABEL: @align_of_slice(
 #[no_mangle]
 pub unsafe fn align_of_slice(x: &[u16]) -> usize {
-    // CHECK: %0 = alloca [8 x i8]
-    // CHECK: [[SIZE:%.+]] = mul nuw nsw i64 %x.1, 2
-    // CHECK: store i64 2, ptr %0
-    // CHECK: [[R:%.+]] = load i64, ptr %0
-    // CHECK: ret i64 [[R]]
+    // CHECK: start:
+    // CHECK-NEXT: [[SIZE:%.+]] = mul nuw nsw i64 %x.1, 2
+    // CHECK-NEXT: ret i64 2
     align_of_val(x)
 }
 
 // CHECK-LABEL: @size_of_slice(
 #[no_mangle]
 pub unsafe fn size_of_slice(x: &[u16]) -> usize {
-    // CHECK: %0 = alloca [8 x i8]
-    // CHECK: [[SIZE:%.+]] = mul nuw nsw i64 %x.1, 2
-    // CHECK: store i64 [[SIZE]], ptr %0
-    // CHECK: [[R:%.+]] = load i64, ptr %0
-    // CHECK: ret i64 [[R]]
+    // CHECK: start:
+    // CHECK-NEXT: [[SIZE:%.+]] = mul nuw nsw i64 %x.1, 2
+    // CHECK-NEXT: ret i64 [[SIZE]]
     size_of_val(x)
 }

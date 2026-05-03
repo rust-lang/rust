@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
-use rustc_span::{DUMMY_SP, Span, respan};
+use rustc_span::{DUMMY_SP, Span, Symbol, respan};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
 #[cfg(feature = "master")]
@@ -496,6 +496,10 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             // #[no_mangle] extern "C" fn main(..) {..}
             None
         }
+    }
+
+    fn intrinsic_call_expects_place_always(&self, _name: Symbol) -> bool {
+        true
     }
 }
 

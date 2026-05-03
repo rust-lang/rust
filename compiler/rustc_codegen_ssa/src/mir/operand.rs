@@ -103,6 +103,7 @@ impl<V: CodegenObject> OperandValue<V> {
         PlaceValue { llval, llextra, align }
     }
 
+    #[must_use]
     pub(crate) fn is_expected_variant_for_type<'tcx, Cx: LayoutTypeCodegenMethods<'tcx>>(
         &self,
         cx: &Cx,
