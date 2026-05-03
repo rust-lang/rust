@@ -114,6 +114,7 @@ declare_lint_pass! {
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+        TRAIT_METHOD_ON_COERCED_NEVER_TYPE,
         TRIVIAL_CASTS,
         TRIVIAL_NUMERIC_CASTS,
         TYVAR_BEHIND_RAW_POINTER,
@@ -5707,5 +5708,37 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #154024),
         report_in_deps: false,
+    };
+}
+
+declare_lint! {
+    /// The `trait_method_on_coerced_never_type` lint detects situations in which a never type, which
+    /// was coerced to any, has a trait method on it.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// fn main() {
+    ///     let x = panic!();
+    ///     x.clone();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Calling trait methods on a coerced `!` was previously disallowed for the never type,
+    /// but it did work for empty enums such as `Infallible` since these don't coerce.
+    /// This means that changing the definition of `Infallible` to become a type alias to `!` (a long-term goal),
+    /// would break code that called a trait method on `Infallible`, in such a way that the `!` would coerce.
+    ///
+    /// Therefore, to aid in the transition of changing `Infallible` to a type alias, this is temporarily allowed with a FCW.
+    pub TRAIT_METHOD_ON_COERCED_NEVER_TYPE,
+    Warn,
+    "detects trait method calls on an coerced never type",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #156047),
+        report_in_deps: true,
     };
 }
