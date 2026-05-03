@@ -1750,9 +1750,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::TyKind::Err(guar)
             }
-            TyKind::View(ty, _) => {
-                // FIXME(scrabsha): lower view types to HIR.
-                return self.lower_ty(ty, itctx);
+            TyKind::View(ty, fields) => {
+                let ty = self.lower_ty_alloc(ty, itctx);
+                let fields = self.arena.alloc_slice(fields);
+                hir::TyKind::View(ty, fields)
             }
             TyKind::Dummy => panic!("`TyKind::Dummy` should never be lowered"),
         };

@@ -3401,6 +3401,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 *variant,
                 *field,
             ),
+            hir::TyKind::View(ty, _) => {
+                // FIXME(scrabsha): lower views to MIR.
+                return self.lower_ty(ty);
+            }
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
