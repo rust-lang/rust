@@ -1,7 +1,6 @@
-use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
+use rustc_middle::mir::{Body, ConstOperand, Location};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, fold_regions};
 use rustc_span::Symbol;
 use tracing::{debug, instrument};
@@ -10,21 +9,10 @@ use crate::BorrowckInferCtxt;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-#[instrument(skip(infcx, body, promoted), level = "debug")]
-pub(crate) fn renumber_mir<'tcx>(
-    infcx: &BorrowckInferCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
-) {
+#[instrument(skip(infcx, body), level = "debug")]
+pub(crate) fn renumber_mir<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, body: &mut Body<'tcx>) {
     debug!(?body.arg_count);
-
-    let mut renumberer = RegionRenumberer { infcx };
-
-    for body in promoted.iter_mut() {
-        renumberer.visit_body_preserves_cfg(body);
-    }
-
-    renumberer.visit_body_preserves_cfg(body);
+    RegionRenumberer { infcx }.visit_body_preserves_cfg(body);
 }
 
 // The fields are used only for debugging output in `sccs_info`.

@@ -19,18 +19,18 @@ note: ...which requires const-evaluating + checking `DEFAULT_REF_BAR`...
    |
 LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
    |                              ^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `FooDefault::BAR`...
+note: ...which requires simplifying constant for the type system `<GlobalDefaultRef as FooDefault>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |     ^^^^^^^^^^^^^^
-note: ...which requires const-evaluating + checking `FooDefault::BAR`...
+note: ...which requires const-evaluating + checking `<GlobalDefaultRef as FooDefault>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |     ^^^^^^^^^^^^^^
    = note: ...which again requires caching mir of `FooDefault::BAR` for CTFE, completing the cycle
-note: cycle used when const-evaluating + checking `FooDefault::BAR`
+note: cycle used when const-evaluating + checking `<GlobalDefaultRef as FooDefault>::BAR`
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;

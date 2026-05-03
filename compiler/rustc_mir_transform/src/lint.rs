@@ -57,7 +57,7 @@ impl<'a, 'tcx> Lint<'a, 'tcx> {
             span,
             format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
+                self.body.source,
                 self.when,
                 location,
                 msg.as_ref()

@@ -1223,7 +1223,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     fn suggest_using_iter_mut(&self, err: &mut Diag<'_>) {
         let source = self.body.source;
-        if let InstanceKind::Item(def_id) = source.instance
+        if let InstanceKind::Item(def_id) = source
             && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) =
                 self.infcx.tcx.hir_get_if_local(def_id)
             && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
@@ -1617,7 +1617,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         // Make sure we are inside a closure.
-        let InstanceKind::Item(body_def_id) = self.body.source.instance else {
+        let InstanceKind::Item(body_def_id) = self.body.source else {
             return false;
         };
         let Some(Node::Expr(hir::Expr { hir_id: body_hir_id, kind, .. })) =

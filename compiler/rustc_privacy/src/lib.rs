@@ -659,6 +659,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::InlineConst
             | DefKind::Field
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::Impl { .. }
             | DefKind::Closure
             | DefKind::SyntheticCoroutineBody => (),
@@ -828,6 +829,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::SyntheticCoroutineBody
             | DefKind::ConstParam
             | DefKind::LifetimeParam
+            | DefKind::Promoted
             | DefKind::Ctor(..) => {
                 bug!("should be checked while checking parent")
             }

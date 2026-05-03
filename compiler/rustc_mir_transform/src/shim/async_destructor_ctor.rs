@@ -3,8 +3,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, Local, LocalDecl, MirSource, Operand, Place, Rvalue,
-    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
+    BasicBlock, BasicBlockData, Body, Local, LocalDecl, Operand, Place, Rvalue, SourceInfo,
+    Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 
@@ -101,7 +101,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     );
     block(&mut blocks, TerminatorKind::Return);
 
-    let source = MirSource::from_instance(ty::InstanceKind::AsyncDropGlue(def_id, ty));
+    let source = ty::InstanceKind::AsyncDropGlue(def_id, ty);
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
@@ -207,7 +207,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
     let mut body: Body<'tcx> =
         EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
-    body.source.instance = instance;
+    body.source = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
     let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
@@ -406,8 +406,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
         false,
     ));
 
-    let source = MirSource::from_instance(instance);
-    let mut body = new_body(source, blocks, locals, sig.inputs().len(), span);
+    let mut body = new_body(instance, blocks, locals, sig.inputs().len(), span);
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     return body;
 }

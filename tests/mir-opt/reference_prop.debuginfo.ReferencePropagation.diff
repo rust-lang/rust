@@ -60,7 +60,7 @@
           _2 = const 5_u8;
           _1 = &mut _2;
           StorageLive(_3);
-          _29 = const debuginfo::promoted[2];
+          _29 = const debuginfo::{promoted#2};
           _3 = &((*_29).0: u8);
 -         StorageLive(_5);
 -         _5 = &(*_1);
@@ -77,7 +77,7 @@
   
       bb2: {
           StorageLive(_9);
-          _28 = const debuginfo::promoted[1];
+          _28 = const debuginfo::{promoted#1};
           _9 = &(((*_28) as Some).0: i32);
 -         _6 = const ();
           StorageDead(_9);
@@ -96,7 +96,7 @@
           StorageLive(_11);
 -         StorageLive(_12);
           StorageLive(_13);
-          _27 = const debuginfo::promoted[0];
+          _27 = const debuginfo::{promoted#0};
           _13 = &(*_27);
           StorageLive(_15);
           _15 = RangeFull;

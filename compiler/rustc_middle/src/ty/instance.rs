@@ -512,6 +512,7 @@ impl<'tcx> Instance<'tcx> {
                 | DefKind::Static { .. }
                 | DefKind::Ctor(_, CtorKind::Fn)
                 | DefKind::Closure
+                | DefKind::Promoted
                 | DefKind::SyntheticCoroutineBody,
             "`Instance::try_resolve` should only be used to resolve instances of \
             functions, statics, and consts; to resolve associated types, use \

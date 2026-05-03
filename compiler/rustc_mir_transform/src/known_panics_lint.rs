@@ -33,13 +33,18 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
         }
 
         let def_id = body.source.def_id().expect_local();
-        let def_kind = tcx.def_kind(def_id);
-        let is_fn_like = def_kind.is_fn_like();
-        let is_assoc_const = matches!(def_kind, DefKind::AssocConst { .. });
 
-        // Only run const prop on functions, methods, closures and associated constants
-        if !is_fn_like && !is_assoc_const {
-            // skip anon_const/statics/consts because they'll be evaluated by miri anyway
+        // Only run const prop on functions, methods, closures and associated constants.
+        // Skip anon_const/statics/consts because they'll be evaluated by miri anyway
+        let should_run =
+            |def_kind| matches!(def_kind, DefKind::AssocConst { .. }) || def_kind.is_fn_like();
+
+        let def_kind = tcx.def_kind(def_id);
+        let should_run = should_run(def_kind) ||
+            // Run on promoted too, as their code does not appear in the enclosing body any more.
+            (matches!(def_kind, DefKind::Promoted) && should_run(tcx.def_kind(tcx.local_parent(def_id))));
+
+        if !should_run {
             trace!("KnownPanicsLint skipped for {:?}", def_id);
             return;
         }

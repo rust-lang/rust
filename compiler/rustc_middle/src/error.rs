@@ -116,20 +116,20 @@ pub(crate) struct TypeLengthLimit<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag("maximum number of nodes exceeded in constant {$global_const_id}")]
-pub(crate) struct MaxNumNodesInValtree {
+#[diag("maximum number of nodes exceeded in constant {$instance}")]
+pub(crate) struct MaxNumNodesInValtree<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub global_const_id: String,
+    pub instance: Instance<'tcx>,
 }
 
 #[derive(Diagnostic)]
-#[diag("constant {$global_const_id} cannot be used as pattern")]
+#[diag("constant {$instance} cannot be used as pattern")]
 #[note("constants that reference mutable or external memory cannot be used as patterns")]
-pub(crate) struct InvalidConstInValtree {
+pub(crate) struct InvalidConstInValtree<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub global_const_id: String,
+    pub instance: Instance<'tcx>,
 }
 
 #[derive(Diagnostic)]

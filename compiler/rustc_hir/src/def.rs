@@ -197,6 +197,8 @@ pub enum DefKind {
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.
     SyntheticCoroutineBody,
+    /// Promoted constant from a MIR body.
+    Promoted,
 }
 
 impl DefKind {
@@ -242,6 +244,7 @@ impl DefKind {
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
             DefKind::SyntheticCoroutineBody => "synthetic mir body",
+            DefKind::Promoted => "promoted constant",
         }
     }
 
@@ -293,6 +296,7 @@ impl DefKind {
             // Not namespaced.
             DefKind::AnonConst
             | DefKind::InlineConst
+            | DefKind::Promoted
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
@@ -345,6 +349,7 @@ impl DefKind {
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
             DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
+            DefKind::Promoted => DefPathData::Promoted,
         }
     }
 
@@ -391,6 +396,7 @@ impl DefKind {
             | DefKind::Static { .. }
             | DefKind::Struct
             | DefKind::SyntheticCoroutineBody
+            | DefKind::Promoted
             | DefKind::Trait
             | DefKind::TraitAlias
             | DefKind::TyAlias
@@ -441,6 +447,7 @@ impl DefKind {
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::ExternCrate => false,
         }
     }
@@ -450,7 +457,10 @@ impl DefKind {
     #[inline]
     pub fn is_typeck_child(self) -> bool {
         match self {
-            DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => true,
+            DefKind::Closure
+            | DefKind::InlineConst
+            | DefKind::SyntheticCoroutineBody
+            | DefKind::Promoted => true,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union

@@ -188,6 +188,7 @@ impl ItemType {
             | DefKind::ForeignMod
             | DefKind::AnonConst
             | DefKind::InlineConst
+            | DefKind::Promoted
             | DefKind::OpaqueTy
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm

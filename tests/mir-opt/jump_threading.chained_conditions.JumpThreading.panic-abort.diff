@@ -227,7 +227,7 @@
           _9 = &(*_6);
           _8 = &_9;
           StorageLive(_10);
-          _21 = const chained_conditions::promoted[1];
+          _21 = const chained_conditions::{promoted#1};
           _10 = &(*_21);
           StorageLive(_27);
           StorageLive(_28);
@@ -289,7 +289,7 @@
           _16 = &(*_13);
           _15 = &_16;
           StorageLive(_17);
-          _20 = const chained_conditions::promoted[0];
+          _20 = const chained_conditions::{promoted#0};
           _17 = &(*_20);
           StorageLive(_47);
           StorageLive(_48);

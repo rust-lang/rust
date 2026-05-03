@@ -21,7 +21,15 @@ error[E0161]: cannot move a value of type `[u16]`
 LL | const TWO: &'static u16 = &ONE[0];
    |                            ^^^ the size of `[u16]` cannot be statically determined
 
-error: aborting due to 3 previous errors
+error[E0161]: cannot move a value of type `[u16]`
+  --> $DIR/const-slice-array-deref.rs:5:28
+   |
+LL | const TWO: &'static u16 = &ONE[0];
+   |                            ^^^ the size of `[u16]` cannot be statically determined
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0161, E0277, E0308.
 For more information about an error, try `rustc --explain E0161`.

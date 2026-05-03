@@ -114,6 +114,28 @@ impl PerParentDisambiguatorState {
             next: Default::default(),
         }
     }
+
+    /// If there are multiple definitions with the same DefPathData and the same parent, use
+    /// `self` to differentiate them. Distinct `PerParentDisambiguatorState` instances are not
+    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
+    /// and `data` pair is distinct from other instances.
+    pub fn disambiguate(
+        &mut self,
+        _parent: LocalDefId,
+        data: DefPathData,
+    ) -> DisambiguatedDefPathData {
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(
+            _parent,
+            self.parent.expect("must be set"),
+            "provided parent and parent in disambiguator must be the same"
+        );
+
+        let next_disamb = self.next.entry(data).or_insert(0);
+        let disambiguator = *next_disamb;
+        *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+        DisambiguatedDefPathData { disambiguator, data }
+    }
 }
 
 #[extension(pub trait PerParentDisambiguatorsMap)]
@@ -144,16 +166,35 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
+    #[inline]
+    pub fn get_opt_name(&self) -> Option<Symbol> {
+        self.disambiguated_data.data.get_opt_name()
+    }
+}
+
+/// A pair of `DefPathData` and an integer disambiguator. The integer is
+/// normally `0`, but in the event that there are multiple defs with the
+/// same `parent` and `data`, we use this field to disambiguate
+/// between them. This introduces some artificial ordering dependency
+/// but means that if you have, e.g., two impls for the same type in
+/// the same module, they do get distinct `DefId`s.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Encodable, BlobDecodable)]
+pub struct DisambiguatedDefPathData {
+    pub data: DefPathData,
+    pub disambiguator: u32,
+}
+
+impl DisambiguatedDefPathData {
+    pub fn compute_stable_hash(self, parent: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
         // The new path is in the same crate as `parent`, and will contain the stable_crate_id.
         // Therefore, we only need to include information of the parent's local hash.
         parent.local_hash().hash(&mut hasher);
 
-        let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
+        let DisambiguatedDefPathData { data, disambiguator } = self;
 
-        std::mem::discriminant(data).hash(&mut hasher);
+        std::mem::discriminant(&data).hash(&mut hasher);
         if let Some(name) = data.hashed_symbol() {
             // Get a stable hash by considering the symbol chars rather than
             // the symbol index.
@@ -171,25 +212,6 @@ impl DefKey {
         DefPathHash::new(parent.stable_crate_id(), local_hash)
     }
 
-    #[inline]
-    pub fn get_opt_name(&self) -> Option<Symbol> {
-        self.disambiguated_data.data.get_opt_name()
-    }
-}
-
-/// A pair of `DefPathData` and an integer disambiguator. The integer is
-/// normally `0`, but in the event that there are multiple defs with the
-/// same `parent` and `data`, we use this field to disambiguate
-/// between them. This introduces some artificial ordering dependency
-/// but means that if you have, e.g., two impls for the same type in
-/// the same module, they do get distinct `DefId`s.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
-pub struct DisambiguatedDefPathData {
-    pub data: DefPathData,
-    pub disambiguator: u32,
-}
-
-impl DisambiguatedDefPathData {
     pub fn as_sym(&self, verbose: bool) -> Symbol {
         match self.data.name() {
             DefPathDataName::Named(name) => {
@@ -309,6 +331,8 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
+    /// A constant promoted from a MIR body.
+    Promoted,
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
@@ -384,16 +408,7 @@ impl Definitions {
     }
 
     /// Creates a definition with a parent definition.
-    /// If there are multiple definitions with the same DefPathData and the same parent, use
-    /// `disambiguator` to differentiate them. Distinct `DisambiguatorState` instances are not
-    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
-    /// and `data` pair is distinct from other instances.
-    pub fn create_def(
-        &mut self,
-        parent: LocalDefId,
-        data: DefPathData,
-        disambiguator: &mut PerParentDisambiguatorState,
-    ) -> LocalDefId {
+    pub fn create_def(&mut self, parent: LocalDefId, data: DisambiguatedDefPathData) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -402,30 +417,12 @@ impl Definitions {
         );
 
         // The root node must be created in `new()`.
-        assert!(data != DefPathData::CrateRoot);
-
-        // Find the next free disambiguator for this key.
-        let disambiguator = {
-            #[cfg(debug_assertions)]
-            debug_assert_eq!(
-                parent,
-                disambiguator.parent.expect("must be set"),
-                "provided parent and parent in disambiguator must be the same"
-            );
-
-            let next_disamb = disambiguator.next.entry(data).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
-        let key = DefKey {
-            parent: Some(parent.local_def_index),
-            disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
-        };
+        assert!(data.data != DefPathData::CrateRoot);
 
         let parent_hash = self.table.def_path_hash(parent.local_def_index);
-        let def_path_hash = key.compute_stable_hash(parent_hash);
+        let def_path_hash = data.compute_stable_hash(parent_hash);
 
+        let key = DefKey { parent: Some(parent.local_def_index), disambiguated_data: data };
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
@@ -479,6 +476,7 @@ impl DefPathData {
             | OpaqueTy
             | AnonAssocTy(..)
             | SyntheticCoroutineBody
+            | Promoted
             | NestedStatic => None,
         }
     }
@@ -499,6 +497,7 @@ impl DefPathData {
             | AnonConst
             | OpaqueTy
             | SyntheticCoroutineBody
+            | Promoted
             | NestedStatic => None,
         }
     }
@@ -521,6 +520,7 @@ impl DefPathData {
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
             NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
+            Promoted => DefPathDataName::Anon { namespace: sym::promoted },
         }
     }
 }

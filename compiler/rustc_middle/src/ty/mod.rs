@@ -1723,6 +1723,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     | DefKind::AssocConst { .. }
                     | DefKind::Ctor(..)
                     | DefKind::AnonConst
+                    | DefKind::Promoted
                     | DefKind::InlineConst => self.mir_for_ctfe(def),
                     // If the caller wants `mir_for_ctfe` of a function they should not be using
                     // `instance_mir`, so we'll assume const fn also wants the optimized version.
@@ -2157,6 +2158,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
+            | DefKind::Promoted
             | DefKind::SyntheticCoroutineBody => false,
         }
     }

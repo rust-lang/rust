@@ -1401,7 +1401,6 @@ pub struct ParamConst {
 pub struct UnevaluatedConst {
     pub def: ConstDef,
     pub args: GenericArgs,
-    pub promoted: Option<Promoted>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]

@@ -529,7 +529,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
             // We could not load a result from the on-disk cache, so recompute. The dep-graph for
             // this computation is already in-place, so we can just call the query provider.
             let prof_timer = tcx.prof.query_provider();
-            let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
+            let value = tcx.dep_graph.with_replay(|| (query.invoke_provider_fn)(tcx, key));
             prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             (value, true)

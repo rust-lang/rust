@@ -1568,6 +1568,7 @@ symbols! {
         proc_macro_non_items,
         proc_macro_path_invoc,
         profiler_runtime,
+        promoted,
         ptr,
         ptr_cast,
         ptr_cast_const,

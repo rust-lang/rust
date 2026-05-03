@@ -11,9 +11,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{
-    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
-};
+use rustc_data_structures::sync::{DynSend, DynSync, WorkerLocal, par_fns};
 use rustc_data_structures::thousands;
 use rustc_errors::timings::TimingSection;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
@@ -21,8 +19,7 @@ use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId};
 use rustc_hir::limit::Limit;
 use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
@@ -38,7 +35,6 @@ use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
-use rustc_session::cstore::Untracked;
 use rustc_session::errors::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
@@ -943,13 +939,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id);
 
-    let cstore =
-        FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
-    let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
-
-    let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
-    let untracked =
-        Untracked { cstore, source_span: AppendOnlyIndexVec::new(), definitions, stable_crate_ids };
+    let cstore = Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _;
 
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
@@ -990,7 +980,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         stable_crate_id,
         &arena,
         &hir_arena,
-        untracked,
+        cstore,
         dep_graph,
         rustc_query_impl::make_dep_kind_vtables(&arena),
         rustc_query_impl::query_system(
@@ -1144,12 +1134,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
 
     rustc_hir_analysis::check_crate(tcx);
-    // Freeze definitions as we don't add new ones at this point.
-    // We need to wait until now since we synthesize a by-move body
-    // for all coroutine-closures.
-    //
-    // This improves performance by allowing lock-free access to them.
-    tcx.untracked().definitions.freeze();
 
     sess.time("MIR_borrow_checking", || {
         tcx.par_hir_body_owners(|def_id| {
@@ -1175,6 +1159,12 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 || tcx.hir_body_const_context(def_id).is_some()
             {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
+
+                if tcx.trivial_const(def_id).is_none() {
+                    for &promoted in tcx.promoted_mir(def_id) {
+                        tcx.ensure_ok().mir_drops_elaborated_and_const_checked(promoted);
+                    }
+                }
             }
             if tcx.is_coroutine(def_id.to_def_id())
                 && (!tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()))

@@ -40,7 +40,7 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         // terribly important that they pass the validator. However, I think other passes might
         // still see them, in which case they might be surprised. It would probably be better if we
         // didn't put this through the MIR pipeline at all.
-        if matches!(body.source.instance, InstanceKind::Intrinsic(..) | InstanceKind::Virtual(..)) {
+        if matches!(body.source, InstanceKind::Intrinsic(..) | InstanceKind::Virtual(..)) {
             return;
         }
         let def_id = body.source.def_id();
@@ -88,7 +88,7 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
 
         if let MirPhase::Runtime(_) = body.phase
-            && let ty::InstanceKind::Item(_) = body.source.instance
+            && let ty::InstanceKind::Item(_) = body.source
             && body.has_free_regions()
         {
             cfg_checker.fail(
@@ -129,7 +129,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             span_bug!(
                 self.body.source_info(location).span,
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
+                self.body.source,
                 self.when,
                 location,
                 msg.as_ref(),
@@ -526,7 +526,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.body.span,
                 format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
-                    self.body.source.instance, self.when, scope,
+                    self.body.source, self.when, scope,
                 ),
             );
         }

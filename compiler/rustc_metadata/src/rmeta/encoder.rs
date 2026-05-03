@@ -912,6 +912,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::AssocConst { .. }
         | DefKind::Macro(_)
         | DefKind::ExternCrate
+        | DefKind::Promoted
         | DefKind::Use
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -961,6 +962,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::Promoted
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
         | DefKind::Static { nested: true, .. }
@@ -998,6 +1000,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::LifetimeParam
+        | DefKind::Promoted
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::SyntheticCoroutineBody => false,
@@ -1037,6 +1040,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::ExternCrate
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1073,6 +1077,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::ExternCrate
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1109,7 +1114,8 @@ fn should_encode_mir(
         DefKind::AnonConst { .. }
         | DefKind::InlineConst
         | DefKind::AssocConst { .. }
-        | DefKind::Const { .. } => (true, false),
+        | DefKind::Const { .. }
+        | DefKind::Promoted => (true, false),
         // Coroutines require optimized MIR to compute layout.
         DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
         DefKind::SyntheticCoroutineBody => (false, true),
@@ -1163,6 +1169,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::ExternCrate
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => false,
         DefKind::TyAlias => tcx.type_alias_is_lazy(def_id),
     }
@@ -1192,6 +1199,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Field
         | DefKind::TyParam
         | DefKind::Closure
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => true,
         DefKind::Mod
         | DefKind::ForeignMod
@@ -1224,6 +1232,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => true,
 
         DefKind::OpaqueTy => {
@@ -1286,6 +1295,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::ConstParam
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::Promoted
         | DefKind::AssocTy
         | DefKind::TyParam
         | DefKind::Trait
@@ -1323,6 +1333,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::ForeignTy
         | DefKind::ConstParam
         | DefKind::InlineConst
+        | DefKind::Promoted
         | DefKind::AssocTy
         | DefKind::TyParam
         | DefKind::Trait
@@ -1374,6 +1385,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::ExternCrate
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -1837,13 +1849,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
                 }
             }
-            let mut is_trivial = false;
             if encode_const {
                 if let Some((val, ty)) = tcx.trivial_const(def_id) {
-                    is_trivial = true;
                     record!(self.tables.trivial_const[def_id.to_def_id()] <- (val, ty));
                 } else {
-                    is_trivial = false;
                     record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
                 }
 
@@ -1863,10 +1872,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            if !is_trivial {
-                record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
-            }
-
             if self.tcx.is_coroutine(def_id.to_def_id())
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {

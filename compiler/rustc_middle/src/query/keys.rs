@@ -14,10 +14,10 @@ use crate::dep_graph::DepNodeIndex;
 use crate::infer::canonical::CanonicalQueryInput;
 use crate::mono::CollectionMode;
 use crate::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
+use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
 use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
-use crate::{mir, traits};
 
 /// Placeholder for `CrateNum`'s "local" counterpart
 #[derive(Copy, Clone, Debug)]
@@ -71,12 +71,6 @@ impl<'tcx> QueryKey for ty::InstanceKind<'tcx> {
 impl<'tcx> QueryKey for ty::Instance<'tcx> {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         tcx.def_span(self.def_id())
-    }
-}
-
-impl<'tcx> QueryKey for mir::interpret::GlobalId<'tcx> {
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.instance.default_span(tcx)
     }
 }
 

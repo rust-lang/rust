@@ -15,14 +15,18 @@ use std::{assert_matches, cmp, iter, mem};
 
 use either::{Left, Right};
 use rustc_const_eval::check_consts::{ConstCx, qualifs};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt, UserTypeAnnotationIndex,
+};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Spanned};
 use tracing::{debug, instrument};
 
@@ -34,21 +38,18 @@ use tracing::{debug, instrument};
 /// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
 /// newly created `Constant`.
 #[derive(Default)]
-pub(super) struct PromoteTemps<'tcx> {
+pub(super) struct PromoteTemps {
     // Must use `Cell` because `run_pass` takes `&self`, not `&mut self`.
-    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
+    pub promoted_fragments: Cell<IndexVec<Promoted, LocalDefId>>,
 }
 
-impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
+impl<'tcx> crate::MirPass<'tcx> for PromoteTemps {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
         if let Err(_) = body.return_ty().error_reported() {
             debug!("PromoteTemps: MIR had errors");
-            return;
-        }
-        if body.source.promoted.is_some() {
             return;
         }
 
@@ -720,6 +721,7 @@ struct Promoter<'a, 'tcx> {
     promoted: Body<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
     extra_statements: &'a mut Vec<(Location, Statement<'tcx>)>,
+    disambiguator: &'a mut PerParentDisambiguatorState,
 
     /// Used to assemble the required_consts list while building the promoted.
     required_consts: Vec<ConstOperand<'tcx>>,
@@ -871,80 +873,52 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(
-        mut self,
-        candidate: Candidate,
-        next_promoted_index: Promoted,
-    ) -> Body<'tcx> {
-        let def = self.source.source.def_id();
-        let (mut rvalue, promoted_op) = {
-            let promoted = &mut self.promoted;
-            let tcx = self.tcx;
-            let mut promoted_operand = |ty, span| {
-                promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
-                let args =
-                    tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(tcx, def));
-                let uneval =
-                    mir::UnevaluatedConst { def, args, promoted: Some(next_promoted_index) };
+    fn promote_candidate(mut self, candidate: Candidate) -> LocalDefId {
+        let tcx = self.tcx;
 
-                ConstOperand { span, user_ty: None, const_: Const::Unevaluated(uneval, ty) }
-            };
+        let blocks = self.source.basic_blocks.as_mut_preserves_cfg();
+        let local_decls = &mut self.source.local_decls;
+        let loc = candidate.location;
 
-            let blocks = self.source.basic_blocks.as_mut();
-            let local_decls = &mut self.source.local_decls;
-            let loc = candidate.location;
-            let statement = &mut blocks[loc.block].statements[loc.statement_index];
-            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) =
-                &mut statement.kind
-            else {
-                bug!()
-            };
+        let statement = &mut blocks[loc.block].statements[loc.statement_index];
+        let source_info = statement.source_info;
+        let span = source_info.span;
+        self.promoted.span = span;
 
-            // Use the underlying local for this (necessarily interior) borrow.
-            debug_assert!(region.is_erased());
-            let ty = local_decls[place.local].ty;
-            let span = statement.source_info.span;
+        let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) =
+            &mut statement.kind
+        else {
+            bug!()
+        };
+        debug_assert!(region.is_erased());
 
-            let ref_ty =
-                Ty::new_ref(tcx, tcx.lifetimes.re_erased, ty, borrow_kind.to_mutbl_lossy());
+        // Use the underlying local for this (necessarily interior) borrow.
+        let ty = local_decls[place.local].ty;
+        let ref_ty = Ty::new_ref(tcx, tcx.lifetimes.re_erased, ty, borrow_kind.to_mutbl_lossy());
+        self.promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ref_ty, span);
 
+        place.projection = {
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
-            place.projection = tcx.mk_place_elems(&projection);
-
-            // Create a temp to hold the promoted reference.
-            // This is because `*r` requires `r` to be a local,
-            // otherwise we would use the `promoted` directly.
-            let mut promoted_ref = LocalDecl::new(ref_ty, span);
-            promoted_ref.source_info = statement.source_info;
-            let promoted_ref = local_decls.push(promoted_ref);
-            assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
-
-            let promoted_operand = promoted_operand(ref_ty, span);
-            let promoted_ref_statement = Statement::new(
-                statement.source_info,
-                StatementKind::Assign(Box::new((
-                    Place::from(promoted_ref),
-                    // We can retag here because we wouldn't promote non-retagged values (they get
-                    // rejected in validate_rvalue).
-                    Rvalue::Use(Operand::Constant(Box::new(promoted_operand)), WithRetag::Yes),
-                ))),
-            );
-            self.extra_statements.push((loc, promoted_ref_statement));
-
-            (
-                Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
-                    *borrow_kind,
-                    Place {
-                        local: mem::replace(&mut place.local, promoted_ref),
-                        projection: List::empty(),
-                    },
-                ),
-                promoted_operand,
-            )
+            tcx.mk_place_elems(&projection)
         };
+
+        // Create a temp to hold the promoted reference.
+        // This is because `*r` requires `r` to be a local,
+        // otherwise we would use the `promoted` directly.
+        let mut promoted_ref = LocalDecl::new(ref_ty, span);
+        promoted_ref.source_info = source_info;
+        let promoted_ref = local_decls.push(promoted_ref);
+        assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
+
+        let mut rvalue = Rvalue::Ref(
+            tcx.lifetimes.re_erased,
+            *borrow_kind,
+            Place {
+                local: mem::replace(&mut place.local, promoted_ref),
+                projection: List::empty(),
+            },
+        );
 
         assert_eq!(self.new_block(), START_BLOCK);
         self.visit_rvalue(
@@ -955,15 +929,65 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
 
-        // Now that we did promotion, we know whether we'll want to add this to `required_consts` of
-        // the surrounding MIR body.
-        if self.add_to_required {
-            self.source.required_consts.as_mut().unwrap().push(promoted_op);
-        }
+        // Copy user type annotations from the original body to the promoted.
+        // We don't want to keep all the original annotations, as they may create
+        // constants that borrowck will not be able to verify. However, we still
+        // need some of them to borrow-check the promoted itself.
+        //
+        // We don't remove the cloned annotations from the original body, as they
+        // are harmless there.
+        let mut annotation_renumber =
+            RenumberUserTypeAnnotations { tcx, mapping: FxIndexSet::default() };
+        annotation_renumber.visit_body_preserves_cfg(&mut self.promoted);
+        self.promoted.user_type_annotations = annotation_renumber
+            .mapping
+            .iter()
+            .map(|&original_index| self.source.user_type_annotations[original_index].clone())
+            .collect();
 
+        let source_def_id = self.source.source.def_id().expect_local();
+        let feeder = tcx.at(span).create_def(
+            source_def_id,
+            None,
+            DefKind::Promoted,
+            Some(DefPathData::Promoted),
+            self.disambiguator,
+        );
+        feeder.feed_hir();
+
+        let def_id = feeder.def_id();
+        self.promoted.source = ty::InstanceKind::Item(def_id.to_def_id());
         self.promoted.set_required_consts(self.required_consts);
 
-        self.promoted
+        let parent_args = tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(
+            tcx,
+            tcx.typeck_root_def_id(source_def_id.to_def_id()),
+        ));
+        let args =
+            ty::InlineConstArgs::new(tcx, ty::InlineConstArgsParts { parent_args, ty: ref_ty })
+                .args;
+        let uneval = UnevaluatedConst { def: self.promoted.source.def_id(), args };
+
+        feeder.mir_promoted((tcx.alloc_steal_mir(self.promoted), tcx.arena.alloc(IndexVec::new())));
+
+        let promoted_op =
+            ConstOperand { span, user_ty: None, const_: Const::Unevaluated(uneval, ref_ty) };
+        // Now that we did promotion, we know whether we'll want to add this to
+        // the surrounding MIR body.
+        if self.add_to_required {
+            self.source.required_consts.as_mut().unwrap().push(promoted_op.clone());
+        }
+        let promoted_operand = Operand::Constant(Box::new(promoted_op));
+        let promoted_ref_statement = Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                Place::from(promoted_ref),
+                Rvalue::Use(promoted_operand, WithRetag::Yes),
+            ))),
+        );
+        self.extra_statements.push((loc, promoted_ref_statement));
+
+        def_id
     }
 }
 
@@ -988,12 +1012,29 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
+/// Replaces type annotation indices.
+struct RenumberUserTypeAnnotations<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    mapping: FxIndexSet<UserTypeAnnotationIndex>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for RenumberUserTypeAnnotations<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_user_type_annotation_index(&mut self, annotation: &mut UserTypeAnnotationIndex) {
+        let (new_index, _) = self.mapping.insert_full(*annotation);
+        *annotation = UserTypeAnnotationIndex::from_usize(new_index);
+    }
+}
+
 fn promote_candidates<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-) -> IndexVec<Promoted, Body<'tcx>> {
+) -> IndexVec<Promoted, LocalDefId> {
     // Visit candidates in reverse, in case they're nested.
     debug!(promote_candidates = ?candidates);
 
@@ -1002,6 +1043,7 @@ fn promote_candidates<'tcx>(
         return IndexVec::new();
     }
 
+    let mut disambiguator = PerParentDisambiguatorState::new(body.source.def_id().expect_local());
     let mut promotions = IndexVec::new();
 
     let mut extra_statements = vec![];
@@ -1027,7 +1069,7 @@ fn promote_candidates<'tcx>(
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
             initial_locals,
-            IndexVec::new(),
+            body.user_type_annotations.clone(),
             0,
             vec![],
             body.span,
@@ -1042,13 +1084,13 @@ fn promote_candidates<'tcx>(
             source: body,
             temps: &mut temps,
             extra_statements: &mut extra_statements,
+            disambiguator: &mut disambiguator,
             keep_original: false,
             add_to_required: false,
             required_consts: Vec::new(),
         };
 
-        let mut promoted = promoter.promote_candidate(candidate, promotions.next_index());
-        promoted.source.promoted = Some(promotions.next_index());
+        let promoted = promoter.promote_candidate(candidate);
         promotions.push(promoted);
     }
 

@@ -238,7 +238,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         match instance {
             None => interp_ok(None), // no symbol with this name
-            Some(instance) => interp_ok(Some((this.load_mir(instance.def, None)?, instance))),
+            Some(instance) => interp_ok(Some((this.load_mir(instance.def)?, instance))),
         }
     }
 }

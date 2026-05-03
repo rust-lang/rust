@@ -19,7 +19,7 @@ use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_serialize::{Decodable, Encodable};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
@@ -42,35 +42,8 @@ pub use self::error::{
 };
 pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
-use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{self, Instance, Ty, TyCtxt};
-
-/// Uniquely identifies one of the following:
-/// - A constant
-/// - A static
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
-#[derive(StableHash, TypeFoldable, TypeVisitable)]
-pub struct GlobalId<'tcx> {
-    /// For a constant or static, the `Instance` of the item itself.
-    /// For a promoted global, the `Instance` of the function they belong to.
-    pub instance: ty::Instance<'tcx>,
-
-    /// The index for promoted globals within their function's `mir::Body`.
-    pub promoted: Option<mir::Promoted>,
-}
-
-impl<'tcx> GlobalId<'tcx> {
-    pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
-        let instance_name = with_no_trimmed_paths!(tcx.def_path_str(self.instance.def.def_id()));
-        if let Some(promoted) = self.promoted {
-            format!("{instance_name}::{promoted:?}")
-        } else {
-            instance_name
-        }
-    }
-}
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub NonZero<u64>);

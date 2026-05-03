@@ -31,15 +31,10 @@ fn def_path_hash_depends_on_crate_id() {
             let parent_hash =
                 DefPathHash::new(stable_crate_id, Hash64::new(stable_crate_id.as_u64()));
 
-            let key = DefKey {
-                parent: None,
-                disambiguated_data: DisambiguatedDefPathData {
-                    data: DefPathData::CrateRoot,
-                    disambiguator: 0,
-                },
-            };
+            let disambiguated_data =
+                DisambiguatedDefPathData { data: DefPathData::CrateRoot, disambiguator: 0 };
 
-            key.compute_stable_hash(parent_hash)
+            disambiguated_data.compute_stable_hash(parent_hash)
         }
     })
 }

@@ -12,12 +12,13 @@ use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
+use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
-use tracing::instrument;
+use rustc_span::def_id::LocalDefId;
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
 
@@ -50,6 +51,8 @@ pub enum QuerySideEffect {
     /// if we mark the query as green, as that query will have
     /// the side effect dep node as a dependency.
     CheckFeature { symbol: Symbol },
+    /// Creates a new definition.
+    CreateDef { parent: LocalDefId, data: DisambiguatedDefPathData },
 }
 
 #[derive(Clone)]
@@ -218,6 +221,13 @@ impl DepGraph {
         OP: FnOnce() -> R,
     {
         with_deps(TaskDepsRef::Ignore, op)
+    }
+
+    pub fn with_replay<OP, R>(&self, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        with_deps(TaskDepsRef::Replay, op)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -458,7 +468,7 @@ impl DepGraph {
                         // queries. They are re-evaluated unconditionally anyway.
                         return;
                     }
-                    TaskDepsRef::Ignore => return,
+                    TaskDepsRef::Ignore | TaskDepsRef::Replay => return,
                     TaskDepsRef::Forbid => {
                         // Reading is forbidden in this context. ICE with a useful error message.
                         panic_on_forbidden_read(data, dep_node_index)
@@ -508,7 +518,7 @@ impl DepGraph {
     pub fn record_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
             read_deps(|task_deps| match task_deps {
-                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore | TaskDepsRef::Replay => return,
                 TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
                     let dep_node_index = data
                         .encode_side_effect(tcx, QuerySideEffect::Diagnostic(diagnostic.clone()));
@@ -533,7 +543,9 @@ impl DepGraph {
         side_effect: QuerySideEffect,
     ) -> DepNodeIndex {
         if let Some(ref data) = self.data {
-            data.encode_side_effect(tcx, side_effect)
+            let dep_node_index = data.encode_side_effect(tcx, side_effect);
+            self.read_index(dep_node_index);
+            dep_node_index
         } else {
             self.next_virtual_depnode_index()
         }
@@ -600,7 +612,7 @@ impl DepGraph {
                 TaskDepsRef::EvalAlways => {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);
                 }
-                TaskDepsRef::Ignore => {}
+                TaskDepsRef::Ignore | TaskDepsRef::Replay => {}
                 TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
@@ -725,6 +737,10 @@ impl DepGraphData {
                 QuerySideEffect::CheckFeature { symbol } => {
                     tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
                 }
+                QuerySideEffect::CreateDef { parent, data } => {
+                    tracing::trace!("SIDE-EFFECT create_def_raw({parent:?}, {data:?})");
+                    tcx.untracked().definitions.write().create_def(*parent, *data);
+                }
             }
 
             // This will just overwrite the same value for concurrent calls.
@@ -759,6 +775,10 @@ impl DepGraphData {
             };
 
             let value_fingerprint = value_fingerprint.unwrap_or(Fingerprint::ZERO);
+            //tracing::trace!(
+            //    "alloc_and_color_node {key:?} is {}",
+            //    if is_green { "GREEN" } else { "RED" }
+            //);
 
             let dep_node_index = self.current.encoder.send_and_color(
                 prev_index,
@@ -876,19 +896,25 @@ impl DepGraphData {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    #[instrument(skip(self, tcx, prev_dep_node_index, frame), level = "debug")]
     fn try_mark_previous_green<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         prev_dep_node_index: SerializedDepNodeIndex,
         frame: Option<&MarkFrame<'_>>,
     ) -> Option<DepNodeIndex> {
+        let _span = tracing::trace_span!(
+            "try_mark_previous_green",
+            dep_node = ?self.previous.index_to_node(prev_dep_node_index),
+        );
+        let _span = _span.enter();
+
         let frame = MarkFrame { index: prev_dep_node_index, parent: frame };
 
         // We never try to mark eval_always nodes as green
         debug_assert!(!tcx.is_eval_always(self.previous.index_to_node(prev_dep_node_index).kind));
 
         for parent_dep_node_index in self.previous.edge_targets_from(prev_dep_node_index) {
+            tracing::trace!("EXAMINE {:?}", self.previous.index_to_node(parent_dep_node_index),);
             match self.colors.get(parent_dep_node_index) {
                 // This dependency has been marked as green before, we are still ok and can
                 // continue checking the remaining dependencies.
@@ -896,7 +922,14 @@ impl DepGraphData {
 
                 // This dependency's result is different to the previous compilation session. We
                 // cannot mark this dep_node as green, so stop checking.
-                DepNodeColor::Red => return None,
+                DepNodeColor::Red => {
+                    tracing::trace!(
+                        "RECOMPUTE {:?} BECAUSE KNOWN RED {:?}",
+                        self.previous.index_to_node(prev_dep_node_index),
+                        self.previous.index_to_node(parent_dep_node_index),
+                    );
+                    return None;
+                }
 
                 // We still need to determine this dependency's colour.
                 DepNodeColor::Unknown => {}
@@ -913,12 +946,24 @@ impl DepGraphData {
 
             // We failed to mark it green, so we try to force the query.
             if !tcx.try_force_from_dep_node(*parent_dep_node, parent_dep_node_index, &frame) {
+                tracing::trace!(
+                    "RECOMPUTE {:?} BECAUSE UNFORCEABLE {:?}",
+                    self.previous.index_to_node(prev_dep_node_index),
+                    parent_dep_node,
+                );
                 return None;
             }
 
             match self.colors.get(parent_dep_node_index) {
                 DepNodeColor::Green(_) => continue,
-                DepNodeColor::Red => return None,
+                DepNodeColor::Red => {
+                    tracing::trace!(
+                        "RECOMPUTE {:?} BECAUSE NEWLY RED {:?}",
+                        self.previous.index_to_node(prev_dep_node_index),
+                        parent_dep_node,
+                    );
+                    return None;
+                }
                 DepNodeColor::Unknown => {}
             }
 
@@ -1211,6 +1256,9 @@ pub enum TaskDepsRef<'a> {
     EvalAlways,
     /// New dependencies are ignored. This is also used for `dep_graph.with_ignore`.
     Ignore,
+    /// This query has already been marked green, its dependency graph is recorded,
+    /// but we need to re-run the code to get its result.
+    Replay,
     /// Any attempt to add new dependencies will cause a panic.
     /// This is used when decoding a query result from disk,
     /// to ensure that the decoding process doesn't itself

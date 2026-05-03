@@ -1,7 +1,7 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
 use std::rc::Rc;
-use std::{fmt, iter, mem};
+use std::{fmt, iter};
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
@@ -87,7 +87,6 @@ mod relate_tys;
 ///
 /// - `infcx` -- inference context to use
 /// - `body` -- MIR body to type-check
-/// - `promoted` -- map of promoted constants within `body`
 /// - `universal_regions` -- the universal regions from `body`s function signature
 /// - `location_table` -- for datalog polonius, the map between `Location`s and `RichLocation`s
 /// - `borrow_set` -- information about borrows occurring in `body`
@@ -98,7 +97,6 @@ pub(crate) fn type_check<'tcx>(
     root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
-    promoted: &IndexSlice<Promoted, Body<'tcx>>,
     universal_regions: UniversalRegions<'tcx>,
     location_table: &PoloniusLocationTable,
     borrow_set: &BorrowSet<'tcx>,
@@ -150,7 +148,6 @@ pub(crate) fn type_check<'tcx>(
         infcx,
         last_span: body.span,
         body,
-        promoted,
         user_type_annotations: &body.user_type_annotations,
         region_bound_pairs: &region_bound_pairs,
         known_type_outlives_obligations: &known_type_outlives_obligations,
@@ -214,9 +211,6 @@ struct TypeChecker<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
-    /// The bodies of all promoteds. As promoteds have a completely separate CFG
-    /// recursing into them may corrupt your data structures if you're not careful.
-    promoted: &'a IndexSlice<Promoted, Body<'tcx>>,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
@@ -476,75 +470,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
         Ok(())
-    }
-
-    fn check_promoted(&mut self, promoted_body: &'a Body<'tcx>, location: Location) {
-        // Determine the constraints from the promoted MIR by running the type
-        // checker on the promoted MIR, then transfer the constraints back to
-        // the main MIR, changing the locations to the provided location.
-
-        let parent_body = mem::replace(&mut self.body, promoted_body);
-
-        // Use new sets of constraints and closure bounds so that we can
-        // modify their locations.
-        let polonius_facts = &mut None;
-        let mut constraints = Default::default();
-        let mut liveness_constraints =
-            LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
-        let mut deferred_closure_requirements = Default::default();
-
-        // Don't try to add borrow_region facts for the promoted MIR as they refer
-        // to the wrong locations.
-        let mut swap_constraints = |this: &mut Self| {
-            mem::swap(this.polonius_facts, polonius_facts);
-            mem::swap(&mut this.constraints.outlives_constraints, &mut constraints);
-            mem::swap(&mut this.constraints.liveness_constraints, &mut liveness_constraints);
-            mem::swap(this.deferred_closure_requirements, &mut deferred_closure_requirements);
-        };
-
-        swap_constraints(self);
-
-        self.visit_body(promoted_body);
-
-        self.body = parent_body;
-
-        // Merge the outlives constraints back in, at the given location.
-        swap_constraints(self);
-        let locations = location.to_locations();
-        for constraint in constraints.outlives().iter() {
-            let mut constraint = *constraint;
-            constraint.locations = locations;
-            if let ConstraintCategory::Return(_)
-            | ConstraintCategory::UseAsConst
-            | ConstraintCategory::UseAsStatic = constraint.category
-            {
-                // "Returning" from a promoted is an assignment to a
-                // temporary from the user's point of view.
-                constraint.category = ConstraintCategory::Boring;
-            }
-            self.constraints.outlives_constraints.push(constraint)
-        }
-
-        // If there are nested bodies in promoteds, we also need to update their
-        // location to something in the actual body, not the promoted.
-        //
-        // We don't update the constraint categories of the resulting constraints
-        // as returns in nested bodies are a proper return, even if that nested body
-        // is in a promoted.
-        for (closure_def_id, args, _locations) in deferred_closure_requirements {
-            self.deferred_closure_requirements.push((closure_def_id, args, locations));
-        }
-
-        // If the region is live at least one location in the promoted MIR,
-        // then add a liveness constraint to the main MIR for this region
-        // at the location provided as an argument to this method
-        //
-        // add_location doesn't care about ordering so not a problem for the live regions to be
-        // unordered.
-        #[allow(rustc::potential_query_instability)]
-        for region in liveness_constraints.live_regions_unordered() {
-            self.constraints.liveness_constraints.add_location(region, location);
-        }
     }
 }
 
@@ -1671,18 +1596,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
 
             if let Some(uv) = maybe_uneval {
-                if uv.promoted.is_none() {
-                    let tcx = self.tcx();
-                    let def_id = uv.def;
-                    if tcx.def_kind(def_id) == DefKind::InlineConst {
-                        let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
-                        self.normalize_and_prove_instantiated_predicates(
-                            def_id.to_def_id(),
-                            predicates,
-                            location.to_locations(),
-                        );
-                    }
+                let tcx = self.tcx();
+                let def_id = uv.def;
+                if matches!(tcx.def_kind(def_id), DefKind::InlineConst | DefKind::Promoted) {
+                    let def_id = def_id.expect_local();
+                    let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
+                    self.normalize_and_prove_instantiated_predicates(
+                        def_id.to_def_id(),
+                        predicates,
+                        location.to_locations(),
+                    );
                 }
             }
         }
@@ -1722,7 +1645,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
                     ty::ConstKind::Unevaluated(uv) => {
-                        Some(UnevaluatedConst { def: uv.def, args: uv.args, promoted: None })
+                        Some(UnevaluatedConst { def: uv.def, args: uv.args })
                     }
                     _ => None,
                 },
@@ -1731,32 +1654,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
 
             if let Some(uv) = maybe_uneval {
-                if let Some(promoted) = uv.promoted {
-                    let promoted_body = &self.promoted[promoted];
-                    self.check_promoted(promoted_body, location);
-                    let promoted_ty = promoted_body.return_ty();
-                    if let Err(terr) =
-                        self.eq_types(ty, promoted_ty, locations, ConstraintCategory::Boring)
-                    {
-                        span_mirbug!(
-                            self,
-                            promoted,
-                            "bad promoted type ({:?}: {:?}): {:?}",
-                            ty,
-                            promoted_ty,
-                            terr
-                        );
-                    };
-                } else {
-                    self.ascribe_user_type(
-                        constant.const_.ty(),
-                        ty::UserType::new(ty::UserTypeKind::TypeOf(
-                            uv.def,
-                            UserArgs { args: uv.args, user_self_ty: None },
-                        )),
-                        locations.span(self.body),
-                    );
-                }
+                self.ascribe_user_type(
+                    constant.const_.ty(),
+                    ty::UserType::new(ty::UserTypeKind::TypeOf(
+                        uv.def,
+                        UserArgs { args: uv.args, user_self_ty: None },
+                    )),
+                    locations.span(self.body),
+                );
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty =
                     tcx.type_of(static_def_id).instantiate_identity().skip_norm_wip();
@@ -2501,7 +2406,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // length as the `typeck_root_args`.
                 &args[..typeck_root_args.len()]
             }
-            DefKind::InlineConst => args.as_inline_const().parent_args(),
+            DefKind::InlineConst | DefKind::Promoted => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };
         let parent_args = tcx.mk_args(parent_args);

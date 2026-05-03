@@ -4,9 +4,7 @@ use rustc_session::lint;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
-use super::{
-    ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult, GlobalId, ReportedErrorInfo,
-};
+use super::{ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult, ReportedErrorInfo};
 use crate::mir::interpret::ValTreeCreationError;
 use crate::ty::{self, ConstToValTreeResult, GenericArgs, TyCtxt, TypeVisitableExt};
 use crate::{error, mir};
@@ -23,9 +21,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
-        self.const_eval_global_id(typing_env, cid, DUMMY_SP)
+        self.const_eval_instance(typing_env, instance, DUMMY_SP)
     }
 
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
@@ -39,9 +36,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
-        let inputs = self.erase_and_anonymize_regions(typing_env.as_query_input(cid));
+        let inputs = self.erase_and_anonymize_regions(typing_env.as_query_input(instance));
         self.eval_to_allocation_raw(inputs)
     }
 
@@ -73,10 +69,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
         match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
-            Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted: ct.promoted };
-                self.const_eval_global_id(typing_env, cid, span)
-            }
+            Ok(Some(instance)) => self.const_eval_instance(typing_env, instance, span),
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
             Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
@@ -103,8 +96,8 @@ impl<'tcx> TyCtxt<'tcx> {
             bug!("did not expect inference variables here");
         }
 
-        let cid = match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
-            Ok(Some(instance)) => GlobalId { instance, promoted: None },
+        let instance = match ty::Instance::try_resolve(self, typing_env, ct.def, ct.args) {
+            Ok(Some(instance)) => instance,
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
             Ok(None) => return Err(ErrorHandled::TooGeneric(DUMMY_SP).into()),
@@ -117,7 +110,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         };
 
-        self.const_eval_global_id_for_typeck(typing_env, cid, span).inspect(|_| {
+        self.const_eval_instance_for_typeck(typing_env, instance, span).inspect(|_| {
             // We are emitting the lint here instead of in `is_const_evaluatable`
             // as we normalize obligations before checking them, and normalization
             // uses this function to evaluate this constant.
@@ -133,10 +126,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 //
                 // If we don't *only* FCW anon consts we can wind up incorrectly FCW'ing uses of assoc
                 // consts in pattern positions. #140447
-                && self.def_kind(cid.instance.def_id()) == DefKind::AnonConst
-                && !self.is_trivial_const(cid.instance.def_id())
+                && self.def_kind(instance.def_id()) == DefKind::AnonConst
+                && !self.is_trivial_const(instance.def_id())
             {
-                let mir_body = self.mir_for_ctfe(cid.instance.def_id());
+                let mir_body = self.mir_for_ctfe(instance.def_id());
                 if mir_body.is_polymorphic {
                     let Some(local_def_id) = ct.def.as_local() else { return };
                     self.emit_node_span_lint(
@@ -154,27 +147,18 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    /// Evaluate a constant to a `ConstValue`.
+    #[instrument(skip(self), level = "debug")]
     pub fn const_eval_instance(
         self,
         typing_env: ty::TypingEnv<'tcx>,
         instance: ty::Instance<'tcx>,
         span: Span,
     ) -> EvalToConstValueResult<'tcx> {
-        self.const_eval_global_id(typing_env, GlobalId { instance, promoted: None }, span)
-    }
-
-    /// Evaluate a constant to a `ConstValue`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn const_eval_global_id(
-        self,
-        typing_env: ty::TypingEnv<'tcx>,
-        cid: GlobalId<'tcx>,
-        span: Span,
-    ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_and_anonymize_regions(
-            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+            typing_env.with_post_analysis_normalized(self).as_query_input(instance),
         );
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
@@ -186,16 +170,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Evaluate a constant to a type-level constant.
     #[instrument(skip(self), level = "debug")]
-    pub fn const_eval_global_id_for_typeck(
+    pub fn const_eval_instance_for_typeck(
         self,
         typing_env: ty::TypingEnv<'tcx>,
-        cid: GlobalId<'tcx>,
+        instance: ty::Instance<'tcx>,
         span: Span,
     ) -> ConstToValTreeResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_and_anonymize_regions(
-            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+            typing_env.with_post_analysis_normalized(self).as_query_input(instance),
         );
         debug!(?inputs);
         let res = if !span.is_dummy() {
@@ -212,17 +196,13 @@ impl<'tcx> TyCtxt<'tcx> {
                     ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
                     // Report the others.
                     ValTreeCreationError::NodesOverflow => {
-                        let handled = self.dcx().emit_err(error::MaxNumNodesInValtree {
-                            span,
-                            global_const_id: cid.display(self),
-                        });
+                        let handled =
+                            self.dcx().emit_err(error::MaxNumNodesInValtree { span, instance });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::InvalidConst => {
-                        let handled = self.dcx().emit_err(error::InvalidConstInValtree {
-                            span,
-                            global_const_id: cid.display(self),
-                        });
+                        let handled =
+                            self.dcx().emit_err(error::InvalidConstInValtree { span, instance });
                         Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                     }
                     ValTreeCreationError::ErrorHandled(handled) => Err(handled),

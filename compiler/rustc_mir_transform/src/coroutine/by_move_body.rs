@@ -223,8 +223,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         None,
         &mut PerParentDisambiguatorState::new(parent_def_id),
     );
-    by_move_body.source =
-        mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
+    by_move_body.source = InstanceKind::Item(body_def.def_id().to_def_id());
 
     if let Some(dumper) = MirDumper::new(tcx, "built", &by_move_body) {
         dumper.set_disambiguator(&"after").dump_mir(&by_move_body);

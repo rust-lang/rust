@@ -152,6 +152,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Closure
+        | DefKind::Promoted
         | DefKind::SyntheticCoroutineBody => {
             span_bug!(
                 tcx.def_span(def_id),

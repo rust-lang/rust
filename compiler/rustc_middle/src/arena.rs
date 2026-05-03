@@ -18,13 +18,13 @@ macro_rules! arena_types {
                 rustc_data_structures::steal::Steal<
                     rustc_index::IndexVec<
                         rustc_middle::mir::Promoted,
-                        rustc_middle::mir::Body<'tcx>
+                        rustc_span::def_id::LocalDefId,
                     >
                 >,
             [decode] promoted:
                 rustc_index::IndexVec<
                     rustc_middle::mir::Promoted,
-                    rustc_middle::mir::Body<'tcx>
+                    rustc_span::def_id::LocalDefId,
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [decode] borrowck_result: rustc_data_structures::fx::FxIndexMap<

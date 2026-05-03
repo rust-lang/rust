@@ -31,7 +31,6 @@ const C: S = {
     s
 };
 
-fn main() { //~ ERROR encountered `UnsafeCell` in read-only memory
-    // FIXME the span here is wrong, should be pointing at the line below, not above.
-    let _: &'static _ = &C;
+fn main() {
+    let _: &'static _ = &C; //~ ERROR encountered `UnsafeCell` in read-only memory
 }

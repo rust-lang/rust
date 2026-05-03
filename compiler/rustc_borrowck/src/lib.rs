@@ -28,8 +28,8 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
+use rustc_index::IndexVec;
 use rustc_index::bit_set::MixedBitSet;
-use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
@@ -289,7 +289,6 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 struct CollectRegionConstraintsResult<'tcx> {
     infcx: BorrowckInferCtxt<'tcx>,
     body_owned: Body<'tcx>,
-    promoted: IndexVec<Promoted, Body<'tcx>>,
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
     location_table: PoloniusLocationTable,
@@ -313,9 +312,8 @@ fn borrowck_collect_region_constraints<'tcx>(
 ) -> CollectRegionConstraintsResult<'tcx> {
     let tcx = root_cx.tcx;
     let infcx = BorrowckInferCtxt::new(tcx, def, root_cx.root_def_id());
-    let (input_body, promoted) = tcx.mir_promoted(def);
+    let (input_body, _) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
-    let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
         root_cx.set_tainted_by_errors(e);
@@ -326,8 +324,7 @@ fn borrowck_collect_region_constraints<'tcx>(
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
     let mut body_owned = input_body.clone();
-    let mut promoted = input_promoted.to_owned();
-    let universal_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned, &mut promoted);
+    let universal_regions = nll::replace_regions_in_mir(&infcx, &mut body_owned);
     let body = &body_owned; // no further changes
 
     let location_table = PoloniusLocationTable::new(body);
@@ -356,7 +353,6 @@ fn borrowck_collect_region_constraints<'tcx>(
         root_cx,
         &infcx,
         body,
-        &promoted,
         universal_regions,
         &location_table,
         &borrow_set,
@@ -368,7 +364,6 @@ fn borrowck_collect_region_constraints<'tcx>(
     CollectRegionConstraintsResult {
         infcx,
         body_owned,
-        promoted,
         move_data,
         borrow_set,
         location_table,
@@ -392,7 +387,6 @@ fn borrowck_check_region_constraints<'tcx>(
     CollectRegionConstraintsResult {
         infcx,
         body_owned,
-        promoted,
         move_data,
         borrow_set,
         location_table,
@@ -456,54 +450,6 @@ fn borrowck_check_region_constraints<'tcx>(
         && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
 
     let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
-    // While promoteds should mostly be correct by construction, we need to check them for
-    // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
-    for promoted_body in &promoted {
-        use rustc_middle::mir::visit::Visitor;
-        // This assumes that we won't use some of the fields of the `promoted_mbcx`
-        // when detecting and reporting move errors. While it would be nice to move
-        // this check out of `MirBorrowckCtxt`, actually doing so is far from trivial.
-        let move_data = MoveData::gather_moves(promoted_body, tcx, |_| true);
-        let mut promoted_mbcx = MirBorrowckCtxt {
-            root_cx,
-            infcx: &infcx,
-            body: promoted_body,
-            move_data: &move_data,
-            // no need to create a real location table for the promoted, it is not used
-            location_table: &location_table,
-            movable_coroutine,
-            fn_self_span_reported: Default::default(),
-            access_place_error_reported: Default::default(),
-            reservation_error_reported: Default::default(),
-            uninitialized_error_reported: Default::default(),
-            regioncx: &regioncx,
-            used_mut: Default::default(),
-            used_mut_upvars: SmallVec::new(),
-            borrow_set: &borrow_set,
-            upvars: &[],
-            local_names: OnceCell::from(IndexVec::from_elem(None, &promoted_body.local_decls)),
-            region_names: RefCell::default(),
-            next_region_name: RefCell::new(1),
-            polonius_output: None,
-            move_errors: Vec::new(),
-            diags_buffer,
-            polonius_context: polonius_context.as_ref(),
-        };
-        struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
-            ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
-        }
-
-        impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx> {
-            fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
-                if let Operand::Move(place) = operand {
-                    self.ctxt.check_movable_place(location, *place);
-                }
-            }
-        }
-        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
-        promoted_mbcx.report_move_errors();
-    }
-
     let mut mbcx = MirBorrowckCtxt {
         root_cx,
         infcx: &infcx,
@@ -580,7 +526,6 @@ fn borrowck_check_region_constraints<'tcx>(
             def,
             BodyWithBorrowckFacts {
                 body: body_owned,
-                promoted,
                 borrow_set,
                 region_inference_context: regioncx,
                 location_table: polonius_input.as_ref().map(|_| location_table),

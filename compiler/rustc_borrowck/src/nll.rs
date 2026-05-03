@@ -8,9 +8,8 @@ use std::str::FromStr;
 use polonius_engine::{Algorithm, AllFacts, Output};
 use rustc_data_structures::frozen::Frozen;
 use rustc_hir::find_attr;
-use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
-use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
+use rustc_middle::mir::{Body, MirDumper, PassWhere};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -52,11 +51,10 @@ pub(crate) struct NllOutput<'tcx> {
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
 /// regions (e.g., region parameters) declared on the function. That set will need to be given to
 /// `compute_regions`.
-#[instrument(skip(infcx, body, promoted), level = "debug")]
+#[instrument(skip(infcx, body), level = "debug")]
 pub(crate) fn replace_regions_in_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    promoted: &mut IndexSlice<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     let def = body.source.def_id().expect_local();
 
@@ -66,7 +64,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, body, promoted);
+    renumber::renumber_mir(infcx, body);
 
     if let Some(dumper) = MirDumper::new(infcx.tcx, "renumber", body) {
         dumper.dump_mir(body);

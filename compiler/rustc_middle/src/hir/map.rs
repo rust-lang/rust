@@ -292,7 +292,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => {
                 BodyOwnerKind::Const { inline: false }
             }
-            DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
+            DefKind::InlineConst | DefKind::Promoted => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::SyntheticCoroutineBody => BodyOwnerKind::Closure,
             DefKind::Static { safety: _, mutability, nested: false } => {
@@ -1130,6 +1130,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
     let upstream_crates = upstream_crates(tcx);
 
     let resolutions = tcx.resolutions(());
+    tcx.ensure_done().mir_keys(());
 
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.

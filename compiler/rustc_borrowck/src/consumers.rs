@@ -2,9 +2,8 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::IndexVec;
 use rustc_middle::bug;
-use rustc_middle::mir::{Body, Promoted};
+use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
 
 pub use super::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
@@ -85,8 +84,6 @@ pub enum ConsumerOptions {
 pub struct BodyWithBorrowckFacts<'tcx> {
     /// A mir body that contains region identifiers.
     pub body: Body<'tcx>,
-    /// The mir bodies of promoteds.
-    pub promoted: IndexVec<Promoted, Body<'tcx>>,
     /// The set of borrows occurring in `body` with data about them.
     pub borrow_set: BorrowSet<'tcx>,
     /// Context generated during borrowck, intended to be passed to

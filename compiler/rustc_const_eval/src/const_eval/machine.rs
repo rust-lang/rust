@@ -454,7 +454,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         // This is a const fn. Call it.
         // In case of replacement, we return the *original* instance to make backtraces work out
         // (and we hope this does not confuse the FnAbi checks too much).
-        interp_ok(Some((ecx.load_mir(instance.def, None)?, orig_instance)))
+        interp_ok(Some((ecx.load_mir(instance.def)?, orig_instance)))
     }
 
     fn panic_nounwind(ecx: &mut InterpCx<'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
