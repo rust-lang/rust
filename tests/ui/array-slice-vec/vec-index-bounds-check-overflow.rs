@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/2470
+
 //@ run-fail
 //@ error-pattern:index out of bounds
 //@ needs-subprocess
