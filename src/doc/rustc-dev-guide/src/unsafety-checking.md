@@ -30,14 +30,8 @@ side of an assignment expression and allows union fields to directly appear
 there, while erroring in all other cases. Union field accesses can also occur
 in patterns, so those have to be walked as well.
 
-The other complicated safety check is for writes to fields of layout constrained
-structs (such as [`NonNull`]). These are found by looking for the borrow or
-assignment expression and then visiting the subexpression being borrowed or
-assigned with a separate visitor.
-
 [THIR]: ./thir.md
 [`check_unsafety`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/check_unsafety/index.html
-[`NonNull`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html
 
 ## The unused_unsafe lint
 

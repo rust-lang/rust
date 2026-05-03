@@ -1,4 +1,3 @@
-use std::ops::Bound;
 use std::{cmp, fmt};
 
 use rustc_abi as abi;
@@ -465,17 +464,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 // Newtype.
                 if def.variants().len() == 1 {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
-                        return Ok(SizeSkeleton::Pointer {
-                            non_zero: non_zero
-                                || match tcx.layout_scalar_valid_range(def.did()) {
-                                    (Bound::Included(start), Bound::Unbounded) => start > 0,
-                                    (Bound::Included(start), Bound::Included(end)) => {
-                                        0 < start && start < end
-                                    }
-                                    _ => false,
-                                },
-                            tail,
-                        });
+                        return Ok(SizeSkeleton::Pointer { non_zero, tail });
                     } else {
                         return Err(err);
                     }

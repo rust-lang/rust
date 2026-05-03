@@ -1,8 +1,9 @@
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, pattern_types, pattern_type_macro)]
 #![warn(clippy::eager_transmute)]
 #![allow(clippy::transmute_int_to_non_zero, clippy::missing_transmute_annotations)]
 
 use std::num::NonZero;
+use std::pat::pattern_type;
 
 #[repr(u8)]
 enum Opcode {
@@ -77,23 +78,25 @@ unsafe fn f2(op: u8) {
     }
 }
 
-#[rustc_layout_scalar_valid_range_end(254)]
-struct NonMaxU8(u8);
-#[rustc_layout_scalar_valid_range_end(254)]
-#[rustc_layout_scalar_valid_range_start(1)]
-struct NonZeroNonMaxU8(u8);
+struct NonMaxU8(pattern_type!(u8 is 0..=254));
+struct NonZeroNonMaxU8(pattern_type!(u8 is 1..=254));
 
 macro_rules! impls {
     ($($t:ty),*) => {
         $(
+            impl $t {
+                fn get(&self) -> u8 {
+                    unsafe { std::mem::transmute(self.0) }
+                }
+            }
             impl PartialEq<u8> for $t {
                 fn eq(&self, other: &u8) -> bool {
-                    self.0 == *other
+                    self.get() == *other
                 }
             }
             impl PartialOrd<u8> for $t {
                 fn partial_cmp(&self, other: &u8) -> Option<std::cmp::Ordering> {
-                    self.0.partial_cmp(other)
+                    self.get().partial_cmp(other)
                 }
             }
         )*
