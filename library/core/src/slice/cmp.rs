@@ -3,7 +3,6 @@
 use super::{from_raw_parts, memchr};
 use crate::ascii;
 use crate::cmp::{self, BytewiseEq, Ordering};
-use crate::convert::Infallible;
 use crate::intrinsics::compare_bytes;
 use crate::marker::Destruct;
 use crate::mem::SizedTypeProperties;
@@ -182,20 +181,12 @@ type AlwaysBreak<B> = ControlFlow<B, crate::convert::Infallible>;
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A: [const] PartialOrd> const SlicePartialOrd for A {
     default fn partial_compare(left: &[A], right: &[A]) -> Option<Ordering> {
-        // FIXME(const-hack): revert this to a const closure once possible
-        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-        const fn elem_chain<A: [const] PartialOrd>(a: &A, b: &A) -> ControlFlow<Option<Ordering>> {
-            match PartialOrd::partial_cmp(a, b) {
-                Some(Ordering::Equal) => ControlFlow::Continue(()),
-                non_eq => ControlFlow::Break(non_eq),
-            }
-        }
+        let elem_chain = const |a, b| match PartialOrd::partial_cmp(a, b) {
+            Some(Ordering::Equal) => ControlFlow::Continue(()),
+            non_eq => ControlFlow::Break(non_eq),
+        };
 
-        // FIXME(const-hack): revert this to a const closure once possible
-        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-        const fn len_chain(a: &usize, b: &usize) -> ControlFlow<Option<Ordering>, Infallible> {
-            ControlFlow::Break(usize::partial_cmp(a, b))
-        }
+        let len_chain = const |a: &_, b: &_| ControlFlow::Break(usize::partial_cmp(a, b));
 
         let AlwaysBreak::Break(b) = chaining_impl(left, right, elem_chain, len_chain);
         b
@@ -293,20 +284,12 @@ const trait SliceOrd: Sized {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 impl<A: [const] Ord> const SliceOrd for A {
     default fn compare(left: &[Self], right: &[Self]) -> Ordering {
-        // FIXME(const-hack): revert this to a const closure once possible
-        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-        const fn elem_chain<A: [const] Ord>(a: &A, b: &A) -> ControlFlow<Ordering> {
-            match Ord::cmp(a, b) {
-                Ordering::Equal => ControlFlow::Continue(()),
-                non_eq => ControlFlow::Break(non_eq),
-            }
-        }
+        let elem_chain = const |a, b| match Ord::cmp(a, b) {
+            Ordering::Equal => ControlFlow::Continue(()),
+            non_eq => ControlFlow::Break(non_eq),
+        };
 
-        // FIXME(const-hack): revert this to a const closure once possible
-        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-        const fn len_chain(a: &usize, b: &usize) -> ControlFlow<Ordering, Infallible> {
-            ControlFlow::Break(usize::cmp(a, b))
-        }
+        let len_chain = const |a: &_, b: &_| ControlFlow::Break(usize::cmp(a, b));
 
         let AlwaysBreak::Break(b) = chaining_impl(left, right, elem_chain, len_chain);
         b
