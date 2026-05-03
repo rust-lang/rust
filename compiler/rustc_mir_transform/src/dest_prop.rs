@@ -141,7 +141,10 @@ use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{IndexVec, newtype_index};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext,
+    VisitPlacesWith, Visitor,
+};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
@@ -217,11 +220,11 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             }
 
             // We cannot unify a local that appears in an index with a place that has projections.
-            let src_in_index = relevant.appears_in_index.contains(src);
-            let dst_in_index = relevant.appears_in_index.contains(dst);
-            trace!(?src_in_index, ?dst_in_index);
+            let src_requires_bare = relevant.requires_bare_local.contains(src);
+            let dst_requires_bare = relevant.requires_bare_local.contains(dst);
+            trace!(?src_requires_bare, ?dst_requires_bare);
 
-            if (src_in_index || dst_in_index)
+            if (src_requires_bare || dst_requires_bare)
                 && (!src_place.projection.is_empty() || !dst_place.projection.is_empty())
             {
                 debug!("projection in index");
@@ -269,8 +272,8 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
                 let head = relevant.renames.unify(src, dst);
                 live.union_rows(/* read */ src, /* write */ head);
                 live.union_rows(/* read */ dst, /* write */ head);
-                if src_in_index || dst_in_index {
-                    relevant.appears_in_index.insert(head);
+                if src_requires_bare || dst_requires_bare {
+                    relevant.requires_bare_local.insert(head);
                 }
             }
         }
@@ -321,6 +324,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
         self.tcx
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
         let dest = self.merged_targets[*local];
         let Some(dest) = dest.as_local() else {
@@ -329,6 +333,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
         *local = dest;
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
         if let Some(new_projection) = self.process_projection(&place.projection, location) {
             place.projection = self.tcx.mk_place_elems(&new_projection);
@@ -337,6 +342,7 @@ impl<'tcx> MutVisitor<'tcx> for Merger<'tcx> {
         *place = dest.project_deeper(place.projection, self.tcx);
     }
 
+    #[tracing::instrument(level = "trace", skip(self))]
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match &statement.kind {
             // FIXME: Don't delete storage statements, but "merge" the storage ranges instead.
@@ -384,7 +390,7 @@ struct RelevantLocals {
     original: IndexVec<RelevantLocal, Local>,
     shrink: IndexVec<Local, Option<RelevantLocal>>,
     renames: UnionFind<RelevantLocal>,
-    appears_in_index: DenseBitSet<RelevantLocal>,
+    requires_bare_local: DenseBitSet<RelevantLocal>,
 }
 
 impl RelevantLocals {
@@ -403,15 +409,15 @@ impl RelevantLocals {
             declare(dest.local)
         }
 
-        let mut appears_in_index = DenseBitSet::new_empty(original.len());
-        for local in candidates.appears_in_index.iter() {
+        let mut requires_bare_local = DenseBitSet::new_empty(original.len());
+        for local in candidates.requires_bare_local.iter() {
             if let Some(relevant) = shrink[local] {
-                appears_in_index.insert(relevant);
+                requires_bare_local.insert(relevant);
             }
         }
 
         let renames = UnionFind::new(original.len());
-        RelevantLocals { original, shrink, renames, appears_in_index }
+        RelevantLocals { original, shrink, renames, requires_bare_local }
     }
 
     fn find(&mut self, src: Local) -> Option<RelevantLocal> {
@@ -439,9 +445,9 @@ struct Candidates<'tcx> {
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
     c: Vec<(Local, Place<'tcx>)>,
-    /// Whether this local appears in `PlaceElem::Index`. If that happens, we cannot unify it with
-    /// a place that has projections.
-    appears_in_index: DenseBitSet<Local>,
+    /// Whether this local must syntactically appear unprojected in MIR. For instance in
+    /// `PlaceElem::Index`. If that happens, we cannot unify it with a place that has projections.
+    requires_bare_local: DenseBitSet<Local>,
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
@@ -461,10 +467,10 @@ impl<'tcx> Candidates<'tcx> {
             body,
             candidates: Default::default(),
             borrowed,
-            appears_in_index: DenseBitSet::new_empty(body.local_decls.len()),
+            requires_bare_local: DenseBitSet::new_empty(body.local_decls.len()),
         };
         visitor.visit_body(body);
-        let FindAssignments { mut candidates, appears_in_index, .. } = visitor;
+        let FindAssignments { mut candidates, requires_bare_local, .. } = visitor;
 
         // Allowing to merge with an arbitrary place creates a lot of candidates.
         // Trim the set a little before trying to apply them.
@@ -475,7 +481,7 @@ impl<'tcx> Candidates<'tcx> {
                 // We cannot merge locals if both are required.
                 return false;
             }
-            if !d.projection.is_empty() && (s_required || appears_in_index.contains(s)) {
+            if !d.projection.is_empty() && (s_required || requires_bare_local.contains(s)) {
                 // We cannot merge a projection with a local that needs to remain bare.
                 return false;
             }
@@ -484,7 +490,7 @@ impl<'tcx> Candidates<'tcx> {
 
         candidates.sort_by_key(|&(s, d)| (s, d.local, d.projection.len()));
 
-        Candidates { c: candidates, appears_in_index }
+        Candidates { c: candidates, requires_bare_local }
     }
 }
 
@@ -493,29 +499,42 @@ struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
     candidates: Vec<(Local, Place<'tcx>)>,
     borrowed: &'a DenseBitSet<Local>,
-    /// Whether this local appears in `PlaceElem::Index`. If that happens, we cannot unify it with
-    /// a place that has projections.
-    appears_in_index: DenseBitSet<Local>,
+    /// Whether this local must syntactically appear unprojected in MIR. For instance in
+    /// `PlaceElem::Index`. If that happens, we cannot unify it with a place that has projections.
+    requires_bare_local: DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
-    fn visit_projection_elem(
-        &mut self,
-        place_ref: PlaceRef<'tcx>,
-        elem: PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        match elem {
-            PlaceElem::Deref => {
-                self.appears_in_index.insert(place_ref.local);
-            }
-            PlaceElem::Index(local) => {
-                self.appears_in_index.insert(local);
-            }
-            _ => {}
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
+        let requires_bare_local = match context {
+            // This local is the base of a place, with or without a projection.
+            PlaceContext::MutatingUse(MutatingUseContext::Projection)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => false,
+            // We remove those statements.
+            PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => false,
+            // For any other case, consider MIR syntactically requires a bare local.
+            // This can happen for indexing projections, async yield, return terminators...
+            _ => true,
+        };
+        if requires_bare_local {
+            self.requires_bare_local.insert(local);
         }
-        self.super_projection_elem(place_ref, elem, context, location);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+        self.visit_projection(place.as_ref(), context, location);
+
+        // `Deref` can only happen as first projection.
+        if let Some(ProjectionElem::Deref) = place.projection.first() {
+            self.requires_bare_local.insert(place.local);
+        }
+
+        let context = if context.is_mutating_use() {
+            PlaceContext::MutatingUse(MutatingUseContext::Projection)
+        } else {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+        };
+        self.visit_local(place.local, context, location);
     }
 
     fn visit_assign(&mut self, lhs: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
