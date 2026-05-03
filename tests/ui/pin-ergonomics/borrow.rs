@@ -44,4 +44,20 @@ fn baz(mut x: Foo, mut y: Foo) {
     let _y = y; //~ ERROR cannot move out of `y` because it is pinned
 }
 
+fn ref_pin_mut_then_mut_borrow_and_move(mut x: Foo) {
+    {
+        let ref pin mut _x = x;
+    }
+    let _x = &mut x; //~ ERROR cannot borrow `x` as mutable because it is pinned
+    let _x = x; //~ ERROR cannot move out of `x` because it is pinned
+}
+
+fn ref_pin_const_then_mut_borrow_and_move(mut y: Foo) {
+    {
+        let ref pin const _y = y;
+    }
+    let _y = &mut y; //~ ERROR cannot borrow `y` as mutable because it is pinned
+    let _y = y; //~ ERROR cannot move out of `y` because it is pinned
+}
+
 fn main() {}

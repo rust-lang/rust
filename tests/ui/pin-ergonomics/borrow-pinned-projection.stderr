@@ -7,8 +7,17 @@ LL |         let _pin = &pin mut pair.0;
 LL |     let _borrow = &mut pair.0;
    |                   ^^^^^^^^^^^ borrow of `pair.0` as mutable occurs here
 
+error: cannot borrow `pair.0` as mutable because it is pinned
+  --> $DIR/borrow-pinned-projection.rs:32:19
+   |
+LL |         let ref pin mut _pin = pair.0;
+   |             ---------------- pin of `pair.0` occurs here
+...
+LL |     let _borrow = &mut pair.0;
+   |                   ^^^^^^^^^^^ borrow of `pair.0` as mutable occurs here
+
 error: cannot move out of `pair.0` because it is pinned
-  --> $DIR/borrow-pinned-projection.rs:32:18
+  --> $DIR/borrow-pinned-projection.rs:44:18
    |
 LL |         let _pin = &pin mut pair.0;
    |                    --------------- pin of `pair.0` occurs here
@@ -16,8 +25,17 @@ LL |         let _pin = &pin mut pair.0;
 LL |     let _moved = pair.0;
    |                  ^^^^^^ move out of `pair.0` occurs here
 
+error: cannot move out of `pair.0` because it is pinned
+  --> $DIR/borrow-pinned-projection.rs:56:18
+   |
+LL |         let ref pin mut _pin = pair.0;
+   |             ---------------- pin of `pair.0` occurs here
+...
+LL |     let _moved = pair.0;
+   |                  ^^^^^^ move out of `pair.0` occurs here
+
 error: cannot move out of `value.field` because it is pinned
-  --> $DIR/borrow-pinned-projection.rs:47:18
+  --> $DIR/borrow-pinned-projection.rs:71:18
    |
 LL |         let _ = &pin mut value;
    |                 -------------- pin of `value` occurs here
@@ -25,8 +43,17 @@ LL |         let _ = &pin mut value;
 LL |     let _moved = value.field;
    |                  ^^^^^^^^^^^ move out of `value.field` occurs here
 
+error: cannot move out of `value.field` because it is pinned
+  --> $DIR/borrow-pinned-projection.rs:80:18
+   |
+LL |         let ref pin mut _pin = value;
+   |             ---------------- pin of `value` occurs here
+...
+LL |     let _moved = value.field;
+   |                  ^^^^^^^^^^^ move out of `value.field` occurs here
+
 error: cannot borrow `value.field` as mutable because it is pinned
-  --> $DIR/borrow-pinned-projection.rs:56:13
+  --> $DIR/borrow-pinned-projection.rs:89:13
    |
 LL |         let _ = &pin mut value;
    |                 -------------- pin of `value` occurs here
@@ -34,5 +61,14 @@ LL |         let _ = &pin mut value;
 LL |     let _ = &mut value.field;
    |             ^^^^^^^^^^^^^^^^ borrow of `value.field` as mutable occurs here
 
-error: aborting due to 4 previous errors
+error: cannot borrow `value.field` as mutable because it is pinned
+  --> $DIR/borrow-pinned-projection.rs:98:13
+   |
+LL |         let ref pin mut _pin = value;
+   |             ---------------- pin of `value` occurs here
+...
+LL |     let _ = &mut value.field;
+   |             ^^^^^^^^^^^^^^^^ borrow of `value.field` as mutable occurs here
+
+error: aborting due to 8 previous errors
 

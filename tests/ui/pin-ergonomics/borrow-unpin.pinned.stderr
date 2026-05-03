@@ -85,8 +85,26 @@ LL | struct Foo(PhantomPinned);
 LL |     let x = &pin const foo; // ok
    |                        --- you could clone this value
 
+error: cannot move out of `foo` because it is pinned
+  --> $DIR/borrow-unpin.rs:65:14
+   |
+LL |         let ref pin mut _x = foo;
+   |             -------------- pin of `foo` occurs here
+LL |     }
+LL |     foo_move(foo);
+   |              ^^^ move out of `foo` occurs here
+
+error: cannot borrow `foo` as mutable because it is pinned
+  --> $DIR/borrow-unpin.rs:73:13
+   |
+LL |         let ref pin mut _x = foo;
+   |             -------------- pin of `foo` occurs here
+LL |     }
+LL |     foo_mut(&mut foo);
+   |             ^^^^^^^^ borrow of `foo` as mutable occurs here
+
 error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrow-unpin.rs:67:13
+  --> $DIR/borrow-unpin.rs:83:13
    |
 LL |     let x = &pin mut foo; // ok
    |             ------------ mutable borrow occurs here
@@ -96,7 +114,7 @@ LL |     foo_pin_mut(x);
    |                 - mutable borrow later used here
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
-  --> $DIR/borrow-unpin.rs:89:17
+  --> $DIR/borrow-unpin.rs:105:17
    |
 LL |     let x = &pin mut foo; // ok
    |             ------------ first mutable borrow occurs here
@@ -106,7 +124,7 @@ LL |     foo_pin_mut(x);
    |                 - first borrow later used here
 
 error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immutable
-  --> $DIR/borrow-unpin.rs:100:17
+  --> $DIR/borrow-unpin.rs:116:17
    |
 LL |     let x = &pin const foo; // ok
    |             -------------- immutable borrow occurs here
@@ -116,7 +134,7 @@ LL |     foo_pin_ref(x);
    |                 - immutable borrow later used here
 
 error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrow-unpin.rs:111:17
+  --> $DIR/borrow-unpin.rs:127:17
    |
 LL |     let x = &pin mut foo; // ok
    |             ------------ mutable borrow occurs here
@@ -125,7 +143,7 @@ LL |     foo_pin_ref(&pin const foo);
 LL |     foo_pin_mut(x);
    |                 - mutable borrow later used here
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0499, E0502, E0505.
 For more information about an error, try `rustc --explain E0499`.

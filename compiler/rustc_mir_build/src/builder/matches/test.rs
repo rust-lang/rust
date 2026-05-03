@@ -344,7 +344,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Not => (LangItem::Deref, sym::deref),
             Mutability::Mut => (LangItem::DerefMut, sym::deref_mut),
         };
-        let borrow_kind = super::util::ref_pat_borrow_kind(mutability);
+        let borrow_kind = super::util::ref_pat_borrow_kind(ty::Pinnedness::Not, mutability);
         let source_info = self.source_info(span);
         let re_erased = self.tcx.lifetimes.re_erased;
         let trait_item = self.tcx.require_lang_item(trait_item, span);

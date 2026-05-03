@@ -57,6 +57,22 @@ fn pin_ref_then_move() {
     foo_pin_ref(x);
 }
 
+fn ref_pin_mut_then_move() {
+    let mut foo = Foo::default();
+    {
+        let ref pin mut _x = foo;
+    }
+    foo_move(foo); //[pinned]~ ERROR cannot move out of `foo` because it is pinned
+}
+
+fn ref_pin_mut_then_mut_borrow() {
+    let mut foo = Foo::default();
+    {
+        let ref pin mut _x = foo;
+    }
+    foo_mut(&mut foo); //[pinned]~ ERROR cannot borrow `foo` as mutable because it is pinned
+}
+
 fn pin_mut_then_ref() {
     let mut foo = Foo::default();
     foo_pin_mut(&pin mut foo); // ok

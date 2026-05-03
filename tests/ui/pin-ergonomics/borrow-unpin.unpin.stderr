@@ -62,7 +62,7 @@ LL |     let x = &pin const foo; // ok
    |                        --- you could clone this value
 
 error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrow-unpin.rs:67:13
+  --> $DIR/borrow-unpin.rs:83:13
    |
 LL |     let x = &pin mut foo; // ok
    |             ------------ mutable borrow occurs here
@@ -72,7 +72,7 @@ LL |     foo_pin_mut(x);
    |                 - mutable borrow later used here
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
-  --> $DIR/borrow-unpin.rs:89:17
+  --> $DIR/borrow-unpin.rs:105:17
    |
 LL |     let x = &pin mut foo; // ok
    |             ------------ first mutable borrow occurs here
@@ -82,7 +82,7 @@ LL |     foo_pin_mut(x);
    |                 - first borrow later used here
 
 error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immutable
-  --> $DIR/borrow-unpin.rs:100:17
+  --> $DIR/borrow-unpin.rs:116:17
    |
 LL |     let x = &pin const foo; // ok
    |             -------------- immutable borrow occurs here
@@ -92,7 +92,7 @@ LL |     foo_pin_ref(x);
    |                 - immutable borrow later used here
 
 error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
-  --> $DIR/borrow-unpin.rs:111:17
+  --> $DIR/borrow-unpin.rs:127:17
    |
 LL |     let x = &pin mut foo; // ok
    |             ------------ mutable borrow occurs here
