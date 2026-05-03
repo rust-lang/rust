@@ -244,6 +244,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         res: Res,
         renamed: Option<Symbol>,
         please_inline: bool,
+        import_id: Option<LocalDefId>,
     ) -> bool {
         debug!("maybe_inline_local (renamed: {renamed:?}) res: {res:?}");
 
@@ -338,20 +339,20 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = tcx.hir_item(i);
-                    self.visit_item_inner(i, None, Some(def_id));
+                    self.visit_item_inner(i, None, Some(import_id.unwrap_or(def_id)));
                 }
                 self.inlining = prev;
                 true
             }
             Node::Item(it) if !is_glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_item_inner(it, renamed, Some(def_id));
+                self.visit_item_inner(it, renamed, Some(import_id.unwrap_or(def_id)));
                 self.inlining = prev;
                 true
             }
             Node::ForeignItem(it) if !is_glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_foreign_item_inner(it, renamed, Some(def_id));
+                self.visit_foreign_item_inner(it, renamed, Some(import_id.unwrap_or(def_id)));
                 self.inlining = prev;
                 true
             }
@@ -519,8 +520,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             hir::UseKind::Glob => None,
                             hir::UseKind::ListStem => unreachable!(),
                         };
-                        if self.maybe_inline_local(item.owner_id.def_id, res, ident, please_inline)
-                        {
+                        if self.maybe_inline_local(
+                            item.owner_id.def_id,
+                            res,
+                            ident,
+                            please_inline,
+                            import_id,
+                        ) {
                             debug!("Inlining {:?}", item.owner_id.def_id);
                             continue;
                         }

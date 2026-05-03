@@ -78,19 +78,21 @@ impl CfgPropagator<'_, '_> {
         // We need to merge an item attributes with its parent's in case it's an impl as an
         // impl might not be defined in the same module as the item it implements.
         //
+        // Same if it's an inlined item: we need to get the full original `cfg`.
+        //
         // Otherwise, `cfg_info` already tracks everything we need so nothing else to do!
-        if matches!(item.kind, ItemKind::ImplItem(_))
-            && let Some(mut next_def_id) = item.item_id.as_local_def_id()
-        {
-            while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
-                let x = load_attrs(self.cx.tcx, parent_def_id.to_def_id());
-                add_only_cfg_attributes(&mut attrs, x);
-                next_def_id = parent_def_id;
+        if matches!(item.kind, ItemKind::ImplItem(_)) || item.inline_stmt_id.is_some() {
+            if let Some(mut next_def_id) = item.item_id.as_local_def_id() {
+                while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
+                    let x = load_attrs(self.cx.tcx, parent_def_id.to_def_id());
+                    add_only_cfg_attributes(&mut attrs, x);
+                    next_def_id = parent_def_id;
+                }
             }
         }
         // We also need to merge an item attributes with its parent's in case it's a macro with
         // the `#[macro_export]` attribute, because it might not be defined at crate root.
-        if matches!(item.kind, ItemKind::MacroItem(_))
+        else if matches!(item.kind, ItemKind::MacroItem(_))
             && item.inner.attrs.other_attrs.iter().any(|attr| {
                 matches!(
                     attr,
