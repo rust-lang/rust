@@ -1271,13 +1271,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
-    fn pinned_borrows<'s>(
-        &self,
-        state: &'s BorrowckDomain,
-    ) -> Option<&'s MixedBitSet<BorrowIndex>> {
-        Some(&state.pinned_borrows)
-    }
-
     #[instrument(level = "debug", skip(self, state))]
     fn check_access_for_conflict(
         &mut self,
@@ -1291,7 +1284,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
         debug!(?borrows_in_scope, ?location);
-        let pinned_borrows = self.pinned_borrows(state);
+        let pinned_borrows = &state.pinned_borrows;
 
         each_borrow_involving_path(
             self,
@@ -1300,8 +1293,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             (sd, place_span.0),
             self.borrow_set,
             |borrow_index| {
-                borrows_in_scope.contains(borrow_index)
-                    || pinned_borrows.is_some_and(|p| p.contains(borrow_index))
+                borrows_in_scope.contains(borrow_index) || pinned_borrows.contains(borrow_index)
             },
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
@@ -1384,7 +1376,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     if !borrows_in_scope.contains(borrow_index) =>
                 {
                     debug_assert!(
-                        pinned_borrows.is_none_or(|p| p.contains(borrow_index)),
+                        pinned_borrows.contains(borrow_index),
                         "unexpected expired but non-pinned borrow {borrow_index:?}: {borrow:?}",
                     );
                     match kind {
