@@ -133,21 +133,21 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
     }
 }
 
+/// Runs the destructor for all items in the slice when it gets dropped (normally or
+/// during unwinding).
+struct Dropper<'a, T>(&'a mut [T]);
+
+impl<T> Drop for Dropper<'_, T> {
+    fn drop(&mut self) {
+        unsafe {
+            ptr::drop_in_place(self.0);
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
     fn drop(&mut self) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
-        struct Dropper<'a, T>(&'a mut [T]);
-
-        impl<'a, T> Drop for Dropper<'a, T> {
-            fn drop(&mut self) {
-                unsafe {
-                    ptr::drop_in_place(self.0);
-                }
-            }
-        }
-
         let (front, back) = self.as_mut_slices();
         unsafe {
             let _back_dropper = Dropper(back);
@@ -1368,18 +1368,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
-        struct Dropper<'a, T>(&'a mut [T]);
-
-        impl<'a, T> Drop for Dropper<'a, T> {
-            fn drop(&mut self) {
-                unsafe {
-                    ptr::drop_in_place(self.0);
-                }
-            }
-        }
-
         // Safe because:
         //
         // * Any slice passed to `drop_in_place` is valid; the second case has
@@ -1434,18 +1422,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[unstable(feature = "vec_deque_truncate_front", issue = "140667")]
     pub fn truncate_front(&mut self, len: usize) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
-        struct Dropper<'a, T>(&'a mut [T]);
-
-        impl<'a, T> Drop for Dropper<'a, T> {
-            fn drop(&mut self) {
-                unsafe {
-                    ptr::drop_in_place(self.0);
-                }
-            }
-        }
-
         unsafe {
             if len >= self.len {
                 // No action is taken
