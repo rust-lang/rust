@@ -410,7 +410,7 @@ impl FromClean<rustc_hir::FnHeader> for FunctionHeader {
         };
         FunctionHeader {
             is_async: header.is_async(),
-            is_const: header.is_const(),
+            is_const: matches!(header.constness, rustc_hir::Constness::Const { .. }),
             is_unsafe,
             abi: header.abi.into_json(renderer),
         }
