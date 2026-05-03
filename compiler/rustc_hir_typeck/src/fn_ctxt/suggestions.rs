@@ -250,6 +250,78 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Suggests calling `.collect()` on an `Iterator` it can be collected in the return type
+    /// ```compile_fail
+    /// let x: String = "foo".chars().map(|c| c); // with a .collect() here the code compiles
+    /// ```
+    pub(crate) fn suggest_collect(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expected_type: Ty<'tcx>,
+        found_type: Ty<'tcx>,
+    ) -> bool {
+        let tcx = self.tcx;
+        let expected = self.resolve_vars_if_possible(expected_type);
+        let found = self.resolve_vars_if_possible(found_type);
+
+        if expected.references_error() || found.references_error() {
+            return false;
+        }
+
+        if expected.is_unit() {
+            return false;
+        }
+
+        let Some(iterator_trait_id) = tcx.get_diagnostic_item(sym::Iterator) else {
+            return false;
+        };
+
+        if !self
+            .infcx
+            .type_implements_trait(iterator_trait_id, [found], self.param_env)
+            .must_apply_modulo_regions()
+        {
+            return false;
+        }
+
+        let Some(from_iterator_trait_id) = tcx.get_diagnostic_item(sym::FromIterator) else {
+            return false;
+        };
+
+        let Some(iterator_item_id) = tcx
+            .associated_items(iterator_trait_id)
+            .in_definition_order()
+            .find(|item| item.name() == sym::Item)
+            .map(|item| item.def_id)
+        else {
+            return false;
+        };
+
+        let item_type = Ty::new_projection(tcx, iterator_item_id, [found]);
+        let item_type =
+            self.normalize(expr.span, rustc_middle::ty::Unnormalized::new_wip(item_type));
+
+        let can_collect = self
+            .infcx
+            .type_implements_trait(from_iterator_trait_id, [expected, item_type], self.param_env)
+            .may_apply();
+
+        if can_collect {
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_hi(),
+                format!(
+                    "consider using `.collect()` to convert the `Iterator` into a `{expected}`"
+                ),
+                ".collect()",
+                rustc_errors::Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+
+        false
+    }
+
     pub(crate) fn suggest_remove_last_method_call(
         &self,
         err: &mut Diag<'_>,
