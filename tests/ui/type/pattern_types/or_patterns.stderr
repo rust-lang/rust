@@ -77,6 +77,7 @@ error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/or_patterns.rs:17:1
@@ -122,6 +123,7 @@ error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: false,
            randomization_seed: $SEED,
        }
   --> $DIR/or_patterns.rs:21:1

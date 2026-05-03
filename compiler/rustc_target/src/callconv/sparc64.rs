@@ -219,7 +219,7 @@ where
             continue;
         }
         if arg.is_ignore() {
-            if passes_zsts && arg.layout.is_zst() {
+            if passes_zsts && arg.layout.is_repr_c() {
                 arg.make_indirect_from_ignore();
                 double_word_count += 1;
             }

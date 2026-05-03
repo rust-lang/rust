@@ -31,7 +31,7 @@ where
         // s390x-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         if cx.target_spec().os == Os::Linux
             && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
-            && arg.layout.is_zst()
+            && arg.layout.is_repr_c()
         {
             arg.make_indirect_from_ignore();
         }
