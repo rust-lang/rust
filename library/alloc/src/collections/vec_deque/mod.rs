@@ -1454,6 +1454,96 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Shortens the deque to the elements within `range`, dropping the rest.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point is greater than the end point or if
+    /// the end point is greater than the length of the deque.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vec_deque_truncate_to_range)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf: VecDeque<_> = (0..6).collect();
+    /// buf.truncate_to_range(2..5);
+    /// assert_eq!(buf, [2, 3, 4]);
+    /// ```
+    #[unstable(feature = "vec_deque_truncate_to_range", issue = "156215")]
+    pub fn truncate_to_range<R>(&mut self, range: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let Range { start, end } = slice::range(range, ..self.len);
+
+        if start == 0 && end == self.len {
+            return;
+        } else if start == end {
+            self.clear();
+            return;
+        } else if start == 0 {
+            self.truncate(end);
+            return;
+        } else if end == self.len {
+            self.truncate_front(self.len - start);
+            return;
+        } else if !mem::needs_drop::<T>() {
+            self.head = self.to_physical_idx(start);
+            self.len = end - start;
+            return;
+        }
+
+        // Both the dropped prefix [0..start) and the dropped suffix [end..self.len) are
+        // non-empty.  Plan up to three physical slices to drop, then update head/len, then
+        // drop.  Only one of the dropped prefix or dropped suffix can cross between slices.
+        let (front, back) = self.as_mut_slices();
+        let flen = front.len();
+        let blen = back.len();
+        let fptr = front.as_mut_ptr();
+        let bptr = back.as_mut_ptr();
+
+        unsafe {
+            let (drop_a, drop_b, drop_c) = if end <= flen {
+                // Kept range lies in `front`.  The dropped suffix is the rest of `front`
+                // plus all of `back`.
+                let pre = ptr::slice_from_raw_parts_mut(fptr, start);
+                let mid = ptr::slice_from_raw_parts_mut(fptr.add(end), flen - end);
+                (pre, mid, Some(back as *mut [T]))
+            } else if start >= flen {
+                // Kept range lies in `back`.  The dropped prefix is all of `front` plus the
+                // start of `back`.
+                let mid = ptr::slice_from_raw_parts_mut(bptr, start - flen);
+                let suf = ptr::slice_from_raw_parts_mut(bptr.add(end - flen), blen - (end - flen));
+                (front as *mut [T], mid, Some(suf))
+            } else {
+                // Kept range straddles the boundary.  The dropped prefix is in `front`, the
+                // dropped suffix is in `back`.  Only two regions to drop.
+                let pre = ptr::slice_from_raw_parts_mut(fptr, start);
+                let suf = ptr::slice_from_raw_parts_mut(bptr.add(end - flen), blen - (end - flen));
+                (pre, suf, None)
+            };
+
+            // Set these once only, then drop.  If we called truncate + truncate_front, a panic in
+            // a destructor could leave this truncation in a half completed state.
+            self.head = self.to_physical_idx(start);
+            self.len = end - start;
+
+            match drop_c {
+                Some(c) => {
+                    let _g_a = Dropper(&mut *drop_a);
+                    let _g_b = Dropper(&mut *drop_b);
+                    ptr::drop_in_place(c);
+                }
+                None => {
+                    let _g_a = Dropper(&mut *drop_a);
+                    ptr::drop_in_place(drop_b);
+                }
+            }
+        }
+    }
+
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
