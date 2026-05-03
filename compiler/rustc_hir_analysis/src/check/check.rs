@@ -1727,6 +1727,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         PrivateField { inside: Ty<'tcx> },
         NonExhaustive { ty: Ty<'tcx> },
         ReprC { ty: Ty<'tcx> },
+        Array,
     }
     struct NonTrivialFieldInfo<'tcx> {
         span: Span,
@@ -1745,7 +1746,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match ty.kind() {
             ty::Tuple(list) => list.iter().try_for_each(|t| is_trivial(tcx, typing_env, t)),
-            ty::Array(ty, _) => is_trivial(tcx, typing_env, *ty),
+            ty::Array(..) => {
+                // Arrays are meant to be ABI-compatible with what happens in other languages,
+                // so we should not promise that they are "trivial".
+                return ControlFlow::Break(NonTrivialReason::Array);
+            }
             ty::Adt(def, args) => {
                 if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
@@ -1832,6 +1837,9 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                 ),
                 NonTrivialReason::ReprC { ty } => format!(
                     "this field contains `{ty}`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets"
+                ),
+                NonTrivialReason::Array => format!(
+                    "this field contains an array, which might be relevant for the ABI on some targets"
                 ),
             };
             diag.span_label(field.span, msg);
