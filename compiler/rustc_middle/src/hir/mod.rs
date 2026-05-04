@@ -237,7 +237,7 @@ impl<'tcx> TyCtxt<'tcx> {
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
         define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> Hashes {
-        if !self.needs_crate_hash() {
+        if !self.needs_hir_hash() {
             return Hashes { opt_hash_including_bodies: None, attrs_hash: None };
         }
 
