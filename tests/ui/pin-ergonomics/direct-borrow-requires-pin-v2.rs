@@ -1,5 +1,4 @@
 #![feature(pin_ergonomics)]
-#![allow(dead_code, incomplete_features)]
 //@ normalize-stderr: "\n\n\z" -> "\n"
 
 use std::marker::PhantomPinned;

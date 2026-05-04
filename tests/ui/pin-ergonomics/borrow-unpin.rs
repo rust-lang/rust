@@ -1,6 +1,5 @@
 //@ revisions: unpin pinned
 #![feature(pin_ergonomics)]
-#![allow(dead_code, incomplete_features)]
 
 // This test ensures `!Unpin` places cannot be mutably borrowed or moved after pinning.
 // `Unpin` places still obey ordinary borrow rules, but expired `&pin` borrows do not pin.

@@ -1,5 +1,4 @@
 #![feature(pin_ergonomics)]
-#![allow(dead_code, incomplete_features)]
 
 // Makes sure we can handle `&pin mut place` and `&pin const place` as sugar for
 // `std::pin::pin!(place)` and `Pin::new(&place)`.

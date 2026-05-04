@@ -1,5 +1,4 @@
 #![feature(pin_ergonomics)]
-#![allow(incomplete_features)]
 
 // This protects pinning projected places. Pinning `pair.0` must not pin
 // unrelated disjoint fields, but it must reject later mutable borrows or moves

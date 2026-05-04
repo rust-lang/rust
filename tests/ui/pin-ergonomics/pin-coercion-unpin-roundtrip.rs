@@ -2,7 +2,6 @@
 //@ edition:2024
 
 #![feature(pin_ergonomics)]
-#![allow(incomplete_features)]
 
 // This protects the `T: Unpin` round trip from `&mut T` to `&pin mut T` and
 // back to `&mut T`, which must not leave the reference falsely treated as pinned.

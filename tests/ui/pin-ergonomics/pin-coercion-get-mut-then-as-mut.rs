@@ -2,7 +2,6 @@
 //@ edition:2024
 
 #![feature(pin_ergonomics)]
-#![allow(incomplete_features)]
 
 // This protects calling `Pin<&mut T>::as_mut()` after using `get_mut()` for
 // `T: Unpin`; the `get_mut()` path must not make the later `as_mut()` borrow
