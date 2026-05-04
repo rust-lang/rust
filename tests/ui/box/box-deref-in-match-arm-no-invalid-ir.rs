@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/18845
+
 //@ run-pass
 // This used to generate invalid IR in that even if we took the
 // `false` branch we'd still try to free the Box from the other
