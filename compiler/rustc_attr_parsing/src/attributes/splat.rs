@@ -9,9 +9,8 @@ impl NoArgsAttributeParser for SplatParser {
     const PATH: &[Symbol] = &[sym::splat];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        // FIXME(splat): do we want to allow MacroCall if the macro creates an argument
         Allow(Target::Param),
-        // FIXME(splat): only allow MacroCall if the macro creates an argument
-        Allow(Target::MacroCall),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Splat;
 }

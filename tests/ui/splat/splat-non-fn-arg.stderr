@@ -4,7 +4,7 @@ error: `#[splat]` attribute cannot be used on functions
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on traits
   --> $DIR/splat-non-fn-arg.rs:9:1
@@ -12,7 +12,7 @@ error: `#[splat]` attribute cannot be used on traits
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on inherent impl blocks
   --> $DIR/splat-non-fn-arg.rs:18:1
@@ -20,7 +20,7 @@ error: `#[splat]` attribute cannot be used on inherent impl blocks
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on inherent methods
   --> $DIR/splat-non-fn-arg.rs:24:5
@@ -28,7 +28,7 @@ error: `#[splat]` attribute cannot be used on inherent methods
 LL |     #[splat]
    |     ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on inherent methods
   --> $DIR/splat-non-fn-arg.rs:27:5
@@ -36,7 +36,7 @@ error: `#[splat]` attribute cannot be used on inherent methods
 LL |     #[splat]
    |     ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on trait impl blocks
   --> $DIR/splat-non-fn-arg.rs:33:1
@@ -44,7 +44,7 @@ error: `#[splat]` attribute cannot be used on trait impl blocks
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on foreign modules
   --> $DIR/splat-non-fn-arg.rs:40:1
@@ -52,7 +52,7 @@ error: `#[splat]` attribute cannot be used on foreign modules
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on foreign functions
   --> $DIR/splat-non-fn-arg.rs:46:5
@@ -60,7 +60,7 @@ error: `#[splat]` attribute cannot be used on foreign functions
 LL |     #[splat]
    |     ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on modules
   --> $DIR/splat-non-fn-arg.rs:50:1
@@ -68,7 +68,7 @@ error: `#[splat]` attribute cannot be used on modules
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on use statements
   --> $DIR/splat-non-fn-arg.rs:53:1
@@ -76,7 +76,7 @@ error: `#[splat]` attribute cannot be used on use statements
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: `#[splat]` attribute cannot be used on structs
   --> $DIR/splat-non-fn-arg.rs:56:1
@@ -84,7 +84,7 @@ error: `#[splat]` attribute cannot be used on structs
 LL | #[splat]
    | ^^^^^^^^
    |
-   = help: `#[splat]` can be applied to function params and macro calls
+   = help: `#[splat]` can only be applied to function params
 
 error: aborting due to 11 previous errors
 
