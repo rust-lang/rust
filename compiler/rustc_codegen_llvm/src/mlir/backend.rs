@@ -166,11 +166,10 @@ fn compile_codegen_unit_impl(
 
     cleanup_mlir_module(&mut mlir_module).expect("MLIR cleanup passes failed");
 
-    mlir_module.mlir_source = Some(mlir_module.llmod().as_operation().to_string());
+    let mlir_text = mlir_module.llmod().as_operation().to_string();
+    mlir_module.mlir_source = Some(mlir_text);
 
     compile_module(&mut mlir_module).expect("Triton passes failed");
-
-    eprintln!("MLIR module post-triton: {}", mlir_module.llmod().as_operation());
 
     info!("");
     info!("========================================");

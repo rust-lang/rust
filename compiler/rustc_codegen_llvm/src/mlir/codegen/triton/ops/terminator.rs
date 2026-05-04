@@ -179,7 +179,6 @@ impl<'a> TritonCodegen<'a> {
             _ => format!("XX{:?}", func),
         };
 
-
         let method: LocalCallHandler<'a, 'tcx> = match func_name.as_str() {
             "core::ops::Mul::mul" => TritonCodegen::codegen_mul_call as LocalCallHandler<'a, 'tcx>,
             "core::ops::Add::add" => TritonCodegen::codegen_add_call as LocalCallHandler<'a, 'tcx>,
@@ -315,6 +314,7 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::sqrt" => TritonCodegen::codegen_sqrt_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::sqrt_rn" => TritonCodegen::codegen_sqrt_rn_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::erf" => TritonCodegen::codegen_erf_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atan" => TritonCodegen::codegen_atan_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::softmax" => TritonCodegen::codegen_softmax_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::minimum" => TritonCodegen::codegen_minimum_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::clamp" => TritonCodegen::codegen_clamp_call as LocalCallHandler<'a, 'tcx>,
@@ -378,7 +378,10 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::device_print" => {
                 TritonCodegen::codegen_device_print_call as LocalCallHandler<'a, 'tcx>
             }
-            _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
+            _ => {
+                eprintln!("[DEBUG] codegen_terminator_call: unhandled func_name={:?}", func_name);
+                TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>
+            }
         };
 
         let value = method(

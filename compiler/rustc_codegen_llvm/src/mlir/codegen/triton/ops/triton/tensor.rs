@@ -2782,6 +2782,47 @@ impl<'a> TritonCodegen<'a> {
         self.codegen_math_unary(tcx, instance, mir, args, "math.erf", location, mlir_block, state)
     }
 
+    /// `triton::Triton::atan` — uses CUDA libdevice `__nv_atanf` via `tt.extern_elementwise`.
+    /// `math.atan` has no lowering in Triton's TritonGPUToLLVM pipeline.
+    pub fn codegen_atan_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = x.r#type();
+        let op: Operation<'a> = OperationBuilder::new("tt.extern_elementwise", location)
+            .add_operands(&[x])
+            .add_results(&[result_ty])
+            .add_attributes(&[
+                (
+                    melior::ir::Identifier::new(self.module.context(), "libname"),
+                    melior::ir::Attribute::parse(self.module.context(), r#""libdevice""#).unwrap(),
+                ),
+                (
+                    melior::ir::Identifier::new(self.module.context(), "libpath"),
+                    melior::ir::Attribute::parse(self.module.context(), r#""""#).unwrap(),
+                ),
+                (
+                    melior::ir::Identifier::new(self.module.context(), "symbol"),
+                    melior::ir::Attribute::parse(self.module.context(), r#""__nv_atanf""#).unwrap(),
+                ),
+                (
+                    melior::ir::Identifier::new(self.module.context(), "pure"),
+                    melior::ir::Attribute::parse(self.module.context(), "true").unwrap(),
+                ),
+            ])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
     /// `triton::Triton::sigmoid` — uses CUDA libdevice via `tt.extern_elementwise`.
     pub fn codegen_sigmoid_call<'tcx>(
         &self,

@@ -901,6 +901,7 @@ pub mod triton {
         fn sqrt<D: ty::Float>(x: Self::Tensor<D>) -> Self::Tensor<D>;
         fn sqrt_rn<D: ty::Float>(x: Self::Tensor<D>) -> Self::Tensor<D>;
         fn erf<D: ty::Float>(x: Self::Tensor<D>) -> Self::Tensor<D>;
+        fn atan<D: ty::Float>(x: Self::Tensor<D>) -> Self::Tensor<D>;
 
         /*------------------------------ Math Ops — Float (higher-level) ------------------------------*/
 
@@ -1698,6 +1699,12 @@ pub mod triton {
                 #[inline(never)]
                 #[allow(clippy::zero_ptr)]
                 fn erf<D: ty::Float>(_x: Self::Tensor<D>) -> Self::Tensor<D> {
+                    tensor::LlvmTensor(0 as *mut D)
+                }
+
+                #[inline(never)]
+                #[allow(clippy::zero_ptr)]
+                fn atan<D: ty::Float>(_x: Self::Tensor<D>) -> Self::Tensor<D> {
                     tensor::LlvmTensor(0 as *mut D)
                 }
 
@@ -2938,7 +2945,8 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32, const USE_BIAS: bool
     let sqrt = T::sqrt(sig);
     let sqrt_rn = T::sqrt_rn(sqrt);
     let erf = T::erf(sqrt_rn);
-    let smax = T::softmax(erf, Some(0), true, true);
+    let atan = T::atan(erf);
+    let smax = T::softmax(atan, Some(0), true, true);
     let mx = T::maximum(smax, smax);
     let mn = T::minimum(mx, smax);
     let cl = T::clamp(mn, smax, mx);
