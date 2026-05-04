@@ -1007,10 +1007,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!(?def_id, ?container, ?container_id);
                 match container {
                     ty::AssocContainer::Trait => {
+                        let arg_span = if let hir::Node::Expr(call_expr) =
+                            self.tcx.parent_hir_node(hir_id)
+                            && let hir::ExprKind::Call(_, args) = call_expr.kind
+                            && let Some(first_arg) = args.first()
+                        {
+                            let mut arg = first_arg;
+                            while let hir::ExprKind::AddrOf(_, _, inner) = arg.kind {
+                                arg = inner;
+                            }
+                            Some(arg.span)
+                        } else {
+                            None
+                        };
+
                         if let Err(e) = callee::check_legal_trait_for_method_call(
                             tcx,
                             path_span,
-                            None,
+                            arg_span,
                             span,
                             container_id,
                             self.body_id.to_def_id(),

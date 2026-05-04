@@ -42,7 +42,7 @@ pub(crate) fn check_legal_trait_for_method_call(
     if tcx.is_lang_item(trait_id, LangItem::Drop) {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
-                lo: expr_span.shrink_to_lo(),
+                lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
                 hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
             }
         } else {
