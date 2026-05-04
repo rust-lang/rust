@@ -1185,7 +1185,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.get_mut().record_use(ident, fallback_binding, Used::Other);
             } else {
                 let location = match parent_scope.module.kind {
-                    ModuleKind::Def(kind, def_id, name) => {
+                    ModuleKind::Def(kind, def_id, _, name) => {
                         if let Some(name) = name {
                             format!("{} `{name}`", kind.descr(def_id))
                         } else {
