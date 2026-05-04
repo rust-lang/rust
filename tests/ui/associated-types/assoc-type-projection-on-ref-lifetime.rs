@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/23406
+
 //@ build-pass
 #![allow(dead_code)]
 trait Inner {

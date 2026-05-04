@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/26127
+
 //@ run-pass
 trait Tr { type T; }
 impl Tr for u8 { type T=(); }

@@ -1,16 +1,16 @@
 error[E0271]: type mismatch resolving `<() as Array<'a>>::Element == ()`
-  --> $DIR/issue-39970.rs:19:6
+  --> $DIR/assoc-type-element-mismatch-in-hrtb.rs:21:6
    |
 LL |     <() as Visit>::visit();
    |      ^^ type mismatch resolving `<() as Array<'a>>::Element == ()`
    |
 note: expected this to be `()`
-  --> $DIR/issue-39970.rs:10:20
+  --> $DIR/assoc-type-element-mismatch-in-hrtb.rs:12:20
    |
 LL |     type Element = &'a ();
    |                    ^^^^^^
 note: required for `()` to implement `Visit`
-  --> $DIR/issue-39970.rs:13:6
+  --> $DIR/assoc-type-element-mismatch-in-hrtb.rs:15:6
    |
 LL | impl Visit for () where
    |      ^^^^^     ^^

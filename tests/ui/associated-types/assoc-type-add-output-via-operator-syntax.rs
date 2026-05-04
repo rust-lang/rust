@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/20803
+
 //@ run-pass
 use std::ops::Add;
 

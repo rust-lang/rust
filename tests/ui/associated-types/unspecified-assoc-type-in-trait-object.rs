@@ -1,3 +1,4 @@
+// Regression test for https://github.com/rust-lang/rust/issues/19842
 // Test that a partially specified trait object with unspecified associated
 // type does not type-check.
 

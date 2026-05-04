@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/21909
+
 //@ check-pass
 
 trait A<X> {
