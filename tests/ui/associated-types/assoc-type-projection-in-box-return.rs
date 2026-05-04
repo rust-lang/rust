@@ -1,4 +1,4 @@
-// Regression test for Issue #20971.
+// Regression test for Issue https://github.com/rust-lang/rust/issues/20971
 
 //@ run-fail
 //@ error-pattern:Hello, world!

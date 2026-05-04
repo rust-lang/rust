@@ -1,6 +1,6 @@
 //@ build-pass
 
-// Regression test for #20797.
+// Regression test for https://github.com/rust-lang/rust/issues/20797
 
 use std::default::Default;
 use std::io;

@@ -36,7 +36,7 @@ impl Linker {
         Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: Arc::clone(tcx.output_filenames(())),
-            crate_hash: if tcx.needs_crate_hash() {
+            crate_hash: if tcx.sess.opts.incremental.is_some() {
                 Some(tcx.crate_hash(LOCAL_CRATE))
             } else {
                 None

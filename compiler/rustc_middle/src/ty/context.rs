@@ -1127,12 +1127,12 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn needs_crate_hash(self) -> bool {
-        // Why is the crate hash needed for these configurations?
+    pub fn needs_hir_hash(self) -> bool {
+        // Why is the hir hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in
         //   `rustc_query_impl::execution::execute_job`.
         // - incremental: for query lookups.
-        // - needs_metadata: for putting into crate metadata.
+        // - needs_metadata: it is included in the crate metadata through the crate_hash query
         // - instrument_coverage: for putting into coverage data (see
         //   `hash_mir_source`).
         // - metrics_dir: metrics use the strict version hash in the filenames
