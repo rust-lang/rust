@@ -279,14 +279,18 @@ std::optional<Error> CudaBackend::addCudaPass(PassManager &pm, CudaPass pass,
 
 std::optional<Error> CudaBackend::addCudaPass(PassManager &pm, CudaPass pass,
                                               int arg0, int arg1) {
-  if (pass != CudaPass::ttnvgpuir_to_llvmir) {
+  switch (pass) {
+  case CudaPass::ttnvgpuir_to_llvmir:
+    pm.addPass(createConvertTritonGPUToLLVMPass(arg0, arg1));
+    return std::nullopt;
+  case CudaPass::allocate_shared_memory_nv:
+    pm.addPass(mlir::triton::createAllocateSharedMemoryNvPass(arg0, arg1));
+    return std::nullopt;
+  default:
     m_last_error = std::make_optional(Error::InvalidPass);
     m_last_error_string = "Invalid nvidia pass";
     return m_last_error;
   }
-
-  pm.addPass(createConvertTritonGPUToLLVMPass(arg0, arg1));
-  return std::nullopt;
 }
 
 std::optional<Error> CudaBackend::addCudaPass(PassManager &pm, CudaPass pass,
@@ -455,8 +459,8 @@ LogicalResult CudaBackend::makeLLIR(MLIRContext &context, ModuleOp module) {
   addPass(pm, MlirPass::ttgpuir_allocate_warp_groups);
   addPass(pm, MlirPass::scf_to_cf);
   addPass(pm, MlirPass::gluon_inliner);
-  addPass(pm, MlirPass::ttgpuir_allocate_shared_memory_nv, capability,
-          ptx_version);
+  addCudaPass(pm, CudaPass::allocate_shared_memory_nv, capability,
+              ptx_version);
   addCudaPass(pm, CudaPass::ttnvgpuir_allocate_tensor_memory);
   addCudaPass(pm, CudaPass::ttnvgpuir_check_matmul_two_cta);
   if (m_options.enable_experimental_consan) {

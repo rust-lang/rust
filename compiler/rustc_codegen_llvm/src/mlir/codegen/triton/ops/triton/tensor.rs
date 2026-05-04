@@ -3208,6 +3208,12 @@ impl<'a> TritonCodegen<'a> {
         } else {
             0
         };
+        // args[2] is keep_dims: bool — true means retain the reduced axis as size 1.
+        // Use to_bits_unchecked() because bool is 1 byte and to_i32() would panic.
+        let keep_dims = args.len() > 2
+            && self.to_scalar_int(tcx, instance, &args[2].node)
+                .map(|s| s.to_bits_unchecked() != 0)
+                .unwrap_or(false);
         let elem = self.elem_ty(src);
         let combine_op = Self::choose_float_int_op(elem, combine_op_float, combine_op_int);
         let region = self.build_reduce_region(location, elem, combine_op);
@@ -3219,7 +3225,32 @@ impl<'a> TritonCodegen<'a> {
         .into();
         let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
         mlir_block.append_operation(op);
-        Ok(Some(result.into()))
+        let result_val: Value<'a, 'a> = result.into();
+
+        // If keep_dims=true and tt.reduce dropped all axes (scalar result), splat the
+        // scalar back into a rank-preserving tensor with 1 at the reduced axis position.
+        // Example: reduce tensor<128xf32> axis=0 → f32; keep_dims → tensor<1xf32>.
+        if keep_dims && !result_val.r#type().is_tensor() {
+            if let Ok(src_t) = RankedTensorType::try_from(src.r#type()) {
+                if let Ok(src_dims) = src_t.dims() {
+                    let kept_shape: Vec<i64> = src_dims
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &d)| if i as i32 == axis { 1 } else { d })
+                        .collect();
+                    let target_ty = tensor_type(&kept_shape, result_val.r#type()).into();
+                    let splat_op: Operation<'a> =
+                        splat(self.module.context(), location, result_val, target_ty)
+                            .map_err(|e| MlirError::CreateOperation { err: e })?
+                            .into();
+                    let splat_result = splat_op.result(0).unwrap().into();
+                    mlir_block.append_operation(splat_op);
+                    return Ok(Some(splat_result));
+                }
+            }
+        }
+
+        Ok(Some(result_val))
     }
 
     /// `triton::Triton::sum` — reduction sum.
