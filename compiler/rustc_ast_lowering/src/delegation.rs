@@ -84,6 +84,19 @@ enum AttrAdditionKind {
     Inherit { factory: fn(Span, &hir::Attribute) -> hir::Attribute },
 }
 
+/// Summary info about function parameters.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct ParamInfo {
+    /// The number of function parameters, including any C variadic `...` parameter.
+    pub param_count: usize,
+
+    /// Whether the function arguments end in a C variadic `...` parameter.
+    pub c_variadic: bool,
+
+    /// The index of the splatted parameter, if any.
+    pub splatted: Option<u16>,
+}
+
 const PARENT_ID: hir::ItemLocalId = hir::ItemLocalId::ZERO;
 
 static ATTRS_ADDITIONS: &[AttrAdditionInfo] = &[
@@ -199,23 +212,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let is_method = self.is_method(sig_id, span);
 
-        let (param_count, c_variadic, splatted) = self.param_count(sig_id);
+        let param_info = self.param_info(sig_id);
 
-        if !self.check_block_soundness(delegation, sig_id, is_method, param_count) {
+        if !self.check_block_soundness(delegation, sig_id, is_method, param_info.param_count) {
             return self.generate_delegation_error(span, delegation);
         }
 
         let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
 
-        let (body_id, call_expr_id, unused_target_expr) =
-            self.lower_delegation_body(delegation, sig_id, param_count, &mut generics, span);
+        let (body_id, call_expr_id, unused_target_expr) = self.lower_delegation_body(
+            delegation,
+            sig_id,
+            param_info.param_count,
+            &mut generics,
+            span,
+        );
 
         let decl = self.lower_delegation_decl(
             delegation.source,
             sig_id,
-            param_count,
-            c_variadic,
-            splatted,
+            param_info,
             span,
             &generics,
             delegation.id,
@@ -368,26 +384,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
     }
 
-    // Function parameter count, including C variadic `...` and `#[splat]` if present.
-    fn param_count(&self, def_id: DefId) -> (usize, bool /*c_variadic*/, Option<u16> /*splatted*/) {
+    /// Returns function parameter info, including C variadic `...` and `#[splat]` if present.
+    fn param_info(&self, def_id: DefId) -> ParamInfo {
         let sig = self.tcx.fn_sig(def_id).skip_binder().skip_binder();
+
         // FIXME(splat): use `sig.splatted()` once FnSig has it
-        (sig.inputs().len() + usize::from(sig.c_variadic()), sig.c_variadic(), None)
+        ParamInfo {
+            param_count: sig.inputs().len() + usize::from(sig.c_variadic()),
+            c_variadic: sig.c_variadic(),
+            splatted: None,
+        }
     }
 
     fn lower_delegation_decl(
         &mut self,
         source: DelegationSource,
         sig_id: DefId,
-        param_count: usize,
-        c_variadic: bool,
-        splatted: Option<u16>,
+        param_info: ParamInfo,
         span: Span,
         generics: &GenericsGenerationResults<'hir>,
         call_path_node_id: NodeId,
         call_expr_id: HirId,
         unused_target_expr: bool,
     ) -> &'hir hir::FnDecl<'hir> {
+        let ParamInfo { param_count, c_variadic, splatted } = param_info;
+
         // The last parameter in C variadic functions is skipped in the signature,
         // like during regular lowering.
         let decl_param_count = param_count - c_variadic as usize;
