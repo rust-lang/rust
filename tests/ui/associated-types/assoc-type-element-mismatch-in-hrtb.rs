@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/39970
+
 trait Array<'a> {
     type Element: 'a;
 }

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/37109
+
 //@ run-pass
 trait ToRef<'a> {
     type Ref: 'a;

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/28983
+
 //@ run-pass
 pub trait Test { type T; }
 

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/19850
+
 //@ check-pass
 #![allow(unused_variables)]
 // Test that `<Type as Trait>::Output` and `Self::Output` are accepted as type annotations in let

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/23992
+
 //@ run-pass
 pub struct Outer<T: Trait>(T);
 pub struct Inner<'a> { value: &'a bool }
