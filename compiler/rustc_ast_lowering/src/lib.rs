@@ -562,7 +562,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
-        if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
+        if tcx.needs_hir_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
 
     let delayed_resolver = Steal::new((resolver, krate));
     mid_hir::Crate::new(owners, delayed_ids, delayed_resolver, opt_hir_hash)
