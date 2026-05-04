@@ -3839,8 +3839,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         // Step 2: check that the viewed type is a struct.
-        match inner_ty.kind() {
-            ty::Adt(def, _) if def.is_struct() => {}
+        let variant = match inner_ty.kind() {
+            ty::Adt(def, _) if def.is_struct() => def.non_enum_variant(),
 
             ty::Adt(def, _) => {
                 let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedAdt {
@@ -3859,9 +3859,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 });
                 return Ty::new_error(self.tcx(), guar);
             }
+        };
+
+        // Step 3: check that every viewed field exists.
+        let mut viewed_indices = Vec::with_capacity(viewed_fields.len());
+        let mut error = None;
+        for field in viewed_fields {
+            let Some((_, field)) = variant
+                .fields
+                .iter_enumerated()
+                .find(|(_, f)| f.ident(self.tcx()).normalize_to_macros_2_0() == field)
+            else {
+                let err =
+                    self.dcx().emit_err(NoFieldOnType { span: field.span, field, ty: inner_ty });
+                error = Some(err);
+                continue;
+            };
+
+            viewed_indices.push(field);
+        }
+        if let Some(guar) = error {
+            return Ty::new_error(self.tcx(), guar);
         }
 
-        // FIXME(scrabsha): resolve the fields in `viewed_fields` to actual fields.
         // FIXME(scrabsha): actually lower view types.
         inner_ty
     }
