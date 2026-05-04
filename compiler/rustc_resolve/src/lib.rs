@@ -543,7 +543,7 @@ enum ModuleKind {
     ///   The crate root will have `None` for the symbol.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(DefKind, DefId, Option<Symbol>),
+    Def(DefKind, DefId, NodeId, Option<Symbol>),
 }
 
 impl ModuleKind {
@@ -557,7 +557,7 @@ impl ModuleKind {
 
     fn opt_def_id(&self) -> Option<DefId> {
         match self {
-            ModuleKind::Def(_, def_id, _) => Some(*def_id),
+            ModuleKind::Def(_, def_id, _, _) => Some(*def_id),
             _ => None,
         }
     }
@@ -726,7 +726,7 @@ impl<'ra> ModuleData<'ra> {
         self_decl: Option<Decl<'ra>>,
     ) -> Self {
         let is_foreign = match kind {
-            ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
+            ModuleKind::Def(_, def_id, _, _) => !def_id.is_local(),
             ModuleKind::Block => false,
         };
         ModuleData {
@@ -756,7 +756,7 @@ impl<'ra> ModuleData<'ra> {
 
     fn res(&self) -> Option<Res> {
         match self.kind {
-            ModuleKind::Def(kind, def_id, _) => Some(Res::Def(kind, def_id)),
+            ModuleKind::Def(kind, def_id, _, _) => Some(Res::Def(kind, def_id)),
             _ => None,
         }
     }
@@ -813,11 +813,11 @@ impl<'ra> Module<'ra> {
 
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(self) -> bool {
-        matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _))
+        matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _, _))
     }
 
     fn is_trait(self) -> bool {
-        matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _))
+        matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _, _))
     }
 
     fn nearest_item_scope(self) -> Module<'ra> {
@@ -833,8 +833,17 @@ impl<'ra> Module<'ra> {
     /// This may be the crate root.
     fn nearest_parent_mod(self) -> DefId {
         match self.kind {
-            ModuleKind::Def(DefKind::Mod, def_id, _) => def_id,
+            ModuleKind::Def(DefKind::Mod, def_id, _, _) => def_id,
             _ => self.parent.expect("non-root module without parent").nearest_parent_mod(),
+        }
+    }
+
+    /// The [`NodeId`] of the nearest `mod` item ancestor (which may be this module).
+    /// This may be the crate root.
+    fn nearest_parent_mod_node_id(self) -> NodeId {
+        match self.kind {
+            ModuleKind::Def(DefKind::Mod, _, node_id, _) => node_id,
+            _ => self.parent.expect("non-root module without parent").nearest_parent_mod_node_id(),
         }
     }
 
@@ -852,7 +861,7 @@ impl<'ra> Module<'ra> {
     #[track_caller]
     fn expect_local(self) -> LocalModule<'ra> {
         match self.kind {
-            ModuleKind::Def(_, def_id, _) if !def_id.is_local() => {
+            ModuleKind::Def(_, def_id, _, _) if !def_id.is_local() => {
                 panic!("`Module::expect_local` is called on a non-local module: {self:?}")
             }
             ModuleKind::Def(..) | ModuleKind::Block => LocalModule(self.0),
@@ -862,7 +871,7 @@ impl<'ra> Module<'ra> {
     #[track_caller]
     fn expect_extern(self) -> ExternModule<'ra> {
         match self.kind {
-            ModuleKind::Def(_, def_id, _) if !def_id.is_local() => ExternModule(self.0),
+            ModuleKind::Def(_, def_id, _, _) if !def_id.is_local() => ExternModule(self.0),
             ModuleKind::Def(..) | ModuleKind::Block => {
                 panic!("`Module::expect_extern` is called on a local module: {self:?}")
             }
@@ -992,8 +1001,8 @@ struct UseError<'a> {
     err: Diag<'a>,
     /// Candidates which user could `use` to access the missing type.
     candidates: Vec<ImportSuggestion>,
-    /// The `DefId` of the module to place the use-statements in.
-    def_id: DefId,
+    /// The `NodeId` of the module to place the use-statements in.
+    node_id: NodeId,
     /// Whether the diagnostic should say "instead" (as in `consider importing ... instead`).
     instead: bool,
     /// Extra free-form suggestion.
@@ -1551,7 +1560,7 @@ impl<'ra> ResolverArenas<'ra> {
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
         let self_decl = match kind {
-            ModuleKind::Def(def_kind, def_id, _) => Some(self.new_def_decl(
+            ModuleKind::Def(def_kind, def_id, _, _) => Some(self.new_def_decl(
                 Res::Def(def_kind, def_id),
                 vis,
                 span,
@@ -1732,7 +1741,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let graph_root = arenas.new_module(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, None),
+            ModuleKind::Def(DefKind::Mod, root_def_id, CRATE_NODE_ID, None),
             Visibility::Public,
             ExpnId::root(),
             crate_span,
@@ -1743,7 +1752,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let local_module_map = FxIndexMap::from_iter([(CRATE_DEF_ID, graph_root)]);
         let empty_module = arenas.new_module(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, None),
+            ModuleKind::Def(DefKind::Mod, root_def_id, CRATE_NODE_ID, None),
             Visibility::Public,
             ExpnId::root(),
             DUMMY_SP,

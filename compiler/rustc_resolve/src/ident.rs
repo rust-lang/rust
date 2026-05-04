@@ -644,7 +644,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             Scope::ModuleGlobs(module, _)
-                if let ModuleKind::Def(_, def_id, _) = module.kind
+                if let ModuleKind::Def(_, def_id, _, _) = module.kind
                     && !def_id.is_local() =>
             {
                 // Fast path: external module decoding only creates non-glob declarations.

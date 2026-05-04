@@ -1941,7 +1941,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             && let Some((module, _)) = &self.current_trait_ref
                             && let Some(ty) = &self.diag_metadata.current_self_type
                             && Some(true) == self.diag_metadata.in_non_gat_assoc_type
-                            && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _) = module.kind
+                            && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _, _) =
+                                module.kind
                         {
                             if def_id_matches_path(
                                 self.r.tcx,
@@ -4514,7 +4515,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     parent_qself,
                 );
 
-                let def_id = this.parent_scope.module.nearest_parent_mod();
+                let node_id = this.parent_scope.module.nearest_parent_mod_node_id();
                 let instead = res.is_some();
                 let (suggestion, const_err) = if let Some((start, end)) =
                     this.diag_metadata.in_range
@@ -4556,7 +4557,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let ue = UseError {
                     err,
                     candidates,
-                    def_id,
+                    node_id,
                     instead,
                     suggestion,
                     path: path.into(),
@@ -4645,7 +4646,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 parent_err.cancel();
 
-                let def_id = this.parent_scope.module.nearest_parent_mod();
+                let node_id = this.parent_scope.module.nearest_parent_mod_node_id();
 
                 if this.should_report_errs() {
                     if candidates.is_empty() {
@@ -4670,7 +4671,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         this.r.use_injections.push(UseError {
                             err,
                             candidates,
-                            def_id,
+                            node_id,
                             instead: false,
                             suggestion: None,
                             path: prefix_path.into(),

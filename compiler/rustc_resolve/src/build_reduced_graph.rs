@@ -9,8 +9,9 @@ use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
-    self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
-    ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias, TyAlias,
+    self as ast, AssocItem, AssocItemKind, Block, ConstItem, DUMMY_NODE_ID, Delegation, Fn,
+    ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias,
+    TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
@@ -168,7 +169,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let expn_id = self.cstore().expn_that_defined_untracked(self.tcx, def_id);
                     let module = self.new_extern_module(
                         parent,
-                        ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
+                        ModuleKind::Def(
+                            def_kind,
+                            def_id,
+                            DUMMY_NODE_ID,
+                            Some(self.tcx.item_name(def_id)),
+                        ),
                         expn_id,
                         self.def_span(def_id),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
@@ -251,7 +257,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Any inherited visibility resolved directly inside an enum or trait
                     // (i.e. variants, fields, and trait items) inherits from the visibility
                     // of the enum or trait.
-                    ModuleKind::Def(DefKind::Enum | DefKind::Trait, def_id, _) => {
+                    ModuleKind::Def(DefKind::Enum | DefKind::Trait, def_id, _, _) => {
                         self.tcx.visibility(def_id).expect_local()
                     }
                     // Otherwise, the visibility is restricted to the nearest parent `mod` item.
@@ -848,7 +854,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
                 let module = self.r.new_local_module(
                     Some(parent),
-                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
+                    ModuleKind::Def(def_kind, def_id, item.id, Some(ident.name)),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude
@@ -882,7 +888,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
                 let module = self.r.new_local_module(
                     Some(parent),
-                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
+                    ModuleKind::Def(def_kind, def_id, item.id, Some(ident.name)),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude,
