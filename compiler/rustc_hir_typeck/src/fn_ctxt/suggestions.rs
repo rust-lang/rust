@@ -265,11 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected = self.resolve_vars_if_possible(expected_type);
         let found = self.resolve_vars_if_possible(found_type);
 
-        if expected.references_error() || found.references_error() {
-            return false;
-        }
-
-        if expected.is_unit() {
+        if expected.references_error() || found.references_error() || expected.is_unit() {
             return false;
         }
 
