@@ -1,17 +1,54 @@
 error[E0053]: method `tuple_1` has an incompatible type for trait
-  --> $DIR/splat-non-tuple.rs:40:5
+  --> $DIR/splat-non-tuple.rs:38:5
    |
 LL |     fn tuple_1(_: (u32,)) {}
    |     ^^^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
    |
 note: type in trait
-  --> $DIR/splat-non-tuple.rs:19:5
+  --> $DIR/splat-non-tuple.rs:17:5
    |
 LL |     fn tuple_1(#[splat] _: (u32,));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature `fn(#[splat] (_,))`
               found signature `fn((_,))`
 
-error: aborting due to 1 previous error
+error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+  --> $DIR/splat-non-tuple.rs:7:30
+   |
+LL | fn primitive_arg(#[splat] x: u32) {}
+   |                              ^^^
+...
+LL |     primitive_arg(1u32);
+   |     ^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0053`.
+error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a NotATuple (NotATuple)
+  --> $DIR/splat-non-tuple.rs:14:25
+   |
+LL | fn enum_arg(#[splat] y: NotATuple) {}
+   |                         ^^^^^^^^^
+...
+LL |     enum_arg(NotATuple::A(1u32));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Foo (Foo)
+  --> $DIR/splat-non-tuple.rs:25:27
+   |
+LL | fn struct_arg(#[splat] z: Foo) {}
+   |                           ^^^
+...
+LL |     struct_arg(foo);
+   |     ^^^^^^^^^^^^^^^
+
+error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a TupleStruct (TupleStruct)
+  --> $DIR/splat-non-tuple.rs:54:33
+   |
+LL | fn tuple_struct_arg(#[splat] z: TupleStruct) {}
+   |                                 ^^^^^^^^^^^
+...
+LL |     tuple_struct_arg(tuple_struct);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0053, E0277.
+For more information about an error, try `rustc --explain E0053`.

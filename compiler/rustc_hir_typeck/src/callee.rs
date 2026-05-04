@@ -601,8 +601,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.fn_sig_kind,
-            TupleArgumentsFlag::NotCallOper,
+            fn_sig.fn_sig_kind.c_variadic(),
+            TupleArgumentsFlag::with_fn_sig_kind(fn_sig.fn_sig_kind, false),
             def_id,
             callee_generic_args,
         );
@@ -915,8 +915,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.fn_sig_kind,
-            TupleArgumentsFlag::TupleAllCallArgs,
+            fn_sig.fn_sig_kind.c_variadic(),
+            TupleArgumentsFlag::rust_fn_trait_call(),
             Some(closure_def_id.to_def_id()),
             None,
         );
@@ -1002,8 +1002,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             expected,
             arg_exprs,
-            method.sig.fn_sig_kind,
-            TupleArgumentsFlag::TupleAllCallArgs,
+            method.sig.fn_sig_kind.c_variadic(),
+            TupleArgumentsFlag::rust_fn_trait_call(),
             Some(method.def_id),
             None,
         );
