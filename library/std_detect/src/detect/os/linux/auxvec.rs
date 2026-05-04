@@ -51,7 +51,7 @@ pub(crate) struct AuxVec {
 /// Note that run-time feature detection is not invoked for features that can
 /// be detected at compile-time.
 ///
-///  Note: We always directly use `getauxval` on `*-linux-{gnu,musl,ohos}*` and
+///  Note: We always directly use `getauxval` on `*-linux-{gnu,musl,ohos,pauthtest}*` and
 /// `*-android*` targets rather than `dlsym` it because we can safely assume
 /// `getauxval` is linked to the binary.
 /// - `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))
@@ -125,7 +125,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
         any(
             all(
                 target_os = "linux",
-                any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
+                any(target_env = "gnu", target_env = "musl", target_env = "ohos", target_env = "pauthtest"),
             ),
             target_os = "android",
         ) => {
