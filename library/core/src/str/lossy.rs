@@ -211,12 +211,7 @@ impl<'a> Iterator for Utf8Chunks<'a> {
 
         let mut i = 0;
         let mut valid_up_to = 0;
-        while i < self.source.len() {
-            // SAFETY: `i < self.source.len()` per previous line.
-            // For some reason the following are both significantly slower:
-            // while let Some(&byte) = self.source.get(i) {
-            // while let Some(byte) = self.source.get(i).copied() {
-            let byte = unsafe { *self.source.get_unchecked(i) };
+        while let Some(byte) = self.source.get(i).copied() {
             i += 1;
 
             if byte < 128 {
