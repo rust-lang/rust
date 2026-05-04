@@ -1212,9 +1212,10 @@ pub(crate) struct UnknownCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("unstable feature specified for `-Ctarget-feature`: `{$feature}`")]
-#[note("this feature is not stably supported; its behavior can change in the future")]
+#[note("{$note}; its behavior can change in the future")]
 pub(crate) struct UnstableCTargetFeature<'a> {
     pub feature: &'a str,
+    pub note: &'a str,
 }
 
 #[derive(Diagnostic)]
