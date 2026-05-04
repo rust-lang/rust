@@ -1,4 +1,3 @@
-//@ known-bug: unknown
 //@ run-pass
 //@ aux-build: hygiene.rs
 

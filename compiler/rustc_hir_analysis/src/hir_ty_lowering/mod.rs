@@ -51,7 +51,7 @@ use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
 use crate::check::check_abi;
-use crate::diagnostics::{BadReturnTypeNotation, NoFieldOnType};
+use crate::diagnostics::{self, BadReturnTypeNotation, NoFieldOnType};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -3401,10 +3401,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 *variant,
                 *field,
             ),
-            hir::TyKind::View(ty, _) => {
-                // FIXME(scrabsha): lower views to MIR.
-                return self.lower_ty(ty);
-            }
+            hir::TyKind::View(ty, fields) => self.lower_view(self.lower_ty(ty), fields),
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
@@ -3815,5 +3812,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let adt_ty = Ty::new_adt(tcx, adt_def, args);
         ty::Const::new_value(tcx, valtree, adt_ty)
+    }
+
+    fn lower_view(&self, inner_ty: Ty<'tcx>, fields: &'tcx [Ident]) -> Ty<'tcx> {
+        // Step 1: check that every field is unique, and keep a list of field that we know are
+        // unique.
+        let mut viewed_fields = Vec::<Ident>::with_capacity(fields.len());
+
+        for f in fields {
+            let f = f.normalize_to_macros_2_0();
+            // PERF: this is quadratic, but ~fine since the amount of fields is very low.
+            if let Some(previous_field_span) =
+                viewed_fields.iter().find_map(|f_| (*f_ == f).then_some(f_.span))
+            {
+                self.dcx().emit_err(diagnostics::ViewedFieldIsAlreadyPartOfTheView {
+                    name: f.name,
+                    span: f.span,
+                    previous_field_span,
+                });
+                continue;
+            }
+            viewed_fields.push(f);
+        }
+
+        // FIXME(scrabsha): check that `inner_ty` is a struct.
+        // FIXME(scrabsha): resolve the fields in `viewed_fields` to actual fields.
+        // FIXME(scrabsha): actually lower view types.
+        inner_ty
     }
 }
