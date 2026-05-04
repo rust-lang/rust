@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/20009
+
 //@ check-pass
 // Check that associated types are `Sized`
 

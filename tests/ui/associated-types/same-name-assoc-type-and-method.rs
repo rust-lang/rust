@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/35600
+
 //@ run-pass
 #![allow(non_camel_case_types)]
 #![allow(unused_variables)]

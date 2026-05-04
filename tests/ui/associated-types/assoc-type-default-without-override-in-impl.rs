@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/37051
+
 //@ check-pass
 
 #![feature(associated_type_defaults)]

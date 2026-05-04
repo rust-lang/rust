@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/34839
+
 //@ check-pass
 
 trait RegularExpression: Sized {
