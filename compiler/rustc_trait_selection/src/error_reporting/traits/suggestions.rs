@@ -3476,6 +3476,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
             | ObligationCauseCode::Pattern { .. }
+            | ObligationCauseCode::IfChainCoerce(_)
             | ObligationCauseCode::IfExpression { .. }
             | ObligationCauseCode::IfExpressionWithNoElse
             | ObligationCauseCode::MainFunctionType

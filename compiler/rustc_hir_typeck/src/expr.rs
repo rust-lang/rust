@@ -201,27 +201,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
     }
 
-    /// Check an expr with an expectation type which may be used to eagerly
-    /// guide inference when evaluating that expr.
-    #[instrument(skip(self, expr), level = "debug")]
-    pub(super) fn check_expr_with_expectation(
+    /// Run the per-expression framing (`write_ty`, divergence handling,
+    /// unreachable warnings) around `check`.
+    pub(super) fn check_expr_with_check_fn<F>(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-    ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_args(expr, expected, None)
-    }
-
-    /// Same as [`Self::check_expr_with_expectation`], but allows us to pass in
-    /// the arguments of a [`ExprKind::Call`] when evaluating its callee that
-    /// is an [`ExprKind::Path`]. We use this to refine the spans for certain
-    /// well-formedness guarantees for the path expr.
-    pub(super) fn check_expr_with_expectation_and_args(
-        &self,
-        expr: &'tcx hir::Expr<'tcx>,
-        expected: Expectation<'tcx>,
-        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
-    ) -> Ty<'tcx> {
+        check: F,
+    ) -> Ty<'tcx>
+    where
+        F: FnOnce(&Self) -> Ty<'tcx>,
+    {
         if self.tcx().sess.verbose_internals() {
             // make this code only run with -Zverbose-internals because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
@@ -264,13 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(self.function_diverges_because_of_empty_arguments.get())
         };
 
-        let ty = ensure_sufficient_stack(|| match &expr.kind {
-            // Intercept the callee path expr and give it better spans.
-            hir::ExprKind::Path(
-                qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
-            ) => self.check_expr_path(qpath, expr, call_expr_and_args),
-            _ => self.check_expr_kind(expr, expected),
-        });
+        let ty = ensure_sufficient_stack(|| check(self));
         let ty = self.resolve_vars_if_possible(ty);
 
         // Warn for non-block expressions with diverging children.
@@ -318,6 +302,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("... {:?}, expected is {:?}", ty, expected);
 
         ty
+    }
+
+    /// Check an expr with an expectation type which may be used to eagerly
+    /// guide inference when evaluating that expr.
+    #[instrument(skip(self, expr), level = "debug")]
+    pub(super) fn check_expr_with_expectation(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        self.check_expr_with_expectation_and_args(expr, expected, None)
+    }
+
+    /// Same as [`Self::check_expr_with_expectation`], but allows us to pass in
+    /// the arguments of a [`ExprKind::Call`] when evaluating its callee that
+    /// is an [`ExprKind::Path`]. We use this to refine the spans for certain
+    /// well-formedness guarantees for the path expr.
+    pub(super) fn check_expr_with_expectation_and_args(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        expected: Expectation<'tcx>,
+        call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+    ) -> Ty<'tcx> {
+        self.check_expr_with_check_fn(expr, expected, |this| match &expr.kind {
+            // Intercept the callee path expr and give it better spans.
+            hir::ExprKind::Path(
+                qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
+            ) => this.check_expr_path(qpath, expr, call_expr_and_args),
+            _ => this.check_expr_kind(expr, expected),
+        })
     }
 
     #[instrument(skip(self, expr), level = "debug")]
@@ -1162,72 +1176,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     parent = self.tcx.parent_hir_id(parent);
                 }
             }
-        }
-    }
-
-    // A generic function for checking the 'then' and 'else' clauses in an 'if'
-    // or 'if-else' expression.
-    fn check_expr_if(
-        &self,
-        expr_id: HirId,
-        cond_expr: &'tcx hir::Expr<'tcx>,
-        then_expr: &'tcx hir::Expr<'tcx>,
-        opt_else_expr: Option<&'tcx hir::Expr<'tcx>>,
-        sp: Span,
-        orig_expected: Expectation<'tcx>,
-    ) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types.bool, |_| {});
-
-        self.warn_if_unreachable(
-            cond_expr.hir_id,
-            then_expr.span,
-            "block in `if` or `while` expression",
-        );
-
-        let cond_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        let expected = orig_expected.try_structurally_resolve_and_adjust_for_branches(self, sp);
-        let then_ty = self.check_expr_with_expectation(then_expr, expected);
-        let then_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        // We've already taken the expected type's preferences
-        // into account when typing the `then` branch. To figure
-        // out the initial shot at a LUB, we thus only consider
-        // `expected` if it represents a *hard* constraint
-        // (`only_has_type`); otherwise, we just go with a
-        // fresh type variable.
-        let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce = CoerceMany::with_capacity(coerce_to_ty, 2);
-
-        coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
-
-        if let Some(else_expr) = opt_else_expr {
-            let else_ty = self.check_expr_with_expectation(else_expr, expected);
-            let else_diverges = self.diverges.get();
-
-            let tail_defines_return_position_impl_trait =
-                self.return_position_impl_trait_from_match_expectation(orig_expected);
-            let if_cause =
-                self.if_cause(expr_id, else_expr, tail_defines_return_position_impl_trait);
-
-            coerce.coerce(self, &if_cause, else_expr, else_ty);
-
-            // We won't diverge unless both branches do (or the condition does).
-            self.diverges.set(cond_diverges | then_diverges & else_diverges);
-        } else {
-            self.if_fallback_coercion(sp, cond_expr, then_expr, &mut coerce);
-
-            // If the condition is false we can't diverge.
-            self.diverges.set(cond_diverges);
-        }
-
-        let result_ty = coerce.complete(self);
-        if let Err(guar) = cond_ty.error_reported() {
-            Ty::new_error(self.tcx, guar)
-        } else {
-            result_ty
         }
     }
 

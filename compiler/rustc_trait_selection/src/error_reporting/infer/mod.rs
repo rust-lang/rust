@@ -58,6 +58,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::traits::IfChainCoerceCause;
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::traits::PatternOriginExpr;
@@ -512,6 +513,69 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
             },
+            ObligationCauseCode::IfChainCoerce(box IfChainCoerceCause {
+                outer_if_expr_id,
+                source_branch_expr_id: prev_branch_expr_id,
+                source_branch_ty: prev_branch_ty,
+                source_branch_span: prev_branch_span,
+                target_branch_expr_id: branch_expr_id,
+                target_branch_ty: branch_ty,
+                target_branch_span: branch_span,
+                ..
+            }) => {
+                err.span_label(prev_branch_span, "expected because of this");
+
+                if let hir::Node::Expr(&hir::Expr { span: expr_span, .. }) =
+                    self.tcx.hir_node(outer_if_expr_id)
+                    && let hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::If(cond, ..), .. }) =
+                        self.tcx.hir_node(outer_if_expr_id)
+                {
+                    let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
+                        if prev_branch_span.hi() == expr_span.hi()
+                            || branch_span.hi() == expr_span.hi()
+                        {
+                            // Avoid overlapping arrows: shrink to `if <cond>`.
+                            Some(expr_span.shrink_to_lo().to(cond.peel_drop_temps().span))
+                        } else {
+                            Some(expr_span)
+                        }
+                    } else {
+                        None
+                    };
+                    if let Some(sp) = outer_span {
+                        err.span_label(sp, "`if` and `else` have incompatible types");
+                    }
+                }
+
+                let prev_id = if let hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Block(blk, _),
+                    ..
+                }) = self.tcx.hir_node(prev_branch_expr_id)
+                {
+                    blk.hir_id
+                } else {
+                    prev_branch_expr_id
+                };
+                let new_id = if let hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Block(blk, _),
+                    ..
+                }) = self.tcx.hir_node(branch_expr_id)
+                {
+                    blk.hir_id
+                } else {
+                    branch_expr_id
+                };
+                if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
+                    Some(prev_id),
+                    prev_branch_ty,
+                    prev_branch_span,
+                    Some(new_id),
+                    branch_ty,
+                    branch_span,
+                ) {
+                    err.subdiagnostic(subdiag);
+                }
+            }
             ObligationCauseCode::IfExpression { expr_id, .. } => {
                 let hir::Node::Expr(&hir::Expr {
                     kind: hir::ExprKind::If(cond_expr, then_expr, Some(else_expr)),
@@ -2305,7 +2369,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 }
                 _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },
             },
-            ObligationCauseCode::IfExpression { .. } => {
+            ObligationCauseCode::IfExpression { .. } | ObligationCauseCode::IfChainCoerce(_) => {
                 ObligationCauseFailureCode::IfElseDifferent { span, subdiags }
             }
             ObligationCauseCode::IfExpressionWithNoElse => {
