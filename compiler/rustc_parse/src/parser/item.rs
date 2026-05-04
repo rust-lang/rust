@@ -4,7 +4,7 @@ use std::mem;
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ast::*;
-use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
@@ -2687,12 +2687,10 @@ pub(crate) struct FnParseMode {
 /// FIXME(estebank, xizheyin): Use more variants.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FnContext {
-    /// Free context.
     Free,
-    /// A Trait context.
     Trait,
-    /// An Impl block.
     Impl,
+    FnPtrTy,
 }
 
 /// Parsing of functions and methods.
@@ -3336,6 +3334,7 @@ impl<'a> Parser<'a> {
         &mut self,
         fn_parse_mode: &FnParseMode,
         first_param: bool,
+        // FIXME(fmease): rename arg -> param
         recover_arg_parse: bool,
     ) -> PResult<'a, Param> {
         let lo = self.token.span;
@@ -3368,6 +3367,7 @@ impl<'a> Parser<'a> {
             } else {
                 is_name_required
             };
+
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
@@ -3391,6 +3391,7 @@ impl<'a> Parser<'a> {
                 (pat, this.parse_ty_for_param()?)
             } else {
                 debug!("parse_param_general ident_to_pat");
+                // FIXME: This creates a snapshot in the happy path!
                 let parser_snapshot_before_ty = this.create_snapshot_for_diagnostic();
                 this.eat_incorrect_doc_comment_for_param_type();
                 let mut ty = this.parse_ty_for_param();
@@ -3427,7 +3428,7 @@ impl<'a> Parser<'a> {
                         // Recover from attempting to parse the argument as a type without pattern.
                         err.cancel();
                         this.restore_snapshot(parser_snapshot_before_ty);
-                        this.recover_arg_parse()?
+                        this.recover_complex_param_pat(fn_parse_mode.context)?
                     }
                     Err(err) => return Err(err),
                 }
@@ -3590,21 +3591,21 @@ impl<'a> Parser<'a> {
         Ok(Some(Param::from_self(AttrVec::default(), eself, eself_ident)))
     }
 
+    // FIXME(fmease): Better name.
     fn is_named_param(&self) -> bool {
-        let offset = match &self.token.kind {
-            token::OpenInvisible(origin) => match origin {
-                InvisibleOrigin::MetaVar(MetaVarKind::Pat(_)) => {
-                    return self.check_noexpect_past_close_delim(&token::Colon);
-                }
-                _ => 0,
-            },
-            token::And | token::AndAnd => 1,
-            _ if self.token.is_keyword(kw::Mut) => 1,
-            _ => 0,
-        };
+        if let token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Pat(_))) = self.token.kind
+        {
+            return self.check_noexpect_past_close_delim(&token::Colon);
+        }
 
-        self.look_ahead(offset, |t| t.is_ident())
-            && self.look_ahead(offset + 1, |t| t == &token::Colon)
+        fn is_param_name(t: &Token) -> bool {
+            !t.is_non_raw_ident_where(|ident| ident.name != kw::Underscore && ident.is_reserved())
+        }
+
+        let offset = if self.token.is_keyword(kw::Mut) { 1 } else { 0 };
+
+        self.look_ahead(offset, is_param_name)
+            && self.look_ahead(offset + 1, |t| t.kind == token::Colon)
     }
 
     fn recover_self_param(&mut self) -> bool {

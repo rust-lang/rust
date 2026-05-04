@@ -235,8 +235,9 @@ pub fn parse_asm_args<'a>(
         }
 
         // Parse operand names.
-        let name = if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
-            let (ident, _) = p.token.ident().unwrap();
+        let name = if let Some((ident, _)) = p.token.ident()
+            && p.look_ahead(1, |t| *t == token::Eq)
+        {
             p.bump();
             p.expect(exp!(Eq))?;
             allow_templates = false;
