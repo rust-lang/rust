@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/23336
+
 //@ run-pass
 pub trait Data { fn doit(&self) {} }
 impl<T> Data for T {}

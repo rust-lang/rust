@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/23073
+
 #![feature(associated_type_defaults)]
 
 trait Foo { type T; }
