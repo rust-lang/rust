@@ -1,9 +1,8 @@
 fn main() {
     let x = if true {
         &true
-    } else if false {
+    } else if false { //~ ERROR `if` and `else` have incompatible types [E0308]
         true //~ HELP consider borrowing here
-        //~^ ERROR `if` and `else` have incompatible types [E0308]
     } else {
         true
     };
