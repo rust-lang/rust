@@ -81,7 +81,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> TyAndLayout<'tcx> {
         match layout.ty.kind() {
             ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
-                assert!(!adt_def.is_enum());
+                assert_matches!(layout.variants, rustc_abi::Variants::Single { .. });
                 // Find the non-1-ZST field, and recurse.
                 let (_, field) = layout.non_1zst_field(self).unwrap();
                 self.unfold_transparent(field, may_unfold)
