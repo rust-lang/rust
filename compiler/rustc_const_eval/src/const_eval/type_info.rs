@@ -436,10 +436,17 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::variadic => {
                     self.write_scalar(Scalar::from_bool(fn_sig_kind.c_variadic()), &field_place)?;
                 }
-                sym::splat => {
+                sym::is_splatted => {
                     self.write_scalar(
-                        // Use the same encoding as FnSigKind.splatted
+                        Scalar::from_bool(fn_sig_kind.splatted().is_some()),
+                        &field_place,
+                    )?;
+                }
+                sym::splatted_index => {
+                    self.write_scalar(
                         Scalar::from_u16(
+                            // Currently the same encoding as FnSigKind.splatted
+                            // FIXME(splat): make these two fields into a single Option<u16>, or choose a stable encoding
                             fn_sig_kind.splatted().unwrap_or(FnSigKind::NO_SPLATTED_ARG_INDEX),
                         ),
                         &field_place,

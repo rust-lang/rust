@@ -214,7 +214,7 @@ pub struct Variant {
     pub name: &'static str,
     /// All fields of the variant.
     pub fields: &'static [Field],
-    /// Whether the enum variant fields is non-exhaustive.
+    /// Whether the enum variant fields are non-exhaustive.
     pub non_exhaustive: bool,
 }
 
@@ -341,6 +341,22 @@ pub struct FnPtr {
 
     /// Vardiadic function, e.g. extern "C" fn add(n: usize, mut args: ...);
     pub variadic: bool,
+
+    // FIXME(splat): should these fields be private, or merged into an Option<u16>?
+    /// Is any function argument splatted?
+    pub is_splatted: bool,
+
+    /// The index of the splatted function argument in `inputs`, only valid if `is_splatted` is true.
+    /// e.g. in `fn overload(a: u8, #[splat] b: (f32, usize))` the index is 1, and it can be called
+    /// as `overload(a, 1.0, 2)`.
+    pub splatted_index: u16,
+}
+
+impl FnPtr {
+    /// Returns the splatted function argument index, or `None` if no argument is splatted.
+    pub const fn splatted(&self) -> Option<u16> {
+        if self.is_splatted { Some(self.splatted_index) } else { None }
+    }
 }
 
 #[derive(Debug, Default)]

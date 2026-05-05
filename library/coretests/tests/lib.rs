@@ -107,6 +107,7 @@
 #![feature(slice_shift)]
 #![feature(slice_split_once)]
 #![feature(sliceindex_wrappers)]
+#![feature(splat)]
 #![feature(split_array)]
 #![feature(split_as_slice)]
 #![feature(std_internals)]
@@ -129,6 +130,7 @@
 #![feature(widening_mul)]
 // tidy-alphabetical-end
 #![allow(internal_features)]
+#![expect(incomplete_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
