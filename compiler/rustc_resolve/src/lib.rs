@@ -2146,8 +2146,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> &'tcx [LocalDefId] {
         let mut import_ids: SmallVec<[LocalDefId; 1]> = smallvec![];
         while let DeclKind::Import { import, source_decl, .. } = kind {
-            if let Some(node_id) = import.id() {
-                let def_id = self.local_def_id(node_id);
+            if let Some(def_id) = import.def_id() {
                 self.maybe_unused_trait_imports.insert(def_id);
                 import_ids.push(def_id);
             }

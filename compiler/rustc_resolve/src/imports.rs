@@ -260,6 +260,15 @@ impl<'ra> ImportData<'ra> {
         }
     }
 
+    pub(crate) fn def_id(&self) -> Option<LocalDefId> {
+        match self.kind {
+            ImportKind::Single { def_id, .. }
+            | ImportKind::Glob { def_id, .. }
+            | ImportKind::ExternCrate { def_id, .. } => Some(def_id),
+            ImportKind::MacroUse { .. } | ImportKind::MacroExport => None,
+        }
+    }
+
     pub(crate) fn simplify(&self) -> Reexport {
         match self.kind {
             ImportKind::Single { def_id, .. } => Reexport::Single(def_id.to_def_id()),
@@ -810,8 +819,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if binding.res() != Res::Err
                         && glob_decl.res() != Res::Err
                         && let DeclKind::Import { import: glob_import, .. } = glob_decl.kind
-                        && let Some(glob_import_id) = glob_import.id()
-                        && let glob_import_def_id = self.local_def_id(glob_import_id)
+                        && let Some(glob_import_def_id) = glob_import.def_id()
                         && self.effective_visibilities.is_exported(glob_import_def_id)
                         && glob_decl.vis().is_public()
                         && !binding.vis().is_public()
@@ -840,7 +848,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 if let DeclKind::Import { import, .. } = binding.kind
                     && let Some(binding_id) = import.id()
-                    && let import_def_id = self.local_def_id(binding_id)
+                    && let import_def_id = import.def_id().unwrap()
                     && self.effective_visibilities.is_exported(import_def_id)
                     && let Res::Def(reexported_kind, reexported_def_id) = binding.res()
                     && !matches!(reexported_kind, DefKind::Ctor(..))
