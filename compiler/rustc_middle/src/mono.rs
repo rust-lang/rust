@@ -533,7 +533,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::DropGlue(..)
                     | InstanceKind::CloneShim(..)
                     | InstanceKind::ThreadLocalShim(..)
-                    | InstanceKind::FnPtrAddrShim(..)
+                    | InstanceKind::FnPtrAsPtrShim(..)
+                    | InstanceKind::FnPtrFromPtrShim(..)
                     | InstanceKind::AsyncDropGlue(..)
                     | InstanceKind::FutureDropPollShim(..)
                     | InstanceKind::AsyncDropGlueCtorShim(..) => None,

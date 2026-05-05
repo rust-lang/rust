@@ -70,7 +70,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
-#[rustc_diagnostic_item = "NonNull"]
+#[lang = "non_null"]
 pub struct NonNull<T: PointeeSized> {
     pointer: crate::pattern_type!(*const T is !null),
 }

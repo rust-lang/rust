@@ -161,12 +161,19 @@ pub enum InstanceKind<'tcx> {
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     CloneShim(DefId, Ty<'tcx>),
 
-    /// Compiler-generated `<T as FnPtr>::addr` implementation.
+    /// Compiler-generated `<T as FnPtr>::as_ptr` implementation.
     ///
     /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
     ///
     /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
-    FnPtrAddrShim(DefId, Ty<'tcx>),
+    FnPtrAsPtrShim(DefId, Ty<'tcx>),
+
+    /// Compiler-generated `<T as FnPtr>::from_ptr` implementation.
+    ///
+    /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
+    ///
+    /// The `DefId` is for `FnPtr::from_ptr`, the `Ty` is the type `T`.
+    FnPtrFromPtrShim(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
@@ -254,7 +261,8 @@ impl<'tcx> InstanceKind<'tcx> {
             }
             | InstanceKind::DropGlue(def_id, _)
             | InstanceKind::CloneShim(def_id, _)
-            | InstanceKind::FnPtrAddrShim(def_id, _)
+            | InstanceKind::FnPtrAsPtrShim(def_id, _)
+            | InstanceKind::FnPtrFromPtrShim(def_id, _)
             | InstanceKind::FutureDropPollShim(def_id, _, _)
             | InstanceKind::AsyncDropGlue(def_id, _)
             | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
@@ -279,7 +287,8 @@ impl<'tcx> InstanceKind<'tcx> {
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
             | InstanceKind::DropGlue(..)
             | InstanceKind::CloneShim(..)
-            | InstanceKind::FnPtrAddrShim(..) => None,
+            | InstanceKind::FnPtrAsPtrShim(..)
+            | InstanceKind::FnPtrFromPtrShim(..) => None,
         }
     }
 
@@ -325,7 +334,8 @@ impl<'tcx> InstanceKind<'tcx> {
         match *self {
             InstanceKind::CloneShim(..)
             | InstanceKind::ThreadLocalShim(..)
-            | InstanceKind::FnPtrAddrShim(..)
+            | InstanceKind::FnPtrAsPtrShim(..)
+            | InstanceKind::FnPtrFromPtrShim(..)
             | InstanceKind::FnPtrShim(..)
             | InstanceKind::DropGlue(_, Some(_))
             | InstanceKind::FutureDropPollShim(..)

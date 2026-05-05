@@ -386,7 +386,8 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::Instance<'tcx> {
                 cx.write_str(&format!(" - shim(Some({ty}))"))?
             }
             ty::InstanceKind::CloneShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
-            ty::InstanceKind::FnPtrAddrShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
+            ty::InstanceKind::FnPtrAsPtrShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
+            ty::InstanceKind::FnPtrFromPtrShim(_, ty) => cx.write_str(&format!(" - shim({ty})"))?,
             ty::InstanceKind::FutureDropPollShim(_, proxy_ty, impl_ty) => {
                 cx.write_str(&format!(" - dropshim({proxy_ty}-{impl_ty})"))?
             }

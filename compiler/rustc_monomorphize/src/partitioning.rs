@@ -640,7 +640,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceKind::Virtual(..)
                 | ty::InstanceKind::CloneShim(..)
                 | ty::InstanceKind::ThreadLocalShim(..)
-                | ty::InstanceKind::FnPtrAddrShim(..)
+                | ty::InstanceKind::FnPtrAsPtrShim(..)
+                | ty::InstanceKind::FnPtrFromPtrShim(..)
                 | ty::InstanceKind::FutureDropPollShim(..)
                 | ty::InstanceKind::AsyncDropGlue(..)
                 | ty::InstanceKind::AsyncDropGlueCtorShim(..) => return None,
@@ -814,7 +815,8 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::ConstructCoroutineInClosureShim { .. }
         | InstanceKind::DropGlue(..)
         | InstanceKind::CloneShim(..)
-        | InstanceKind::FnPtrAddrShim(..) => return Visibility::Hidden,
+        | InstanceKind::FnPtrAsPtrShim(..)
+        | InstanceKind::FnPtrFromPtrShim(..) => return Visibility::Hidden,
     };
 
     // Both the `start_fn` lang item and `main` itself should not be exported,

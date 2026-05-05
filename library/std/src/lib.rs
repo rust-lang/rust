@@ -337,7 +337,7 @@
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
-#![feature(fn_ptr_trait)]
+#![feature(fn_static)]
 #![feature(formatting_options)]
 #![feature(funnel_shifts)]
 #![feature(generic_atomic)]

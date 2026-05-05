@@ -406,9 +406,10 @@
 
 use crate::cmp::Ordering;
 use crate::intrinsics::const_eval_select;
-use crate::marker::{Destruct, FnPtr, PointeeSized};
+use crate::marker::{Destruct, PointeeSized};
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
+use crate::ops::FnPtr;
 use crate::{fmt, hash, intrinsics, ub_checks};
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
