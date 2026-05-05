@@ -317,7 +317,6 @@ symbols! {
         Target,
         This,
         TokenStream,
-        Trait,
         TrivialClone,
         Try,
         TryCaptureGeneric,

@@ -750,15 +750,15 @@ impl<'input> Parser<'input> {
         spec
     }
 
-    /// Always returns an empty `FormatSpec`
+    /// Always returns an empty `FormatSpec`, except for the `ty` and `ty_span` fields.
     fn diagnostic(&mut self) -> FormatSpec<'input> {
         let mut spec = FormatSpec::default();
 
-        let Some((Range { start, .. }, start_idx)) = self.consume_pos(':') else {
+        let Some((Range { start, .. }, _)) = self.consume_pos(':') else {
             return spec;
         };
 
-        spec.ty = self.string(start_idx);
+        spec.ty = self.string(self.input_vec_index);
         spec.ty_span = {
             let end = self.input_vec_index2range(self.input_vec_index).start;
             Some(start..end)
