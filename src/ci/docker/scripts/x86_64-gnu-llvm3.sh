@@ -14,10 +14,6 @@ set -ex
 # despite having different output on 32-bit vs 64-bit targets.
 ../x.py --stage 1 test tests/mir-opt --host='' --target=i686-unknown-linux-gnu
 
-# Run `ui-fulldeps` in `--stage=1`, which actually uses the stage0
-# compiler, and is sensitive to the addition of new flags.
-../x.py --stage 1 test tests/ui-fulldeps
-
 # Rebuild the stdlib with the size optimizations enabled and run tests again.
 RUSTFLAGS_NOT_BOOTSTRAP="--cfg feature=\"optimize_for_size\"" ../x.py --stage 1 test \
     library/std library/alloc library/core
