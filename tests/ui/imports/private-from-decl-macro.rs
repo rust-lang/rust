@@ -14,7 +14,8 @@ mod m {
     }
 
     pub macro mac_glob() {
-        use crate::m::*;
+        #[cfg(fail)]
+        use crate::m::*; //[fail]~ ERROR `S` is private, and cannot be re-exported
     }
 }
 

@@ -16,6 +16,7 @@ extern crate rustc_parse_format;
 extern crate ra_ap_rustc_parse_format as rustc_parse_format;
 
 extern crate ra_ap_rustc_abi as rustc_abi;
+pub extern crate ra_ap_rustc_abi as layout;
 
 pub mod db;
 
@@ -47,7 +48,6 @@ pub mod import_map;
 pub mod visibility;
 
 use intern::{Interned, Symbol};
-pub use rustc_abi as layout;
 use thin_vec::ThinVec;
 
 pub use crate::signatures::LocalFieldId;
