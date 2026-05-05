@@ -35,7 +35,7 @@ use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
-use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
+use rustc_session::config::{CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_span::Symbol;
@@ -270,23 +270,6 @@ pub fn provide(providers: &mut Providers) {
     crate::target_features::provide(&mut providers.queries);
     crate::codegen_attrs::provide(&mut providers.queries);
     providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
-}
-
-/// Checks if the given filename ends with the `.rcgu.o` extension that `rustc`
-/// uses for the object files it generates.
-pub fn looks_like_rust_object_file(filename: &str) -> bool {
-    let path = Path::new(filename);
-    let ext = path.extension().and_then(|s| s.to_str());
-    if ext != Some(OutputType::Object.extension()) {
-        // The file name does not end with ".o", so it can't be an object file.
-        return false;
-    }
-
-    // Strip the ".o" at the end
-    let ext2 = path.file_stem().and_then(|s| Path::new(s).extension()).and_then(|s| s.to_str());
-
-    // Check if the "inner" extension
-    ext2 == Some(RUST_CGU_EXT)
 }
 
 const RLINK_VERSION: u32 = 1;
