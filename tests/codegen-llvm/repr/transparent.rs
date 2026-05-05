@@ -47,7 +47,7 @@ pub extern "C" fn test_WithZst(_: WithZst) -> WithZst {
 }
 
 #[repr(transparent)]
-pub struct WithZeroSizedArray(*const f32, [i8; 0]);
+pub struct WithZeroSizedArray(*const f32, [(); 42]);
 
 // CHECK: define{{.*}}ptr @test_WithZeroSizedArray(ptr noundef %_1)
 #[no_mangle]

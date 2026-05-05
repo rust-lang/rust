@@ -62,13 +62,13 @@ fn test_abi_newtype<T: Copy + Default>() {
     struct Wrapper2a<T>((), T);
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    struct Wrapper3<T>(Zst, T, [u8; 0]);
+    struct Wrapper3<T>(Zst, T, [(); 42]);
 
     let t = T::default();
     test_abi_compat(t, Wrapper(t));
     test_abi_compat(t, Wrapper2(t, ()));
     test_abi_compat(t, Wrapper2a((), t));
-    test_abi_compat(t, Wrapper3(Zst, t, []));
+    test_abi_compat(t, Wrapper3(Zst, t, [(); 42]));
     test_abi_compat(t, mem::MaybeUninit::new(t)); // MaybeUninit is `repr(transparent)`
 }
 

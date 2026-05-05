@@ -1709,6 +1709,10 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     "`repr(C)` types",
                     "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
                 ),
+                UnsuitedReason::Array => (
+                    "array types with non-trivial element types",
+                    "is an array with a non-trivial element type, so it is not guaranteed to have a trivial ABI in all situations.",
+                ),
             };
             Diag::new(
                 dcx,
@@ -1785,19 +1789,43 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         NonExhaustive,
         PrivateField,
         ReprC,
+        Array,
     }
 
     fn check_unsuited<'tcx>(
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
+        inside_repr_rust_packed_1: bool,
     ) -> ControlFlow<UnsuitedInfo<'tcx>> {
         // We can encounter projections during traversal, so ensure the type is normalized.
         let ty =
             tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match ty.kind() {
-            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
-            ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
+            ty::Tuple(list) => list
+                .iter()
+                .try_for_each(|t| check_unsuited(tcx, typing_env, t, inside_repr_rust_packed_1)),
+            ty::Array(elem_ty, len) => {
+                // If we are inside a `#[repr(Rust, packed(1))]` ADT,
+                // the alignment is guaranteed to be 1 and Rust has full control over the ABI.
+                // Therefore, we can allow any length-0 array.
+                // This special case is needed to support the `ghost` crate.
+                if inside_repr_rust_packed_1
+                    && let ty::ConstKind::Value(v) = len.kind()
+                    && v.try_to_target_usize(tcx) == Some(0)
+                {
+                    return ControlFlow::Continue(());
+                }
+
+                let elem_layout = tcx.layout_of(typing_env.as_query_input(*elem_ty));
+                let elem_trivial = elem_layout.is_ok_and(|layout| layout.is_1zst());
+
+                if elem_trivial {
+                    check_unsuited(tcx, typing_env, *elem_ty, inside_repr_rust_packed_1)
+                } else {
+                    ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::Array })
+                }
+            }
             ty::Adt(def, args) => {
                 if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
@@ -1814,12 +1842,22 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                         });
                     }
                 }
-                if def.repr().c() {
+
+                let repr = def.repr();
+
+                if repr.c() {
                     return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::ReprC });
                 }
-                def.all_fields()
-                    .map(|field| field.ty(tcx, args))
-                    .try_for_each(|t| check_unsuited(tcx, typing_env, t))
+
+                def.all_fields().map(|field| field.ty(tcx, args)).try_for_each(|t| {
+                    check_unsuited(
+                        tcx,
+                        typing_env,
+                        t,
+                        inside_repr_rust_packed_1
+                            || def.repr().pack.is_some_and(|a| a.bytes() == 1),
+                    )
+                })
             }
             _ => ControlFlow::Continue(()),
         }
@@ -1828,11 +1866,22 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     let mut prev_unsuited_1zst = false;
     for field in field_infos {
         if field.trivial
-            && let Some(unsuited) = check_unsuited(tcx, typing_env, field.ty).break_value()
+            && let Some(unsuited) = check_unsuited(tcx, typing_env, field.ty, false).break_value()
         {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
+                if matches!(unsuited.reason, UnsuitedReason::Array) {
+                    #[derive(Diagnostic)]
+                    #[diag("😱 Crater REGRESSION 😱")]
+                    struct CraterFail {
+                        #[primary_span]
+                        span: Span,
+                    }
+
+                    tcx.dcx().emit_err(CraterFail { span: field.span });
+                }
+
                 tcx.emit_node_span_lint(
                     REPR_TRANSPARENT_NON_ZST_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
