@@ -423,10 +423,6 @@ pub trait MacResult {
         None
     }
 
-    fn make_method_receiver_expr(self: Box<Self>) -> Option<Box<ast::Expr>> {
-        self.make_expr()
-    }
-
     /// Creates zero or more items.
     fn make_items(self: Box<Self>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
         None
