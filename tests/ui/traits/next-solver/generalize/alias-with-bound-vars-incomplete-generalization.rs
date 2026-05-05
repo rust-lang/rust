@@ -2,7 +2,9 @@
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
 
-// Regression test for the fourth variant of trait-system-refactor-initiative#191
+// Regression test for the fourth variant of trait-system-refactor-initiative#191.
+// We previously didn't normalize `<() as Trait<T>>::Assoc<'a>` before generalizing
+// here, resulting in an error.
 
 trait Trait<T> {
     type Assoc<'a>;
