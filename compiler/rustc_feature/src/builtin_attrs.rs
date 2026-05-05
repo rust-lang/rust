@@ -903,6 +903,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_v2),
     ),
 
+    // Radshield protection attribute (ungated for easy testing)
+    ungated!(
+        rad_protected, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::No,
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

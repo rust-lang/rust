@@ -58,6 +58,7 @@ pub(crate) mod path;
 pub(crate) mod pin_v2;
 pub(crate) mod proc_macro_attrs;
 pub(crate) mod prototype;
+pub(crate) mod rad_protected;
 pub(crate) mod repr;
 pub(crate) mod rustc_allocator;
 pub(crate) mod rustc_dump;

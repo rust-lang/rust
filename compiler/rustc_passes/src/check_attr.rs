@@ -288,6 +288,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Pointee(..)
                     | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
+                    | AttributeKind::RadProtected(..)
                     | AttributeKind::RecursionLimit { .. }
                     | AttributeKind::ReexportTestHarnessMain(..)
                     | AttributeKind::RegisterTool(..)

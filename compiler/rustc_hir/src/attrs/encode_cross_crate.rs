@@ -90,6 +90,7 @@ impl AttributeKind {
             ProcMacroAttribute(..) => No,
             ProcMacroDerive { .. } => No,
             ProfilerRuntime => No,
+            RadProtected(..) => No,
             RecursionLimit { .. } => No,
             ReexportTestHarnessMain(..) => No,
             RegisterTool(..) => No,

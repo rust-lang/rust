@@ -1590,6 +1590,7 @@ symbols! {
         quad_precision_float,
         question_mark,
         quote,
+        rad_protected,
         range_inclusive_new,
         raw_dash_dylib: "raw-dylib",
         raw_dylib,
