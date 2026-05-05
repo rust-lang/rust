@@ -4,6 +4,8 @@
 
 // Make sure LLVM does not miscompile this.
 
+#![allow(linker_messages)]
+
 fn make_string(ch: char) -> String {
     let mut bytes = [0u8; 4];
     ch.encode_utf8(&mut bytes).into()
