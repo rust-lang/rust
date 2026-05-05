@@ -369,7 +369,7 @@ impl<'a> AstValidator<'a> {
     /// Emits an error if a function declaration has a variadic parameter in the
     /// beginning or middle of parameter list.
     /// Example: `fn foo(..., x: i32)` will emit an error.
-    /// Returns true if a C-variadic parameter is found.
+    /// If a C-variadic parameter is found, returns its span.
     fn check_decl_cvariadic_pos(&self, fn_decl: &FnDecl) -> Option<Span> {
         let mut c_variadic_span = None;
 
