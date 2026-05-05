@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let obligations = self
             .fulfillment_cx
             .borrow()
-            .pending_obligations_potentially_referencing_sub_root(sub_root_var);
+            .pending_obligations_potentially_referencing_sub_root(&self.infcx, sub_root_var);
         debug!(?obligations);
         let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {

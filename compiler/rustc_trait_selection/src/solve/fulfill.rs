@@ -81,20 +81,17 @@ impl<'tcx> ObligationStorage<'tcx> {
 
     fn clone_pending_potentially_referencing_sub_root(
         &self,
+        infcx: &InferCtxt<'tcx>,
         vid: TyVid,
     ) -> PredicateObligations<'tcx> {
         let mut obligations: PredicateObligations<'tcx> = self
             .pending
             .iter()
             .filter(|(_, stalled_on)| {
-                // This may incorrectly return `false` in case we've made
-                // inference progress since the last time we tried to evaluate
-                // this obligation.
-                if let Some(stalled_on) = stalled_on {
-                    stalled_on.sub_roots.iter().any(|&r| r == vid)
-                } else {
-                    true
-                }
+                let Some(stalled_on) = stalled_on else { return true };
+                stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type()).any(|ty| {
+                    matches!(*ty.kind(), ty::Infer(ty::TyVar(tv)) if infcx.sub_unification_table_root_var(tv) == vid)
+                })
             })
             .map(|(o, _)| o.clone())
             .collect();
@@ -297,9 +294,10 @@ where
 
     fn pending_obligations_potentially_referencing_sub_root(
         &self,
+        infcx: &InferCtxt<'tcx>,
         vid: ty::TyVid,
     ) -> PredicateObligations<'tcx> {
-        self.obligations.clone_pending_potentially_referencing_sub_root(vid)
+        self.obligations.clone_pending_potentially_referencing_sub_root(infcx, vid)
     }
 
     fn drain_stalled_obligations_for_coroutines(

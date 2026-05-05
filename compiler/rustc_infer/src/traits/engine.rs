@@ -109,10 +109,10 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
 
     /// Returning all pending obligations which reference an inference
-    /// variable with `_sub_root`. This assumes that no type inference
-    /// progress has been made since the last `try_evaluate_obligations` call.
+    /// variable with `_sub_root`.
     fn pending_obligations_potentially_referencing_sub_root(
         &self,
+        _infcx: &InferCtxt<'tcx>,
         _sub_root: TyVid,
     ) -> PredicateObligations<'tcx> {
         self.pending_obligations()
