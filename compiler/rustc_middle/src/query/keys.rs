@@ -13,7 +13,7 @@ use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 use crate::dep_graph::DepNodeIndex;
 use crate::infer::canonical::CanonicalQueryInput;
 use crate::mono::CollectionMode;
-use crate::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
+use crate::query::{DefIdCache, DefaultCache, IdxCache, SingleCache};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
 use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
@@ -93,7 +93,7 @@ impl<'tcx> QueryKey for ty::LitToConstInput<'tcx> {
 }
 
 impl QueryKey for CrateNum {
-    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
+    type Cache<V> = IdxCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
@@ -110,7 +110,7 @@ impl AsLocalQueryKey for CrateNum {
 }
 
 impl QueryKey for OwnerId {
-    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
+    type Cache<V> = IdxCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
@@ -122,7 +122,7 @@ impl QueryKey for OwnerId {
 }
 
 impl QueryKey for LocalDefId {
-    type Cache<V> = VecCache<Self, V, DepNodeIndex>;
+    type Cache<V> = IdxCache<Self, V, DepNodeIndex>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)

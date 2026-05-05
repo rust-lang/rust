@@ -1,5 +1,7 @@
 use std::sync::OnceLock;
 
+#[cfg(target_pointer_width = "64")]
+use rustc_data_structures::linear_vec_cache::LinearVecCache;
 use rustc_data_structures::sharded::ShardedHashMap;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -8,6 +10,15 @@ use rustc_span::def_id::{DefId, DefIndex};
 
 use crate::dep_graph::DepNodeIndex;
 use crate::query::keys::QueryKey;
+
+cfg_select! {
+    target_pointer_width = "64" => {
+        pub type IdxCache<K, V, I> = LinearVecCache<K, V, I>;
+    }
+    _ => {
+        pub type IdxCache<K, V, I> = VecCache<K, V, I>;
+    }
+}
 
 /// Trait for types that serve as an in-memory cache for query results,
 /// for a given key (argument) type and value (return) type.
@@ -128,7 +139,7 @@ where
 pub struct DefIdCache<V> {
     /// Stores the local DefIds in a dense map. Local queries are much more often dense, so this is
     /// a win over hashing query keys at marginal memory cost (~5% at most) compared to FxHashMap.
-    local: VecCache<DefIndex, V, DepNodeIndex>,
+    local: IdxCache<DefIndex, V, DepNodeIndex>,
     foreign: DefaultCache<DefId, V>,
 }
 
@@ -175,7 +186,7 @@ where
     }
 }
 
-impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
+impl<K, V> QueryCache for IdxCache<K, V, DepNodeIndex>
 where
     K: Idx + QueryKey,
     V: Copy,

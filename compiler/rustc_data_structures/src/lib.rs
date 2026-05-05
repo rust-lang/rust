@@ -62,6 +62,7 @@ pub mod fx;
 pub mod graph;
 pub mod intern;
 pub mod jobserver;
+pub mod linear_vec_cache;
 pub mod marker;
 pub mod memmap;
 pub mod obligation_forest;
