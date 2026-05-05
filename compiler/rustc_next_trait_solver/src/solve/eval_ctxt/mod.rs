@@ -1200,6 +1200,44 @@ where
         self.delegate.evaluate_const(param_env, uv)
     }
 
+    pub(super) fn evaluate_const_and_instantiate_normalizes_to_term(
+        &mut self,
+        goal: Goal<I, ty::NormalizesTo<I>>,
+        uv: ty::UnevaluatedConst<I>,
+    ) -> QueryResult<I> {
+        match self.evaluate_const(goal.param_env, uv) {
+            Some(evaluated) => {
+                self.instantiate_normalizes_to_term(goal, evaluated.into());
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
+            None if self.cx().features().generic_const_args() => {
+                // HACK(khyperia): calling `resolve_vars_if_possible` here shouldn't be necessary,
+                // `try_evaluate_const` calls `resolve_vars_if_possible` already. However, we want
+                // to check `has_non_region_infer` against the type with vars resolved (i.e. check
+                // if there are vars we failed to resolve), so we need to call it again here.
+                // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics and
+                // HasInfers or something, make evaluate_const return that, and make this branch be
+                // based on that, rather than checking `has_non_region_infer`.
+                if self.resolve_vars_if_possible(uv).has_non_region_infer() {
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                } else {
+                    // We do not instantiate to the `uv` passed in, but rather
+                    // `goal.predicate.alias`. The `uv` passed in might correspond to the `impl`
+                    // form of a constant (with generic arguments corresponding to the impl block),
+                    // however, we want to structurally instantiate to the original, non-rebased,
+                    // trait `Self` form of the constant (with generic arguments being the trait
+                    // `Self` type).
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                }
+            }
+            None => {
+                // Legacy behavior: always treat as ambiguous
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+            }
+        }
+    }
+
     pub(super) fn is_transmutable(
         &mut self,
         src: I::Ty,
