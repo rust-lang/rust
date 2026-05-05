@@ -1,0 +1,48 @@
+error[E0284]: type annotations needed for `([(); _], [(); 10])`
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:29:9
+   |
+LL |     let (mut arr, mut arr_with_weird_len) = free();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ------ type must be known at this point
+   |
+note: required by a const generic parameter in `free`
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:24:9
+   |
+LL | fn free<const N: usize>() -> ([(); N], [(); FREE::<N>]) {
+   |         ^^^^^^^^^^^^^^ required by this const generic parameter in `free`
+help: consider giving this pattern a type, where the value of const parameter `N` is specified
+   |
+LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = free();
+   |                                          +++++++++++++
+
+error[E0271]: type mismatch resolving `10 == 2`
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:35:45
+   |
+LL |     let (mut arr, mut arr_with_weird_len) = free();
+   |                                             ^^^^^^ types differ
+
+error[E0284]: type annotations needed for `([(); _], [(); 10])`
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:46:9
+   |
+LL |     let (mut arr, mut arr_with_weird_len) = proj();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ------ type must be known at this point
+   |
+note: required by a const generic parameter in `proj`
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:41:9
+   |
+LL | fn proj<const N: usize>() -> ([(); N], [(); <S as Trait>::PROJ::<N>]) {
+   |         ^^^^^^^^^^^^^^ required by this const generic parameter in `proj`
+help: consider giving this pattern a type, where the value of const parameter `N` is specified
+   |
+LL |     let (mut arr, mut arr_with_weird_len): ([_; N], _) = proj();
+   |                                          +++++++++++++
+
+error[E0271]: type mismatch resolving `10 == 2`
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:52:45
+   |
+LL |     let (mut arr, mut arr_with_weird_len) = proj();
+   |                                             ^^^^^^ types differ
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0271, E0284.
+For more information about an error, try `rustc --explain E0271`.
