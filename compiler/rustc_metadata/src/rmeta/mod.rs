@@ -340,7 +340,7 @@ pub(crate) struct CrateRoot {
 
     specialization_enabled_in: bool,
 
-    rdr_hashes: RDRHashes,
+    rdr_hashes: Option<RDRHashes>,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -394,7 +394,7 @@ impl Idx for ProcMacroQuotedSpansIdx {
 /// depend on spans of inlined/monomorphized mir, it also doesn't need private types used in them. While a full build will need it for code and debug info generation
 ///
 /// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the feature is disabled.
-#[derive(MetadataEncodable, LazyDecodable)]
+#[derive(MetadataEncodable, LazyDecodable, Debug)]
 struct RDRHashes {
     /// Hash of the "public api". It tries to exclude things which cannot change the output in dependents, allowing to skip their rustc invocation, which can be quite expensive even if nothing has changed (macro expansion, checking that nothing changed in the query dependency graph is always executed)
     public_api_hash: Svh,

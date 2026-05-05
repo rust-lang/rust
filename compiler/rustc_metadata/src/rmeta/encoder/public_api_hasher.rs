@@ -12,10 +12,9 @@ use rustc_middle::ich::StableHashState;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
-use rustc_middle::ty::TyCtxt;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
-use rustc_span::def_id::{LOCAL_CRATE, StableCrateId};
+use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::{SourceFile, Symbol};
 use rustc_target::spec::PanicStrategy;
@@ -308,11 +307,7 @@ pub(crate) struct HashableCrateRoot {
 }
 
 impl HashableCrateRoot {
-    pub(super) fn into_crate_root(
-        self,
-        tcx: TyCtxt<'_>,
-        hcx: &mut PublicApiHashingContext<'_>,
-    ) -> CrateRoot {
+    pub(super) fn into_crate_root(self, hcx: &mut PublicApiHashingContext<'_>) -> CrateRoot {
         let rdr_hashes = if hcx.hash_public_api {
             assert!(!self.header.is_proc_macro_crate);
             let mut hasher = StableHasher::default();
@@ -320,10 +315,9 @@ impl HashableCrateRoot {
             let public_api_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_api_hash);
-            RDRHashes { public_api_hash }
+            Some(RDRHashes { public_api_hash })
         } else {
-            let hash = tcx.crate_hash(LOCAL_CRATE);
-            RDRHashes { public_api_hash: hash }
+            None
         };
         let header = self.header;
         let header = CrateHeader {
