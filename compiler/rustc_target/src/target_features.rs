@@ -610,9 +610,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("a", Stable, &["zaamo", "zalrsc"]),
     ("b", Stable, &["zba", "zbb", "zbs"]),
     ("c", Stable, &["zca"]),
-    ("d", Unstable(sym::riscv_target_feature), &["f"]),
-    ("e", Unstable(sym::riscv_target_feature), &[]),
-    ("f", Unstable(sym::riscv_target_feature), &["zicsr"]),
+    ("d", CfgStableToggleUnstable(sym::riscv_target_feature), &["f"]),
+    ("e", CfgStableToggleUnstable(sym::riscv_target_feature), &[]),
+    ("f", CfgStableToggleUnstable(sym::riscv_target_feature), &["zicsr"]),
     (
         "forced-atomics",
         Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
