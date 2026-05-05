@@ -284,15 +284,8 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
     // Check `CoercePointee` impl is WF -- if not, then there's no reason to report
     // redundant errors for `DispatchFromDyn`. This is best effort, though.
-    let mut res = Ok(());
-    tcx.for_each_relevant_impl(
-        tcx.require_lang_item(LangItem::CoerceUnsized, span),
-        source,
-        |impl_def_id| {
-            res = res.and(tcx.ensure_result().coerce_unsized_info(impl_def_id));
-        },
-    );
-    res?;
+    tcx.relevant_impls_for_ty(tcx.require_lang_item(LangItem::CoerceUnsized, span), source)
+        .try_for_each(|impl_def_id| tcx.ensure_result().coerce_unsized_info(impl_def_id))?;
 
     debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}", source, target);
 

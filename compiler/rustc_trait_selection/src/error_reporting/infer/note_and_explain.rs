@@ -368,14 +368,13 @@ impl<T> Trait<T> for X {
                         ));
                     }
                     (ty::Dynamic(t, _), _) if let Some(def_id) = t.principal_def_id() => {
-                        let mut has_matching_impl = false;
-                        tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::relate_rigid_infer(tcx)
-                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
-                            {
-                                has_matching_impl = true;
-                            }
-                        });
+                        let has_matching_impl =
+                            tcx.relevant_impls_for_ty(def_id, values.found).any(|impl_def_id| {
+                                DeepRejectCtxt::relate_rigid_infer(tcx).types_may_unify(
+                                    values.found,
+                                    tcx.type_of(impl_def_id).skip_binder(),
+                                )
+                            });
                         if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
@@ -387,14 +386,13 @@ impl<T> Trait<T> for X {
                         }
                     }
                     (_, ty::Dynamic(t, _)) if let Some(def_id) = t.principal_def_id() => {
-                        let mut has_matching_impl = false;
-                        tcx.for_each_relevant_impl(def_id, values.expected, |did| {
-                            if DeepRejectCtxt::relate_rigid_infer(tcx)
-                                .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
-                            {
-                                has_matching_impl = true;
-                            }
-                        });
+                        let has_matching_impl =
+                            tcx.relevant_impls_for_ty(def_id, values.found).any(|impl_def_id| {
+                                DeepRejectCtxt::relate_rigid_infer(tcx).types_may_unify(
+                                    values.found,
+                                    tcx.type_of(impl_def_id).skip_binder(),
+                                )
+                            });
                         if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
@@ -494,13 +492,13 @@ impl<T> Trait<T> for X {
                             if trait_predicate.polarity != ty::PredicatePolarity::Positive {
                                 continue;
                             }
-                            let def_id = trait_predicate.def_id();
-                            let mut impl_def_ids = vec![];
-                            tcx.for_each_relevant_impl(def_id, expected, |did| {
-                                impl_def_ids.push(did)
-                            });
-                            if let [_] = &impl_def_ids[..] {
-                                let trait_name = tcx.item_name(def_id);
+
+                            let trait_def_id = trait_predicate.def_id();
+                            let mut matching_impls =
+                                tcx.relevant_impls_for_ty(trait_def_id, expected);
+
+                            if matching_impls.next().is_some() && matching_impls.next().is_none() {
+                                let trait_name = tcx.item_name(trait_def_id);
                                 diag.multipart_suggestion(
                                     format!(
                                         "`{expected}` implements `{trait_name}` so you can box \
@@ -511,7 +509,10 @@ impl<T> Trait<T> for X {
                                         (then.span.shrink_to_lo(), "Box::new(".to_string()),
                                         (
                                             then.span.shrink_to_hi(),
-                                            format!(") as Box<dyn {}>", tcx.def_path_str(def_id)),
+                                            format!(
+                                                ") as Box<dyn {}>",
+                                                tcx.def_path_str(trait_def_id)
+                                            ),
                                         ),
                                         (else_.span.shrink_to_lo(), "Box::new(".to_string()),
                                         (else_.span.shrink_to_hi(), ")".to_string()),
@@ -540,13 +541,11 @@ impl<T> Trait<T> for X {
                             && def.is_box()
                             && let boxed_ty = args.type_at(0)
                             && let ty::Dynamic(t, _) = boxed_ty.kind()
-                            && let Some(def_id) = t.principal_def_id()
-                            && let mut impl_def_ids = vec![]
-                            && let _ =
-                                tcx.for_each_relevant_impl(def_id, values.expected, |did| {
-                                    impl_def_ids.push(did)
-                                })
-                            && let [_] = &impl_def_ids[..] =>
+                            && let Some(trait_def_id) = t.principal_def_id()
+                            && let mut matching_impls =
+                                tcx.relevant_impls_for_ty(trait_def_id, values.expected)
+                            && matching_impls.next().is_some()
+                            && matching_impls.next().is_none() =>
                     {
                         // We have divergent if/else arms where the expected value is a type that
                         // implements the trait of the found boxed trait object.
@@ -555,7 +554,7 @@ impl<T> Trait<T> for X {
                                 "`{}` implements `{}` so you can box it to coerce to the trait \
                                  object `{}`",
                                 values.expected,
-                                tcx.item_name(def_id),
+                                tcx.item_name(trait_def_id),
                                 values.found,
                             ),
                             vec![

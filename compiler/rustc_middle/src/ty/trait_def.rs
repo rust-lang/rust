@@ -179,15 +179,11 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    // FIXME(fmease): Update docs.
     /// Iterate over every impl that could possibly match the self type `self_ty`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_relevant_impl(
-        self,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        mut f: impl FnMut(DefId),
-    ) {
+    pub gen fn relevant_impls_for_ty(self, trait_def_id: DefId, self_ty: Ty<'tcx>) -> DefId {
         // FIXME: This depends on the set of all impls for the trait. That is
         // unfortunate wrt. incremental compilation.
         //
@@ -195,8 +191,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // blanket and non-blanket impls, and compare them separately.
         let impls = self.trait_impls_of(trait_def_id);
 
-        for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
+        for &impl_def_id in &impls.blanket_impls {
+            yield impl_def_id;
         }
 
         // This way, when searching for some impl for `T: Trait`, we do not look at any impls
@@ -206,34 +202,26 @@ impl<'tcx> TyCtxt<'tcx> {
         // Note that we're using `TreatParams::AsRigid` to query `non_blanket_impls` while using
         // `TreatParams::InstantiateWithInfer` while actually adding them.
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsRigid) {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
-                for &impl_def_id in impls {
-                    f(impl_def_id);
-                }
+            for &impl_def_id in impls.non_blanket_impls.get(&simp).into_iter().flatten() {
+                yield impl_def_id;
             }
         } else {
             for &impl_def_id in impls.non_blanket_impls.values().flatten() {
-                f(impl_def_id);
+                yield impl_def_id;
             }
         }
     }
 
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn non_blanket_impls_for_ty(
-        self,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-    ) -> impl Iterator<Item = DefId> {
+    pub gen fn non_blanket_impls_for_ty(self, trait_def_id: DefId, self_ty: Ty<'tcx>) -> DefId {
         let impls = self.trait_impls_of(trait_def_id);
         if let Some(simp) =
             fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
         {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
-                return impls.iter().copied();
+            for &impl_def_id in impls.non_blanket_impls.get(&simp).into_iter().flatten() {
+                yield impl_def_id;
             }
         }
-
-        [].iter().copied()
     }
 
     /// Returns an iterator containing all impls for `trait_def_id`.

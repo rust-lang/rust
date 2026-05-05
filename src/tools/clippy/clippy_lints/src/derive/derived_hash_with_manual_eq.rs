@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
         && cx.tcx.is_diagnostic_item(sym::Hash, def_id)
     {
         // Look for the PartialEq implementations for `ty`
-        cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
+        for impl_id in cx.tcx.relevant_impls_for_ty(peq_trait_def_id, ty) {
             let peq_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
             if !hash_is_automatically_derived || peq_is_automatically_derived {
@@ -46,6 +46,6 @@ pub(super) fn check<'tcx>(
                     },
                 );
             }
-        });
+        }
     }
 }

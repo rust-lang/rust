@@ -1323,32 +1323,28 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let ty_span = self.infcx.tcx.def_span(def.did());
             let mut span: MultiSpan = ty_span.into();
             let mut derive_clone = false;
-            self.infcx.tcx.for_each_relevant_impl(
-                self.infcx.tcx.lang_items().clone_trait().unwrap(),
-                ty,
-                |def_id| {
-                    if self.infcx.tcx.is_automatically_derived(def_id) {
-                        derive_clone = true;
-                        span.push_span_label(
-                            self.infcx.tcx.def_span(def_id),
-                            "derived `Clone` adds implicit bounds on type parameters",
-                        );
-                        if let Some(generics) = self.infcx.tcx.hir_get_generics(local_did) {
-                            for param in generics.params {
-                                if let hir::GenericParamKind::Type { .. } = param.kind {
-                                    span.push_span_label(
-                                        param.span,
-                                        format!(
-                                            "introduces an implicit `{}: Clone` bound",
-                                            param.name.ident()
-                                        ),
-                                    );
-                                }
-                            }
-                        }
-                    }
-                },
-            );
+            for impl_def_id in self
+                .infcx
+                .tcx
+                .relevant_impls_for_ty(self.infcx.tcx.lang_items().clone_trait().unwrap(), ty)
+            {
+                if !self.infcx.tcx.is_automatically_derived(impl_def_id) {
+                    continue;
+                }
+                derive_clone = true;
+                span.push_span_label(
+                    self.infcx.tcx.def_span(impl_def_id),
+                    "derived `Clone` adds implicit bounds on type parameters",
+                );
+                let Some(generics) = self.infcx.tcx.hir_get_generics(local_did) else { continue };
+                for param in generics.params {
+                    let hir::GenericParamKind::Type { .. } = param.kind else { continue };
+                    span.push_span_label(
+                        param.span,
+                        format!("introduces an implicit `{}: Clone` bound", param.name.ident()),
+                    );
+                }
+            }
             let msg = if !derive_clone {
                 span.push_span_label(
                     ty_span,

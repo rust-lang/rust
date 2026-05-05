@@ -604,41 +604,47 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let drcx = DeepRejectCtxt::relate_rigid_infer(self.tcx());
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
-        self.tcx().for_each_relevant_impl(
-            obligation.predicate.def_id(),
-            obligation.predicate.skip_binder().trait_ref.self_ty(),
-            |impl_def_id| {
-                // Before we create the generic parameters and everything, first
-                // consider a "quick reject". This avoids creating more types
-                // and so forth that we need to.
-                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
-                if !drcx
-                    .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
-                {
-                    return;
-                }
-
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if self.tcx().defaultness(impl_def_id).is_default() {
-                    return;
-                }
-
-                if self.reject_fn_ptr_impls(
-                    impl_def_id,
-                    obligation,
-                    impl_trait_header.trait_ref.skip_binder().self_ty(),
-                ) {
-                    return;
-                }
-
-                self.infcx.probe(|_| {
-                    if let Ok(_args) = self.match_impl(impl_def_id, impl_trait_header, obligation) {
-                        candidates.vec.push(ImplCandidate(impl_def_id));
+        candidates.vec.extend(
+            self.tcx()
+                .relevant_impls_for_ty(
+                    obligation.predicate.def_id(),
+                    obligation.predicate.skip_binder().trait_ref.self_ty(),
+                )
+                .filter_map(|impl_def_id| {
+                    // Before we create the generic parameters and everything, first
+                    // consider a "quick reject". This avoids creating more types
+                    // and so forth that we need to.
+                    let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
+                    if !drcx.args_may_unify(
+                        obligation_args,
+                        impl_trait_header.trait_ref.skip_binder().args,
+                    ) {
+                        return None;
                     }
-                });
-            },
+
+                    // For every `default impl`, there's always a non-default `impl`
+                    // that will *also* apply. There's no reason to register a candidate
+                    // for this impl, since it is *not* proof that the trait goal holds.
+                    if self.tcx().defaultness(impl_def_id).is_default() {
+                        return None;
+                    }
+
+                    if self.reject_fn_ptr_impls(
+                        impl_def_id,
+                        obligation,
+                        impl_trait_header.trait_ref.skip_binder().self_ty(),
+                    ) {
+                        return None;
+                    }
+
+                    if self.infcx.probe(|_| {
+                        self.match_impl(impl_def_id, impl_trait_header, obligation).is_err()
+                    }) {
+                        return None;
+                    }
+
+                    Some(ImplCandidate(impl_def_id))
+                }),
         );
     }
 
@@ -756,9 +762,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
             // which may define impls for that type is either the crate defining the type
             // or the trait. This should be guaranteed by the orphan check.
-            let mut has_impl = false;
-            self.tcx().for_each_relevant_impl(def_id, self_ty, |_| has_impl = true);
-            if !has_impl {
+            if self.tcx().relevant_impls_for_ty(def_id, self_ty).next().is_none() {
                 candidates.vec.push(AutoImplCandidate)
             }
         };

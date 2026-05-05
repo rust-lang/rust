@@ -494,7 +494,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             .map(|assoc_item| assoc_item.def_id)
     }
 
-    // This implementation is a bit different from `TyCtxt::for_each_relevant_impl`,
+    // This implementation is a bit different from `TyCtxt::relevant_impls_for_ty`,
     // since we want to skip over blanket impls for non-rigid aliases, and also we
     // only want to consider types that *actually* unify with float/int vars.
     fn for_each_relevant_impl(

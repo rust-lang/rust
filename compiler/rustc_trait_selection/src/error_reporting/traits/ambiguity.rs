@@ -129,17 +129,14 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
         })
     };
 
-    let mut ambiguities = Vec::new();
-
-    tcx.for_each_relevant_impl(
-        obligation.predicate.def_id(),
-        obligation.predicate.skip_binder().trait_ref.self_ty(),
-        |impl_def_id| {
-            if infcx.probe(|_| impl_may_apply(impl_def_id)) {
-                ambiguities.push(CandidateSource::DefId(impl_def_id))
-            }
-        },
-    );
+    let mut ambiguities: Vec<_> = tcx
+        .relevant_impls_for_ty(
+            obligation.predicate.def_id(),
+            obligation.predicate.skip_binder().trait_ref.self_ty(),
+        )
+        .filter(|&impl_def_id| infcx.probe(|_| impl_may_apply(impl_def_id)))
+        .map(CandidateSource::DefId)
+        .collect();
 
     // If our `body_id` has been set (and isn't just from a dummy obligation cause),
     // then try to look for a param-env clause that would apply. The way we compute

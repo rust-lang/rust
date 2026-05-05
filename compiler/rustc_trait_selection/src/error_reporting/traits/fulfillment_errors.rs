@@ -2527,17 +2527,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let get_trait_impls = |trait_def_id| {
-            let mut trait_impls = vec![];
-            self.tcx.for_each_relevant_impl(
-                trait_def_id,
-                trait_pred.skip_binder().self_ty(),
-                |impl_def_id| {
+            self.tcx
+                .relevant_impls_for_ty(trait_def_id, trait_pred.skip_binder().self_ty())
+                .map(|impl_def_id| {
                     let impl_trait_header = self.tcx.impl_trait_header(impl_def_id);
-                    trait_impls
-                        .push(self.tcx.def_span(impl_trait_header.trait_ref.skip_binder().def_id));
-                },
-            );
-            trait_impls
+                    self.tcx.def_span(impl_trait_header.trait_ref.skip_binder().def_id)
+                })
+                .collect()
         };
         self.check_same_definition_different_crate(
             err,

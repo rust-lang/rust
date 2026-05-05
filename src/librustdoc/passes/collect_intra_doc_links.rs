@@ -840,9 +840,9 @@ fn trait_impls_for<'tcx>(
 ) -> FxIndexSet<(DefId, DefId)> {
     let mut impls = FxIndexSet::default();
 
-    for &trait_ in tcx.doc_link_traits_in_scope(module) {
-        tcx.for_each_relevant_impl(trait_, ty, |impl_| {
-            let trait_ref = tcx.impl_trait_ref(impl_);
+    for &trait_def_id in tcx.doc_link_traits_in_scope(module) {
+        for impl_def_id in tcx.relevant_impls_for_ty(trait_def_id, ty) {
+            let trait_ref = tcx.impl_trait_ref(impl_def_id);
             // Check if these are the same type.
             let impl_type = trait_ref.skip_binder().self_ty();
             trace!(
@@ -864,9 +864,9 @@ fn trait_impls_for<'tcx>(
                 };
 
             if saw_impl {
-                impls.insert((impl_, trait_));
+                impls.insert((impl_def_id, trait_def_id));
             }
-        });
+        }
     }
 
     impls

@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
         && !fulfill_or_allowed(cx, DERIVE_ORD_XOR_PARTIAL_ORD, [adt_hir_id])
     {
         // Look for the PartialOrd implementations for `ty`
-        cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
+        for impl_id in cx.tcx.relevant_impls_for_ty(partial_ord_trait_def_id, ty) {
             let partial_ord_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
             if partial_ord_is_automatically_derived == ord_is_automatically_derived {
@@ -49,6 +49,6 @@ pub(super) fn check<'tcx>(
                     }
                 });
             }
-        });
+        }
     }
 }

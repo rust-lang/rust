@@ -3526,14 +3526,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let index_trait_def_id = self.tcx.lang_items().index_trait()?;
         let index_trait_output_def_id = self.tcx.get_diagnostic_item(sym::IndexOutput)?;
 
-        let mut relevant_impls = vec![];
-        self.tcx.for_each_relevant_impl(index_trait_def_id, base_ty, |impl_def_id| {
-            relevant_impls.push(impl_def_id);
-        });
-        let [impl_def_id] = relevant_impls[..] else {
+        let mut relevant_impls = self.tcx.relevant_impls_for_ty(index_trait_def_id, base_ty);
+        let impl_def_id = relevant_impls.next()?;
+        if relevant_impls.next().is_some() {
             // Only report unsatisfied impl predicates if there's one impl
             return None;
-        };
+        }
 
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.universe();
