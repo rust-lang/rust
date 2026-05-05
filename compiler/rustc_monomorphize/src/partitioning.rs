@@ -640,7 +640,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
-                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAddr(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..)) => return None,
@@ -814,7 +815,8 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAddr(..)) => return Visibility::Hidden,
+        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Visibility::Hidden,
     };
 
     // Both the `start_fn` lang item and `main` itself should not be exported,

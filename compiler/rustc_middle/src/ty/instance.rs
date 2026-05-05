@@ -170,12 +170,19 @@ pub enum ShimKind<'tcx> {
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     Clone(DefId, Ty<'tcx>),
 
-    /// Compiler-generated `<T as FnPtr>::addr` implementation.
+    /// Compiler-generated `<T as FnPtr>::as_ptr` implementation.
     ///
     /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
     ///
-    /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
-    FnPtrAddr(DefId, Ty<'tcx>),
+    /// The `DefId` is for `FnPtr::as_ptr`, the `Ty` is the type `T`.
+    FnPtrAsPtr(DefId, Ty<'tcx>),
+
+    /// Compiler-generated `<T as FnPtr>::from_ptr` implementation.
+    ///
+    /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
+    ///
+    /// The `DefId` is for `FnPtr::from_ptr`, the `Ty` is the type `T`.
+    FnPtrFromPtr(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
@@ -329,7 +336,8 @@ impl<'tcx> ShimKind<'tcx> {
             }
             | ShimKind::DropGlue(def_id, _)
             | ShimKind::Clone(def_id, _)
-            | ShimKind::FnPtrAddr(def_id, _)
+            | ShimKind::FnPtrAsPtr(def_id, _)
+            | ShimKind::FnPtrFromPtr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
             | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
@@ -351,7 +359,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::ConstructCoroutineInClosure { .. }
             | ShimKind::DropGlue(..)
             | ShimKind::Clone(..)
-            | ShimKind::FnPtrAddr(..) => None,
+            | ShimKind::FnPtrAsPtr(..)
+            | ShimKind::FnPtrFromPtr(..) => None,
         }
     }
 
@@ -370,8 +379,9 @@ impl<'tcx> ShimKind<'tcx> {
         match *self {
             ShimKind::Clone(..)
             | ShimKind::ThreadLocal(..)
-            | ShimKind::FnPtrAddr(..)
             | ShimKind::FnPtr(..)
+            | ShimKind::FnPtrAsPtr(..)
+            | ShimKind::FnPtrFromPtr(..)
             | ShimKind::DropGlue(_, Some(_))
             | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,
