@@ -5,7 +5,7 @@ use clippy_utils::msrvs::Msrv;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
+use rustc_hir::{Block, Body, HirId, Path, PathSegment, Stability, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
@@ -238,21 +238,40 @@ fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>>
 /// Does not catch individually moved items
 fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
     loop {
-        if let Some(stability) = cx.tcx.lookup_stability(def_id)
-            && let StabilityLevel::Stable {
-                since,
-                allowed_through_unstable_modules: None,
-            } = stability.level
-        {
-            let stable = match since {
-                StableSince::Version(v) => msrv.meets(cx, v),
-                StableSince::Current => msrv.current(cx).is_none(),
-                StableSince::Err(_) => false,
-            };
+        match cx.tcx.lookup_stability(def_id) {
+            // If we find anything unstable in the definition of this item, short-circuit as unstable.
+            // This works under the assumption that checking is performed from the item up through its parents.
+            Some(Stability {
+                level: StabilityLevel::Unstable { .. },
+                ..
+            }) => return false,
+            // If an item is stable since some MSRV
+            Some(Stability {
+                level:
+                    StabilityLevel::Stable {
+                        since,
+                        allowed_through_unstable_modules,
+                    },
+                ..
+            }) => {
+                let stable = match since {
+                    StableSince::Version(v) => msrv.meets(cx, v),
+                    StableSince::Current => msrv.current(cx).is_none(),
+                    StableSince::Err(_) => false,
+                };
 
-            if !stable {
-                return false;
-            }
+                if !stable {
+                    return false;
+                } else if allowed_through_unstable_modules.is_some() {
+                    // Items marked with #[rustc_allowed_through_unstable_modules = "..."]
+                    // can be short-circuited, since no instability of a parent module
+                    // can override this attribute.
+                    return true;
+                }
+            },
+            None => {
+                // Inconclusive, check the next path segment up.
+            },
         }
 
         match cx.tcx.opt_parent(def_id) {

@@ -96,3 +96,9 @@ fn issue15579() {
 
     let layout = alloc::Layout::new::<u8>();
 }
+
+#[warn(clippy::std_instead_of_core)]
+fn issue13158_core_io() {
+    // items moved from std::io into core::io are stable in an unstable module.
+    type ErrorKindA = std::io::ErrorKind;
+}
