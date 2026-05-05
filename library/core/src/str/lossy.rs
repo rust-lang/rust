@@ -102,6 +102,10 @@ impl<'a> Utf8Chunk<'a> {
     #[must_use]
     #[stable(feature = "utf8_chunks", since = "1.79.0")]
     pub fn invalid(&self) -> &'a [u8] {
+        // SAFETY: The invariant that `self.invalid.len() <= 3` is upheld by
+        // the implementation of `Utf8Chunks::next()`, which is the only way to
+        // construct a `Utf8Chunk`.
+        unsafe { crate::hint::assert_unchecked(self.invalid.len() <= 3) };
         self.invalid
     }
 }
@@ -285,6 +289,9 @@ impl<'a> Iterator for Utf8Chunks<'a> {
         // SAFETY: `valid_up_to <= i` because it is only ever assigned via
         // `valid_up_to = i` and `i` only increases.
         let (valid, invalid) = unsafe { inspected.split_at_unchecked(valid_up_to) };
+
+        // In UTF-8, the longest possible invalid sequence is 3 bytes long.
+        debug_assert!(invalid.len() <= 3);
 
         Some(Utf8Chunk {
             // SAFETY: All bytes up to `valid_up_to` are valid UTF-8.
