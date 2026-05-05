@@ -50,8 +50,9 @@ fn closure_sig() -> impl Sized {
 }
 
 fn coroutine_sig() -> impl Sized {
-    //~^ ERROR
-    || coroutine_sig()
+    //~^ ERROR cannot resolve opaque type
+    #[coroutine]
+    || yield coroutine_sig()
 }
 
 fn coroutine_capture() -> impl Sized {
