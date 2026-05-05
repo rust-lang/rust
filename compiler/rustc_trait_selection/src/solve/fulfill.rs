@@ -92,12 +92,12 @@ impl<'tcx> ObligationStorage<'tcx> {
                 // Conservative here: if any of its stalled vars are not infer var anymore,
                 // some unification happened, so this goal is no longer stalled.
                 // So include it to re-evaluate in the downstream.
-                stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type()).any(|ty| {
-                    match *infcx.shallow_resolve(ty).kind() {
+                stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type()).any(
+                    |ty| match *infcx.shallow_resolve(ty).kind() {
                         ty::Infer(ty::TyVar(tv)) => infcx.sub_unification_table_root_var(tv) == vid,
                         _ => true,
-                    }
-                })
+                    },
+                )
             })
             .map(|(o, _)| o.clone())
             .collect();
