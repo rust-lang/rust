@@ -118,7 +118,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::ExprKind::Call(f, self.lower_exprs(args))
                     }
                 }
-                ExprKind::MethodCall(box MethodCall { seg, receiver, args, span }) => {
+                ExprKind::MethodCall(MethodCall { seg, receiver, args, span }) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,
@@ -212,7 +212,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
                 ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
-                ExprKind::Closure(box Closure {
+                ExprKind::Closure(Closure {
                     binder,
                     capture_clause,
                     constness,

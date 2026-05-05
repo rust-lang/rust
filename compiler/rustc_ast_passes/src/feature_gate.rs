@@ -228,7 +228,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Trait(box ast::Trait { is_auto: ast::IsAuto::Yes, .. }) => {
+            ast::ItemKind::Trait(ast::Trait { is_auto: ast::IsAuto::Yes, .. }) => {
                 gate!(self, auto_traits, i.span, "auto traits are experimental and possibly buggy");
             }
 
@@ -241,10 +241,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate!(self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
+            ast::ItemKind::TyAlias(ast::TyAlias { ty: Some(ty), .. }) => {
                 self.check_impl_trait(ty, false)
             }
-            ast::ItemKind::Const(box ast::ConstItem {
+            ast::ItemKind::Const(ast::ConstItem {
                 rhs_kind: ast::ConstItemRhsKind::TypeConst { .. },
                 ..
             }) => {
@@ -407,7 +407,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match &i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::Type(box ast::TyAlias { ty, .. }) => {
+            ast::AssocItemKind::Type(ast::TyAlias { ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate!(
                         self,
@@ -421,7 +421,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 false
             }
-            ast::AssocItemKind::Const(box ast::ConstItem {
+            ast::AssocItemKind::Const(ast::ConstItem {
                 rhs_kind: ast::ConstItemRhsKind::TypeConst { rhs },
                 ..
             }) => {

@@ -211,14 +211,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         i: &ItemKind,
     ) -> Vec<hir::Attribute> {
         match i {
-            ItemKind::Fn(box Fn { eii_impls, .. })
-            | ItemKind::Static(box StaticItem { eii_impls, .. })
+            ItemKind::Fn(Fn { eii_impls, .. }) | ItemKind::Static(StaticItem { eii_impls, .. })
                 if eii_impls.is_empty() =>
             {
                 Vec::new()
             }
-            ItemKind::Fn(box Fn { eii_impls, .. })
-            | ItemKind::Static(box StaticItem { eii_impls, .. }) => {
+            ItemKind::Fn(Fn { eii_impls, .. }) | ItemKind::Static(StaticItem { eii_impls, .. }) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpls(
                     eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
@@ -298,7 +296,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
             }
-            ItemKind::Static(box ast::StaticItem {
+            ItemKind::Static(ast::StaticItem {
                 ident,
                 ty,
                 safety: _,
@@ -314,7 +312,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_define_opaque(hir_id, define_opaque);
                 hir::ItemKind::Static(*m, ident, ty, body_id)
             }
-            ItemKind::Const(box ConstItem {
+            ItemKind::Const(ConstItem {
                 defaultness: _,
                 ident,
                 generics,
@@ -352,7 +350,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.record_body(&[], body)
                 }),
             ),
-            ItemKind::Fn(box Fn {
+            ItemKind::Fn(Fn {
                 sig: FnSig { decl, header, span: fn_sig_span },
                 ident,
                 generics,
@@ -419,7 +417,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
                 hir::ItemKind::GlobalAsm { asm, fake_body }
             }
-            ItemKind::TyAlias(box TyAlias { ident, generics, after_where_clause, ty, .. }) => {
+            ItemKind::TyAlias(TyAlias { ident, generics, after_where_clause, ty, .. }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -539,7 +537,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     constness,
                 })
             }
-            ItemKind::Trait(box Trait {
+            ItemKind::Trait(Trait {
                 impl_restriction,
                 constness,
                 is_auto,
@@ -580,7 +578,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items,
                 }
             }
-            ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
+            ItemKind::TraitAlias(TraitAlias { constness, ident, generics, bounds }) => {
                 let constness = self.lower_constness(*constness);
                 let ident = self.lower_ident(*ident);
                 let (generics, bounds) = self.lower_generics(
@@ -615,7 +613,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 });
                 hir::ItemKind::Macro(ident, macro_def, macro_kinds)
             }
-            ItemKind::Delegation(box delegation) => {
+            ItemKind::Delegation(delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id);
                 hir::ItemKind::Fn {
                     sig: delegation_results.sig,
@@ -794,7 +792,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let attrs =
             self.lower_attrs(hir_id, &i.attrs, i.span, Target::from_foreign_item_kind(&i.kind));
         let (ident, kind) = match &i.kind {
-            ForeignItemKind::Fn(box Fn { sig, ident, generics, define_opaque, .. }) => {
+            ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
                 let fdec = &sig.decl;
                 let itctx = ImplTraitContext::Universal;
                 let (generics, (decl, fn_args)) =
@@ -822,7 +820,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                 )
             }
-            ForeignItemKind::Static(box StaticItem {
+            ForeignItemKind::Static(StaticItem {
                 ident,
                 ty,
                 mutability,
@@ -839,9 +837,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 (ident, hir::ForeignItemKind::Static(ty, *mutability, safety))
             }
-            ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => {
-                (ident, hir::ForeignItemKind::Type)
-            }
+            ForeignItemKind::TyAlias(TyAlias { ident, .. }) => (ident, hir::ForeignItemKind::Type),
             ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
         };
 
@@ -980,7 +976,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = hir_id.expect_owner();
 
         let (ident, generics, kind, has_value) = match &i.kind {
-            AssocItemKind::Const(box ConstItem {
+            AssocItemKind::Const(ConstItem {
                 ident,
                 generics,
                 ty,
@@ -1020,9 +1016,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (*ident, generics, kind, rhs_kind.has_expr())
             }
-            AssocItemKind::Fn(box Fn {
-                sig, ident, generics, body: None, define_opaque, ..
-            }) => {
+            AssocItemKind::Fn(Fn { sig, ident, generics, body: None, define_opaque, .. }) => {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
                 let idents = self.lower_fn_params_to_idents(&sig.decl);
@@ -1047,7 +1041,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     false,
                 )
             }
-            AssocItemKind::Fn(box Fn {
+            AssocItemKind::Fn(Fn {
                 sig,
                 ident,
                 generics,
@@ -1082,7 +1076,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     true,
                 )
             }
-            AssocItemKind::Type(box TyAlias {
+            AssocItemKind::Type(TyAlias {
                 ident,
                 generics,
                 after_where_clause,
@@ -1115,7 +1109,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (*ident, generics, kind, ty.is_some())
             }
-            AssocItemKind::Delegation(box delegation) => {
+            AssocItemKind::Delegation(delegation) => {
                 let delegation_results = self.lower_delegation(delegation, i.id);
                 let item_kind = hir::TraitItemKind::Fn(
                     delegation_results.sig,
@@ -1216,7 +1210,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         let (ident, (generics, kind)) = match &i.kind {
-            AssocItemKind::Const(box ConstItem {
+            AssocItemKind::Const(ConstItem {
                 ident,
                 generics,
                 ty,
@@ -1240,14 +1234,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 ),
             ),
-            AssocItemKind::Fn(box Fn {
-                sig,
-                ident,
-                generics,
-                body,
-                contract,
-                define_opaque,
-                ..
+            AssocItemKind::Fn(Fn {
+                sig, ident, generics, body, contract, define_opaque, ..
             }) => {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
@@ -1271,9 +1259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (*ident, (generics, hir::ImplItemKind::Fn(sig, body_id)))
             }
-            AssocItemKind::Type(box TyAlias {
-                ident, generics, after_where_clause, ty, ..
-            }) => {
+            AssocItemKind::Type(TyAlias { ident, generics, after_where_clause, ty, .. }) => {
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, after_where_clause, false);
                 (
@@ -1307,7 +1293,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                 )
             }
-            AssocItemKind::Delegation(box delegation) => {
+            AssocItemKind::Delegation(delegation) => {
                 let delegation_results = self.lower_delegation(delegation, i.id);
                 (
                     delegation.ident,

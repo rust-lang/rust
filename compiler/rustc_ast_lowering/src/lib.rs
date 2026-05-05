@@ -31,7 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

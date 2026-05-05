@@ -4087,18 +4087,18 @@ impl ItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
             ItemKind::ExternCrate(_, ident)
-            | ItemKind::Static(box StaticItem { ident, .. })
-            | ItemKind::Const(box ConstItem { ident, .. })
-            | ItemKind::Fn(box Fn { ident, .. })
+            | ItemKind::Static(StaticItem { ident, .. })
+            | ItemKind::Const(ConstItem { ident, .. })
+            | ItemKind::Fn(Fn { ident, .. })
             | ItemKind::Mod(_, ident, _)
-            | ItemKind::TyAlias(box TyAlias { ident, .. })
+            | ItemKind::TyAlias(TyAlias { ident, .. })
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(box Trait { ident, .. })
-            | ItemKind::TraitAlias(box TraitAlias { ident, .. })
+            | ItemKind::Trait(Trait { ident, .. })
+            | ItemKind::TraitAlias(TraitAlias { ident, .. })
             | ItemKind::MacroDef(ident, _)
-            | ItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            | ItemKind::Delegation(Delegation { ident, .. }) => Some(ident),
 
             ItemKind::ConstBlock(_) => Some(ConstBlockItem::IDENT),
 
@@ -4149,14 +4149,14 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(box Fn { generics, .. })
-            | Self::TyAlias(box TyAlias { generics, .. })
-            | Self::Const(box ConstItem { generics, .. })
+            Self::Fn(Fn { generics, .. })
+            | Self::TyAlias(TyAlias { generics, .. })
+            | Self::Const(ConstItem { generics, .. })
             | Self::Enum(_, generics, _)
             | Self::Struct(_, generics, _)
             | Self::Union(_, generics, _)
-            | Self::Trait(box Trait { generics, .. })
-            | Self::TraitAlias(box TraitAlias { generics, .. })
+            | Self::Trait(Trait { generics, .. })
+            | Self::TraitAlias(TraitAlias { generics, .. })
             | Self::Impl(Impl { generics, .. }) => Some(generics),
 
             Self::ExternCrate(..)
@@ -4205,10 +4205,10 @@ pub enum AssocItemKind {
 impl AssocItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
-            AssocItemKind::Const(box ConstItem { ident, .. })
-            | AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Type(box TyAlias { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
+            AssocItemKind::Const(ConstItem { ident, .. })
+            | AssocItemKind::Fn(Fn { ident, .. })
+            | AssocItemKind::Type(TyAlias { ident, .. })
+            | AssocItemKind::Delegation(Delegation { ident, .. }) => Some(ident),
 
             AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(_) => None,
         }
@@ -4216,9 +4216,9 @@ impl AssocItemKind {
 
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(box ConstItem { defaultness, .. })
-            | Self::Fn(box Fn { defaultness, .. })
-            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
+            Self::Const(ConstItem { defaultness, .. })
+            | Self::Fn(Fn { defaultness, .. })
+            | Self::Type(TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
                 Defaultness::Implicit
             }
@@ -4271,9 +4271,9 @@ pub enum ForeignItemKind {
 impl ForeignItemKind {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
-            ForeignItemKind::Static(box StaticItem { ident, .. })
-            | ForeignItemKind::Fn(box Fn { ident, .. })
-            | ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => Some(ident),
+            ForeignItemKind::Static(StaticItem { ident, .. })
+            | ForeignItemKind::Fn(Fn { ident, .. })
+            | ForeignItemKind::TyAlias(TyAlias { ident, .. }) => Some(ident),
 
             ForeignItemKind::MacCall(_) => None,
         }
