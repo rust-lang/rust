@@ -497,21 +497,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     // This implementation is a bit different from `TyCtxt::relevant_impls_for_ty`,
     // since we want to skip over blanket impls for non-rigid aliases, and also we
     // only want to consider types that *actually* unify with float/int vars.
-    fn for_each_relevant_impl(
-        self,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        mut f: impl FnMut(DefId),
-    ) {
+    gen fn relevant_impls_for_ty(self, trait_def_id: DefId, self_ty: Ty<'tcx>) -> DefId {
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
-        let mut consider_impls_for_simplified_type = |simp| {
-            if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
-                for &impl_def_id in impls_for_type {
-                    f(impl_def_id);
-                }
-            }
-        };
 
         match self_ty.kind() {
             ty::Bool
@@ -541,7 +529,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
                 ) {
-                    consider_impls_for_simplified_type(simp);
+                    for &impl_def_id in
+                        trait_impls.non_blanket_impls().get(&simp).into_iter().flatten()
+                    {
+                        yield impl_def_id;
+                    }
                 }
             }
 
@@ -570,7 +562,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
+                    for &impl_def_id in
+                        trait_impls.non_blanket_impls().get(&simp).into_iter().flatten()
+                    {
+                        yield impl_def_id;
+                    }
                 }
             }
 
@@ -585,7 +581,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 ];
 
                 for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
+                    for &impl_def_id in
+                        trait_impls.non_blanket_impls().get(&simp).into_iter().flatten()
+                    {
+                        yield impl_def_id;
+                    }
                 }
             }
 
@@ -607,13 +607,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         }
 
         #[allow(rustc::usage_of_type_ir_traits)]
-        self.for_each_blanket_impl(trait_def_id, f)
-    }
-    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
-        let trait_impls = self.trait_impls_of(trait_def_id);
-        for &impl_def_id in trait_impls.blanket_impls() {
-            f(impl_def_id);
+        for impl_def_id in self.blanket_impls(trait_def_id) {
+            yield impl_def_id;
         }
+    }
+
+    fn blanket_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
+        self.trait_impls_of(trait_def_id).blanket_impls().iter().copied()
     }
 
     fn has_item_definition(self, def_id: DefId) -> bool {

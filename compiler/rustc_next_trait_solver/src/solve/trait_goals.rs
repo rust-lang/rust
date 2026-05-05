@@ -1225,14 +1225,10 @@ where
     ) -> Option<Result<Candidate<I>, NoSolution>> {
         let self_ty = goal.predicate.self_ty();
         let check_impls = || {
-            let mut disqualifying_impl = None;
-            self.cx().for_each_relevant_impl(
-                goal.predicate.def_id(),
-                goal.predicate.self_ty(),
-                |impl_def_id| {
-                    disqualifying_impl = Some(impl_def_id);
-                },
-            );
+            let disqualifying_impl = self
+                .cx()
+                .relevant_impls_for_ty(goal.predicate.def_id(), goal.predicate.self_ty())
+                .next();
             if let Some(def_id) = disqualifying_impl {
                 trace!(?def_id, ?goal, "disqualified auto-trait implementation");
                 // No need to actually consider the candidate here,

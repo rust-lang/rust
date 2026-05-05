@@ -524,24 +524,22 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         let cx = self.cx();
-        cx.for_each_relevant_impl(
-            goal.predicate.trait_def_id(cx),
-            goal.predicate.self_ty(),
-            |impl_def_id| {
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if cx.impl_is_default(impl_def_id) {
-                    return;
-                }
-                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
-                    ecx.evaluate_added_goals_and_make_canonical_response(certainty)
-                }) {
-                    Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => (),
-                }
-            },
-        );
+        for impl_def_id in
+            cx.relevant_impls_for_ty(goal.predicate.trait_def_id(cx), goal.predicate.self_ty())
+        {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if cx.impl_is_default(impl_def_id) {
+                continue;
+            }
+            match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
+                ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+            }) {
+                Ok(candidate) => candidates.push(candidate),
+                Err(NoSolution) => (),
+            }
+        }
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -1092,32 +1090,34 @@ where
         // See tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs for an example.
         if assemble_from.should_assemble_impl_candidates() {
             let cx = self.cx();
-            cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if cx.impl_is_default(impl_def_id) {
-                    return;
-                }
-
-                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
-                    if ecx.shallow_resolve(self_ty).is_ty_var() {
-                        // We force the certainty of impl candidates to be `Maybe`.
-                        let certainty = certainty.and(Certainty::AMBIGUOUS);
-                        ecx.evaluate_added_goals_and_make_canonical_response(certainty)
-                    } else {
-                        // We don't want to use impls if they constrain the opaque.
-                        //
-                        // FIXME(trait-system-refactor-initiative#229): This isn't
-                        // perfect yet as it still allows us to incorrectly constrain
-                        // other inference variables.
-                        Err(NoSolution)
+            candidates.extend(cx.blanket_impls(goal.predicate.trait_def_id(cx)).filter_map(
+                |impl_def_id| {
+                    // For every `default impl`, there's always a non-default `impl`
+                    // that will *also* apply. There's no reason to register a candidate
+                    // for this impl, since it is *not* proof that the trait goal holds.
+                    if cx.impl_is_default(impl_def_id) {
+                        return None;
                     }
-                }) {
-                    Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => (),
-                }
-            });
+
+                    match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
+                        if ecx.shallow_resolve(self_ty).is_ty_var() {
+                            // We force the certainty of impl candidates to be `Maybe`.
+                            let certainty = certainty.and(Certainty::AMBIGUOUS);
+                            ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+                        } else {
+                            // We don't want to use impls if they constrain the opaque.
+                            //
+                            // FIXME(trait-system-refactor-initiative#229): This isn't
+                            // perfect yet as it still allows us to incorrectly constrain
+                            // other inference variables.
+                            Err(NoSolution)
+                        }
+                    }) {
+                        Ok(candidate) => Some(candidate),
+                        Err(NoSolution) => None,
+                    }
+                },
+            ));
         }
 
         if candidates.is_empty() {

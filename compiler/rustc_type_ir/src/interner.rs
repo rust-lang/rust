@@ -349,13 +349,15 @@ pub trait Interner:
         def_id: Self::TraitId,
     ) -> impl IntoIterator<Item = Self::DefId>;
 
-    fn for_each_relevant_impl(
+    // FIXME(fmease): Why do other methods on the interner ret `impl IntoIterator` instead?
+
+    fn relevant_impls_for_ty(
         self,
         trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        f: impl FnMut(Self::ImplId),
-    );
-    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, f: impl FnMut(Self::ImplId));
+    ) -> impl Iterator<Item = Self::ImplId>;
+
+    fn blanket_impls(self, trait_def_id: Self::TraitId) -> impl Iterator<Item = Self::ImplId>;
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool;
 
