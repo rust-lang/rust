@@ -2741,6 +2741,8 @@ struct ImportSummary {
     vis: Visibility,
     nearest_parent_mod: LocalDefId,
     is_single: bool,
+    priv_macro_use: bool,
+    span: Span,
 }
 
 /// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
