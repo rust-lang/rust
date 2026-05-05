@@ -317,6 +317,11 @@ pub(crate) struct CrateRoot {
 struct RDRHashes {
     /// Hash of the "public api". It tries to exclude things which cannot change the output in dependents, allowing to skip their rustc invocation, which can be quite expensive even if nothing has changed (macro expansion, checking that nothing changed in the query dependency graph is always executed)
     public_api_hash: Svh,
+
+    /// This is the previous crate_hash, but the dependencies are only hashed using their public
+    /// api hash. Proc macros combine this from all dependencies to derive their full hash, which
+    /// is also their public api hash.
+    private_hash: Svh,
 }
 
 /// On-disk representation of `DefId`.

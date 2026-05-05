@@ -716,7 +716,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         adapted.encode(&mut self.opaque, hcx)
     }
 
-    fn encode_crate_root(&mut self, hcx: &mut PublicApiHashingContext<'_>) -> LazyValue<CrateRoot> {
+    fn encode_crate_root(
+        &mut self,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) -> (LazyValue<CrateRoot>, Svh) {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -899,6 +902,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
         };
         let crate_root = crate_root.into_crate_root(self.tcx, hcx);
+        let hash = crate_root.header.hash;
 
         let root = stat!("final", || { self.lazy(crate_root) });
 
@@ -965,7 +969,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             eprint!("{s}");
         }
 
-        root
+        (root, hash)
     }
 }
 
@@ -2707,22 +2711,6 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();
 
-    // Generate the metadata stub manually, as that is a small file compared to full metadata.
-    if let Some(ref_path) = ref_path {
-        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
-
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
-            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
-                name: tcx.crate_name(LOCAL_CRATE),
-                triple: tcx.sess.opts.target_triple.clone(),
-                hash: tcx.crate_hash(LOCAL_CRATE),
-                is_proc_macro_crate: false,
-                is_stub: true,
-            });
-            header.position.get()
-        })
-    }
-
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     let dep_node = tcx.metadata_dep_node();
@@ -2757,6 +2745,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
+    let mut hash = tcx.crate_hash(LOCAL_CRATE);
+
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
     tcx.dep_graph.with_task(
@@ -2774,7 +2764,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 with_encode_metadata_header(tcx, path, |ecx| {
                     // Encode all the entries and extra information in the crate,
                     // culminating in the `CrateRoot` which points to all of it.
-                    let root = ecx.encode_crate_root(&mut hcx);
+                    let (root, header_hash) = ecx.encode_crate_root(&mut hcx);
+                    hash = header_hash;
 
                     // Flush buffer to ensure backing file has the correct size.
                     ecx.opaque.flush();
@@ -2791,6 +2782,22 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         },
         None,
     );
+
+    // Generate the metadata stub manually, as that is a small file compared to full metadata.
+    if let Some(ref_path) = ref_path {
+        let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
+
+        with_encode_metadata_header(tcx, ref_path, |ecx| {
+            let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                hash,
+                is_proc_macro_crate: false,
+                is_stub: true,
+            });
+            header.position.get()
+        })
+    }
 }
 
 fn with_encode_metadata_header(

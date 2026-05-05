@@ -16,6 +16,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
+use rustc_session::config::CrateType;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
@@ -1230,12 +1231,19 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
 }
 
 fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
+    // proc macros must use the private hash of all crates, since the code running is part of its
+    // public api. When the crate is a library, it cannot use the crate_hash of dependencies with
+    // public api hash enabled. This crate's rustc invocation might be skipped if only the public
+    // api hash of dependencies change, which could lead to incorrect hashes in the rmeta.
+    let use_public_hash = tcx.sess.opts.unstable_opts.public_api_hash
+        && !tcx.crate_types().contains(&CrateType::ProcMacro);
     let mut upstream_crates: Vec<_> = tcx
         .crates(())
         .iter()
         .map(|&cnum| {
             let stable_crate_id = tcx.stable_crate_id(cnum);
-            let hash = tcx.crate_hash(cnum);
+            let hash =
+                if use_public_hash { tcx.public_api_hash(cnum) } else { tcx.crate_hash(cnum) };
             (stable_crate_id, hash)
         })
         .collect();

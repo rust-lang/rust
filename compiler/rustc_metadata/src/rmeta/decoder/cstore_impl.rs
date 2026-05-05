@@ -18,6 +18,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::Decoder;
 use rustc_session::StableCrateId;
+use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
@@ -147,8 +148,14 @@ macro_rules! provide_one {
             // External query providers call `public_api_hash` in order to register a dependency
             // on the crate metadata. The exception is `public_api_hash` itself, which obviously
             // doesn't need to do this (and can't, as it would cause a query cycle).
+            //
+            // The `crate_hash` query must not depend on public_api_hash, since it might change when
+            // the `public_api_hash` does not change.
             use rustc_middle::dep_graph::DepKind;
-            if DepKind::$name != DepKind::public_api_hash && $tcx.dep_graph.is_fully_enabled() {
+            if ((DepKind::$name != DepKind::public_api_hash)
+                & (DepKind::$name != DepKind::crate_hash))
+                && $tcx.dep_graph.is_fully_enabled()
+            {
                 $tcx.ensure_ok().public_api_hash($def_id.krate);
             }
 
@@ -366,8 +373,23 @@ provide! { tcx, def_id, other, cdata,
     }
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
-    crate_hash => { cdata.root.header.hash }
-    public_api_hash => { cdata.root.rdr_hashes.public_api_hash }
+    crate_hash => {
+        if tcx.sess.opts.unstable_opts.public_api_hash {
+            assert!(
+                // We could allow all binary targets, they should always get a rustc invocation for
+                // linking, but there is no reason to (yet).
+                tcx.crate_types().contains(&CrateType::ProcMacro),
+                "Calling the crate_hash query for dependencies outside of proc-macro crates is unsound!"
+            );
+            cdata.root.rdr_hashes.private_hash
+        } else {
+            cdata.root.header.hash
+        }
+    }
+    public_api_hash => { {
+        tracing::debug!("public api hash: {} {}", cdata.root.header.name, cdata.root.rdr_hashes.public_api_hash);
+        cdata.root.rdr_hashes.public_api_hash
+    } }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
     num_extern_def_ids => { cdata.num_def_ids() }

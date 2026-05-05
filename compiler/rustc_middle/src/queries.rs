@@ -2010,6 +2010,10 @@ rustc_queries! {
     // until `tcx.untracked().definitions.freeze()` has been called, otherwise if incremental
     // compilation is enabled calculating this hash can freeze this structure too early in
     // compilation and cause subsequent crashes when attempting to write to `definitions`
+    //
+    // When the public-api-hash unstable options is enabled, this only contains the public hash of
+    // dependencies, unless this crate is a proc macro, then it contains the private hashes to make
+    // sure its hash changes with any code changes in dependencies.
     query crate_hash(_: CrateNum) -> Svh {
         eval_always
         desc { "looking up the hash a crate" }

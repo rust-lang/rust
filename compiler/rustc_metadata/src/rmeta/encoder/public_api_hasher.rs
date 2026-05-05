@@ -367,10 +367,10 @@ impl HashableCrateRoot {
             let public_api_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_api_hash);
-            RDRHashes { public_api_hash }
+            RDRHashes { public_api_hash, private_hash: tcx.crate_hash(LOCAL_CRATE) }
         } else {
             let hash = tcx.crate_hash(LOCAL_CRATE);
-            RDRHashes { public_api_hash: hash }
+            RDRHashes { public_api_hash: hash, private_hash: hash }
         };
         let header = self.header;
         let header = CrateHeader {
