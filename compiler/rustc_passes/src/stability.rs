@@ -54,10 +54,11 @@ fn inherit_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     match def_kind {
         DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
             match tcx.def_kind(tcx.local_parent(def_id)) {
-                DefKind::Impl { .. } => true,
+                DefKind::Trait | DefKind::Impl { .. } => true,
                 _ => false,
             }
         }
+        DefKind::Closure => true,
         _ => false,
     }
 }

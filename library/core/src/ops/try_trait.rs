@@ -1,4 +1,4 @@
-use crate::marker::{Destruct, PhantomData};
+use crate::marker::Destruct;
 use crate::ops::ControlFlow;
 
 /// The `?` operator and `try {}` blocks.
@@ -398,25 +398,6 @@ pub(crate) type ChangeOutputType<T: Try<Residual: Residual<V>>, V> =
 /// Not currently planned to be exposed publicly, so just `pub(crate)`.
 #[repr(transparent)]
 pub(crate) struct NeverShortCircuit<T>(pub T);
-// FIXME(const-hack): replace with `|a| NeverShortCircuit(f(a))` when const closures added.
-pub(crate) struct Wrapped<T, A, F: FnMut(A) -> T> {
-    f: F,
-    p: PhantomData<(T, A)>,
-}
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T, A, F: [const] FnMut(A) -> T + [const] Destruct> const FnOnce<(A,)> for Wrapped<T, A, F> {
-    type Output = NeverShortCircuit<T>;
-
-    extern "rust-call" fn call_once(mut self, args: (A,)) -> Self::Output {
-        self.call_mut(args)
-    }
-}
-#[rustc_const_unstable(feature = "const_never_short_circuit", issue = "none")]
-impl<T, A, F: [const] FnMut(A) -> T> const FnMut<(A,)> for Wrapped<T, A, F> {
-    extern "rust-call" fn call_mut(&mut self, (args,): (A,)) -> Self::Output {
-        NeverShortCircuit((self.f)(args))
-    }
-}
 
 impl<T> NeverShortCircuit<T> {
     /// Wraps a unary function to produce one that wraps the output into a `NeverShortCircuit`.
@@ -424,11 +405,14 @@ impl<T> NeverShortCircuit<T> {
     /// This is useful for implementing infallible functions in terms of the `try_` ones,
     /// without accidentally capturing extra generic parameters in a closure.
     #[inline]
-    pub(crate) const fn wrap_mut_1<A, F>(f: F) -> Wrapped<T, A, F>
+    #[rustc_const_unstable(feature = "const_array", issue = "147606")]
+    pub(crate) const fn wrap_mut_1<A, F>(
+        mut f: F,
+    ) -> impl [const] FnMut(A) -> Self + [const] Destruct
     where
-        F: [const] FnMut(A) -> T,
+        F: [const] FnMut(A) -> T + [const] Destruct,
     {
-        Wrapped { f, p: PhantomData }
+        const move |a| NeverShortCircuit(f(a))
     }
 
     #[inline]
