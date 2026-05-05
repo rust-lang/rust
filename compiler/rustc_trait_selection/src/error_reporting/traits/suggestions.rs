@@ -3642,27 +3642,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     already implement it",
                                     with_no_trimmed_paths!(tcx.def_path_str(def_id)),
                                 ));
-                                let impls_of = tcx.trait_impls_of(def_id);
-                                let impls = impls_of
-                                    .non_blanket_impls()
-                                    .values()
-                                    .flatten()
-                                    .chain(impls_of.blanket_impls().iter())
+                                let mut types = tcx
+                                    .all_impls(def_id)
+                                    .map(|t| {
+                                        with_no_trimmed_paths!(format!(
+                                            "  {}",
+                                            tcx.type_of(t).instantiate_identity().skip_norm_wip(),
+                                        ))
+                                    })
                                     .collect::<Vec<_>>();
-                                if !impls.is_empty() {
-                                    let len = impls.len();
-                                    let mut types = impls
-                                        .iter()
-                                        .map(|&&t| {
-                                            with_no_trimmed_paths!(format!(
-                                                "  {}",
-                                                tcx.type_of(t)
-                                                    .instantiate_identity()
-                                                    .skip_norm_wip(),
-                                            ))
-                                        })
-                                        .collect::<Vec<_>>();
-                                    let post = if types.len() > 9 {
+                                if !types.is_empty() {
+                                    let len = types.len();
+                                    let post = if len > 9 {
                                         types.truncate(8);
                                         format!("\nand {} others", len - 8)
                                     } else {
