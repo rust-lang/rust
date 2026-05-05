@@ -1,4 +1,4 @@
-//@ min-gdb-version: 14.0
+//@ min-gdb-version: 15.1
 // LLDB 1800+ tests were not tested in CI, broke, and now are disabled
 //@ ignore-lldb
 
