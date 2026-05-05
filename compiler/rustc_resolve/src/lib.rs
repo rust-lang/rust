@@ -2282,8 +2282,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     #[inline]
     fn add_to_glob_map(&mut self, import: Import<'_>, name: Symbol) {
-        if let ImportKind::Glob { id, .. } = import.kind {
-            let def_id = self.local_def_id(id);
+        if let ImportKind::Glob { def_id, .. } = import.kind {
             self.glob_map.entry(def_id).or_default().insert(name);
         }
     }
