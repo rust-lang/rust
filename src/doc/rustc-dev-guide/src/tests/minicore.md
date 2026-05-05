@@ -44,6 +44,11 @@ The `minicore` items must be kept up to date with `core`.
 For consistent diagnostic output between using `core` and `minicore`, any `diagnostic`
 attributes (e.g. `on_unimplemented`) should be replicated exactly in `minicore`.
 
+## Specific compile flags
+`compile-flags` is used both for auxiliary builds (including minicore) and main test build.
+`minicore-compile-flags` directive may be used to provide compile flags for minicore build only.
+`non-aux-compile-flags` directive may be used to provide compile flags for main test only.
+
 ## Example codegen test that uses `minicore`
 
 ```rust,no_run
