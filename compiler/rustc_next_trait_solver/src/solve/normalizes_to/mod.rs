@@ -383,19 +383,30 @@ where
 
             // Finally we construct the actual value of the associated type.
             let term = match goal.predicate.alias.kind(cx) {
-                ty::AliasTermKind::ProjectionTy { .. } => {
-                    cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
+                ty::AliasTermKind::ProjectionTy { .. } => cx
+                    .type_of(target_item_def_id)
+                    .instantiate(cx, target_args)
+                    .skip_norm_wip()
+                    .into(),
+                ty::AliasTermKind::ProjectionConst { .. }
+                    if cx.is_type_const(target_item_def_id) =>
+                {
+                    cx.const_of_item(target_item_def_id)
+                        .instantiate(cx, target_args)
+                        .skip_norm_wip()
+                        .into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
-                    cx.const_of_item(target_item_def_id).map_bound(|ct| ct.into())
+                    let uv = ty::UnevaluatedConst::new(
+                        target_item_def_id.try_into().unwrap(),
+                        target_args,
+                    );
+                    return ecx.evaluate_const_and_instantiate_normalizes_to_term(goal, uv);
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(
-                goal,
-                term.instantiate(cx, target_args).skip_norm_wip(),
-            );
+            ecx.instantiate_normalizes_to_term(goal, term);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

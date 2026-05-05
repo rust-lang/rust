@@ -1,5 +1,5 @@
 error: generic parameters in const blocks are only allowed as the direct value of a `type const`
-  --> $DIR/generic-param-rhs.rs:6:19
+  --> $DIR/generic-param-rhs.rs:7:19
    |
 LL |     foo::<const { N + 1 }>();
    |                   ^

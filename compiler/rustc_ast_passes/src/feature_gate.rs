@@ -464,6 +464,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_incompatible_features(sess, features);
     check_dependent_features(sess, features);
     check_new_solver_banned_features(sess, features);
+    check_features_requiring_new_solver(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
 
@@ -736,6 +737,28 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),
             f2: sym::generic_const_exprs,
+        });
+    }
+}
+
+fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
+    if sess.opts.unstable_opts.next_solver.globally {
+        return;
+    }
+
+    // Require the new solver with GCA, because the old solver can't implement GCA correctly as it
+    // does not support normalization obligations for free and inherent consts.
+    if let Some(gca_span) = features
+        .enabled_lang_features()
+        .iter()
+        .find(|feat| feat.gate_name == sym::generic_const_args)
+        .map(|feat| feat.attr_sp)
+    {
+        #[allow(rustc::symbol_intern_string_literal)]
+        sess.dcx().emit_err(errors::MissingDependentFeatures {
+            parent_span: gca_span,
+            parent: sym::generic_const_args,
+            missing: String::from("-Znext-solver=globally"),
         });
     }
 }

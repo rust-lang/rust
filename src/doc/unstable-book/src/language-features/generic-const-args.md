@@ -23,7 +23,8 @@ See also: [generic_const_items]
 
 ## Examples
 
-```rust
+<!-- NOTE(ignore) generic_const_args requires -Znext-solver to compile -->
+```rust,ignore (requires-Z-next-solver)
 #![feature(generic_const_items)]
 #![feature(min_generic_const_args)]
 #![feature(generic_const_args)]
