@@ -125,10 +125,17 @@ impl<T> LinearStorage<T> {
         }
     }
 
-    fn ensure_committed_for_index(&self, index: usize) -> bool {
+    #[inline]
+    fn ensure_committed_for_index(&self, index: usize) {
+        if self.is_committed_for_index(index) { return } else { self.expand(index) }
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn expand(&self, index: usize) {
         let value_size = std::mem::size_of::<Slot<T>>();
         if value_size == 0 {
-            return false;
+            return;
         }
         let max_index = Self::max_index();
         assert!(index <= max_index);
@@ -139,13 +146,9 @@ impl<T> LinearStorage<T> {
         let max_ahead_pages = min_pages.saturating_add(LINEAR_COMMIT_AHEAD_PAGES);
         let desired_pages = target_pages.min(max_ahead_pages);
 
-        if self.is_committed_for_index(target_index) {
-            return false;
-        }
-
         let mut committed_pages = self.committed_pages.lock();
         if desired_pages <= *committed_pages {
-            return false;
+            return;
         }
 
         let page_size = vmem::page_size();
@@ -159,7 +162,6 @@ impl<T> LinearStorage<T> {
         }
         *committed_pages = desired_pages;
         self.committed_slots.store(Self::slots_covered_by_pages(desired_pages), Ordering::Release);
-        true
     }
 
     /// SAFETY: `index` must be in bounds for this storage, and the caller must ensure the slot's
@@ -263,8 +265,6 @@ impl<T> LinearVec<T> {
         if index >= self.len() {
             return None;
         }
-
-        let _ = self.storage.ensure_committed_for_index(index);
         unsafe { self.storage.get(index).map(|(value, _)| value) }
     }
 }
