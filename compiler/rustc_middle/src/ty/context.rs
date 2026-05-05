@@ -106,6 +106,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.generic_const_exprs()
     }
 
+    fn generic_const_args(self) -> bool {
+        self.generic_const_args()
+    }
+
     fn coroutine_clone(self) -> bool {
         self.coroutine_clone()
     }
