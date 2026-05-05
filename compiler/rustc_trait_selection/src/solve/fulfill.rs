@@ -6,7 +6,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
-use rustc_middle::ty::{TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, TyCtxt, TyVid, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
@@ -75,6 +75,29 @@ impl<'tcx> ObligationStorage<'tcx> {
     fn clone_pending(&self) -> PredicateObligations<'tcx> {
         let mut obligations: PredicateObligations<'tcx> =
             self.pending.iter().map(|(o, _)| o.clone()).collect();
+        obligations.extend(self.overflowed.iter().cloned());
+        obligations
+    }
+
+    fn clone_pending_potentially_referencing_sub_root(
+        &self,
+        vid: TyVid,
+    ) -> PredicateObligations<'tcx> {
+        let mut obligations: PredicateObligations<'tcx> = self
+            .pending
+            .iter()
+            .filter(|(_, stalled_on)| {
+                // This may incorrectly return `false` in case we've made
+                // inference progress since the last time we tried to evaluate
+                // this obligation.
+                if let Some(stalled_on) = stalled_on {
+                    stalled_on.sub_roots.iter().any(|&r| r == vid)
+                } else {
+                    true
+                }
+            })
+            .map(|(o, _)| o.clone())
+            .collect();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
@@ -270,6 +293,13 @@ where
 
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
+    }
+
+    fn pending_obligations_potentially_referencing_sub_root(
+        &self,
+        vid: ty::TyVid,
+    ) -> PredicateObligations<'tcx> {
+        self.obligations.clone_pending_potentially_referencing_sub_root(vid)
     }
 
     fn drain_stalled_obligations_for_coroutines(
