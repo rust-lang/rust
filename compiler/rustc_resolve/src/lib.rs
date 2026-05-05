@@ -1162,11 +1162,11 @@ impl<'ra> DeclData<'ra> {
         self.res().macro_kinds()
     }
 
-    fn reexport_chain(self: Decl<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
+    fn reexport_chain(self: Decl<'ra>) -> SmallVec<[Reexport; 2]> {
         let mut reexport_chain = SmallVec::new();
         let mut next_binding = self;
         while let DeclKind::Import { source_decl, import, .. } = next_binding.kind {
-            reexport_chain.push(import.simplify(r));
+            reexport_chain.push(import.simplify());
             next_binding = source_decl;
         }
         reexport_chain

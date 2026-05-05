@@ -714,13 +714,15 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     decls: Default::default(),
                     nested,
                     id,
+                    def_id: feed.def_id(),
                 };
 
                 self.add_import(module_path, kind, use_tree.span(), item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Glob(_) => {
                 if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
-                    let kind = ImportKind::Glob { max_vis: CmCell::new(None), id };
+                    let kind =
+                        ImportKind::Glob { max_vis: CmCell::new(None), id, def_id: feed.def_id() };
                     self.add_import(prefix, kind, use_tree.span(), item, root_span, item.id, vis);
                 } else {
                     // Resolve the prelude import early.
@@ -1012,7 +1014,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         })
         .unwrap_or((true, None, self.r.dummy_decl));
         let import = self.r.arenas.alloc_import(ImportData {
-            kind: ImportKind::ExternCrate { source: orig_name, target: orig_ident, id: item.id },
+            kind: ImportKind::ExternCrate {
+                source: orig_name,
+                target: orig_ident,
+                id: item.id,
+                def_id: local_def_id,
+            },
             root_id: item.id,
             parent_scope,
             imported_module: CmCell::new(module),
