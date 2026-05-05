@@ -1271,7 +1271,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
             let nrules = self.r.local_macro_map[&def_id].nrules;
-            self.r.unused_macro_rules.insert(node_id, DenseBitSet::new_filled(nrules));
+            self.r.unused_macro_rules.insert(node_id, (def_id, DenseBitSet::new_filled(nrules)));
         }
     }
 
