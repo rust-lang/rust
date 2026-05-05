@@ -2431,6 +2431,14 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    // The only purpose of this flag is to act as a deterrent:
+    // Marking a feature that's only meant for testing as internal might not preclude somebody from
+    // trying to use it in `core` or `std` as both enable various internal features and utilize them
+    // throughout. This is intentionally a flag not another internal feature as having to modify the
+    // build cfg in `bootstrap` is arguably scarier than just needing to add `#![feature]`. It also
+    // stands out a lot more during code review making it easier to get caught.
+    internal_testing_features: bool = (false, parse_bool, [TRACKED],
+        "allow certain internal language features to be enabled that help exercise & test the compiler"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),

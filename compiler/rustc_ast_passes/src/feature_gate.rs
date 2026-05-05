@@ -549,9 +549,17 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         .emit();
     }
 
-    // Negative bounds are *super* internal.
-    // Under no circumstances do we want to advertise the feature name to users!
-    if !visitor.features.negative_bounds() {
+    // Negative bounds are *super* internal. We require `-Zinternal-testing-features` *and*
+    // `#![feature(negative_bounds)]` to prevent proliferation. Under no circumstances do we
+    // want to advertise the flag and the feature name to users!
+    //
+    // IMPORTANT: If you intend on turning negative bounds into a public-facing feature, please
+    //            consult T-types and T-lang first! Do **not** just remove the `-Z` check!
+    //
+    // NOTE: `T: !Bound` means "`T` implements `Bound` negatively",
+    //       it does **not** mean "`T` doesn't implement `Bound` (positively or negatively)"!
+    //       The latter would be a SemVer hazard!
+    if !sess.opts.unstable_opts.internal_testing_features || !visitor.features.negative_bounds() {
         for &span in spans.get(&sym::negative_bounds).into_iter().flatten() {
             sess.dcx().emit_err(diagnostics::NegativeBoundUnsupported { span });
         }
