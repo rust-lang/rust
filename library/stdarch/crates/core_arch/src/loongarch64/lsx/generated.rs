@@ -91,14 +91,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vsat_wu(a: __v4u32, b: u32) -> __v4u32;
     #[link_name = "llvm.loongarch.lsx.vsat.du"]
     fn __lsx_vsat_du(a: __v2u64, b: u32) -> __v2u64;
-    #[link_name = "llvm.loongarch.lsx.vadda.b"]
-    fn __lsx_vadda_b(a: __v16i8, b: __v16i8) -> __v16i8;
-    #[link_name = "llvm.loongarch.lsx.vadda.h"]
-    fn __lsx_vadda_h(a: __v8i16, b: __v8i16) -> __v8i16;
-    #[link_name = "llvm.loongarch.lsx.vadda.w"]
-    fn __lsx_vadda_w(a: __v4i32, b: __v4i32) -> __v4i32;
-    #[link_name = "llvm.loongarch.lsx.vadda.d"]
-    fn __lsx_vadda_d(a: __v2i64, b: __v2i64) -> __v2i64;
     #[link_name = "llvm.loongarch.lsx.vavg.b"]
     fn __lsx_vavg_b(a: __v16i8, b: __v16i8) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vavg.h"]
@@ -1355,34 +1347,6 @@ pub fn lsx_vsat_wu<const IMM5: u32>(a: m128i) -> m128i {
 pub fn lsx_vsat_du<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vsat_du(transmute(a), IMM6)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vadda_b(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vadda_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vadda_h(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vadda_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vadda_w(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vadda_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vadda_d(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vadda_d(transmute(a), transmute(b))) }
 }
 
 #[inline]

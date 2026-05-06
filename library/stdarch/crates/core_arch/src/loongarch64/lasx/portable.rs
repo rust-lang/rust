@@ -148,6 +148,10 @@ impl_vvv!("lasx", lasx_xvssub_bu, is::simd_saturating_sub, m256i, u8x32);
 impl_vvv!("lasx", lasx_xvssub_hu, is::simd_saturating_sub, m256i, u16x16);
 impl_vvv!("lasx", lasx_xvssub_wu, is::simd_saturating_sub, m256i, u32x8);
 impl_vvv!("lasx", lasx_xvssub_du, is::simd_saturating_sub, m256i, u64x4);
+impl_vvv!("lasx", lasx_xvadda_b, ls::simd_adda, m256i, i8x32);
+impl_vvv!("lasx", lasx_xvadda_h, ls::simd_adda, m256i, i16x16);
+impl_vvv!("lasx", lasx_xvadda_w, ls::simd_adda, m256i, i32x8);
+impl_vvv!("lasx", lasx_xvadda_d, ls::simd_adda, m256i, i64x4);
 
 impl_vuv!("lasx", lasx_xvslli_b, is::simd_shl, m256i, i8x32);
 impl_vuv!("lasx", lasx_xvslli_h, is::simd_shl, m256i, i16x16);

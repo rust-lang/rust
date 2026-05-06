@@ -924,21 +924,25 @@ asm-fmts = vd, vj, ui6
 data-types = UV2DI, UV2DI, UQI
 
 /// lsx_vadda_b
+impl = portable
 name = lsx_vadda_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vadda_h
+impl = portable
 name = lsx_vadda_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vadda_w
+impl = portable
 name = lsx_vadda_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vadda_d
+impl = portable
 name = lsx_vadda_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI

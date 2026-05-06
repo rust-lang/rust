@@ -924,21 +924,25 @@ asm-fmts = xd, xj, ui6
 data-types = UV4DI, UV4DI, UQI
 
 /// lasx_xvadda_b
+impl = portable
 name = lasx_xvadda_b
 asm-fmts = xd, xj, xk
 data-types = V32QI, V32QI, V32QI
 
 /// lasx_xvadda_h
+impl = portable
 name = lasx_xvadda_h
 asm-fmts = xd, xj, xk
 data-types = V16HI, V16HI, V16HI
 
 /// lasx_xvadda_w
+impl = portable
 name = lasx_xvadda_w
 asm-fmts = xd, xj, xk
 data-types = V8SI, V8SI, V8SI
 
 /// lasx_xvadda_d
+impl = portable
 name = lasx_xvadda_d
 asm-fmts = xd, xj, xk
 data-types = V4DI, V4DI, V4DI

@@ -47,6 +47,19 @@ impl_simd_ext!(u64x4, u64);
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_abs<T: Copy + const SimdExt>(a: T) -> T {
+    let m: T = is::simd_lt(a, ls::simd_splat(0));
+    is::simd_select(m, is::simd_neg(a), a)
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_adda<T: Copy + const SimdExt>(a: T, b: T) -> T {
+    is::simd_add(ls::simd_abs(a), ls::simd_abs(b))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(super) const unsafe fn simd_andn<T: Copy + const SimdExt>(a: T, b: T) -> T {
     is::simd_and(ls::simd_not(a), b)
 }
