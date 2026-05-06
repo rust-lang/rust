@@ -1283,8 +1283,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_map_or_default)]
-    ///
     /// let x: Option<&str> = Some("hi");
     /// let y: Option<&str> = None;
     ///
@@ -1294,7 +1292,7 @@ impl<T> Option<T> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[unstable(feature = "result_option_map_or_default", issue = "138099")]
+    #[stable(feature = "result_option_map_or_default", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn map_or_default<U, F>(self, f: F) -> U
     where
