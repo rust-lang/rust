@@ -638,7 +638,7 @@ mod uefi_command_internal {
             }
 
             if let Some((ptr, len)) = self.args {
-                let _ = unsafe { Box::from_raw(crate::ptr::slice_from_raw_parts_mut(ptr, len)) };
+                let _ = unsafe { Box::from_raw(ptr.cast_slice(len)) };
             }
         }
     }

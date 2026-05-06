@@ -35,6 +35,7 @@
 #![feature(iter_next_chunk)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(ptr_alignment_type)]
+#![feature(ptr_cast_slice)]
 #![feature(ptr_internals)]
 #![feature(rev_into_inner)]
 #![feature(sized_type_properties)]

@@ -107,7 +107,7 @@ fn eq_unsized() {
 fn eq_unsized_slice() {
     let a: Arc<[()]> = Arc::new([(); 3]);
     let ptr: *const () = Arc::into_raw(a.clone()).cast();
-    let b: Arc<[()]> = unsafe { Arc::from_raw(core::ptr::slice_from_raw_parts(ptr, 42)) };
+    let b: Arc<[()]> = unsafe { Arc::from_raw(ptr.cast_slice(42)) };
     assert!(a == a);
     assert!(!(a != a));
     assert!(a != b);

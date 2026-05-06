@@ -1160,10 +1160,7 @@ impl<T> Rc<[T]> {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                        as *mut RcInner<[mem::MaybeUninit<T>]>
-                },
+                |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[mem::MaybeUninit<T>]>,
             ))
         }
     }
@@ -1231,10 +1228,7 @@ impl<T, A: Allocator> Rc<[T], A> {
                 Rc::allocate_for_layout(
                     Layout::array::<T>(len).unwrap(),
                     |layout| alloc.allocate_zeroed(layout),
-                    |mem| {
-                        ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                            as *mut RcInner<[mem::MaybeUninit<T>]>
-                    },
+                    |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[mem::MaybeUninit<T>]>,
                 ),
                 alloc,
             )
@@ -2325,7 +2319,7 @@ impl<T> Rc<[T]> {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2402,7 +2396,7 @@ impl<T, A: Allocator> Rc<[T], A> {
             Rc::<[T]>::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut RcInner<[T]>,
             )
         }
     }
