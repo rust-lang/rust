@@ -633,9 +633,14 @@ impl<'tcx> LateContext<'tcx> {
     /// The typing mode of the currently visited node. Use this when
     /// building a new `InferCtxt`.
     pub fn typing_mode(&self) -> TypingMode<'tcx> {
-        // FIXME(#132279): In case we're in a body, we should use a typing
-        // mode which reveals the opaque types defined by that body.
-        TypingMode::non_body_analysis()
+        if let Some(body_id) = self.enclosing_body
+            && self.tcx.use_typing_mode_borrowck()
+        {
+            let def_id = self.tcx.hir_enclosing_body_owner(body_id.hir_id);
+            TypingMode::borrowck(self.tcx, def_id)
+        } else {
+            TypingMode::non_body_analysis()
+        }
     }
 
     pub fn typing_env(&self) -> TypingEnv<'tcx> {
