@@ -1045,6 +1045,9 @@ fn visit_instance_use<'tcx>(
 /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
 /// can just link to the upstream crate and therefore don't need a mono item.
 fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+    if let ty::InstanceKind::DropGlue(_, Some(_)) = instance.def {
+        return instance.upstream_monomorphization(tcx).is_none();
+    }
     let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() else {
         return true;
     };

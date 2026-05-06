@@ -113,7 +113,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_candidates_for_unsizing(obligation, &mut candidates);
                 }
                 Some(LangItem::Destruct) => {
-                    self.assemble_const_destruct_candidates(obligation, &mut candidates);
+                    let before = candidates.vec.len();
+                    self.assemble_candidates_from_impls(obligation, &mut candidates);
+                    let added_impl =
+                        candidates.vec[before..].iter().any(|c| matches!(c, ImplCandidate(_)));
+                    if !added_impl {
+                        self.assemble_const_destruct_candidates(obligation, &mut candidates);
+                    }
                 }
                 Some(LangItem::TransmuteTrait) => {
                     // User-defined transmutability impls are permitted.
