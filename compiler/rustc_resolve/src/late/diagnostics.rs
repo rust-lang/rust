@@ -15,8 +15,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordItems;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, Diagnostic, ErrorGuaranteed, MultiSpan, SuggestionStyle, pluralize,
-    struct_span_code_err,
+    Applicability, Diag, Diagnostic, ErrorGuaranteed, MultiSpan, SuggestionStyle, Suggestions,
+    pluralize, struct_span_code_err,
 };
 use rustc_hir as hir;
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, FormatArgs};
@@ -760,6 +760,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         };
 
         let (found, suggested_candidates, mut candidates) = self.try_lookup_name_relaxed(
+            true,
             &mut err,
             source,
             path,
@@ -788,11 +789,35 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             suggested_candidates,
         );
 
+        self.err_code_special_cases(&mut err, source, path, span);
+
+        let no_suggestion = match &err.suggestions {
+            Suggestions::Enabled(suggestions) => suggestions.is_empty(),
+            Suggestions::Sealed(suggestions) => suggestions.is_empty(),
+            Suggestions::Disabled => false,
+        };
+        if let Some(E0425) = err.code
+            && candidates.is_empty()
+            && no_suggestion
+        {
+            candidates = self
+                .try_lookup_name_relaxed(
+                    false,
+                    &mut err,
+                    source,
+                    path,
+                    following_seg,
+                    span,
+                    res,
+                    &base_error,
+                )
+                .2;
+        }
+
         if fallback {
             // Fallback label.
             err.span_label(base_error.span, base_error.fallback_label);
         }
-        self.err_code_special_cases(&mut err, source, path, span);
 
         let module = base_error.module.unwrap_or_else(|| CRATE_DEF_ID.to_def_id());
         self.r.find_cfg_stripped(&mut err, &path.last().unwrap().ident.name, module);
@@ -916,6 +941,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     fn try_lookup_name_relaxed(
         &mut self,
+        case_sensitive: bool, // a subset of the tests are run when false
         err: &mut Diag<'_>,
         source: PathSource<'_, '_, '_>,
         path: &[Segment],
@@ -935,16 +961,70 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut suggested_candidates = FxHashSet::default();
         // Try to lookup name in more relaxed fashion for better error reporting.
         let ident = path.last().unwrap().ident;
-        let is_expected = &|res| source.is_expected(res);
+        // we do not suggest alternative capitalizations if only one letter, too many constants can match and it become noisy.
+        if !case_sensitive && ident.as_str().len() < 2 {
+            return (false, suggested_candidates, Vec::new());
+        }
+
+        let ident_filter = &|ident: Ident, ident_lookup: Ident| {
+            if case_sensitive {
+                ident.name == ident_lookup.name
+            } else {
+                ident.name.as_str().to_lowercase() == ident_lookup.name.as_str().to_lowercase()
+            }
+        };
+        let is_expected = &|res| {
+            if case_sensitive {
+                source.is_expected(res)
+            } else {
+                if following_seg.is_none() {
+                    source.is_expected(res)
+                } else {
+                    matches!(res, Res::Def(DefKind::Mod, _)) //fixme(GTimothy):check that this is
+                    // necessary/correct
+                }
+            }
+        };
         let ns = source.namespace();
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
         let path_str = Segment::names_to_string(path);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let mut candidates = self
             .r
-            .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
+            .lookup_import_candidates_impl(ident, ns, &self.parent_scope, ident_filter, is_expected)
             .into_iter()
             .filter(|ImportSuggestion { did, .. }| {
+                if !case_sensitive {
+                    // If there's a following segment, only keep modules that contain it
+                    if let Some(following) = following_seg {
+                        let Some(did) = did else { return false };
+                        let Some(module) = self.r.get_module(*did) else { return false };
+                        let mut found = false;
+                        module.for_each_child(self.r, |_, ident, _, _, _| {
+                            if ident.name == following.ident.name {
+                                found = true;
+                            }
+                        });
+                        if !found {
+                            return false;
+                        }
+                    }
+
+                    // Filter out items that are in the prelude
+                    if let Some(prelude) = self.r.prelude {
+                        if let Some(suggestion_did) = did {
+                            let mut is_in_prelude = false;
+                            prelude.for_each_child(self.r, |_, _, _, _, decl| {
+                                if decl.res().opt_def_id() == Some(*suggestion_did) {
+                                    is_in_prelude = true;
+                                }
+                            });
+                            if is_in_prelude {
+                                return false;
+                            }
+                        }
+                    }
+                }
                 match (did, res.and_then(|res| res.opt_def_id())) {
                     (Some(suggestion_did), Some(actual_did)) => *suggestion_did != actual_did,
                     _ => true,
@@ -962,6 +1042,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if candidates.is_empty() {
             // Put them back if we have no more candidates to suggest...
             candidates = intrinsic_candidates;
+        }
+        if !case_sensitive {
+            return (false, suggested_candidates, candidates);
         }
         let crate_def_id = CRATE_DEF_ID.to_def_id();
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
@@ -1153,7 +1236,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
         }
-
         if candidates.is_empty() {
             candidates = self.smart_resolve_partial_mod_path_errors(path, following_seg);
         }
@@ -3088,7 +3170,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     path_segments.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
-                    if module_def_id == def_id {
+                    let is_exact_match = module_def_id == def_id;
+                    if is_exact_match {
                         let path = Path { span: name_binding.span, segments: path_segments };
                         result = Some((
                             r.expect_module(module_def_id),
@@ -3101,6 +3184,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 note: None,
                                 via_import: false,
                                 is_stable: true,
+                                is_exact_match,
                             },
                         ));
                     } else {

@@ -122,6 +122,7 @@ pub(crate) struct ImportSuggestion {
     /// An extra note that should be issued if this item is suggested
     pub note: Option<String>,
     pub is_stable: bool,
+    pub is_exact_match: bool,
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -1590,16 +1591,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    fn lookup_import_candidates_from_module<FilterFn>(
+    fn lookup_import_candidates_from_module<IdentFilterFn, FilterFn>(
         &self,
         lookup_ident: Ident,
         namespace: Namespace,
         parent_scope: &ParentScope<'ra>,
         start_module: Module<'ra>,
         crate_path: ThinVec<ast::PathSegment>,
+        ident_filter_fn: IdentFilterFn,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
+        IdentFilterFn: Fn(Ident, Ident) -> bool,
         FilterFn: Fn(Res) -> bool,
     {
         let mut candidates = Vec::new();
@@ -1671,7 +1674,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
                 // avoid suggesting anything with a hygienic name
-                if ident.name == lookup_ident.name
+                if ident_filter_fn(ident.orig(orig_ident_span), lookup_ident)
                     && ns == namespace
                     && in_module != parent_scope.module
                     && ident.ctxt.is_root()
@@ -1751,6 +1754,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             note,
                             via_import,
                             is_stable,
+                            is_exact_match: ident.name == lookup_ident.name,
                         });
                     }
                 }
@@ -1827,6 +1831,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// N.B., the method does not look into imports, but this is not a problem,
     /// since we report the definitions (thus, the de-aliased imports).
+    ///
+    /// The method is implemented in `lookup_import_candidates_impl`. The `_impl` method allows applying a different filter function on the ident than the exact match function used by default here.
     pub(crate) fn lookup_import_candidates<FilterFn>(
         &self,
         lookup_ident: Ident,
@@ -1837,6 +1843,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     where
         FilterFn: Fn(Res) -> bool,
     {
+        self.lookup_import_candidates_impl(
+            lookup_ident,
+            namespace,
+            parent_scope,
+            |ident: Ident, lookup_ident: Ident| ident.name == lookup_ident.name,
+            filter_fn,
+        )
+    }
+
+    /// The actual impl of the `lookup_import_candidates function`.
+    pub(crate) fn lookup_import_candidates_impl<IdentFilterFn, FilterFn>(
+        &self,
+        lookup_ident: Ident,
+        namespace: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        ident_filter_fn: IdentFilterFn,
+        filter_fn: FilterFn,
+    ) -> Vec<ImportSuggestion>
+    where
+        IdentFilterFn: Fn(Ident, Ident) -> bool,
+        FilterFn: Fn(Res) -> bool,
+    {
         let crate_path = thin_vec![ast::PathSegment::from_ident(Ident::with_dummy_span(kw::Crate))];
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
@@ -1844,6 +1872,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             parent_scope,
             self.graph_root.to_module(),
             crate_path,
+            &ident_filter_fn,
             &filter_fn,
         );
 
@@ -1898,6 +1927,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     parent_scope,
                     crate_root,
                     crate_path,
+                    &ident_filter_fn,
                     &filter_fn,
                 ));
             }
@@ -3899,7 +3929,7 @@ pub(crate) fn import_candidates(
     );
 }
 
-type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool);
+type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool, bool);
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
@@ -3935,6 +3965,7 @@ fn show_candidates(
                     c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                     &c.note,
                     c.via_import,
+                    c.is_exact_match,
                 ))
             }
         } else {
@@ -3944,6 +3975,7 @@ fn show_candidates(
                 c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                 &c.note,
                 c.via_import,
+                c.is_exact_match,
             ))
         }
     });
@@ -3975,9 +4007,10 @@ fn show_candidates(
 
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, s, name, through) =
-            if let [(name, descr, _, _, via_import)] = &accessible_path_strings[..] {
+            if let [(name, descr, _, _, via_import, is_exact_match)] = &accessible_path_strings[..]
+            {
                 (
-                    "this",
+                    if *is_exact_match { "this" } else { "this similarly named" },
                     *descr,
                     "",
                     format!(" `{name}`"),
@@ -3988,12 +4021,24 @@ fn show_candidates(
                 // instead of the more generic "items".
                 let kinds = accessible_path_strings
                     .iter()
-                    .map(|(_, descr, _, _, _)| *descr)
+                    .map(|(_, descr, _, _, _, _)| *descr)
                     .collect::<UnordSet<&str>>();
                 let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
                 let s = if kind.ends_with('s') { "es" } else { "s" };
+                // we should only suggest case insensitive suggestion if no case sensitive match was found,
+                // so all the suggestion should have the same is_exact_match value.
 
-                ("one of these", kind, s, String::new(), "")
+                (
+                    if accessible_path_strings[0].5 {
+                        "one of these"
+                    } else {
+                        "one of these similarly named"
+                    },
+                    kind,
+                    s,
+                    String::new(),
+                    "",
+                )
             };
 
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
@@ -4087,9 +4132,12 @@ fn show_candidates(
     {
         let prefix =
             if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
-        if let [(name, descr, source_span, note, _)] = &inaccessible_path_strings[..] {
+        if let [(name, descr, source_span, note, _, is_exact_match)] =
+            &inaccessible_path_strings[..]
+        {
             let msg = format!(
-                "{prefix}{descr} `{name}`{} exists but is inaccessible",
+                "{prefix}{}{descr} `{name}`{} exists but is inaccessible",
+                if *is_exact_match { "" } else { "similarly named " },
                 if let DiagMode::Pattern = mode { ", which" } else { "" }
             );
 
@@ -4107,17 +4155,20 @@ fn show_candidates(
         } else {
             let descr = inaccessible_path_strings
                 .iter()
-                .map(|&(_, descr, _, _, _)| descr)
+                .map(|&(_, descr, _, _, _, _)| descr)
                 .all_equal_value()
                 .unwrap_or("item");
             let plural_descr =
                 if descr.ends_with('s') { format!("{descr}es") } else { format!("{descr}s") };
-
-            let mut msg = format!("{prefix}these {plural_descr} exist but are inaccessible");
+            let are_exact_matches = inaccessible_path_strings[0].5;
+            let mut msg = format!(
+                "{prefix}these {}{plural_descr} exist but are inaccessible",
+                if are_exact_matches { "" } else { "similarly named " },
+            );
             let mut has_colon = false;
 
             let mut spans = Vec::new();
-            for (name, _, source_span, _, _) in &inaccessible_path_strings {
+            for (name, _, source_span, _, _, _) in &inaccessible_path_strings {
                 if let Some(source_span) = source_span {
                     let span = tcx.sess.source_map().guess_head_span(*source_span);
                     spans.push((name, span));
