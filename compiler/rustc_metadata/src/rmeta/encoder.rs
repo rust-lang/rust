@@ -1628,7 +1628,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
-                record!(self.tables.trait_impl_trait_tys[def_id] <- table);
+                record!(self.tables.collect_return_position_impl_trait_in_trait_tys[def_id] <- table);
             }
             if let DefKind::Impl { .. } | DefKind::Trait = def_kind {
                 let table = tcx.associated_types_for_impl_traits_in_trait_or_impl(def_id);
