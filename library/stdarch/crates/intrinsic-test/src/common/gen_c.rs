@@ -25,13 +25,6 @@ pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
     passes: u32,
 ) -> std::io::Result<()> {
     let body_indentation = indentation.nested();
-    // Successive arguments are offset increasingly from their value array start
-    let passes = passes + 1
-        - intrinsic
-            .arguments
-            .iter()
-            .filter(|&arg| !arg.has_constraint())
-            .count() as u32;
     writeln!(
         w,
         "{indentation}for (int i=0; i<{passes}; i++) {{\n\

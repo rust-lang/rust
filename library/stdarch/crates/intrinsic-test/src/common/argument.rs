@@ -1,5 +1,6 @@
 use super::cli::Language;
 use super::constraint::Constraint;
+use super::gen_rust::PASSES;
 use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
@@ -178,7 +179,7 @@ where
             .enumerate()
             .map(|(idx, arg)| {
                 format!(
-                    "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[i+{idx}]));\n",
+                    "{indentation}{ty} {name} = cast<{ty}>({load}(&{name}_vals[(i+{idx}) % {PASSES}]));\n",
                     ty = arg.to_c_type(),
                     name = arg.generate_name(),
                     load = if arg.is_simd() {
@@ -199,17 +200,20 @@ where
             .filter(|&arg| !arg.has_constraint())
             .enumerate()
             .map(|(idx, arg)| {
-                let load = if arg.is_simd() {
-                    arg.ty.get_load_function(Language::Rust)
+                if arg.is_simd() {
+                    format!(
+                        "{indentation}let {name} = {load}({vals_name}.as_ptr().add((i+{idx}) % {PASSES}) as _);\n",
+                        name = arg.generate_name(),
+                        vals_name = arg.rust_vals_array_name(),
+                        load = arg.ty.get_load_function(Language::Rust),
+                    )
                 } else {
-                    "*".to_string()
-                };
-                let typecast = if load.len() > 2 { "as _" } else { "" };
-                format!(
-                    "{indentation}let {name} = {load}({vals_name}.as_ptr().offset(i+{idx}){typecast});\n",
-                    name = arg.generate_name(),
-                    vals_name = arg.rust_vals_array_name(),
-                )
+                    format!(
+                        "{indentation}let {name} = {vals_name}[(i+{idx}) % {PASSES}];\n",
+                        name = arg.generate_name(),
+                        vals_name = arg.rust_vals_array_name(),
+                    )
+                }
             })
             .collect()
     }
