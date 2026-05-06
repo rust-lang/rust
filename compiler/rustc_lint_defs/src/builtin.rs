@@ -34,6 +34,7 @@ declare_lint_pass! {
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
         DEAD_CODE,
+        DEAD_CODE_PUB_IN_BINARY,
         DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
         DEPRECATED,
         DEPRECATED_IN_FUTURE,
@@ -787,6 +788,37 @@ declare_lint! {
     pub DEAD_CODE,
     Warn,
     "detect unused, unexported items"
+}
+
+declare_lint! {
+    /// The `dead_code_pub_in_binary` lint detects unused `pub` items in
+    /// executable crates.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![deny(dead_code_pub_in_binary)]
+    ///
+    /// pub fn unused_pub_fn() {}
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In executable crates, `pub` items are often implementation details
+    /// rather than part of an external API. This lint helps find those items
+    /// when they are never used.
+    ///
+    /// This lint only applies to executable crates. In library crates, public
+    /// items are considered part of the crate's API and are not reported by
+    /// this lint.
+    pub DEAD_CODE_PUB_IN_BINARY,
+    Allow,
+    "detect public items in executable crates that are never used",
+    crate_level_only
 }
 
 declare_lint! {
