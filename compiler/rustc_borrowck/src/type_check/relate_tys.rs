@@ -211,12 +211,15 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn instantiate_binder_with_existentials<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    fn instantiate_binder_with_existentials<T>(
+        &mut self,
+        binder: ty::Binder<'tcx, T>,
+    ) -> ty::Unnormalized<'tcx, T>
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(inner) = binder.no_bound_vars() {
-            return inner;
+            return ty::Unnormalized::new(inner);
         }
 
         let infcx = self.type_checker.infcx;
@@ -499,7 +502,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(b, |this, b| {
-                    let a = this.instantiate_binder_with_existentials(a);
+                    let a = this.instantiate_binder_with_existentials(a).skip_norm_wip();
                     this.relate(a, b)
                 })?;
             }
@@ -514,7 +517,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(a, |this, a| {
-                    let b = this.instantiate_binder_with_existentials(b);
+                    let b = this.instantiate_binder_with_existentials(b).skip_norm_wip();
                     this.relate(a, b)
                 })?;
             }
@@ -529,13 +532,13 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(b, |this, b| {
-                    let a = this.instantiate_binder_with_existentials(a);
+                    let a = this.instantiate_binder_with_existentials(a).skip_norm_wip();
                     this.relate(a, b)
                 })?;
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(a, |this, a| {
-                    let b = this.instantiate_binder_with_existentials(b);
+                    let b = this.instantiate_binder_with_existentials(b).skip_norm_wip();
                     this.relate(a, b)
                 })?;
             }
