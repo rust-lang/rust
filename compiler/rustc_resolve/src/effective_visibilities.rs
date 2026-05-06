@@ -45,10 +45,7 @@ impl Resolver<'_, '_> {
     fn private_vis_import(&self, decl: Decl<'_>) -> Visibility {
         let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
         Visibility::Restricted(
-            import
-                .id()
-                .map(|id| self.nearest_normal_mod(self.local_def_id(id)))
-                .unwrap_or(CRATE_DEF_ID),
+            import.def_id().map(|id| self.nearest_normal_mod(id)).unwrap_or(CRATE_DEF_ID),
         )
     }
 
@@ -96,8 +93,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         // is the maximum value among visibilities of declarations corresponding to that def id.
         for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
             let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
-            if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
+            if let Some(def_id) = import.def_id() {
+                r.effective_visibilities.update_eff_vis(def_id, eff_vis, r.tcx)
             }
             if decl.ambiguity.get().is_some() && eff_vis.is_public_at_level(Level::Reexported) {
                 exported_ambiguities.insert(*decl);
