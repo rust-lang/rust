@@ -375,13 +375,17 @@ pub struct EarlyBinder<I: Interner, T> {
 
 impl<I: Interner, T: Eq> Eq for EarlyBinder<I, T> {}
 
-/// For early binders, you should first call `instantiate` before using any visitors.
+// FIXME(154045): Recommended as per https://github.com/rust-lang/rust/issues/154045, this is so sad :((
 #[cfg(feature = "nightly")]
-impl<I: Interner, T> !TypeFoldable<I> for ty::EarlyBinder<I, T> {}
+macro_rules! generate { ($( $tt:tt )*) => { $( $tt )* } }
 
-/// For early binders, you should first call `instantiate` before using any visitors.
 #[cfg(feature = "nightly")]
-impl<I: Interner, T> !TypeVisitable<I> for ty::EarlyBinder<I, T> {}
+generate!(
+    /// For early binders, you should first call `instantiate` before using any visitors.
+    impl<I: Interner, T> !TypeFoldable<I> for ty::EarlyBinder<I, T> {}
+    /// For early binders, you should first call `instantiate` before using any visitors.
+    impl<I: Interner, T> !TypeVisitable<I> for ty::EarlyBinder<I, T> {}
+);
 
 impl<I: Interner, T> EarlyBinder<I, T> {
     pub fn bind(value: T) -> EarlyBinder<I, T> {
