@@ -1156,3 +1156,10 @@ pub(crate) enum InvalidMachoSectionReason {
     #[note("section name `{$section}` is longer than 16 bytes")]
     SectionTooLong { section: String },
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
+pub(crate) struct BothFfiConstAndPure {
+    #[primary_span]
+    pub attr_span: Span,
+}
