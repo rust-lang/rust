@@ -1171,11 +1171,11 @@ impl<'ra> DeclData<'ra> {
         self.res().macro_kinds()
     }
 
-    fn reexport_chain(self: Decl<'ra>, r: &Resolver<'_, '_>) -> SmallVec<[Reexport; 2]> {
+    fn reexport_chain(self: Decl<'ra>) -> SmallVec<[Reexport; 2]> {
         let mut reexport_chain = SmallVec::new();
         let mut next_binding = self;
         while let DeclKind::Import { source_decl, import, .. } = next_binding.kind {
-            reexport_chain.push(import.simplify(r));
+            reexport_chain.push(import.simplify());
             next_binding = source_decl;
         }
         reexport_chain
@@ -1405,8 +1405,8 @@ pub struct Resolver<'ra, 'tcx> {
     local_macro_def_scopes: FxHashMap<LocalDefId, LocalModule<'ra>> = default::fx_hash_map(),
     ast_transform_scopes: FxHashMap<LocalExpnId, LocalModule<'ra>> = default::fx_hash_map(),
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
-    /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
+    /// A map from the macro to all its potentially unused arms and the `LocalDefId` of the macro itself.
+    unused_macro_rules: FxIndexMap<NodeId, (LocalDefId, DenseBitSet<usize>)>,
     proc_macro_stubs: FxHashSet<LocalDefId> = default::fx_hash_set(),
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
@@ -2155,8 +2155,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> &'tcx [LocalDefId] {
         let mut import_ids: SmallVec<[LocalDefId; 1]> = smallvec![];
         while let DeclKind::Import { import, source_decl, .. } = kind {
-            if let Some(node_id) = import.id() {
-                let def_id = self.local_def_id(node_id);
+            if let Some(def_id) = import.def_id() {
                 self.maybe_unused_trait_imports.insert(def_id);
                 import_ids.push(def_id);
             }
@@ -2292,8 +2291,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     #[inline]
     fn add_to_glob_map(&mut self, import: Import<'_>, name: Symbol) {
-        if let ImportKind::Glob { id, .. } = import.kind {
-            let def_id = self.local_def_id(id);
+        if let ImportKind::Glob { def_id, .. } = import.kind {
             self.glob_map.entry(def_id).or_default().insert(name);
         }
     }
