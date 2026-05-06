@@ -1159,7 +1159,9 @@ pub(crate) enum InvalidMachoSectionReason {
 
 #[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
+#[note("`#[ffi_pure]` is redundant here because `#[ffi_const]` provides stronger guarantees")]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
+    #[suggestion("remove `#[ffi_pure]`", code = "", applicability = "maybe-incorrect")]
     pub attr_span: Span,
 }

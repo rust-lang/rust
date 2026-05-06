@@ -2,7 +2,9 @@ error[E0757]: `#[ffi_const]` function cannot be `#[ffi_pure]`
   --> $DIR/ffi_const2.rs:4:5
    |
 LL |     #[unsafe(ffi_pure)]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^ help: remove `#[ffi_pure]`
+   |
+   = note: `#[ffi_pure]` is redundant here because `#[ffi_const]` provides stronger guarantees
 
 error: aborting due to 1 previous error
 
