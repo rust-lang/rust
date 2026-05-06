@@ -160,7 +160,42 @@ export function cargoPath(env?: Env): Promise<string> {
     if (env?.["RUSTC_TOOLCHAIN"]) {
         return Promise.resolve("cargo");
     }
+    if (env) {
+        return getPathForExecutableWithEnv("cargo", env);
+    }
     return getPathForExecutable("cargo");
+}
+
+/**
+ * Resolves an executable using an explicitly supplied environment instead of the VS Code host
+ * process environment.
+ *
+ * Some extension call sites already construct the exact env they will use for spawning, so path
+ * resolution needs to honor that same `PATH`/`CARGO_HOME` view to avoid launching a different
+ * toolchain than the one that was resolved.
+ */
+async function getPathForExecutableWithEnv(
+    executableName: "cargo" | "rustc" | "rustup",
+    env: Env,
+): Promise<string> {
+    const envVar = env[executableName.toUpperCase()];
+    if (envVar) {
+        return envVar;
+    }
+
+    if (await lookupInPath(executableName, env["PATH"] ?? "")) {
+        return executableName;
+    }
+
+    const cargoHome = getCargoHomeFromPath(env["CARGO_HOME"]);
+    if (cargoHome) {
+        const standardPath = vscode.Uri.joinPath(cargoHome, "bin", executableName);
+        if (await isFileAtUri(standardPath)) {
+            return standardPath.fsPath;
+        }
+    }
+
+    return executableName;
 }
 
 /** Mirrors `toolchain::get_path_for_executable()` implementation */
@@ -172,7 +207,7 @@ const getPathForExecutable = memoizeAsync(
             if (envVar) return envVar;
         }
 
-        if (await lookupInPath(executableName)) return executableName;
+        if (await lookupInPath(executableName, process.env["PATH"] ?? "")) return executableName;
 
         const cargoHome = getCargoHome();
         if (cargoHome) {
@@ -183,9 +218,7 @@ const getPathForExecutable = memoizeAsync(
     },
 );
 
-async function lookupInPath(exec: string): Promise<boolean> {
-    const paths = process.env["PATH"] ?? "";
-
+async function lookupInPath(exec: string, paths: string): Promise<boolean> {
     const candidates = paths.split(path.delimiter).flatMap((dirInPath) => {
         const candidate = path.join(dirInPath, exec);
         return os.type() === "Windows_NT" ? [candidate, `${candidate}.exe`] : [candidate];
@@ -201,6 +234,10 @@ async function lookupInPath(exec: string): Promise<boolean> {
 
 function getCargoHome(): vscode.Uri | null {
     const envVar = process.env["CARGO_HOME"];
+    return getCargoHomeFromPath(envVar);
+}
+
+function getCargoHomeFromPath(envVar: string | undefined): vscode.Uri | null {
     if (envVar) return vscode.Uri.file(envVar);
 
     try {

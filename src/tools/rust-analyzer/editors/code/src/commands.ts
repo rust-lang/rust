@@ -33,6 +33,7 @@ import { log } from "./util";
 import type { SyntaxElement } from "./syntax_tree_provider";
 
 export * from "./run";
+export { newProject } from "./new_project";
 
 export function analyzerStatus(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
