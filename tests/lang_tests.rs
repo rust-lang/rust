@@ -19,7 +19,7 @@ fn compile_and_run_cmds(
     // Test command 2: run `tempdir/x`.
     if test_target.is_some() {
         let mut env_path = std::env::var("PATH").unwrap_or_default();
-        // TODO(antoyo): find a better way to add the PATH necessary locally.
+        // FIXME(antoyo): find a better way to add the PATH necessary locally.
         env_path = format!("/opt/m68k-unknown-linux-gnu/bin:{}", env_path);
         compiler.env("PATH", env_path);
 
@@ -112,7 +112,7 @@ fn build_test_runner(
 
     println!("=== {test_kind} tests ===");
 
-    // TODO(antoyo): find a way to send this via a cli argument.
+    // FIXME(antoyo): find a way to send this via a cli argument.
     let test_target = std::env::var("CG_GCC_TEST_TARGET").ok();
     let test_target_filter = test_target.clone();
 
