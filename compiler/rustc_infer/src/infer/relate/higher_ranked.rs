@@ -21,13 +21,16 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn enter_forall_and_leak_universe<T>(&self, binder: ty::Binder<'tcx, T>) -> T
+    pub fn enter_forall_and_leak_universe<T>(
+        &self,
+        binder: ty::Binder<'tcx, T>,
+    ) -> ty::Unnormalized<'tcx, T>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         // Inlined `no_bound_vars`.
         if !binder.as_ref().skip_binder().has_escaping_bound_vars() {
-            return binder.skip_binder();
+            return ty::Unnormalized::new(binder.skip_binder());
         }
 
         let next_universe = self.create_next_universe();
@@ -71,7 +74,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // used after exiting `f`. For example region subtyping can result in outlives constraints
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
-        let value = self.enter_forall_and_leak_universe(forall);
+        let value = self.enter_forall_and_leak_universe(forall).skip_norm_wip();
         debug!(?value);
         f(value)
     }

@@ -146,8 +146,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         idx: usize,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_trait_predicate =
-            self.infcx.enter_forall_and_leak_universe(obligation.predicate).trait_ref;
+        let placeholder_trait_predicate = self
+            .infcx
+            .enter_forall_and_leak_universe(obligation.predicate)
+            .skip_norm_wip()
+            .trait_ref;
         let placeholder_self_ty = self.infcx.shallow_resolve(placeholder_trait_predicate.self_ty());
         let candidate_predicate = self
             .for_each_item_bound(
@@ -237,7 +240,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let trait_def = obligation.predicate.def_id();
         let self_ty = self.infcx.shallow_resolve(
-            self.infcx.enter_forall_and_leak_universe(obligation.predicate.self_ty()),
+            self.infcx
+                .enter_forall_and_leak_universe(obligation.predicate.self_ty())
+                .skip_norm_wip(),
         );
         let types = match tcx.as_lang_item(trait_def) {
             Some(LangItem::Sized) => self.sizedness_conditions(self_ty, SizedTraitKind::Sized),
@@ -268,7 +273,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => ty::Binder::dummy(vec![]),
             other => bug!("unexpected builtin trait {trait_def:?} ({other:?})"),
         };
-        let types = self.infcx.enter_forall_and_leak_universe(types);
+        let types = self.infcx.enter_forall_and_leak_universe(types).skip_norm_wip();
 
         let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
         self.collect_predicates_for_types(
@@ -349,7 +354,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
-        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
 
         let mut assume = predicate.trait_ref.args.const_at(2);
         if self.tcx().features().generic_const_exprs() {
@@ -390,10 +396,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let self_ty =
                 obligation.predicate.self_ty().map_bound(|ty| self.infcx.shallow_resolve(ty));
-            let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty);
+            let self_ty = self.infcx.enter_forall_and_leak_universe(self_ty).skip_norm_wip();
 
             let constituents = self.constituent_types_for_auto_trait(self_ty)?;
-            let constituents = self.infcx.enter_forall_and_leak_universe(constituents);
+            let constituents =
+                self.infcx.enter_forall_and_leak_universe(constituents).skip_norm_wip();
 
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
             let mut obligations = self.collect_predicates_for_types(
@@ -491,7 +498,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         debug!(?obligation, ?index, "confirm_object_candidate");
 
-        let trait_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let trait_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let ty::Dynamic(data, ..) = *self_ty.kind() else {
             span_bug!(obligation.cause.span, "object candidate with non-object");
@@ -601,7 +609,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
 
         let tcx = self.tcx();
@@ -620,7 +629,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
-        let output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
+        let output_ty = self.infcx.enter_forall_and_leak_universe(sig.output()).skip_norm_wip();
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -645,7 +654,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> PredicateObligations<'tcx> {
         debug!(?obligation, "confirm_trait_alias_candidate");
 
-        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
         let args = trait_ref.args;
@@ -668,7 +678,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
         let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
@@ -698,7 +709,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
         let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
@@ -728,7 +740,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
         let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
@@ -758,7 +771,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
         let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
@@ -789,7 +803,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty: Ty<'_> = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
 
         let trait_ref = match *self_ty.kind() {
@@ -818,7 +833,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
 
         let tcx = self.tcx();
@@ -884,7 +900,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We must additionally check that the return type impls `Future + Sized`.
                 let future_trait_def_id =
                     tcx.require_lang_item(LangItem::Future, obligation.cause.span);
-                let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
+                let placeholder_output_ty =
+                    self.infcx.enter_forall_and_leak_universe(sig.output()).skip_norm_wip();
                 nested.push(obligation.with(
                     tcx,
                     ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),

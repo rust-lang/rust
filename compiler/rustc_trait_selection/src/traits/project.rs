@@ -178,7 +178,8 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
 ) -> ProjectAndUnifyResult<'tcx> {
     let infcx = selcx.infcx;
     let r = infcx.commit_if_ok(|_snapshot| {
-        let placeholder_predicate = infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
 
         let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
         match project_and_unify_term(selcx, &placeholder_obligation) {

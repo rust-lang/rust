@@ -2527,7 +2527,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
         let placeholder_obligation =
-            self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
@@ -2752,7 +2752,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, ()> {
-        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).skip_norm_wip();
         let trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             HigherRankedType,
