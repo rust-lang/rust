@@ -18,8 +18,6 @@ impl<'tcx> crate::MirPass<'tcx> for RadProtectedAnalysis {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
 
-        // print_calls_to_protected_functions(tcx, body);
-
         if !find_attr!(tcx, def_id, RadProtected(_)) {
             return;
         }
@@ -35,23 +33,16 @@ impl<'tcx> crate::MirPass<'tcx> for RadProtectedAnalysis {
             eprintln!("span: {}", loc);
 
             eprintln!("\nReturn:");
-            print_return(body, RETURN_PLACE, &sources);
+            print_return(body);
 
             eprintln!("\nInputs:");
-            for local in body.args_iter() {
-                print_input(body, local, &sources);
-            }
+            print_input(body); 
 
             eprintln!("\nUser Locals:");
-            for local in body.vars_and_temps_iter() {
-                if body.local_decls[local].is_user_variable() {
-                    let ty = body.local_decls[local].ty;
-                    eprintln!("  {:?}: {}", local, ty);
-                }
-            }
+            print_local(body);
 
-            eprintln!("\nPointer/Reference aliases:");
-            print_pointer_aliases(body, &sources);
+            eprintln!("\nRaw Pointer Sources:");
+            print_raw_pointer_sources(body, &sources);
 
             eprintln!("\nCalls:");
             print_calls(tcx, body);
@@ -60,50 +51,6 @@ impl<'tcx> crate::MirPass<'tcx> for RadProtectedAnalysis {
 
     fn is_required(&self) -> bool {
         true
-    }
-}
-
-enum PointerSource<'tcx> {
-    InputRef(Local),
-    InputRaw(Local),
-    Place { root: Place<'tcx>, via: &'static str },
-    AliasOf { root: Local, via: &'static str },
-    Unknown,
-}
-
-fn _print_calls_to_protected_functions<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    for (_bb_idx, bb_data) in body.basic_blocks.iter_enumerated() {
-        let Some(terminator) = &bb_data.terminator else {
-            continue;
-        };
-
-        let TerminatorKind::Call { func, args, .. } = &terminator.kind else {
-            continue;
-        };
-
-        let Some(callee_def_id) = called_def_id(func) else {
-            continue;
-        };
-
-        if !find_attr!(tcx, callee_def_id, RadProtected(_)) {
-            continue;
-        }
-
-        with_no_trimmed_paths!({
-            let caller_def_id = body.source.def_id();
-            let caller_name = tcx.def_path_str(caller_def_id);
-            let sources = build_pointer_sources(body);
-
-            eprintln!("\n=== Call To Protected Function ===");
-            eprintln!("caller: {}", caller_name);
-            eprintln!("callee: {}", tcx.def_path_str(callee_def_id));
-            eprintln!("span: {}", format_span(tcx, terminator.source_info.span));
-
-            eprintln!("args:");
-            for (idx, arg) in args.iter().enumerate() {
-                _print_call_arg_with_source(tcx, body, idx, &arg.node, &sources);
-            }
-        });
     }
 }
 
@@ -121,33 +68,173 @@ fn format_span(tcx: TyCtxt<'_>, span: rustc_span::Span) -> String {
     format!("{file}:{line}")
 }
 
-fn _print_call_arg_with_source<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    idx: usize,
-    operand: &Operand<'tcx>,
-    sources: &FxIndexMap<Local, PointerSource<'tcx>>,
-) {
-    eprintln!("  arg{}: {}", idx, format_operand(operand));
+fn print_return<'tcx>(body: &Body<'tcx>) {
+    let ty = body.local_decls[RETURN_PLACE].ty;
 
-    let (Operand::Copy(place) | Operand::Move(place)) = operand else {
-        return;
-    };
+    eprintln!("  {:?}: {}", RETURN_PLACE, ty);
+}
 
-    let ty = place.ty(body, tcx).ty;
+fn print_input<'tcx>(body: &Body<'tcx>) {
+    for local in body.args_iter() {
+        let ty = body.local_decls[local].ty;
 
-    if matches!(ty.kind(), ty::Ref(..) | ty::RawPtr(..)) {
-        eprintln!("\ttype: {}", ty);
+        eprintln!("  {:?}: {}", local, ty);
 
-        if place.projection.is_empty() {
-            match sources.get(&place.local) {
-                Some(_) => eprintln!("\tsource: {}", resolve_pointer_source(place.local, sources)),
-                None => eprintln!("\tsource: unknown"),
+        match ty.kind() {
+            ty::Ref(..) => {
+                eprintln!("      source: external_ref_arg({:?})", local);
             }
-        } else {
-            eprintln!("\tsource: {:?}", place);
+            ty::RawPtr(..) => {
+                eprintln!("      source: unknown_external_raw_arg({:?})", local);
+            }
+            _ => {
+                eprintln!("      source: by_value");
+            }
         }
     }
+}
+
+fn print_local<'tcx>(body: &Body<'tcx>) {
+    for local in body.vars_and_temps_iter() {
+        let decl = &body.local_decls[local];
+        if decl.is_user_variable() && !decl.from_compiler_desugaring() {
+            let ty = decl.ty;
+            eprintln!("  {:?}: {}", local, ty);
+        }
+    }
+}
+
+fn print_raw_pointer_sources<'tcx>(body: &Body<'tcx>, sources: &FxIndexMap<Local, PointerSource<'tcx>>) {
+    let mut printed_any = false;
+
+    for local in body.local_decls.indices() {
+        let decl = &body.local_decls[local];
+        if !decl.is_user_variable() && !decl.from_compiler_desugaring() && !matches!(body.local_kind(local), LocalKind::Arg)
+        {
+            continue;
+        }
+
+        let ty = decl.ty;
+
+        if !matches!(ty.kind(), ty::RawPtr(..)) {
+            continue;
+        }
+
+        let Some(source) = sources.get(&local) else {
+            continue;
+        };
+
+        match source {
+            PointerSource::Place { via, .. } => {
+                printed_any = true;
+                eprintln!(
+                    "  {:?}: {} -> source {}",
+                    local,
+                    ty,
+                    resolve_pointer_source(local, sources)
+                );
+                eprintln!("    via: {}", via);
+            }
+
+            PointerSource::AliasOf { root, via } => {
+                printed_any = true;
+                eprintln!(
+                    "  {:?}: {} -> source {}",
+                    local,
+                    ty,
+                    resolve_pointer_source(local, sources)
+                );
+                eprintln!("    via: {} from {:?}", via, root);
+            }
+
+            PointerSource::Unknown => {
+                printed_any = true;
+                eprintln!("  {:?}: {} -> source unknown", local, ty);
+                eprintln!("    via: unknown");
+            }
+
+            PointerSource::InputRaw(_) => {
+                printed_any = true;
+                eprintln!(
+                    "  {:?}: {} -> source {}",
+                    local,
+                    ty,
+                    resolve_pointer_source(local, sources)
+                );
+                eprintln!("    via: argument");
+            }
+
+            _ => {}
+        }
+    }
+
+    if !printed_any {
+        eprintln!("  none");
+    }
+}
+
+fn print_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+    for (_bb_idx, bb_data) in body.basic_blocks.iter_enumerated() {
+        let Some(terminator) = &bb_data.terminator else {
+            continue;
+        };
+
+        if let TerminatorKind::Call { func, args, destination, .. } = &terminator.kind {
+            eprintln!("func: {}", format_operand(func, body, tcx));
+
+            eprintln!("\targs:");
+            for arg in args {
+                eprintln!("\t  {}", format_operand(&arg.node, body, tcx));
+            }
+
+            eprintln!("\tdest: {:?}", destination);
+
+            if let Some(def_id) = called_def_id(func) {
+                let category = if tcx.is_foreign_item(def_id) {
+                    "foreign"
+                } else if def_id.krate == rustc_hir::def_id::LOCAL_CRATE {
+                    "same_crate"
+                } else {
+                    "external_crate"
+                };
+
+                eprintln!("\tcategory: {}", category);
+            }
+        }
+    }
+}
+
+fn called_def_id<'tcx>(func: &Operand<'tcx>) -> Option<rustc_hir::def_id::DefId> {
+    let Operand::Constant(c) = func else {
+        return None;
+    };
+
+    match c.const_.ty().kind() {
+        ty::FnDef(def_id, _) => Some(*def_id),
+        _ => None,
+    }
+}
+
+fn format_operand<'tcx>(operand: &Operand<'tcx>, body: &Body<'tcx>, tcx: TyCtxt<'tcx>) -> String {
+    if let Some(place) = operand.place() {
+        let ty = place.ty(body, tcx).ty;
+
+        if ty.is_trivially_pure_clone_copy() {
+            format!("copy {:?}", place)
+        } else {
+            format!("move {:?}", place)
+        }
+    } else {
+        format!("const {:?}", operand)
+    }
+}
+
+enum PointerSource<'tcx> {
+    InputRef(Local),
+    InputRaw(Local),
+    Place { root: Place<'tcx>, via: &'static str },
+    AliasOf { root: Local, via: &'static str },
+    Unknown,
 }
 
 fn build_pointer_sources<'tcx>(body: &Body<'tcx>) -> FxIndexMap<Local, PointerSource<'tcx>> {
@@ -161,7 +248,7 @@ fn build_pointer_sources<'tcx>(body: &Body<'tcx>) -> FxIndexMap<Local, PointerSo
                 sources.insert(arg, PointerSource::InputRef(arg));
             }
             ty::RawPtr(..) => {
-                sources.insert(arg, PointerSource::InputRaw(arg));
+            sources.insert(arg, PointerSource::InputRaw(arg));
             }
             _ => {}
         }
@@ -233,159 +320,6 @@ fn build_pointer_sources<'tcx>(body: &Body<'tcx>) -> FxIndexMap<Local, PointerSo
     sources
 }
 
-fn print_return<'tcx>(
-    body: &Body<'tcx>,
-    local: Local,
-    sources: &FxIndexMap<Local, PointerSource<'tcx>>,
-) {
-    let ty = body.local_decls[local].ty;
-
-    eprintln!("  {:?}: {}", local, ty);
-
-    if matches!(ty.kind(), ty::Ref(..) | ty::RawPtr(..)) {
-        match sources.get(&local) {
-            Some(_) => eprintln!("\tsource: {}", resolve_pointer_source(local, sources)),
-            None => eprintln!("\tsource: unknown"),
-        }
-    }
-}
-
-fn print_calls<'tcx>(_tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    for (_bb_idx, bb_data) in body.basic_blocks.iter_enumerated() {
-        let Some(terminator) = &bb_data.terminator else {
-            continue;
-        };
-
-        if let TerminatorKind::Call { func, args, destination, .. } = &terminator.kind {
-            eprintln!("func: {}", format_operand(func));
-
-            eprintln!("\targs:");
-            for arg in args {
-                eprintln!("\t  {}", format_operand(&arg.node));
-            }
-
-            eprintln!("\tdest: {:?}", destination);
-
-            if let Some(def_id) = called_def_id(func) {
-                let category = if def_id.krate == rustc_hir::def_id::LOCAL_CRATE {
-                    "same_crate"
-                } else {
-                    "external_crate"
-                };
-
-                eprintln!("\tcategory: {}", category);
-            }
-        }
-    }
-}
-
-fn format_operand<'tcx>(operand: &Operand<'tcx>) -> String {
-    match operand {
-        Operand::Copy(place) => format!("copy {:?} (by_copy)", place),
-        Operand::Move(place) => format!("move {:?} (by_value)", place),
-        Operand::Constant(c) => format!("const {:?}", c),
-        other => format!("{:?}", other),
-    }
-}
-
-fn called_def_id<'tcx>(func: &Operand<'tcx>) -> Option<rustc_hir::def_id::DefId> {
-    let Operand::Constant(c) = func else {
-        return None;
-    };
-
-    match c.const_.ty().kind() {
-        ty::FnDef(def_id, _) => Some(*def_id),
-        _ => None,
-    }
-}
-
-fn print_input<'tcx>(
-    body: &Body<'tcx>,
-    local: Local,
-    sources: &FxIndexMap<Local, PointerSource<'tcx>>,
-) {
-    let ty = body.local_decls[local].ty;
-
-    eprintln!("  {:?}: {}", local, ty);
-
-    match ty.kind() {
-        ty::Ref(..) | ty::RawPtr(..) => {
-            eprintln!("    source: {}", resolve_pointer_source(local, sources));
-        }
-        _ => {
-            eprintln!("    source: by_value");
-        }
-    }
-}
-
-fn print_pointer_aliases<'tcx>(
-    body: &Body<'tcx>,
-    sources: &FxIndexMap<Local, PointerSource<'tcx>>,
-) {
-    let mut printed_any = false;
-
-    for local in body.local_decls.indices() {
-        let is_formal_arg = matches!(body.local_kind(local), LocalKind::Arg);
-        if !body.local_decls[local].is_user_variable() && !is_formal_arg {
-            continue;
-        }
-
-        let ty = body.local_decls[local].ty;
-
-        if !matches!(ty.kind(), ty::Ref(..) | ty::RawPtr(..)) {
-            continue;
-        }
-
-        let Some(source) = sources.get(&local) else {
-            continue;
-        };
-
-        match source {
-            PointerSource::Place { via, .. } => {
-                printed_any = true;
-                eprintln!(
-                    "  {:?}: {} -> source {}",
-                    local,
-                    ty,
-                    resolve_pointer_source(local, sources)
-                );
-                eprintln!("    via: {}", via);
-            }
-
-            PointerSource::AliasOf { root, via } => {
-                printed_any = true;
-                eprintln!(
-                    "  {:?}: {} -> source {}",
-                    local,
-                    ty,
-                    resolve_pointer_source(local, sources)
-                );
-                eprintln!("    via: {} from {:?}", via, root);
-            }
-
-            PointerSource::Unknown => {
-                printed_any = true;
-                eprintln!("  {:?}: {} -> source unknown", local, ty);
-                eprintln!("    via: unknown");
-            }
-
-            PointerSource::InputRef(_) | PointerSource::InputRaw(_) => {
-                printed_any = true;
-                eprintln!(
-                    "  {:?}: {} -> source {}",
-                    local,
-                    ty,
-                    resolve_pointer_source(local, sources)
-                );
-                eprintln!("    via: argument");
-            }
-        }
-    }
-
-    if !printed_any {
-        eprintln!("  none");
-    }
-}
 
 fn resolve_pointer_source<'tcx>(
     local: Local,
@@ -401,6 +335,21 @@ fn resolve_pointer_source<'tcx>(
 
         match sources.get(&current) {
             Some(PointerSource::Place { root, .. }) => {
+                // If the source is another local, keep resolving through it.
+                if root.projection.is_empty() {
+                    if sources.contains_key(&root.local) {
+                        current = root.local;
+                        continue;
+                    }
+
+                    return format!("{:?}", root);
+                }
+
+                if sources.contains_key(&root.local) {
+                    current = root.local;
+                    continue;
+                }
+
                 return format!("{:?}", root);
             }
 
