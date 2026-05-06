@@ -2,6 +2,7 @@
 
 mod lasx;
 mod lsx;
+mod simd;
 
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub use self::lasx::*;

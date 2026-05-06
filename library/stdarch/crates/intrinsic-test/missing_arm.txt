@@ -1,18 +1,3 @@
-# Not implemented in stdarch yet
-vbfdot_f32
-vbfdot_lane_f32
-vbfdot_laneq_f32
-vbfdotq_f32
-vbfdotq_lane_f32
-vbfdotq_laneq_f32
-vbfmlalbq_f32
-vbfmlalbq_lane_f32
-vbfmlalbq_laneq_f32
-vbfmlaltq_f32
-vbfmlaltq_lane_f32
-vbfmlaltq_laneq_f32
-vbfmmlaq_f32
-
 # Implemented in Clang and stdarch for A64 only even though CSV claims A32 support
 vaddq_p64
 vbsl_p64
@@ -134,18 +119,6 @@ vcvth_f16_u32
 vcvth_u32_f16
 vcvth_n_f16_u32
 vcvth_n_u32_f16
-vcvtah_s32_f16
-vcvtah_u32_f16
-vcvtmh_s32_f16
-vcvtmh_u32_f16
-vcvtpq_s16_f16
-vcvtpq_u16_f16
-vcvtp_s16_f16
-vcvtp_u16_f16
-vcvtph_s32_f16
-vcvtph_u32_f16
-vcvtnh_u32_f16
-vcvtnh_s32_f16
 vfmlsl_low_f16
 vfmlslq_low_f16
 vfmlsl_high_f16
@@ -318,3 +291,25 @@ vcvta_s16_f16
 vcvta_u16_f16
 vceqz_f16
 vceqzq_f16
+vcvtah_s32_f16
+vcvtah_u32_f16
+vcvtmh_s32_f16
+vcvtmh_u32_f16
+vcvtpq_s16_f16
+vcvtpq_u16_f16
+vcvtp_s16_f16
+vcvtp_u16_f16
+vcvtph_s32_f16
+vcvtph_u32_f16
+vcvtnh_u32_f16
+vcvtnh_s32_f16
+
+# Missing in Clang
+vusdot_laneq_s32
+vsudot_laneq_s32
+vusdotq_laneq_s32
+vsudotq_laneq_s32
+vdot_laneq_s32
+vdot_laneq_u32
+vdotq_laneq_s32
+vdotq_laneq_u32

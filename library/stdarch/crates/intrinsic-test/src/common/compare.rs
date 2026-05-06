@@ -78,6 +78,8 @@ pub fn compare_outputs(
         .filter_map(|output| output.trim().split_once("\n"))
         .collect::<HashMap<&str, &str>>();
 
+    assert!(!c_output_map.is_empty(), "No C intrinsic output found!");
+
     let intrinsics = c_output_map
         .keys()
         .chain(rust_output_map.keys())

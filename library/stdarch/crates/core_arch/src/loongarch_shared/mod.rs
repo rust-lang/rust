@@ -210,7 +210,7 @@ pub unsafe fn syscall<const IMM15: i32>() {
 }
 
 /// Calculate the approximate single-precision result of 1.0 divided
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn frecipe_s(a: f32) -> f32 {
@@ -218,7 +218,7 @@ pub fn frecipe_s(a: f32) -> f32 {
 }
 
 /// Calculate the approximate double-precision result of 1.0 divided
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn frecipe_d(a: f64) -> f64 {
@@ -226,7 +226,7 @@ pub fn frecipe_d(a: f64) -> f64 {
 }
 
 /// Calculate the approximate single-precision result of dividing 1.0 by the square root
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn frsqrte_s(a: f32) -> f32 {
@@ -234,7 +234,7 @@ pub fn frsqrte_s(a: f32) -> f32 {
 }
 
 /// Calculate the approximate double-precision result of dividing 1.0 by the square root
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "frecipe")]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn frsqrte_d(a: f64) -> f64 {

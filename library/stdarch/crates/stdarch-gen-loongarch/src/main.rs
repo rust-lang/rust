@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::fmt;
 use std::fs::File;
@@ -90,6 +91,14 @@ impl TargetFeature {
     }
 }
 
+fn portable_intrinsics() -> HashSet<&'static str> {
+    include_str!("portable-intrinsics.txt")
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect()
+}
+
 fn gen_spec(in_file: String, ext_name: &str) -> io::Result<()> {
     let f = File::open(in_file.clone()).unwrap_or_else(|_| panic!("Failed to open {in_file}"));
     let f = BufReader::new(f);
@@ -105,6 +114,7 @@ fn gen_spec(in_file: String, ext_name: &str) -> io::Result<()> {
     let mut asm_fmts = String::new();
     let mut data_types = String::new();
     let fn_pat = format!("__{ext_name}_");
+    let portable_intrinsics = portable_intrinsics();
     for line in f.lines() {
         let line = line.unwrap();
         if line.is_empty() {
@@ -121,6 +131,9 @@ fn gen_spec(in_file: String, ext_name: &str) -> io::Result<()> {
             let e = line.find('(').unwrap();
             let name = line.get(s + 2..e).unwrap().trim().to_string();
             out.push_str(&format!("/// {name}\n"));
+            if portable_intrinsics.contains(name.as_str()) {
+                out.push_str("impl = portable\n");
+            }
             out.push_str(&format!("name = {name}\n"));
             out.push_str(&format!("asm-fmts = {asm_fmts}\n"));
             out.push_str(&format!("data-types = {data_types}\n"));
@@ -146,6 +159,7 @@ fn gen_bind(in_file: String, ext_name: &str) -> io::Result<()> {
     let mut link_function_str = String::new();
     let mut function_str = String::new();
     let mut out = String::new();
+    let mut skip = false;
 
     out.push_str(&format!(
         r#"// This code is automatically generated. DO NOT MODIFY.
@@ -173,7 +187,9 @@ unsafe extern "unadjusted" {
         if line.is_empty() {
             continue;
         }
-        if let Some(name) = line.strip_prefix("name = ") {
+        if line.starts_with("impl = portable") {
+            skip = true;
+        } else if let Some(name) = line.strip_prefix("name = ") {
             current_name = Some(String::from(name));
         } else if line.starts_with("asm-fmts = ") {
             asm_fmts = line[10..]
@@ -208,6 +224,11 @@ unsafe extern "unadjusted" {
                 para_num = 4;
             } else {
                 panic!("DEBUG: line: {0} len: {1}", line, data_types.len());
+            }
+
+            if skip {
+                skip = false;
+                continue;
             }
 
             let (link_function, function) =
@@ -597,7 +618,7 @@ fn gen_bind_body(
     let function = if !rustc_legacy_const_generics.is_empty() {
         format!(
             r#"
-#[inline(always)]{target_feature}
+#[inline]{target_feature}
 #[{rustc_legacy_const_generics}]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 {fn_decl}{{
@@ -609,7 +630,7 @@ fn gen_bind_body(
     } else {
         format!(
             r#"
-#[inline(always)]{target_feature}
+#[inline]{target_feature}
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 {fn_decl}{{
     {call_params}

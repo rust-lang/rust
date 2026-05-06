@@ -14,7 +14,7 @@ use super::*;
 
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -27,7 +27,7 @@ pub fn svaba_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -36,7 +36,7 @@ pub fn svaba_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -49,7 +49,7 @@ pub fn svaba_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -58,7 +58,7 @@ pub fn svaba_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -71,7 +71,7 @@ pub fn svaba_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -80,7 +80,7 @@ pub fn svaba_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -93,7 +93,7 @@ pub fn svaba_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saba))]
@@ -102,7 +102,7 @@ pub fn svaba_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -115,7 +115,7 @@ pub fn svaba_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -124,7 +124,7 @@ pub fn svaba_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -137,7 +137,7 @@ pub fn svaba_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint16_
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -146,7 +146,7 @@ pub fn svaba_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -159,7 +159,7 @@ pub fn svaba_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint32_
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -168,7 +168,7 @@ pub fn svaba_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -181,7 +181,7 @@ pub fn svaba_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint64_
 }
 #[doc = "Absolute difference and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaba[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaba))]
@@ -190,7 +190,7 @@ pub fn svaba_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalb))]
@@ -203,7 +203,7 @@ pub fn svabalb_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalb))]
@@ -212,7 +212,7 @@ pub fn svabalb_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalb))]
@@ -225,7 +225,7 @@ pub fn svabalb_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_t 
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalb))]
@@ -234,7 +234,7 @@ pub fn svabalb_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalb))]
@@ -247,7 +247,7 @@ pub fn svabalb_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_t 
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalb))]
@@ -256,7 +256,7 @@ pub fn svabalb_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalb))]
@@ -269,7 +269,7 @@ pub fn svabalb_u16(op1: svuint16_t, op2: svuint8_t, op3: svuint8_t) -> svuint16_
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalb))]
@@ -278,7 +278,7 @@ pub fn svabalb_n_u16(op1: svuint16_t, op2: svuint8_t, op3: u8) -> svuint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalb))]
@@ -291,7 +291,7 @@ pub fn svabalb_u32(op1: svuint32_t, op2: svuint16_t, op3: svuint16_t) -> svuint3
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalb))]
@@ -300,7 +300,7 @@ pub fn svabalb_n_u32(op1: svuint32_t, op2: svuint16_t, op3: u16) -> svuint32_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalb))]
@@ -313,7 +313,7 @@ pub fn svabalb_u64(op1: svuint64_t, op2: svuint32_t, op3: svuint32_t) -> svuint6
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalb))]
@@ -322,7 +322,7 @@ pub fn svabalb_n_u64(op1: svuint64_t, op2: svuint32_t, op3: u32) -> svuint64_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalt))]
@@ -335,7 +335,7 @@ pub fn svabalt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalt))]
@@ -344,7 +344,7 @@ pub fn svabalt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalt))]
@@ -357,7 +357,7 @@ pub fn svabalt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_t 
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalt))]
@@ -366,7 +366,7 @@ pub fn svabalt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalt))]
@@ -379,7 +379,7 @@ pub fn svabalt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_t 
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabalt))]
@@ -388,7 +388,7 @@ pub fn svabalt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalt))]
@@ -401,7 +401,7 @@ pub fn svabalt_u16(op1: svuint16_t, op2: svuint8_t, op3: svuint8_t) -> svuint16_
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalt))]
@@ -410,7 +410,7 @@ pub fn svabalt_n_u16(op1: svuint16_t, op2: svuint8_t, op3: u8) -> svuint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalt))]
@@ -423,7 +423,7 @@ pub fn svabalt_u32(op1: svuint32_t, op2: svuint16_t, op3: svuint16_t) -> svuint3
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalt))]
@@ -432,7 +432,7 @@ pub fn svabalt_n_u32(op1: svuint32_t, op2: svuint16_t, op3: u16) -> svuint32_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalt))]
@@ -445,7 +445,7 @@ pub fn svabalt_u64(op1: svuint64_t, op2: svuint32_t, op3: svuint32_t) -> svuint6
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabalt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabalt))]
@@ -454,7 +454,7 @@ pub fn svabalt_n_u64(op1: svuint64_t, op2: svuint32_t, op3: u32) -> svuint64_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlb))]
@@ -467,7 +467,7 @@ pub fn svabdlb_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlb))]
@@ -476,7 +476,7 @@ pub fn svabdlb_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlb))]
@@ -489,7 +489,7 @@ pub fn svabdlb_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlb))]
@@ -498,7 +498,7 @@ pub fn svabdlb_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlb))]
@@ -511,7 +511,7 @@ pub fn svabdlb_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlb))]
@@ -520,7 +520,7 @@ pub fn svabdlb_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlb))]
@@ -533,7 +533,7 @@ pub fn svabdlb_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlb))]
@@ -542,7 +542,7 @@ pub fn svabdlb_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlb))]
@@ -555,7 +555,7 @@ pub fn svabdlb_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlb))]
@@ -564,7 +564,7 @@ pub fn svabdlb_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlb))]
@@ -577,7 +577,7 @@ pub fn svabdlb_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Absolute difference long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlb))]
@@ -586,7 +586,7 @@ pub fn svabdlb_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlt))]
@@ -599,7 +599,7 @@ pub fn svabdlt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlt))]
@@ -608,7 +608,7 @@ pub fn svabdlt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlt))]
@@ -621,7 +621,7 @@ pub fn svabdlt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlt))]
@@ -630,7 +630,7 @@ pub fn svabdlt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlt))]
@@ -643,7 +643,7 @@ pub fn svabdlt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sabdlt))]
@@ -652,7 +652,7 @@ pub fn svabdlt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlt))]
@@ -665,7 +665,7 @@ pub fn svabdlt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlt))]
@@ -674,7 +674,7 @@ pub fn svabdlt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlt))]
@@ -687,7 +687,7 @@ pub fn svabdlt_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlt))]
@@ -696,7 +696,7 @@ pub fn svabdlt_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlt))]
@@ -709,7 +709,7 @@ pub fn svabdlt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Absolute difference long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svabdlt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uabdlt))]
@@ -718,7 +718,7 @@ pub fn svabdlt_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -731,7 +731,7 @@ pub fn svadalp_s16_m(pg: svbool_t, op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -740,7 +740,7 @@ pub fn svadalp_s16_x(pg: svbool_t, op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -749,7 +749,7 @@ pub fn svadalp_s16_z(pg: svbool_t, op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -762,7 +762,7 @@ pub fn svadalp_s32_m(pg: svbool_t, op1: svint32_t, op2: svint16_t) -> svint32_t 
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -771,7 +771,7 @@ pub fn svadalp_s32_x(pg: svbool_t, op1: svint32_t, op2: svint16_t) -> svint32_t 
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -780,7 +780,7 @@ pub fn svadalp_s32_z(pg: svbool_t, op1: svint32_t, op2: svint16_t) -> svint32_t 
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -793,7 +793,7 @@ pub fn svadalp_s64_m(pg: svbool_t, op1: svint64_t, op2: svint32_t) -> svint64_t 
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -802,7 +802,7 @@ pub fn svadalp_s64_x(pg: svbool_t, op1: svint64_t, op2: svint32_t) -> svint64_t 
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sadalp))]
@@ -811,7 +811,7 @@ pub fn svadalp_s64_z(pg: svbool_t, op1: svint64_t, op2: svint32_t) -> svint64_t 
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -824,7 +824,7 @@ pub fn svadalp_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint8_t) -> svuint16_
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -833,7 +833,7 @@ pub fn svadalp_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint8_t) -> svuint16_
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -842,7 +842,7 @@ pub fn svadalp_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint8_t) -> svuint16_
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -855,7 +855,7 @@ pub fn svadalp_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint16_t) -> svuint32
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -864,7 +864,7 @@ pub fn svadalp_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint16_t) -> svuint32
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -873,7 +873,7 @@ pub fn svadalp_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint16_t) -> svuint32
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -886,7 +886,7 @@ pub fn svadalp_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint32_t) -> svuint64
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -895,7 +895,7 @@ pub fn svadalp_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint32_t) -> svuint64
 }
 #[doc = "Add and accumulate long pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadalp[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uadalp))]
@@ -904,7 +904,7 @@ pub fn svadalp_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint32_t) -> svuint64
 }
 #[doc = "Add with carry long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclb))]
@@ -917,7 +917,7 @@ pub fn svadclb_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint3
 }
 #[doc = "Add with carry long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclb))]
@@ -926,7 +926,7 @@ pub fn svadclb_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Add with carry long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclb))]
@@ -939,7 +939,7 @@ pub fn svadclb_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint6
 }
 #[doc = "Add with carry long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclb))]
@@ -948,7 +948,7 @@ pub fn svadclb_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Add with carry long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclt))]
@@ -961,7 +961,7 @@ pub fn svadclt_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint3
 }
 #[doc = "Add with carry long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclt))]
@@ -970,7 +970,7 @@ pub fn svadclt_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Add with carry long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclt))]
@@ -983,7 +983,7 @@ pub fn svadclt_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint6
 }
 #[doc = "Add with carry long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadclt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(adclt))]
@@ -992,7 +992,7 @@ pub fn svadclt_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1005,7 +1005,7 @@ pub fn svaddhnb_s16(op1: svint16_t, op2: svint16_t) -> svint8_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1014,7 +1014,7 @@ pub fn svaddhnb_n_s16(op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1027,7 +1027,7 @@ pub fn svaddhnb_s32(op1: svint32_t, op2: svint32_t) -> svint16_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1036,7 +1036,7 @@ pub fn svaddhnb_n_s32(op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1049,7 +1049,7 @@ pub fn svaddhnb_s64(op1: svint64_t, op2: svint64_t) -> svint32_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1058,7 +1058,7 @@ pub fn svaddhnb_n_s64(op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1067,7 +1067,7 @@ pub fn svaddhnb_u16(op1: svuint16_t, op2: svuint16_t) -> svuint8_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1076,7 +1076,7 @@ pub fn svaddhnb_n_u16(op1: svuint16_t, op2: u16) -> svuint8_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1085,7 +1085,7 @@ pub fn svaddhnb_u32(op1: svuint32_t, op2: svuint32_t) -> svuint16_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1094,7 +1094,7 @@ pub fn svaddhnb_n_u32(op1: svuint32_t, op2: u32) -> svuint16_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1103,7 +1103,7 @@ pub fn svaddhnb_u64(op1: svuint64_t, op2: svuint64_t) -> svuint32_t {
 }
 #[doc = "Add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnb))]
@@ -1112,7 +1112,7 @@ pub fn svaddhnb_n_u64(op1: svuint64_t, op2: u64) -> svuint32_t {
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1125,7 +1125,7 @@ pub fn svaddhnt_s16(even: svint8_t, op1: svint16_t, op2: svint16_t) -> svint8_t 
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1134,7 +1134,7 @@ pub fn svaddhnt_n_s16(even: svint8_t, op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1147,7 +1147,7 @@ pub fn svaddhnt_s32(even: svint16_t, op1: svint32_t, op2: svint32_t) -> svint16_
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1156,7 +1156,7 @@ pub fn svaddhnt_n_s32(even: svint16_t, op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1169,7 +1169,7 @@ pub fn svaddhnt_s64(even: svint32_t, op1: svint64_t, op2: svint64_t) -> svint32_
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1178,7 +1178,7 @@ pub fn svaddhnt_n_s64(even: svint32_t, op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1187,7 +1187,7 @@ pub fn svaddhnt_u16(even: svuint8_t, op1: svuint16_t, op2: svuint16_t) -> svuint
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1196,7 +1196,7 @@ pub fn svaddhnt_n_u16(even: svuint8_t, op1: svuint16_t, op2: u16) -> svuint8_t {
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1205,7 +1205,7 @@ pub fn svaddhnt_u32(even: svuint16_t, op1: svuint32_t, op2: svuint32_t) -> svuin
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1214,7 +1214,7 @@ pub fn svaddhnt_n_u32(even: svuint16_t, op1: svuint32_t, op2: u32) -> svuint16_t
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1223,7 +1223,7 @@ pub fn svaddhnt_u64(even: svuint32_t, op1: svuint64_t, op2: svuint64_t) -> svuin
 }
 #[doc = "Add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddhnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addhnt))]
@@ -1232,7 +1232,7 @@ pub fn svaddhnt_n_u64(even: svuint32_t, op1: svuint64_t, op2: u64) -> svuint32_t
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlb))]
@@ -1245,7 +1245,7 @@ pub fn svaddlb_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlb))]
@@ -1254,7 +1254,7 @@ pub fn svaddlb_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlb))]
@@ -1267,7 +1267,7 @@ pub fn svaddlb_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlb))]
@@ -1276,7 +1276,7 @@ pub fn svaddlb_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlb))]
@@ -1289,7 +1289,7 @@ pub fn svaddlb_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlb))]
@@ -1298,7 +1298,7 @@ pub fn svaddlb_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlb))]
@@ -1311,7 +1311,7 @@ pub fn svaddlb_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlb))]
@@ -1320,7 +1320,7 @@ pub fn svaddlb_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlb))]
@@ -1333,7 +1333,7 @@ pub fn svaddlb_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlb))]
@@ -1342,7 +1342,7 @@ pub fn svaddlb_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlb))]
@@ -1355,7 +1355,7 @@ pub fn svaddlb_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlb))]
@@ -1364,7 +1364,7 @@ pub fn svaddlb_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Add long (bottom + top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlbt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlbt))]
@@ -1380,7 +1380,7 @@ pub fn svaddlbt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add long (bottom + top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlbt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlbt))]
@@ -1389,7 +1389,7 @@ pub fn svaddlbt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Add long (bottom + top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlbt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlbt))]
@@ -1405,7 +1405,7 @@ pub fn svaddlbt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Add long (bottom + top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlbt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlbt))]
@@ -1414,7 +1414,7 @@ pub fn svaddlbt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Add long (bottom + top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlbt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlbt))]
@@ -1430,7 +1430,7 @@ pub fn svaddlbt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Add long (bottom + top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlbt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlbt))]
@@ -1439,7 +1439,7 @@ pub fn svaddlbt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlt))]
@@ -1452,7 +1452,7 @@ pub fn svaddlt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlt))]
@@ -1461,7 +1461,7 @@ pub fn svaddlt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlt))]
@@ -1474,7 +1474,7 @@ pub fn svaddlt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlt))]
@@ -1483,7 +1483,7 @@ pub fn svaddlt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlt))]
@@ -1496,7 +1496,7 @@ pub fn svaddlt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddlt))]
@@ -1505,7 +1505,7 @@ pub fn svaddlt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlt))]
@@ -1518,7 +1518,7 @@ pub fn svaddlt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlt))]
@@ -1527,7 +1527,7 @@ pub fn svaddlt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlt))]
@@ -1540,7 +1540,7 @@ pub fn svaddlt_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlt))]
@@ -1549,7 +1549,7 @@ pub fn svaddlt_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlt))]
@@ -1562,7 +1562,7 @@ pub fn svaddlt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddlt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddlt))]
@@ -1571,7 +1571,7 @@ pub fn svaddlt_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(faddp))]
@@ -1584,7 +1584,7 @@ pub fn svaddp_f32_m(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(faddp))]
@@ -1593,7 +1593,7 @@ pub fn svaddp_f32_x(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(faddp))]
@@ -1606,7 +1606,7 @@ pub fn svaddp_f64_m(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(faddp))]
@@ -1615,7 +1615,7 @@ pub fn svaddp_f64_x(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1628,7 +1628,7 @@ pub fn svaddp_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1637,7 +1637,7 @@ pub fn svaddp_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1650,7 +1650,7 @@ pub fn svaddp_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1659,7 +1659,7 @@ pub fn svaddp_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1672,7 +1672,7 @@ pub fn svaddp_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1681,7 +1681,7 @@ pub fn svaddp_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1694,7 +1694,7 @@ pub fn svaddp_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1703,7 +1703,7 @@ pub fn svaddp_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1712,7 +1712,7 @@ pub fn svaddp_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1721,7 +1721,7 @@ pub fn svaddp_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1730,7 +1730,7 @@ pub fn svaddp_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1739,7 +1739,7 @@ pub fn svaddp_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1748,7 +1748,7 @@ pub fn svaddp_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1757,7 +1757,7 @@ pub fn svaddp_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1766,7 +1766,7 @@ pub fn svaddp_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddp[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(addp))]
@@ -1775,7 +1775,7 @@ pub fn svaddp_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwb))]
@@ -1788,7 +1788,7 @@ pub fn svaddwb_s16(op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwb))]
@@ -1797,7 +1797,7 @@ pub fn svaddwb_n_s16(op1: svint16_t, op2: i8) -> svint16_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwb))]
@@ -1810,7 +1810,7 @@ pub fn svaddwb_s32(op1: svint32_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwb))]
@@ -1819,7 +1819,7 @@ pub fn svaddwb_n_s32(op1: svint32_t, op2: i16) -> svint32_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwb))]
@@ -1832,7 +1832,7 @@ pub fn svaddwb_s64(op1: svint64_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwb))]
@@ -1841,7 +1841,7 @@ pub fn svaddwb_n_s64(op1: svint64_t, op2: i32) -> svint64_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwb))]
@@ -1854,7 +1854,7 @@ pub fn svaddwb_u16(op1: svuint16_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwb))]
@@ -1863,7 +1863,7 @@ pub fn svaddwb_n_u16(op1: svuint16_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwb))]
@@ -1876,7 +1876,7 @@ pub fn svaddwb_u32(op1: svuint32_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwb))]
@@ -1885,7 +1885,7 @@ pub fn svaddwb_n_u32(op1: svuint32_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwb))]
@@ -1898,7 +1898,7 @@ pub fn svaddwb_u64(op1: svuint64_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Add wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwb))]
@@ -1907,7 +1907,7 @@ pub fn svaddwb_n_u64(op1: svuint64_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwt))]
@@ -1920,7 +1920,7 @@ pub fn svaddwt_s16(op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwt))]
@@ -1929,7 +1929,7 @@ pub fn svaddwt_n_s16(op1: svint16_t, op2: i8) -> svint16_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwt))]
@@ -1942,7 +1942,7 @@ pub fn svaddwt_s32(op1: svint32_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwt))]
@@ -1951,7 +1951,7 @@ pub fn svaddwt_n_s32(op1: svint32_t, op2: i16) -> svint32_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwt))]
@@ -1964,7 +1964,7 @@ pub fn svaddwt_s64(op1: svint64_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(saddwt))]
@@ -1973,7 +1973,7 @@ pub fn svaddwt_n_s64(op1: svint64_t, op2: i32) -> svint64_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwt))]
@@ -1986,7 +1986,7 @@ pub fn svaddwt_u16(op1: svuint16_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwt))]
@@ -1995,7 +1995,7 @@ pub fn svaddwt_n_u16(op1: svuint16_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwt))]
@@ -2008,7 +2008,7 @@ pub fn svaddwt_u32(op1: svuint32_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwt))]
@@ -2017,7 +2017,7 @@ pub fn svaddwt_n_u32(op1: svuint32_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwt))]
@@ -2030,7 +2030,7 @@ pub fn svaddwt_u64(op1: svuint64_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Add wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaddwt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uaddwt))]
@@ -2039,7 +2039,7 @@ pub fn svaddwt_n_u64(op1: svuint64_t, op2: u32) -> svuint64_t {
 }
 #[doc = "AES single round decryption"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaesd[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(aesd))]
@@ -2052,7 +2052,7 @@ pub fn svaesd_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "AES single round encryption"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaese[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(aese))]
@@ -2065,7 +2065,7 @@ pub fn svaese_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "AES inverse mix columns"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaesimc[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(aesimc))]
@@ -2078,7 +2078,7 @@ pub fn svaesimc_u8(op: svuint8_t) -> svuint8_t {
 }
 #[doc = "AES mix columns"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svaesmc[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(aesmc))]
@@ -2091,7 +2091,7 @@ pub fn svaesmc_u8(op: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2104,7 +2104,7 @@ pub fn svbcax_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2113,7 +2113,7 @@ pub fn svbcax_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2126,7 +2126,7 @@ pub fn svbcax_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2135,7 +2135,7 @@ pub fn svbcax_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2148,7 +2148,7 @@ pub fn svbcax_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2157,7 +2157,7 @@ pub fn svbcax_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2170,7 +2170,7 @@ pub fn svbcax_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2179,7 +2179,7 @@ pub fn svbcax_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2188,7 +2188,7 @@ pub fn svbcax_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2197,7 +2197,7 @@ pub fn svbcax_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2206,7 +2206,7 @@ pub fn svbcax_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint16
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2215,7 +2215,7 @@ pub fn svbcax_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2224,7 +2224,7 @@ pub fn svbcax_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint32
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2233,7 +2233,7 @@ pub fn svbcax_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2242,7 +2242,7 @@ pub fn svbcax_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint64
 }
 #[doc = "Bitwise clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbcax[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bcax))]
@@ -2251,7 +2251,7 @@ pub fn svbcax_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2264,7 +2264,7 @@ pub fn svbdep_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2273,7 +2273,7 @@ pub fn svbdep_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2286,7 +2286,7 @@ pub fn svbdep_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2295,7 +2295,7 @@ pub fn svbdep_n_u16(op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2308,7 +2308,7 @@ pub fn svbdep_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2317,7 +2317,7 @@ pub fn svbdep_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2330,7 +2330,7 @@ pub fn svbdep_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 }
 #[doc = "Scatter lower bits into positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbdep[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bdep))]
@@ -2339,7 +2339,7 @@ pub fn svbdep_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2352,7 +2352,7 @@ pub fn svbext_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2361,7 +2361,7 @@ pub fn svbext_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2374,7 +2374,7 @@ pub fn svbext_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2383,7 +2383,7 @@ pub fn svbext_n_u16(op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2396,7 +2396,7 @@ pub fn svbext_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2405,7 +2405,7 @@ pub fn svbext_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2418,7 +2418,7 @@ pub fn svbext_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 }
 #[doc = "Gather lower bits from positions selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbext[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bext))]
@@ -2427,7 +2427,7 @@ pub fn svbext_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2440,7 +2440,7 @@ pub fn svbgrp_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2449,7 +2449,7 @@ pub fn svbgrp_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2462,7 +2462,7 @@ pub fn svbgrp_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2471,7 +2471,7 @@ pub fn svbgrp_n_u16(op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2484,7 +2484,7 @@ pub fn svbgrp_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2493,7 +2493,7 @@ pub fn svbgrp_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2506,7 +2506,7 @@ pub fn svbgrp_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 }
 #[doc = "Group bits to right or left as selected by bitmask"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbgrp[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-bitperm")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bgrp))]
@@ -2515,7 +2515,7 @@ pub fn svbgrp_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2528,7 +2528,7 @@ pub fn svbsl1n_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2537,7 +2537,7 @@ pub fn svbsl1n_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2550,7 +2550,7 @@ pub fn svbsl1n_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t 
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2559,7 +2559,7 @@ pub fn svbsl1n_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2572,7 +2572,7 @@ pub fn svbsl1n_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t 
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2581,7 +2581,7 @@ pub fn svbsl1n_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2594,7 +2594,7 @@ pub fn svbsl1n_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t 
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2603,7 +2603,7 @@ pub fn svbsl1n_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2612,7 +2612,7 @@ pub fn svbsl1n_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2621,7 +2621,7 @@ pub fn svbsl1n_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2630,7 +2630,7 @@ pub fn svbsl1n_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint1
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2639,7 +2639,7 @@ pub fn svbsl1n_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2648,7 +2648,7 @@ pub fn svbsl1n_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint3
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2657,7 +2657,7 @@ pub fn svbsl1n_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2666,7 +2666,7 @@ pub fn svbsl1n_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint6
 }
 #[doc = "Bitwise select with first input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl1n[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl1n))]
@@ -2675,7 +2675,7 @@ pub fn svbsl1n_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2688,7 +2688,7 @@ pub fn svbsl2n_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2697,7 +2697,7 @@ pub fn svbsl2n_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2710,7 +2710,7 @@ pub fn svbsl2n_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t 
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2719,7 +2719,7 @@ pub fn svbsl2n_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2732,7 +2732,7 @@ pub fn svbsl2n_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t 
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2741,7 +2741,7 @@ pub fn svbsl2n_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2754,7 +2754,7 @@ pub fn svbsl2n_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t 
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2763,7 +2763,7 @@ pub fn svbsl2n_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2772,7 +2772,7 @@ pub fn svbsl2n_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2781,7 +2781,7 @@ pub fn svbsl2n_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2790,7 +2790,7 @@ pub fn svbsl2n_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint1
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2799,7 +2799,7 @@ pub fn svbsl2n_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2808,7 +2808,7 @@ pub fn svbsl2n_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint3
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2817,7 +2817,7 @@ pub fn svbsl2n_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2826,7 +2826,7 @@ pub fn svbsl2n_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint6
 }
 #[doc = "Bitwise select with second input inverted"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl2n[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl2n))]
@@ -2835,7 +2835,7 @@ pub fn svbsl2n_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2848,7 +2848,7 @@ pub fn svbsl_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2857,7 +2857,7 @@ pub fn svbsl_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2870,7 +2870,7 @@ pub fn svbsl_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2879,7 +2879,7 @@ pub fn svbsl_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2892,7 +2892,7 @@ pub fn svbsl_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2901,7 +2901,7 @@ pub fn svbsl_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2914,7 +2914,7 @@ pub fn svbsl_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2923,7 +2923,7 @@ pub fn svbsl_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2932,7 +2932,7 @@ pub fn svbsl_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2941,7 +2941,7 @@ pub fn svbsl_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2950,7 +2950,7 @@ pub fn svbsl_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint16_
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2959,7 +2959,7 @@ pub fn svbsl_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2968,7 +2968,7 @@ pub fn svbsl_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint32_
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2977,7 +2977,7 @@ pub fn svbsl_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2986,7 +2986,7 @@ pub fn svbsl_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint64_
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbsl[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(bsl))]
@@ -2995,7 +2995,7 @@ pub fn svbsl_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3009,7 +3009,7 @@ pub fn svcadd_s8<const IMM_ROTATION: i32>(op1: svint8_t, op2: svint8_t) -> svint
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3023,7 +3023,7 @@ pub fn svcadd_s16<const IMM_ROTATION: i32>(op1: svint16_t, op2: svint16_t) -> sv
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3037,7 +3037,7 @@ pub fn svcadd_s32<const IMM_ROTATION: i32>(op1: svint32_t, op2: svint32_t) -> sv
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3051,7 +3051,7 @@ pub fn svcadd_s64<const IMM_ROTATION: i32>(op1: svint64_t, op2: svint64_t) -> sv
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3061,7 +3061,7 @@ pub fn svcadd_u8<const IMM_ROTATION: i32>(op1: svuint8_t, op2: svuint8_t) -> svu
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3071,7 +3071,7 @@ pub fn svcadd_u16<const IMM_ROTATION: i32>(op1: svuint16_t, op2: svuint16_t) -> 
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3081,7 +3081,7 @@ pub fn svcadd_u32<const IMM_ROTATION: i32>(op1: svuint32_t, op2: svuint32_t) -> 
 }
 #[doc = "Complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cadd, IMM_ROTATION = 90))]
@@ -3091,7 +3091,7 @@ pub fn svcadd_u64<const IMM_ROTATION: i32>(op1: svuint64_t, op2: svuint64_t) -> 
 }
 #[doc = "Complex dot product"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcdot_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cdot, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -3121,7 +3121,7 @@ pub fn svcdot_lane_s32<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Complex dot product"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcdot_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cdot, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -3151,7 +3151,7 @@ pub fn svcdot_lane_s64<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Complex dot product"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcdot[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cdot, IMM_ROTATION = 90))]
@@ -3176,7 +3176,7 @@ pub fn svcdot_s32<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex dot product"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcdot[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cdot, IMM_ROTATION = 90))]
@@ -3201,7 +3201,7 @@ pub fn svcdot_s64<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -3231,7 +3231,7 @@ pub fn svcmla_lane_s16<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -3261,7 +3261,7 @@ pub fn svcmla_lane_s32<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla_lane[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -3285,7 +3285,7 @@ pub fn svcmla_lane_u16<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -3309,7 +3309,7 @@ pub fn svcmla_lane_u32<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3325,7 +3325,7 @@ pub fn svcmla_s8<const IMM_ROTATION: i32>(op1: svint8_t, op2: svint8_t, op3: svi
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3350,7 +3350,7 @@ pub fn svcmla_s16<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3375,7 +3375,7 @@ pub fn svcmla_s32<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3400,7 +3400,7 @@ pub fn svcmla_s64<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3418,7 +3418,7 @@ pub fn svcmla_u8<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3436,7 +3436,7 @@ pub fn svcmla_u16<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3454,7 +3454,7 @@ pub fn svcmla_u32<const IMM_ROTATION: i32>(
 }
 #[doc = "Complex multiply-add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcmla[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(cmla, IMM_ROTATION = 90))]
@@ -3472,7 +3472,7 @@ pub fn svcmla_u64<const IMM_ROTATION: i32>(
 }
 #[doc = "Up convert long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtlt_f64[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtlt))]
@@ -3486,7 +3486,7 @@ pub fn svcvtlt_f64_f32_m(inactive: svfloat64_t, pg: svbool_t, op: svfloat32_t) -
 }
 #[doc = "Up convert long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtlt_f64[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtlt))]
@@ -3495,7 +3495,7 @@ pub fn svcvtlt_f64_f32_x(pg: svbool_t, op: svfloat32_t) -> svfloat64_t {
 }
 #[doc = "Down convert and narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtnt_f32[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtnt))]
@@ -3508,7 +3508,7 @@ pub fn svcvtnt_f32_f64_m(even: svfloat32_t, pg: svbool_t, op: svfloat64_t) -> sv
 }
 #[doc = "Down convert and narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtnt_f32[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtnt))]
@@ -3517,7 +3517,7 @@ pub fn svcvtnt_f32_f64_x(even: svfloat32_t, pg: svbool_t, op: svfloat64_t) -> sv
 }
 #[doc = "Down convert, rounding to odd"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtx_f32[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtx))]
@@ -3530,7 +3530,7 @@ pub fn svcvtx_f32_f64_m(inactive: svfloat32_t, pg: svbool_t, op: svfloat64_t) ->
 }
 #[doc = "Down convert, rounding to odd"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtx_f32[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtx))]
@@ -3539,7 +3539,7 @@ pub fn svcvtx_f32_f64_x(pg: svbool_t, op: svfloat64_t) -> svfloat32_t {
 }
 #[doc = "Down convert, rounding to odd"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtx_f32[_f64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtx))]
@@ -3548,7 +3548,7 @@ pub fn svcvtx_f32_f64_z(pg: svbool_t, op: svfloat64_t) -> svfloat32_t {
 }
 #[doc = "Down convert, rounding to odd (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtxnt_f32[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtxnt))]
@@ -3561,7 +3561,7 @@ pub fn svcvtxnt_f32_f64_m(even: svfloat32_t, pg: svbool_t, op: svfloat64_t) -> s
 }
 #[doc = "Down convert, rounding to odd (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcvtxnt_f32[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fcvtxnt))]
@@ -3570,7 +3570,7 @@ pub fn svcvtxnt_f32_f64_x(even: svfloat32_t, pg: svbool_t, op: svfloat64_t) -> s
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3583,7 +3583,7 @@ pub fn sveor3_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3592,7 +3592,7 @@ pub fn sveor3_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3605,7 +3605,7 @@ pub fn sveor3_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3614,7 +3614,7 @@ pub fn sveor3_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3627,7 +3627,7 @@ pub fn sveor3_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3636,7 +3636,7 @@ pub fn sveor3_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3649,7 +3649,7 @@ pub fn sveor3_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3658,7 +3658,7 @@ pub fn sveor3_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3667,7 +3667,7 @@ pub fn sveor3_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3676,7 +3676,7 @@ pub fn sveor3_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3685,7 +3685,7 @@ pub fn sveor3_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint16
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3694,7 +3694,7 @@ pub fn sveor3_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3703,7 +3703,7 @@ pub fn sveor3_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint32
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3712,7 +3712,7 @@ pub fn sveor3_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3721,7 +3721,7 @@ pub fn sveor3_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint64
 }
 #[doc = "Bitwise exclusive OR of three vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveor3[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eor3))]
@@ -3730,7 +3730,7 @@ pub fn sveor3_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3743,7 +3743,7 @@ pub fn sveorbt_s8(odd: svint8_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3752,7 +3752,7 @@ pub fn sveorbt_n_s8(odd: svint8_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3765,7 +3765,7 @@ pub fn sveorbt_s16(odd: svint16_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3774,7 +3774,7 @@ pub fn sveorbt_n_s16(odd: svint16_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3787,7 +3787,7 @@ pub fn sveorbt_s32(odd: svint32_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3796,7 +3796,7 @@ pub fn sveorbt_n_s32(odd: svint32_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3809,7 +3809,7 @@ pub fn sveorbt_s64(odd: svint64_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3818,7 +3818,7 @@ pub fn sveorbt_n_s64(odd: svint64_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3827,7 +3827,7 @@ pub fn sveorbt_u8(odd: svuint8_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3836,7 +3836,7 @@ pub fn sveorbt_n_u8(odd: svuint8_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3845,7 +3845,7 @@ pub fn sveorbt_u16(odd: svuint16_t, op1: svuint16_t, op2: svuint16_t) -> svuint1
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3854,7 +3854,7 @@ pub fn sveorbt_n_u16(odd: svuint16_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3863,7 +3863,7 @@ pub fn sveorbt_u32(odd: svuint32_t, op1: svuint32_t, op2: svuint32_t) -> svuint3
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3872,7 +3872,7 @@ pub fn sveorbt_n_u32(odd: svuint32_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3881,7 +3881,7 @@ pub fn sveorbt_u64(odd: svuint64_t, op1: svuint64_t, op2: svuint64_t) -> svuint6
 }
 #[doc = "Interleaving exclusive OR (bottom, top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveorbt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eorbt))]
@@ -3890,7 +3890,7 @@ pub fn sveorbt_n_u64(odd: svuint64_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3903,7 +3903,7 @@ pub fn sveortb_s8(even: svint8_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3912,7 +3912,7 @@ pub fn sveortb_n_s8(even: svint8_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3925,7 +3925,7 @@ pub fn sveortb_s16(even: svint16_t, op1: svint16_t, op2: svint16_t) -> svint16_t
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3934,7 +3934,7 @@ pub fn sveortb_n_s16(even: svint16_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3947,7 +3947,7 @@ pub fn sveortb_s32(even: svint32_t, op1: svint32_t, op2: svint32_t) -> svint32_t
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3956,7 +3956,7 @@ pub fn sveortb_n_s32(even: svint32_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3969,7 +3969,7 @@ pub fn sveortb_s64(even: svint64_t, op1: svint64_t, op2: svint64_t) -> svint64_t
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3978,7 +3978,7 @@ pub fn sveortb_n_s64(even: svint64_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3987,7 +3987,7 @@ pub fn sveortb_u8(even: svuint8_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t 
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -3996,7 +3996,7 @@ pub fn sveortb_n_u8(even: svuint8_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -4005,7 +4005,7 @@ pub fn sveortb_u16(even: svuint16_t, op1: svuint16_t, op2: svuint16_t) -> svuint
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -4014,7 +4014,7 @@ pub fn sveortb_n_u16(even: svuint16_t, op1: svuint16_t, op2: u16) -> svuint16_t 
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -4023,7 +4023,7 @@ pub fn sveortb_u32(even: svuint32_t, op1: svuint32_t, op2: svuint32_t) -> svuint
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -4032,7 +4032,7 @@ pub fn sveortb_n_u32(even: svuint32_t, op1: svuint32_t, op2: u32) -> svuint32_t 
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -4041,7 +4041,7 @@ pub fn sveortb_u64(even: svuint64_t, op1: svuint64_t, op2: svuint64_t) -> svuint
 }
 #[doc = "Interleaving exclusive OR (top, bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/sveortb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(eortb))]
@@ -4050,7 +4050,7 @@ pub fn sveortb_n_u64(even: svuint64_t, op1: svuint64_t, op2: u64) -> svuint64_t 
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4063,7 +4063,7 @@ pub fn svhadd_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4072,7 +4072,7 @@ pub fn svhadd_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4081,7 +4081,7 @@ pub fn svhadd_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4090,7 +4090,7 @@ pub fn svhadd_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4099,7 +4099,7 @@ pub fn svhadd_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4108,7 +4108,7 @@ pub fn svhadd_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4121,7 +4121,7 @@ pub fn svhadd_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4130,7 +4130,7 @@ pub fn svhadd_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4139,7 +4139,7 @@ pub fn svhadd_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4148,7 +4148,7 @@ pub fn svhadd_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4157,7 +4157,7 @@ pub fn svhadd_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4166,7 +4166,7 @@ pub fn svhadd_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4179,7 +4179,7 @@ pub fn svhadd_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4188,7 +4188,7 @@ pub fn svhadd_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4197,7 +4197,7 @@ pub fn svhadd_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4206,7 +4206,7 @@ pub fn svhadd_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4215,7 +4215,7 @@ pub fn svhadd_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4224,7 +4224,7 @@ pub fn svhadd_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4237,7 +4237,7 @@ pub fn svhadd_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4246,7 +4246,7 @@ pub fn svhadd_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4255,7 +4255,7 @@ pub fn svhadd_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4264,7 +4264,7 @@ pub fn svhadd_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4273,7 +4273,7 @@ pub fn svhadd_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shadd))]
@@ -4282,7 +4282,7 @@ pub fn svhadd_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4295,7 +4295,7 @@ pub fn svhadd_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4304,7 +4304,7 @@ pub fn svhadd_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4313,7 +4313,7 @@ pub fn svhadd_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4322,7 +4322,7 @@ pub fn svhadd_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4331,7 +4331,7 @@ pub fn svhadd_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4340,7 +4340,7 @@ pub fn svhadd_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4353,7 +4353,7 @@ pub fn svhadd_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4362,7 +4362,7 @@ pub fn svhadd_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4371,7 +4371,7 @@ pub fn svhadd_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4380,7 +4380,7 @@ pub fn svhadd_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4389,7 +4389,7 @@ pub fn svhadd_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4398,7 +4398,7 @@ pub fn svhadd_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4411,7 +4411,7 @@ pub fn svhadd_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4420,7 +4420,7 @@ pub fn svhadd_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4429,7 +4429,7 @@ pub fn svhadd_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4438,7 +4438,7 @@ pub fn svhadd_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4447,7 +4447,7 @@ pub fn svhadd_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4456,7 +4456,7 @@ pub fn svhadd_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4469,7 +4469,7 @@ pub fn svhadd_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4478,7 +4478,7 @@ pub fn svhadd_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4487,7 +4487,7 @@ pub fn svhadd_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4496,7 +4496,7 @@ pub fn svhadd_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4505,7 +4505,7 @@ pub fn svhadd_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhadd[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhadd))]
@@ -4514,7 +4514,7 @@ pub fn svhadd_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Count matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhistcnt[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(histcnt))]
@@ -4530,7 +4530,7 @@ pub fn svhistcnt_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svuint32
 }
 #[doc = "Count matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhistcnt[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(histcnt))]
@@ -4546,7 +4546,7 @@ pub fn svhistcnt_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svuint64
 }
 #[doc = "Count matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhistcnt[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(histcnt))]
@@ -4555,7 +4555,7 @@ pub fn svhistcnt_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint
 }
 #[doc = "Count matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhistcnt[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(histcnt))]
@@ -4564,7 +4564,7 @@ pub fn svhistcnt_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint
 }
 #[doc = "Count matching elements in 128-bit segments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhistseg[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(histseg))]
@@ -4580,7 +4580,7 @@ pub fn svhistseg_s8(op1: svint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Count matching elements in 128-bit segments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhistseg[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(histseg))]
@@ -4589,7 +4589,7 @@ pub fn svhistseg_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4602,7 +4602,7 @@ pub fn svhsub_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4611,7 +4611,7 @@ pub fn svhsub_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4620,7 +4620,7 @@ pub fn svhsub_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4629,7 +4629,7 @@ pub fn svhsub_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4638,7 +4638,7 @@ pub fn svhsub_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4647,7 +4647,7 @@ pub fn svhsub_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4660,7 +4660,7 @@ pub fn svhsub_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4669,7 +4669,7 @@ pub fn svhsub_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4678,7 +4678,7 @@ pub fn svhsub_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4687,7 +4687,7 @@ pub fn svhsub_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4696,7 +4696,7 @@ pub fn svhsub_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4705,7 +4705,7 @@ pub fn svhsub_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4718,7 +4718,7 @@ pub fn svhsub_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4727,7 +4727,7 @@ pub fn svhsub_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4736,7 +4736,7 @@ pub fn svhsub_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4745,7 +4745,7 @@ pub fn svhsub_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4754,7 +4754,7 @@ pub fn svhsub_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4763,7 +4763,7 @@ pub fn svhsub_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4776,7 +4776,7 @@ pub fn svhsub_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4785,7 +4785,7 @@ pub fn svhsub_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4794,7 +4794,7 @@ pub fn svhsub_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4803,7 +4803,7 @@ pub fn svhsub_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4812,7 +4812,7 @@ pub fn svhsub_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -4821,7 +4821,7 @@ pub fn svhsub_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4834,7 +4834,7 @@ pub fn svhsub_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4843,7 +4843,7 @@ pub fn svhsub_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4852,7 +4852,7 @@ pub fn svhsub_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4861,7 +4861,7 @@ pub fn svhsub_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4870,7 +4870,7 @@ pub fn svhsub_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4879,7 +4879,7 @@ pub fn svhsub_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4892,7 +4892,7 @@ pub fn svhsub_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4901,7 +4901,7 @@ pub fn svhsub_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4910,7 +4910,7 @@ pub fn svhsub_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4919,7 +4919,7 @@ pub fn svhsub_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4928,7 +4928,7 @@ pub fn svhsub_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4937,7 +4937,7 @@ pub fn svhsub_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4950,7 +4950,7 @@ pub fn svhsub_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4959,7 +4959,7 @@ pub fn svhsub_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4968,7 +4968,7 @@ pub fn svhsub_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4977,7 +4977,7 @@ pub fn svhsub_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4986,7 +4986,7 @@ pub fn svhsub_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -4995,7 +4995,7 @@ pub fn svhsub_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5008,7 +5008,7 @@ pub fn svhsub_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5017,7 +5017,7 @@ pub fn svhsub_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5026,7 +5026,7 @@ pub fn svhsub_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5035,7 +5035,7 @@ pub fn svhsub_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5044,7 +5044,7 @@ pub fn svhsub_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsub[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5053,7 +5053,7 @@ pub fn svhsub_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5066,7 +5066,7 @@ pub fn svhsubr_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5075,7 +5075,7 @@ pub fn svhsubr_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5084,7 +5084,7 @@ pub fn svhsubr_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5093,7 +5093,7 @@ pub fn svhsubr_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5102,7 +5102,7 @@ pub fn svhsubr_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5111,7 +5111,7 @@ pub fn svhsubr_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5124,7 +5124,7 @@ pub fn svhsubr_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5133,7 +5133,7 @@ pub fn svhsubr_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5142,7 +5142,7 @@ pub fn svhsubr_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5151,7 +5151,7 @@ pub fn svhsubr_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5160,7 +5160,7 @@ pub fn svhsubr_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5169,7 +5169,7 @@ pub fn svhsubr_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5182,7 +5182,7 @@ pub fn svhsubr_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5191,7 +5191,7 @@ pub fn svhsubr_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5200,7 +5200,7 @@ pub fn svhsubr_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5209,7 +5209,7 @@ pub fn svhsubr_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5218,7 +5218,7 @@ pub fn svhsubr_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5227,7 +5227,7 @@ pub fn svhsubr_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5240,7 +5240,7 @@ pub fn svhsubr_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5249,7 +5249,7 @@ pub fn svhsubr_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5258,7 +5258,7 @@ pub fn svhsubr_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5267,7 +5267,7 @@ pub fn svhsubr_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5276,7 +5276,7 @@ pub fn svhsubr_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shsub))]
@@ -5285,7 +5285,7 @@ pub fn svhsubr_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5298,7 +5298,7 @@ pub fn svhsubr_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5307,7 +5307,7 @@ pub fn svhsubr_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5316,7 +5316,7 @@ pub fn svhsubr_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5325,7 +5325,7 @@ pub fn svhsubr_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5334,7 +5334,7 @@ pub fn svhsubr_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5343,7 +5343,7 @@ pub fn svhsubr_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5356,7 +5356,7 @@ pub fn svhsubr_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5365,7 +5365,7 @@ pub fn svhsubr_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5374,7 +5374,7 @@ pub fn svhsubr_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5383,7 +5383,7 @@ pub fn svhsubr_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5392,7 +5392,7 @@ pub fn svhsubr_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5401,7 +5401,7 @@ pub fn svhsubr_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5414,7 +5414,7 @@ pub fn svhsubr_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5423,7 +5423,7 @@ pub fn svhsubr_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5432,7 +5432,7 @@ pub fn svhsubr_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5441,7 +5441,7 @@ pub fn svhsubr_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5450,7 +5450,7 @@ pub fn svhsubr_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5459,7 +5459,7 @@ pub fn svhsubr_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5472,7 +5472,7 @@ pub fn svhsubr_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5481,7 +5481,7 @@ pub fn svhsubr_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5490,7 +5490,7 @@ pub fn svhsubr_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5499,7 +5499,7 @@ pub fn svhsubr_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5508,7 +5508,7 @@ pub fn svhsubr_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Halving subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svhsubr[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uhsub))]
@@ -5521,7 +5521,7 @@ pub fn svhsubr_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5549,7 +5549,7 @@ pub unsafe fn svldnt1_gather_s64index_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5577,7 +5577,7 @@ pub unsafe fn svldnt1_gather_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5594,7 +5594,7 @@ pub unsafe fn svldnt1_gather_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5611,7 +5611,7 @@ pub unsafe fn svldnt1_gather_u64index_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5628,7 +5628,7 @@ pub unsafe fn svldnt1_gather_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5645,7 +5645,7 @@ pub unsafe fn svldnt1_gather_u64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5673,7 +5673,7 @@ pub unsafe fn svldnt1_gather_s64offset_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5701,7 +5701,7 @@ pub unsafe fn svldnt1_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5718,7 +5718,7 @@ pub unsafe fn svldnt1_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5746,7 +5746,7 @@ pub unsafe fn svldnt1_gather_u32offset_f32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5774,7 +5774,7 @@ pub unsafe fn svldnt1_gather_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5791,7 +5791,7 @@ pub unsafe fn svldnt1_gather_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5808,7 +5808,7 @@ pub unsafe fn svldnt1_gather_u64offset_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5825,7 +5825,7 @@ pub unsafe fn svldnt1_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5843,7 +5843,7 @@ pub unsafe fn svldnt1_gather_u64offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5857,7 +5857,7 @@ pub unsafe fn svldnt1_gather_u32base_f32(pg: svbool_t, bases: svuint32_t) -> svf
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5871,7 +5871,7 @@ pub unsafe fn svldnt1_gather_u32base_s32(pg: svbool_t, bases: svuint32_t) -> svi
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5885,7 +5885,7 @@ pub unsafe fn svldnt1_gather_u32base_u32(pg: svbool_t, bases: svuint32_t) -> svu
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5899,7 +5899,7 @@ pub unsafe fn svldnt1_gather_u64base_f64(pg: svbool_t, bases: svuint64_t) -> svf
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5913,7 +5913,7 @@ pub unsafe fn svldnt1_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> svi
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5927,7 +5927,7 @@ pub unsafe fn svldnt1_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> svu
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5945,7 +5945,7 @@ pub unsafe fn svldnt1_gather_u32base_index_f32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5963,7 +5963,7 @@ pub unsafe fn svldnt1_gather_u32base_index_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -5981,7 +5981,7 @@ pub unsafe fn svldnt1_gather_u32base_index_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -5999,7 +5999,7 @@ pub unsafe fn svldnt1_gather_u64base_index_f64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -6017,7 +6017,7 @@ pub unsafe fn svldnt1_gather_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -6035,7 +6035,7 @@ pub unsafe fn svldnt1_gather_u64base_index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -6064,7 +6064,7 @@ pub unsafe fn svldnt1_gather_u32base_offset_f32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -6093,7 +6093,7 @@ pub unsafe fn svldnt1_gather_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -6111,7 +6111,7 @@ pub unsafe fn svldnt1_gather_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -6140,7 +6140,7 @@ pub unsafe fn svldnt1_gather_u64base_offset_f64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -6169,7 +6169,7 @@ pub unsafe fn svldnt1_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1d))]
@@ -6186,7 +6186,7 @@ pub unsafe fn svldnt1_gather_u64base_offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6218,7 +6218,7 @@ pub unsafe fn svldnt1sb_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6250,7 +6250,7 @@ pub unsafe fn svldnt1sh_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6282,7 +6282,7 @@ pub unsafe fn svldnt1sw_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6299,7 +6299,7 @@ pub unsafe fn svldnt1sb_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6316,7 +6316,7 @@ pub unsafe fn svldnt1sh_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6333,7 +6333,7 @@ pub unsafe fn svldnt1sw_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6365,7 +6365,7 @@ pub unsafe fn svldnt1sb_gather_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6397,7 +6397,7 @@ pub unsafe fn svldnt1sh_gather_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6414,7 +6414,7 @@ pub unsafe fn svldnt1sb_gather_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6431,7 +6431,7 @@ pub unsafe fn svldnt1sh_gather_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6448,7 +6448,7 @@ pub unsafe fn svldnt1sb_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6465,7 +6465,7 @@ pub unsafe fn svldnt1sh_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6482,7 +6482,7 @@ pub unsafe fn svldnt1sw_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6499,7 +6499,7 @@ pub unsafe fn svldnt1sb_gather_u64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6516,7 +6516,7 @@ pub unsafe fn svldnt1sh_gather_u64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6534,7 +6534,7 @@ pub unsafe fn svldnt1sw_gather_u64offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6567,7 +6567,7 @@ pub unsafe fn svldnt1sb_gather_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6600,7 +6600,7 @@ pub unsafe fn svldnt1sh_gather_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6618,7 +6618,7 @@ pub unsafe fn svldnt1sb_gather_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6636,7 +6636,7 @@ pub unsafe fn svldnt1sh_gather_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6669,7 +6669,7 @@ pub unsafe fn svldnt1sb_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6702,7 +6702,7 @@ pub unsafe fn svldnt1sh_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6735,7 +6735,7 @@ pub unsafe fn svldnt1sw_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6753,7 +6753,7 @@ pub unsafe fn svldnt1sb_gather_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6771,7 +6771,7 @@ pub unsafe fn svldnt1sh_gather_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6789,7 +6789,7 @@ pub unsafe fn svldnt1sw_gather_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6803,7 +6803,7 @@ pub unsafe fn svldnt1sb_gather_u32base_s32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6817,7 +6817,7 @@ pub unsafe fn svldnt1sh_gather_u32base_s32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6831,7 +6831,7 @@ pub unsafe fn svldnt1sb_gather_u32base_u32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6845,7 +6845,7 @@ pub unsafe fn svldnt1sh_gather_u32base_u32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6859,7 +6859,7 @@ pub unsafe fn svldnt1sb_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6873,7 +6873,7 @@ pub unsafe fn svldnt1sh_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6887,7 +6887,7 @@ pub unsafe fn svldnt1sw_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sb))]
@@ -6901,7 +6901,7 @@ pub unsafe fn svldnt1sb_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6915,7 +6915,7 @@ pub unsafe fn svldnt1sh_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6928,7 +6928,7 @@ pub unsafe fn svldnt1sw_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -6956,7 +6956,7 @@ pub unsafe fn svldnt1sh_gather_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -6984,7 +6984,7 @@ pub unsafe fn svldnt1sw_gather_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7001,7 +7001,7 @@ pub unsafe fn svldnt1sh_gather_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -7018,7 +7018,7 @@ pub unsafe fn svldnt1sw_gather_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7035,7 +7035,7 @@ pub unsafe fn svldnt1sh_gather_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -7052,7 +7052,7 @@ pub unsafe fn svldnt1sw_gather_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7069,7 +7069,7 @@ pub unsafe fn svldnt1sh_gather_u64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -7087,7 +7087,7 @@ pub unsafe fn svldnt1sw_gather_u64index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7105,7 +7105,7 @@ pub unsafe fn svldnt1sh_gather_u32base_index_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7123,7 +7123,7 @@ pub unsafe fn svldnt1sh_gather_u32base_index_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7141,7 +7141,7 @@ pub unsafe fn svldnt1sh_gather_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -7159,7 +7159,7 @@ pub unsafe fn svldnt1sw_gather_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sh))]
@@ -7177,7 +7177,7 @@ pub unsafe fn svldnt1sh_gather_u64base_index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1sw))]
@@ -7194,7 +7194,7 @@ pub unsafe fn svldnt1sw_gather_u64base_index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7211,7 +7211,7 @@ pub unsafe fn svldnt1ub_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7228,7 +7228,7 @@ pub unsafe fn svldnt1uh_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7245,7 +7245,7 @@ pub unsafe fn svldnt1uw_gather_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7275,7 +7275,7 @@ pub unsafe fn svldnt1ub_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7305,7 +7305,7 @@ pub unsafe fn svldnt1uh_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7335,7 +7335,7 @@ pub unsafe fn svldnt1uw_gather_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7352,7 +7352,7 @@ pub unsafe fn svldnt1ub_gather_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7369,7 +7369,7 @@ pub unsafe fn svldnt1uh_gather_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7400,7 +7400,7 @@ pub unsafe fn svldnt1ub_gather_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7431,7 +7431,7 @@ pub unsafe fn svldnt1uh_gather_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7448,7 +7448,7 @@ pub unsafe fn svldnt1ub_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7465,7 +7465,7 @@ pub unsafe fn svldnt1uh_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7482,7 +7482,7 @@ pub unsafe fn svldnt1uw_gather_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7499,7 +7499,7 @@ pub unsafe fn svldnt1ub_gather_u64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7516,7 +7516,7 @@ pub unsafe fn svldnt1uh_gather_u64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7534,7 +7534,7 @@ pub unsafe fn svldnt1uw_gather_u64offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7552,7 +7552,7 @@ pub unsafe fn svldnt1ub_gather_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7570,7 +7570,7 @@ pub unsafe fn svldnt1uh_gather_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7602,7 +7602,7 @@ pub unsafe fn svldnt1ub_gather_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7634,7 +7634,7 @@ pub unsafe fn svldnt1uh_gather_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7652,7 +7652,7 @@ pub unsafe fn svldnt1ub_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7670,7 +7670,7 @@ pub unsafe fn svldnt1uh_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7688,7 +7688,7 @@ pub unsafe fn svldnt1uw_gather_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7720,7 +7720,7 @@ pub unsafe fn svldnt1ub_gather_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7752,7 +7752,7 @@ pub unsafe fn svldnt1uh_gather_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7784,7 +7784,7 @@ pub unsafe fn svldnt1uw_gather_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7798,7 +7798,7 @@ pub unsafe fn svldnt1ub_gather_u32base_s32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7812,7 +7812,7 @@ pub unsafe fn svldnt1uh_gather_u32base_s32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7826,7 +7826,7 @@ pub unsafe fn svldnt1ub_gather_u32base_u32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7840,7 +7840,7 @@ pub unsafe fn svldnt1uh_gather_u32base_u32(pg: svbool_t, bases: svuint32_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7854,7 +7854,7 @@ pub unsafe fn svldnt1ub_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7868,7 +7868,7 @@ pub unsafe fn svldnt1uh_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7882,7 +7882,7 @@ pub unsafe fn svldnt1uw_gather_u64base_s64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1b))]
@@ -7896,7 +7896,7 @@ pub unsafe fn svldnt1ub_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7910,7 +7910,7 @@ pub unsafe fn svldnt1uh_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7923,7 +7923,7 @@ pub unsafe fn svldnt1uw_gather_u64base_u64(pg: svbool_t, bases: svuint64_t) -> s
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7940,7 +7940,7 @@ pub unsafe fn svldnt1uh_gather_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -7957,7 +7957,7 @@ pub unsafe fn svldnt1uw_gather_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -7987,7 +7987,7 @@ pub unsafe fn svldnt1uh_gather_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -8017,7 +8017,7 @@ pub unsafe fn svldnt1uw_gather_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -8034,7 +8034,7 @@ pub unsafe fn svldnt1uh_gather_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -8051,7 +8051,7 @@ pub unsafe fn svldnt1uw_gather_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -8068,7 +8068,7 @@ pub unsafe fn svldnt1uh_gather_u64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -8086,7 +8086,7 @@ pub unsafe fn svldnt1uw_gather_u64index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -8104,7 +8104,7 @@ pub unsafe fn svldnt1uh_gather_u32base_index_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -8122,7 +8122,7 @@ pub unsafe fn svldnt1uh_gather_u32base_index_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -8140,7 +8140,7 @@ pub unsafe fn svldnt1uh_gather_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -8158,7 +8158,7 @@ pub unsafe fn svldnt1uw_gather_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1h))]
@@ -8176,7 +8176,7 @@ pub unsafe fn svldnt1uh_gather_u64base_index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ldnt1w))]
@@ -8189,7 +8189,7 @@ pub unsafe fn svldnt1uw_gather_u64base_index_u64(
 }
 #[doc = "Base 2 logarithm as integer"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlogb[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(flogb))]
@@ -8202,7 +8202,7 @@ pub fn svlogb_f32_m(inactive: svint32_t, pg: svbool_t, op: svfloat32_t) -> svint
 }
 #[doc = "Base 2 logarithm as integer"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlogb[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(flogb))]
@@ -8211,7 +8211,7 @@ pub fn svlogb_f32_x(pg: svbool_t, op: svfloat32_t) -> svint32_t {
 }
 #[doc = "Base 2 logarithm as integer"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlogb[_f32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(flogb))]
@@ -8220,7 +8220,7 @@ pub fn svlogb_f32_z(pg: svbool_t, op: svfloat32_t) -> svint32_t {
 }
 #[doc = "Base 2 logarithm as integer"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlogb[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(flogb))]
@@ -8233,7 +8233,7 @@ pub fn svlogb_f64_m(inactive: svint64_t, pg: svbool_t, op: svfloat64_t) -> svint
 }
 #[doc = "Base 2 logarithm as integer"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlogb[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(flogb))]
@@ -8242,7 +8242,7 @@ pub fn svlogb_f64_x(pg: svbool_t, op: svfloat64_t) -> svint64_t {
 }
 #[doc = "Base 2 logarithm as integer"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlogb[_f64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(flogb))]
@@ -8251,7 +8251,7 @@ pub fn svlogb_f64_z(pg: svbool_t, op: svfloat64_t) -> svint64_t {
 }
 #[doc = "Detect any matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmatch[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(match))]
@@ -8264,7 +8264,7 @@ pub fn svmatch_s8(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svbool_t {
 }
 #[doc = "Detect any matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmatch[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(match))]
@@ -8277,7 +8277,7 @@ pub fn svmatch_s16(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svbool_t {
 }
 #[doc = "Detect any matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmatch[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(match))]
@@ -8286,7 +8286,7 @@ pub fn svmatch_u8(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svbool_t {
 }
 #[doc = "Detect any matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmatch[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(match))]
@@ -8295,7 +8295,7 @@ pub fn svmatch_u16(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svbool_t {
 }
 #[doc = "Maximum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxnmp[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
@@ -8311,7 +8311,7 @@ pub fn svmaxnmp_f32_m(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svflo
 }
 #[doc = "Maximum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxnmp[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
@@ -8320,7 +8320,7 @@ pub fn svmaxnmp_f32_x(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svflo
 }
 #[doc = "Maximum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxnmp[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
@@ -8336,7 +8336,7 @@ pub fn svmaxnmp_f64_m(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svflo
 }
 #[doc = "Maximum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxnmp[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxnmp))]
@@ -8345,7 +8345,7 @@ pub fn svmaxnmp_f64_x(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svflo
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxp))]
@@ -8358,7 +8358,7 @@ pub fn svmaxp_f32_m(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxp))]
@@ -8367,7 +8367,7 @@ pub fn svmaxp_f32_x(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxp))]
@@ -8380,7 +8380,7 @@ pub fn svmaxp_f64_m(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmaxp))]
@@ -8389,7 +8389,7 @@ pub fn svmaxp_f64_x(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8402,7 +8402,7 @@ pub fn svmaxp_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8411,7 +8411,7 @@ pub fn svmaxp_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8424,7 +8424,7 @@ pub fn svmaxp_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8433,7 +8433,7 @@ pub fn svmaxp_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8446,7 +8446,7 @@ pub fn svmaxp_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8455,7 +8455,7 @@ pub fn svmaxp_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8468,7 +8468,7 @@ pub fn svmaxp_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smaxp))]
@@ -8477,7 +8477,7 @@ pub fn svmaxp_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8490,7 +8490,7 @@ pub fn svmaxp_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8499,7 +8499,7 @@ pub fn svmaxp_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8512,7 +8512,7 @@ pub fn svmaxp_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8521,7 +8521,7 @@ pub fn svmaxp_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8534,7 +8534,7 @@ pub fn svmaxp_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8543,7 +8543,7 @@ pub fn svmaxp_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8556,7 +8556,7 @@ pub fn svmaxp_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmaxp[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umaxp))]
@@ -8565,7 +8565,7 @@ pub fn svmaxp_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Minimum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminnmp[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminnmp))]
@@ -8581,7 +8581,7 @@ pub fn svminnmp_f32_m(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svflo
 }
 #[doc = "Minimum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminnmp[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminnmp))]
@@ -8590,7 +8590,7 @@ pub fn svminnmp_f32_x(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svflo
 }
 #[doc = "Minimum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminnmp[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminnmp))]
@@ -8606,7 +8606,7 @@ pub fn svminnmp_f64_m(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svflo
 }
 #[doc = "Minimum number pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminnmp[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminnmp))]
@@ -8615,7 +8615,7 @@ pub fn svminnmp_f64_x(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svflo
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_f32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminp))]
@@ -8628,7 +8628,7 @@ pub fn svminp_f32_m(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_f32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminp))]
@@ -8637,7 +8637,7 @@ pub fn svminp_f32_x(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_f64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminp))]
@@ -8650,7 +8650,7 @@ pub fn svminp_f64_m(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_f64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fminp))]
@@ -8659,7 +8659,7 @@ pub fn svminp_f64_x(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8672,7 +8672,7 @@ pub fn svminp_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8681,7 +8681,7 @@ pub fn svminp_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8694,7 +8694,7 @@ pub fn svminp_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8703,7 +8703,7 @@ pub fn svminp_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8716,7 +8716,7 @@ pub fn svminp_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8725,7 +8725,7 @@ pub fn svminp_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8738,7 +8738,7 @@ pub fn svminp_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sminp))]
@@ -8747,7 +8747,7 @@ pub fn svminp_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8760,7 +8760,7 @@ pub fn svminp_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8769,7 +8769,7 @@ pub fn svminp_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8782,7 +8782,7 @@ pub fn svminp_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8791,7 +8791,7 @@ pub fn svminp_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8804,7 +8804,7 @@ pub fn svminp_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8813,7 +8813,7 @@ pub fn svminp_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8826,7 +8826,7 @@ pub fn svminp_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svminp[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uminp))]
@@ -8835,7 +8835,7 @@ pub fn svminp_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Multiply-add, addend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmla_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mla, IMM_INDEX = 0))]
@@ -8861,7 +8861,7 @@ pub fn svmla_lane_s16<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add, addend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmla_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mla, IMM_INDEX = 0))]
@@ -8887,7 +8887,7 @@ pub fn svmla_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add, addend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmla_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mla, IMM_INDEX = 0))]
@@ -8913,7 +8913,7 @@ pub fn svmla_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add, addend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmla_lane[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mla, IMM_INDEX = 0))]
@@ -8929,7 +8929,7 @@ pub fn svmla_lane_u16<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add, addend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmla_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mla, IMM_INDEX = 0))]
@@ -8945,7 +8945,7 @@ pub fn svmla_lane_u32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add, addend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmla_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mla, IMM_INDEX = 0))]
@@ -8961,7 +8961,7 @@ pub fn svmla_lane_u64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb, IMM_INDEX = 0))]
@@ -8987,7 +8987,7 @@ pub fn svmlalb_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb, IMM_INDEX = 0))]
@@ -9013,7 +9013,7 @@ pub fn svmlalb_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb, IMM_INDEX = 0))]
@@ -9042,7 +9042,7 @@ pub fn svmlalb_lane_u32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb, IMM_INDEX = 0))]
@@ -9071,7 +9071,7 @@ pub fn svmlalb_lane_u64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb))]
@@ -9084,7 +9084,7 @@ pub fn svmlalb_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t {
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb))]
@@ -9093,7 +9093,7 @@ pub fn svmlalb_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb))]
@@ -9106,7 +9106,7 @@ pub fn svmlalb_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_t 
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb))]
@@ -9115,7 +9115,7 @@ pub fn svmlalb_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb))]
@@ -9128,7 +9128,7 @@ pub fn svmlalb_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_t 
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalb))]
@@ -9137,7 +9137,7 @@ pub fn svmlalb_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb))]
@@ -9150,7 +9150,7 @@ pub fn svmlalb_u16(op1: svuint16_t, op2: svuint8_t, op3: svuint8_t) -> svuint16_
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb))]
@@ -9159,7 +9159,7 @@ pub fn svmlalb_n_u16(op1: svuint16_t, op2: svuint8_t, op3: u8) -> svuint16_t {
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb))]
@@ -9172,7 +9172,7 @@ pub fn svmlalb_u32(op1: svuint32_t, op2: svuint16_t, op3: svuint16_t) -> svuint3
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb))]
@@ -9181,7 +9181,7 @@ pub fn svmlalb_n_u32(op1: svuint32_t, op2: svuint16_t, op3: u16) -> svuint32_t {
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb))]
@@ -9194,7 +9194,7 @@ pub fn svmlalb_u64(op1: svuint64_t, op2: svuint32_t, op3: svuint32_t) -> svuint6
 }
 #[doc = "Multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalb))]
@@ -9203,7 +9203,7 @@ pub fn svmlalb_n_u64(op1: svuint64_t, op2: svuint32_t, op3: u32) -> svuint64_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt, IMM_INDEX = 0))]
@@ -9229,7 +9229,7 @@ pub fn svmlalt_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt, IMM_INDEX = 0))]
@@ -9255,7 +9255,7 @@ pub fn svmlalt_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt, IMM_INDEX = 0))]
@@ -9284,7 +9284,7 @@ pub fn svmlalt_lane_u32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt, IMM_INDEX = 0))]
@@ -9313,7 +9313,7 @@ pub fn svmlalt_lane_u64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt))]
@@ -9326,7 +9326,7 @@ pub fn svmlalt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt))]
@@ -9335,7 +9335,7 @@ pub fn svmlalt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt))]
@@ -9348,7 +9348,7 @@ pub fn svmlalt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_t 
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt))]
@@ -9357,7 +9357,7 @@ pub fn svmlalt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt))]
@@ -9370,7 +9370,7 @@ pub fn svmlalt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_t 
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlalt))]
@@ -9379,7 +9379,7 @@ pub fn svmlalt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt))]
@@ -9392,7 +9392,7 @@ pub fn svmlalt_u16(op1: svuint16_t, op2: svuint8_t, op3: svuint8_t) -> svuint16_
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt))]
@@ -9401,7 +9401,7 @@ pub fn svmlalt_n_u16(op1: svuint16_t, op2: svuint8_t, op3: u8) -> svuint16_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt))]
@@ -9414,7 +9414,7 @@ pub fn svmlalt_u32(op1: svuint32_t, op2: svuint16_t, op3: svuint16_t) -> svuint3
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt))]
@@ -9423,7 +9423,7 @@ pub fn svmlalt_n_u32(op1: svuint32_t, op2: svuint16_t, op3: u16) -> svuint32_t {
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt))]
@@ -9436,7 +9436,7 @@ pub fn svmlalt_u64(op1: svuint64_t, op2: svuint32_t, op3: svuint32_t) -> svuint6
 }
 #[doc = "Multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlalt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlalt))]
@@ -9445,7 +9445,7 @@ pub fn svmlalt_n_u64(op1: svuint64_t, op2: svuint32_t, op3: u32) -> svuint64_t {
 }
 #[doc = "Multiply-subtract, minuend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmls_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mls, IMM_INDEX = 0))]
@@ -9471,7 +9471,7 @@ pub fn svmls_lane_s16<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract, minuend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmls_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mls, IMM_INDEX = 0))]
@@ -9497,7 +9497,7 @@ pub fn svmls_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract, minuend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmls_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mls, IMM_INDEX = 0))]
@@ -9523,7 +9523,7 @@ pub fn svmls_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract, minuend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmls_lane[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mls, IMM_INDEX = 0))]
@@ -9539,7 +9539,7 @@ pub fn svmls_lane_u16<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract, minuend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmls_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mls, IMM_INDEX = 0))]
@@ -9555,7 +9555,7 @@ pub fn svmls_lane_u32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract, minuend first"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmls_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mls, IMM_INDEX = 0))]
@@ -9571,7 +9571,7 @@ pub fn svmls_lane_u64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb, IMM_INDEX = 0))]
@@ -9597,7 +9597,7 @@ pub fn svmlslb_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb, IMM_INDEX = 0))]
@@ -9623,7 +9623,7 @@ pub fn svmlslb_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb, IMM_INDEX = 0))]
@@ -9652,7 +9652,7 @@ pub fn svmlslb_lane_u32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb, IMM_INDEX = 0))]
@@ -9681,7 +9681,7 @@ pub fn svmlslb_lane_u64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb))]
@@ -9694,7 +9694,7 @@ pub fn svmlslb_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t {
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb))]
@@ -9703,7 +9703,7 @@ pub fn svmlslb_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb))]
@@ -9716,7 +9716,7 @@ pub fn svmlslb_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_t 
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb))]
@@ -9725,7 +9725,7 @@ pub fn svmlslb_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb))]
@@ -9738,7 +9738,7 @@ pub fn svmlslb_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_t 
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslb))]
@@ -9747,7 +9747,7 @@ pub fn svmlslb_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb))]
@@ -9760,7 +9760,7 @@ pub fn svmlslb_u16(op1: svuint16_t, op2: svuint8_t, op3: svuint8_t) -> svuint16_
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb))]
@@ -9769,7 +9769,7 @@ pub fn svmlslb_n_u16(op1: svuint16_t, op2: svuint8_t, op3: u8) -> svuint16_t {
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb))]
@@ -9782,7 +9782,7 @@ pub fn svmlslb_u32(op1: svuint32_t, op2: svuint16_t, op3: svuint16_t) -> svuint3
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb))]
@@ -9791,7 +9791,7 @@ pub fn svmlslb_n_u32(op1: svuint32_t, op2: svuint16_t, op3: u16) -> svuint32_t {
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb))]
@@ -9804,7 +9804,7 @@ pub fn svmlslb_u64(op1: svuint64_t, op2: svuint32_t, op3: svuint32_t) -> svuint6
 }
 #[doc = "Multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslb))]
@@ -9813,7 +9813,7 @@ pub fn svmlslb_n_u64(op1: svuint64_t, op2: svuint32_t, op3: u32) -> svuint64_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt, IMM_INDEX = 0))]
@@ -9839,7 +9839,7 @@ pub fn svmlslt_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt, IMM_INDEX = 0))]
@@ -9865,7 +9865,7 @@ pub fn svmlslt_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt, IMM_INDEX = 0))]
@@ -9894,7 +9894,7 @@ pub fn svmlslt_lane_u32<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt, IMM_INDEX = 0))]
@@ -9923,7 +9923,7 @@ pub fn svmlslt_lane_u64<const IMM_INDEX: i32>(
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt))]
@@ -9936,7 +9936,7 @@ pub fn svmlslt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt))]
@@ -9945,7 +9945,7 @@ pub fn svmlslt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt))]
@@ -9958,7 +9958,7 @@ pub fn svmlslt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_t 
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt))]
@@ -9967,7 +9967,7 @@ pub fn svmlslt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt))]
@@ -9980,7 +9980,7 @@ pub fn svmlslt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_t 
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smlslt))]
@@ -9989,7 +9989,7 @@ pub fn svmlslt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt))]
@@ -10002,7 +10002,7 @@ pub fn svmlslt_u16(op1: svuint16_t, op2: svuint8_t, op3: svuint8_t) -> svuint16_
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt))]
@@ -10011,7 +10011,7 @@ pub fn svmlslt_n_u16(op1: svuint16_t, op2: svuint8_t, op3: u8) -> svuint16_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt))]
@@ -10024,7 +10024,7 @@ pub fn svmlslt_u32(op1: svuint32_t, op2: svuint16_t, op3: svuint16_t) -> svuint3
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt))]
@@ -10033,7 +10033,7 @@ pub fn svmlslt_n_u32(op1: svuint32_t, op2: svuint16_t, op3: u16) -> svuint32_t {
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt))]
@@ -10046,7 +10046,7 @@ pub fn svmlslt_u64(op1: svuint64_t, op2: svuint32_t, op3: svuint32_t) -> svuint6
 }
 #[doc = "Multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmlslt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umlslt))]
@@ -10055,7 +10055,7 @@ pub fn svmlslt_n_u64(op1: svuint64_t, op2: svuint32_t, op3: u32) -> svuint64_t {
 }
 #[doc = "Move long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllb))]
@@ -10064,7 +10064,7 @@ pub fn svmovlb_s16(op: svint8_t) -> svint16_t {
 }
 #[doc = "Move long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllb))]
@@ -10073,7 +10073,7 @@ pub fn svmovlb_s32(op: svint16_t) -> svint32_t {
 }
 #[doc = "Move long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllb))]
@@ -10082,7 +10082,7 @@ pub fn svmovlb_s64(op: svint32_t) -> svint64_t {
 }
 #[doc = "Move long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllb))]
@@ -10091,7 +10091,7 @@ pub fn svmovlb_u16(op: svuint8_t) -> svuint16_t {
 }
 #[doc = "Move long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllb))]
@@ -10100,7 +10100,7 @@ pub fn svmovlb_u32(op: svuint16_t) -> svuint32_t {
 }
 #[doc = "Move long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllb))]
@@ -10109,7 +10109,7 @@ pub fn svmovlb_u64(op: svuint32_t) -> svuint64_t {
 }
 #[doc = "Move long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllt))]
@@ -10118,7 +10118,7 @@ pub fn svmovlt_s16(op: svint8_t) -> svint16_t {
 }
 #[doc = "Move long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllt))]
@@ -10127,7 +10127,7 @@ pub fn svmovlt_s32(op: svint16_t) -> svint32_t {
 }
 #[doc = "Move long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllt))]
@@ -10136,7 +10136,7 @@ pub fn svmovlt_s64(op: svint32_t) -> svint64_t {
 }
 #[doc = "Move long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllt))]
@@ -10145,7 +10145,7 @@ pub fn svmovlt_u16(op: svuint8_t) -> svuint16_t {
 }
 #[doc = "Move long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllt))]
@@ -10154,7 +10154,7 @@ pub fn svmovlt_u32(op: svuint16_t) -> svuint32_t {
 }
 #[doc = "Move long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmovlt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllt))]
@@ -10163,7 +10163,7 @@ pub fn svmovlt_u64(op: svuint32_t) -> svuint64_t {
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_f32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmul, IMM_INDEX = 0))]
@@ -10180,7 +10180,7 @@ pub fn svmul_lane_f32<const IMM_INDEX: i32>(op1: svfloat32_t, op2: svfloat32_t) 
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_f64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(fmul, IMM_INDEX = 0))]
@@ -10197,7 +10197,7 @@ pub fn svmul_lane_f64<const IMM_INDEX: i32>(op1: svfloat64_t, op2: svfloat64_t) 
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mul, IMM_INDEX = 0))]
@@ -10214,7 +10214,7 @@ pub fn svmul_lane_s16<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) -> s
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mul, IMM_INDEX = 0))]
@@ -10231,7 +10231,7 @@ pub fn svmul_lane_s32<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) -> s
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mul, IMM_INDEX = 0))]
@@ -10248,7 +10248,7 @@ pub fn svmul_lane_s64<const IMM_INDEX: i32>(op1: svint64_t, op2: svint64_t) -> s
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mul, IMM_INDEX = 0))]
@@ -10258,7 +10258,7 @@ pub fn svmul_lane_u16<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) ->
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mul, IMM_INDEX = 0))]
@@ -10268,7 +10268,7 @@ pub fn svmul_lane_u32<const IMM_INDEX: i32>(op1: svuint32_t, op2: svuint32_t) ->
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(mul, IMM_INDEX = 0))]
@@ -10278,7 +10278,7 @@ pub fn svmul_lane_u64<const IMM_INDEX: i32>(op1: svuint64_t, op2: svuint64_t) ->
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10298,7 +10298,7 @@ pub fn svmullb_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) ->
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10318,7 +10318,7 @@ pub fn svmullb_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) ->
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10338,7 +10338,7 @@ pub fn svmullb_lane_u32<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) 
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10358,7 +10358,7 @@ pub fn svmullb_lane_u64<const IMM_INDEX: i32>(op1: svuint32_t, op2: svuint32_t) 
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smullb))]
@@ -10371,7 +10371,7 @@ pub fn svmullb_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smullb))]
@@ -10380,7 +10380,7 @@ pub fn svmullb_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smullb))]
@@ -10393,7 +10393,7 @@ pub fn svmullb_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smullb))]
@@ -10402,7 +10402,7 @@ pub fn svmullb_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smullb))]
@@ -10415,7 +10415,7 @@ pub fn svmullb_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(smullb))]
@@ -10424,7 +10424,7 @@ pub fn svmullb_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umullb))]
@@ -10437,7 +10437,7 @@ pub fn svmullb_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umullb))]
@@ -10446,7 +10446,7 @@ pub fn svmullb_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umullb))]
@@ -10459,7 +10459,7 @@ pub fn svmullb_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umullb))]
@@ -10468,7 +10468,7 @@ pub fn svmullb_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umullb))]
@@ -10481,7 +10481,7 @@ pub fn svmullb_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(umullb))]
@@ -10490,7 +10490,7 @@ pub fn svmullb_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10510,7 +10510,7 @@ pub fn svmullt_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) ->
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10530,7 +10530,7 @@ pub fn svmullt_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) ->
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt_lane[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10550,7 +10550,7 @@ pub fn svmullt_lane_u32<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) 
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt_lane[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(
@@ -10570,7 +10570,7 @@ pub fn svmullt_lane_u64<const IMM_INDEX: i32>(op1: svuint32_t, op2: svuint32_t) 
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
@@ -10583,7 +10583,7 @@ pub fn svmullt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
@@ -10592,7 +10592,7 @@ pub fn svmullt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
@@ -10605,7 +10605,7 @@ pub fn svmullt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
@@ -10614,7 +10614,7 @@ pub fn svmullt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
@@ -10627,7 +10627,7 @@ pub fn svmullt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
@@ -10636,7 +10636,7 @@ pub fn svmullt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
@@ -10649,7 +10649,7 @@ pub fn svmullt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
@@ -10658,7 +10658,7 @@ pub fn svmullt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
@@ -10671,7 +10671,7 @@ pub fn svmullt_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
@@ -10680,7 +10680,7 @@ pub fn svmullt_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
@@ -10693,7 +10693,7 @@ pub fn svmullt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmullt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
@@ -10702,7 +10702,7 @@ pub fn svmullt_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10715,7 +10715,7 @@ pub fn svnbsl_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10724,7 +10724,7 @@ pub fn svnbsl_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10737,7 +10737,7 @@ pub fn svnbsl_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10746,7 +10746,7 @@ pub fn svnbsl_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10759,7 +10759,7 @@ pub fn svnbsl_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10768,7 +10768,7 @@ pub fn svnbsl_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10781,7 +10781,7 @@ pub fn svnbsl_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10790,7 +10790,7 @@ pub fn svnbsl_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10799,7 +10799,7 @@ pub fn svnbsl_u8(op1: svuint8_t, op2: svuint8_t, op3: svuint8_t) -> svuint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10808,7 +10808,7 @@ pub fn svnbsl_n_u8(op1: svuint8_t, op2: svuint8_t, op3: u8) -> svuint8_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10817,7 +10817,7 @@ pub fn svnbsl_u16(op1: svuint16_t, op2: svuint16_t, op3: svuint16_t) -> svuint16
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10826,7 +10826,7 @@ pub fn svnbsl_n_u16(op1: svuint16_t, op2: svuint16_t, op3: u16) -> svuint16_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10835,7 +10835,7 @@ pub fn svnbsl_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint32
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10844,7 +10844,7 @@ pub fn svnbsl_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10853,7 +10853,7 @@ pub fn svnbsl_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint64
 }
 #[doc = "Bitwise select"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnbsl[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nbsl))]
@@ -10862,7 +10862,7 @@ pub fn svnbsl_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Detect no matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnmatch[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nmatch))]
@@ -10875,7 +10875,7 @@ pub fn svnmatch_s8(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svbool_t {
 }
 #[doc = "Detect no matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnmatch[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nmatch))]
@@ -10888,7 +10888,7 @@ pub fn svnmatch_s16(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svbool_t {
 }
 #[doc = "Detect no matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnmatch[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nmatch))]
@@ -10897,7 +10897,7 @@ pub fn svnmatch_u8(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svbool_t {
 }
 #[doc = "Detect no matching elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svnmatch[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(nmatch))]
@@ -10906,7 +10906,7 @@ pub fn svnmatch_u16(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svbool_t 
 }
 #[doc = "Polynomial multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmul[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmul))]
@@ -10919,7 +10919,7 @@ pub fn svpmul_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Polynomial multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmul[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmul))]
@@ -10928,7 +10928,7 @@ pub fn svpmul_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb_pair[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -10944,7 +10944,7 @@ pub fn svpmullb_pair_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb_pair[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -10953,7 +10953,7 @@ pub fn svpmullb_pair_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb_pair[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -10969,7 +10969,7 @@ pub fn svpmullb_pair_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb_pair[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -10978,7 +10978,7 @@ pub fn svpmullb_pair_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb_pair[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -10994,7 +10994,7 @@ pub fn svpmullb_pair_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb_pair[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -11003,7 +11003,7 @@ pub fn svpmullb_pair_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -11012,7 +11012,7 @@ pub fn svpmullb_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -11021,7 +11021,7 @@ pub fn svpmullb_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -11030,7 +11030,7 @@ pub fn svpmullb_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullb))]
@@ -11039,7 +11039,7 @@ pub fn svpmullb_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt_pair[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11055,7 +11055,7 @@ pub fn svpmullt_pair_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt_pair[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11064,7 +11064,7 @@ pub fn svpmullt_pair_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt_pair[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11080,7 +11080,7 @@ pub fn svpmullt_pair_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt_pair[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11089,7 +11089,7 @@ pub fn svpmullt_pair_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt_pair[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11105,7 +11105,7 @@ pub fn svpmullt_pair_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt_pair[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11114,7 +11114,7 @@ pub fn svpmullt_pair_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11123,7 +11123,7 @@ pub fn svpmullt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11132,7 +11132,7 @@ pub fn svpmullt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11141,7 +11141,7 @@ pub fn svpmullt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Polynomial multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svpmullt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-aes")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(pmullt))]
@@ -11150,7 +11150,7 @@ pub fn svpmullt_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11163,7 +11163,7 @@ pub fn svqabs_s8_m(inactive: svint8_t, pg: svbool_t, op: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11172,7 +11172,7 @@ pub fn svqabs_s8_x(pg: svbool_t, op: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11181,7 +11181,7 @@ pub fn svqabs_s8_z(pg: svbool_t, op: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11194,7 +11194,7 @@ pub fn svqabs_s16_m(inactive: svint16_t, pg: svbool_t, op: svint16_t) -> svint16
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11203,7 +11203,7 @@ pub fn svqabs_s16_x(pg: svbool_t, op: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11212,7 +11212,7 @@ pub fn svqabs_s16_z(pg: svbool_t, op: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11225,7 +11225,7 @@ pub fn svqabs_s32_m(inactive: svint32_t, pg: svbool_t, op: svint32_t) -> svint32
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11234,7 +11234,7 @@ pub fn svqabs_s32_x(pg: svbool_t, op: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11243,7 +11243,7 @@ pub fn svqabs_s32_z(pg: svbool_t, op: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11256,7 +11256,7 @@ pub fn svqabs_s64_m(inactive: svint64_t, pg: svbool_t, op: svint64_t) -> svint64
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11265,7 +11265,7 @@ pub fn svqabs_s64_x(pg: svbool_t, op: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqabs[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqabs))]
@@ -11274,7 +11274,7 @@ pub fn svqabs_s64_z(pg: svbool_t, op: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11287,7 +11287,7 @@ pub fn svqadd_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11296,7 +11296,7 @@ pub fn svqadd_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11305,7 +11305,7 @@ pub fn svqadd_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11314,7 +11314,7 @@ pub fn svqadd_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11323,7 +11323,7 @@ pub fn svqadd_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11332,7 +11332,7 @@ pub fn svqadd_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11345,7 +11345,7 @@ pub fn svqadd_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11354,7 +11354,7 @@ pub fn svqadd_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11363,7 +11363,7 @@ pub fn svqadd_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11372,7 +11372,7 @@ pub fn svqadd_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11381,7 +11381,7 @@ pub fn svqadd_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11390,7 +11390,7 @@ pub fn svqadd_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11403,7 +11403,7 @@ pub fn svqadd_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11412,7 +11412,7 @@ pub fn svqadd_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11421,7 +11421,7 @@ pub fn svqadd_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11430,7 +11430,7 @@ pub fn svqadd_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11439,7 +11439,7 @@ pub fn svqadd_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11448,7 +11448,7 @@ pub fn svqadd_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11461,7 +11461,7 @@ pub fn svqadd_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11470,7 +11470,7 @@ pub fn svqadd_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11479,7 +11479,7 @@ pub fn svqadd_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11488,7 +11488,7 @@ pub fn svqadd_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11497,7 +11497,7 @@ pub fn svqadd_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqadd))]
@@ -11506,7 +11506,7 @@ pub fn svqadd_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11519,7 +11519,7 @@ pub fn svqadd_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11528,7 +11528,7 @@ pub fn svqadd_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11537,7 +11537,7 @@ pub fn svqadd_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11546,7 +11546,7 @@ pub fn svqadd_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11555,7 +11555,7 @@ pub fn svqadd_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11564,7 +11564,7 @@ pub fn svqadd_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11577,7 +11577,7 @@ pub fn svqadd_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11586,7 +11586,7 @@ pub fn svqadd_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11595,7 +11595,7 @@ pub fn svqadd_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11604,7 +11604,7 @@ pub fn svqadd_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11613,7 +11613,7 @@ pub fn svqadd_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11622,7 +11622,7 @@ pub fn svqadd_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11635,7 +11635,7 @@ pub fn svqadd_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11644,7 +11644,7 @@ pub fn svqadd_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11653,7 +11653,7 @@ pub fn svqadd_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11662,7 +11662,7 @@ pub fn svqadd_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11671,7 +11671,7 @@ pub fn svqadd_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11680,7 +11680,7 @@ pub fn svqadd_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11693,7 +11693,7 @@ pub fn svqadd_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11702,7 +11702,7 @@ pub fn svqadd_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11711,7 +11711,7 @@ pub fn svqadd_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11720,7 +11720,7 @@ pub fn svqadd_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11729,7 +11729,7 @@ pub fn svqadd_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqadd))]
@@ -11738,7 +11738,7 @@ pub fn svqadd_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqcadd[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqcadd, IMM_ROTATION = 90))]
@@ -11755,7 +11755,7 @@ pub fn svqcadd_s8<const IMM_ROTATION: i32>(op1: svint8_t, op2: svint8_t) -> svin
 }
 #[doc = "Saturating complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqcadd[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqcadd, IMM_ROTATION = 90))]
@@ -11772,7 +11772,7 @@ pub fn svqcadd_s16<const IMM_ROTATION: i32>(op1: svint16_t, op2: svint16_t) -> s
 }
 #[doc = "Saturating complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqcadd[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqcadd, IMM_ROTATION = 90))]
@@ -11789,7 +11789,7 @@ pub fn svqcadd_s32<const IMM_ROTATION: i32>(op1: svint32_t, op2: svint32_t) -> s
 }
 #[doc = "Saturating complex add with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqcadd[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqcadd, IMM_ROTATION = 90))]
@@ -11806,7 +11806,7 @@ pub fn svqcadd_s64<const IMM_ROTATION: i32>(op1: svint64_t, op2: svint64_t) -> s
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb, IMM_INDEX = 0))]
@@ -11832,7 +11832,7 @@ pub fn svqdmlalb_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb, IMM_INDEX = 0))]
@@ -11858,7 +11858,7 @@ pub fn svqdmlalb_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb))]
@@ -11874,7 +11874,7 @@ pub fn svqdmlalb_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t 
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb))]
@@ -11883,7 +11883,7 @@ pub fn svqdmlalb_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb))]
@@ -11899,7 +11899,7 @@ pub fn svqdmlalb_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb))]
@@ -11908,7 +11908,7 @@ pub fn svqdmlalb_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb))]
@@ -11924,7 +11924,7 @@ pub fn svqdmlalb_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_
 }
 #[doc = "Saturating doubling multiply-add long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalb))]
@@ -11933,7 +11933,7 @@ pub fn svqdmlalb_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply-add long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalbt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalbt))]
@@ -11949,7 +11949,7 @@ pub fn svqdmlalbt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t
 }
 #[doc = "Saturating doubling multiply-add long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalbt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalbt))]
@@ -11958,7 +11958,7 @@ pub fn svqdmlalbt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply-add long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalbt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalbt))]
@@ -11974,7 +11974,7 @@ pub fn svqdmlalbt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32
 }
 #[doc = "Saturating doubling multiply-add long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalbt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalbt))]
@@ -11983,7 +11983,7 @@ pub fn svqdmlalbt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply-add long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalbt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalbt))]
@@ -11999,7 +11999,7 @@ pub fn svqdmlalbt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64
 }
 #[doc = "Saturating doubling multiply-add long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalbt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalbt))]
@@ -12008,7 +12008,7 @@ pub fn svqdmlalbt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt, IMM_INDEX = 0))]
@@ -12034,7 +12034,7 @@ pub fn svqdmlalt_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt, IMM_INDEX = 0))]
@@ -12060,7 +12060,7 @@ pub fn svqdmlalt_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt))]
@@ -12076,7 +12076,7 @@ pub fn svqdmlalt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t 
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt))]
@@ -12085,7 +12085,7 @@ pub fn svqdmlalt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt))]
@@ -12101,7 +12101,7 @@ pub fn svqdmlalt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt))]
@@ -12110,7 +12110,7 @@ pub fn svqdmlalt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt))]
@@ -12126,7 +12126,7 @@ pub fn svqdmlalt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_
 }
 #[doc = "Saturating doubling multiply-add long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlalt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlalt))]
@@ -12135,7 +12135,7 @@ pub fn svqdmlalt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb, IMM_INDEX = 0))]
@@ -12161,7 +12161,7 @@ pub fn svqdmlslb_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb, IMM_INDEX = 0))]
@@ -12187,7 +12187,7 @@ pub fn svqdmlslb_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb))]
@@ -12203,7 +12203,7 @@ pub fn svqdmlslb_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t 
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb))]
@@ -12212,7 +12212,7 @@ pub fn svqdmlslb_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb))]
@@ -12228,7 +12228,7 @@ pub fn svqdmlslb_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb))]
@@ -12237,7 +12237,7 @@ pub fn svqdmlslb_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb))]
@@ -12253,7 +12253,7 @@ pub fn svqdmlslb_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslb))]
@@ -12262,7 +12262,7 @@ pub fn svqdmlslb_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslbt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslbt))]
@@ -12278,7 +12278,7 @@ pub fn svqdmlslbt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslbt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslbt))]
@@ -12287,7 +12287,7 @@ pub fn svqdmlslbt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslbt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslbt))]
@@ -12303,7 +12303,7 @@ pub fn svqdmlslbt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslbt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslbt))]
@@ -12312,7 +12312,7 @@ pub fn svqdmlslbt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslbt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslbt))]
@@ -12328,7 +12328,7 @@ pub fn svqdmlslbt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64
 }
 #[doc = "Saturating doubling multiply-subtract long (bottom × top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslbt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslbt))]
@@ -12337,7 +12337,7 @@ pub fn svqdmlslbt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt, IMM_INDEX = 0))]
@@ -12363,7 +12363,7 @@ pub fn svqdmlslt_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt, IMM_INDEX = 0))]
@@ -12389,7 +12389,7 @@ pub fn svqdmlslt_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt))]
@@ -12405,7 +12405,7 @@ pub fn svqdmlslt_s16(op1: svint16_t, op2: svint8_t, op3: svint8_t) -> svint16_t 
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt))]
@@ -12414,7 +12414,7 @@ pub fn svqdmlslt_n_s16(op1: svint16_t, op2: svint8_t, op3: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt))]
@@ -12430,7 +12430,7 @@ pub fn svqdmlslt_s32(op1: svint32_t, op2: svint16_t, op3: svint16_t) -> svint32_
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt))]
@@ -12439,7 +12439,7 @@ pub fn svqdmlslt_n_s32(op1: svint32_t, op2: svint16_t, op3: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt))]
@@ -12455,7 +12455,7 @@ pub fn svqdmlslt_s64(op1: svint64_t, op2: svint32_t, op3: svint32_t) -> svint64_
 }
 #[doc = "Saturating doubling multiply-subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmlslt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmlslt))]
@@ -12464,7 +12464,7 @@ pub fn svqdmlslt_n_s64(op1: svint64_t, op2: svint32_t, op3: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh, IMM_INDEX = 0))]
@@ -12481,7 +12481,7 @@ pub fn svqdmulh_lane_s16<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) -
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh, IMM_INDEX = 0))]
@@ -12498,7 +12498,7 @@ pub fn svqdmulh_lane_s32<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) -
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh, IMM_INDEX = 0))]
@@ -12515,7 +12515,7 @@ pub fn svqdmulh_lane_s64<const IMM_INDEX: i32>(op1: svint64_t, op2: svint64_t) -
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12531,7 +12531,7 @@ pub fn svqdmulh_s8(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12540,7 +12540,7 @@ pub fn svqdmulh_n_s8(op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12556,7 +12556,7 @@ pub fn svqdmulh_s16(op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12565,7 +12565,7 @@ pub fn svqdmulh_n_s16(op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12581,7 +12581,7 @@ pub fn svqdmulh_s32(op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12590,7 +12590,7 @@ pub fn svqdmulh_n_s32(op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12606,7 +12606,7 @@ pub fn svqdmulh_s64(op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmulh[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmulh))]
@@ -12615,7 +12615,7 @@ pub fn svqdmulh_n_s64(op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb, IMM_INDEX = 0))]
@@ -12632,7 +12632,7 @@ pub fn svqdmullb_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) 
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb, IMM_INDEX = 0))]
@@ -12649,7 +12649,7 @@ pub fn svqdmullb_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) 
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb))]
@@ -12665,7 +12665,7 @@ pub fn svqdmullb_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb))]
@@ -12674,7 +12674,7 @@ pub fn svqdmullb_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb))]
@@ -12690,7 +12690,7 @@ pub fn svqdmullb_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb))]
@@ -12699,7 +12699,7 @@ pub fn svqdmullb_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb))]
@@ -12715,7 +12715,7 @@ pub fn svqdmullb_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullb))]
@@ -12724,7 +12724,7 @@ pub fn svqdmullb_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt, IMM_INDEX = 0))]
@@ -12741,7 +12741,7 @@ pub fn svqdmullt_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) 
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt, IMM_INDEX = 0))]
@@ -12758,7 +12758,7 @@ pub fn svqdmullt_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) 
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt))]
@@ -12774,7 +12774,7 @@ pub fn svqdmullt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt))]
@@ -12783,7 +12783,7 @@ pub fn svqdmullt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt))]
@@ -12799,7 +12799,7 @@ pub fn svqdmullt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt))]
@@ -12808,7 +12808,7 @@ pub fn svqdmullt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt))]
@@ -12824,7 +12824,7 @@ pub fn svqdmullt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Saturating doubling multiply long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqdmullt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqdmullt))]
@@ -12833,7 +12833,7 @@ pub fn svqdmullt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12846,7 +12846,7 @@ pub fn svqneg_s8_m(inactive: svint8_t, pg: svbool_t, op: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12855,7 +12855,7 @@ pub fn svqneg_s8_x(pg: svbool_t, op: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12864,7 +12864,7 @@ pub fn svqneg_s8_z(pg: svbool_t, op: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12877,7 +12877,7 @@ pub fn svqneg_s16_m(inactive: svint16_t, pg: svbool_t, op: svint16_t) -> svint16
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12886,7 +12886,7 @@ pub fn svqneg_s16_x(pg: svbool_t, op: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12895,7 +12895,7 @@ pub fn svqneg_s16_z(pg: svbool_t, op: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12908,7 +12908,7 @@ pub fn svqneg_s32_m(inactive: svint32_t, pg: svbool_t, op: svint32_t) -> svint32
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12917,7 +12917,7 @@ pub fn svqneg_s32_x(pg: svbool_t, op: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12926,7 +12926,7 @@ pub fn svqneg_s32_z(pg: svbool_t, op: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12939,7 +12939,7 @@ pub fn svqneg_s64_m(inactive: svint64_t, pg: svbool_t, op: svint64_t) -> svint64
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12948,7 +12948,7 @@ pub fn svqneg_s64_x(pg: svbool_t, op: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqneg[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqneg))]
@@ -12957,7 +12957,7 @@ pub fn svqneg_s64_z(pg: svbool_t, op: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating rounding doubling complex multiply-add high with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdcmlah_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdcmlah, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -12987,7 +12987,7 @@ pub fn svqrdcmlah_lane_s16<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Saturating rounding doubling complex multiply-add high with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdcmlah_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdcmlah, IMM_INDEX = 0, IMM_ROTATION = 90))]
@@ -13017,7 +13017,7 @@ pub fn svqrdcmlah_lane_s32<const IMM_INDEX: i32, const IMM_ROTATION: i32>(
 }
 #[doc = "Saturating rounding doubling complex multiply-add high with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdcmlah[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdcmlah, IMM_ROTATION = 90))]
@@ -13045,7 +13045,7 @@ pub fn svqrdcmlah_s8<const IMM_ROTATION: i32>(
 }
 #[doc = "Saturating rounding doubling complex multiply-add high with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdcmlah[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdcmlah, IMM_ROTATION = 90))]
@@ -13073,7 +13073,7 @@ pub fn svqrdcmlah_s16<const IMM_ROTATION: i32>(
 }
 #[doc = "Saturating rounding doubling complex multiply-add high with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdcmlah[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdcmlah, IMM_ROTATION = 90))]
@@ -13101,7 +13101,7 @@ pub fn svqrdcmlah_s32<const IMM_ROTATION: i32>(
 }
 #[doc = "Saturating rounding doubling complex multiply-add high with rotate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdcmlah[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdcmlah, IMM_ROTATION = 90))]
@@ -13129,7 +13129,7 @@ pub fn svqrdcmlah_s64<const IMM_ROTATION: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah, IMM_INDEX = 0))]
@@ -13155,7 +13155,7 @@ pub fn svqrdmlah_lane_s16<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah, IMM_INDEX = 0))]
@@ -13181,7 +13181,7 @@ pub fn svqrdmlah_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah, IMM_INDEX = 0))]
@@ -13207,7 +13207,7 @@ pub fn svqrdmlah_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13223,7 +13223,7 @@ pub fn svqrdmlah_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13232,7 +13232,7 @@ pub fn svqrdmlah_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13248,7 +13248,7 @@ pub fn svqrdmlah_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13257,7 +13257,7 @@ pub fn svqrdmlah_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13273,7 +13273,7 @@ pub fn svqrdmlah_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13282,7 +13282,7 @@ pub fn svqrdmlah_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13298,7 +13298,7 @@ pub fn svqrdmlah_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_
 }
 #[doc = "Saturating rounding doubling multiply-add high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlah[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlah))]
@@ -13307,7 +13307,7 @@ pub fn svqrdmlah_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh, IMM_INDEX = 0))]
@@ -13333,7 +13333,7 @@ pub fn svqrdmlsh_lane_s16<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh, IMM_INDEX = 0))]
@@ -13359,7 +13359,7 @@ pub fn svqrdmlsh_lane_s32<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh, IMM_INDEX = 0))]
@@ -13385,7 +13385,7 @@ pub fn svqrdmlsh_lane_s64<const IMM_INDEX: i32>(
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13401,7 +13401,7 @@ pub fn svqrdmlsh_s8(op1: svint8_t, op2: svint8_t, op3: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13410,7 +13410,7 @@ pub fn svqrdmlsh_n_s8(op1: svint8_t, op2: svint8_t, op3: i8) -> svint8_t {
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13426,7 +13426,7 @@ pub fn svqrdmlsh_s16(op1: svint16_t, op2: svint16_t, op3: svint16_t) -> svint16_
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13435,7 +13435,7 @@ pub fn svqrdmlsh_n_s16(op1: svint16_t, op2: svint16_t, op3: i16) -> svint16_t {
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13451,7 +13451,7 @@ pub fn svqrdmlsh_s32(op1: svint32_t, op2: svint32_t, op3: svint32_t) -> svint32_
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13460,7 +13460,7 @@ pub fn svqrdmlsh_n_s32(op1: svint32_t, op2: svint32_t, op3: i32) -> svint32_t {
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13476,7 +13476,7 @@ pub fn svqrdmlsh_s64(op1: svint64_t, op2: svint64_t, op3: svint64_t) -> svint64_
 }
 #[doc = "Saturating rounding doubling multiply-subtract high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmlsh[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmlsh))]
@@ -13485,7 +13485,7 @@ pub fn svqrdmlsh_n_s64(op1: svint64_t, op2: svint64_t, op3: i64) -> svint64_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh_lane[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh, IMM_INDEX = 0))]
@@ -13502,7 +13502,7 @@ pub fn svqrdmulh_lane_s16<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) 
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh_lane[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh, IMM_INDEX = 0))]
@@ -13519,7 +13519,7 @@ pub fn svqrdmulh_lane_s32<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) 
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh_lane[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh, IMM_INDEX = 0))]
@@ -13536,7 +13536,7 @@ pub fn svqrdmulh_lane_s64<const IMM_INDEX: i32>(op1: svint64_t, op2: svint64_t) 
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13552,7 +13552,7 @@ pub fn svqrdmulh_s8(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13561,7 +13561,7 @@ pub fn svqrdmulh_n_s8(op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13577,7 +13577,7 @@ pub fn svqrdmulh_s16(op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13586,7 +13586,7 @@ pub fn svqrdmulh_n_s16(op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13602,7 +13602,7 @@ pub fn svqrdmulh_s32(op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13611,7 +13611,7 @@ pub fn svqrdmulh_n_s32(op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13627,7 +13627,7 @@ pub fn svqrdmulh_s64(op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating rounding doubling multiply high"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrdmulh[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrdmulh))]
@@ -13636,7 +13636,7 @@ pub fn svqrdmulh_n_s64(op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13649,7 +13649,7 @@ pub fn svqrshl_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13658,7 +13658,7 @@ pub fn svqrshl_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13667,7 +13667,7 @@ pub fn svqrshl_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13676,7 +13676,7 @@ pub fn svqrshl_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13685,7 +13685,7 @@ pub fn svqrshl_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13694,7 +13694,7 @@ pub fn svqrshl_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13707,7 +13707,7 @@ pub fn svqrshl_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13716,7 +13716,7 @@ pub fn svqrshl_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13725,7 +13725,7 @@ pub fn svqrshl_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13734,7 +13734,7 @@ pub fn svqrshl_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13743,7 +13743,7 @@ pub fn svqrshl_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13752,7 +13752,7 @@ pub fn svqrshl_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13765,7 +13765,7 @@ pub fn svqrshl_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13774,7 +13774,7 @@ pub fn svqrshl_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13783,7 +13783,7 @@ pub fn svqrshl_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13792,7 +13792,7 @@ pub fn svqrshl_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13801,7 +13801,7 @@ pub fn svqrshl_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13810,7 +13810,7 @@ pub fn svqrshl_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13823,7 +13823,7 @@ pub fn svqrshl_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13832,7 +13832,7 @@ pub fn svqrshl_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13841,7 +13841,7 @@ pub fn svqrshl_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13850,7 +13850,7 @@ pub fn svqrshl_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13859,7 +13859,7 @@ pub fn svqrshl_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshl))]
@@ -13868,7 +13868,7 @@ pub fn svqrshl_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13881,7 +13881,7 @@ pub fn svqrshl_u8_m(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13890,7 +13890,7 @@ pub fn svqrshl_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13899,7 +13899,7 @@ pub fn svqrshl_u8_x(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13908,7 +13908,7 @@ pub fn svqrshl_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13917,7 +13917,7 @@ pub fn svqrshl_u8_z(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13926,7 +13926,7 @@ pub fn svqrshl_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13939,7 +13939,7 @@ pub fn svqrshl_u16_m(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13948,7 +13948,7 @@ pub fn svqrshl_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13957,7 +13957,7 @@ pub fn svqrshl_u16_x(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13966,7 +13966,7 @@ pub fn svqrshl_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13975,7 +13975,7 @@ pub fn svqrshl_u16_z(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13984,7 +13984,7 @@ pub fn svqrshl_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -13997,7 +13997,7 @@ pub fn svqrshl_u32_m(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14006,7 +14006,7 @@ pub fn svqrshl_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14015,7 +14015,7 @@ pub fn svqrshl_u32_x(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14024,7 +14024,7 @@ pub fn svqrshl_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14033,7 +14033,7 @@ pub fn svqrshl_u32_z(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14042,7 +14042,7 @@ pub fn svqrshl_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14055,7 +14055,7 @@ pub fn svqrshl_u64_m(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14064,7 +14064,7 @@ pub fn svqrshl_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14073,7 +14073,7 @@ pub fn svqrshl_u64_x(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14082,7 +14082,7 @@ pub fn svqrshl_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14091,7 +14091,7 @@ pub fn svqrshl_u64_z(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_
 }
 #[doc = "Saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshl[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshl))]
@@ -14100,7 +14100,7 @@ pub fn svqrshl_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrnb, IMM2 = 1))]
@@ -14117,7 +14117,7 @@ pub fn svqrshrnb_n_s16<const IMM2: i32>(op1: svint16_t) -> svint8_t {
 }
 #[doc = "Saturating rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrnb, IMM2 = 1))]
@@ -14134,7 +14134,7 @@ pub fn svqrshrnb_n_s32<const IMM2: i32>(op1: svint32_t) -> svint16_t {
 }
 #[doc = "Saturating rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrnb, IMM2 = 1))]
@@ -14151,7 +14151,7 @@ pub fn svqrshrnb_n_s64<const IMM2: i32>(op1: svint64_t) -> svint32_t {
 }
 #[doc = "Saturating rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshrnb, IMM2 = 1))]
@@ -14168,7 +14168,7 @@ pub fn svqrshrnb_n_u16<const IMM2: i32>(op1: svuint16_t) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshrnb, IMM2 = 1))]
@@ -14185,7 +14185,7 @@ pub fn svqrshrnb_n_u32<const IMM2: i32>(op1: svuint32_t) -> svuint16_t {
 }
 #[doc = "Saturating rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshrnb, IMM2 = 1))]
@@ -14202,7 +14202,7 @@ pub fn svqrshrnb_n_u64<const IMM2: i32>(op1: svuint64_t) -> svuint32_t {
 }
 #[doc = "Saturating rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrnt, IMM2 = 1))]
@@ -14219,7 +14219,7 @@ pub fn svqrshrnt_n_s16<const IMM2: i32>(even: svint8_t, op1: svint16_t) -> svint
 }
 #[doc = "Saturating rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrnt, IMM2 = 1))]
@@ -14236,7 +14236,7 @@ pub fn svqrshrnt_n_s32<const IMM2: i32>(even: svint16_t, op1: svint32_t) -> svin
 }
 #[doc = "Saturating rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrnt, IMM2 = 1))]
@@ -14253,7 +14253,7 @@ pub fn svqrshrnt_n_s64<const IMM2: i32>(even: svint32_t, op1: svint64_t) -> svin
 }
 #[doc = "Saturating rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshrnt, IMM2 = 1))]
@@ -14270,7 +14270,7 @@ pub fn svqrshrnt_n_u16<const IMM2: i32>(even: svuint8_t, op1: svuint16_t) -> svu
 }
 #[doc = "Saturating rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshrnt, IMM2 = 1))]
@@ -14287,7 +14287,7 @@ pub fn svqrshrnt_n_u32<const IMM2: i32>(even: svuint16_t, op1: svuint32_t) -> sv
 }
 #[doc = "Saturating rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqrshrnt, IMM2 = 1))]
@@ -14304,7 +14304,7 @@ pub fn svqrshrnt_n_u64<const IMM2: i32>(even: svuint32_t, op1: svuint64_t) -> sv
 }
 #[doc = "Saturating rounding shift right unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrunb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrunb, IMM2 = 1))]
@@ -14321,7 +14321,7 @@ pub fn svqrshrunb_n_s16<const IMM2: i32>(op1: svint16_t) -> svuint8_t {
 }
 #[doc = "Saturating rounding shift right unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrunb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrunb, IMM2 = 1))]
@@ -14338,7 +14338,7 @@ pub fn svqrshrunb_n_s32<const IMM2: i32>(op1: svint32_t) -> svuint16_t {
 }
 #[doc = "Saturating rounding shift right unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrunb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrunb, IMM2 = 1))]
@@ -14355,7 +14355,7 @@ pub fn svqrshrunb_n_s64<const IMM2: i32>(op1: svint64_t) -> svuint32_t {
 }
 #[doc = "Saturating rounding shift right unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrunt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrunt, IMM2 = 1))]
@@ -14372,7 +14372,7 @@ pub fn svqrshrunt_n_s16<const IMM2: i32>(even: svuint8_t, op1: svint16_t) -> svu
 }
 #[doc = "Saturating rounding shift right unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrunt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrunt, IMM2 = 1))]
@@ -14389,7 +14389,7 @@ pub fn svqrshrunt_n_s32<const IMM2: i32>(even: svuint16_t, op1: svint32_t) -> sv
 }
 #[doc = "Saturating rounding shift right unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqrshrunt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqrshrunt, IMM2 = 1))]
@@ -14406,7 +14406,7 @@ pub fn svqrshrunt_n_s64<const IMM2: i32>(even: svuint32_t, op1: svint64_t) -> sv
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14419,7 +14419,7 @@ pub fn svqshl_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14428,7 +14428,7 @@ pub fn svqshl_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14437,7 +14437,7 @@ pub fn svqshl_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14446,7 +14446,7 @@ pub fn svqshl_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14455,7 +14455,7 @@ pub fn svqshl_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14464,7 +14464,7 @@ pub fn svqshl_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14477,7 +14477,7 @@ pub fn svqshl_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14486,7 +14486,7 @@ pub fn svqshl_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14495,7 +14495,7 @@ pub fn svqshl_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14504,7 +14504,7 @@ pub fn svqshl_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14513,7 +14513,7 @@ pub fn svqshl_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14522,7 +14522,7 @@ pub fn svqshl_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14535,7 +14535,7 @@ pub fn svqshl_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14544,7 +14544,7 @@ pub fn svqshl_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14553,7 +14553,7 @@ pub fn svqshl_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14562,7 +14562,7 @@ pub fn svqshl_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14571,7 +14571,7 @@ pub fn svqshl_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14580,7 +14580,7 @@ pub fn svqshl_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14593,7 +14593,7 @@ pub fn svqshl_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14602,7 +14602,7 @@ pub fn svqshl_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14611,7 +14611,7 @@ pub fn svqshl_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14620,7 +14620,7 @@ pub fn svqshl_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14629,7 +14629,7 @@ pub fn svqshl_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshl))]
@@ -14638,7 +14638,7 @@ pub fn svqshl_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14651,7 +14651,7 @@ pub fn svqshl_u8_m(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14660,7 +14660,7 @@ pub fn svqshl_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14669,7 +14669,7 @@ pub fn svqshl_u8_x(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14678,7 +14678,7 @@ pub fn svqshl_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14687,7 +14687,7 @@ pub fn svqshl_u8_z(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14696,7 +14696,7 @@ pub fn svqshl_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14709,7 +14709,7 @@ pub fn svqshl_u16_m(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14718,7 +14718,7 @@ pub fn svqshl_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14727,7 +14727,7 @@ pub fn svqshl_u16_x(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14736,7 +14736,7 @@ pub fn svqshl_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14745,7 +14745,7 @@ pub fn svqshl_u16_z(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14754,7 +14754,7 @@ pub fn svqshl_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14767,7 +14767,7 @@ pub fn svqshl_u32_m(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14776,7 +14776,7 @@ pub fn svqshl_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14785,7 +14785,7 @@ pub fn svqshl_u32_x(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14794,7 +14794,7 @@ pub fn svqshl_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14803,7 +14803,7 @@ pub fn svqshl_u32_z(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14812,7 +14812,7 @@ pub fn svqshl_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14825,7 +14825,7 @@ pub fn svqshl_u64_m(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14834,7 +14834,7 @@ pub fn svqshl_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14843,7 +14843,7 @@ pub fn svqshl_u64_x(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14852,7 +14852,7 @@ pub fn svqshl_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14861,7 +14861,7 @@ pub fn svqshl_u64_z(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_t
 }
 #[doc = "Saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshl[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshl))]
@@ -14870,7 +14870,7 @@ pub fn svqshl_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14884,7 +14884,7 @@ pub fn svqshlu_n_s8_m<const IMM2: i32>(pg: svbool_t, op1: svint8_t) -> svuint8_t
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14893,7 +14893,7 @@ pub fn svqshlu_n_s8_x<const IMM2: i32>(pg: svbool_t, op1: svint8_t) -> svuint8_t
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14902,7 +14902,7 @@ pub fn svqshlu_n_s8_z<const IMM2: i32>(pg: svbool_t, op1: svint8_t) -> svuint8_t
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14916,7 +14916,7 @@ pub fn svqshlu_n_s16_m<const IMM2: i32>(pg: svbool_t, op1: svint16_t) -> svuint1
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14925,7 +14925,7 @@ pub fn svqshlu_n_s16_x<const IMM2: i32>(pg: svbool_t, op1: svint16_t) -> svuint1
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14934,7 +14934,7 @@ pub fn svqshlu_n_s16_z<const IMM2: i32>(pg: svbool_t, op1: svint16_t) -> svuint1
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14948,7 +14948,7 @@ pub fn svqshlu_n_s32_m<const IMM2: i32>(pg: svbool_t, op1: svint32_t) -> svuint3
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14957,7 +14957,7 @@ pub fn svqshlu_n_s32_x<const IMM2: i32>(pg: svbool_t, op1: svint32_t) -> svuint3
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14966,7 +14966,7 @@ pub fn svqshlu_n_s32_z<const IMM2: i32>(pg: svbool_t, op1: svint32_t) -> svuint3
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14980,7 +14980,7 @@ pub fn svqshlu_n_s64_m<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svuint6
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14989,7 +14989,7 @@ pub fn svqshlu_n_s64_x<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svuint6
 }
 #[doc = "Saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshlu[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshlu, IMM2 = 0))]
@@ -14998,7 +14998,7 @@ pub fn svqshlu_n_s64_z<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svuint6
 }
 #[doc = "Saturating shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrnb, IMM2 = 1))]
@@ -15015,7 +15015,7 @@ pub fn svqshrnb_n_s16<const IMM2: i32>(op1: svint16_t) -> svint8_t {
 }
 #[doc = "Saturating shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrnb, IMM2 = 1))]
@@ -15032,7 +15032,7 @@ pub fn svqshrnb_n_s32<const IMM2: i32>(op1: svint32_t) -> svint16_t {
 }
 #[doc = "Saturating shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrnb, IMM2 = 1))]
@@ -15049,7 +15049,7 @@ pub fn svqshrnb_n_s64<const IMM2: i32>(op1: svint64_t) -> svint32_t {
 }
 #[doc = "Saturating shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshrnb, IMM2 = 1))]
@@ -15066,7 +15066,7 @@ pub fn svqshrnb_n_u16<const IMM2: i32>(op1: svuint16_t) -> svuint8_t {
 }
 #[doc = "Saturating shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshrnb, IMM2 = 1))]
@@ -15083,7 +15083,7 @@ pub fn svqshrnb_n_u32<const IMM2: i32>(op1: svuint32_t) -> svuint16_t {
 }
 #[doc = "Saturating shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshrnb, IMM2 = 1))]
@@ -15100,7 +15100,7 @@ pub fn svqshrnb_n_u64<const IMM2: i32>(op1: svuint64_t) -> svuint32_t {
 }
 #[doc = "Saturating shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrnt, IMM2 = 1))]
@@ -15117,7 +15117,7 @@ pub fn svqshrnt_n_s16<const IMM2: i32>(even: svint8_t, op1: svint16_t) -> svint8
 }
 #[doc = "Saturating shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrnt, IMM2 = 1))]
@@ -15134,7 +15134,7 @@ pub fn svqshrnt_n_s32<const IMM2: i32>(even: svint16_t, op1: svint32_t) -> svint
 }
 #[doc = "Saturating shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrnt, IMM2 = 1))]
@@ -15151,7 +15151,7 @@ pub fn svqshrnt_n_s64<const IMM2: i32>(even: svint32_t, op1: svint64_t) -> svint
 }
 #[doc = "Saturating shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshrnt, IMM2 = 1))]
@@ -15168,7 +15168,7 @@ pub fn svqshrnt_n_u16<const IMM2: i32>(even: svuint8_t, op1: svuint16_t) -> svui
 }
 #[doc = "Saturating shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshrnt, IMM2 = 1))]
@@ -15185,7 +15185,7 @@ pub fn svqshrnt_n_u32<const IMM2: i32>(even: svuint16_t, op1: svuint32_t) -> svu
 }
 #[doc = "Saturating shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqshrnt, IMM2 = 1))]
@@ -15202,7 +15202,7 @@ pub fn svqshrnt_n_u64<const IMM2: i32>(even: svuint32_t, op1: svuint64_t) -> svu
 }
 #[doc = "Saturating shift right unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrunb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrunb, IMM2 = 1))]
@@ -15219,7 +15219,7 @@ pub fn svqshrunb_n_s16<const IMM2: i32>(op1: svint16_t) -> svuint8_t {
 }
 #[doc = "Saturating shift right unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrunb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrunb, IMM2 = 1))]
@@ -15236,7 +15236,7 @@ pub fn svqshrunb_n_s32<const IMM2: i32>(op1: svint32_t) -> svuint16_t {
 }
 #[doc = "Saturating shift right unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrunb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrunb, IMM2 = 1))]
@@ -15253,7 +15253,7 @@ pub fn svqshrunb_n_s64<const IMM2: i32>(op1: svint64_t) -> svuint32_t {
 }
 #[doc = "Saturating shift right unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrunt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrunt, IMM2 = 1))]
@@ -15270,7 +15270,7 @@ pub fn svqshrunt_n_s16<const IMM2: i32>(even: svuint8_t, op1: svint16_t) -> svui
 }
 #[doc = "Saturating shift right unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrunt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrunt, IMM2 = 1))]
@@ -15287,7 +15287,7 @@ pub fn svqshrunt_n_s32<const IMM2: i32>(even: svuint16_t, op1: svint32_t) -> svu
 }
 #[doc = "Saturating shift right unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqshrunt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqshrunt, IMM2 = 1))]
@@ -15304,7 +15304,7 @@ pub fn svqshrunt_n_s64<const IMM2: i32>(even: svuint32_t, op1: svint64_t) -> svu
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15317,7 +15317,7 @@ pub fn svqsub_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15326,7 +15326,7 @@ pub fn svqsub_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15335,7 +15335,7 @@ pub fn svqsub_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15344,7 +15344,7 @@ pub fn svqsub_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15353,7 +15353,7 @@ pub fn svqsub_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15362,7 +15362,7 @@ pub fn svqsub_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15375,7 +15375,7 @@ pub fn svqsub_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15384,7 +15384,7 @@ pub fn svqsub_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15393,7 +15393,7 @@ pub fn svqsub_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15402,7 +15402,7 @@ pub fn svqsub_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15411,7 +15411,7 @@ pub fn svqsub_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15420,7 +15420,7 @@ pub fn svqsub_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15433,7 +15433,7 @@ pub fn svqsub_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15442,7 +15442,7 @@ pub fn svqsub_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15451,7 +15451,7 @@ pub fn svqsub_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15460,7 +15460,7 @@ pub fn svqsub_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15469,7 +15469,7 @@ pub fn svqsub_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15478,7 +15478,7 @@ pub fn svqsub_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15491,7 +15491,7 @@ pub fn svqsub_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15500,7 +15500,7 @@ pub fn svqsub_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15509,7 +15509,7 @@ pub fn svqsub_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15518,7 +15518,7 @@ pub fn svqsub_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15527,7 +15527,7 @@ pub fn svqsub_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsub))]
@@ -15536,7 +15536,7 @@ pub fn svqsub_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15549,7 +15549,7 @@ pub fn svqsub_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15558,7 +15558,7 @@ pub fn svqsub_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15567,7 +15567,7 @@ pub fn svqsub_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15576,7 +15576,7 @@ pub fn svqsub_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15585,7 +15585,7 @@ pub fn svqsub_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15594,7 +15594,7 @@ pub fn svqsub_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15607,7 +15607,7 @@ pub fn svqsub_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15616,7 +15616,7 @@ pub fn svqsub_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15625,7 +15625,7 @@ pub fn svqsub_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15634,7 +15634,7 @@ pub fn svqsub_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15643,7 +15643,7 @@ pub fn svqsub_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15652,7 +15652,7 @@ pub fn svqsub_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15665,7 +15665,7 @@ pub fn svqsub_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15674,7 +15674,7 @@ pub fn svqsub_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15683,7 +15683,7 @@ pub fn svqsub_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15692,7 +15692,7 @@ pub fn svqsub_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15701,7 +15701,7 @@ pub fn svqsub_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15710,7 +15710,7 @@ pub fn svqsub_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15723,7 +15723,7 @@ pub fn svqsub_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15732,7 +15732,7 @@ pub fn svqsub_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15741,7 +15741,7 @@ pub fn svqsub_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15750,7 +15750,7 @@ pub fn svqsub_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15759,7 +15759,7 @@ pub fn svqsub_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsub[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsub))]
@@ -15768,7 +15768,7 @@ pub fn svqsub_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15781,7 +15781,7 @@ pub fn svqsubr_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15790,7 +15790,7 @@ pub fn svqsubr_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15799,7 +15799,7 @@ pub fn svqsubr_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15808,7 +15808,7 @@ pub fn svqsubr_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15817,7 +15817,7 @@ pub fn svqsubr_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15826,7 +15826,7 @@ pub fn svqsubr_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15839,7 +15839,7 @@ pub fn svqsubr_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15848,7 +15848,7 @@ pub fn svqsubr_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15857,7 +15857,7 @@ pub fn svqsubr_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15866,7 +15866,7 @@ pub fn svqsubr_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15875,7 +15875,7 @@ pub fn svqsubr_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15884,7 +15884,7 @@ pub fn svqsubr_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15897,7 +15897,7 @@ pub fn svqsubr_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15906,7 +15906,7 @@ pub fn svqsubr_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15915,7 +15915,7 @@ pub fn svqsubr_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15924,7 +15924,7 @@ pub fn svqsubr_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15933,7 +15933,7 @@ pub fn svqsubr_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15942,7 +15942,7 @@ pub fn svqsubr_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15955,7 +15955,7 @@ pub fn svqsubr_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15964,7 +15964,7 @@ pub fn svqsubr_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15973,7 +15973,7 @@ pub fn svqsubr_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15982,7 +15982,7 @@ pub fn svqsubr_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -15991,7 +15991,7 @@ pub fn svqsubr_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqsubr))]
@@ -16000,7 +16000,7 @@ pub fn svqsubr_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16013,7 +16013,7 @@ pub fn svqsubr_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16022,7 +16022,7 @@ pub fn svqsubr_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16031,7 +16031,7 @@ pub fn svqsubr_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16040,7 +16040,7 @@ pub fn svqsubr_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16049,7 +16049,7 @@ pub fn svqsubr_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16058,7 +16058,7 @@ pub fn svqsubr_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16071,7 +16071,7 @@ pub fn svqsubr_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16080,7 +16080,7 @@ pub fn svqsubr_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16089,7 +16089,7 @@ pub fn svqsubr_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16098,7 +16098,7 @@ pub fn svqsubr_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16107,7 +16107,7 @@ pub fn svqsubr_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16116,7 +16116,7 @@ pub fn svqsubr_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16129,7 +16129,7 @@ pub fn svqsubr_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16138,7 +16138,7 @@ pub fn svqsubr_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16147,7 +16147,7 @@ pub fn svqsubr_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16156,7 +16156,7 @@ pub fn svqsubr_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16165,7 +16165,7 @@ pub fn svqsubr_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16174,7 +16174,7 @@ pub fn svqsubr_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16187,7 +16187,7 @@ pub fn svqsubr_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16196,7 +16196,7 @@ pub fn svqsubr_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16205,7 +16205,7 @@ pub fn svqsubr_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16214,7 +16214,7 @@ pub fn svqsubr_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16223,7 +16223,7 @@ pub fn svqsubr_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Saturating subtract reversed"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqsubr[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqsubr))]
@@ -16232,7 +16232,7 @@ pub fn svqsubr_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Saturating extract narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtnb))]
@@ -16245,7 +16245,7 @@ pub fn svqxtnb_s16(op: svint16_t) -> svint8_t {
 }
 #[doc = "Saturating extract narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtnb))]
@@ -16258,7 +16258,7 @@ pub fn svqxtnb_s32(op: svint32_t) -> svint16_t {
 }
 #[doc = "Saturating extract narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtnb))]
@@ -16271,7 +16271,7 @@ pub fn svqxtnb_s64(op: svint64_t) -> svint32_t {
 }
 #[doc = "Saturating extract narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqxtnb))]
@@ -16284,7 +16284,7 @@ pub fn svqxtnb_u16(op: svuint16_t) -> svuint8_t {
 }
 #[doc = "Saturating extract narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqxtnb))]
@@ -16297,7 +16297,7 @@ pub fn svqxtnb_u32(op: svuint32_t) -> svuint16_t {
 }
 #[doc = "Saturating extract narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqxtnb))]
@@ -16310,7 +16310,7 @@ pub fn svqxtnb_u64(op: svuint64_t) -> svuint32_t {
 }
 #[doc = "Saturating extract narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtnt))]
@@ -16323,7 +16323,7 @@ pub fn svqxtnt_s16(even: svint8_t, op: svint16_t) -> svint8_t {
 }
 #[doc = "Saturating extract narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtnt))]
@@ -16336,7 +16336,7 @@ pub fn svqxtnt_s32(even: svint16_t, op: svint32_t) -> svint16_t {
 }
 #[doc = "Saturating extract narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtnt))]
@@ -16349,7 +16349,7 @@ pub fn svqxtnt_s64(even: svint32_t, op: svint64_t) -> svint32_t {
 }
 #[doc = "Saturating extract narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqxtnt))]
@@ -16362,7 +16362,7 @@ pub fn svqxtnt_u16(even: svuint8_t, op: svuint16_t) -> svuint8_t {
 }
 #[doc = "Saturating extract narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqxtnt))]
@@ -16375,7 +16375,7 @@ pub fn svqxtnt_u32(even: svuint16_t, op: svuint32_t) -> svuint16_t {
 }
 #[doc = "Saturating extract narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtnt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uqxtnt))]
@@ -16388,7 +16388,7 @@ pub fn svqxtnt_u64(even: svuint32_t, op: svuint64_t) -> svuint32_t {
 }
 #[doc = "Saturating extract unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtunb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtunb))]
@@ -16404,7 +16404,7 @@ pub fn svqxtunb_s16(op: svint16_t) -> svuint8_t {
 }
 #[doc = "Saturating extract unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtunb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtunb))]
@@ -16420,7 +16420,7 @@ pub fn svqxtunb_s32(op: svint32_t) -> svuint16_t {
 }
 #[doc = "Saturating extract unsigned narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtunb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtunb))]
@@ -16436,7 +16436,7 @@ pub fn svqxtunb_s64(op: svint64_t) -> svuint32_t {
 }
 #[doc = "Saturating extract unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtunt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtunt))]
@@ -16452,7 +16452,7 @@ pub fn svqxtunt_s16(even: svuint8_t, op: svint16_t) -> svuint8_t {
 }
 #[doc = "Saturating extract unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtunt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtunt))]
@@ -16468,7 +16468,7 @@ pub fn svqxtunt_s32(even: svuint16_t, op: svint32_t) -> svuint16_t {
 }
 #[doc = "Saturating extract unsigned narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqxtunt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sqxtunt))]
@@ -16484,7 +16484,7 @@ pub fn svqxtunt_s64(even: svuint32_t, op: svint64_t) -> svuint32_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16500,7 +16500,7 @@ pub fn svraddhnb_s16(op1: svint16_t, op2: svint16_t) -> svint8_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16509,7 +16509,7 @@ pub fn svraddhnb_n_s16(op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16525,7 +16525,7 @@ pub fn svraddhnb_s32(op1: svint32_t, op2: svint32_t) -> svint16_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16534,7 +16534,7 @@ pub fn svraddhnb_n_s32(op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16550,7 +16550,7 @@ pub fn svraddhnb_s64(op1: svint64_t, op2: svint64_t) -> svint32_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16559,7 +16559,7 @@ pub fn svraddhnb_n_s64(op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16568,7 +16568,7 @@ pub fn svraddhnb_u16(op1: svuint16_t, op2: svuint16_t) -> svuint8_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16577,7 +16577,7 @@ pub fn svraddhnb_n_u16(op1: svuint16_t, op2: u16) -> svuint8_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16586,7 +16586,7 @@ pub fn svraddhnb_u32(op1: svuint32_t, op2: svuint32_t) -> svuint16_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16595,7 +16595,7 @@ pub fn svraddhnb_n_u32(op1: svuint32_t, op2: u32) -> svuint16_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16604,7 +16604,7 @@ pub fn svraddhnb_u64(op1: svuint64_t, op2: svuint64_t) -> svuint32_t {
 }
 #[doc = "Rounding add narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnb))]
@@ -16613,7 +16613,7 @@ pub fn svraddhnb_n_u64(op1: svuint64_t, op2: u64) -> svuint32_t {
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16629,7 +16629,7 @@ pub fn svraddhnt_s16(even: svint8_t, op1: svint16_t, op2: svint16_t) -> svint8_t
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16638,7 +16638,7 @@ pub fn svraddhnt_n_s16(even: svint8_t, op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16654,7 +16654,7 @@ pub fn svraddhnt_s32(even: svint16_t, op1: svint32_t, op2: svint32_t) -> svint16
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16663,7 +16663,7 @@ pub fn svraddhnt_n_s32(even: svint16_t, op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16679,7 +16679,7 @@ pub fn svraddhnt_s64(even: svint32_t, op1: svint64_t, op2: svint64_t) -> svint32
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16688,7 +16688,7 @@ pub fn svraddhnt_n_s64(even: svint32_t, op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16697,7 +16697,7 @@ pub fn svraddhnt_u16(even: svuint8_t, op1: svuint16_t, op2: svuint16_t) -> svuin
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16706,7 +16706,7 @@ pub fn svraddhnt_n_u16(even: svuint8_t, op1: svuint16_t, op2: u16) -> svuint8_t 
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16715,7 +16715,7 @@ pub fn svraddhnt_u32(even: svuint16_t, op1: svuint32_t, op2: svuint32_t) -> svui
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16724,7 +16724,7 @@ pub fn svraddhnt_n_u32(even: svuint16_t, op1: svuint32_t, op2: u32) -> svuint16_
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16733,7 +16733,7 @@ pub fn svraddhnt_u64(even: svuint32_t, op1: svuint64_t, op2: svuint64_t) -> svui
 }
 #[doc = "Rounding add narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svraddhnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(raddhnt))]
@@ -16742,7 +16742,7 @@ pub fn svraddhnt_n_u64(even: svuint32_t, op1: svuint64_t, op2: u64) -> svuint32_
 }
 #[doc = "Bitwise rotate left by 1 and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrax1[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-sha3")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rax1))]
@@ -16755,7 +16755,7 @@ pub fn svrax1_s64(op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Bitwise rotate left by 1 and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrax1[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-sha3")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rax1))]
@@ -16764,7 +16764,7 @@ pub fn svrax1_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 }
 #[doc = "Reciprocal estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpe[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urecpe))]
@@ -16777,7 +16777,7 @@ pub fn svrecpe_u32_m(inactive: svuint32_t, pg: svbool_t, op: svuint32_t) -> svui
 }
 #[doc = "Reciprocal estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpe[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urecpe))]
@@ -16786,7 +16786,7 @@ pub fn svrecpe_u32_x(pg: svbool_t, op: svuint32_t) -> svuint32_t {
 }
 #[doc = "Reciprocal estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpe[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urecpe))]
@@ -16795,7 +16795,7 @@ pub fn svrecpe_u32_z(pg: svbool_t, op: svuint32_t) -> svuint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16808,7 +16808,7 @@ pub fn svrhadd_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16817,7 +16817,7 @@ pub fn svrhadd_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16826,7 +16826,7 @@ pub fn svrhadd_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16835,7 +16835,7 @@ pub fn svrhadd_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16844,7 +16844,7 @@ pub fn svrhadd_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16853,7 +16853,7 @@ pub fn svrhadd_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16866,7 +16866,7 @@ pub fn svrhadd_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16875,7 +16875,7 @@ pub fn svrhadd_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16884,7 +16884,7 @@ pub fn svrhadd_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16893,7 +16893,7 @@ pub fn svrhadd_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16902,7 +16902,7 @@ pub fn svrhadd_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16911,7 +16911,7 @@ pub fn svrhadd_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16924,7 +16924,7 @@ pub fn svrhadd_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16933,7 +16933,7 @@ pub fn svrhadd_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16942,7 +16942,7 @@ pub fn svrhadd_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16951,7 +16951,7 @@ pub fn svrhadd_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16960,7 +16960,7 @@ pub fn svrhadd_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16969,7 +16969,7 @@ pub fn svrhadd_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16982,7 +16982,7 @@ pub fn svrhadd_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -16991,7 +16991,7 @@ pub fn svrhadd_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -17000,7 +17000,7 @@ pub fn svrhadd_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -17009,7 +17009,7 @@ pub fn svrhadd_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -17018,7 +17018,7 @@ pub fn svrhadd_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t 
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srhadd))]
@@ -17027,7 +17027,7 @@ pub fn svrhadd_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17040,7 +17040,7 @@ pub fn svrhadd_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17049,7 +17049,7 @@ pub fn svrhadd_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17058,7 +17058,7 @@ pub fn svrhadd_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17067,7 +17067,7 @@ pub fn svrhadd_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17076,7 +17076,7 @@ pub fn svrhadd_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17085,7 +17085,7 @@ pub fn svrhadd_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17098,7 +17098,7 @@ pub fn svrhadd_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17107,7 +17107,7 @@ pub fn svrhadd_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17116,7 +17116,7 @@ pub fn svrhadd_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17125,7 +17125,7 @@ pub fn svrhadd_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17134,7 +17134,7 @@ pub fn svrhadd_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17143,7 +17143,7 @@ pub fn svrhadd_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17156,7 +17156,7 @@ pub fn svrhadd_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17165,7 +17165,7 @@ pub fn svrhadd_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17174,7 +17174,7 @@ pub fn svrhadd_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17183,7 +17183,7 @@ pub fn svrhadd_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17192,7 +17192,7 @@ pub fn svrhadd_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17201,7 +17201,7 @@ pub fn svrhadd_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17214,7 +17214,7 @@ pub fn svrhadd_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17223,7 +17223,7 @@ pub fn svrhadd_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17232,7 +17232,7 @@ pub fn svrhadd_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17241,7 +17241,7 @@ pub fn svrhadd_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17250,7 +17250,7 @@ pub fn svrhadd_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64
 }
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrhadd[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urhadd))]
@@ -17259,7 +17259,7 @@ pub fn svrhadd_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17272,7 +17272,7 @@ pub fn svrshl_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17281,7 +17281,7 @@ pub fn svrshl_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17290,7 +17290,7 @@ pub fn svrshl_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17299,7 +17299,7 @@ pub fn svrshl_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17308,7 +17308,7 @@ pub fn svrshl_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17317,7 +17317,7 @@ pub fn svrshl_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17330,7 +17330,7 @@ pub fn svrshl_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17339,7 +17339,7 @@ pub fn svrshl_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17348,7 +17348,7 @@ pub fn svrshl_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17357,7 +17357,7 @@ pub fn svrshl_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17366,7 +17366,7 @@ pub fn svrshl_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17375,7 +17375,7 @@ pub fn svrshl_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17388,7 +17388,7 @@ pub fn svrshl_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17397,7 +17397,7 @@ pub fn svrshl_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17406,7 +17406,7 @@ pub fn svrshl_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17415,7 +17415,7 @@ pub fn svrshl_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17424,7 +17424,7 @@ pub fn svrshl_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17433,7 +17433,7 @@ pub fn svrshl_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17446,7 +17446,7 @@ pub fn svrshl_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17455,7 +17455,7 @@ pub fn svrshl_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17464,7 +17464,7 @@ pub fn svrshl_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17473,7 +17473,7 @@ pub fn svrshl_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17482,7 +17482,7 @@ pub fn svrshl_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshl))]
@@ -17491,7 +17491,7 @@ pub fn svrshl_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17504,7 +17504,7 @@ pub fn svrshl_u8_m(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17513,7 +17513,7 @@ pub fn svrshl_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17522,7 +17522,7 @@ pub fn svrshl_u8_x(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17531,7 +17531,7 @@ pub fn svrshl_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17540,7 +17540,7 @@ pub fn svrshl_u8_z(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17549,7 +17549,7 @@ pub fn svrshl_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17562,7 +17562,7 @@ pub fn svrshl_u16_m(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17571,7 +17571,7 @@ pub fn svrshl_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17580,7 +17580,7 @@ pub fn svrshl_u16_x(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17589,7 +17589,7 @@ pub fn svrshl_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17598,7 +17598,7 @@ pub fn svrshl_u16_z(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17607,7 +17607,7 @@ pub fn svrshl_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17620,7 +17620,7 @@ pub fn svrshl_u32_m(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17629,7 +17629,7 @@ pub fn svrshl_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17638,7 +17638,7 @@ pub fn svrshl_u32_x(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17647,7 +17647,7 @@ pub fn svrshl_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17656,7 +17656,7 @@ pub fn svrshl_u32_z(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17665,7 +17665,7 @@ pub fn svrshl_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17678,7 +17678,7 @@ pub fn svrshl_u64_m(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17687,7 +17687,7 @@ pub fn svrshl_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17696,7 +17696,7 @@ pub fn svrshl_u64_x(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17705,7 +17705,7 @@ pub fn svrshl_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17714,7 +17714,7 @@ pub fn svrshl_u64_z(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_t
 }
 #[doc = "Rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshl[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshl))]
@@ -17723,7 +17723,7 @@ pub fn svrshl_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17737,7 +17737,7 @@ pub fn svrshr_n_s8_m<const IMM2: i32>(pg: svbool_t, op1: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17746,7 +17746,7 @@ pub fn svrshr_n_s8_x<const IMM2: i32>(pg: svbool_t, op1: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17755,7 +17755,7 @@ pub fn svrshr_n_s8_z<const IMM2: i32>(pg: svbool_t, op1: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17769,7 +17769,7 @@ pub fn svrshr_n_s16_m<const IMM2: i32>(pg: svbool_t, op1: svint16_t) -> svint16_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17778,7 +17778,7 @@ pub fn svrshr_n_s16_x<const IMM2: i32>(pg: svbool_t, op1: svint16_t) -> svint16_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17787,7 +17787,7 @@ pub fn svrshr_n_s16_z<const IMM2: i32>(pg: svbool_t, op1: svint16_t) -> svint16_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17801,7 +17801,7 @@ pub fn svrshr_n_s32_m<const IMM2: i32>(pg: svbool_t, op1: svint32_t) -> svint32_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17810,7 +17810,7 @@ pub fn svrshr_n_s32_x<const IMM2: i32>(pg: svbool_t, op1: svint32_t) -> svint32_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17819,7 +17819,7 @@ pub fn svrshr_n_s32_z<const IMM2: i32>(pg: svbool_t, op1: svint32_t) -> svint32_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17833,7 +17833,7 @@ pub fn svrshr_n_s64_m<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svint64_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17842,7 +17842,7 @@ pub fn svrshr_n_s64_x<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svint64_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srshr, IMM2 = 1))]
@@ -17851,7 +17851,7 @@ pub fn svrshr_n_s64_z<const IMM2: i32>(pg: svbool_t, op1: svint64_t) -> svint64_
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17865,7 +17865,7 @@ pub fn svrshr_n_u8_m<const IMM2: i32>(pg: svbool_t, op1: svuint8_t) -> svuint8_t
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17874,7 +17874,7 @@ pub fn svrshr_n_u8_x<const IMM2: i32>(pg: svbool_t, op1: svuint8_t) -> svuint8_t
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17883,7 +17883,7 @@ pub fn svrshr_n_u8_z<const IMM2: i32>(pg: svbool_t, op1: svuint8_t) -> svuint8_t
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17897,7 +17897,7 @@ pub fn svrshr_n_u16_m<const IMM2: i32>(pg: svbool_t, op1: svuint16_t) -> svuint1
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17906,7 +17906,7 @@ pub fn svrshr_n_u16_x<const IMM2: i32>(pg: svbool_t, op1: svuint16_t) -> svuint1
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17915,7 +17915,7 @@ pub fn svrshr_n_u16_z<const IMM2: i32>(pg: svbool_t, op1: svuint16_t) -> svuint1
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17929,7 +17929,7 @@ pub fn svrshr_n_u32_m<const IMM2: i32>(pg: svbool_t, op1: svuint32_t) -> svuint3
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17938,7 +17938,7 @@ pub fn svrshr_n_u32_x<const IMM2: i32>(pg: svbool_t, op1: svuint32_t) -> svuint3
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17947,7 +17947,7 @@ pub fn svrshr_n_u32_z<const IMM2: i32>(pg: svbool_t, op1: svuint32_t) -> svuint3
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17961,7 +17961,7 @@ pub fn svrshr_n_u64_m<const IMM2: i32>(pg: svbool_t, op1: svuint64_t) -> svuint6
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17970,7 +17970,7 @@ pub fn svrshr_n_u64_x<const IMM2: i32>(pg: svbool_t, op1: svuint64_t) -> svuint6
 }
 #[doc = "Rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshr[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(urshr, IMM2 = 1))]
@@ -17979,7 +17979,7 @@ pub fn svrshr_n_u64_z<const IMM2: i32>(pg: svbool_t, op1: svuint64_t) -> svuint6
 }
 #[doc = "Rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnb, IMM2 = 1))]
@@ -17993,7 +17993,7 @@ pub fn svrshrnb_n_s16<const IMM2: i32>(op1: svint16_t) -> svint8_t {
 }
 #[doc = "Rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnb, IMM2 = 1))]
@@ -18007,7 +18007,7 @@ pub fn svrshrnb_n_s32<const IMM2: i32>(op1: svint32_t) -> svint16_t {
 }
 #[doc = "Rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnb, IMM2 = 1))]
@@ -18021,7 +18021,7 @@ pub fn svrshrnb_n_s64<const IMM2: i32>(op1: svint64_t) -> svint32_t {
 }
 #[doc = "Rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnb, IMM2 = 1))]
@@ -18031,7 +18031,7 @@ pub fn svrshrnb_n_u16<const IMM2: i32>(op1: svuint16_t) -> svuint8_t {
 }
 #[doc = "Rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnb, IMM2 = 1))]
@@ -18041,7 +18041,7 @@ pub fn svrshrnb_n_u32<const IMM2: i32>(op1: svuint32_t) -> svuint16_t {
 }
 #[doc = "Rounding shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnb, IMM2 = 1))]
@@ -18051,7 +18051,7 @@ pub fn svrshrnb_n_u64<const IMM2: i32>(op1: svuint64_t) -> svuint32_t {
 }
 #[doc = "Rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnt, IMM2 = 1))]
@@ -18065,7 +18065,7 @@ pub fn svrshrnt_n_s16<const IMM2: i32>(even: svint8_t, op1: svint16_t) -> svint8
 }
 #[doc = "Rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnt, IMM2 = 1))]
@@ -18079,7 +18079,7 @@ pub fn svrshrnt_n_s32<const IMM2: i32>(even: svint16_t, op1: svint32_t) -> svint
 }
 #[doc = "Rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnt, IMM2 = 1))]
@@ -18093,7 +18093,7 @@ pub fn svrshrnt_n_s64<const IMM2: i32>(even: svint32_t, op1: svint64_t) -> svint
 }
 #[doc = "Rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnt, IMM2 = 1))]
@@ -18103,7 +18103,7 @@ pub fn svrshrnt_n_u16<const IMM2: i32>(even: svuint8_t, op1: svuint16_t) -> svui
 }
 #[doc = "Rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnt, IMM2 = 1))]
@@ -18113,7 +18113,7 @@ pub fn svrshrnt_n_u32<const IMM2: i32>(even: svuint16_t, op1: svuint32_t) -> svu
 }
 #[doc = "Rounding shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrshrnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rshrnt, IMM2 = 1))]
@@ -18123,7 +18123,7 @@ pub fn svrshrnt_n_u64<const IMM2: i32>(even: svuint32_t, op1: svuint64_t) -> svu
 }
 #[doc = "Reciprocal square root estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrte[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursqrte))]
@@ -18139,7 +18139,7 @@ pub fn svrsqrte_u32_m(inactive: svuint32_t, pg: svbool_t, op: svuint32_t) -> svu
 }
 #[doc = "Reciprocal square root estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrte[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursqrte))]
@@ -18148,7 +18148,7 @@ pub fn svrsqrte_u32_x(pg: svbool_t, op: svuint32_t) -> svuint32_t {
 }
 #[doc = "Reciprocal square root estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrte[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursqrte))]
@@ -18157,7 +18157,7 @@ pub fn svrsqrte_u32_z(pg: svbool_t, op: svuint32_t) -> svuint32_t {
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srsra, IMM3 = 1))]
@@ -18171,7 +18171,7 @@ pub fn svrsra_n_s8<const IMM3: i32>(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srsra, IMM3 = 1))]
@@ -18185,7 +18185,7 @@ pub fn svrsra_n_s16<const IMM3: i32>(op1: svint16_t, op2: svint16_t) -> svint16_
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srsra, IMM3 = 1))]
@@ -18199,7 +18199,7 @@ pub fn svrsra_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(srsra, IMM3 = 1))]
@@ -18213,7 +18213,7 @@ pub fn svrsra_n_s64<const IMM3: i32>(op1: svint64_t, op2: svint64_t) -> svint64_
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursra, IMM3 = 1))]
@@ -18227,7 +18227,7 @@ pub fn svrsra_n_u8<const IMM3: i32>(op1: svuint8_t, op2: svuint8_t) -> svuint8_t
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursra, IMM3 = 1))]
@@ -18241,7 +18241,7 @@ pub fn svrsra_n_u16<const IMM3: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursra, IMM3 = 1))]
@@ -18255,7 +18255,7 @@ pub fn svrsra_n_u32<const IMM3: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint
 }
 #[doc = "Rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsra[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ursra, IMM3 = 1))]
@@ -18269,7 +18269,7 @@ pub fn svrsra_n_u64<const IMM3: i32>(op1: svuint64_t, op2: svuint64_t) -> svuint
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18285,7 +18285,7 @@ pub fn svrsubhnb_s16(op1: svint16_t, op2: svint16_t) -> svint8_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18294,7 +18294,7 @@ pub fn svrsubhnb_n_s16(op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18310,7 +18310,7 @@ pub fn svrsubhnb_s32(op1: svint32_t, op2: svint32_t) -> svint16_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18319,7 +18319,7 @@ pub fn svrsubhnb_n_s32(op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18335,7 +18335,7 @@ pub fn svrsubhnb_s64(op1: svint64_t, op2: svint64_t) -> svint32_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18344,7 +18344,7 @@ pub fn svrsubhnb_n_s64(op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18353,7 +18353,7 @@ pub fn svrsubhnb_u16(op1: svuint16_t, op2: svuint16_t) -> svuint8_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18362,7 +18362,7 @@ pub fn svrsubhnb_n_u16(op1: svuint16_t, op2: u16) -> svuint8_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18371,7 +18371,7 @@ pub fn svrsubhnb_u32(op1: svuint32_t, op2: svuint32_t) -> svuint16_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18380,7 +18380,7 @@ pub fn svrsubhnb_n_u32(op1: svuint32_t, op2: u32) -> svuint16_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18389,7 +18389,7 @@ pub fn svrsubhnb_u64(op1: svuint64_t, op2: svuint64_t) -> svuint32_t {
 }
 #[doc = "Rounding subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnb))]
@@ -18398,7 +18398,7 @@ pub fn svrsubhnb_n_u64(op1: svuint64_t, op2: u64) -> svuint32_t {
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18414,7 +18414,7 @@ pub fn svrsubhnt_s16(even: svint8_t, op1: svint16_t, op2: svint16_t) -> svint8_t
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18423,7 +18423,7 @@ pub fn svrsubhnt_n_s16(even: svint8_t, op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18439,7 +18439,7 @@ pub fn svrsubhnt_s32(even: svint16_t, op1: svint32_t, op2: svint32_t) -> svint16
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18448,7 +18448,7 @@ pub fn svrsubhnt_n_s32(even: svint16_t, op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18464,7 +18464,7 @@ pub fn svrsubhnt_s64(even: svint32_t, op1: svint64_t, op2: svint64_t) -> svint32
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18473,7 +18473,7 @@ pub fn svrsubhnt_n_s64(even: svint32_t, op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18482,7 +18482,7 @@ pub fn svrsubhnt_u16(even: svuint8_t, op1: svuint16_t, op2: svuint16_t) -> svuin
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18491,7 +18491,7 @@ pub fn svrsubhnt_n_u16(even: svuint8_t, op1: svuint16_t, op2: u16) -> svuint8_t 
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18500,7 +18500,7 @@ pub fn svrsubhnt_u32(even: svuint16_t, op1: svuint32_t, op2: svuint32_t) -> svui
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18509,7 +18509,7 @@ pub fn svrsubhnt_n_u32(even: svuint16_t, op1: svuint32_t, op2: u32) -> svuint16_
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18518,7 +18518,7 @@ pub fn svrsubhnt_u64(even: svuint32_t, op1: svuint64_t, op2: svuint64_t) -> svui
 }
 #[doc = "Rounding subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsubhnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(rsubhnt))]
@@ -18527,7 +18527,7 @@ pub fn svrsubhnt_n_u64(even: svuint32_t, op1: svuint64_t, op2: u64) -> svuint32_
 }
 #[doc = "Subtract with borrow long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclb))]
@@ -18540,7 +18540,7 @@ pub fn svsbclb_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint3
 }
 #[doc = "Subtract with borrow long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclb))]
@@ -18549,7 +18549,7 @@ pub fn svsbclb_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Subtract with borrow long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclb))]
@@ -18562,7 +18562,7 @@ pub fn svsbclb_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint6
 }
 #[doc = "Subtract with borrow long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclb))]
@@ -18571,7 +18571,7 @@ pub fn svsbclb_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Subtract with borrow long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclt))]
@@ -18584,7 +18584,7 @@ pub fn svsbclt_u32(op1: svuint32_t, op2: svuint32_t, op3: svuint32_t) -> svuint3
 }
 #[doc = "Subtract with borrow long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclt))]
@@ -18593,7 +18593,7 @@ pub fn svsbclt_n_u32(op1: svuint32_t, op2: svuint32_t, op3: u32) -> svuint32_t {
 }
 #[doc = "Subtract with borrow long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclt))]
@@ -18606,7 +18606,7 @@ pub fn svsbclt_u64(op1: svuint64_t, op2: svuint64_t, op3: svuint64_t) -> svuint6
 }
 #[doc = "Subtract with borrow long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsbclt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sbclt))]
@@ -18615,7 +18615,7 @@ pub fn svsbclt_n_u64(op1: svuint64_t, op2: svuint64_t, op3: u64) -> svuint64_t {
 }
 #[doc = "Shift left long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllb, IMM2 = 0))]
@@ -18629,7 +18629,7 @@ pub fn svshllb_n_s16<const IMM2: i32>(op1: svint8_t) -> svint16_t {
 }
 #[doc = "Shift left long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllb, IMM2 = 0))]
@@ -18643,7 +18643,7 @@ pub fn svshllb_n_s32<const IMM2: i32>(op1: svint16_t) -> svint32_t {
 }
 #[doc = "Shift left long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllb, IMM2 = 0))]
@@ -18657,7 +18657,7 @@ pub fn svshllb_n_s64<const IMM2: i32>(op1: svint32_t) -> svint64_t {
 }
 #[doc = "Shift left long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllb, IMM2 = 0))]
@@ -18671,7 +18671,7 @@ pub fn svshllb_n_u16<const IMM2: i32>(op1: svuint8_t) -> svuint16_t {
 }
 #[doc = "Shift left long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllb, IMM2 = 0))]
@@ -18685,7 +18685,7 @@ pub fn svshllb_n_u32<const IMM2: i32>(op1: svuint16_t) -> svuint32_t {
 }
 #[doc = "Shift left long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllb, IMM2 = 0))]
@@ -18699,7 +18699,7 @@ pub fn svshllb_n_u64<const IMM2: i32>(op1: svuint32_t) -> svuint64_t {
 }
 #[doc = "Shift left long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllt, IMM2 = 0))]
@@ -18713,7 +18713,7 @@ pub fn svshllt_n_s16<const IMM2: i32>(op1: svint8_t) -> svint16_t {
 }
 #[doc = "Shift left long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllt, IMM2 = 0))]
@@ -18727,7 +18727,7 @@ pub fn svshllt_n_s32<const IMM2: i32>(op1: svint16_t) -> svint32_t {
 }
 #[doc = "Shift left long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sshllt, IMM2 = 0))]
@@ -18741,7 +18741,7 @@ pub fn svshllt_n_s64<const IMM2: i32>(op1: svint32_t) -> svint64_t {
 }
 #[doc = "Shift left long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllt, IMM2 = 0))]
@@ -18755,7 +18755,7 @@ pub fn svshllt_n_u16<const IMM2: i32>(op1: svuint8_t) -> svuint16_t {
 }
 #[doc = "Shift left long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllt, IMM2 = 0))]
@@ -18769,7 +18769,7 @@ pub fn svshllt_n_u32<const IMM2: i32>(op1: svuint16_t) -> svuint32_t {
 }
 #[doc = "Shift left long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshllt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ushllt, IMM2 = 0))]
@@ -18783,7 +18783,7 @@ pub fn svshllt_n_u64<const IMM2: i32>(op1: svuint32_t) -> svuint64_t {
 }
 #[doc = "Shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnb, IMM2 = 1))]
@@ -18797,7 +18797,7 @@ pub fn svshrnb_n_s16<const IMM2: i32>(op1: svint16_t) -> svint8_t {
 }
 #[doc = "Shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnb, IMM2 = 1))]
@@ -18811,7 +18811,7 @@ pub fn svshrnb_n_s32<const IMM2: i32>(op1: svint32_t) -> svint16_t {
 }
 #[doc = "Shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnb, IMM2 = 1))]
@@ -18825,7 +18825,7 @@ pub fn svshrnb_n_s64<const IMM2: i32>(op1: svint64_t) -> svint32_t {
 }
 #[doc = "Shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnb, IMM2 = 1))]
@@ -18835,7 +18835,7 @@ pub fn svshrnb_n_u16<const IMM2: i32>(op1: svuint16_t) -> svuint8_t {
 }
 #[doc = "Shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnb, IMM2 = 1))]
@@ -18845,7 +18845,7 @@ pub fn svshrnb_n_u32<const IMM2: i32>(op1: svuint32_t) -> svuint16_t {
 }
 #[doc = "Shift right narrow (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnb, IMM2 = 1))]
@@ -18855,7 +18855,7 @@ pub fn svshrnb_n_u64<const IMM2: i32>(op1: svuint64_t) -> svuint32_t {
 }
 #[doc = "Shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnt, IMM2 = 1))]
@@ -18869,7 +18869,7 @@ pub fn svshrnt_n_s16<const IMM2: i32>(even: svint8_t, op1: svint16_t) -> svint8_
 }
 #[doc = "Shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnt, IMM2 = 1))]
@@ -18883,7 +18883,7 @@ pub fn svshrnt_n_s32<const IMM2: i32>(even: svint16_t, op1: svint32_t) -> svint1
 }
 #[doc = "Shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnt, IMM2 = 1))]
@@ -18897,7 +18897,7 @@ pub fn svshrnt_n_s64<const IMM2: i32>(even: svint32_t, op1: svint64_t) -> svint3
 }
 #[doc = "Shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnt, IMM2 = 1))]
@@ -18907,7 +18907,7 @@ pub fn svshrnt_n_u16<const IMM2: i32>(even: svuint8_t, op1: svuint16_t) -> svuin
 }
 #[doc = "Shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnt, IMM2 = 1))]
@@ -18917,7 +18917,7 @@ pub fn svshrnt_n_u32<const IMM2: i32>(even: svuint16_t, op1: svuint32_t) -> svui
 }
 #[doc = "Shift right narrow (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svshrnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(shrnt, IMM2 = 1))]
@@ -18927,7 +18927,7 @@ pub fn svshrnt_n_u64<const IMM2: i32>(even: svuint32_t, op1: svuint64_t) -> svui
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -18941,7 +18941,7 @@ pub fn svsli_n_s8<const IMM3: i32>(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -18955,7 +18955,7 @@ pub fn svsli_n_s16<const IMM3: i32>(op1: svint16_t, op2: svint16_t) -> svint16_t
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -18969,7 +18969,7 @@ pub fn svsli_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_t
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -18983,7 +18983,7 @@ pub fn svsli_n_s64<const IMM3: i32>(op1: svint64_t, op2: svint64_t) -> svint64_t
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -18993,7 +18993,7 @@ pub fn svsli_n_u8<const IMM3: i32>(op1: svuint8_t, op2: svuint8_t) -> svuint8_t 
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -19003,7 +19003,7 @@ pub fn svsli_n_u16<const IMM3: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint1
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -19013,7 +19013,7 @@ pub fn svsli_n_u32<const IMM3: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint3
 }
 #[doc = "Shift left and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsli[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sli, IMM3 = 0))]
@@ -19023,7 +19023,7 @@ pub fn svsli_n_u64<const IMM3: i32>(op1: svuint64_t, op2: svuint64_t) -> svuint6
 }
 #[doc = "SM4 encryption and decryption"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsm4e[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-sm4")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sm4e))]
@@ -19036,7 +19036,7 @@ pub fn svsm4e_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "SM4 key updates"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsm4ekey[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2,sve2-sm4")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sm4ekey))]
@@ -19049,7 +19049,7 @@ pub fn svsm4ekey_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19062,7 +19062,7 @@ pub fn svsqadd_u8_m(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19071,7 +19071,7 @@ pub fn svsqadd_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19080,7 +19080,7 @@ pub fn svsqadd_u8_x(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19089,7 +19089,7 @@ pub fn svsqadd_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19098,7 +19098,7 @@ pub fn svsqadd_u8_z(pg: svbool_t, op1: svuint8_t, op2: svint8_t) -> svuint8_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19107,7 +19107,7 @@ pub fn svsqadd_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: i8) -> svuint8_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19120,7 +19120,7 @@ pub fn svsqadd_u16_m(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19129,7 +19129,7 @@ pub fn svsqadd_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19138,7 +19138,7 @@ pub fn svsqadd_u16_x(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19147,7 +19147,7 @@ pub fn svsqadd_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19156,7 +19156,7 @@ pub fn svsqadd_u16_z(pg: svbool_t, op1: svuint16_t, op2: svint16_t) -> svuint16_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19165,7 +19165,7 @@ pub fn svsqadd_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: i16) -> svuint16_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19178,7 +19178,7 @@ pub fn svsqadd_u32_m(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19187,7 +19187,7 @@ pub fn svsqadd_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19196,7 +19196,7 @@ pub fn svsqadd_u32_x(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19205,7 +19205,7 @@ pub fn svsqadd_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19214,7 +19214,7 @@ pub fn svsqadd_u32_z(pg: svbool_t, op1: svuint32_t, op2: svint32_t) -> svuint32_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19223,7 +19223,7 @@ pub fn svsqadd_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: i32) -> svuint32_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19236,7 +19236,7 @@ pub fn svsqadd_u64_m(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19245,7 +19245,7 @@ pub fn svsqadd_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19254,7 +19254,7 @@ pub fn svsqadd_u64_x(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19263,7 +19263,7 @@ pub fn svsqadd_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19272,7 +19272,7 @@ pub fn svsqadd_u64_z(pg: svbool_t, op1: svuint64_t, op2: svint64_t) -> svuint64_
 }
 #[doc = "Saturating add with signed addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsqadd[_n_u64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usqadd))]
@@ -19281,7 +19281,7 @@ pub fn svsqadd_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: i64) -> svuint64_t {
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssra, IMM3 = 1))]
@@ -19295,7 +19295,7 @@ pub fn svsra_n_s8<const IMM3: i32>(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssra, IMM3 = 1))]
@@ -19309,7 +19309,7 @@ pub fn svsra_n_s16<const IMM3: i32>(op1: svint16_t, op2: svint16_t) -> svint16_t
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssra, IMM3 = 1))]
@@ -19323,7 +19323,7 @@ pub fn svsra_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_t
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssra, IMM3 = 1))]
@@ -19337,7 +19337,7 @@ pub fn svsra_n_s64<const IMM3: i32>(op1: svint64_t, op2: svint64_t) -> svint64_t
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usra, IMM3 = 1))]
@@ -19351,7 +19351,7 @@ pub fn svsra_n_u8<const IMM3: i32>(op1: svuint8_t, op2: svuint8_t) -> svuint8_t 
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usra, IMM3 = 1))]
@@ -19365,7 +19365,7 @@ pub fn svsra_n_u16<const IMM3: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint1
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usra, IMM3 = 1))]
@@ -19379,7 +19379,7 @@ pub fn svsra_n_u32<const IMM3: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint3
 }
 #[doc = "Shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsra[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usra, IMM3 = 1))]
@@ -19393,7 +19393,7 @@ pub fn svsra_n_u64<const IMM3: i32>(op1: svuint64_t, op2: svuint64_t) -> svuint6
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19407,7 +19407,7 @@ pub fn svsri_n_s8<const IMM3: i32>(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19421,7 +19421,7 @@ pub fn svsri_n_s16<const IMM3: i32>(op1: svint16_t, op2: svint16_t) -> svint16_t
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19435,7 +19435,7 @@ pub fn svsri_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_t
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19449,7 +19449,7 @@ pub fn svsri_n_s64<const IMM3: i32>(op1: svint64_t, op2: svint64_t) -> svint64_t
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19459,7 +19459,7 @@ pub fn svsri_n_u8<const IMM3: i32>(op1: svuint8_t, op2: svuint8_t) -> svuint8_t 
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19469,7 +19469,7 @@ pub fn svsri_n_u16<const IMM3: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint1
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19479,7 +19479,7 @@ pub fn svsri_n_u32<const IMM3: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint3
 }
 #[doc = "Shift right and insert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsri[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sri, IMM3 = 1))]
@@ -19493,7 +19493,7 @@ pub fn svsri_n_u64<const IMM3: i32>(op1: svuint64_t, op2: svuint64_t) -> svuint6
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19523,7 +19523,7 @@ pub unsafe fn svstnt1_scatter_s64index_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19553,7 +19553,7 @@ pub unsafe fn svstnt1_scatter_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19571,7 +19571,7 @@ pub unsafe fn svstnt1_scatter_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19589,7 +19589,7 @@ pub unsafe fn svstnt1_scatter_u64index_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19607,7 +19607,7 @@ pub unsafe fn svstnt1_scatter_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19625,7 +19625,7 @@ pub unsafe fn svstnt1_scatter_u64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19655,7 +19655,7 @@ pub unsafe fn svstnt1_scatter_s64offset_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19685,7 +19685,7 @@ pub unsafe fn svstnt1_scatter_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19703,7 +19703,7 @@ pub unsafe fn svstnt1_scatter_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19733,7 +19733,7 @@ pub unsafe fn svstnt1_scatter_u32offset_f32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19763,7 +19763,7 @@ pub unsafe fn svstnt1_scatter_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19781,7 +19781,7 @@ pub unsafe fn svstnt1_scatter_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19799,7 +19799,7 @@ pub unsafe fn svstnt1_scatter_u64offset_f64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19817,7 +19817,7 @@ pub unsafe fn svstnt1_scatter_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19836,7 +19836,7 @@ pub unsafe fn svstnt1_scatter_u64offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19850,7 +19850,7 @@ pub unsafe fn svstnt1_scatter_u32base_f32(pg: svbool_t, bases: svuint32_t, data:
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19864,7 +19864,7 @@ pub unsafe fn svstnt1_scatter_u32base_s32(pg: svbool_t, bases: svuint32_t, data:
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19878,7 +19878,7 @@ pub unsafe fn svstnt1_scatter_u32base_u32(pg: svbool_t, bases: svuint32_t, data:
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19892,7 +19892,7 @@ pub unsafe fn svstnt1_scatter_u64base_f64(pg: svbool_t, bases: svuint64_t, data:
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19906,7 +19906,7 @@ pub unsafe fn svstnt1_scatter_u64base_s64(pg: svbool_t, bases: svuint64_t, data:
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19920,7 +19920,7 @@ pub unsafe fn svstnt1_scatter_u64base_u64(pg: svbool_t, bases: svuint64_t, data:
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19939,7 +19939,7 @@ pub unsafe fn svstnt1_scatter_u32base_index_f32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19958,7 +19958,7 @@ pub unsafe fn svstnt1_scatter_u32base_index_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -19977,7 +19977,7 @@ pub unsafe fn svstnt1_scatter_u32base_index_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -19996,7 +19996,7 @@ pub unsafe fn svstnt1_scatter_u64base_index_f64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -20015,7 +20015,7 @@ pub unsafe fn svstnt1_scatter_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -20034,7 +20034,7 @@ pub unsafe fn svstnt1_scatter_u64base_index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20065,7 +20065,7 @@ pub unsafe fn svstnt1_scatter_u32base_offset_f32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20096,7 +20096,7 @@ pub unsafe fn svstnt1_scatter_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20115,7 +20115,7 @@ pub unsafe fn svstnt1_scatter_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -20146,7 +20146,7 @@ pub unsafe fn svstnt1_scatter_u64base_offset_f64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -20177,7 +20177,7 @@ pub unsafe fn svstnt1_scatter_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1d))]
@@ -20195,7 +20195,7 @@ pub unsafe fn svstnt1_scatter_u64base_offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20230,7 +20230,7 @@ pub unsafe fn svstnt1b_scatter_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20265,7 +20265,7 @@ pub unsafe fn svstnt1h_scatter_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20300,7 +20300,7 @@ pub unsafe fn svstnt1w_scatter_s64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20318,7 +20318,7 @@ pub unsafe fn svstnt1b_scatter_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20336,7 +20336,7 @@ pub unsafe fn svstnt1h_scatter_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20354,7 +20354,7 @@ pub unsafe fn svstnt1w_scatter_s64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20389,7 +20389,7 @@ pub unsafe fn svstnt1b_scatter_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20424,7 +20424,7 @@ pub unsafe fn svstnt1h_scatter_u32offset_s32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20442,7 +20442,7 @@ pub unsafe fn svstnt1b_scatter_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20460,7 +20460,7 @@ pub unsafe fn svstnt1h_scatter_u32offset_u32(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20478,7 +20478,7 @@ pub unsafe fn svstnt1b_scatter_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20496,7 +20496,7 @@ pub unsafe fn svstnt1h_scatter_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20514,7 +20514,7 @@ pub unsafe fn svstnt1w_scatter_u64offset_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20532,7 +20532,7 @@ pub unsafe fn svstnt1b_scatter_u64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20550,7 +20550,7 @@ pub unsafe fn svstnt1h_scatter_u64offset_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20569,7 +20569,7 @@ pub unsafe fn svstnt1w_scatter_u64offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20605,7 +20605,7 @@ pub unsafe fn svstnt1b_scatter_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20641,7 +20641,7 @@ pub unsafe fn svstnt1h_scatter_u32base_offset_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20660,7 +20660,7 @@ pub unsafe fn svstnt1b_scatter_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20679,7 +20679,7 @@ pub unsafe fn svstnt1h_scatter_u32base_offset_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20715,7 +20715,7 @@ pub unsafe fn svstnt1b_scatter_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20751,7 +20751,7 @@ pub unsafe fn svstnt1h_scatter_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20787,7 +20787,7 @@ pub unsafe fn svstnt1w_scatter_u64base_offset_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20806,7 +20806,7 @@ pub unsafe fn svstnt1b_scatter_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20825,7 +20825,7 @@ pub unsafe fn svstnt1h_scatter_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20844,7 +20844,7 @@ pub unsafe fn svstnt1w_scatter_u64base_offset_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20858,7 +20858,7 @@ pub unsafe fn svstnt1b_scatter_u32base_s32(pg: svbool_t, bases: svuint32_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20872,7 +20872,7 @@ pub unsafe fn svstnt1h_scatter_u32base_s32(pg: svbool_t, bases: svuint32_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20886,7 +20886,7 @@ pub unsafe fn svstnt1b_scatter_u32base_u32(pg: svbool_t, bases: svuint32_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20900,7 +20900,7 @@ pub unsafe fn svstnt1h_scatter_u32base_u32(pg: svbool_t, bases: svuint32_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20914,7 +20914,7 @@ pub unsafe fn svstnt1b_scatter_u64base_s64(pg: svbool_t, bases: svuint64_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20928,7 +20928,7 @@ pub unsafe fn svstnt1h_scatter_u64base_s64(pg: svbool_t, bases: svuint64_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20942,7 +20942,7 @@ pub unsafe fn svstnt1w_scatter_u64base_s64(pg: svbool_t, bases: svuint64_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1b))]
@@ -20956,7 +20956,7 @@ pub unsafe fn svstnt1b_scatter_u64base_u64(pg: svbool_t, bases: svuint64_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -20970,7 +20970,7 @@ pub unsafe fn svstnt1h_scatter_u64base_u64(pg: svbool_t, bases: svuint64_t, data
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -20983,7 +20983,7 @@ pub unsafe fn svstnt1w_scatter_u64base_u64(pg: svbool_t, bases: svuint64_t, data
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21018,7 +21018,7 @@ pub unsafe fn svstnt1h_scatter_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -21053,7 +21053,7 @@ pub unsafe fn svstnt1w_scatter_s64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21071,7 +21071,7 @@ pub unsafe fn svstnt1h_scatter_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -21089,7 +21089,7 @@ pub unsafe fn svstnt1w_scatter_s64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21107,7 +21107,7 @@ pub unsafe fn svstnt1h_scatter_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -21125,7 +21125,7 @@ pub unsafe fn svstnt1w_scatter_u64index_s64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21143,7 +21143,7 @@ pub unsafe fn svstnt1h_scatter_u64index_u64(
 #[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -21162,7 +21162,7 @@ pub unsafe fn svstnt1w_scatter_u64index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21181,7 +21181,7 @@ pub unsafe fn svstnt1h_scatter_u32base_index_s32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21200,7 +21200,7 @@ pub unsafe fn svstnt1h_scatter_u32base_index_u32(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21219,7 +21219,7 @@ pub unsafe fn svstnt1h_scatter_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -21238,7 +21238,7 @@ pub unsafe fn svstnt1w_scatter_u64base_index_s64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1h))]
@@ -21257,7 +21257,7 @@ pub unsafe fn svstnt1h_scatter_u64base_index_u64(
 #[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
 #[doc = "  * Addresses passed in `bases` lack provenance, so this is similar to using a `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane before  using it."]
 #[doc = "  * Non-temporal accesses have special memory ordering rules, and [explicit barriers may be required for some applications](https://developer.arm.com/documentation/den0024/a/Memory-Ordering/Barriers/Non-temporal-load-and-store-pair?lang=en)."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(stnt1w))]
@@ -21271,7 +21271,7 @@ pub unsafe fn svstnt1w_scatter_u64base_index_u64(
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21284,7 +21284,7 @@ pub fn svsubhnb_s16(op1: svint16_t, op2: svint16_t) -> svint8_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21293,7 +21293,7 @@ pub fn svsubhnb_n_s16(op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21306,7 +21306,7 @@ pub fn svsubhnb_s32(op1: svint32_t, op2: svint32_t) -> svint16_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21315,7 +21315,7 @@ pub fn svsubhnb_n_s32(op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21328,7 +21328,7 @@ pub fn svsubhnb_s64(op1: svint64_t, op2: svint64_t) -> svint32_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21337,7 +21337,7 @@ pub fn svsubhnb_n_s64(op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21346,7 +21346,7 @@ pub fn svsubhnb_u16(op1: svuint16_t, op2: svuint16_t) -> svuint8_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21355,7 +21355,7 @@ pub fn svsubhnb_n_u16(op1: svuint16_t, op2: u16) -> svuint8_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21364,7 +21364,7 @@ pub fn svsubhnb_u32(op1: svuint32_t, op2: svuint32_t) -> svuint16_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21373,7 +21373,7 @@ pub fn svsubhnb_n_u32(op1: svuint32_t, op2: u32) -> svuint16_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21382,7 +21382,7 @@ pub fn svsubhnb_u64(op1: svuint64_t, op2: svuint64_t) -> svuint32_t {
 }
 #[doc = "Subtract narrow high part (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnb))]
@@ -21391,7 +21391,7 @@ pub fn svsubhnb_n_u64(op1: svuint64_t, op2: u64) -> svuint32_t {
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21404,7 +21404,7 @@ pub fn svsubhnt_s16(even: svint8_t, op1: svint16_t, op2: svint16_t) -> svint8_t 
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21413,7 +21413,7 @@ pub fn svsubhnt_n_s16(even: svint8_t, op1: svint16_t, op2: i16) -> svint8_t {
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21426,7 +21426,7 @@ pub fn svsubhnt_s32(even: svint16_t, op1: svint32_t, op2: svint32_t) -> svint16_
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21435,7 +21435,7 @@ pub fn svsubhnt_n_s32(even: svint16_t, op1: svint32_t, op2: i32) -> svint16_t {
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21448,7 +21448,7 @@ pub fn svsubhnt_s64(even: svint32_t, op1: svint64_t, op2: svint64_t) -> svint32_
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21457,7 +21457,7 @@ pub fn svsubhnt_n_s64(even: svint32_t, op1: svint64_t, op2: i64) -> svint32_t {
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21466,7 +21466,7 @@ pub fn svsubhnt_u16(even: svuint8_t, op1: svuint16_t, op2: svuint16_t) -> svuint
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21475,7 +21475,7 @@ pub fn svsubhnt_n_u16(even: svuint8_t, op1: svuint16_t, op2: u16) -> svuint8_t {
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21484,7 +21484,7 @@ pub fn svsubhnt_u32(even: svuint16_t, op1: svuint32_t, op2: svuint32_t) -> svuin
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21493,7 +21493,7 @@ pub fn svsubhnt_n_u32(even: svuint16_t, op1: svuint32_t, op2: u32) -> svuint16_t
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21502,7 +21502,7 @@ pub fn svsubhnt_u64(even: svuint32_t, op1: svuint64_t, op2: svuint64_t) -> svuin
 }
 #[doc = "Subtract narrow high part (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubhnt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(subhnt))]
@@ -21511,7 +21511,7 @@ pub fn svsubhnt_n_u64(even: svuint32_t, op1: svuint64_t, op2: u64) -> svuint32_t
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublb))]
@@ -21524,7 +21524,7 @@ pub fn svsublb_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublb))]
@@ -21533,7 +21533,7 @@ pub fn svsublb_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublb))]
@@ -21546,7 +21546,7 @@ pub fn svsublb_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublb))]
@@ -21555,7 +21555,7 @@ pub fn svsublb_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublb))]
@@ -21568,7 +21568,7 @@ pub fn svsublb_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublb))]
@@ -21577,7 +21577,7 @@ pub fn svsublb_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublb))]
@@ -21590,7 +21590,7 @@ pub fn svsublb_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublb))]
@@ -21599,7 +21599,7 @@ pub fn svsublb_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublb))]
@@ -21612,7 +21612,7 @@ pub fn svsublb_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublb))]
@@ -21621,7 +21621,7 @@ pub fn svsublb_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublb))]
@@ -21634,7 +21634,7 @@ pub fn svsublb_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Subtract long (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublb))]
@@ -21643,7 +21643,7 @@ pub fn svsublb_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Subtract long (bottom - top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublbt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublbt))]
@@ -21659,7 +21659,7 @@ pub fn svsublbt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Subtract long (bottom - top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublbt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublbt))]
@@ -21668,7 +21668,7 @@ pub fn svsublbt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Subtract long (bottom - top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublbt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublbt))]
@@ -21684,7 +21684,7 @@ pub fn svsublbt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Subtract long (bottom - top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublbt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublbt))]
@@ -21693,7 +21693,7 @@ pub fn svsublbt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Subtract long (bottom - top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublbt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublbt))]
@@ -21709,7 +21709,7 @@ pub fn svsublbt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Subtract long (bottom - top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublbt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublbt))]
@@ -21718,7 +21718,7 @@ pub fn svsublbt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublt))]
@@ -21731,7 +21731,7 @@ pub fn svsublt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublt))]
@@ -21740,7 +21740,7 @@ pub fn svsublt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublt))]
@@ -21753,7 +21753,7 @@ pub fn svsublt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublt))]
@@ -21762,7 +21762,7 @@ pub fn svsublt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublt))]
@@ -21775,7 +21775,7 @@ pub fn svsublt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssublt))]
@@ -21784,7 +21784,7 @@ pub fn svsublt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublt))]
@@ -21797,7 +21797,7 @@ pub fn svsublt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublt))]
@@ -21806,7 +21806,7 @@ pub fn svsublt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublt))]
@@ -21819,7 +21819,7 @@ pub fn svsublt_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublt))]
@@ -21828,7 +21828,7 @@ pub fn svsublt_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublt))]
@@ -21841,7 +21841,7 @@ pub fn svsublt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Subtract long (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsublt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usublt))]
@@ -21850,7 +21850,7 @@ pub fn svsublt_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Subtract long (top - bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubltb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubltb))]
@@ -21866,7 +21866,7 @@ pub fn svsubltb_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Subtract long (top - bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubltb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubltb))]
@@ -21875,7 +21875,7 @@ pub fn svsubltb_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 }
 #[doc = "Subtract long (top - bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubltb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubltb))]
@@ -21891,7 +21891,7 @@ pub fn svsubltb_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Subtract long (top - bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubltb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubltb))]
@@ -21900,7 +21900,7 @@ pub fn svsubltb_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 }
 #[doc = "Subtract long (top - bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubltb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubltb))]
@@ -21916,7 +21916,7 @@ pub fn svsubltb_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Subtract long (top - bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubltb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubltb))]
@@ -21925,7 +21925,7 @@ pub fn svsubltb_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwb))]
@@ -21938,7 +21938,7 @@ pub fn svsubwb_s16(op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwb))]
@@ -21947,7 +21947,7 @@ pub fn svsubwb_n_s16(op1: svint16_t, op2: i8) -> svint16_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwb))]
@@ -21960,7 +21960,7 @@ pub fn svsubwb_s32(op1: svint32_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwb))]
@@ -21969,7 +21969,7 @@ pub fn svsubwb_n_s32(op1: svint32_t, op2: i16) -> svint32_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwb))]
@@ -21982,7 +21982,7 @@ pub fn svsubwb_s64(op1: svint64_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwb))]
@@ -21991,7 +21991,7 @@ pub fn svsubwb_n_s64(op1: svint64_t, op2: i32) -> svint64_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwb))]
@@ -22004,7 +22004,7 @@ pub fn svsubwb_u16(op1: svuint16_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwb))]
@@ -22013,7 +22013,7 @@ pub fn svsubwb_n_u16(op1: svuint16_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwb))]
@@ -22026,7 +22026,7 @@ pub fn svsubwb_u32(op1: svuint32_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwb))]
@@ -22035,7 +22035,7 @@ pub fn svsubwb_n_u32(op1: svuint32_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwb))]
@@ -22048,7 +22048,7 @@ pub fn svsubwb_u64(op1: svuint64_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Subtract wide (bottom)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwb[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwb))]
@@ -22057,7 +22057,7 @@ pub fn svsubwb_n_u64(op1: svuint64_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwt))]
@@ -22070,7 +22070,7 @@ pub fn svsubwt_s16(op1: svint16_t, op2: svint8_t) -> svint16_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwt))]
@@ -22079,7 +22079,7 @@ pub fn svsubwt_n_s16(op1: svint16_t, op2: i8) -> svint16_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwt))]
@@ -22092,7 +22092,7 @@ pub fn svsubwt_s32(op1: svint32_t, op2: svint16_t) -> svint32_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwt))]
@@ -22101,7 +22101,7 @@ pub fn svsubwt_n_s32(op1: svint32_t, op2: i16) -> svint32_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwt))]
@@ -22114,7 +22114,7 @@ pub fn svsubwt_s64(op1: svint64_t, op2: svint32_t) -> svint64_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(ssubwt))]
@@ -22123,7 +22123,7 @@ pub fn svsubwt_n_s64(op1: svint64_t, op2: i32) -> svint64_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwt))]
@@ -22136,7 +22136,7 @@ pub fn svsubwt_u16(op1: svuint16_t, op2: svuint8_t) -> svuint16_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwt))]
@@ -22145,7 +22145,7 @@ pub fn svsubwt_n_u16(op1: svuint16_t, op2: u8) -> svuint16_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwt))]
@@ -22158,7 +22158,7 @@ pub fn svsubwt_u32(op1: svuint32_t, op2: svuint16_t) -> svuint32_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwt))]
@@ -22167,7 +22167,7 @@ pub fn svsubwt_n_u32(op1: svuint32_t, op2: u16) -> svuint32_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwt))]
@@ -22180,7 +22180,7 @@ pub fn svsubwt_u64(op1: svuint64_t, op2: svuint32_t) -> svuint64_t {
 }
 #[doc = "Subtract wide (top)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubwt[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(usubwt))]
@@ -22189,7 +22189,7 @@ pub fn svsubwt_n_u64(op1: svuint64_t, op2: u32) -> svuint64_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_f32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22208,7 +22208,7 @@ pub fn svtbl2_f32(data: svfloat32x2_t, indices: svuint32_t) -> svfloat32_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_f64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22227,7 +22227,7 @@ pub fn svtbl2_f64(data: svfloat64x2_t, indices: svuint64_t) -> svfloat64_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22246,7 +22246,7 @@ pub fn svtbl2_s8(data: svint8x2_t, indices: svuint8_t) -> svint8_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22265,7 +22265,7 @@ pub fn svtbl2_s16(data: svint16x2_t, indices: svuint16_t) -> svint16_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22284,7 +22284,7 @@ pub fn svtbl2_s32(data: svint32x2_t, indices: svuint32_t) -> svint32_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22303,7 +22303,7 @@ pub fn svtbl2_s64(data: svint64x2_t, indices: svuint64_t) -> svint64_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22312,7 +22312,7 @@ pub fn svtbl2_u8(data: svuint8x2_t, indices: svuint8_t) -> svuint8_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22321,7 +22321,7 @@ pub fn svtbl2_u16(data: svuint16x2_t, indices: svuint16_t) -> svuint16_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22330,7 +22330,7 @@ pub fn svtbl2_u32(data: svuint32x2_t, indices: svuint32_t) -> svuint32_t {
 }
 #[doc = "Table lookup in two-vector table"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbl2[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbl))]
@@ -22339,7 +22339,7 @@ pub fn svtbl2_u64(data: svuint64x2_t, indices: svuint64_t) -> svuint64_t {
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_f32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22352,7 +22352,7 @@ pub fn svtbx_f32(fallback: svfloat32_t, data: svfloat32_t, indices: svuint32_t) 
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_f64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22365,7 +22365,7 @@ pub fn svtbx_f64(fallback: svfloat64_t, data: svfloat64_t, indices: svuint64_t) 
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22378,7 +22378,7 @@ pub fn svtbx_s8(fallback: svint8_t, data: svint8_t, indices: svuint8_t) -> svint
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22391,7 +22391,7 @@ pub fn svtbx_s16(fallback: svint16_t, data: svint16_t, indices: svuint16_t) -> s
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22404,7 +22404,7 @@ pub fn svtbx_s32(fallback: svint32_t, data: svint32_t, indices: svuint32_t) -> s
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22417,7 +22417,7 @@ pub fn svtbx_s64(fallback: svint64_t, data: svint64_t, indices: svuint64_t) -> s
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22426,7 +22426,7 @@ pub fn svtbx_u8(fallback: svuint8_t, data: svuint8_t, indices: svuint8_t) -> svu
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22435,7 +22435,7 @@ pub fn svtbx_u16(fallback: svuint16_t, data: svuint16_t, indices: svuint16_t) ->
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22444,7 +22444,7 @@ pub fn svtbx_u32(fallback: svuint32_t, data: svuint32_t, indices: svuint32_t) ->
 }
 #[doc = "Table lookup in single-vector table (merging)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svtbx[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(tbx))]
@@ -22453,7 +22453,7 @@ pub fn svtbx_u64(fallback: svuint64_t, data: svuint64_t, indices: svuint64_t) ->
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_b])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(punpkhi))]
@@ -22469,7 +22469,7 @@ pub fn svunpkhi_b(op: svbool_t) -> svbool_t {
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sunpkhi))]
@@ -22485,7 +22485,7 @@ pub fn svunpkhi_s16(op: svint8_t) -> svint16_t {
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sunpkhi))]
@@ -22501,7 +22501,7 @@ pub fn svunpkhi_s32(op: svint16_t) -> svint32_t {
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sunpkhi))]
@@ -22517,7 +22517,7 @@ pub fn svunpkhi_s64(op: svint32_t) -> svint64_t {
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uunpkhi))]
@@ -22533,7 +22533,7 @@ pub fn svunpkhi_u16(op: svuint8_t) -> svuint16_t {
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uunpkhi))]
@@ -22549,7 +22549,7 @@ pub fn svunpkhi_u32(op: svuint16_t) -> svuint32_t {
 }
 #[doc = "Unpack and extend high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpkhi[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uunpkhi))]
@@ -22565,7 +22565,7 @@ pub fn svunpkhi_u64(op: svuint32_t) -> svuint64_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_b])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(punpklo))]
@@ -22581,7 +22581,7 @@ pub fn svunpklo_b(op: svbool_t) -> svbool_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sunpklo))]
@@ -22597,7 +22597,7 @@ pub fn svunpklo_s16(op: svint8_t) -> svint16_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sunpklo))]
@@ -22613,7 +22613,7 @@ pub fn svunpklo_s32(op: svint16_t) -> svint32_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(sunpklo))]
@@ -22629,7 +22629,7 @@ pub fn svunpklo_s64(op: svint32_t) -> svint64_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uunpklo))]
@@ -22645,7 +22645,7 @@ pub fn svunpklo_u16(op: svuint8_t) -> svuint16_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uunpklo))]
@@ -22661,7 +22661,7 @@ pub fn svunpklo_u32(op: svuint16_t) -> svuint32_t {
 }
 #[doc = "Unpack and extend low half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svunpklo[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(uunpklo))]
@@ -22677,7 +22677,7 @@ pub fn svunpklo_u64(op: svuint32_t) -> svuint64_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22690,7 +22690,7 @@ pub fn svuqadd_s8_m(pg: svbool_t, op1: svint8_t, op2: svuint8_t) -> svint8_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s8]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22699,7 +22699,7 @@ pub fn svuqadd_n_s8_m(pg: svbool_t, op1: svint8_t, op2: u8) -> svint8_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22708,7 +22708,7 @@ pub fn svuqadd_s8_x(pg: svbool_t, op1: svint8_t, op2: svuint8_t) -> svint8_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s8]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22717,7 +22717,7 @@ pub fn svuqadd_n_s8_x(pg: svbool_t, op1: svint8_t, op2: u8) -> svint8_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22726,7 +22726,7 @@ pub fn svuqadd_s8_z(pg: svbool_t, op1: svint8_t, op2: svuint8_t) -> svint8_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s8]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22735,7 +22735,7 @@ pub fn svuqadd_n_s8_z(pg: svbool_t, op1: svint8_t, op2: u8) -> svint8_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22748,7 +22748,7 @@ pub fn svuqadd_s16_m(pg: svbool_t, op1: svint16_t, op2: svuint16_t) -> svint16_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s16]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22757,7 +22757,7 @@ pub fn svuqadd_n_s16_m(pg: svbool_t, op1: svint16_t, op2: u16) -> svint16_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22766,7 +22766,7 @@ pub fn svuqadd_s16_x(pg: svbool_t, op1: svint16_t, op2: svuint16_t) -> svint16_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s16]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22775,7 +22775,7 @@ pub fn svuqadd_n_s16_x(pg: svbool_t, op1: svint16_t, op2: u16) -> svint16_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22784,7 +22784,7 @@ pub fn svuqadd_s16_z(pg: svbool_t, op1: svint16_t, op2: svuint16_t) -> svint16_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s16]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22793,7 +22793,7 @@ pub fn svuqadd_n_s16_z(pg: svbool_t, op1: svint16_t, op2: u16) -> svint16_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22806,7 +22806,7 @@ pub fn svuqadd_s32_m(pg: svbool_t, op1: svint32_t, op2: svuint32_t) -> svint32_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s32]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22815,7 +22815,7 @@ pub fn svuqadd_n_s32_m(pg: svbool_t, op1: svint32_t, op2: u32) -> svint32_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22824,7 +22824,7 @@ pub fn svuqadd_s32_x(pg: svbool_t, op1: svint32_t, op2: svuint32_t) -> svint32_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s32]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22833,7 +22833,7 @@ pub fn svuqadd_n_s32_x(pg: svbool_t, op1: svint32_t, op2: u32) -> svint32_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22842,7 +22842,7 @@ pub fn svuqadd_s32_z(pg: svbool_t, op1: svint32_t, op2: svuint32_t) -> svint32_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s32]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22851,7 +22851,7 @@ pub fn svuqadd_n_s32_z(pg: svbool_t, op1: svint32_t, op2: u32) -> svint32_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22864,7 +22864,7 @@ pub fn svuqadd_s64_m(pg: svbool_t, op1: svint64_t, op2: svuint64_t) -> svint64_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s64]_m)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22873,7 +22873,7 @@ pub fn svuqadd_n_s64_m(pg: svbool_t, op1: svint64_t, op2: u64) -> svint64_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22882,7 +22882,7 @@ pub fn svuqadd_s64_x(pg: svbool_t, op1: svint64_t, op2: svuint64_t) -> svint64_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s64]_x)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22891,7 +22891,7 @@ pub fn svuqadd_n_s64_x(pg: svbool_t, op1: svint64_t, op2: u64) -> svint64_t {
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22900,7 +22900,7 @@ pub fn svuqadd_s64_z(pg: svbool_t, op1: svint64_t, op2: svuint64_t) -> svint64_t
 }
 #[doc = "Saturating add with unsigned addend"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svuqadd[_n_s64]_z)"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(suqadd))]
@@ -22909,7 +22909,7 @@ pub fn svuqadd_n_s64_z(pg: svbool_t, op1: svint64_t, op2: u64) -> svint64_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b8[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -22925,7 +22925,7 @@ pub fn svwhilege_b8_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b16[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -22941,7 +22941,7 @@ pub fn svwhilege_b16_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b32[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -22957,7 +22957,7 @@ pub fn svwhilege_b32_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b64[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -22973,7 +22973,7 @@ pub fn svwhilege_b64_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b8[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -22989,7 +22989,7 @@ pub fn svwhilege_b8_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b16[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -23005,7 +23005,7 @@ pub fn svwhilege_b16_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b32[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -23021,7 +23021,7 @@ pub fn svwhilege_b32_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b64[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilege))]
@@ -23037,7 +23037,7 @@ pub fn svwhilege_b64_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b8[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23053,7 +23053,7 @@ pub fn svwhilege_b8_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b16[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23069,7 +23069,7 @@ pub fn svwhilege_b16_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b32[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23085,7 +23085,7 @@ pub fn svwhilege_b32_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b64[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23101,7 +23101,7 @@ pub fn svwhilege_b64_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b8[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23117,7 +23117,7 @@ pub fn svwhilege_b8_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b16[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23133,7 +23133,7 @@ pub fn svwhilege_b16_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b32[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23149,7 +23149,7 @@ pub fn svwhilege_b32_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than or equal to"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilege_b64[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehs))]
@@ -23165,7 +23165,7 @@ pub fn svwhilege_b64_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b8[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23181,7 +23181,7 @@ pub fn svwhilegt_b8_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b16[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23197,7 +23197,7 @@ pub fn svwhilegt_b16_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b32[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23213,7 +23213,7 @@ pub fn svwhilegt_b32_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b64[_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23229,7 +23229,7 @@ pub fn svwhilegt_b64_s32(op1: i32, op2: i32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b8[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23245,7 +23245,7 @@ pub fn svwhilegt_b8_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b16[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23261,7 +23261,7 @@ pub fn svwhilegt_b16_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b32[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23277,7 +23277,7 @@ pub fn svwhilegt_b32_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b64[_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilegt))]
@@ -23293,7 +23293,7 @@ pub fn svwhilegt_b64_s64(op1: i64, op2: i64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b8[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23309,7 +23309,7 @@ pub fn svwhilegt_b8_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b16[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23325,7 +23325,7 @@ pub fn svwhilegt_b16_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b32[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23341,7 +23341,7 @@ pub fn svwhilegt_b32_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b64[_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23357,7 +23357,7 @@ pub fn svwhilegt_b64_u32(op1: u32, op2: u32) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b8[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23373,7 +23373,7 @@ pub fn svwhilegt_b8_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b16[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23389,7 +23389,7 @@ pub fn svwhilegt_b16_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b32[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23405,7 +23405,7 @@ pub fn svwhilegt_b32_u64(op1: u64, op2: u64) -> svbool_t {
 }
 #[doc = "While decrementing scalar is greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilegt_b64[_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilehi))]
@@ -23419,7 +23419,7 @@ pub fn svwhilegt_b64_u64(op1: u64, op2: u64) -> svbool_t {
     }
     unsafe { _svwhilegt_b64_u64(op1.as_signed(), op2.as_signed()).sve_into() }
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilerw_8ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23437,7 +23437,7 @@ unsafe fn svwhilerw_8ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
     }
     _svwhilerw_8ptr(op1, op2)
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilerw_16ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23455,7 +23455,7 @@ unsafe fn svwhilerw_16ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
     }
     _svwhilerw_16ptr(op1, op2).sve_into()
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilerw_32ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23473,7 +23473,7 @@ unsafe fn svwhilerw_32ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
     }
     _svwhilerw_32ptr(op1, op2).sve_into()
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilerw_64ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23495,7 +23495,7 @@ unsafe fn svwhilerw_64ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_f32])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23506,7 +23506,7 @@ pub unsafe fn svwhilerw_f32(op1: *const f32, op2: *const f32) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_f64])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23517,7 +23517,7 @@ pub unsafe fn svwhilerw_f64(op1: *const f64, op2: *const f64) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_s8])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23528,7 +23528,7 @@ pub unsafe fn svwhilerw_s8(op1: *const i8, op2: *const i8) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_s16])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23539,7 +23539,7 @@ pub unsafe fn svwhilerw_s16(op1: *const i16, op2: *const i16) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_s32])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23550,7 +23550,7 @@ pub unsafe fn svwhilerw_s32(op1: *const i32, op2: *const i32) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_s64])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23561,7 +23561,7 @@ pub unsafe fn svwhilerw_s64(op1: *const i64, op2: *const i64) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_u8])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23572,7 +23572,7 @@ pub unsafe fn svwhilerw_u8(op1: *const u8, op2: *const u8) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_u16])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23583,7 +23583,7 @@ pub unsafe fn svwhilerw_u16(op1: *const u16, op2: *const u16) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_u32])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
@@ -23594,14 +23594,14 @@ pub unsafe fn svwhilerw_u32(op1: *const u32, op2: *const u32) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilerw[_u64])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilerw))]
 pub unsafe fn svwhilerw_u64(op1: *const u64, op2: *const u64) -> svbool_t {
     svwhilerw_64ptr::<u64>(op1, op2)
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilewr_8ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23619,7 +23619,7 @@ unsafe fn svwhilewr_8ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
     }
     _svwhilewr_8ptr(op1, op2)
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilewr_16ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23637,7 +23637,7 @@ unsafe fn svwhilewr_16ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
     }
     _svwhilewr_16ptr(op1, op2).sve_into()
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilewr_32ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23655,7 +23655,7 @@ unsafe fn svwhilewr_32ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
     }
     _svwhilewr_32ptr(op1, op2).sve_into()
 }
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 unsafe fn svwhilewr_64ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
@@ -23677,7 +23677,7 @@ unsafe fn svwhilewr_64ptr<T>(op1: *const T, op2: *const T) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_f32])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23688,7 +23688,7 @@ pub unsafe fn svwhilewr_f32(op1: *const f32, op2: *const f32) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_f64])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23699,7 +23699,7 @@ pub unsafe fn svwhilewr_f64(op1: *const f64, op2: *const f64) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_s8])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23710,7 +23710,7 @@ pub unsafe fn svwhilewr_s8(op1: *const i8, op2: *const i8) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_s16])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23721,7 +23721,7 @@ pub unsafe fn svwhilewr_s16(op1: *const i16, op2: *const i16) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_s32])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23732,7 +23732,7 @@ pub unsafe fn svwhilewr_s32(op1: *const i32, op2: *const i32) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_s64])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23743,7 +23743,7 @@ pub unsafe fn svwhilewr_s64(op1: *const i64, op2: *const i64) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_u8])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23754,7 +23754,7 @@ pub unsafe fn svwhilewr_u8(op1: *const u8, op2: *const u8) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_u16])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23765,7 +23765,7 @@ pub unsafe fn svwhilewr_u16(op1: *const u16, op2: *const u16) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_u32])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23776,7 +23776,7 @@ pub unsafe fn svwhilewr_u32(op1: *const u32, op2: *const u32) -> svbool_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svwhilewr[_u64])"]
 #[doc = "## Safety"]
 #[doc = "  * [`pointer::byte_offset_from`](pointer#method.byte_offset_from) safety constraints must be met for at least the base pointers, `op1` and `op2`."]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(whilewr))]
@@ -23785,7 +23785,7 @@ pub unsafe fn svwhilewr_u64(op1: *const u64, op2: *const u64) -> svbool_t {
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_s8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23799,7 +23799,7 @@ pub fn svxar_n_s8<const IMM3: i32>(op1: svint8_t, op2: svint8_t) -> svint8_t {
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_s16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23813,7 +23813,7 @@ pub fn svxar_n_s16<const IMM3: i32>(op1: svint16_t, op2: svint16_t) -> svint16_t
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_s32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23827,7 +23827,7 @@ pub fn svxar_n_s32<const IMM3: i32>(op1: svint32_t, op2: svint32_t) -> svint32_t
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_s64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23841,7 +23841,7 @@ pub fn svxar_n_s64<const IMM3: i32>(op1: svint64_t, op2: svint64_t) -> svint64_t
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_u8])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23851,7 +23851,7 @@ pub fn svxar_n_u8<const IMM3: i32>(op1: svuint8_t, op2: svuint8_t) -> svuint8_t 
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_u16])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23861,7 +23861,7 @@ pub fn svxar_n_u16<const IMM3: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint1
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_u32])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]
@@ -23871,7 +23871,7 @@ pub fn svxar_n_u32<const IMM3: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint3
 }
 #[doc = "Bitwise exclusive OR and rotate right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svxar[_n_u64])"]
-#[inline(always)]
+#[inline]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
 #[cfg_attr(test, assert_instr(xar, IMM3 = 1))]

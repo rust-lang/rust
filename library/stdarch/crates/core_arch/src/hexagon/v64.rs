@@ -1043,7 +1043,7 @@ unsafe extern "unadjusted" {
 ///
 /// Instruction Type: LD
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(extractw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1055,7 +1055,7 @@ pub unsafe fn Q6_R_vextract_VR(vu: HvxVector, rs: i32) -> i32 {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(hi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1067,7 +1067,7 @@ pub unsafe fn Q6_V_hi_W(vss: HvxVectorPair) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(lo))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1079,7 +1079,7 @@ pub unsafe fn Q6_V_lo_W(vss: HvxVectorPair) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(lvsplatw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1091,7 +1091,7 @@ pub unsafe fn Q6_V_vsplat_R(rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1103,7 +1103,7 @@ pub unsafe fn Q6_Vuh_vabsdiff_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1115,7 +1115,7 @@ pub unsafe fn Q6_Vub_vabsdiff_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1127,7 +1127,7 @@ pub unsafe fn Q6_Vuh_vabsdiff_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsdiffw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1139,7 +1139,7 @@ pub unsafe fn Q6_Vuw_vabsdiff_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1151,7 +1151,7 @@ pub unsafe fn Q6_Vh_vabs_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsh_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1163,7 +1163,7 @@ pub unsafe fn Q6_Vh_vabs_Vh_sat(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1175,7 +1175,7 @@ pub unsafe fn Q6_Vw_vabs_Vw(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vabsw_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1187,7 +1187,7 @@ pub unsafe fn Q6_Vw_vabs_Vw_sat(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1199,7 +1199,7 @@ pub unsafe fn Q6_Vb_vadd_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddb_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1211,7 +1211,7 @@ pub unsafe fn Q6_Wb_vadd_WbWb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1223,7 +1223,7 @@ pub unsafe fn Q6_Vh_vadd_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddh_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1235,7 +1235,7 @@ pub unsafe fn Q6_Wh_vadd_WhWh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1247,7 +1247,7 @@ pub unsafe fn Q6_Vh_vadd_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1259,7 +1259,7 @@ pub unsafe fn Q6_Wh_vadd_WhWh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1271,7 +1271,7 @@ pub unsafe fn Q6_Ww_vadd_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddubh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1283,7 +1283,7 @@ pub unsafe fn Q6_Wh_vadd_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1295,7 +1295,7 @@ pub unsafe fn Q6_Vub_vadd_VubVub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddubsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1307,7 +1307,7 @@ pub unsafe fn Q6_Wub_vadd_WubWub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vadduhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1319,7 +1319,7 @@ pub unsafe fn Q6_Vuh_vadd_VuhVuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vadduhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1331,7 +1331,7 @@ pub unsafe fn Q6_Wuh_vadd_WuhWuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vadduhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1343,7 +1343,7 @@ pub unsafe fn Q6_Ww_vadd_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1355,7 +1355,7 @@ pub unsafe fn Q6_Vw_vadd_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddw_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1367,7 +1367,7 @@ pub unsafe fn Q6_Ww_vadd_WwWw(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1379,7 +1379,7 @@ pub unsafe fn Q6_Vw_vadd_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaddwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1391,7 +1391,7 @@ pub unsafe fn Q6_Ww_vadd_WwWw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(valignb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1403,7 +1403,7 @@ pub unsafe fn Q6_V_valign_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVecto
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(valignbi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1415,7 +1415,7 @@ pub unsafe fn Q6_V_valign_VVI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vand))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1427,7 +1427,7 @@ pub unsafe fn Q6_V_vand_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1439,7 +1439,7 @@ pub unsafe fn Q6_Vh_vasl_VhR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1451,7 +1451,7 @@ pub unsafe fn Q6_Vh_vasl_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1463,7 +1463,7 @@ pub unsafe fn Q6_Vw_vasl_VwR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1475,7 +1475,7 @@ pub unsafe fn Q6_Vw_vaslacc_VwVwR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vaslwv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1487,7 +1487,7 @@ pub unsafe fn Q6_Vw_vasl_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1499,7 +1499,7 @@ pub unsafe fn Q6_Vh_vasr_VhR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhbrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1511,7 +1511,7 @@ pub unsafe fn Q6_Vb_vasr_VhVhR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) ->
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhubrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1523,7 +1523,7 @@ pub unsafe fn Q6_Vub_vasr_VhVhR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1535,7 +1535,7 @@ pub unsafe fn Q6_Vub_vasr_VhVhR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hv
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1547,7 +1547,7 @@ pub unsafe fn Q6_Vh_vasr_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1559,7 +1559,7 @@ pub unsafe fn Q6_Vw_vasr_VwR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1571,7 +1571,7 @@ pub unsafe fn Q6_Vw_vasracc_VwVwR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1583,7 +1583,7 @@ pub unsafe fn Q6_Vh_vasr_VwVwR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVect
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1595,7 +1595,7 @@ pub unsafe fn Q6_Vh_vasr_VwVwR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) ->
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1607,7 +1607,7 @@ pub unsafe fn Q6_Vh_vasr_VwVwR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hvx
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1619,7 +1619,7 @@ pub unsafe fn Q6_Vuh_vasr_VwVwR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hv
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vasrwv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1631,7 +1631,7 @@ pub unsafe fn Q6_Vw_vasr_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vassign))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1643,7 +1643,7 @@ pub unsafe fn Q6_V_equals_V(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vassignp))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1655,7 +1655,7 @@ pub unsafe fn Q6_W_equals_W(vuu: HvxVectorPair) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1667,7 +1667,7 @@ pub unsafe fn Q6_Vh_vavg_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavghrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1679,7 +1679,7 @@ pub unsafe fn Q6_Vh_vavg_VhVh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1691,7 +1691,7 @@ pub unsafe fn Q6_Vub_vavg_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgubrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1703,7 +1703,7 @@ pub unsafe fn Q6_Vub_vavg_VubVub_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavguh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1715,7 +1715,7 @@ pub unsafe fn Q6_Vuh_vavg_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavguhrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1727,7 +1727,7 @@ pub unsafe fn Q6_Vuh_vavg_VuhVuh_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1739,7 +1739,7 @@ pub unsafe fn Q6_Vw_vavg_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vavgwrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1751,7 +1751,7 @@ pub unsafe fn Q6_Vw_vavg_VwVw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vcl0h))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1763,7 +1763,7 @@ pub unsafe fn Q6_Vuh_vcl0_Vuh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vcl0w))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1775,7 +1775,7 @@ pub unsafe fn Q6_Vuw_vcl0_Vuw(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vcombine))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1787,7 +1787,7 @@ pub unsafe fn Q6_W_vcombine_VV(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vd0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1799,7 +1799,7 @@ pub unsafe fn Q6_V_vzero() -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1811,7 +1811,7 @@ pub unsafe fn Q6_Vb_vdeal_Vb(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealb4w))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1823,7 +1823,7 @@ pub unsafe fn Q6_Vb_vdeale_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1835,7 +1835,7 @@ pub unsafe fn Q6_Vh_vdeal_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdealvdd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1847,7 +1847,7 @@ pub unsafe fn Q6_W_vdeal_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVector
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdelta))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1859,7 +1859,7 @@ pub unsafe fn Q6_V_vdelta_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1871,7 +1871,7 @@ pub unsafe fn Q6_Vh_vdmpy_VubRb(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1883,7 +1883,7 @@ pub unsafe fn Q6_Vh_vdmpyacc_VhVubRb(vx: HvxVector, vu: HvxVector, rt: i32) -> H
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1895,7 +1895,7 @@ pub unsafe fn Q6_Wh_vdmpy_WubRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpybus_dv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1911,7 +1911,7 @@ pub unsafe fn Q6_Wh_vdmpyacc_WhWubRb(
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1923,7 +1923,7 @@ pub unsafe fn Q6_Vw_vdmpy_VhRb(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1935,7 +1935,7 @@ pub unsafe fn Q6_Vw_vdmpyacc_VwVhRb(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1947,7 +1947,7 @@ pub unsafe fn Q6_Ww_vdmpy_WhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhb_dv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1963,7 +1963,7 @@ pub unsafe fn Q6_Ww_vdmpyacc_WwWhRb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhisat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1975,7 +1975,7 @@ pub unsafe fn Q6_Vw_vdmpy_WhRh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhisat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1987,7 +1987,7 @@ pub unsafe fn Q6_Vw_vdmpyacc_VwWhRh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: i
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -1999,7 +1999,7 @@ pub unsafe fn Q6_Vw_vdmpy_VhRh_sat(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2011,7 +2011,7 @@ pub unsafe fn Q6_Vw_vdmpyacc_VwVhRh_sat(vx: HvxVector, vu: HvxVector, rt: i32) -
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsuisat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2023,7 +2023,7 @@ pub unsafe fn Q6_Vw_vdmpy_WhRuh_sat(vuu: HvxVectorPair, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsuisat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2035,7 +2035,7 @@ pub unsafe fn Q6_Vw_vdmpyacc_VwWhRuh_sat(vx: HvxVector, vuu: HvxVectorPair, rt: 
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsusat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2047,7 +2047,7 @@ pub unsafe fn Q6_Vw_vdmpy_VhRuh_sat(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhsusat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2059,7 +2059,7 @@ pub unsafe fn Q6_Vw_vdmpyacc_VwVhRuh_sat(vx: HvxVector, vu: HvxVector, rt: i32) 
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhvsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2071,7 +2071,7 @@ pub unsafe fn Q6_Vw_vdmpy_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdmpyhvsat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2083,7 +2083,7 @@ pub unsafe fn Q6_Vw_vdmpyacc_VwVhVh_sat(vx: HvxVector, vu: HvxVector, vv: HvxVec
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdsaduh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2095,7 +2095,7 @@ pub unsafe fn Q6_Wuw_vdsad_WuhRuh(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vdsaduh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2111,7 +2111,7 @@ pub unsafe fn Q6_Wuw_vdsadacc_WuwWuhRuh(
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vinsertwr))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2123,7 +2123,7 @@ pub unsafe fn Q6_Vw_vinsert_VwR(vx: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlalignb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2135,7 +2135,7 @@ pub unsafe fn Q6_V_vlalign_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVect
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlalignbi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2147,7 +2147,7 @@ pub unsafe fn Q6_V_vlalign_VVI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxVec
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2159,7 +2159,7 @@ pub unsafe fn Q6_Vuh_vlsr_VuhR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2171,7 +2171,7 @@ pub unsafe fn Q6_Vh_vlsr_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2183,7 +2183,7 @@ pub unsafe fn Q6_Vuw_vlsr_VuwR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlsrwv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2195,7 +2195,7 @@ pub unsafe fn Q6_Vw_vlsr_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvvb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2207,7 +2207,7 @@ pub unsafe fn Q6_Vb_vlut32_VbVbR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVe
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvvb_oracc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2224,7 +2224,7 @@ pub unsafe fn Q6_Vb_vlut32or_VbVbVbR(
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2236,7 +2236,7 @@ pub unsafe fn Q6_Wh_vlut16_VbVhR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVe
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vlutvwh_oracc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2253,7 +2253,7 @@ pub unsafe fn Q6_Wh_vlut16or_WhVbVhR(
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2265,7 +2265,7 @@ pub unsafe fn Q6_Vh_vmax_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2277,7 +2277,7 @@ pub unsafe fn Q6_Vub_vmax_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2289,7 +2289,7 @@ pub unsafe fn Q6_Vuh_vmax_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmaxw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2301,7 +2301,7 @@ pub unsafe fn Q6_Vw_vmax_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2313,7 +2313,7 @@ pub unsafe fn Q6_Vh_vmin_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2325,7 +2325,7 @@ pub unsafe fn Q6_Vub_vmin_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2337,7 +2337,7 @@ pub unsafe fn Q6_Vuh_vmin_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vminw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2349,7 +2349,7 @@ pub unsafe fn Q6_Vw_vmin_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2361,7 +2361,7 @@ pub unsafe fn Q6_Wh_vmpa_WubRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2377,7 +2377,7 @@ pub unsafe fn Q6_Wh_vmpaacc_WhWubRb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabusv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2389,7 +2389,7 @@ pub unsafe fn Q6_Wh_vmpa_WubWb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVec
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpabuuv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2401,7 +2401,7 @@ pub unsafe fn Q6_Wh_vmpa_WubWub(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVe
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpahb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2413,7 +2413,7 @@ pub unsafe fn Q6_Ww_vmpa_WhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpahb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2429,7 +2429,7 @@ pub unsafe fn Q6_Ww_vmpaacc_WwWhRb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2441,7 +2441,7 @@ pub unsafe fn Q6_Wh_vmpy_VubRb(vu: HvxVector, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2453,7 +2453,7 @@ pub unsafe fn Q6_Wh_vmpyacc_WhVubRb(vxx: HvxVectorPair, vu: HvxVector, rt: i32) 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybusv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2465,7 +2465,7 @@ pub unsafe fn Q6_Wh_vmpy_VubVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybusv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2481,7 +2481,7 @@ pub unsafe fn Q6_Wh_vmpyacc_WhVubVb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2493,7 +2493,7 @@ pub unsafe fn Q6_Wh_vmpy_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpybv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2509,7 +2509,7 @@ pub unsafe fn Q6_Wh_vmpyacc_WhVbVb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyewuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2521,7 +2521,7 @@ pub unsafe fn Q6_Vw_vmpye_VwVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2533,7 +2533,7 @@ pub unsafe fn Q6_Ww_vmpy_VhRh(vu: HvxVector, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhsat_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2549,7 +2549,7 @@ pub unsafe fn Q6_Ww_vmpyacc_WwVhRh_sat(
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhsrs))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2561,7 +2561,7 @@ pub unsafe fn Q6_Vh_vmpy_VhRh_s1_rnd_sat(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhss))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2573,7 +2573,7 @@ pub unsafe fn Q6_Vh_vmpy_VhRh_s1_sat(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2585,7 +2585,7 @@ pub unsafe fn Q6_Ww_vmpy_VhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2601,7 +2601,7 @@ pub unsafe fn Q6_Ww_vmpyacc_WwVhVuh(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2613,7 +2613,7 @@ pub unsafe fn Q6_Ww_vmpy_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2629,7 +2629,7 @@ pub unsafe fn Q6_Ww_vmpyacc_WwVhVh(
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyhvsrs))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2641,7 +2641,7 @@ pub unsafe fn Q6_Vh_vmpy_VhVh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVec
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyieoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2653,7 +2653,7 @@ pub unsafe fn Q6_Vw_vmpyieo_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiewh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2665,7 +2665,7 @@ pub unsafe fn Q6_Vw_vmpyieacc_VwVwVh(vx: HvxVector, vu: HvxVector, vv: HvxVector
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiewuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2677,7 +2677,7 @@ pub unsafe fn Q6_Vw_vmpyie_VwVuh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiewuh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2689,7 +2689,7 @@ pub unsafe fn Q6_Vw_vmpyieacc_VwVwVuh(vx: HvxVector, vu: HvxVector, vv: HvxVecto
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyih))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2701,7 +2701,7 @@ pub unsafe fn Q6_Vh_vmpyi_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyih_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2713,7 +2713,7 @@ pub unsafe fn Q6_Vh_vmpyiacc_VhVhVh(vx: HvxVector, vu: HvxVector, vv: HvxVector)
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyihb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2725,7 +2725,7 @@ pub unsafe fn Q6_Vh_vmpyi_VhRb(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyihb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2737,7 +2737,7 @@ pub unsafe fn Q6_Vh_vmpyiacc_VhVhRb(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiowh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2749,7 +2749,7 @@ pub unsafe fn Q6_Vw_vmpyio_VwVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2761,7 +2761,7 @@ pub unsafe fn Q6_Vw_vmpyi_VwRb(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2773,7 +2773,7 @@ pub unsafe fn Q6_Vw_vmpyiacc_VwVwRb(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2785,7 +2785,7 @@ pub unsafe fn Q6_Vw_vmpyi_VwRh(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyiwh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2797,7 +2797,7 @@ pub unsafe fn Q6_Vw_vmpyiacc_VwVwRh(vx: HvxVector, vu: HvxVector, rt: i32) -> Hv
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2809,7 +2809,7 @@ pub unsafe fn Q6_Vw_vmpyo_VwVh_s1_sat(vu: HvxVector, vv: HvxVector) -> HvxVector
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh_rnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2821,7 +2821,7 @@ pub unsafe fn Q6_Vw_vmpyo_VwVh_s1_rnd_sat(vu: HvxVector, vv: HvxVector) -> HvxVe
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh_rnd_sacc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2837,7 +2837,7 @@ pub unsafe fn Q6_Vw_vmpyoacc_VwVwVh_s1_rnd_sat_shift(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyowh_sacc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2853,7 +2853,7 @@ pub unsafe fn Q6_Vw_vmpyoacc_VwVwVh_s1_sat_shift(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2865,7 +2865,7 @@ pub unsafe fn Q6_Wuh_vmpy_VubRub(vu: HvxVector, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyub_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2881,7 +2881,7 @@ pub unsafe fn Q6_Wuh_vmpyacc_WuhVubRub(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyubv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2893,7 +2893,7 @@ pub unsafe fn Q6_Wuh_vmpy_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyubv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2909,7 +2909,7 @@ pub unsafe fn Q6_Wuh_vmpyacc_WuhVubVub(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2921,7 +2921,7 @@ pub unsafe fn Q6_Wuw_vmpy_VuhRuh(vu: HvxVector, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2937,7 +2937,7 @@ pub unsafe fn Q6_Wuw_vmpyacc_WuwVuhRuh(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuhv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2949,7 +2949,7 @@ pub unsafe fn Q6_Wuw_vmpy_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vmpyuhv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2965,7 +2965,7 @@ pub unsafe fn Q6_Wuw_vmpyacc_WuwVuhVuh(
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnavgh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2977,7 +2977,7 @@ pub unsafe fn Q6_Vh_vnavg_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnavgub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -2989,7 +2989,7 @@ pub unsafe fn Q6_Vb_vnavg_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnavgw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3001,7 +3001,7 @@ pub unsafe fn Q6_Vw_vnavg_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnormamth))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3013,7 +3013,7 @@ pub unsafe fn Q6_Vh_vnormamt_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnormamtw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3025,7 +3025,7 @@ pub unsafe fn Q6_Vw_vnormamt_Vw(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vnot))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3037,7 +3037,7 @@ pub unsafe fn Q6_V_vnot_V(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vor))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3049,7 +3049,7 @@ pub unsafe fn Q6_V_vor_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackeb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3061,7 +3061,7 @@ pub unsafe fn Q6_Vb_vpacke_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackeh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3073,7 +3073,7 @@ pub unsafe fn Q6_Vh_vpacke_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackhb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3085,7 +3085,7 @@ pub unsafe fn Q6_Vb_vpack_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackhub_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3097,7 +3097,7 @@ pub unsafe fn Q6_Vub_vpack_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackob))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3109,7 +3109,7 @@ pub unsafe fn Q6_Vb_vpacko_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3121,7 +3121,7 @@ pub unsafe fn Q6_Vh_vpacko_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackwh_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3133,7 +3133,7 @@ pub unsafe fn Q6_Vh_vpack_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpackwuh_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3145,7 +3145,7 @@ pub unsafe fn Q6_Vuh_vpack_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vpopcounth))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3157,7 +3157,7 @@ pub unsafe fn Q6_Vh_vpopcount_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrdelta))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3169,7 +3169,7 @@ pub unsafe fn Q6_V_vrdelta_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3181,7 +3181,7 @@ pub unsafe fn Q6_Vw_vrmpy_VubRb(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3193,7 +3193,7 @@ pub unsafe fn Q6_Vw_vrmpyacc_VwVubRb(vx: HvxVector, vu: HvxVector, rt: i32) -> H
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3205,7 +3205,7 @@ pub unsafe fn Q6_Ww_vrmpy_WubRbI(vuu: HvxVectorPair, rt: i32, iu1: i32) -> HvxVe
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusi_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3222,7 +3222,7 @@ pub unsafe fn Q6_Ww_vrmpyacc_WwWubRbI(
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3234,7 +3234,7 @@ pub unsafe fn Q6_Vw_vrmpy_VubVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybusv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3246,7 +3246,7 @@ pub unsafe fn Q6_Vw_vrmpyacc_VwVubVb(vx: HvxVector, vu: HvxVector, vv: HvxVector
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3258,7 +3258,7 @@ pub unsafe fn Q6_Vw_vrmpy_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpybv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3270,7 +3270,7 @@ pub unsafe fn Q6_Vw_vrmpyacc_VwVbVb(vx: HvxVector, vu: HvxVector, vv: HvxVector)
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3282,7 +3282,7 @@ pub unsafe fn Q6_Vuw_vrmpy_VubRub(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyub_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3294,7 +3294,7 @@ pub unsafe fn Q6_Vuw_vrmpyacc_VuwVubRub(vx: HvxVector, vu: HvxVector, rt: i32) -
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3306,7 +3306,7 @@ pub unsafe fn Q6_Wuw_vrmpy_WubRubI(vuu: HvxVectorPair, rt: i32, iu1: i32) -> Hvx
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubi_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3323,7 +3323,7 @@ pub unsafe fn Q6_Wuw_vrmpyacc_WuwWubRubI(
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3335,7 +3335,7 @@ pub unsafe fn Q6_Vuw_vrmpy_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrmpyubv_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3347,7 +3347,7 @@ pub unsafe fn Q6_Vuw_vrmpyacc_VuwVubVub(vx: HvxVector, vu: HvxVector, vv: HvxVec
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vror))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3359,7 +3359,7 @@ pub unsafe fn Q6_V_vror_VR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3371,7 +3371,7 @@ pub unsafe fn Q6_Vb_vround_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundhub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3383,7 +3383,7 @@ pub unsafe fn Q6_Vub_vround_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3395,7 +3395,7 @@ pub unsafe fn Q6_Vh_vround_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vroundwuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3407,7 +3407,7 @@ pub unsafe fn Q6_Vuh_vround_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrsadubi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3419,7 +3419,7 @@ pub unsafe fn Q6_Wuw_vrsad_WubRubI(vuu: HvxVectorPair, rt: i32, iu1: i32) -> Hvx
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vrsadubi_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3436,7 +3436,7 @@ pub unsafe fn Q6_Wuw_vrsadacc_WuwWubRubI(
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsathub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3448,7 +3448,7 @@ pub unsafe fn Q6_Vub_vsat_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsatwh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3460,7 +3460,7 @@ pub unsafe fn Q6_Vh_vsat_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3472,7 +3472,7 @@ pub unsafe fn Q6_Wh_vsxt_Vb(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3484,7 +3484,7 @@ pub unsafe fn Q6_Ww_vsxt_Vh(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufeh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3496,7 +3496,7 @@ pub unsafe fn Q6_Vh_vshuffe_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3508,7 +3508,7 @@ pub unsafe fn Q6_Vb_vshuff_Vb(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffeb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3520,7 +3520,7 @@ pub unsafe fn Q6_Vb_vshuffe_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3532,7 +3532,7 @@ pub unsafe fn Q6_Vh_vshuff_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffob))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3544,7 +3544,7 @@ pub unsafe fn Q6_Vb_vshuffo_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshuffvdd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3556,7 +3556,7 @@ pub unsafe fn Q6_W_vshuff_VVR(vu: HvxVector, vv: HvxVector, rt: i32) -> HvxVecto
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufoeb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3568,7 +3568,7 @@ pub unsafe fn Q6_Wb_vshuffoe_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPair
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufoeh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3580,7 +3580,7 @@ pub unsafe fn Q6_Wh_vshuffoe_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vshufoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3592,7 +3592,7 @@ pub unsafe fn Q6_Vh_vshuffo_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3604,7 +3604,7 @@ pub unsafe fn Q6_Vb_vsub_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubb_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3616,7 +3616,7 @@ pub unsafe fn Q6_Wb_vsub_WbWb(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3628,7 +3628,7 @@ pub unsafe fn Q6_Vh_vsub_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubh_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3640,7 +3640,7 @@ pub unsafe fn Q6_Wh_vsub_WhWh(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3652,7 +3652,7 @@ pub unsafe fn Q6_Vh_vsub_VhVh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3664,7 +3664,7 @@ pub unsafe fn Q6_Wh_vsub_WhWh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3676,7 +3676,7 @@ pub unsafe fn Q6_Ww_vsub_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsububh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3688,7 +3688,7 @@ pub unsafe fn Q6_Wh_vsub_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsububsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3700,7 +3700,7 @@ pub unsafe fn Q6_Vub_vsub_VubVub_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsububsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3712,7 +3712,7 @@ pub unsafe fn Q6_Wub_vsub_WubWub_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3724,7 +3724,7 @@ pub unsafe fn Q6_Vuh_vsub_VuhVuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubuhsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3736,7 +3736,7 @@ pub unsafe fn Q6_Wuh_vsub_WuhWuh_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubuhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3748,7 +3748,7 @@ pub unsafe fn Q6_Ww_vsub_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3760,7 +3760,7 @@ pub unsafe fn Q6_Vw_vsub_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubw_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3772,7 +3772,7 @@ pub unsafe fn Q6_Ww_vsub_WwWw(vuu: HvxVectorPair, vvv: HvxVectorPair) -> HvxVect
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3784,7 +3784,7 @@ pub unsafe fn Q6_Vw_vsub_VwVw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vsubwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3796,7 +3796,7 @@ pub unsafe fn Q6_Ww_vsub_WwWw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3808,7 +3808,7 @@ pub unsafe fn Q6_Wh_vtmpy_WbRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3824,7 +3824,7 @@ pub unsafe fn Q6_Wh_vtmpyacc_WhWbRb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpybus))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3836,7 +3836,7 @@ pub unsafe fn Q6_Wh_vtmpy_WubRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpybus_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3852,7 +3852,7 @@ pub unsafe fn Q6_Wh_vtmpyacc_WhWubRb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3864,7 +3864,7 @@ pub unsafe fn Q6_Ww_vtmpy_WhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vtmpyhb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3880,7 +3880,7 @@ pub unsafe fn Q6_Ww_vtmpyacc_WwWhRb(
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3892,7 +3892,7 @@ pub unsafe fn Q6_Wh_vunpack_Vb(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3904,7 +3904,7 @@ pub unsafe fn Q6_Ww_vunpack_Vh(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackob))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3916,7 +3916,7 @@ pub unsafe fn Q6_Wh_vunpackoor_WhVb(vxx: HvxVectorPair, vu: HvxVector) -> HvxVec
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackoh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3928,7 +3928,7 @@ pub unsafe fn Q6_Ww_vunpackoor_WwVh(vxx: HvxVectorPair, vu: HvxVector) -> HvxVec
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3940,7 +3940,7 @@ pub unsafe fn Q6_Wuh_vunpack_Vub(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vunpackuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3952,7 +3952,7 @@ pub unsafe fn Q6_Wuw_vunpack_Vuh(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vxor))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3964,7 +3964,7 @@ pub unsafe fn Q6_V_vxor_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vzb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3976,7 +3976,7 @@ pub unsafe fn Q6_Wuh_vzxt_Vub(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[cfg_attr(test, assert_instr(vzh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -3988,7 +3988,7 @@ pub unsafe fn Q6_Wuw_vzxt_Vuh(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(lvsplatb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4000,7 +4000,7 @@ pub unsafe fn Q6_Vb_vsplat_R(rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(lvsplath))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4012,7 +4012,7 @@ pub unsafe fn Q6_Vh_vsplat_R(rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddbsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4024,7 +4024,7 @@ pub unsafe fn Q6_Vb_vadd_VbVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddbsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4036,7 +4036,7 @@ pub unsafe fn Q6_Wb_vadd_WbWb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddclbh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4048,7 +4048,7 @@ pub unsafe fn Q6_Vh_vadd_vclb_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddclbw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4060,7 +4060,7 @@ pub unsafe fn Q6_Vw_vadd_vclb_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddhw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4076,7 +4076,7 @@ pub unsafe fn Q6_Ww_vaddacc_WwVhVh(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddubh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4092,7 +4092,7 @@ pub unsafe fn Q6_Wh_vaddacc_WhVubVub(
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vaddububb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4104,7 +4104,7 @@ pub unsafe fn Q6_Vub_vadd_VubVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vadduhw_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4120,7 +4120,7 @@ pub unsafe fn Q6_Ww_vaddacc_WwVuhVuh(
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vadduwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4132,7 +4132,7 @@ pub unsafe fn Q6_Vuw_vadd_VuwVuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vadduwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4144,7 +4144,7 @@ pub unsafe fn Q6_Wuw_vadd_WuwWuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vasrhbsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4156,7 +4156,7 @@ pub unsafe fn Q6_Vb_vasr_VhVhR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> Hvx
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vasruwuhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4168,7 +4168,7 @@ pub unsafe fn Q6_Vuh_vasr_VuwVuwR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32)
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vasrwuhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4180,7 +4180,7 @@ pub unsafe fn Q6_Vuh_vasr_VwVwR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32) -
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlsrb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4192,7 +4192,7 @@ pub unsafe fn Q6_Vub_vlsr_VubR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvvb_nm))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4204,7 +4204,7 @@ pub unsafe fn Q6_Vb_vlut32_VbVbR_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) 
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvvb_oracci))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4221,7 +4221,7 @@ pub unsafe fn Q6_Vb_vlut32or_VbVbVbI(
 ///
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvvbi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4233,7 +4233,7 @@ pub unsafe fn Q6_Vb_vlut32_VbVbI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxV
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvwh_nm))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4245,7 +4245,7 @@ pub unsafe fn Q6_Wh_vlut16_VbVhR_nomatch(vu: HvxVector, vv: HvxVector, rt: i32) 
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvwh_oracci))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4262,7 +4262,7 @@ pub unsafe fn Q6_Wh_vlut16or_WhVbVhI(
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vlutvwhi))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4274,7 +4274,7 @@ pub unsafe fn Q6_Wh_vlut16_VbVhI(vu: HvxVector, vv: HvxVector, iu3: i32) -> HvxV
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmaxb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4286,7 +4286,7 @@ pub unsafe fn Q6_Vb_vmax_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vminb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4298,7 +4298,7 @@ pub unsafe fn Q6_Vb_vmin_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpauhb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4310,7 +4310,7 @@ pub unsafe fn Q6_Ww_vmpa_WuhRb(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpauhb_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4326,7 +4326,7 @@ pub unsafe fn Q6_Ww_vmpaacc_WwWuhRb(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyewuh_64))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4338,7 +4338,7 @@ pub unsafe fn Q6_W_vmpye_VwVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyiwub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4350,7 +4350,7 @@ pub unsafe fn Q6_Vw_vmpyi_VwRub(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyiwub_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4362,7 +4362,7 @@ pub unsafe fn Q6_Vw_vmpyiacc_VwVwRub(vx: HvxVector, vu: HvxVector, rt: i32) -> H
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vmpyowh_64_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4378,7 +4378,7 @@ pub unsafe fn Q6_W_vmpyoacc_WVwVh(
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vrounduhub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4390,7 +4390,7 @@ pub unsafe fn Q6_Vub_vround_VuhVuh_sat(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vrounduwuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4402,7 +4402,7 @@ pub unsafe fn Q6_Vuh_vround_VuwVuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsatuwuh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4414,7 +4414,7 @@ pub unsafe fn Q6_Vuh_vsat_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubbsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4426,7 +4426,7 @@ pub unsafe fn Q6_Vb_vsub_VbVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubbsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4438,7 +4438,7 @@ pub unsafe fn Q6_Wb_vsub_WbWb_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> Hvx
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubububb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4450,7 +4450,7 @@ pub unsafe fn Q6_Vub_vsub_VubVb_sat(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubuwsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4462,7 +4462,7 @@ pub unsafe fn Q6_Vuw_vsub_VuwVuw_sat(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[cfg_attr(test, assert_instr(vsubuwsat_dv))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4474,7 +4474,7 @@ pub unsafe fn Q6_Wuw_vsub_WuwWuw_sat(vuu: HvxVectorPair, vvv: HvxVectorPair) -> 
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vabsb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4486,7 +4486,7 @@ pub unsafe fn Q6_Vb_vabs_Vb(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vabsb_sat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4498,7 +4498,7 @@ pub unsafe fn Q6_Vb_vabs_Vb_sat(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vaslh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4510,7 +4510,7 @@ pub unsafe fn Q6_Vh_vaslacc_VhVhR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasrh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4522,7 +4522,7 @@ pub unsafe fn Q6_Vh_vasracc_VhVhR(vx: HvxVector, vu: HvxVector, rt: i32) -> HvxV
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasruhubrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4534,7 +4534,7 @@ pub unsafe fn Q6_Vub_vasr_VuhVuhR_rnd_sat(vu: HvxVector, vv: HvxVector, rt: i32)
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasruhubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4546,7 +4546,7 @@ pub unsafe fn Q6_Vub_vasr_VuhVuhR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vasruwuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4558,7 +4558,7 @@ pub unsafe fn Q6_Vuh_vasr_VuwVuwR_sat(vu: HvxVector, vv: HvxVector, rt: i32) -> 
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavgb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4570,7 +4570,7 @@ pub unsafe fn Q6_Vb_vavg_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavgbrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4582,7 +4582,7 @@ pub unsafe fn Q6_Vb_vavg_VbVb_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavguw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4594,7 +4594,7 @@ pub unsafe fn Q6_Vuw_vavg_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vavguwrnd))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4606,7 +4606,7 @@ pub unsafe fn Q6_Vuw_vavg_VuwVuw_rnd(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: MAPPING
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vdd0))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4618,7 +4618,7 @@ pub unsafe fn Q6_W_vzero() -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_GATHER
 /// Execution Slots: SLOT01
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vgathermh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4630,7 +4630,7 @@ pub unsafe fn Q6_vgather_ARMVh(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVect
 ///
 /// Instruction Type: CVI_GATHER_DV
 /// Execution Slots: SLOT01
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vgathermhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4642,7 +4642,7 @@ pub unsafe fn Q6_vgather_ARMWw(rs: *mut HvxVector, rt: i32, mu: i32, vvv: HvxVec
 ///
 /// Instruction Type: CVI_GATHER
 /// Execution Slots: SLOT01
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vgathermw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4654,7 +4654,7 @@ pub unsafe fn Q6_vgather_ARMVw(rs: *mut HvxVector, rt: i32, mu: i32, vv: HvxVect
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpabuu))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4666,7 +4666,7 @@ pub unsafe fn Q6_Wh_vmpa_WubRub(vuu: HvxVectorPair, rt: i32) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpabuu_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4682,7 +4682,7 @@ pub unsafe fn Q6_Wh_vmpaacc_WhWubRub(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpyh_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4694,7 +4694,7 @@ pub unsafe fn Q6_Ww_vmpyacc_WwVhRh(vxx: HvxVectorPair, vu: HvxVector, rt: i32) -
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpyuhe))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4706,7 +4706,7 @@ pub unsafe fn Q6_Vuw_vmpye_VuhRuh(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vmpyuhe_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4718,7 +4718,7 @@ pub unsafe fn Q6_Vuw_vmpyeacc_VuwVuhRuh(vx: HvxVector, vu: HvxVector, rt: i32) -
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vnavgb))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4730,7 +4730,7 @@ pub unsafe fn Q6_Vb_vnavg_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_SCATTER
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4742,7 +4742,7 @@ pub unsafe fn Q6_vscatter_RMVhV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) 
 ///
 /// Instruction Type: CVI_SCATTER
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermh_add))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4754,7 +4754,7 @@ pub unsafe fn Q6_vscatteracc_RMVhV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVecto
 ///
 /// Instruction Type: CVI_SCATTER_DV
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermhw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4766,7 +4766,7 @@ pub unsafe fn Q6_vscatter_RMWwV(rt: i32, mu: i32, vvv: HvxVectorPair, vw: HvxVec
 ///
 /// Instruction Type: CVI_SCATTER_DV
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermhw_add))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4778,7 +4778,7 @@ pub unsafe fn Q6_vscatteracc_RMWwV(rt: i32, mu: i32, vvv: HvxVectorPair, vw: Hvx
 ///
 /// Instruction Type: CVI_SCATTER
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4790,7 +4790,7 @@ pub unsafe fn Q6_vscatter_RMVwV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVector) 
 ///
 /// Instruction Type: CVI_SCATTER
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[cfg_attr(test, assert_instr(vscattermw_add))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4802,7 +4802,7 @@ pub unsafe fn Q6_vscatteracc_RMVwV(rt: i32, mu: i32, vv: HvxVector, vw: HvxVecto
 ///
 /// Instruction Type: CVI_VP_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[cfg_attr(test, assert_instr(vasr_into))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4818,7 +4818,7 @@ pub unsafe fn Q6_Ww_vasrinto_WwVwVw(
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[cfg_attr(test, assert_instr(vrotr))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4830,7 +4830,7 @@ pub unsafe fn Q6_Vuw_vrotr_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[cfg_attr(test, assert_instr(vsatdw))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4842,7 +4842,7 @@ pub unsafe fn Q6_Vw_vsatdw_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyhubs10))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4858,7 +4858,7 @@ pub unsafe fn Q6_Ww_v6mpy_WubWbI_h(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyhubs10_vxx))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4875,7 +4875,7 @@ pub unsafe fn Q6_Ww_v6mpyacc_WwWubWbI_h(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyvubs10))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4891,7 +4891,7 @@ pub unsafe fn Q6_Ww_v6mpy_WubWbI_v(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(v6mpyvubs10_vxx))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4908,7 +4908,7 @@ pub unsafe fn Q6_Ww_v6mpyacc_WwWubWbI_v(
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vabs_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4920,7 +4920,7 @@ pub unsafe fn Q6_Vhf_vabs_Vhf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vabs_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4932,7 +4932,7 @@ pub unsafe fn Q6_Vsf_vabs_Vsf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4944,7 +4944,7 @@ pub unsafe fn Q6_Vqf16_vadd_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_hf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4956,7 +4956,7 @@ pub unsafe fn Q6_Vhf_vadd_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4968,7 +4968,7 @@ pub unsafe fn Q6_Vqf16_vadd_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf16_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4980,7 +4980,7 @@ pub unsafe fn Q6_Vqf16_vadd_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -4992,7 +4992,7 @@ pub unsafe fn Q6_Vqf32_vadd_Vqf32Vqf32(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_qf32_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5004,7 +5004,7 @@ pub unsafe fn Q6_Vqf32_vadd_Vqf32Vsf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5016,7 +5016,7 @@ pub unsafe fn Q6_Vqf32_vadd_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5028,7 +5028,7 @@ pub unsafe fn Q6_Wsf_vadd_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vadd_sf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5040,7 +5040,7 @@ pub unsafe fn Q6_Vsf_vadd_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vassign_fp))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5052,7 +5052,7 @@ pub unsafe fn Q6_Vw_vfmv_Vw(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vconv_hf_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5064,7 +5064,7 @@ pub unsafe fn Q6_Vhf_equals_Vqf16(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vconv_hf_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5076,7 +5076,7 @@ pub unsafe fn Q6_Vhf_equals_Wqf32(vuu: HvxVectorPair) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vconv_sf_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5088,7 +5088,7 @@ pub unsafe fn Q6_Vsf_equals_Vqf32(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_b_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5100,7 +5100,7 @@ pub unsafe fn Q6_Vb_vcvt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_h_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5112,7 +5112,7 @@ pub unsafe fn Q6_Vh_vcvt_Vhf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_b))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5124,7 +5124,7 @@ pub unsafe fn Q6_Whf_vcvt_Vb(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_h))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5136,7 +5136,7 @@ pub unsafe fn Q6_Vhf_vcvt_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5148,7 +5148,7 @@ pub unsafe fn Q6_Vhf_vcvt_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_ub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5160,7 +5160,7 @@ pub unsafe fn Q6_Whf_vcvt_Vub(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_uh))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5172,7 +5172,7 @@ pub unsafe fn Q6_Vhf_vcvt_Vuh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5184,7 +5184,7 @@ pub unsafe fn Q6_Wsf_vcvt_Vhf(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_ub_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5196,7 +5196,7 @@ pub unsafe fn Q6_Vub_vcvt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vcvt_uh_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5208,7 +5208,7 @@ pub unsafe fn Q6_Vuh_vcvt_Vhf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vdmpy_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5220,7 +5220,7 @@ pub unsafe fn Q6_Vsf_vdmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vdmpy_sf_hf_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5232,7 +5232,7 @@ pub unsafe fn Q6_Vsf_vdmpyacc_VsfVhfVhf(vx: HvxVector, vu: HvxVector, vv: HvxVec
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmax_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5244,7 +5244,7 @@ pub unsafe fn Q6_Vhf_vfmax_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmax_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5256,7 +5256,7 @@ pub unsafe fn Q6_Vsf_vfmax_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmin_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5268,7 +5268,7 @@ pub unsafe fn Q6_Vhf_vfmin_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfmin_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5280,7 +5280,7 @@ pub unsafe fn Q6_Vsf_vfmin_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfneg_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5292,7 +5292,7 @@ pub unsafe fn Q6_Vhf_vfneg_Vhf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vfneg_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5304,7 +5304,7 @@ pub unsafe fn Q6_Vsf_vfneg_Vsf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmax_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5316,7 +5316,7 @@ pub unsafe fn Q6_Vhf_vmax_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmax_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5328,7 +5328,7 @@ pub unsafe fn Q6_Vsf_vmax_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmin_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5340,7 +5340,7 @@ pub unsafe fn Q6_Vhf_vmin_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmin_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5352,7 +5352,7 @@ pub unsafe fn Q6_Vsf_vmin_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_hf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5364,7 +5364,7 @@ pub unsafe fn Q6_Vhf_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_hf_hf_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5376,7 +5376,7 @@ pub unsafe fn Q6_Vhf_vmpyacc_VhfVhfVhf(vx: HvxVector, vu: HvxVector, vv: HvxVect
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5388,7 +5388,7 @@ pub unsafe fn Q6_Vqf16_vmpy_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf16_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5400,7 +5400,7 @@ pub unsafe fn Q6_Vqf16_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf16_mix_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5412,7 +5412,7 @@ pub unsafe fn Q6_Vqf16_vmpy_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5424,7 +5424,7 @@ pub unsafe fn Q6_Vqf32_vmpy_Vqf32Vqf32(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5436,7 +5436,7 @@ pub unsafe fn Q6_Wqf32_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPai
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_mix_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5448,7 +5448,7 @@ pub unsafe fn Q6_Wqf32_vmpy_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVectorP
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5460,7 +5460,7 @@ pub unsafe fn Q6_Wqf32_vmpy_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_qf32_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5472,7 +5472,7 @@ pub unsafe fn Q6_Vqf32_vmpy_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5484,7 +5484,7 @@ pub unsafe fn Q6_Wsf_vmpy_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_sf_hf_acc))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5500,7 +5500,7 @@ pub unsafe fn Q6_Wsf_vmpyacc_WsfVhfVhf(
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vmpy_sf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5512,7 +5512,7 @@ pub unsafe fn Q6_Vsf_vmpy_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5524,7 +5524,7 @@ pub unsafe fn Q6_Vqf16_vsub_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_hf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5536,7 +5536,7 @@ pub unsafe fn Q6_Vhf_vsub_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf16))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5548,7 +5548,7 @@ pub unsafe fn Q6_Vqf16_vsub_Vqf16Vqf16(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf16_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5560,7 +5560,7 @@ pub unsafe fn Q6_Vqf16_vsub_Vqf16Vhf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf32))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5572,7 +5572,7 @@ pub unsafe fn Q6_Vqf32_vsub_Vqf32Vqf32(vu: HvxVector, vv: HvxVector) -> HvxVecto
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_qf32_mix))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5584,7 +5584,7 @@ pub unsafe fn Q6_Vqf32_vsub_Vqf32Vsf(vu: HvxVector, vv: HvxVector) -> HvxVector 
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5596,7 +5596,7 @@ pub unsafe fn Q6_Vqf32_vsub_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_sf_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5608,7 +5608,7 @@ pub unsafe fn Q6_Wsf_vsub_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPair 
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[cfg_attr(test, assert_instr(vsub_sf_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5620,7 +5620,7 @@ pub unsafe fn Q6_Vsf_vsub_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvuhubrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5632,7 +5632,7 @@ pub unsafe fn Q6_Vub_vasr_WuhVub_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> H
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvuhubsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5644,7 +5644,7 @@ pub unsafe fn Q6_Vub_vasr_WuhVub_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVe
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvwuhrndsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5656,7 +5656,7 @@ pub unsafe fn Q6_Vuh_vasr_WwVuh_rnd_sat(vuu: HvxVectorPair, vv: HvxVector) -> Hv
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vasrvwuhsat))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5668,7 +5668,7 @@ pub unsafe fn Q6_Vuh_vasr_WwVuh_sat(vuu: HvxVectorPair, vv: HvxVector) -> HvxVec
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv69"))]
 #[cfg_attr(test, assert_instr(vmpyuhvs))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5680,7 +5680,7 @@ pub unsafe fn Q6_Vuh_vmpy_VuhVuh_rs16(vu: HvxVector, vv: HvxVector) -> HvxVector
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_h_hf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5692,7 +5692,7 @@ pub unsafe fn Q6_Vh_equals_Vhf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_hf_h))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5704,7 +5704,7 @@ pub unsafe fn Q6_Vhf_equals_Vh(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_sf_w))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5716,7 +5716,7 @@ pub unsafe fn Q6_Vsf_equals_Vw(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv73"))]
 #[cfg_attr(test, assert_instr(vconv_w_sf))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5728,7 +5728,7 @@ pub unsafe fn Q6_Vw_equals_Vsf(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(get_qfext))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5740,7 +5740,7 @@ pub unsafe fn Q6_V_vgetqfext_VR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(set_qfext))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5752,7 +5752,7 @@ pub unsafe fn Q6_V_vsetqfext_VR(vu: HvxVector, rt: i32) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vabs_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5764,7 +5764,7 @@ pub unsafe fn Q6_V_vabs_V(vu: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vcvt2_hf_b))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5776,7 +5776,7 @@ pub unsafe fn Q6_Whf_vcvt2_Vb(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vcvt2_hf_ub))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5788,7 +5788,7 @@ pub unsafe fn Q6_Whf_vcvt2_Vub(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_DV
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vcvt_hf_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5800,7 +5800,7 @@ pub unsafe fn Q6_Whf_vcvt_V(vu: HvxVector) -> HvxVectorPair {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vfmax_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5812,7 +5812,7 @@ pub unsafe fn Q6_V_vfmax_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vfmin_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5824,7 +5824,7 @@ pub unsafe fn Q6_V_vfmin_VV(vu: HvxVector, vv: HvxVector) -> HvxVector {
 ///
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv79"))]
 #[cfg_attr(test, assert_instr(vfneg_f8))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
@@ -5837,7 +5837,7 @@ pub unsafe fn Q6_V_vfneg_V(vu: HvxVector) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_and_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -5855,7 +5855,7 @@ pub unsafe fn Q6_Q_and_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_and_QQn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -5873,7 +5873,7 @@ pub unsafe fn Q6_Q_and_QQn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPre
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_not_Q(qs: HvxVectorPred) -> HvxVectorPred {
@@ -5891,7 +5891,7 @@ pub unsafe fn Q6_Q_not_Q(qs: HvxVectorPred) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_or_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -5909,7 +5909,7 @@ pub unsafe fn Q6_Q_or_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred 
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_or_QQn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -5927,7 +5927,7 @@ pub unsafe fn Q6_Q_or_QQn(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vsetq_R(rt: i32) -> HvxVectorPred {
@@ -5939,7 +5939,7 @@ pub unsafe fn Q6_Q_vsetq_R(rt: i32) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_xor_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -5957,7 +5957,7 @@ pub unsafe fn Q6_Q_xor_QQ(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VM_ST
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vmem_QnRIV(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
@@ -5973,7 +5973,7 @@ pub unsafe fn Q6_vmem_QnRIV(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VM_ST
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vmem_QnRIV_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
@@ -5989,7 +5989,7 @@ pub unsafe fn Q6_vmem_QnRIV_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVec
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VM_ST
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vmem_QRIV_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
@@ -6005,7 +6005,7 @@ pub unsafe fn Q6_vmem_QRIV_nt(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VM_ST
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vmem_QRIV(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector) {
@@ -6021,7 +6021,7 @@ pub unsafe fn Q6_vmem_QRIV(qv: HvxVectorPred, rt: *mut HvxVector, vs: HvxVector)
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vb_condacc_QnVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6037,7 +6037,7 @@ pub unsafe fn Q6_Vb_condacc_QnVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vb_condacc_QVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6053,7 +6053,7 @@ pub unsafe fn Q6_Vb_condacc_QVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vh_condacc_QnVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6069,7 +6069,7 @@ pub unsafe fn Q6_Vh_condacc_QnVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vh_condacc_QVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6085,7 +6085,7 @@ pub unsafe fn Q6_Vh_condacc_QVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vw_condacc_QnVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6101,7 +6101,7 @@ pub unsafe fn Q6_Vw_condacc_QnVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vw_condacc_QVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6117,7 +6117,7 @@ pub unsafe fn Q6_Vw_condacc_QVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vand_QR(qu: HvxVectorPred, rt: i32) -> HvxVector {
@@ -6129,7 +6129,7 @@ pub unsafe fn Q6_V_vand_QR(qu: HvxVectorPred, rt: i32) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vandor_VQR(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxVector {
@@ -6141,7 +6141,7 @@ pub unsafe fn Q6_V_vandor_VQR(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxV
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vand_VR(vu: HvxVector, rt: i32) -> HvxVectorPred {
@@ -6153,7 +6153,7 @@ pub unsafe fn Q6_Q_vand_VR(vu: HvxVector, rt: i32) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vandor_QVR(qx: HvxVectorPred, vu: HvxVector, rt: i32) -> HvxVectorPred {
@@ -6169,7 +6169,7 @@ pub unsafe fn Q6_Q_vandor_QVR(qx: HvxVectorPred, vu: HvxVector, rt: i32) -> HvxV
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eq_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6181,7 +6181,7 @@ pub unsafe fn Q6_Q_vcmp_eq_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqand_QVbVb(
@@ -6204,7 +6204,7 @@ pub unsafe fn Q6_Q_vcmp_eqand_QVbVb(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqor_QVbVb(
@@ -6227,7 +6227,7 @@ pub unsafe fn Q6_Q_vcmp_eqor_QVbVb(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqxacc_QVbVb(
@@ -6250,7 +6250,7 @@ pub unsafe fn Q6_Q_vcmp_eqxacc_QVbVb(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eq_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6262,7 +6262,7 @@ pub unsafe fn Q6_Q_vcmp_eq_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqand_QVhVh(
@@ -6285,7 +6285,7 @@ pub unsafe fn Q6_Q_vcmp_eqand_QVhVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqor_QVhVh(
@@ -6308,7 +6308,7 @@ pub unsafe fn Q6_Q_vcmp_eqor_QVhVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqxacc_QVhVh(
@@ -6331,7 +6331,7 @@ pub unsafe fn Q6_Q_vcmp_eqxacc_QVhVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eq_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6343,7 +6343,7 @@ pub unsafe fn Q6_Q_vcmp_eq_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqand_QVwVw(
@@ -6366,7 +6366,7 @@ pub unsafe fn Q6_Q_vcmp_eqand_QVwVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqor_QVwVw(
@@ -6389,7 +6389,7 @@ pub unsafe fn Q6_Q_vcmp_eqor_QVwVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_eqxacc_QVwVw(
@@ -6412,7 +6412,7 @@ pub unsafe fn Q6_Q_vcmp_eqxacc_QVwVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6424,7 +6424,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VbVb(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVbVb(
@@ -6447,7 +6447,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVbVb(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVbVb(
@@ -6470,7 +6470,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVbVb(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVbVb(
@@ -6493,7 +6493,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVbVb(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6505,7 +6505,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VhVh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVhVh(
@@ -6528,7 +6528,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVhVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVhVh(
@@ -6551,7 +6551,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVhVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVhVh(
@@ -6574,7 +6574,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVhVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6586,7 +6586,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VubVub(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVubVub(
@@ -6609,7 +6609,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVubVub(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVubVub(
@@ -6632,7 +6632,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVubVub(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVubVub(
@@ -6655,7 +6655,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVubVub(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6667,7 +6667,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VuhVuh(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVuhVuh(
@@ -6690,7 +6690,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVuhVuh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVuhVuh(
@@ -6713,7 +6713,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVuhVuh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVuhVuh(
@@ -6736,7 +6736,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVuhVuh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6748,7 +6748,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VuwVuw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVuwVuw(
@@ -6771,7 +6771,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVuwVuw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVuwVuw(
@@ -6794,7 +6794,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVuwVuw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVuwVuw(
@@ -6817,7 +6817,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVuwVuw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -6829,7 +6829,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VwVw(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVwVw(
@@ -6852,7 +6852,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVwVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVwVw(
@@ -6875,7 +6875,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVwVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVwVw(
@@ -6898,7 +6898,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVwVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vmux_QVV(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> HvxVector {
@@ -6914,7 +6914,7 @@ pub unsafe fn Q6_V_vmux_QVV(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> 
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vb_condnac_QnVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6930,7 +6930,7 @@ pub unsafe fn Q6_Vb_condnac_QnVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vb_condnac_QVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6946,7 +6946,7 @@ pub unsafe fn Q6_Vb_condnac_QVbVb(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vh_condnac_QnVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6962,7 +6962,7 @@ pub unsafe fn Q6_Vh_condnac_QnVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vh_condnac_QVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6978,7 +6978,7 @@ pub unsafe fn Q6_Vh_condnac_QVhVh(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vw_condnac_QnVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -6994,7 +6994,7 @@ pub unsafe fn Q6_Vw_condnac_QnVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVect
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vw_condnac_QVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVector) -> HvxVector {
@@ -7010,7 +7010,7 @@ pub unsafe fn Q6_Vw_condnac_QVwVw(qv: HvxVectorPred, vx: HvxVector, vu: HvxVecto
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv60"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_W_vswap_QVV(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) -> HvxVectorPair {
@@ -7026,7 +7026,7 @@ pub unsafe fn Q6_W_vswap_QVV(qt: HvxVectorPred, vu: HvxVector, vv: HvxVector) ->
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VP
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vsetq2_R(rt: i32) -> HvxVectorPred {
@@ -7038,7 +7038,7 @@ pub unsafe fn Q6_Q_vsetq2_R(rt: i32) -> HvxVectorPred {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Qb_vshuffe_QhQh(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -7056,7 +7056,7 @@ pub unsafe fn Q6_Qb_vshuffe_QhQh(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVec
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA_DV
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Qh_vshuffe_QwQw(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVectorPred {
@@ -7074,7 +7074,7 @@ pub unsafe fn Q6_Qh_vshuffe_QwQw(qs: HvxVectorPred, qt: HvxVectorPred) -> HvxVec
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vand_QnR(qu: HvxVectorPred, rt: i32) -> HvxVector {
@@ -7089,7 +7089,7 @@ pub unsafe fn Q6_V_vand_QnR(qu: HvxVectorPred, rt: i32) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VX_LATE
 /// Execution Slots: SLOT23
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vandor_VQnR(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> HvxVector {
@@ -7105,7 +7105,7 @@ pub unsafe fn Q6_V_vandor_VQnR(vx: HvxVector, qu: HvxVectorPred, rt: i32) -> Hvx
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vand_QnV(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
@@ -7120,7 +7120,7 @@ pub unsafe fn Q6_V_vand_QnV(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv62"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_V_vand_QV(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
@@ -7135,7 +7135,7 @@ pub unsafe fn Q6_V_vand_QV(qv: HvxVectorPred, vu: HvxVector) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_GATHER
 /// Execution Slots: SLOT01
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vgather_AQRMVh(
@@ -7159,7 +7159,7 @@ pub unsafe fn Q6_vgather_AQRMVh(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_GATHER_DV
 /// Execution Slots: SLOT01
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vgather_AQRMWw(
@@ -7183,7 +7183,7 @@ pub unsafe fn Q6_vgather_AQRMWw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_GATHER
 /// Execution Slots: SLOT01
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vgather_AQRMVw(
@@ -7207,7 +7207,7 @@ pub unsafe fn Q6_vgather_AQRMVw(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vb_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
@@ -7222,7 +7222,7 @@ pub unsafe fn Q6_Vb_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vh_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
@@ -7237,7 +7237,7 @@ pub unsafe fn Q6_Vh_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VS
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vw_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
@@ -7252,7 +7252,7 @@ pub unsafe fn Q6_Vw_prefixsum_Q(qv: HvxVectorPred) -> HvxVector {
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_SCATTER
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vscatter_QRMVhV(
@@ -7276,7 +7276,7 @@ pub unsafe fn Q6_vscatter_QRMVhV(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_SCATTER_DV
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vscatter_QRMWwV(
@@ -7300,7 +7300,7 @@ pub unsafe fn Q6_vscatter_QRMWwV(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_SCATTER
 /// Execution Slots: SLOT0
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv65"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_vscatter_QRMVwV(
@@ -7324,7 +7324,7 @@ pub unsafe fn Q6_vscatter_QRMVwV(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv66"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Vw_vadd_VwVwQ_carry_sat(
@@ -7344,7 +7344,7 @@ pub unsafe fn Q6_Vw_vadd_VwVwQ_carry_sat(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -7356,7 +7356,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VhfVhf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVhfVhf(
@@ -7379,7 +7379,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVhfVhf(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVhfVhf(
@@ -7402,7 +7402,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVhfVhf(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVhfVhf(
@@ -7425,7 +7425,7 @@ pub unsafe fn Q6_Q_vcmp_gtxacc_QVhfVhf(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gt_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred {
@@ -7437,7 +7437,7 @@ pub unsafe fn Q6_Q_vcmp_gt_VsfVsf(vu: HvxVector, vv: HvxVector) -> HvxVectorPred
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtand_QVsfVsf(
@@ -7460,7 +7460,7 @@ pub unsafe fn Q6_Q_vcmp_gtand_QVsfVsf(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtor_QVsfVsf(
@@ -7483,7 +7483,7 @@ pub unsafe fn Q6_Q_vcmp_gtor_QVsfVsf(
 /// This is a compound operation composed of multiple HVX instructions.
 /// Instruction Type: CVI_VA
 /// Execution Slots: SLOT0123
-#[inline(always)]
+#[inline]
 #[cfg_attr(target_arch = "hexagon", target_feature(enable = "hvxv68"))]
 #[unstable(feature = "stdarch_hexagon", issue = "151523")]
 pub unsafe fn Q6_Q_vcmp_gtxacc_QVsfVsf(

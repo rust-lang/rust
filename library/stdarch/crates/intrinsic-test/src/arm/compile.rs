@@ -15,7 +15,7 @@ pub fn build_cpp_compilation(config: &ProcessedCli) -> Option<CppCompilation> {
         .add_extra_flags(["-ffp-contract=off", "-Wno-narrowing"]);
 
     if !config.target.contains("v7") {
-        command = command.add_arch_flags(["faminmax", "lut", "sha3"]);
+        command = command.add_arch_flags(["faminmax", "lut", "sha3", "fp8"]);
     }
 
     if !cpp_compiler.contains("clang") {

@@ -104,9 +104,9 @@ jobs:
 
         # macOS targets
         - tuple: x86_64-apple-darwin
-          os: macos-15-large
+          os: macos-15-intel
         - tuple: x86_64-apple-ios-macabi
-          os: macos-15-large
+          os: macos-15-intel
         - tuple: aarch64-apple-darwin
           os: macos-15
         - tuple: aarch64-apple-ios-macabi
@@ -348,6 +348,7 @@ jobs:
     - name: Run miri tests
       env:
         TARGET: "aarch64-unknown-linux-gnu"
+        RUSTFLAGS: "-Ctarget-cpu=neoverse-v3"
       run: |
         # read filters and join them with a space.
         FILTERS=$(cat aarch64-miri-tests.txt | tr '\n' ' ')

@@ -141,13 +141,6 @@ fn generate_single_test(
         }
     }
 
-    if fn_name.starts_with("svldff1") && fn_name.contains("gather") {
-        // TODO: We can remove this check when first-faulting gathers are fixed in CI's QEMU
-        // https://gitlab.com/qemu-project/qemu/-/issues/1612
-        println!("Skipping test for {fn_name}");
-        return Ok(quote!());
-    }
-
     let fn_ident = format_ident!("{fn_name}");
     let test_name = format_ident!(
         "test_{fn_name}{}",

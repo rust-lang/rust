@@ -1,4 +1,3 @@
-use crate::arch::asm;
 use crate::core_arch::x86::*;
 
 #[cfg(test)]
@@ -161,16 +160,7 @@ pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
 #[cfg_attr(test, assert_instr(vcvtneps2bf16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
-    unsafe {
-        let mut dst: __m128bh;
-        asm!(
-            "{{vex}}vcvtneps2bf16 {dst},{src}",
-            dst = lateout(xmm_reg) dst,
-            src = in(xmm_reg) a,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        dst
-    }
+    unsafe { vcvtneps2bf16_128(a) }
 }
 
 /// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
@@ -182,16 +172,7 @@ pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
 #[cfg_attr(test, assert_instr(vcvtneps2bf16))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
-    unsafe {
-        let mut dst: __m128bh;
-        asm!(
-            "{{vex}}vcvtneps2bf16 {dst},{src}",
-            dst = lateout(xmm_reg) dst,
-            src = in(ymm_reg) a,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        dst
-    }
+    unsafe { vcvtneps2bf16_256(a) }
 }
 
 #[allow(improper_ctypes)]
@@ -222,6 +203,11 @@ unsafe extern "C" {
     fn cvtneoph2ps_128(a: *const __m128h) -> __m128;
     #[link_name = "llvm.x86.vcvtneoph2ps256"]
     fn cvtneoph2ps_256(a: *const __m256h) -> __m256;
+
+    #[link_name = "llvm.x86.vcvtneps2bf16128"]
+    fn vcvtneps2bf16_128(a: __m128) -> __m128bh;
+    #[link_name = "llvm.x86.vcvtneps2bf16256"]
+    fn vcvtneps2bf16_256(a: __m256) -> __m128bh;
 }
 
 #[cfg(test)]

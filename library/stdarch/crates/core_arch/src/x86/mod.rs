@@ -778,3 +778,7 @@ pub use self::kl::*;
 mod movrs;
 #[unstable(feature = "movrs_target_feature", issue = "137976")]
 pub use self::movrs::*;
+
+mod avx512vp2intersect;
+#[unstable(feature = "stdarch_x86_avx512vp2intersect", issue = "111137")]
+pub use self::avx512vp2intersect::*;

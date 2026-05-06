@@ -2,7 +2,6 @@
 //!
 //! [AVX512BF16 intrinsics]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769&avx512techs=AVX512_BF16
 
-use crate::arch::asm;
 use crate::core_arch::{simd::*, x86::*};
 use crate::intrinsics::simd::*;
 
@@ -17,6 +16,8 @@ unsafe extern "C" {
     fn cvtne2ps2bf16_256(a: f32x8, b: f32x8) -> i16x16;
     #[link_name = "llvm.x86.avx512bf16.cvtne2ps2bf16.512"]
     fn cvtne2ps2bf16_512(a: f32x16, b: f32x16) -> i16x32;
+    #[link_name = "llvm.x86.avx512bf16.mask.cvtneps2bf16.128"]
+    fn cvtneps2bf16_128(a: f32x4, src: i16x8, k: __mmask8) -> i16x8;
     #[link_name = "llvm.x86.avx512bf16.cvtneps2bf16.256"]
     fn cvtneps2bf16_256(a: f32x8) -> i16x8;
     #[link_name = "llvm.x86.avx512bf16.cvtneps2bf16.512"]
@@ -519,16 +520,7 @@ pub fn _mm_cvtsbh_ss(a: bf16) -> f32 {
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_cvtneps_pbh(a: __m128) -> __m128bh {
-    unsafe {
-        let mut dst: __m128bh;
-        asm!(
-            "vcvtneps2bf16 {dst}, {src}",
-            dst = lateout(xmm_reg) dst,
-            src = in(xmm_reg) a,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        dst
-    }
+    _mm_mask_cvtneps_pbh(__m128bh::splat(0), !0, a)
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in a to packed BF16 (16-bit)
@@ -541,17 +533,7 @@ pub fn _mm_cvtneps_pbh(a: __m128) -> __m128bh {
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m128) -> __m128bh {
-    unsafe {
-        let mut dst = src;
-        asm!(
-            "vcvtneps2bf16 {dst}{{{k}}},{src}",
-            dst = inlateout(xmm_reg) dst,
-            src = in(xmm_reg) a,
-            k = in(kreg) k,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        dst
-    }
+    unsafe { cvtneps2bf16_128(a.as_f32x4(), src.as_i16x8(), k).as_m128bh() }
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in a to packed BF16 (16-bit)
@@ -564,17 +546,7 @@ pub fn _mm_mask_cvtneps_pbh(src: __m128bh, k: __mmask8, a: __m128) -> __m128bh {
 #[cfg_attr(test, assert_instr("vcvtneps2bf16"))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_maskz_cvtneps_pbh(k: __mmask8, a: __m128) -> __m128bh {
-    unsafe {
-        let mut dst: __m128bh;
-        asm!(
-            "vcvtneps2bf16 {dst}{{{k}}}{{z}},{src}",
-            dst = lateout(xmm_reg) dst,
-            src = in(xmm_reg) a,
-            k = in(kreg) k,
-            options(pure, nomem, nostack, preserves_flags)
-        );
-        dst
-    }
+    _mm_mask_cvtneps_pbh(__m128bh::splat(0), k, a)
 }
 
 /// Converts a single-precision (32-bit) floating-point element in a to a BF16 (16-bit) floating-point

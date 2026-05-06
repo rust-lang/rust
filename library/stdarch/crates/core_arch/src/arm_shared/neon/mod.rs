@@ -5793,14 +5793,47 @@ mod tests {
     #[cfg(not(target_arch = "arm64ec"))]
     mod fp16 {
         use super::*;
-        #[cfg_attr(target_arch = "arm", simd_test(enable = "neon,fp16"))]
-        #[cfg_attr(not(target_arch = "arm"), simd_test(enable = "neon"))]
+        #[simd_test(enable = "neon,fp16")]
         fn test_vcombine_f16() {
             let a = f16x4::from_array([3_f16, 4., 5., 6.]);
             let b = f16x4::from_array([13_f16, 14., 15., 16.]);
             let e = f16x8::from_array([3_f16, 4., 5., 6., 13_f16, 14., 15., 16.]);
             let c = f16x8::from(vcombine_f16(a.into(), b.into()));
             assert_eq!(c, e);
+        }
+
+        #[simd_test(enable = "neon,fp16")]
+        fn test_vld1_lane_f16() {
+            let a = f16x4::new(0., 1., 2., 3.);
+            let elem: f16 = 42.;
+            let e = f16x4::new(0., 1., 2., 42.);
+            let r = unsafe { f16x4::from(vld1_lane_f16::<3>(&elem, a.into())) };
+            assert_eq!(r, e)
+        }
+
+        #[simd_test(enable = "neon,fp16")]
+        fn test_vld1q_lane_f16() {
+            let a = f16x8::new(0., 1., 2., 3., 4., 5., 6., 7.);
+            let elem: f16 = 42.;
+            let e = f16x8::new(0., 1., 2., 3., 4., 5., 6., 42.);
+            let r = unsafe { f16x8::from(vld1q_lane_f16::<7>(&elem, a.into())) };
+            assert_eq!(r, e)
+        }
+
+        #[simd_test(enable = "neon,fp16")]
+        fn test_vld1_dup_f16() {
+            let elem: f16 = 42.;
+            let e = f16x4::new(42., 42., 42., 42.);
+            let r = unsafe { f16x4::from(vld1_dup_f16(&elem)) };
+            assert_eq!(r, e)
+        }
+
+        #[simd_test(enable = "neon,fp16")]
+        fn test_vld1q_dup_f16() {
+            let elem: f16 = 42.;
+            let e = f16x8::new(42., 42., 42., 42., 42., 42., 42., 42.);
+            let r = unsafe { f16x8::from(vld1q_dup_f16(&elem)) };
+            assert_eq!(r, e)
         }
     }
 
@@ -5814,6 +5847,98 @@ mod tests {
     test_vcombine!(test_vcombine_p64 => vcombine_p64([3_u64], [13_u64]));
     #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
     test_vcombine!(test_vcombine_f64 => vcombine_f64([-3_f64], [13_f64]));
+
+    macro_rules! lane_wide_store_load_roundtrip {
+        ($elem_ty:ty, $len:expr, $idx:expr, $vec_ty:ty, $store:ident, $load:ident) => {
+            let vals: [$elem_ty; $len] = crate::array::from_fn(|i| i as $elem_ty);
+            let a: $vec_ty = transmute(vals);
+            let mut tmp = [0 as $elem_ty; 4];
+            $store::<$idx>(tmp.as_mut_ptr().cast(), a);
+            let r: $vec_ty = $load::<$idx>(tmp.as_ptr().cast(), a);
+            let out: [$elem_ty; $len] = transmute(r);
+            assert_eq!(out, vals);
+        };
+    }
+
+    // Most of these are implemented with builtins, which miri can't handle
+    macro_rules! lane_wide_store_load_roundtrip_neon {
+        ($( $name:ident $args:tt);* $(;)?) => {
+            $(
+                #[cfg_attr(miri, ignore)]
+                #[simd_test(enable = "neon")]
+                unsafe fn $name() {
+                    lane_wide_store_load_roundtrip! $args;
+                }
+            )*
+        };
+    }
+
+    macro_rules! lane_wide_store_load_roundtrip_fp16 {
+        ($( $name:ident $args:tt);* $(;)?) => {
+            $(
+                #[cfg_attr(miri, ignore)]
+                #[simd_test(enable = "neon,fp16")]
+                #[cfg(not(target_arch = "arm64ec"))]
+                unsafe fn $name() {
+                    lane_wide_store_load_roundtrip! $args;
+                }
+            )*
+        };
+    }
+
+    lane_wide_store_load_roundtrip_neon! {
+        test_vld2_lane_s8(i8, 16, 7, int8x8x2_t, vst2_lane_s8, vld2_lane_s8);
+        test_vld3_lane_s8(i8, 24, 7, int8x8x3_t, vst3_lane_s8, vld3_lane_s8);
+        test_vld4_lane_s8(i8, 32, 7, int8x8x4_t, vst4_lane_s8, vld4_lane_s8);
+
+        test_vld2_lane_u8(u8, 16, 7, uint8x8x2_t, vst2_lane_u8, vld2_lane_u8);
+        test_vld3_lane_u8(u8, 24, 7, uint8x8x3_t, vst3_lane_u8, vld3_lane_u8);
+        test_vld4_lane_u8(u8, 32, 7, uint8x8x4_t, vst4_lane_u8, vld4_lane_u8);
+
+        test_vld2_lane_s16(i16, 8, 3, int16x4x2_t, vst2_lane_s16, vld2_lane_s16);
+        test_vld3_lane_s16(i16, 12, 3, int16x4x3_t, vst3_lane_s16, vld3_lane_s16);
+        test_vld4_lane_s16(i16, 16, 3, int16x4x4_t, vst4_lane_s16, vld4_lane_s16);
+        test_vld2q_lane_s16(i16, 16, 7, int16x8x2_t, vst2q_lane_s16, vld2q_lane_s16);
+        test_vld3q_lane_s16(i16, 24, 7, int16x8x3_t, vst3q_lane_s16, vld3q_lane_s16);
+        test_vld4q_lane_s16(i16, 32, 7, int16x8x4_t, vst4q_lane_s16, vld4q_lane_s16);
+
+        test_vld2_lane_u16(u16, 8, 3, uint16x4x2_t, vst2_lane_u16, vld2_lane_u16);
+        test_vld3_lane_u16(u16, 12, 3, uint16x4x3_t, vst3_lane_u16, vld3_lane_u16);
+        test_vld4_lane_u16(u16, 16, 3, uint16x4x4_t, vst4_lane_u16, vld4_lane_u16);
+        test_vld2q_lane_u16(u16, 16, 7, uint16x8x2_t, vst2q_lane_u16, vld2q_lane_u16);
+        test_vld3q_lane_u16(u16, 24, 7, uint16x8x3_t, vst3q_lane_u16, vld3q_lane_u16);
+        test_vld4q_lane_u16(u16, 32, 7, uint16x8x4_t, vst4q_lane_u16, vld4q_lane_u16);
+
+        test_vld2_lane_s32(i32, 4, 1, int32x2x2_t, vst2_lane_s32, vld2_lane_s32);
+        test_vld3_lane_s32(i32, 6, 1, int32x2x3_t, vst3_lane_s32, vld3_lane_s32);
+        test_vld4_lane_s32(i32, 8, 1, int32x2x4_t, vst4_lane_s32, vld4_lane_s32);
+        test_vld2q_lane_s32(i32, 8, 3, int32x4x2_t, vst2q_lane_s32, vld2q_lane_s32);
+        test_vld3q_lane_s32(i32, 12, 3, int32x4x3_t, vst3q_lane_s32, vld3q_lane_s32);
+        test_vld4q_lane_s32(i32, 16, 3, int32x4x4_t, vst4q_lane_s32, vld4q_lane_s32);
+
+        test_vld2_lane_u32(u32, 4, 1, uint32x2x2_t, vst2_lane_u32, vld2_lane_u32);
+        test_vld3_lane_u32(u32, 6, 1, uint32x2x3_t, vst3_lane_u32, vld3_lane_u32);
+        test_vld4_lane_u32(u32, 8, 1, uint32x2x4_t, vst4_lane_u32, vld4_lane_u32);
+        test_vld2q_lane_u32(u32, 8, 3, uint32x4x2_t, vst2q_lane_u32, vld2q_lane_u32);
+        test_vld3q_lane_u32(u32, 12, 3, uint32x4x3_t, vst3q_lane_u32, vld3q_lane_u32);
+        test_vld4q_lane_u32(u32, 16, 3, uint32x4x4_t, vst4q_lane_u32, vld4q_lane_u32);
+
+        test_vld2_lane_f32(f32, 4, 1, float32x2x2_t, vst2_lane_f32, vld2_lane_f32);
+        test_vld3_lane_f32(f32, 6, 1, float32x2x3_t, vst3_lane_f32, vld3_lane_f32);
+        test_vld4_lane_f32(f32, 8, 1, float32x2x4_t, vst4_lane_f32, vld4_lane_f32);
+        test_vld2q_lane_f32(f32, 8, 3, float32x4x2_t, vst2q_lane_f32, vld2q_lane_f32);
+        test_vld3q_lane_f32(f32, 12, 3, float32x4x3_t, vst3q_lane_f32, vld3q_lane_f32);
+        test_vld4q_lane_f32(f32, 16, 3, float32x4x4_t, vst4q_lane_f32, vld4q_lane_f32);
+    }
+
+    lane_wide_store_load_roundtrip_fp16! {
+        test_vld2_lane_f16(f16, 8, 3, float16x4x2_t, vst2_lane_f16, vld2_lane_f16);
+        test_vld3_lane_f16(f16, 12, 3, float16x4x3_t, vst3_lane_f16, vld3_lane_f16);
+        test_vld4_lane_f16(f16, 16, 3, float16x4x4_t, vst4_lane_f16, vld4_lane_f16);
+        test_vld2q_lane_f16(f16, 16, 7, float16x8x2_t, vst2q_lane_f16, vld2q_lane_f16);
+        test_vld3q_lane_f16(f16, 24, 7, float16x8x3_t, vst3q_lane_f16, vld3q_lane_f16);
+        test_vld4q_lane_f16(f16, 32, 7, float16x8x4_t, vst4q_lane_f16, vld4q_lane_f16);
+    }
 }
 
 #[cfg(all(test, target_arch = "arm"))]
