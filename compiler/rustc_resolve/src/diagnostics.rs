@@ -1742,7 +1742,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some((def_id, unused_ident)) = unused_macro {
             let scope = self.local_macro_def_scopes[&def_id];
             let parent_nearest = parent_scope.module.nearest_parent_mod();
-            let unused_macro_kinds = self.local_macro_map[def_id].ext.macro_kinds();
+            let unused_macro_kinds = self.local_macro_map[def_id].macro_kinds();
             if !unused_macro_kinds.contains(macro_kind.into()) {
                 match macro_kind {
                     MacroKind::Bang => {
@@ -1860,13 +1860,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut all_attrs: UnordMap<Symbol, Vec<_>> = UnordMap::default();
         // We're collecting these in a hashmap, and handle ordering the output further down.
         #[allow(rustc::potential_query_instability)]
-        for (def_id, data) in self
+        for (def_id, ext) in self
             .local_macro_map
             .iter()
-            .map(|(local_id, data)| (local_id.to_def_id(), data))
+            .map(|(local_id, ext)| (local_id.to_def_id(), ext))
             .chain(self.extern_macro_map.borrow().iter().map(|(id, d)| (*id, d)))
         {
-            for helper_attr in &data.ext.helper_attrs {
+            for helper_attr in &ext.helper_attrs {
                 let item_name = self.tcx.item_name(def_id);
                 all_attrs.entry(*helper_attr).or_default().push(item_name);
                 if helper_attr == &ident.name {

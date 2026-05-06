@@ -1,4 +1,5 @@
 use std::mem;
+use std::sync::Arc;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
@@ -117,7 +118,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_item(&mut self, i: &'a Item) {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
-        let mut opt_macro_data = None;
+        let mut opt_syn_ext = None;
         let def_kind = match &i.kind {
             ItemKind::Impl(i) => DefKind::Impl { of_trait: i.of_trait.is_some() },
             ItemKind::ForeignMod(..) => DefKind::ForeignMod,
@@ -165,9 +166,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     },
                 );
 
-                let macro_data = self.r.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
-                let macro_kinds = macro_data.ext.macro_kinds();
-                opt_macro_data = Some(macro_data);
+                let ext = self.r.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
+                let macro_kinds = ext.macro_kinds();
+                opt_syn_ext = Some(ext);
                 DefKind::Macro(macro_kinds)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
@@ -185,8 +186,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         };
         let feed = self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
 
-        if let Some(macro_data) = opt_macro_data {
-            self.r.new_local_macro(feed.def_id(), macro_data);
+        if let Some(ext) = opt_syn_ext {
+            self.r.new_local_macro(feed.def_id(), Arc::new(ext));
         }
 
         self.with_parent(feed.def_id(), |this| {
