@@ -1,0 +1,10 @@
+warning: unstable feature specified for `-Ctarget-feature`: `v`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
+warning: unstable feature specified for `-Ctarget-feature`: `f`
+   |
+   = note: this feature is allowed in cfg but unstable otherwise; its behavior can change in the future
+
+warning: 2 warnings emitted
+

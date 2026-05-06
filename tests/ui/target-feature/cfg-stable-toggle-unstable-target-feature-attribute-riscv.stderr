@@ -1,0 +1,23 @@
+error[E0658]: the target feature `v` is currently unstable
+  --> $DIR/cfg-stable-toggle-unstable-target-feature-attribute-riscv.rs:13:18
+   |
+LL | #[target_feature(enable = "v")]
+   |                  ^^^^^^^^^^^^
+   |
+   = note: see issue #150257 <https://github.com/rust-lang/rust/issues/150257> for more information
+   = help: add `#![feature(riscv_target_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the target feature `f` is allowed in cfg but unstable otherwise
+  --> $DIR/cfg-stable-toggle-unstable-target-feature-attribute-riscv.rs:15:18
+   |
+LL | #[target_feature(enable = "f")]
+   |                  ^^^^^^^^^^^^
+   |
+   = note: see issue #150257 <https://github.com/rust-lang/rust/issues/150257> for more information
+   = help: add `#![feature(riscv_target_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
