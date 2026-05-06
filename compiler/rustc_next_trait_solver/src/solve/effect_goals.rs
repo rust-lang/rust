@@ -64,7 +64,7 @@ where
     ) -> QueryResult<I> {
         let host_clause = assumption.as_host_effect_clause().unwrap();
 
-        let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
+        let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause).skip_norm_wip();
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
 
         then(ecx)
@@ -293,7 +293,7 @@ where
         let self_ty = goal.predicate.self_ty();
         let (inputs_and_output, def_id, args) =
             structural_traits::extract_fn_def_from_const_callable(cx, self_ty)?;
-        let (inputs, output) = ecx.instantiate_binder_with_infer(inputs_and_output);
+        let (inputs, output) = ecx.instantiate_binder_with_infer(inputs_and_output).skip_norm_wip();
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)

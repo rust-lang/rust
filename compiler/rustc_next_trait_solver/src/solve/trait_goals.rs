@@ -192,7 +192,7 @@ where
             return Self::match_assumption(ecx, goal, meta_sized_clause, then);
         }
 
-        let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
+        let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause).skip_norm_wip();
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
 
         then(ecx)
@@ -376,7 +376,8 @@ where
         else {
             return ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS);
         };
-        let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
+        let (inputs, output) =
+            ecx.instantiate_binder_with_infer(tupled_inputs_and_output).skip_norm_wip();
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -417,7 +418,9 @@ where
             tupled_inputs_ty,
             output_coroutine_ty,
             coroutine_return_ty: _,
-        } = ecx.instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine);
+        } = ecx
+            .instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine)
+            .skip_norm_wip();
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -1066,8 +1069,9 @@ where
                         .probe(|_| ProbeKind::ProjectionCompatibility)
                         .enter(|ecx| -> Result<_, NoSolution> {
                             ecx.enter_forall(target_projection, |ecx, target_projection| {
-                                let source_projection =
-                                    ecx.instantiate_binder_with_infer(source_projection);
+                                let source_projection = ecx
+                                    .instantiate_binder_with_infer(source_projection)
+                                    .skip_norm_wip();
                                 ecx.eq(param_env, source_projection, target_projection)?;
                                 ecx.try_evaluate_added_goals()
                             })
@@ -1085,7 +1089,7 @@ where
                         let target_principal = bound.rebind(target_principal);
                         ecx.enter_forall(target_principal, |ecx, target_principal| {
                             let source_principal =
-                                ecx.instantiate_binder_with_infer(source_principal);
+                                ecx.instantiate_binder_with_infer(source_principal).skip_norm_wip();
                             ecx.eq(param_env, source_principal, target_principal)?;
                             ecx.try_evaluate_added_goals()
                         })?;
@@ -1110,8 +1114,9 @@ where
                             );
                         }
                         ecx.enter_forall(target_projection, |ecx, target_projection| {
-                            let source_projection =
-                                ecx.instantiate_binder_with_infer(source_projection);
+                            let source_projection = ecx
+                                .instantiate_binder_with_infer(source_projection)
+                                .skip_norm_wip();
                             ecx.eq(param_env, source_projection, target_projection)?;
                             ecx.try_evaluate_added_goals()
                         })?;

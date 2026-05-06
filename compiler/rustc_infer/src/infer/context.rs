@@ -163,13 +163,12 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn instantiate_binder_with_infer<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
-    ) -> T {
+    ) -> ty::Unnormalized<'tcx, T> {
         self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
             BoundRegionConversionTime::HigherRankedType,
             value,
         )
-        .skip_norm_wip()
     }
 
     fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(

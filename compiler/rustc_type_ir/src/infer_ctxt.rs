@@ -271,7 +271,7 @@ pub trait InferCtxtLike: Sized {
     fn instantiate_binder_with_infer<T: TypeFoldable<Self::Interner> + Copy>(
         &self,
         value: ty::Binder<Self::Interner, T>,
-    ) -> T;
+    ) -> ty::Unnormalized<Self::Interner, T>;
 
     fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
         &self,

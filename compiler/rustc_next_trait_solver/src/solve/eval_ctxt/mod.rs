@@ -1074,7 +1074,7 @@ where
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
         &self,
         value: ty::Binder<I, T>,
-    ) -> T {
+    ) -> ty::Unnormalized<I, T> {
         self.delegate.instantiate_binder_with_infer(value)
     }
 

@@ -168,7 +168,8 @@ where
     ) -> QueryResult<I> {
         let cx = ecx.cx();
         let projection_pred = assumption.as_projection_clause().unwrap();
-        let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
+        let assumption_projection_pred =
+            ecx.instantiate_binder_with_infer(projection_pred).skip_norm_wip();
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
 
         ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
@@ -461,7 +462,8 @@ where
         else {
             return ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS);
         };
-        let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
+        let (inputs, output) =
+            ecx.instantiate_binder_with_infer(tupled_inputs_and_output).skip_norm_wip();
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -510,7 +512,9 @@ where
             tupled_inputs_ty,
             output_coroutine_ty,
             coroutine_return_ty,
-        } = ecx.instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine);
+        } = ecx
+            .instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine)
+            .skip_norm_wip();
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
