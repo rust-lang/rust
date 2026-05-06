@@ -82,6 +82,7 @@ pub(crate) fn compare_eii_function_types<'tcx>(
             )
             .skip_norm_wip(),
     );
+    let unnormalized_external_impl_sig = unnormalized_external_impl_sig.skip_norm_wip();
     let external_impl_sig = ocx.normalize(
         &norm_cause,
         param_env,

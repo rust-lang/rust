@@ -392,6 +392,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
             poly_trait_ref,
         );
+        let trait_ref = trait_ref.skip_norm_wip();
 
         let item_args = self.lowerer().lower_generic_args_of_assoc_item(
             span,

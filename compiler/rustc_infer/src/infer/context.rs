@@ -169,6 +169,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             value,
         )
+        .skip_norm_wip()
     }
 
     fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(

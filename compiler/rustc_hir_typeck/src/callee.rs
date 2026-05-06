@@ -12,7 +12,7 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
@@ -232,6 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     BoundRegionConversionTime::FnCall,
                     closure_sig,
                 );
+                let closure_sig = closure_sig.skip_norm_wip();
                 let adjustments = self.adjust_steps(autoderef);
                 self.record_deferred_call_resolution(
                     def_id,
@@ -259,6 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     BoundRegionConversionTime::FnCall,
                     closure_args.coroutine_closure_sig(),
                 );
+                let coroutine_closure_sig = coroutine_closure_sig.skip_norm_wip();
                 let tupled_upvars_ty = self.next_ty_var(callee_expr.span);
                 // We may actually receive a coroutine back whose kind is different
                 // from the closure that this dispatched from. This is because when
@@ -584,7 +586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BoundRegionConversionTime::FnCall,
             fn_sig,
         );
-        let fn_sig = self.normalize(call_expr.span, Unnormalized::new_wip(fn_sig));
+        let fn_sig = self.normalize(call_expr.span, fn_sig);
 
         self.check_argument_types(
             call_expr.span,

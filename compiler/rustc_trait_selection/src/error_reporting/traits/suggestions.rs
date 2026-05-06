@@ -1019,6 +1019,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             BoundRegionConversionTime::FnCall,
             trait_pred.self_ty(),
         );
+        let self_ty = self_ty.skip_norm_wip();
 
         let Some((def_id_or_name, output, inputs)) =
             self.extract_callable_info(obligation.cause.body_id, obligation.param_env, self_ty)
@@ -1563,6 +1564,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             BoundRegionConversionTime::FnCall,
             output,
         );
+        let output = output.skip_norm_wip();
         let inputs = inputs
             .skip_binder()
             .iter()
@@ -1572,6 +1574,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     BoundRegionConversionTime::FnCall,
                     inputs.rebind(*ty),
                 )
+                .skip_norm_wip()
             })
             .collect();
 
@@ -4860,6 +4863,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             BoundRegionConversionTime::FnCall,
                             failed_pred,
                         );
+                        let failed_pred = failed_pred.skip_norm_wip();
 
                         let zipped =
                             iter::zip(where_pred.trait_ref.args, failed_pred.trait_ref.args);

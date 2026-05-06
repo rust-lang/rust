@@ -2292,6 +2292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 BoundRegionConversionTime::FnCall,
                 fn_sig,
             );
+            let fn_sig = fn_sig.skip_norm_wip();
             if similar_candidate.is_method() {
                 if let Some(args) = args
                     && fn_sig.inputs()[1..].len() == args.len()
@@ -2379,6 +2380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             BoundRegionConversionTime::FnCall,
                             fn_sig,
                         );
+                        let fn_sig = fn_sig.skip_norm_wip();
                         let name = inherent_method.name();
                         let inputs = fn_sig.inputs();
                         let expected_inputs =

@@ -301,12 +301,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 ty::Covariant => {
                     infcx.enter_forall(b, |b| {
                         let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
+                        let a = a.skip_norm_wip();
                         self.relate(a, b)
                     })?;
                 }
                 ty::Contravariant => {
                     infcx.enter_forall(a, |a| {
                         let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
+                        let b = b.skip_norm_wip();
                         self.relate(a, b)
                     })?;
                 }
@@ -324,12 +326,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 ty::Invariant => {
                     infcx.enter_forall(b, |b| {
                         let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
+                        let a = a.skip_norm_wip();
                         self.relate(a, b)
                     })?;
 
                     // Check if `exists<..> B == for<..> A`.
                     infcx.enter_forall(a, |a| {
                         let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
+                        let b = b.skip_norm_wip();
                         self.relate(a, b)
                     })?;
                 }

@@ -652,6 +652,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         infer::BoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
+                    let input = input.skip_norm_wip();
                     self.require_type_is_sized_deferred(
                         input,
                         span,
@@ -669,6 +670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer::BoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
+            let output = output.skip_norm_wip();
             self.require_type_is_sized_deferred(
                 output,
                 call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
@@ -1571,11 +1573,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let binder_ty = self.structurally_resolve_type(inner_expr.span, binder_ty);
                 let hint_ty = match *binder_ty.kind() {
-                    ty::UnsafeBinder(binder) => self.instantiate_binder_with_fresh_vars(
-                        inner_expr.span,
-                        infer::BoundRegionConversionTime::HigherRankedType,
-                        binder.into(),
-                    ),
+                    ty::UnsafeBinder(binder) => self
+                        .instantiate_binder_with_fresh_vars(
+                            inner_expr.span,
+                            infer::BoundRegionConversionTime::HigherRankedType,
+                            binder.into(),
+                        )
+                        .skip_norm_wip(),
                     ty::Error(e) => Ty::new_error(self.tcx, e),
                     _ => {
                         let guar = self
@@ -1608,11 +1612,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if it's not an unsafe binder.
                 let binder_ty = self.structurally_resolve_type(inner_expr.span, binder_ty);
                 match *binder_ty.kind() {
-                    ty::UnsafeBinder(binder) => self.instantiate_binder_with_fresh_vars(
-                        inner_expr.span,
-                        infer::BoundRegionConversionTime::HigherRankedType,
-                        binder.into(),
-                    ),
+                    ty::UnsafeBinder(binder) => self
+                        .instantiate_binder_with_fresh_vars(
+                            inner_expr.span,
+                            infer::BoundRegionConversionTime::HigherRankedType,
+                            binder.into(),
+                        )
+                        .skip_norm_wip(),
                     ty::Error(e) => Ty::new_error(self.tcx, e),
                     _ => {
                         let guar = self

@@ -1080,6 +1080,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     BoundRegionConversionTime::FnCall,
                     fty,
                 );
+                let fty = fty.skip_norm_wip();
                 self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
@@ -1906,6 +1907,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     BoundRegionConversionTime::FnCall,
                     trait_ref,
                 );
+                let trait_ref = trait_ref.skip_norm_wip();
                 let (xform_self_ty, _) =
                     self.xform_self_ty(candidate.item, trait_ref.self_ty(), trait_ref.args);
                 // Guide the trait selection to show impls that have methods whose type matches
@@ -2040,6 +2042,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
+                    let trait_ref = trait_ref.skip_norm_wip();
                     let trait_ref =
                         ocx.normalize(cause, self.param_env, Unnormalized::new_wip(trait_ref));
                     (xform_self_ty, xform_ret_ty) =
@@ -2105,6 +2108,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
+                    let trait_ref = trait_ref.skip_norm_wip();
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
 

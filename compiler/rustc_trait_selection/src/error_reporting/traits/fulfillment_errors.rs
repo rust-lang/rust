@@ -1435,6 +1435,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::BoundRegionConversionTime::HigherRankedType,
             assumption,
         );
+        let trait_assumption = trait_assumption.skip_norm_wip();
 
         self.can_eq(param_env, goal.trait_ref, trait_assumption.trait_ref)
     }
@@ -1450,6 +1451,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::BoundRegionConversionTime::HigherRankedType,
             assumption,
         );
+        let assumption = assumption.skip_norm_wip();
 
         assumption.constness.satisfies(goal.constness)
             && self.can_eq(param_env, goal.trait_ref, assumption.trait_ref)
@@ -1475,6 +1477,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::BoundRegionConversionTime::HigherRankedType,
             assumption,
         );
+        let assumption = assumption.skip_norm_wip();
 
         self.can_eq(param_env, goal.projection_term, assumption.projection_term)
             && self.can_eq(param_env, goal.term, assumption.term)
@@ -1550,6 +1553,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         infer::BoundRegionConversionTime::HigherRankedType,
                         bound_predicate.rebind(data),
                     );
+                    let data = data.skip_norm_wip();
                     let unnormalized_term = data.projection_term.to_term(self.tcx);
                     // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
                     // to deeply normalize this type.

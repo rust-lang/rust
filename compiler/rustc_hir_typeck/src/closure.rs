@@ -828,6 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 BoundRegionConversionTime::FnCall,
                 supplied_sig,
             );
+            let supplied_sig = supplied_sig.skip_norm_wip();
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.

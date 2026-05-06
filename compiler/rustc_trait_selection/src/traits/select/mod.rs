@@ -1720,6 +1720,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             HigherRankedType,
             trait_bound,
         );
+        let trait_bound = trait_bound.skip_norm_wip();
         let Normalized { value: trait_bound, obligations: _ } = ensure_sufficient_stack(|| {
             normalize_with_depth(
                 self,
@@ -1777,6 +1778,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             env_predicate,
         );
+        let infer_predicate = infer_predicate.skip_norm_wip();
         let infer_projection = if potentially_unnormalized_candidates {
             ensure_sufficient_stack(|| {
                 normalize_with_depth_to(
@@ -2623,6 +2625,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                         HigherRankedType,
                                         hr_source_principal,
                                     );
+                                let source_principal = source_principal.skip_norm_wip();
                                 self.infcx.at(&obligation.cause, obligation.param_env).eq_trace(
                                     DefineOpaqueTypes::Yes,
                                     ToTrace::to_trace(
@@ -2660,6 +2663,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                                     HigherRankedType,
                                                     hr_source_projection,
                                                 );
+                                            let source_projection =
+                                                source_projection.skip_norm_wip();
                                             self.infcx
                                                 .at(&obligation.cause, obligation.param_env)
                                                 .eq_trace(
@@ -2692,6 +2697,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                         HigherRankedType,
                                         hr_source_projection,
                                     );
+                                let source_projection = source_projection.skip_norm_wip();
                                 self.infcx.at(&obligation.cause, obligation.param_env).eq_trace(
                                     DefineOpaqueTypes::Yes,
                                     ToTrace::to_trace(
@@ -2752,6 +2758,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             HigherRankedType,
             poly_trait_ref,
         );
+        let trait_ref = trait_ref.skip_norm_wip();
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)

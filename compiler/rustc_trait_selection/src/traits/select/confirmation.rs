@@ -176,6 +176,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             candidate,
         );
+        let candidate = candidate.skip_norm_wip();
         let mut obligations = PredicateObligations::new();
         let candidate = normalize_with_depth_to(
             self,
@@ -504,6 +505,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             object_trait_ref,
         );
+        let object_trait_ref = object_trait_ref.skip_norm_wip();
         let object_trait_ref = object_trait_ref.with_self_ty(self.tcx(), self_ty);
 
         let mut nested = PredicateObligations::new();
@@ -517,6 +519,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             unnormalized_upcast_trait_ref,
         );
+        let upcast_trait_ref = upcast_trait_ref.skip_norm_wip();
         let upcast_trait_ref = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -967,6 +970,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             found_trait_ref,
         );
+        let found_trait_ref = found_trait_ref.skip_norm_wip();
         // Normalize the obligation and expected trait refs together, because why not
         let Normalized { obligations: nested, value: (obligation_trait_ref, found_trait_ref) } =
             ensure_sufficient_stack(|| {

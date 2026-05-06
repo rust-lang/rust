@@ -89,11 +89,14 @@ fn match_candidate<'tcx>(
         return Err(NoSolution);
     }
 
-    let mut candidate = selcx.infcx.instantiate_binder_with_fresh_vars(
-        obligation.cause.span,
-        BoundRegionConversionTime::HigherRankedType,
-        candidate,
-    );
+    let mut candidate = selcx
+        .infcx
+        .instantiate_binder_with_fresh_vars(
+            obligation.cause.span,
+            BoundRegionConversionTime::HigherRankedType,
+            candidate,
+        )
+        .skip_norm_wip();
 
     let mut nested = thin_vec![];
 

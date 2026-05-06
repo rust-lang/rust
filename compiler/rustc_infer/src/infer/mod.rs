@@ -31,7 +31,8 @@ use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
     GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueTypeKey, ProvisionalHiddenType,
     PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, Unnormalized,
+    fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -1310,12 +1311,12 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         lbrct: BoundRegionConversionTime,
         value: ty::Binder<'tcx, T>,
-    ) -> T
+    ) -> Unnormalized<'tcx, T>
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(inner) = value.no_bound_vars() {
-            return inner;
+            return Unnormalized::new(inner);
         }
 
         let bound_vars = value.bound_vars();

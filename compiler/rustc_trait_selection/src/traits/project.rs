@@ -1914,6 +1914,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         BoundRegionConversionTime::HigherRankedType,
         poly_cache_entry,
     );
+    let cache_entry = cache_entry.skip_norm_wip();
 
     let cache_projection = cache_entry.projection_term;
     let mut nested_obligations = PredicateObligations::new();

@@ -1052,6 +1052,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 BoundRegionConversionTime::HigherRankedType,
                                 src_sig,
                             );
+                            let src_sig = src_sig.skip_norm_wip();
                             let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
                             self.prove_predicate(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
@@ -1642,6 +1643,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     BoundRegionConversionTime::HigherRankedType,
                     binder_ty.into(),
                 );
+                let expected_ty = expected_ty.skip_norm_wip();
                 self.sub_types(
                     operand_ty,
                     expected_ty,
@@ -1883,6 +1885,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     BoundRegionConversionTime::HigherRankedType,
                     binder_ty.into(),
                 );
+                let found_ty = found_ty.skip_norm_wip();
                 self.relate_types(
                     ty,
                     context.ambient_variance(),

@@ -331,6 +331,7 @@ fn compare_method_predicate_entailment<'tcx>(
         BoundRegionConversionTime::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
     );
+    let unnormalized_impl_sig = unnormalized_impl_sig.skip_norm_wip();
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
     let impl_sig =
@@ -537,11 +538,11 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &misc_cause,
         param_env,
-        Unnormalized::new_wip(infcx.instantiate_binder_with_fresh_vars(
+        infcx.instantiate_binder_with_fresh_vars(
             return_span,
             BoundRegionConversionTime::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
-        )),
+        ),
     );
     impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();

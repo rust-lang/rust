@@ -325,6 +325,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
                         this.instantiate_binder_with_fresh_vars(upcast_poly_trait_ref);
+                    let upcast_trait_ref = upcast_trait_ref.skip_norm_wip();
                     debug!(
                         "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
                         original_poly_trait_ref, upcast_trait_ref, trait_def_id
@@ -347,7 +348,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::WhereClausePick(poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.instantiate_binder_with_fresh_vars(poly_trait_ref).args
+                self.instantiate_binder_with_fresh_vars(poly_trait_ref).skip_norm_wip().args
             }
         }
     }
@@ -597,6 +598,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         debug!("type scheme instantiated, sig={:?}", sig);
 
         let sig = self.instantiate_binder_with_fresh_vars(sig);
+        let sig = sig.skip_norm_wip();
         debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
 
         (sig, method_predicates)
@@ -788,7 +790,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
     }
 
-    fn instantiate_binder_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
+    fn instantiate_binder_with_fresh_vars<T>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+    ) -> Unnormalized<'tcx, T>
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {

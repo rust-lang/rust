@@ -113,7 +113,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             let param_env_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
-                Unnormalized::new_wip(param_env_predicate.trait_ref),
+                param_env_predicate.map(|pred| pred.trait_ref),
             );
 
             if let Err(_) = ocx.eq(

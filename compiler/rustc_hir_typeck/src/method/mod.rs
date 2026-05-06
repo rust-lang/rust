@@ -427,6 +427,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BoundRegionConversionTime::FnCall,
             fn_sig,
         );
+        let fn_sig = fn_sig.skip_norm_wip();
 
         let InferOk { value: fn_sig, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(Unnormalized::new_wip(fn_sig));

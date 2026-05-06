@@ -132,6 +132,7 @@ pub fn validate_trivial_unsize<'tcx>(
                     BoundRegionConversionTime::HigherRankedType,
                     hr_source_principal,
                 );
+                let source_principal = source_principal.skip_norm_wip();
                 let Ok(()) = ocx.eq(
                     &ObligationCause::dummy(),
                     param_env,
