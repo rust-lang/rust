@@ -261,7 +261,8 @@ provide! { tcx, def_id, other, cdata,
             .coerce_unsized_info
             .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
-            .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
+            .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info")))
+    }
     mir_const_qualif => { table }
     rendered_const => { table }
     rendered_precise_capturing_args => { table }
@@ -300,10 +301,10 @@ provide! { tcx, def_id, other, cdata,
         Ok(cdata
             .root
             .tables
-            .trait_impl_trait_tys
+            .collect_return_position_impl_trait_in_trait_tys
             .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
-            .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
+            .process_decoded(tcx, || panic!("{def_id:?} does not have collect_return_position_impl_trait_in_trait_tys")))
     }
 
     associated_types_for_impl_traits_in_trait_or_impl => { table }
@@ -695,6 +696,7 @@ impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
     fn untracked_as_any(&mut self) -> &mut dyn Any {
         self
     }
