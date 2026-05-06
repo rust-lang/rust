@@ -1391,7 +1391,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         if compiler.is_snapshot(self) {
             self.initial_rustc.clone()
         } else {
-            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
+            self.sysroot(compiler).join("bin").join(exe("teenyc", compiler.host))
         }
     }
 
