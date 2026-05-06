@@ -17,6 +17,7 @@ where
     pub(super) fn normalize_opaque_type(
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
+        def_id: I::OpaqueTyId,
     ) -> QueryResult<I> {
         let cx = self.cx();
         let opaque_ty = goal.predicate.alias;
@@ -27,7 +28,7 @@ where
                 // An impossible opaque type bound is the only way this goal will fail
                 // e.g. assigning `impl Copy := NotCopy`
                 self.add_item_bounds_for_hidden_type(
-                    opaque_ty.def_id(),
+                    def_id,
                     opaque_ty.args,
                     goal.param_env,
                     expected,
@@ -43,10 +44,9 @@ where
                 defining_opaque_types_and_generators: defining_opaque_types,
             }
             | TypingMode::Borrowck { defining_opaque_types } => {
-                let Some(def_id) = opaque_ty
-                    .def_id()
+                let Some(def_id) = def_id
                     .as_local()
-                    .filter(|&def_id| defining_opaque_types.contains(&def_id))
+                    .filter(|&def_id| defining_opaque_types.contains(&def_id.into()))
                 else {
                     // If we're not in the defining scope, treat the alias as rigid.
                     self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
@@ -134,7 +134,7 @@ where
             TypingMode::PostAnalysis => {
                 // FIXME: Add an assertion that opaque type storage is empty.
                 let actual =
-                    cx.type_of(opaque_ty.def_id()).instantiate(cx, opaque_ty.args).skip_norm_wip();
+                    cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args).skip_norm_wip();
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }

@@ -13,7 +13,7 @@ use crate::{self as ty, Interner};
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
 pub struct OpaqueTypeKey<I: Interner> {
-    pub def_id: I::LocalDefId,
+    pub def_id: I::LocalOpaqueTyId,
     pub args: I::GenericArgs,
 }
 
