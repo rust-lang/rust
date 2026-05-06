@@ -10,7 +10,7 @@ use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
 use rustc_type_ir::solve::{MaybeInfo, OpaqueTypesJank};
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
+    self as ty, CanonicalVarValues, InferCtxtLike, Interner, Region, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
@@ -802,7 +802,7 @@ where
         }
     }
 
-    pub(super) fn next_region_var(&mut self) -> I::Region {
+    pub(super) fn next_region_var(&mut self) -> Region<I> {
         let region = self.delegate.next_region_infer();
         self.inspect.add_var_value(region);
         region
@@ -1103,7 +1103,7 @@ where
         self.delegate.shallow_resolve(ty)
     }
 
-    pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {
+    pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
             self.delegate.opportunistic_resolve_lt_var(vid)
         } else {
@@ -1119,14 +1119,14 @@ where
         args
     }
 
-    pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
+    pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: Region<I>) {
         self.delegate.register_ty_outlives(ty, lt, self.origin_span);
     }
 
     pub(super) fn register_region_outlives(
         &self,
-        a: I::Region,
-        b: I::Region,
+        a: Region<I>,
+        b: Region<I>,
         vis: VisibleForLeakCheck,
     ) {
         // `'a: 'b` ==> `'b <= 'a`

@@ -55,7 +55,7 @@ use tracing::{debug, instrument};
 
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
-use crate::{self as ty, BoundVarIndexKind, Interner, TypeFlags};
+use crate::{self as ty, BoundVarIndexKind, Interner, Region, TypeFlags};
 
 /// This trait is implemented for every type that can be folded,
 /// providing the skeleton of the traversal.
@@ -141,7 +141,7 @@ pub trait TypeFolder<I: Interner>: Sized {
 
     // The default region folder is a no-op because `Region` is non-recursive
     // and has no `super_fold_with` method to call.
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         r
     }
 
@@ -183,7 +183,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
 
     // The default region folder is a no-op because `Region` is non-recursive
     // and has no `super_fold_with` method to call.
-    fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error> {
+    fn try_fold_region(&mut self, r: Region<I>) -> Result<Region<I>, Self::Error> {
         Ok(r)
     }
 
@@ -396,7 +396,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
         t
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
                 if debruijn >= self.current_index =>
@@ -439,7 +439,7 @@ impl<I: Interner> TypeFolder<I> for Shifter<I> {
     }
 }
 
-pub fn shift_region<I: Interner>(cx: I, region: I::Region, amount: u32) -> I::Region {
+pub fn shift_region<I: Interner>(cx: I, region: Region<I>, amount: u32) -> Region<I> {
     match region.kind() {
         ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) if amount > 0 => {
             Region::new_bound(cx, debruijn.shifted_in(amount), br)
@@ -466,7 +466,7 @@ where
 pub fn fold_regions<I: Interner, T>(
     cx: I,
     value: T,
-    f: impl FnMut(I::Region, ty::DebruijnIndex) -> I::Region,
+    f: impl FnMut(Region<I>, ty::DebruijnIndex) -> Region<I>,
 ) -> T
 where
     T: TypeFoldable<I>,
@@ -505,7 +505,7 @@ impl<I, F> RegionFolder<I, F> {
 impl<I, F> TypeFolder<I> for RegionFolder<I, F>
 where
     I: Interner,
-    F: FnMut(I::Region, ty::DebruijnIndex) -> I::Region,
+    F: FnMut(Region<I>, ty::DebruijnIndex) -> Region<I>,
 {
     fn cx(&self) -> I {
         self.cx
@@ -519,7 +519,7 @@ where
     }
 
     #[instrument(skip(self), level = "debug", ret)]
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
                 if debruijn < self.current_index =>

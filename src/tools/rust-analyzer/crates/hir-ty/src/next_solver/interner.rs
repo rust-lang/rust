@@ -1069,7 +1069,10 @@ impl<'db> Interner for DbInterner<'db> {
 
     type Region = Region<'db>;
     type EarlyParamRegion = EarlyParamRegion;
+
     type LateParamRegion = LateParamRegion<'db>;
+    type BoundRegion = BoundRegion;
+    type PlaceholderRegion = PlaceholderRegion;
 
     type RegionAssumptions = RegionAssumptions<'db>;
 

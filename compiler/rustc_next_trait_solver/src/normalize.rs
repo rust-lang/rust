@@ -2,7 +2,7 @@ use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, NoSolution};
 use rustc_type_ir::{
-    self as ty, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy, Interner,
+    self as ty, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy, Interner, Region,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, UniverseIndex,
 };
@@ -90,7 +90,7 @@ where
         c.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: I::Region) {
+    fn visit_region(&mut self, r: Region<I>) {
         if let ty::ReVar(vid) = r.kind() {
             self.max_universe = self.max_universe.max(self.infcx.universe_of_lt(vid).unwrap());
         }

@@ -41,10 +41,10 @@ pub trait TyEncoder<'tcx>: SpanEncoder {
     fn encode_alloc_id(&mut self, alloc_id: &AllocId);
 }
 
-pub trait TyDecoder<'tcx>: SpanDecoder {
+pub trait TyDecoder<'tcx>:
+    SpanDecoder + rustc_type_ir::InternerDecoder<Interner = TyCtxt<'tcx>>
+{
     const CLEAR_CROSS_CRATE: bool;
-
-    fn interner(&self) -> TyCtxt<'tcx>;
 
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
@@ -155,12 +155,6 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Predicate<'tcx> {
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Clause<'tcx> {
     fn encode(&self, e: &mut E) {
         self.as_predicate().encode(e);
-    }
-}
-
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Region<'tcx> {
-    fn encode(&self, e: &mut E) {
-        self.kind().encode(e);
     }
 }
 
@@ -294,12 +288,6 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for mir::Place<'tcx> {
             (0..len).map::<mir::PlaceElem<'tcx>, _>(|_| Decodable::decode(decoder)),
         );
         mir::Place { local, projection }
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Region<'tcx> {
-    fn decode(decoder: &mut D) -> Self {
-        ty::Region::new_from_kind(decoder.interner(), Decodable::decode(decoder))
     }
 }
 

@@ -9,7 +9,7 @@ use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::VisibleForLeakCheck;
-use crate::{self as ty, Interner, TyVid};
+use crate::{self as ty, Interner, Region, TyVid};
 
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
@@ -255,14 +255,11 @@ pub trait InferCtxtLike: Sized {
         &self,
         vid: ty::ConstVid,
     ) -> <Self::Interner as Interner>::Const;
-    fn opportunistic_resolve_lt_var(
-        &self,
-        vid: ty::RegionVid,
-    ) -> <Self::Interner as Interner>::Region;
+    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Region<Self::Interner>;
 
     fn is_changed_arg(&self, arg: <Self::Interner as Interner>::GenericArg) -> bool;
 
-    fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
+    fn next_region_infer(&self) -> Region<Self::Interner>;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
     fn fresh_args_for_item(
@@ -324,16 +321,16 @@ pub trait InferCtxtLike: Sized {
 
     fn sub_regions(
         &self,
-        sub: <Self::Interner as Interner>::Region,
-        sup: <Self::Interner as Interner>::Region,
+        sub: Region<Self::Interner>,
+        sup: Region<Self::Interner>,
         vis: VisibleForLeakCheck,
         span: <Self::Interner as Interner>::Span,
     );
 
     fn equate_regions(
         &self,
-        a: <Self::Interner as Interner>::Region,
-        b: <Self::Interner as Interner>::Region,
+        a: Region<Self::Interner>,
+        b: Region<Self::Interner>,
         vis: VisibleForLeakCheck,
         span: <Self::Interner as Interner>::Span,
     );
@@ -341,7 +338,7 @@ pub trait InferCtxtLike: Sized {
     fn register_ty_outlives(
         &self,
         ty: <Self::Interner as Interner>::Ty,
-        r: <Self::Interner as Interner>::Region,
+        r: Region<Self::Interner>,
         span: <Self::Interner as Interner>::Span,
     );
 

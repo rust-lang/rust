@@ -14,7 +14,9 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::CanonicalVarKind;
-use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, BoundVar, GenericArg, GenericArgKind, RegionUtilitiesExt, Ty, TyCtxt, TypeFoldable,
+};
 use tracing::{debug, instrument};
 
 use crate::infer::canonical::instantiate::{CanonicalExt, instantiate_value};

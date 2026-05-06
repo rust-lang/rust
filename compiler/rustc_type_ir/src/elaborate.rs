@@ -6,7 +6,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
-use crate::{self as ty, Interner, Unnormalized, Upcast as _};
+use crate::{self as ty, Interner, Region, Unnormalized, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means
@@ -249,7 +249,7 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
 fn elaborate_component_to_clause<I: Interner>(
     cx: I,
     component: Component<I>,
-    outlives_region: I::Region,
+    outlives_region: Region<I>,
 ) -> Option<ty::ClauseKind<I>> {
     match component {
         Component::Region(r) => {

@@ -7,6 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_middle::ty::RegionUtilitiesExt;
 use rustc_span::{Span, SyntaxContext, kw};
 
 use super::IDENTITY_OP;
