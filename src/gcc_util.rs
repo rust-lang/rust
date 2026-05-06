@@ -1,9 +1,13 @@
-#[cfg(feature = "master")]
+use std::collections::HashSet;
+use std::env;
+
 use gccjit::Context;
+#[cfg(feature = "master")]
+use gccjit::Version;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::Session;
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, RelocModel};
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
@@ -133,5 +137,133 @@ pub fn target_cpu(sess: &Session) -> &str {
     match sess.opts.cg.target_cpu {
         Some(ref name) => handle_native(name),
         None => handle_native(sess.target.cpu.as_ref()),
+    }
+}
+
+pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
+    let context = Context::default();
+    if matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
+        context.add_command_line_option("-masm=intel");
+    }
+    #[cfg(feature = "master")]
+    {
+        context.set_special_chars_allowed_in_func_names("$.*");
+        let version = Version::get();
+        let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
+        context.set_output_ident(&format!(
+            "rustc version {} with libgccjit {}",
+            rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
+            version,
+        ));
+    }
+    // FIXME(antoyo): check if this should only be added when using -Cforce-unwind-tables=n.
+    context.add_command_line_option("-fno-asynchronous-unwind-tables");
+
+    if sess.panic_strategy().unwinds() {
+        context.add_command_line_option("-fexceptions");
+        context.add_driver_option("-fexceptions");
+    }
+
+    let disabled_features: HashSet<_> = sess
+        .opts
+        .cg
+        .target_feature
+        .split(',')
+        .filter(|feature| feature.starts_with('-'))
+        .map(|string| &string[1..])
+        .collect();
+
+    if !disabled_features.contains("avx") && sess.target.arch == Arch::X86_64 {
+        // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
+        // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
+        // FIXME(antoyo): use the proper builtins for llvm.x86.sse2.cmp.pd and similar.
+        context.add_command_line_option("-mavx");
+    }
+
+    for arg in &sess.opts.cg.llvm_args {
+        context.add_command_line_option(arg);
+    }
+    // NOTE: This is needed to compile the file src/intrinsic/archs.rs during a bootstrap of rustc.
+    context.add_command_line_option("-fno-var-tracking-assignments");
+    // NOTE: an optimization (https://github.com/rust-lang/rustc_codegen_gcc/issues/53).
+    context.add_command_line_option("-fno-semantic-interposition");
+    // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
+    context.add_command_line_option("-fno-strict-aliasing");
+    // NOTE: Rust relies on LLVM doing wrapping on overflow.
+    context.add_command_line_option("-fwrapv");
+
+    if let Some(model) = sess.code_model() {
+        use rustc_target::spec::CodeModel;
+
+        context.add_command_line_option(match model {
+            CodeModel::Tiny => "-mcmodel=tiny",
+            CodeModel::Small => "-mcmodel=small",
+            CodeModel::Kernel => "-mcmodel=kernel",
+            CodeModel::Medium => "-mcmodel=medium",
+            CodeModel::Large => "-mcmodel=large",
+        });
+    }
+
+    add_pic_option(&context, sess.relocation_model());
+
+    let target_cpu = target_cpu(sess);
+    if target_cpu != "generic" {
+        context.add_command_line_option(format!("-march={}", target_cpu));
+    }
+
+    if sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections) {
+        context.add_command_line_option("-ffunction-sections");
+        context.add_command_line_option("-fdata-sections");
+    }
+
+    if env::var("CG_GCCJIT_DUMP_RTL").as_deref() == Ok("1") {
+        context.add_command_line_option("-fdump-rtl-vregs");
+    }
+    if env::var("CG_GCCJIT_DUMP_RTL_ALL").as_deref() == Ok("1") {
+        context.add_command_line_option("-fdump-rtl-all");
+    }
+    if env::var("CG_GCCJIT_DUMP_TREE_ALL").as_deref() == Ok("1") {
+        context.add_command_line_option("-fdump-tree-all-eh");
+    }
+    if env::var("CG_GCCJIT_DUMP_IPA_ALL").as_deref() == Ok("1") {
+        context.add_command_line_option("-fdump-ipa-all-eh");
+    }
+    if env::var("CG_GCCJIT_DUMP_CODE").as_deref() == Ok("1") {
+        context.set_dump_code_on_compile(true);
+    }
+    if env::var("CG_GCCJIT_DUMP_GIMPLE").as_deref() == Ok("1") {
+        context.set_dump_initial_gimple(true);
+    }
+    if env::var("CG_GCCJIT_DUMP_EVERYTHING").as_deref() == Ok("1") {
+        context.set_dump_everything(true);
+    }
+    if env::var("CG_GCCJIT_KEEP_INTERMEDIATES").as_deref() == Ok("1") {
+        context.set_keep_intermediates(true);
+    }
+    if env::var("CG_GCCJIT_VERBOSE").as_deref() == Ok("1") {
+        context.add_driver_option("-v");
+    }
+
+    context
+}
+
+pub fn add_pic_option<'gcc>(context: &Context<'gcc>, relocation_model: RelocModel) {
+    match relocation_model {
+        rustc_target::spec::RelocModel::Static => {
+            context.add_command_line_option("-fno-pie");
+            context.add_driver_option("-fno-pie");
+        }
+        rustc_target::spec::RelocModel::Pic => {
+            context.add_command_line_option("-fPIC");
+            // NOTE: we use both add_command_line_option and add_driver_option because the usage in
+            // base (compile_codegen_unit) requires add_command_line_option while the usage
+            // in the back::write module (codegen) requires add_driver_option.
+            context.add_driver_option("-fPIC");
+        }
+        rustc_target::spec::RelocModel::Pie => {
+            context.add_command_line_option("-fPIE");
+            context.add_driver_option("-fPIE");
+        }
+        model => eprintln!("Unsupported relocation model: {:?}", model),
     }
 }

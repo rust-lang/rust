@@ -190,6 +190,14 @@ fn asm() {
     }
     assert_eq!((x, y), (8, 8));
 
+    // Regression test for <https://github.com/rust-lang/rustc_codegen_gcc/issues/792>
+    // typed pointer inputs to explicit registers need a cast.
+    let mut x = 123_i32;
+    unsafe {
+        asm!("", in("rdi") &mut x, options(nostack, preserves_flags));
+    }
+    assert_eq!(x, 123);
+
     // sysv64 is the default calling convention on unix systems. The rdi register is
     // used to pass arguments in the sysv64 calling convention, so this register will be clobbered
     #[cfg(unix)]

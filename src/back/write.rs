@@ -11,8 +11,8 @@ use rustc_log::tracing::debug;
 use rustc_session::config::OutputType;
 use rustc_target::spec::SplitDebuginfo;
 
-use crate::base::add_pic_option;
 use crate::errors::CopyBitcode;
+use crate::gcc_util::add_pic_option;
 use crate::{GccContext, LtoMode};
 
 pub(crate) fn codegen(
@@ -68,9 +68,6 @@ pub(crate) fn codegen(
                 let _timer = prof
                     .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
                 if lto_supported {
-                    // FIXME(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
-                    //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
-
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
                     context.add_command_line_option("-ffat-lto-objects");

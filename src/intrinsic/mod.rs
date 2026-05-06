@@ -168,7 +168,6 @@ fn f16_builtin<'gcc, 'tcx>(
         sym::copysignf16 => "__builtin_copysignf",
         sym::expf16 => "expf",
         sym::exp2f16 => "exp2f",
-        sym::fabs => "fabsf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
         sym::logf16 => "logf",
