@@ -753,6 +753,7 @@ symbols! {
         d32,
         dbg_macro,
         dead_code,
+        dead_code_pub_in_binary,
         dealloc,
         debug,
         debug_assert_eq_macro,
