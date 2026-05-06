@@ -1,7 +1,7 @@
 /// This higher-order macro declares a list of types which can be allocated by `Arena`.
 ///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]` where `T` is the type
-/// listed. These impls will appear in the implement_ty_decoder! macro.
+/// listed. See the `impl_arena_allocatable_decoder!` macro for more.
 #[macro_export]
 macro_rules! arena_types {
     ($macro:path) => (
@@ -9,8 +9,7 @@ macro_rules! arena_types {
             [] layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
             [] proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
             [] fn_abi: rustc_target::callconv::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
-            // AdtDef are interned and compared by address
-            [decode] adt_def: rustc_middle::ty::AdtDefData,
+            [] adt_def: rustc_middle::ty::AdtDefData,
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
             [decode] mir: rustc_middle::mir::Body<'tcx>,
@@ -27,7 +26,7 @@ macro_rules! arena_types {
                     rustc_middle::mir::Body<'tcx>
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-            [decode] borrowck_result: rustc_data_structures::fx::FxIndexMap<
+            [] borrowck_result: rustc_data_structures::fx::FxIndexMap<
                 rustc_hir::def_id::LocalDefId,
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
             >,
@@ -100,7 +99,7 @@ macro_rules! arena_types {
             // (during lowering) and the `rustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
-            [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
+            [] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind_vtable: rustc_middle::dep_graph::DepKindVTable<'tcx>,
@@ -111,7 +110,7 @@ macro_rules! arena_types {
                     rustc_middle::ty::EarlyBinder<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<rustc_middle::ty::TyCtxt<'tcx>>,
-            [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
+            [] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
             [] stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
             [] features: rustc_feature::Features,
