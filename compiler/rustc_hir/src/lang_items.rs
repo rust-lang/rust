@@ -438,12 +438,50 @@ language_item_table! {
     Reborrow,                sym::reborrow,            reborrow,                   Target::Trait,          GenericRequirement::Exact(0);
     CoerceShared,            sym::coerce_shared,       coerce_shared,              Target::Trait,          GenericRequirement::Exact(0);
 
-    // Field representing types.
+    // # Experimental lang-items for field projections <https://github.com/rust-lang/rust/issues/145383>.
+
+    // ## Field representing types.
     FieldRepresentingType,   sym::field_representing_type, field_representing_type,    Target::Struct,         GenericRequirement::Exact(3);
     Field,                   sym::field,                   field,                      Target::Trait,          GenericRequirement::Exact(0);
     FieldBase,               sym::field_base,              field_base,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst,     GenericRequirement::Exact(0);
+
+    // ## Virtual places.
+    Subplace,               sym::subplace,              subplace,               Target::Trait,                                      GenericRequirement::Exact(0);
+    SubplaceSource,         sym::subplace_source,       subplace_source,        Target::AssocTy,                                    GenericRequirement::Exact(0);
+    SubplaceTarget,         sym::subplace_target,       subplace_target,        Target::AssocTy,                                    GenericRequirement::Exact(0);
+    SubplaceOffset,         sym::subplace_offset,       subplace_offset,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(0);
+
+    PlaceProxy,             sym::place_proxy,           place_proxy,            Target::Trait,                                      GenericRequirement::Exact(0);
+    PlaceProxyTarget,       sym::place_proxy_target,    place_proxy_target,     Target::AssocTy,                                    GenericRequirement::Exact(0);
+
+    ReadPlace,              sym::read_place,            read_place,             Target::Trait,                                      GenericRequirement::Exact(1);
+    ReadPlaceSafety,        sym::read_place_safe,     read_place_safe,      Target::AssocConst,                                 GenericRequirement::Exact(1);
+    ReadPlaceRead,          sym::read_place_read,       read_place_read,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+
+    WritePlace,             sym::write_place,           write_place,            Target::Trait,                                      GenericRequirement::Exact(1);
+    WritePlaceSafety,       sym::write_place_safe,    write_place_safe,     Target::AssocConst,                                 GenericRequirement::Exact(1);
+    WritePlaceWrite,        sym::write_place_write,     write_place_write,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+
+    MovePlace,              sym::move_place,            move_place,             Target::Trait,                                      GenericRequirement::Exact(1);
+
+    DropPlace,              sym::drop_place,            drop_place,             Target::Trait,                                      GenericRequirement::Exact(1);
+    DropPlaceDrop,          sym::drop_place_drop,       drop_place_drop,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+
+    DropHusk,               sym::drop_husk,             drop_husk,              Target::Trait,                                      GenericRequirement::Exact(0);
+    DropHuskDropHusk,       sym::drop_husk_drop_husk,   drop_husk_drop_husk,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(0);
+
+    BorrowPlace,            sym::borrow_place,          borrow_place,           Target::Trait,                                      GenericRequirement::Exact(2);
+    BorrowPlaceSafety,      sym::borrow_place_safe,   borrow_place_safe,    Target::AssocConst,                                 GenericRequirement::Exact(2);
+    BorrowPlaceBorrow,      sym::borrow_place_borrow,   borrow_place_borrow,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(2);
+
+    DerefPlace,             sym::deref_place,           deref_place,            Target::Trait,                                      GenericRequirement::Exact(1);
+    DerefPlaceNested,       sym::deref_place_deref,     deref_place_deref,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+
+    WrapPlace,              sym::wrap_place,            wrap_place,             Target::Trait,                                      GenericRequirement::Exact(1);
+    WrapPlaceWrapped,       sym::wrap_place_wrapped,    wrap_place_wrapped,     Target::AssocTy,                                    GenericRequirement::Exact(1);
+    WrapPlaceWrap,          sym::wrap_place_wrap,       wrap_place_wrap,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
 
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);

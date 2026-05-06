@@ -153,6 +153,8 @@ mod reborrow;
 mod try_trait;
 mod unsize;
 
+#[unstable(feature = "field_projections", issue = "145383")]
+pub mod place;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
