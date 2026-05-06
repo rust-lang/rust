@@ -271,7 +271,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // The macro is a proc macro derive
             && let Some(def_id) = module.expansion.expn_data().macro_def_id
         {
-            let ext = &self.get_macro_by_def_id(def_id).ext;
+            let ext = self.get_macro_by_def_id(def_id);
             if ext.builtin_name.is_none()
                 && ext.macro_kinds() == MacroKinds::DERIVE
                 && parent.expansion.outer_expn_is_descendant_of(**ctxt)
