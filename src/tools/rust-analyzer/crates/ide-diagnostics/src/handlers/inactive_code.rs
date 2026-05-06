@@ -6,6 +6,8 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 // Diagnostic: inactive-code
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.
+//
+// It can be disabled selectively with `#[allow(rust_analyzer::inactive_code)]`.
 pub(crate) fn inactive_code(
     ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::InactiveCode,
@@ -26,10 +28,11 @@ pub(crate) fn inactive_code(
         }
     }
     // FIXME: This shouldn't be a diagnostic
-    let res = Diagnostic::new(
-        DiagnosticCode::Ra("inactive-code", Severity::WeakWarning),
+    let res = Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RaLint("inactive_code", Severity::WeakWarning),
         message,
-        ctx.sema.diagnostics_display_range(d.node),
+        d.node,
     )
     .stable()
     .with_unused(true);
@@ -237,7 +240,7 @@ fn foo() {}
         };
         assert_eq!(
             inactive_code.code,
-            DiagnosticCode::Ra("inactive-code", ide_db::Severity::WeakWarning)
+            DiagnosticCode::RaLint("inactive_code", ide_db::Severity::WeakWarning)
         );
         assert_eq!(
             inactive_code.message,
@@ -299,6 +302,25 @@ macro_rules! m {
 m! {
     fn foo() {}
  // ^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: false is disabled
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn allow() {
+        check(
+            r#"
+macro_rules! m {
+    ($e:item) => {
+        #[cfg(false)]
+        #[allow(rust_analyzer::inactive_code)]
+        $e
+    };
+}
+
+m! {
+    fn foo() {}
 }
         "#,
         );

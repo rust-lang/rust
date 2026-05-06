@@ -375,6 +375,8 @@ fn main() {
     fn cfgd_out_call_arguments() {
         check_diagnostics(
             r#"
+#![allow(rust_analyzer::inactive_code)]
+
 struct C(#[cfg(FALSE)] ());
 impl C {
     fn new() -> Self {
@@ -398,6 +400,8 @@ fn main() {
     fn cfgd_out_fn_params() {
         check_diagnostics(
             r#"
+#![allow(rust_analyzer::inactive_code)]
+
 fn foo(#[cfg(NEVER)] x: ()) {}
 
 struct S;

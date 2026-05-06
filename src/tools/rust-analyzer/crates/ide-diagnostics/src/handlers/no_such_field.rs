@@ -153,6 +153,8 @@ mod tests {
     fn dont_work_for_field_with_disabled_cfg() {
         check_diagnostics(
             r#"
+#![allow(rust_analyzer::inactive_code)]
+
 struct Test {
     #[cfg(feature = "hello")]
     test: u32,
@@ -224,6 +226,8 @@ impl S {
         check_diagnostics(
             r#"
 //- /lib.rs crate:foo cfg:feature=foo
+#![allow(rust_analyzer::inactive_code)]
+
 struct MyStruct {
     my_val: usize,
     #[cfg(feature = "foo")]
@@ -249,6 +253,8 @@ impl MyStruct {
         check_diagnostics(
             r#"
 //- /lib.rs crate:foo cfg:feature=foo
+#![allow(rust_analyzer::inactive_code)]
+
 enum Foo {
     #[cfg(not(feature = "foo"))]
     Buz,
@@ -272,6 +278,8 @@ fn test_fn(f: Foo) {
         check_diagnostics(
             r#"
 //- /lib.rs crate:foo cfg:feature=foo
+#![allow(rust_analyzer::inactive_code)]
+
 struct S {
     #[cfg(feature = "foo")]
     foo: u32,
