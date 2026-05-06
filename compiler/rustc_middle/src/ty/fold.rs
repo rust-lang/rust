@@ -4,7 +4,7 @@ use rustc_type_ir::data_structures::DelayedMap;
 
 use crate::ty::{
     self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt,
+    TypeVisitableExt, Unnormalized,
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -265,8 +265,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         delegate: impl BoundVarReplacerDelegate<'tcx>,
-    ) -> T {
-        self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate)
+    ) -> Unnormalized<'tcx, T> {
+        Unnormalized::new(self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate))
     }
 
     /// Replaces any late-bound regions bound in `value` with
