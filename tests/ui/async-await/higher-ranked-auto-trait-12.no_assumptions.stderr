@@ -2,7 +2,9 @@ error: implementation of `Robot` is not general enough
   --> $DIR/higher-ranked-auto-trait-12.rs:31:20
    |
 LL |       let _my_task = this_is_send(async move {
-   |  ____________________^
+   |                      ^            ---------- this async block captures a value whose type is not `Robot`
+   |  ____________________|
+   | |
 LL | |         let _my_iter = IRobot {
 LL | |             id: 32,
 LL | |             robot: source,
