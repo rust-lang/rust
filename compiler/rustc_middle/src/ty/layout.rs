@@ -528,12 +528,6 @@ pub trait HasTyCtxt<'tcx>: HasDataLayout {
 
 pub trait HasTypingEnv<'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx>;
-
-    /// FIXME(#132279): This method should not be used as in the future
-    /// everything should take a `TypingEnv` instead. Remove it as that point.
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.typing_env().param_env
-    }
 }
 
 impl<'tcx> HasDataLayout for TyCtxt<'tcx> {

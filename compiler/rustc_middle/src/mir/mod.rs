@@ -413,13 +413,36 @@ impl<'tcx> Body<'tcx> {
     }
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        match self.phase {
-            // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
-            MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
-                tcx.param_env(self.source.def_id()),
-                ty::TypingMode::non_body_analysis(),
-            ),
-            MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+        if tcx.use_typing_mode_borrowck() {
+            match self.phase {
+                MirPhase::Built if let Some(def_id) = self.source.def_id().as_local() => {
+                    TypingEnv::new(
+                        tcx.param_env(self.source.def_id()),
+                        ty::TypingMode::borrowck(tcx, def_id),
+                    )
+                }
+                MirPhase::Analysis(_) if let Some(def_id) = self.source.def_id().as_local() => {
+                    TypingEnv::new(
+                        tcx.param_env(self.source.def_id()),
+                        ty::TypingMode::post_borrowck_analysis(tcx, def_id),
+                    )
+                }
+                MirPhase::Built | MirPhase::Analysis(_) => {
+                    // This branch happens for drop glue and fn ptr shims.
+                    // FIXME: why do we do any of this analysis on drop glue etc?
+                    // This should ideally all be skipped.
+                    TypingEnv::post_analysis(tcx, self.source.def_id())
+                }
+                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+            }
+        } else {
+            match self.phase {
+                MirPhase::Built | MirPhase::Analysis(_) => TypingEnv::new(
+                    tcx.param_env(self.source.def_id()),
+                    ty::TypingMode::non_body_analysis(),
+                ),
+                MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+            }
         }
     }
 
