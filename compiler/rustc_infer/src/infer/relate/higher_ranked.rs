@@ -66,7 +66,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     #[instrument(level = "debug", skip(self, f))]
-    pub fn enter_forall<T, U>(&self, forall: ty::Binder<'tcx, T>, f: impl FnOnce(T) -> U) -> U
+    pub fn enter_forall<T, U>(
+        &self,
+        forall: ty::Binder<'tcx, T>,
+        f: impl FnOnce(ty::Unnormalized<'tcx, T>) -> U,
+    ) -> U
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -74,7 +78,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // used after exiting `f`. For example region subtyping can result in outlives constraints
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
-        let value = self.enter_forall_and_leak_universe(forall).skip_norm_wip();
+        let value = self.enter_forall_and_leak_universe(forall);
         debug!(?value);
         f(value)
     }

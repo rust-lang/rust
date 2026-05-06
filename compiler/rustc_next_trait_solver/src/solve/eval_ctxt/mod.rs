@@ -1083,7 +1083,7 @@ where
     pub(super) fn enter_forall<T: TypeFoldable<I>, U>(
         &mut self,
         value: ty::Binder<I, T>,
-        f: impl FnOnce(&mut Self, T) -> U,
+        f: impl FnOnce(&mut Self, ty::Unnormalized<I, T>) -> U,
     ) -> U {
         self.delegate.enter_forall(value, |value| f(self, value))
     }

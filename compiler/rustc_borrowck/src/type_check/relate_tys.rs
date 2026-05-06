@@ -167,13 +167,13 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     fn enter_forall<T, U>(
         &mut self,
         binder: ty::Binder<'tcx, T>,
-        f: impl FnOnce(&mut Self, T) -> U,
+        f: impl FnOnce(&mut Self, ty::Unnormalized<'tcx, T>) -> U,
     ) -> U
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         let value = if let Some(inner) = binder.no_bound_vars() {
-            inner
+            ty::Unnormalized::new(inner)
         } else {
             let infcx = self.type_checker.infcx;
             let mut lazy_universe = None;

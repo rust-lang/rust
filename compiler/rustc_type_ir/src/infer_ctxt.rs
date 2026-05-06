@@ -276,7 +276,7 @@ pub trait InferCtxtLike: Sized {
     fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
-        f: impl FnOnce(T) -> U,
+        f: impl FnOnce(ty::Unnormalized<Self::Interner, T>) -> U,
     ) -> U;
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
