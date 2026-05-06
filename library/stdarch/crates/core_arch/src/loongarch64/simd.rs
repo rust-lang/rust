@@ -54,6 +54,13 @@ pub(crate) const unsafe fn simd_abs<T: Copy + const SimdExt>(a: T) -> T {
 
 #[inline(always)]
 #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
+pub(crate) const unsafe fn simd_absd<T: Copy>(a: T, b: T) -> T {
+    let m: T = is::simd_gt(a, b);
+    is::simd_select(m, is::simd_sub(a, b), is::simd_sub(b, a))
+}
+
+#[inline(always)]
+#[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
 pub(crate) const unsafe fn simd_adda<T: Copy + const SimdExt>(a: T, b: T) -> T {
     is::simd_add(ls::simd_abs(a), ls::simd_abs(b))
 }

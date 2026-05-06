@@ -152,6 +152,14 @@ impl_vvv!("lsx", lsx_vadda_b, ls::simd_adda, m128i, i8x16);
 impl_vvv!("lsx", lsx_vadda_h, ls::simd_adda, m128i, i16x8);
 impl_vvv!("lsx", lsx_vadda_w, ls::simd_adda, m128i, i32x4);
 impl_vvv!("lsx", lsx_vadda_d, ls::simd_adda, m128i, i64x2);
+impl_vvv!("lsx", lsx_vabsd_b, ls::simd_absd, m128i, i8x16);
+impl_vvv!("lsx", lsx_vabsd_h, ls::simd_absd, m128i, i16x8);
+impl_vvv!("lsx", lsx_vabsd_w, ls::simd_absd, m128i, i32x4);
+impl_vvv!("lsx", lsx_vabsd_d, ls::simd_absd, m128i, i64x2);
+impl_vvv!("lsx", lsx_vabsd_bu, ls::simd_absd, m128i, u8x16);
+impl_vvv!("lsx", lsx_vabsd_hu, ls::simd_absd, m128i, u16x8);
+impl_vvv!("lsx", lsx_vabsd_wu, ls::simd_absd, m128i, u32x4);
+impl_vvv!("lsx", lsx_vabsd_du, ls::simd_absd, m128i, u64x2);
 
 impl_vuv!("lsx", lsx_vslli_b, is::simd_shl, m128i, i8x16);
 impl_vuv!("lsx", lsx_vslli_h, is::simd_shl, m128i, i16x8);
