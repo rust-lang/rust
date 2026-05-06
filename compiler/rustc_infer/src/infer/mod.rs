@@ -773,7 +773,8 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
+        self.enter_forall(predicate, |pred| {
+            let ty::SubtypePredicate { a_is_expected, a, b } = pred.skip_norm_wip();
             if a_is_expected {
                 Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
             } else {

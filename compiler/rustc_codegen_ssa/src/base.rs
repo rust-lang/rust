@@ -127,6 +127,7 @@ pub fn validate_trivial_unsize<'tcx>(
             let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
             infcx.enter_forall(hr_target_principal, |target_principal| {
+                let target_principal = target_principal.skip_norm_wip();
                 let source_principal = infcx.instantiate_binder_with_fresh_vars(
                     DUMMY_SP,
                     BoundRegionConversionTime::HigherRankedType,

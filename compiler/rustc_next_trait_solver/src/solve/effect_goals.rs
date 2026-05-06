@@ -258,6 +258,7 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.enter_forall(constituent_tys, |ecx, tys| {
+                let tys = tys.skip_norm_wip();
                 ecx.add_goals(
                     GoalSource::ImplWhereBound,
                     tys.into_iter().map(|ty| {

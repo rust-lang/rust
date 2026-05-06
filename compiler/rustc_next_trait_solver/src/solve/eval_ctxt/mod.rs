@@ -587,7 +587,7 @@ where
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        self.enter_forall(kind, |ecx, kind| match kind {
+        self.enter_forall(kind, |ecx, kind| match kind.skip_norm_wip() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                 ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
             }

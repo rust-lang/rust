@@ -1347,7 +1347,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        self.enter_forall(self_ty, |ty: Ty<'_>| {
+        self.enter_forall(self_ty, |ty: Unnormalized<'tcx, Ty<'_>>| {
+            let ty = ty.skip_norm_wip();
             let Some(generics) = self.tcx.hir_get_generics(obligation.cause.body_id) else {
                 return false;
             };
@@ -4858,6 +4859,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && where_pred.def_id() == failed_pred.def_id()
                 {
                     self.enter_forall(where_pred, |where_pred| {
+                        let where_pred = where_pred.skip_norm_wip();
                         let failed_pred = self.instantiate_binder_with_fresh_vars(
                             expr.span,
                             BoundRegionConversionTime::FnCall,
@@ -5602,11 +5604,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
                 self.enter_forall(pred, |pred| {
-                    let pred = ocx.normalize(
-                        &ObligationCause::dummy(),
-                        param_env,
-                        Unnormalized::new_wip(pred),
-                    );
+                    let pred = ocx.normalize(&ObligationCause::dummy(), param_env, pred);
                     ocx.register_obligation(Obligation::new(
                         self.tcx,
                         ObligationCause::dummy(),
@@ -6074,13 +6072,17 @@ fn hint_missing_borrow<'tcx>(
     }
 
     let found_args = match found.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => {
+            infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.skip_norm_wip().inputs().iter())
+        }
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => {
+            infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.skip_norm_wip().inputs().iter())
+        }
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }

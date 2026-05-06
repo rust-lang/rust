@@ -835,6 +835,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if let Ok(Some(ImplSource::UserDefined(impl_data))) =
             self.enter_forall(trait_ref, |trait_ref_for_select| {
+                let trait_ref_for_select = trait_ref_for_select.skip_norm_wip();
                 SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
             })
         {
@@ -959,7 +960,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Verify that the arguments are compatible. If the signature is
         // mismatched, then we have a totally different error to report.
         if self.enter_forall(found_args, |found_args| {
+            let found_args = found_args.skip_norm_wip();
             self.enter_forall(expected_args, |expected_args| {
+                let expected_args = expected_args.skip_norm_wip();
                 !self.can_eq(obligation.param_env, expected_args, found_args)
             })
         }) {
@@ -1403,6 +1406,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         while let Some((next_code, next_pred)) = code.parent_with_predicate() {
             if let Some(pred) = pred {
                 self.enter_forall(pred, |pred| {
+                    let pred = pred.skip_norm_wip();
                     let ty = self.tcx.short_string(pred.self_ty(), diag.long_ty_path());
                     let trait_path = self
                         .tcx
@@ -1505,18 +1509,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if let Some(error) = error.predicate.as_trait_clause() {
             self.enter_forall(error, |error| {
+                let error = error.skip_norm_wip();
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_trait_clause())
                     .any(|implied| self.can_match_trait(param_env, error, implied))
             })
         } else if let Some(error) = Self::as_host_effect_clause(error.predicate) {
             self.enter_forall(error, |error| {
+                let error = error.skip_norm_wip();
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(Self::as_host_effect_clause)
                     .any(|implied| self.can_match_host_effect(param_env, error, implied))
             })
         } else if let Some(error) = error.predicate.as_projection_clause() {
             self.enter_forall(error, |error| {
+                let error = error.skip_norm_wip();
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_projection_clause())
                     .any(|implied| self.can_match_projection(param_env, error, implied))
@@ -2079,6 +2086,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let ocx = ObligationCtxt::new(self);
 
                 self.enter_forall(trait_pred, |obligation_trait_ref| {
+                    let obligation_trait_ref = obligation_trait_ref.skip_norm_wip();
                     let impl_args = self.fresh_args_for_item(DUMMY_SP, single.impl_def_id);
                     let impl_trait_ref = ocx.normalize(
                         &ObligationCause::dummy(),

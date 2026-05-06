@@ -620,6 +620,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
                     self.infcx.enter_forall(bound_predicate.rebind(data), |data| {
+                        let data = data.skip_norm_wip();
                         match effects::evaluate_host_effect_obligation(
                             self,
                             &obligation.with(self.tcx(), data),
@@ -2619,6 +2620,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .enter_forall(hr_target_principal, |target_principal| {
+                                let target_principal = target_principal.skip_norm_wip();
                                 let source_principal =
                                     self.infcx.instantiate_binder_with_fresh_vars(
                                         obligation.cause.span,
@@ -2657,6 +2659,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                                 && self.infcx.probe(|_| {
                                     self.infcx
                                         .enter_forall(hr_target_projection, |target_projection| {
+                                            let target_projection =
+                                                target_projection.skip_norm_wip();
                                             let source_projection =
                                                 self.infcx.instantiate_binder_with_fresh_vars(
                                                     obligation.cause.span,
@@ -2691,6 +2695,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     nested.extend(
                         self.infcx
                             .enter_forall(hr_target_projection, |target_projection| {
+                                let target_projection = target_projection.skip_norm_wip();
                                 let source_projection =
                                     self.infcx.instantiate_binder_with_fresh_vars(
                                         obligation.cause.span,

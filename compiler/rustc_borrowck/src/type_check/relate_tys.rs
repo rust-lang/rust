@@ -502,6 +502,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(b, |this, b| {
+                    let b = b.skip_norm_wip();
                     let a = this.instantiate_binder_with_existentials(a).skip_norm_wip();
                     this.relate(a, b)
                 })?;
@@ -517,6 +518,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(a, |this, a| {
+                    let a = a.skip_norm_wip();
                     let b = this.instantiate_binder_with_existentials(b).skip_norm_wip();
                     this.relate(a, b)
                 })?;
@@ -532,12 +534,14 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(b, |this, b| {
+                    let b = b.skip_norm_wip();
                     let a = this.instantiate_binder_with_existentials(a).skip_norm_wip();
                     this.relate(a, b)
                 })?;
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
                 self.enter_forall(a, |this, a| {
+                    let a = a.skip_norm_wip();
                     let b = this.instantiate_binder_with_existentials(b).skip_norm_wip();
                     this.relate(a, b)
                 })?;

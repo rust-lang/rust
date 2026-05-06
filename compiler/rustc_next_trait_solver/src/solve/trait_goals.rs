@@ -1069,6 +1069,7 @@ where
                         .probe(|_| ProbeKind::ProjectionCompatibility)
                         .enter(|ecx| -> Result<_, NoSolution> {
                             ecx.enter_forall(target_projection, |ecx, target_projection| {
+                                let target_projection = target_projection.skip_norm_wip();
                                 let source_projection = ecx
                                     .instantiate_binder_with_infer(source_projection)
                                     .skip_norm_wip();
@@ -1088,6 +1089,7 @@ where
                         let source_principal = upcast_principal.unwrap();
                         let target_principal = bound.rebind(target_principal);
                         ecx.enter_forall(target_principal, |ecx, target_principal| {
+                            let target_principal = target_principal.skip_norm_wip();
                             let source_principal =
                                 ecx.instantiate_binder_with_infer(source_principal).skip_norm_wip();
                             ecx.eq(param_env, source_principal, target_principal)?;
@@ -1114,6 +1116,7 @@ where
                             );
                         }
                         ecx.enter_forall(target_projection, |ecx, target_projection| {
+                            let target_projection = target_projection.skip_norm_wip();
                             let source_projection = ecx
                                 .instantiate_binder_with_infer(source_projection)
                                 .skip_norm_wip();
@@ -1346,6 +1349,7 @@ where
         self.probe_trait_candidate(source).enter(|ecx| {
             let goals =
                 ecx.enter_forall(constituent_tys(ecx, goal.predicate.self_ty())?, |ecx, tys| {
+                    let tys = tys.skip_norm_wip();
                     tys.into_iter()
                         .map(|ty| {
                             goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))

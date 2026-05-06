@@ -923,6 +923,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {
+                let placeholder_trait_predicate = placeholder_trait_predicate.skip_norm_wip();
                 let self_ty = placeholder_trait_predicate.self_ty();
                 let principal_trait_ref = match self_ty.kind() {
                     ty::Dynamic(data, ..) => {

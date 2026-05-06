@@ -44,7 +44,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             let obligation_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
-                Unnormalized::new_wip(placeholder_obligation.trait_ref),
+                placeholder_obligation.map(|o| o.trait_ref),
             );
 
             let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
@@ -102,7 +102,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             let obligation_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
-                Unnormalized::new_wip(placeholder_obligation.trait_ref),
+                placeholder_obligation.map(|o| o.trait_ref),
             );
 
             let param_env_predicate = infcx.instantiate_binder_with_fresh_vars(
