@@ -544,6 +544,67 @@ pub(super) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.aarch64.crypto.aese" | "llvm.aarch64.crypto.aesd" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.aese" => "aese v0.16b, v1.16b",
+                "llvm.aarch64.crypto.aesd" => "aesd v0.16b, v1.16b",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v0,
+                        )),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                            AArch64InlineAsmReg::v1,
+                        )),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.aarch64.crypto.aesmc" | "llvm.aarch64.crypto.aesimc" => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let a = a.load_scalar(fx);
+
+            let asm = match intrinsic {
+                "llvm.aarch64.crypto.aesmc" => "aesmc v0.16b, v0.16b",
+                "llvm.aarch64.crypto.aesimc" => "aesimc v0.16b, v0.16b",
+                _ => unreachable!(),
+            };
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(asm.into())],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::AArch64(
+                        AArch64InlineAsmReg::v0,
+                    )),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
         _ => {
             fx.tcx.dcx().warn(format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",

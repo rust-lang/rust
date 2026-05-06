@@ -260,6 +260,54 @@ unsafe fn test_vrndnq_f32() {
 }
 
 #[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaeseq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aese
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b = u8x16::from([16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    let e = u8x16::from([
+        0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca, 0xca,
+        0xca,
+    ]);
+    let r: u8x16 = unsafe { transmute(vaeseq_u8(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaesdq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aesd
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b = u8x16::from([16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    let e = u8x16::from([
+        0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c, 0x7c,
+        0x7c,
+    ]);
+    let r: u8x16 = unsafe { transmute(vaesdq_u8(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaesmcq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aesmc
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let e = u8x16::from([2, 7, 0, 5, 6, 3, 4, 1, 10, 15, 8, 13, 14, 11, 12, 9]);
+    let r: u8x16 = unsafe { transmute(vaesmcq_u8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+unsafe fn test_vaesimcq_u8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.aesimc
+    let a = u8x16::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let e = u8x16::from([10, 15, 8, 13, 14, 11, 12, 9, 2, 7, 0, 5, 6, 3, 4, 1]);
+    let r: u8x16 = unsafe { transmute(vaesimcq_u8(transmute(a))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -293,6 +341,11 @@ fn main() {
         test_vrndnq_f32();
 
         test_crc32();
+
+        test_vaeseq_u8();
+        test_vaesdq_u8();
+        test_vaesmcq_u8();
+        test_vaesimcq_u8();
     }
 }
 
