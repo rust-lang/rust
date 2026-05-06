@@ -332,7 +332,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        self.tcx().dcx().create_err(TraitPlaceholderMismatch {
+        let mut err = self.tcx().dcx().create_err(TraitPlaceholderMismatch {
             span,
             satisfy_span,
             where_span,
@@ -340,7 +340,46 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             def_id,
             trait_def_id: self.tcx().def_path_str(trait_def_id),
             actual_impl_expl_notes,
-        })
+        });
+
+        let mut current_code = cause.code();
+        let mut coroutine_def_id = None;
+
+        loop {
+            match current_code {
+                ObligationCauseCode::MatchImpl(inner_cause, _) => {
+                    current_code = inner_cause.code();
+                }
+                ObligationCauseCode::BuiltinDerived(derived) => {
+                    let self_ty = derived.parent_trait_pred.skip_binder().self_ty();
+
+                    if let ty::Coroutine(def_id, _) | ty::CoroutineWitness(def_id, _) =
+                        self_ty.kind()
+                    {
+                        coroutine_def_id = Some(*def_id);
+                        break;
+                    }
+
+                    current_code = &derived.parent_code;
+                }
+                _ => break,
+            }
+        }
+
+        if let Some(def_id) = coroutine_def_id {
+            if self.tcx().trait_is_auto(trait_def_id) {
+                let c_span = self.tcx().def_span(def_id);
+                let descr = self.tcx().def_descr(def_id);
+                let trait_name = self.tcx().def_path_str(trait_def_id);
+
+                err.span_label(
+                    c_span,
+                    format!("this {descr} captures a value whose type is not `{trait_name}`"),
+                );
+            }
+        }
+
+        err
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases
