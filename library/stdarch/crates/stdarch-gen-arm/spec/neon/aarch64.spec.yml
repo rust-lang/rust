@@ -78,13 +78,21 @@ cfg-target-has-atomic-64: &cfg-target-has-atomic-64
 neon-unstable-fp8: &neon-unstable-fp8
   FnCall: [unstable, ['feature = "stdarch_neon_fp8"', 'issue = "none"']]
 
+# all(test, target_endian = "little")
+all-test-little-endian: &all-test-little-endian
+  FnCall: [all, [test, 'target_endian = "little"']]
+
 # #[cfg(target_endian = "little")]
-little-endian: &little-endian
+cfg-little-endian: &cfg-little-endian
   FnCall: [cfg, ['target_endian = "little"']]
 
 # #[cfg(target_endian = "big")]
-big-endian: &big-endian
+cfg-big-endian: &cfg-big-endian
   FnCall: [cfg, ['target_endian = "big"']]
+
+# all(test, not(target_env = "msvc"), target_endian = "big")
+cfg-test-not-msvc-little-endian: &cfg-test-not-msvc-little-endian
+  FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}, 'target_endian = "little"']]
 
 intrinsics:
   - name: "vaddd_{type}"
@@ -206,8 +214,9 @@ intrinsics:
     doc: Signed Absolute difference Long
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
-    attr: [*neon-stable]
-    assert_instr: [sabdl2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sabdl2]]}]]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, int8x8_t, uint8x8_t]
@@ -246,11 +255,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall:
-          - stable
-          - - 'feature = "neon_intrinsics"'
-            - 'since = "1.59.0"'
-    assert_instr: [sabdl2]
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sabdl2]]}]]
     safety: safe
     types:
       - [int16x8_t, int32x4_t, int16x4_t, uint16x4_t]
@@ -289,11 +295,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall:
-          - stable
-          - - 'feature = "neon_intrinsics"'
-            - 'since = "1.59.0"'
-    assert_instr: [sabdl2]
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sabdl2]]}]]
     safety: safe
     types:
       - [int32x4_t, int64x2_t, int32x2_t, uint32x2_t]
@@ -333,7 +336,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmeq]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint64x1_t, uint64x1_t]
@@ -351,7 +354,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmeq]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -365,7 +368,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -407,7 +410,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64", "s64"]
@@ -426,7 +429,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmtst]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int64x1_t, uint64x1_t, 'i64x1', 'i64x1::new(0)']
@@ -444,7 +447,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tst]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64", "s64"]
@@ -463,7 +466,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [suqadd]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_s32", "i32", "u32"]
@@ -481,7 +484,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [suqadd]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["b_s8", "i8", "u8", "s8"]
@@ -501,7 +504,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fabs]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float64x1_t
@@ -515,7 +518,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int64x1_t, uint64x1_t]
@@ -529,7 +532,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmhi]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - uint64x1_t
@@ -543,7 +546,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -557,7 +560,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -599,7 +602,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int64x1_t, uint64x1_t]
@@ -613,7 +616,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int64x1_t, uint64x1_t]
@@ -627,7 +630,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -641,7 +644,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -683,7 +686,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int64x1_t, uint64x1_t]
@@ -697,7 +700,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, uint8x8_t, i8x8, 'i8x8::new(0, 0, 0, 0, 0, 0, 0, 0)']
@@ -718,7 +721,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64"]
@@ -735,7 +738,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmle]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, uint8x8_t, i8x8, 'i8x8::new(0, 0, 0, 0, 0, 0, 0, 0)']
@@ -759,7 +762,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmle]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t, f32x2, 'f32x2::new(0.0, 0.0)']
@@ -779,7 +782,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -818,7 +821,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmlt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, uint8x8_t, i8x8, 'i8x8::new(0, 0, 0, 0, 0, 0, 0, 0)']
@@ -842,7 +845,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmlt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t, f32x2, 'f32x2::new(0.0, 0.0)']
@@ -862,7 +865,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -901,7 +904,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [asr]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64"]
@@ -918,7 +921,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -936,7 +939,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32", i32]
@@ -975,7 +978,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -993,7 +996,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32", i32]
@@ -1033,7 +1036,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -1047,7 +1050,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -1076,7 +1079,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -1090,7 +1093,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -1119,7 +1122,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int64x1_t, float64x1_t]
@@ -1133,7 +1136,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "i32", "f32", s32]
@@ -1147,7 +1150,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint64x1_t, float64x1_t]
@@ -1161,7 +1164,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u32", "f32", "s_f32"]
@@ -1176,7 +1179,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1314,7 +1317,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1340,7 +1343,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1365,7 +1368,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1389,7 +1392,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "i32", "s_s32_f32", "32"]
@@ -1403,7 +1406,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", "s_u32_f32"]
@@ -1488,7 +1491,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, float64x2_t]
@@ -1500,8 +1503,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtl2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [float32x4_t, float64x2_t]
@@ -1521,7 +1524,7 @@ intrinsics:
     arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn2]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtn2]]}]]
       - *neon-stable-fp16
       - *target-not-arm64ec
     safety: safe
@@ -1538,7 +1541,7 @@ intrinsics:
     arguments: ["a: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl2]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtl2]]}]]
       - *neon-stable-fp16
       - *target-not-arm64ec
     safety: safe
@@ -1555,8 +1558,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtn]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [float64x2_t, float32x2_t]
@@ -1568,8 +1571,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtn2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, float64x2_t, float32x4_t]
@@ -1585,8 +1588,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtxn]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [float64x2_t, float32x2_t]
@@ -1603,7 +1606,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f64", "f32"]
@@ -1620,8 +1623,8 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     return_type: "{type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtxn2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fcvtxn2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, float64x2_t, float32x4_t]
@@ -1639,7 +1642,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1662,7 +1665,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1756,7 +1759,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1779,7 +1782,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1801,7 +1804,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtas]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, int32x2_t, _s32_f32]
@@ -1842,7 +1845,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtas]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "i32", 's_s32_f32']
@@ -1935,7 +1938,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtau]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", 's_u32_f32']
@@ -1953,7 +1956,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtns]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, int32x2_t]
@@ -1973,7 +1976,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtns]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "i32", 's_s32_f32']
@@ -2106,7 +2109,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtms]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, int32x2_t]
@@ -2169,7 +2172,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtms]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "i32", 's_s32_f32']
@@ -2187,7 +2190,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtps]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, int32x2_t]
@@ -2207,7 +2210,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtps]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "i32", 's_s32_f32']
@@ -2225,7 +2228,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtnu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t]
@@ -2245,7 +2248,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtnu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", 's_u32_f32']
@@ -2263,7 +2266,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtmu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t]
@@ -2283,7 +2286,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtmu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", s_u32_f32]
@@ -2301,7 +2304,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtpu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t]
@@ -2321,7 +2324,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtpu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", s_u32_f32, 'i32']
@@ -2458,7 +2461,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [dup, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2475,7 +2478,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [dup, 'N = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2492,7 +2495,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2509,7 +2512,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2527,7 +2530,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2546,7 +2549,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2567,7 +2570,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 4']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2627,7 +2630,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 8']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2645,7 +2648,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2666,7 +2669,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ext, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2682,7 +2685,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float64x1_t
@@ -2695,8 +2698,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smlal2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smlal2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -2712,8 +2715,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umlal2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umlal2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -2735,8 +2738,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smlsl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smlsl2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -2758,8 +2761,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umlsl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umlsl2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -2774,8 +2777,9 @@ intrinsics:
     doc: Extract narrow
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
-    attr: [*neon-stable]
-    assert_instr: [xtn2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [xtn2]]}]]
     safety: safe
     types:
       - [int8x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5153,8 +5157,9 @@ intrinsics:
     doc: Signed multiply long
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[3]}"
-    attr: [*neon-stable]
-    assert_instr: [smull2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smull2]]}]]
     safety: safe
     types:
       - [int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int16x8_t]
@@ -5175,8 +5180,9 @@ intrinsics:
     doc: "Unsigned multiply long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[3]}"
-    attr: [*neon-stable]
-    assert_instr: [umull2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umull2]]}]]
     safety: safe
     types:
       - [uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', uint16x8_t]
@@ -5219,8 +5225,8 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [pmull2]]}]]
     safety: safe
-    assert_instr: [pmull2]
     types:
       - [poly8x16_t, poly8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', poly16x8_t]
     compose:
@@ -5241,8 +5247,8 @@ intrinsics:
     attr:
       - *neon-aes
       - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [pmull2]]}]]
     safety: safe
-    assert_instr: [pmull2]
     types:
       - [poly64x2_t, "p128"]
     compose:
@@ -5822,8 +5828,9 @@ intrinsics:
     doc: Signed Subtract Wide
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
-    attr: [*neon-stable]
-    assert_instr: [ssubw2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [ssubw2]]}]]
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5843,8 +5850,9 @@ intrinsics:
     doc: Unsigned Subtract Wide
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
-    attr: [*neon-stable]
-    assert_instr: [usubw2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [usubw2]]}]]
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -5864,8 +5872,9 @@ intrinsics:
     doc: "Signed Subtract Long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
-    attr: [*neon-stable]
-    assert_instr: [ssubl2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [ssubl2]]}]]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t]
@@ -5894,8 +5903,9 @@ intrinsics:
     doc: "Unsigned Subtract Long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
-    attr: [*neon-stable]
-    assert_instr: [usubl2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [usubl2]]}]]
     safety: safe
     types:
       - [uint8x16_t, uint16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', uint8x8_t]
@@ -6869,7 +6879,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fminnmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, "f32"]
@@ -6887,7 +6897,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fminnmv]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x4_t, "f32"]
@@ -6902,8 +6912,9 @@ intrinsics:
     doc: Vector move
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
-    attr: [*neon-stable]
-    assert_instr: [sxtl2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sxtl2]]}]]
     safety: safe
     types:
       - [int8x16_t, int16x8_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -6920,8 +6931,9 @@ intrinsics:
     doc: Vector move
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
-    attr: [*neon-stable]
-    assert_instr: [uxtl2]
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uxtl2]]}]]
     safety: safe
     types:
       - [uint8x16_t, uint16x8_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -7102,7 +7114,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i16", "i32"]
@@ -7117,7 +7129,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i32", "i64"]
@@ -7133,8 +7145,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmull2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int16x8_t, int32x4_t, int16x4_t, '[4, 5, 6, 7]']
@@ -7149,8 +7161,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmull2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int16x8_t, "i16", int32x4_t, int16x4_t, '[4, 5, 6, 7]']
@@ -7167,7 +7179,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7185,7 +7197,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull, N = 4]]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7202,7 +7214,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7217,9 +7229,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmull2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7236,9 +7248,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull2, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmull2, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7254,9 +7266,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull2, N = 4]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmull2, N = 4]]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7274,7 +7286,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull, 'N = 4']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7291,7 +7303,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmull, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7306,8 +7318,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int32x4_t, int16x8_t, int16x8_t, int32x4_t, _high_s16]
@@ -7322,9 +7334,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal2, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal2, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7342,7 +7354,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i32", "i16", "s16"]
@@ -7356,7 +7368,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "i32", "i32", "i64"]
@@ -7371,7 +7383,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -7388,9 +7400,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7404,9 +7416,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7420,8 +7432,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int32x4_t, int16x8_t, int16x8_t, int32x4_t, _high_s16]
@@ -7436,9 +7448,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl2, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl2, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7456,7 +7468,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i32", "i16"]
@@ -7470,7 +7482,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "i32", "i32", "i64"]
@@ -7485,7 +7497,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -7502,9 +7514,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7518,9 +7530,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7535,7 +7547,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmulh]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i16", "i16", "i16", int16x4_t, 'h_s16']
@@ -7552,7 +7564,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmulh, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7570,7 +7582,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmulh, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7586,8 +7598,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqxtn2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqxtn2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -7601,8 +7613,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqxtn2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uqxtn2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8_t, uint16x8_t, uint8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -7617,7 +7629,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqxtn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i16", "i8", 'h_s16', s16]
@@ -7631,7 +7643,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqxtn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u16", "u8", 'h_u16', 'u16']
@@ -7645,7 +7657,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqxtn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "i32"]
@@ -7662,7 +7674,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqxtn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u64", "u32"]
@@ -7679,7 +7691,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqxtun]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i16", "u8", 'h_s16', s16]
@@ -7693,8 +7705,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqxtun2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqxtun2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8_t, int16x8_t, uint8x16_t, s16, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -7709,7 +7721,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrdmulh]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i16", 'h_s16', 's16']
@@ -7724,7 +7736,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrdmulh, LANE = 1]]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -7910,7 +7922,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ['s_s32', "i32"]
@@ -7928,7 +7940,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i8", 'b_s8', int8x8_t, s8]
@@ -7944,7 +7956,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqrshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u32", "i32", 's_u32']
@@ -7962,7 +7974,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqrshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u8", "i8", "b_u8", uint8x8_t, int8x8_t, s8]
@@ -7979,7 +7991,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshrn, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -7996,9 +8008,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshrn2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqrshrn2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8016,7 +8028,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqrshrn, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8033,9 +8045,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqrshrn2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uqrshrn2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8059,7 +8071,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshrun, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8084,9 +8096,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqrshrun2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqrshrun2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8109,7 +8121,7 @@ intrinsics:
     return_type: "{type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - i64
@@ -8126,7 +8138,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [b_s8, "i8", int8x8_t]
@@ -8149,7 +8161,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshl, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8172,7 +8184,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u64", "i64"]
@@ -8189,7 +8201,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [b_u8, "u8", "i8", uint8x8_t, int8x8_t]
@@ -8212,7 +8224,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshl, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8234,7 +8246,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrn, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8258,7 +8270,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrn, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8278,9 +8290,9 @@ intrinsics:
     arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
     return_type: "{neon_type[3]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrn2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqshrn2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8302,7 +8314,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshrn, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8326,7 +8338,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshrn, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8346,9 +8358,9 @@ intrinsics:
     arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
     return_type: "{neon_type[3]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uqshrn2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uqshrn2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8370,7 +8382,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrun, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8391,9 +8403,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshrun2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqshrun2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8414,7 +8426,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [usqadd]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [b_u8, "u8", "i8", s8]
@@ -8434,7 +8446,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [usqadd]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [s_u32, "u32", "i32"]
@@ -8452,7 +8464,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fsqrt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float32x2_t
@@ -8499,7 +8511,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrts]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [_f64, float64x1_t, v1f64]
@@ -8517,7 +8529,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrts]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [s_f32, "f32"]
@@ -8556,7 +8568,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecpe]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [_f64, float64x1_t, v1f64]
@@ -8574,7 +8586,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecpe]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [s_f32, "f32"]
@@ -8613,7 +8625,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecps]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [_f64, float64x1_t, v1f64]
@@ -8631,7 +8643,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecps]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [s_f32, "f32"]
@@ -8670,7 +8682,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecpx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [s_f32, "f32"]
@@ -8802,7 +8814,7 @@ intrinsics:
     return_type: "{type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [srshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - "i64"
@@ -8819,7 +8831,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [urshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u64", "i64"]
@@ -8837,7 +8849,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [srshr, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8853,7 +8865,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [urshr, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8867,9 +8879,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rshrn2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [rshrn2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -8892,9 +8904,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[3]}"
     attr:
-      - *little-endian
+      - *cfg-little-endian
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rsubhn2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, int16x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -8915,9 +8927,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[3]}"
     attr:
-      - *big-endian
+      - *cfg-big-endian
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rsubhn]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, int16x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -8938,9 +8950,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
@@ -8963,9 +8975,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
@@ -8988,9 +9000,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
@@ -9017,9 +9029,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
@@ -9043,9 +9055,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 1', 'LANE2 = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [mov, 'LANE1 = 1', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
@@ -9066,7 +9078,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 1', 'LANE2 = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1', '3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
@@ -9083,7 +9095,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u64", float64x1_t]
@@ -9097,7 +9109,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -9113,7 +9125,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -9128,7 +9140,7 @@ intrinsics:
     return_type: "{type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sshl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - "i64"
@@ -9146,7 +9158,7 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ushl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["u64", "i64"]
@@ -9163,9 +9175,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sshll2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sshll2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -9182,9 +9194,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ushll2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [ushll2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -9201,9 +9213,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [shrn2, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [shrn2, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -9654,7 +9666,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [trn1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn1]]}]]
     safety: safe
     types:
       - [int8x8_t, '[0, 8, 2, 10, 4, 12, 6, 14]']
@@ -9684,7 +9696,7 @@ intrinsics:
       - *neon-fp16
       - *neon-stable-fp16
       - *target-not-arm64ec
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [trn1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn1]]}]]
     safety: safe
     types:
       - [float16x4_t, '[0, 4, 2, 6]']
@@ -9698,7 +9710,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
     types:
       - [int32x2_t, '[0, 2]']
@@ -9717,7 +9729,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [trn2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn2]]}]]
     safety: safe
     types:
       - [int8x8_t, '[1, 9, 3, 11, 5, 13, 7, 15]']
@@ -9746,7 +9758,7 @@ intrinsics:
       - *neon-fp16
       - *neon-stable-fp16
       - *target-not-arm64ec
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [trn2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn2]]}]]
     safety: safe
     types:
       - [float16x4_t, '[1, 5, 3, 7]']
@@ -9760,7 +9772,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
     types:
       - [int32x2_t, '[1, 3]']
@@ -9779,7 +9791,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
     types:
       - [int8x8_t, '[4, 12, 5, 13, 6, 14, 7, 15]']
@@ -9815,7 +9827,7 @@ intrinsics:
       - *neon-fp16
       - *neon-stable-fp16
       - *target-not-arm64ec
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
     types:
       - [float16x4_t, '[2, 6, 3, 7]']
@@ -9829,7 +9841,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
     types:
       - [int8x8_t, '[0, 8, 1, 9, 2, 10, 3, 11]']
@@ -9866,7 +9878,7 @@ intrinsics:
       - *neon-fp16
       - *neon-stable-fp16
       - *target-not-arm64ec
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
     types:
       - [float16x4_t, '[0, 4, 1, 5]']
@@ -9880,7 +9892,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
     types:
       - [int32x2_t, '[0, 2]']
@@ -9899,7 +9911,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uzp1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp1]]}]]
     safety: safe
     types:
       - [int8x8_t, '[0, 2, 4, 6, 8, 10, 12, 14]']
@@ -9928,7 +9940,7 @@ intrinsics:
       - *neon-fp16
       - *neon-stable-fp16
       - *target-not-arm64ec
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uzp1]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp1]]}]]
     safety: safe
     types:
       - [float16x4_t, '[0, 2, 4, 6]']
@@ -9942,7 +9954,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
     types:
       - [int32x2_t, '[1, 3]']
@@ -9961,7 +9973,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uzp2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp2]]}]]
     safety: safe
     types:
       - [int8x8_t, '[1, 3, 5, 7, 9, 11, 13, 15]']
@@ -9994,7 +10006,7 @@ intrinsics:
       - *neon-fp16
       - *neon-stable-fp16
       - *target-not-arm64ec
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uzp2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp2]]}]]
     safety: safe
     types:
       - [float16x4_t, '[1, 3, 5, 7]']
@@ -10011,8 +10023,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uabal2]]}]]
+      - *neon-stable
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uabal2]]}]]
     safety: safe
     types:
       - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -10039,7 +10051,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - *neon-stable
-      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sabal2]]}]]
+      - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [sabal2]]}]]
     safety: safe
     types:
       - [int16x8_t, int8x16_t, int8x16_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t, uint8x8_t]
@@ -10164,7 +10176,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmaxnmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float32x2_t
@@ -10182,7 +10194,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -10205,7 +10217,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -10229,7 +10241,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -10256,7 +10268,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmla, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10350,7 +10362,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10368,9 +10380,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10390,7 +10402,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmla, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10408,9 +10420,9 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[0]}", "c: {neon_type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10429,7 +10441,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10461,7 +10473,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[0]}", "v: {neon_type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-fp16
       - *neon-unstable-f16
@@ -10481,7 +10493,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[0]}", "v: {neon_type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-fp16
       - *neon-unstable-f16
@@ -10502,7 +10514,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float64x1_t
@@ -10516,7 +10528,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmls]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float64x2_t
@@ -10530,7 +10542,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float64x1_t
@@ -10545,7 +10557,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmls, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10565,7 +10577,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10579,9 +10591,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10597,7 +10609,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmls, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10611,9 +10623,9 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[0]}", "c: {neon_type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -10631,7 +10643,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmeq]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t, 'f32x2', 'f32x2::new(0.0, 0.0)']
@@ -10665,7 +10677,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", "s_f32"]
@@ -10704,7 +10716,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64", "s64"]
@@ -10722,7 +10734,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmeq]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, uint8x8_t, i8x8, 'i8x8::new(0, 0, 0, 0, 0, 0, 0, 0)']
@@ -10750,7 +10762,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmeq]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8_t, uint8x8_t, u8x8, 'u8x8::new(0, 0, 0, 0, 0, 0, 0, 0)']
@@ -10774,7 +10786,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmhs]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - uint64x1_t
@@ -10788,7 +10800,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -10830,7 +10842,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -10844,7 +10856,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["d_s64", "i64", "u64", s64]
@@ -10863,7 +10875,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmhi]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - uint64x1_t
@@ -10877,7 +10889,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s64", "i64", "u64"]
@@ -10896,7 +10908,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmtst]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint64x1_t, u64x1, 'u64x1::new(0)']
@@ -10912,7 +10924,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmge]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t, f32x2, 'f32x2::new(0.0, 0.0)']
@@ -10932,7 +10944,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -10972,7 +10984,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64"]
@@ -10987,7 +10999,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64", 's64']
@@ -11006,7 +11018,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, uint8x8_t, i8x8, 'i8x8::new(0, 0, 0, 0, 0, 0, 0, 0)']
@@ -11030,7 +11042,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["i64", "u64"]
@@ -11047,7 +11059,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t, f32x2, 'f32x2::new(0.0, 0.0)']
@@ -11064,7 +11076,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32", "u32"]
@@ -11103,7 +11115,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -11121,7 +11133,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, "f64"]
@@ -11139,7 +11151,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11160,7 +11172,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11179,7 +11191,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11196,7 +11208,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11217,7 +11229,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11277,7 +11289,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11318,7 +11330,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [srshr, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -11333,8 +11345,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smlsl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smlsl2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int32x4_t, int16x8_t, "i16"]
@@ -11347,8 +11359,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umlsl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umlsl2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint32x4_t, uint16x8_t, "u16"]
@@ -11361,9 +11373,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smlsl2, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smlsl2, 'LANE = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11384,9 +11396,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umlsl2, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umlsl2, 'LANE = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11408,7 +11420,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmgt]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, uint64x1_t]
@@ -11422,7 +11434,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["f32", "u32", 's_f32']
@@ -11463,8 +11475,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [uabdl2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
     safety: safe
     types:
       - [uint8x16_t, uint16x8_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -11481,7 +11493,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, "f64"]
@@ -11498,7 +11510,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmls]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x2_t, "f64"]
@@ -11539,7 +11551,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fminnmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ['s_f32', float32x2_t, "f32"]
@@ -11557,7 +11569,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmaxnmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ['s_f32', float32x2_t, "f32"]
@@ -11575,7 +11587,7 @@ intrinsics:
     return_type: "{type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s64", "i64", "u64"]
@@ -11595,7 +11607,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmulh, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11617,7 +11629,7 @@ intrinsics:
     arguments: ["a: {type[0]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
       - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sqabs]]}]]
     safety: safe
     types:
@@ -11634,7 +11646,7 @@ intrinsics:
     arguments: ["a: {type[0]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
       - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [sqabs]]}]]
     safety: safe
     types:
@@ -11652,8 +11664,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smull2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smull2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int16x8_t, "i16", int32x4_t]
@@ -11669,8 +11681,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umull2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umull2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint16x8_t, "u16", uint32x4_t]
@@ -11686,9 +11698,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smull2, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smull2, 'LANE = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11708,9 +11720,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
     return_type: "{neon_type[2]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umull2, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umull2, 'LANE = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -11731,7 +11743,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrte]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float64x1_t
@@ -11749,7 +11761,7 @@ intrinsics:
     return_type: "{type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrte]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["s_f32", "f32"]
@@ -11788,7 +11800,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fminnmp]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - float32x2_t
@@ -11808,7 +11820,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqshlu, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -11831,7 +11843,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtau]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float32x2_t, uint32x2_t]
@@ -11873,7 +11885,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [float64x1_t, int64x1_t]
@@ -11963,8 +11975,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smlal2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smlal2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [int32x4_t, int16x8_t, "i16"]
@@ -11981,8 +11993,8 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umlal2]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umlal2]]}]]
+      - *neon-stable
     safety: safe
     types:
       - [uint32x4_t, uint16x8_t, "u16"]
@@ -11999,9 +12011,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [smlal2, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smlal2, 'LANE = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -12018,9 +12030,9 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [umlal2, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umlal2, 'LANE = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -12039,7 +12051,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [urshr, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -12055,7 +12067,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [cmhs]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - uint64x1_t
@@ -12069,7 +12081,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ld4r]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -12092,7 +12104,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ld4r]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -12109,7 +12121,7 @@ intrinsics:
     attr:
       - FnCall: [target_feature, ['enable = "neon,aes"']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ld4r]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -12125,7 +12137,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, int8x8x4_t]
@@ -12147,7 +12159,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12173,7 +12185,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, 'int8x8_t', 'unsafe {{ transmute(b) }}']
@@ -12194,7 +12206,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8x2_t, 'int8x8_t']
@@ -12215,7 +12227,7 @@ intrinsics:
     return_type: "{neon_type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12240,7 +12252,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8x3_t, 'int8x8_t', 'int8x16x2']
@@ -12265,7 +12277,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8x3_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
@@ -12292,7 +12304,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8x4_t, 'int8x8_t', 'int8x16x2']
@@ -12317,7 +12329,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8x4_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
@@ -12344,7 +12356,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, int8x16_t, uint8x8_t, vqtbx1]
@@ -12358,7 +12370,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8_t, "uint8x16_t", uint8x8_t, "vqtbx1", "_u8"]
@@ -12381,7 +12393,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, "int8x8_t", "transmute(c)", "i8x8::splat(8)", "int8x8"]
@@ -12411,7 +12423,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, 'int8x8x2_t']
@@ -12430,7 +12442,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12453,7 +12465,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, 'int8x8x3_t', 'int8x16x2', 'i8x8::splat(24)', 'int8x8']
@@ -12488,7 +12500,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [uint8x8_t, 'uint8x8x3_t', 'uint8x16x2', 'u8x8::splat(24)', 'uint8x8']
@@ -12525,7 +12537,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ['int8x16_t', uint8x8_t, 'vqtbl1', 'int8x8_t']
@@ -12539,7 +12551,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ['uint8x16_t', uint8x8_t, 'vqtbl1', 'uint8x8_t']
@@ -12561,7 +12573,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ['int8x16x2_t', uint8x8_t, 'vqtbl2', 'int8x8_t']
@@ -12575,7 +12587,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12598,7 +12610,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, 'int8x16x2_t', uint8x8_t, 'vqtbx2']
@@ -12612,7 +12624,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12636,7 +12648,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12651,7 +12663,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12675,7 +12687,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, 'int8x16x3_t', uint8x8_t, 'vqtbx3']
@@ -12689,7 +12701,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12714,7 +12726,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12729,7 +12741,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12754,7 +12766,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [int8x8_t, 'int8x16x4_t', uint8x8_t, 'vqtbx4']
@@ -12768,7 +12780,7 @@ intrinsics:
     return_type: "{neon_type[0]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12795,7 +12807,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["vqtbl1", "int8x16_t", "uint8x8_t", "int8x8_t"]
@@ -12814,7 +12826,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - ["vqtbl2", "int8x16_t", "uint8x8_t", "int8x8_t"]
@@ -12833,7 +12845,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12853,7 +12865,7 @@ intrinsics:
     return_type: "{neon_type[3]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     big_endian_inverse: false
     safety: safe
     types:
@@ -12873,7 +12885,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [vqtbx1, "int8x8_t", "int8x16_t", "uint8x8_t"]
@@ -12892,7 +12904,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [vqtbx2, "int8x8_t", "int8x16_t", "uint8x8_t"]
@@ -12911,7 +12923,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [vqtbx3, "int8x8_t", "int8x16_t", "uint8x8_t"]
@@ -12930,7 +12942,7 @@ intrinsics:
     return_type: "{neon_type[1]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety: safe
     types:
       - [vqtbx4, "int8x8_t", "int8x16_t", "uint8x8_t"]
@@ -12949,7 +12961,7 @@ intrinsics:
     attr:
       - FnCall: [target_feature, ['enable = "{type[2]}"']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ldr]]}]]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:
@@ -13016,7 +13028,7 @@ intrinsics:
       - FnCall: [target_feature, ['enable = "{type[2]}"']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [str]]}]]
       - FnCall: [allow, ['clippy::cast_ptr_alignment']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+      - *neon-stable
     safety:
       unsafe: [neon]
     types:

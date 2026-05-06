@@ -104,6 +104,10 @@ aarch64-crc-stable: &aarch64-crc-stable
 neon-unstable-f16: &neon-unstable-f16
   FnCall: [unstable, ['feature = "stdarch_neon_f16"', 'issue = "136306"']]
 
+# all(target_endian = "little")
+all-neon-target-aarch64-arm64ec-little-endian: &all-neon-target-aarch64-arm64ec-little-endian
+  FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}, 'target_endian = "little"']]
+
 intrinsics:
   - name: "vand{neon_type.no}"
     doc: Vector bitwise and
@@ -6139,7 +6143,7 @@ intrinsics:
       - *neon-i8mm
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vusdot]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [usdot]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [usdot]]}]]
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     safety: safe
@@ -6168,7 +6172,6 @@ intrinsics:
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     safety: safe
     types:
       - ['_lane_s32', int32x2_t, uint8x8_t, '[LANE as u32, LANE as u32]','']
@@ -6178,12 +6181,12 @@ intrinsics:
       - Let:
           - c
           - int32x2_t
-          - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret_s32_s8', [c]]
+          - FnCall: ['vreinterpret_s32_s8', [c]]
       - Let:
           - c
           - "{type[1]}"
           - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
-      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: [transmute, [c]]}]] #'vreinterpret{type[4]}_s8_s32'
+      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]]
 
   - name: "vsudot{neon_type[0].lane_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -6193,12 +6196,11 @@ intrinsics:
       - *neon-i8mm
       - *neon-v8
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsudot, 'LANE = 0']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sudot, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sudot, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     safety: safe
     types:
       - [int32x2_t, int8x8_t, uint8x8_t, '[LANE as u32, LANE as u32]', uint32x2_t,'']
@@ -6208,7 +6210,7 @@ intrinsics:
       - Let:
           - c
           - uint32x2_t
-          - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret_u32_u8', [c]]
+          - FnCall: ['vreinterpret_u32_u8', [c]]
       - Let:
           - c
           - "{type[4]}"
@@ -6216,7 +6218,7 @@ intrinsics:
       - FnCall: 
           - "vusdot{neon_type[0].no}"
           - - a
-            - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret{type[5]}_u8_u32', [c]]
+            - FnCall: ['vreinterpret{type[5]}_u8_u32', [c]]
             - b
 
   - name: "vmul{neon_type[1].no}"
@@ -6798,7 +6800,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ["vsubhn"]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [subhn2]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [subhn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -6968,7 +6970,6 @@ intrinsics:
     doc: "Dot product index form with unsigned and signed integers"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     attr:
       - *neon-v8
       - *neon-i8mm
@@ -6985,8 +6986,7 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
       - Let: [c, int32x4_t, {FnCall: [transmute, [c]]}]
       - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]}]
-      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: [transmute, [c]]}]]
-      #- FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]] 
+      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]] 
 
   - name: "vsudot{neon_type[0].laneq_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -6996,7 +6996,7 @@ intrinsics:
       - *neon-v8
       - *neon-i8mm
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vsudot, 'LANE = 1']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sudot, 'LANE = 3']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sudot, 'LANE = 3']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']]
     static_defs: ["const LANE: i32"]
@@ -7025,7 +7025,6 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     static_defs: ["const LANE: i32"]
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     attr:
       - *neon-v8
       - FnCall: [target_feature, ['enable = "neon,dotprod"']]
@@ -7042,8 +7041,7 @@ intrinsics:
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: [transmute, [c]]
-          #- FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7052,15 +7050,13 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: [transmute, [c]]
-            #- FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vdot{neon_type[0].laneq_nox}"
     doc: Dot product arithmetic (indexed)
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
     return_type: "{neon_type[0]}"
     static_defs: ["const LANE: i32"]
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     attr:
       - *neon-v8
       - FnCall: [target_feature, ['enable = "neon,dotprod"']]
@@ -7077,8 +7073,7 @@ intrinsics:
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: [transmute, [c]]
-          #- FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7088,7 +7083,6 @@ intrinsics:
           - - a
             - b
             - FnCall: [transmute, [c]]
-            #- FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vdot{neon_type[0].no}"
     doc: Dot product arithmetic (vector)
@@ -7151,7 +7145,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     safety: safe
     types:
       - [int32x2_t, int8x8_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32]','']
@@ -7161,7 +7154,7 @@ intrinsics:
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: [transmute, [c]]
+          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7170,7 +7163,7 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: [transmute, [c]]
+            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vdot{neon_type[0].lane_nox}"
     doc: Dot product arithmetic (indexed)
@@ -7186,7 +7179,6 @@ intrinsics:
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
     safety: safe
-    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     types:
       - [uint32x2_t, uint8x8_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32]','']
       - [uint32x4_t, uint8x16_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
@@ -7195,7 +7187,7 @@ intrinsics:
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7204,7 +7196,7 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
@@ -7662,7 +7654,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlal, N = 2]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlal, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -7681,7 +7673,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlal, N = 1]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlal, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -7734,7 +7726,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlsl, N = 2]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'N = 2']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -7753,7 +7745,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vqdmlsl, N = 1]]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
@@ -13228,7 +13220,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"{type[3]}"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [raddhn2]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [raddhn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -13255,7 +13247,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"{type[3]}"']]}]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [raddhn2]]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [raddhn2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -14481,7 +14473,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['{type[3]}']] }  ]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['{type[4]}']]}] ]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, { FnCall: [assert_instr, ['{type[4]}']]}] ]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -14537,7 +14529,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['{type[3]}']] }  ]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['{type[4]}']]}] ]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, { FnCall: [assert_instr, ['{type[4]}']]}] ]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
@@ -14595,7 +14587,7 @@ intrinsics:
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['vaddhn']] }  ]]
-      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, { FnCall: [assert_instr, ['addhn2']]}] ]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, { FnCall: [assert_instr, ['addhn2']]}] ]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
