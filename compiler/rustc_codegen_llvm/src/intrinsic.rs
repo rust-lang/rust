@@ -2086,7 +2086,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_splat {
-        let (_out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
+        let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
 
         require!(
             args[0].layout.ty == out_ty,
@@ -2105,7 +2105,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         // `shufflevector <N x elem> v0, <N x elem> poison, <N x i32> zeroinitializer`
         // The masks is all zeros, so this splats lane 0 (which has our element in it).
-        let splat = bx.shuffle_vector(v0, poison_vec, bx.const_null(llret_ty));
+        let mask_ty = bx.type_vector(bx.type_i32(), out_len);
+        let splat = bx.shuffle_vector(v0, poison_vec, bx.const_null(mask_ty));
 
         return Ok(splat);
     }
