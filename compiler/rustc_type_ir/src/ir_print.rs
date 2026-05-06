@@ -1,11 +1,12 @@
 use std::fmt;
 
 use crate::{
-    AliasTerm, AliasTy, Binder, ClosureKind, CoercePredicate, ExistentialProjection,
-    ExistentialTraitRef, FnSig, HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate,
-    PatternKind, Placeholder, ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
-    UnevaluatedConst,
+    AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
+    HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate, PatternKind, Placeholder,
+    ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
 };
+#[cfg(feature = "nightly")]
+use crate::{ClosureKind, UnevaluatedConst};
 
 pub trait IrPrint<T> {
     fn print(t: &T, fmt: &mut fmt::Formatter<'_>) -> fmt::Result;
