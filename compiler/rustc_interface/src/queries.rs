@@ -53,9 +53,12 @@ impl Linker {
                 // This was a check only build
                 Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
 
-                Err(ongoing_codegen) => {
-                    codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
-                }
+                Err(ongoing_codegen) => codegen_backend.join_codegen(
+                    ongoing_codegen,
+                    sess,
+                    &self.output_filenames,
+                    &self.crate_info,
+                ),
             }
         });
 

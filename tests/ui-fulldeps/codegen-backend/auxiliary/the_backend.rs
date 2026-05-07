@@ -37,7 +37,7 @@ impl CodegenBackend for TheBackend {
         "fake_target_cpu".to_owned()
     }
 
-    fn codegen_crate(&self, _tcx: TyCtxt<'_>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+    fn codegen_crate(&self, _tcx: TyCtxt<'_>) -> Box<dyn Any> {
         Box::new(CompiledModules { modules: vec![], allocator_module: None })
     }
 
@@ -46,6 +46,7 @@ impl CodegenBackend for TheBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
+        _crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         let codegen_results = ongoing_codegen
             .downcast::<CompiledModules>()

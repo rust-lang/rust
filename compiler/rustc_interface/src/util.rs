@@ -406,7 +406,7 @@ impl CodegenBackend for DummyCodegenBackend {
         String::new()
     }
 
-    fn codegen_crate<'tcx>(&self, _tcx: TyCtxt<'tcx>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+    fn codegen_crate<'tcx>(&self, _tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
         Box::new(CompiledModules { modules: vec![], allocator_module: None })
     }
 
@@ -415,6 +415,7 @@ impl CodegenBackend for DummyCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
+        _crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         (*ongoing_codegen.downcast().unwrap(), FxIndexMap::default())
     }

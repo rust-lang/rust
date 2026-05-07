@@ -85,7 +85,7 @@ fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     }
 }
 
-pub(super) fn exported_symbols_for_lto(
+pub(crate) fn exported_symbols_for_lto(
     tcx: TyCtxt<'_>,
     each_linked_rlib_for_lto: &[CrateNum],
 ) -> Vec<String> {

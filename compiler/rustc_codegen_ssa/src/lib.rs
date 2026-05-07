@@ -230,6 +230,8 @@ pub struct CrateInfo {
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_levels: CodegenLintLevels,
     pub metadata_symbol: String,
+    pub each_linked_rlib_file_for_lto: Vec<PathBuf>,
+    pub exported_symbols_for_lto: Vec<String>,
 }
 
 /// Target-specific options that get set in `cfg(...)`.
