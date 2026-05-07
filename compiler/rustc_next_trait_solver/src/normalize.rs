@@ -1,6 +1,6 @@
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::{Goal, NoSolution};
+use rustc_type_ir::solve::{Goal, NoSolutionOrRerunNonErased};
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy, Interner,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -29,6 +29,12 @@ where
 enum HasEscapingBoundVars {
     Yes,
     No,
+}
+
+#[derive(PartialEq, Eq)]
+pub enum NormalizationScope {
+    All,
+    AmbiguousAlias,
 }
 
 /// Finds the max universe present in infer vars.
@@ -97,11 +103,19 @@ where
     }
 }
 
+#[derive(PartialEq, Eq)]
+enum NeedRenormalization {
+    Yes,
+    No,
+}
+
 impl<'a, Infcx, I, F> NormalizationFolder<'a, Infcx, I, F>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolution>,
+    F: FnMut(
+        I::Term,
+    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
 {
     pub fn new(
         infcx: &'a Infcx,
@@ -120,7 +134,7 @@ where
         &mut self,
         alias_term: I::Term,
         has_escaping: HasEscapingBoundVars,
-    ) -> Result<I::Term, NoSolution> {
+    ) -> Result<(I::Term, NeedRenormalization), NoSolutionOrRerunNonErased> {
         let current_universe = self.infcx.universe();
         self.infcx.create_next_universe();
 
@@ -139,12 +153,12 @@ where
             normalized.visit_with(&mut visitor);
             let max_universe = visitor.max_universe();
             if current_universe.cannot_name(max_universe) {
-                return Ok(alias_term);
+                return Ok((alias_term, NeedRenormalization::Yes));
             }
         }
 
         self.stalled_goals.extend(ambig_goal);
-        Ok(normalized)
+        Ok((normalized, NeedRenormalization::No))
     }
 }
 
@@ -152,9 +166,11 @@ impl<'a, Infcx, I, F> FallibleTypeFolder<I> for NormalizationFolder<'a, Infcx, I
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolution>,
+    F: FnMut(
+        I::Term,
+    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
 {
-    type Error = NoSolution;
+    type Error = NoSolutionOrRerunNonErased;
 
     fn cx(&self) -> I {
         self.infcx.cx()
@@ -180,27 +196,41 @@ where
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
         let ty = ty.try_super_fold_with(self)?;
-        let ty::Alias(..) = ty.kind() else { return Ok(ty) };
+        let ty::Alias(alias_ty) = ty.kind() else { return Ok(ty) };
 
         if ty.has_escaping_bound_vars() {
             let (ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, ty);
-            let result = ensure_sufficient_stack(|| {
+            let (normalized_term, need_renormalization) = ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ty.into(), HasEscapingBoundVars::Yes)
-            })?
-            .expect_ty();
-            Ok(PlaceholderReplacer::replace_placeholders(
+            })?;
+            let normalized_ty = PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,
                 &self.universes,
-                result,
-            ))
+                normalized_term.expect_ty(),
+            );
+            if need_renormalization == NeedRenormalization::Yes {
+                Ok(I::Ty::new_alias(
+                    self.cx(),
+                    ty::AliasTy::new_from_args(
+                        self.cx(),
+                        ty::AliasTyKind::Ambiguous,
+                        self.cx().mk_args(&[normalized_ty.into()]),
+                    ),
+                ))
+            } else {
+                Ok(normalized_ty)
+            }
         } else {
+            let alias =
+                if let ty::Ambiguous = alias_ty.kind { alias_ty.args.type_at(0) } else { ty };
             Ok(ensure_sufficient_stack(|| {
-                self.normalize_alias_term(ty.into(), HasEscapingBoundVars::No)
+                self.normalize_alias_term(alias.into(), HasEscapingBoundVars::No)
             })?
+            .0
             .expect_ty())
         }
     }
@@ -223,6 +253,7 @@ where
             let result = ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ct.into(), HasEscapingBoundVars::Yes)
             })?
+            .0
             .expect_const();
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
@@ -236,7 +267,106 @@ where
             Ok(ensure_sufficient_stack(|| {
                 self.normalize_alias_term(ct.into(), HasEscapingBoundVars::No)
             })?
+            .0
             .expect_const())
         }
+    }
+}
+
+// Only handle ambiguous alias in the outmost instantiated binder.
+pub struct BinderRenormalizer<'a, Infcx, I, F>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    infcx: &'a Infcx,
+    stalled_goals: Vec<Goal<I, I::Predicate>>,
+    normalize: F,
+}
+
+impl<'a, Infcx, I, F> BinderRenormalizer<'a, Infcx, I, F>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    F: FnMut(
+        I::Term,
+    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
+{
+    pub fn new(infcx: &'a Infcx, stalled_goals: Vec<Goal<I, I::Predicate>>, normalize: F) -> Self {
+        Self { infcx, stalled_goals, normalize }
+    }
+
+    pub fn stalled_goals(self) -> Vec<Goal<I, I::Predicate>> {
+        self.stalled_goals
+    }
+
+    fn normalize_alias_term(
+        &mut self,
+        alias_term: I::Term,
+    ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
+        let (normalized, ambig_goal) = (self.normalize)(alias_term)?;
+
+        self.stalled_goals.extend(ambig_goal);
+        Ok(normalized)
+    }
+}
+
+impl<'a, Infcx, I, F> FallibleTypeFolder<I> for BinderRenormalizer<'a, Infcx, I, F>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    F: FnMut(
+        I::Term,
+    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
+{
+    type Error = NoSolutionOrRerunNonErased;
+
+    fn cx(&self) -> I {
+        self.infcx.cx()
+    }
+
+    fn try_fold_binder<T: TypeFoldable<I>>(
+        &mut self,
+        t: Binder<I, T>,
+    ) -> Result<Binder<I, T>, Self::Error> {
+        // We don't look into nested binders since they're not instantiated.
+        // Thus we assume we won't meet escaping bound vars as well.
+        Ok(t)
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
+        debug_assert!(!ty.has_escaping_bound_vars());
+        if !ty.has_ambiguous_aliases() {
+            return Ok(ty);
+        }
+
+        // With eager normalization, we should normalize the args of alias before
+        // normalizing the alias itself.
+        let ty = ty.try_super_fold_with(self)?;
+        let ty::Alias(ty::AliasTy { kind: ty::AliasTyKind::Ambiguous, args, .. }) = ty.kind()
+        else {
+            return Ok(ty);
+        };
+
+        let original_alias = args.type_at(0);
+        Ok(ensure_sufficient_stack(|| self.normalize_alias_term(original_alias.into()))?
+            .expect_ty())
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
+        debug_assert!(!ct.has_escaping_bound_vars());
+        if !ct.has_ambiguous_aliases() {
+            return Ok(ct);
+        }
+
+        // With eager normalization, we should normalize the args of alias before
+        // normalizing the alias itself.
+        let ct = ct.try_super_fold_with(self)?;
+        let ty::ConstKind::Unevaluated(..) = ct.kind() else { return Ok(ct) };
+        // FIXME: add an new `Ambiguous` kind to `UnevaluatedConst` as well.
+        // As a field or a new kind on `ConstKind`?
+        Ok(ct)
     }
 }
