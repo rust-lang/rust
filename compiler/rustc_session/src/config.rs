@@ -1107,13 +1107,10 @@ impl OutFileName {
         outputs: &OutputFilenames,
         flavor: OutputType,
         codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
     ) -> PathBuf {
         match *self {
             OutFileName::Real(ref path) => path.clone(),
-            OutFileName::Stdout => {
-                outputs.temp_path_for_cgu(flavor, codegen_unit_name, invocation_temp)
-            }
+            OutFileName::Stdout => outputs.temp_path_for_cgu(flavor, codegen_unit_name),
         }
     }
 
@@ -1138,6 +1135,17 @@ pub struct OutputFilenames {
     filestem: String,
     pub single_output_file: Option<OutFileName>,
     temps_directory: Option<PathBuf>,
+
+    /// A random string generated per invocation of rustc.
+    ///
+    /// This is prepended to all temporary files so that they do not collide
+    /// during concurrent invocations of rustc, or past invocations that were
+    /// preserved with a flag like `-C save-temps`, since these files may be
+    /// hard linked.
+    // This does not affect incr comp outputs, only where temp files are stored.
+    #[stable_hasher(ignore)]
+    invocation_temp: Option<String>,
+
     explicit_dwo_out_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
@@ -1180,6 +1188,7 @@ impl OutputFilenames {
         out_filestem: String,
         single_output_file: Option<OutFileName>,
         temps_directory: Option<PathBuf>,
+        invocation_temp: Option<String>,
         explicit_dwo_out_directory: Option<PathBuf>,
         extra: String,
         outputs: OutputTypes,
@@ -1188,6 +1197,7 @@ impl OutputFilenames {
             out_directory,
             single_output_file,
             temps_directory,
+            invocation_temp,
             explicit_dwo_out_directory,
             outputs,
             crate_stem: format!("{out_crate_name}{extra}"),
@@ -1224,23 +1234,14 @@ impl OutputFilenames {
     /// Gets the path where a compilation artifact of the given type for the
     /// given codegen unit should be placed on disk. If codegen_unit_name is
     /// None, a path distinct from those of any codegen unit will be generated.
-    pub fn temp_path_for_cgu(
-        &self,
-        flavor: OutputType,
-        codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
-    ) -> PathBuf {
+    pub fn temp_path_for_cgu(&self, flavor: OutputType, codegen_unit_name: &str) -> PathBuf {
         let extension = flavor.extension();
-        self.temp_path_ext_for_cgu(extension, codegen_unit_name, invocation_temp)
+        self.temp_path_ext_for_cgu(extension, codegen_unit_name)
     }
 
     /// Like `temp_path`, but specifically for dwarf objects.
-    pub fn temp_path_dwo_for_cgu(
-        &self,
-        codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
-    ) -> PathBuf {
-        let p = self.temp_path_ext_for_cgu(DWARF_OBJECT_EXT, codegen_unit_name, invocation_temp);
+    pub fn temp_path_dwo_for_cgu(&self, codegen_unit_name: &str) -> PathBuf {
+        let p = self.temp_path_ext_for_cgu(DWARF_OBJECT_EXT, codegen_unit_name);
         if let Some(dwo_out) = &self.explicit_dwo_out_directory {
             let mut o = dwo_out.clone();
             o.push(p.file_name().unwrap());
@@ -1252,16 +1253,11 @@ impl OutputFilenames {
 
     /// Like `temp_path`, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
-    pub fn temp_path_ext_for_cgu(
-        &self,
-        ext: &str,
-        codegen_unit_name: &str,
-        invocation_temp: Option<&str>,
-    ) -> PathBuf {
+    pub fn temp_path_ext_for_cgu(&self, ext: &str, codegen_unit_name: &str) -> PathBuf {
         let mut extension = codegen_unit_name.to_string();
 
         // Append `.{invocation_temp}` to ensure temporary files are unique.
-        if let Some(rng) = invocation_temp {
+        if let Some(rng) = &self.invocation_temp {
             extension.push('.');
             extension.push_str(rng);
         }
@@ -1302,10 +1298,9 @@ impl OutputFilenames {
         split_debuginfo_kind: SplitDebuginfo,
         split_dwarf_kind: SplitDwarfKind,
         cgu_name: &str,
-        invocation_temp: Option<&str>,
     ) -> Option<PathBuf> {
-        let obj_out = self.temp_path_for_cgu(OutputType::Object, cgu_name, invocation_temp);
-        let dwo_out = self.temp_path_dwo_for_cgu(cgu_name, invocation_temp);
+        let obj_out = self.temp_path_for_cgu(OutputType::Object, cgu_name);
+        let dwo_out = self.temp_path_dwo_for_cgu(cgu_name);
         match (split_debuginfo_kind, split_dwarf_kind) {
             (SplitDebuginfo::Off, SplitDwarfKind::Single | SplitDwarfKind::Split) => None,
             // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes

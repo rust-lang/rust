@@ -112,12 +112,7 @@ pub fn link_binary(
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
 
             let crate_name = format!("{}", crate_info.local_crate_name);
-            let out_filename = output.file_for_writing(
-                outputs,
-                OutputType::Exe,
-                &crate_name,
-                sess.invocation_temp.as_deref(),
-            );
+            let out_filename = output.file_for_writing(outputs, OutputType::Exe, &crate_name);
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");

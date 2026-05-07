@@ -295,17 +295,13 @@ impl TargetMachineFactoryConfig {
                 cgcx.split_debuginfo,
                 cgcx.split_dwarf_kind,
                 module_name,
-                cgcx.invocation_temp.as_deref(),
             )
         } else {
             None
         };
 
-        let output_obj_file = Some(cgcx.output_filenames.temp_path_for_cgu(
-            OutputType::Object,
-            module_name,
-            cgcx.invocation_temp.as_deref(),
-        ));
+        let output_obj_file =
+            Some(cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, module_name));
         TargetMachineFactoryConfig { split_dwarf_file, output_obj_file }
     }
 }
@@ -332,7 +328,6 @@ pub struct CodegenContext {
     pub time_trace: bool,
     pub crate_types: Vec<CrateType>,
     pub output_filenames: Arc<OutputFilenames>,
-    pub invocation_temp: Option<String>,
     pub module_config: Arc<ModuleConfig>,
     pub opt_level: OptLevel,
     pub backend_features: Vec<String>,
@@ -527,11 +522,7 @@ pub fn produce_final_output_artifacts(
         if let [module] = &compiled_modules.modules[..] {
             // 1) Only one codegen unit. In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            let path = crate_output.temp_path_for_cgu(
-                output_type,
-                &module.name,
-                sess.invocation_temp.as_deref(),
-            );
+            let path = crate_output.temp_path_for_cgu(output_type, &module.name);
             let output = crate_output.path(output_type);
             if !output_type.is_text_output() && output.is_tty() {
                 sess.dcx()
@@ -910,12 +901,7 @@ fn execute_copy_from_cache_work_item(
         module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
             let dwarf_obj_out = cgcx
                 .output_filenames
-                .split_dwarf_path(
-                    cgcx.split_debuginfo,
-                    cgcx.split_dwarf_kind,
-                    &module.name,
-                    cgcx.invocation_temp.as_deref(),
-                )
+                .split_dwarf_path(cgcx.split_debuginfo, cgcx.split_dwarf_kind, &module.name)
                 .expect(
                     "saved dwarf object in work product but `split_dwarf_path` returned `None`",
                 );
@@ -925,11 +911,7 @@ fn execute_copy_from_cache_work_item(
     let mut load_from_incr_cache = |perform, output_type: OutputType| {
         if perform {
             let saved_file = module.source.saved_files.get(output_type.extension())?;
-            let output_path = cgcx.output_filenames.temp_path_for_cgu(
-                output_type,
-                &module.name,
-                cgcx.invocation_temp.as_deref(),
-            );
+            let output_path = cgcx.output_filenames.temp_path_for_cgu(output_type, &module.name);
             load_from_incr_comp_dir(output_path, &saved_file)
         } else {
             None
@@ -1297,7 +1279,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
         parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
         pointer_size: tcx.data_layout.pointer_size(),
-        invocation_temp: sess.invocation_temp.clone(),
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.

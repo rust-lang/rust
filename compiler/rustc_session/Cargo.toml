@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 getopts = "0.2"
-rand = "0.9.0"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }

@@ -5,8 +5,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
-use rand::{RngCore, rng};
-use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -162,14 +160,6 @@ pub struct Session {
 
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
-
-    /// A random string generated per invocation of rustc.
-    ///
-    /// This is prepended to all temporary files so that they do not collide
-    /// during concurrent invocations of rustc, or past invocations that were
-    /// preserved with a flag like `-C save-temps`, since these files may be
-    /// hard linked.
-    pub invocation_temp: Option<String>,
 
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
@@ -1097,11 +1087,6 @@ pub fn build_session(
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
 
-    let invocation_temp = sopts
-        .incremental
-        .as_ref()
-        .map(|_| rng().next_u32().to_base_fixed_len(CASE_INSENSITIVE).to_string());
-
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let sess = Session {
@@ -1132,7 +1117,6 @@ pub fn build_session(
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
-        invocation_temp,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
