@@ -291,8 +291,8 @@ impl CodegenBackend for GccCodegenBackend {
         target_cpu(sess).to_owned()
     }
 
-    fn codegen_crate(&self, tcx: TyCtxt<'_>, crate_info: &CrateInfo) -> Box<dyn Any> {
-        Box::new(codegen_crate(self.clone(), tcx, crate_info))
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
+        Box::new(codegen_crate(self.clone(), tcx))
     }
 
     fn join_codegen(
@@ -300,11 +300,12 @@ impl CodegenBackend for GccCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _outputs: &OutputFilenames,
+        crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess)
+            .join(sess, crate_info)
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
