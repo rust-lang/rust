@@ -1,0 +1,2 @@
+error: incorrect value `auth-traps` for unstable option `pointer-authentication` - a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `return-addresses` was expected
+
