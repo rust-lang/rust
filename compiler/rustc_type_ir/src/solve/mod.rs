@@ -535,7 +535,7 @@ pub enum BuiltinImplSource {
 #[derive_where(Copy, Clone, Debug; I: Interner)]
 pub enum FetchEligibleAssocItemResponse<I: Interner> {
     Err(I::ErrorGuaranteed),
-    Found(I::DefId),
+    Found(I::ImplOrTraitAssocTermId),
     NotFound(TypingMode<I, CantBeErased>),
     NotFoundBecauseErased,
 }

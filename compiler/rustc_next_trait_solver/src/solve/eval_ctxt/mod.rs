@@ -702,7 +702,7 @@ where
         original_typing_mode: TypingMode<I>,
         parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
     ) -> RerunDecision {
-        let parent_opaque_defids = parent_opaque_types.iter().map(|(key, _)| key.def_id);
+        let parent_opaque_defids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
         let opaque_in_storage = |opaques: I::LocalDefIds, defids: SmallCopyList<_>| {
             if defids.as_ref().is_empty() {
                 RerunDecision::No
@@ -1357,7 +1357,7 @@ where
     pub(super) fn fetch_eligible_assoc_item(
         &self,
         goal_trait_ref: ty::TraitRef<I>,
-        trait_assoc_def_id: I::DefId,
+        trait_assoc_def_id: I::TraitAssocTermId,
         impl_def_id: I::ImplId,
     ) -> FetchEligibleAssocItemResponse<I> {
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
@@ -1374,7 +1374,7 @@ where
 
     pub(super) fn add_item_bounds_for_hidden_type(
         &mut self,
-        opaque_def_id: I::DefId,
+        opaque_def_id: I::OpaqueTyId,
         opaque_args: I::GenericArgs,
         param_env: I::ParamEnv,
         hidden_ty: I::Ty,

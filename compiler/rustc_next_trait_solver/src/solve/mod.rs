@@ -357,7 +357,7 @@ where
         }
     }
 
-    fn opaque_type_is_rigid(&self, def_id: I::DefId) -> bool {
+    fn opaque_type_is_rigid(&self, def_id: I::OpaqueTyId) -> bool {
         match self
             .typing_mode()
             // Caller should handle erased mode
@@ -370,7 +370,7 @@ where
             TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
             | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
-                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
+                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id.into()))
             }
         }
     }
