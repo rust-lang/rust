@@ -21,10 +21,10 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
+use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, FramePointer, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport,
@@ -881,7 +881,11 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_fn_addr(&self, instance: Instance<'tcx>, pac: Option<PacMetadata>) -> &'ll Value {
+    fn get_fn_addr(
+        &self,
+        instance: Instance<'tcx>,
+        schema: Option<&PointerAuthSchema>,
+    ) -> &'ll Value {
         // When pointer authentication metadata is provided, `get_fn_addr` will
         // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
         // expression.
@@ -895,8 +899,8 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // <https://github.com/rust-lang/rust/issues/152532>, and comment in
         // builder's `ptrauth_operand_bundle`.
         let llfn = get_fn(self, instance);
-        match pac {
-            Some(pac) => common::maybe_sign_fn_ptr(self, instance, llfn, pac),
+        match schema {
+            Some(schema) => common::maybe_sign_fn_ptr(self, instance, llfn, schema),
             None => llfn,
         }
     }
@@ -948,7 +952,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     ty::List::empty(),
                     DUMMY_SP,
                 ),
-                Some(PacMetadata::default()),
+                tcx.sess
+                    .pointer_auth_config
+                    .as_ref()
+                    .and_then(|cfg| cfg.function_pointers.as_ref()),
             ),
             _ => {
                 let name = name.unwrap_or("rust_eh_personality");

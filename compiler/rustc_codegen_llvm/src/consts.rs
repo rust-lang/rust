@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Symbol;
-use rustc_target::spec::{Arch, LlvmAbi};
+use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
@@ -32,6 +32,7 @@ pub(crate) enum IsStatic {
     No,
 }
 /// Indicates whether a symbol is part of `.init_array` or `.fini_array`.
+#[derive(PartialEq)]
 pub(crate) enum IsInitOrFini {
     Yes,
     No,
@@ -120,23 +121,21 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             as u64;
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
-        // Under pointer authentication, function pointers stored in init/fini arrays need special
-        // handling.
-        let pac_metadata = Some(
-            if cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest
-                && matches!(is_init_fini, IsInitOrFini::Yes)
-            {
-                PacMetadata {
-                    // Must correspond to ptrauth_key_init_fini_pointer from `ptrauth.h`.
-                    key: 0,
-                    // ptrauth_string_discriminator("init_fini")
-                    disc: 0xd9d4,
-                    addr_diversity: AddressDiversity::Synthetic(1),
-                }
+        let schema = if cx.sess().pointer_authentication() {
+            if is_init_fini == IsInitOrFini::Yes {
+                assert!(cx.sess().pointer_authentication_init_fini());
+                cx.sess().pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref())
+            } else if cx.sess().pointer_authentication_functions() {
+                cx.sess()
+                    .pointer_auth_config
+                    .as_ref()
+                    .and_then(|cfg| cfg.function_pointers.as_ref())
             } else {
-                PacMetadata::default()
-            },
-        );
+                None
+            }
+        } else {
+            None
+        };
         llvals.push(cx.scalar_to_backend_with_pac(
             InterpScalar::from_pointer(Pointer::new(prov, Size::from_bytes(ptr_offset)), &cx.tcx),
             Scalar::Initialized {
@@ -144,7 +143,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
                 valid_range: WrappingRange::full(pointer_size),
             },
             cx.type_ptr_ext(address_space),
-            pac_metadata,
+            schema,
         ));
         next_offset = offset + pointer_size_bytes;
     }
@@ -221,7 +220,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 let fn_sig = sig.with(*header);
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
                 // Decide if the initializer needs to be signed
-                if cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest
+                if cx.sess().pointer_authentication()
                     && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
                 {
                     should_sign = true;

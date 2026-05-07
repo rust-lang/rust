@@ -493,7 +493,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         return None;
     }
 
-    let main_llfn = cx.get_fn_addr(instance, Some(PacMetadata::default()));
+    let main_llfn = cx.get_fn_addr(
+        instance,
+        cx.sess().pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref()),
+    );
 
     let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, entry_type);
     return Some(entry_fn);
@@ -554,7 +557,13 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
                 DUMMY_SP,
             );
-            let start_fn = cx.get_fn_addr(start_instance, Some(PacMetadata::default()));
+            let start_fn = cx.get_fn_addr(
+                start_instance,
+                cx.sess()
+                    .pointer_auth_config
+                    .as_ref()
+                    .and_then(|cfg| cfg.function_pointers.as_ref()),
+            );
 
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);
