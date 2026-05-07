@@ -194,7 +194,7 @@ fn expr_macro_def_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
-            39..442 '{     ...!(); }': {unknown}
+            39..442 '{     ...!(); }': !
             73..94 'spam!(...am!())': {unknown}
             100..119 'for _ ...!() {}': !
             100..119 'for _ ...!() {}': {unknown}
@@ -288,7 +288,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
-            53..456 '{     ...!(); }': {unknown}
+            53..456 '{     ...!(); }': !
             87..108 'spam!(...am!())': {unknown}
             114..133 'for _ ...!() {}': !
             114..133 'for _ ...!() {}': {unknown}
@@ -1493,7 +1493,7 @@ fn main() {
             !0..136 'builti...tack))': ()
             !0..449 'builti...urn),)': !
             10..1236 '{     ...   } }': ()
-            16..1234 'unsafe...     }': ()
+            16..1234 'unsafe...     }': !
             37..40 'foo': i32
             43..44 '1': i32
             58..63 'mut o': i32

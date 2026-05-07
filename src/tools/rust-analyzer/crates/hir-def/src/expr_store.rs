@@ -720,7 +720,7 @@ impl ExpressionStore {
                 }
                 visitor.on_expr_opt(*tail);
             }
-            Expr::Loop { body, label: _ } => visitor.on_expr(*body),
+            Expr::Loop { body, label: _, source: _ } => visitor.on_expr(*body),
             Expr::Call { callee, args } => {
                 visitor.on_expr(*callee);
                 visitor.on_exprs(args);
