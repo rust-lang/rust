@@ -27,23 +27,20 @@ are required to support components since this target outputs a component as
 opposed to a core wasm module. As of the time of this writing Wasmtime 17 and
 above is able to run this target natively with no extra flags.
 
-## Building the target
+## Building the target in rustc
 
-To build this target first acquire a copy of
-[`wasi-sdk`](https://github.com/WebAssembly/wasi-sdk/). At this time version 22
-is the minimum needed.
+See the documentation for the [building the `wasm32-wasip1` target in
+rustc](./wasm32-wasip1.md#building-the-target-in-rustc) for more information. The tl;dr;
+is that [`wasi-sdk`] is required, and the `wasm32-wasip1` target documents the
+minimum version required.
 
-Next configure the `WASI_SDK_PATH` environment variable to point to where this
-is installed. For example:
+[`wasi-sdk`]: https://github.com/WebAssembly/wasi-sdk
 
-```text
-export WASI_SDK_PATH=/path/to/wasi-sdk-22.0
-```
+## Building Rust programs
 
-Next be sure to enable LLD when building Rust from source as LLVM's `wasm-ld`
-driver for LLD is required when linking WebAssembly code together. Rust's build
-system will automatically pick up any necessary binaries and programs from
-`WASI_SDK_PATH`.
+For more information see the documentation [`wasm32-wasip1`
+target](./wasm32-wasip1.md#building-rust-programs). Replace `wasm32-wasip1`
+target strings with `wasm32-wasip2`, however.
 
 ## Testing
 
