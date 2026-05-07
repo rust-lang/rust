@@ -2946,6 +2946,15 @@ pub const fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
     panic!("`TypeId::size` can only be called at compile-time")
 }
 
+/// Gets the number of variants of the type represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::variants`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn type_id_variants(_id: crate::any::TypeId) -> usize {
+    panic!("`TypeId::variants` can only be called at compile-time")
+}
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and

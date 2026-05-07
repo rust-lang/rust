@@ -622,6 +622,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_discriminant(variant_index, dest)?;
             }
 
+            sym::type_id_variants => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variants_num = ty.ty_adt_def().map(|def| def.variants().len()).unwrap_or(1);
+                ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
+            }
+
             sym::field_offset => {
                 let frt_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(ecx.tcx.tcx, frt_ty)?;

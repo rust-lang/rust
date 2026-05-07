@@ -376,4 +376,29 @@ impl TypeId {
     pub const fn size(self) -> Option<usize> {
         intrinsics::size_of_type_id(self)
     }
+
+    /// Returns the number of variants of the type represented by this `TypeId`.
+    ///
+    /// For enums, this is the number of variants. For structs and unions, this is always 1.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<Option<()>>().variants() }, 2);
+    ///
+    /// struct Unit;
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(const { TypeId::of::<Unit>().variants() }, 1);
+    /// assert_eq!(const { TypeId::of::<Point>().variants() }, 1);
+    /// assert_eq!(const { TypeId::of::<(f32, f32)>().variants() }, 1);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    pub const fn variants(self) -> usize {
+        intrinsics::type_id_variants(self)
+    }
 }
