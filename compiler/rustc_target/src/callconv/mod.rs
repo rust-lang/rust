@@ -122,6 +122,11 @@ mod attr_impl {
             const InReg    = 1 << 6;
             const NoUndef  = 1 << 7;
             const Writable = 1 << 8;
+            /// It is UB for this pointer or any pointer derived from it to be used for
+            /// deallocation (except for zero-sized deallocation) while the function is
+            /// executing. Only valid on arguments (including return values that are passed
+            /// indirectly as arguments).
+            const NoFree   = 1 << 9;
         }
     }
     rustc_data_structures::external_bitflags_debug! { ArgAttribute }
@@ -143,9 +148,8 @@ pub enum ArgExtension {
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub arg_ext: ArgExtension,
-    /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
-    /// (corresponding to LLVM's dereferenceable_or_null attributes, i.e., it is okay for this to be
-    /// set on a null pointer, but all non-null pointers must be dereferenceable).
+    /// If the pointer is not null, the minimum dereferenceable size of the pointee, at the time of
+    /// function entry (for arguments) or function return (for return values).
     pub pointee_size: Size,
     /// The minimum alignment of the pointee, if any.
     pub pointee_align: Option<Align>,
@@ -408,7 +412,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NoAlias)
             .set(ArgAttribute::CapturesAddress)
             .set(ArgAttribute::NonNull)
-            .set(ArgAttribute::NoUndef);
+            .set(ArgAttribute::NoUndef)
+            .set(ArgAttribute::NoFree);
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
