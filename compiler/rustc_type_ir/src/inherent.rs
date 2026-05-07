@@ -55,7 +55,11 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
 
-    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
+    fn new_projection_from_args(
+        interner: I,
+        def_id: I::TraitAssocTyId,
+        args: I::GenericArgs,
+    ) -> Self {
         Self::new_alias(
             interner,
             ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
@@ -64,7 +68,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_projection(
         interner: I,
-        def_id: I::DefId,
+        def_id: I::TraitAssocTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
         Self::new_alias(
@@ -637,19 +641,24 @@ pub trait Features<I: Interner>: Copy {
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
+pub trait DefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    Copy + Debug + Hash + Eq + TypeFoldable<I>
+{
     fn is_local(self) -> bool;
 
-    fn as_local(self) -> Option<I::LocalDefId>;
+    fn as_local(self) -> Option<Local>;
 }
 
-pub trait SpecificDefId<I: Interner>:
-    DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
+pub trait SpecificDefId<I: Interner, Local = <I as Interner>::LocalDefId>:
+    DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
 {
 }
 
-impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>>
-    SpecificDefId<I> for T
+impl<
+    I: Interner,
+    T: DefId<I, Local> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>,
+    Local,
+> SpecificDefId<I, Local> for T
 {
 }
 

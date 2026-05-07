@@ -39,12 +39,12 @@ pub enum AliasTyKind<I: Interner> {
     /// Note that the `def_id` is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `interner.associated_item(def_id).container`,
     /// aka. `interner.parent(def_id)`.
-    Projection { def_id: I::DefId },
+    Projection { def_id: I::TraitAssocTyId },
 
     /// An associated type in an inherent `impl`
     ///
     /// The `def_id` is the `DefId` of the `ImplItem` for the associated type.
-    Inherent { def_id: I::DefId },
+    Inherent { def_id: I::InherentAssocTyId },
 
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     ///
@@ -55,13 +55,13 @@ pub enum AliasTyKind<I: Interner> {
     ///
     /// During codegen, `interner.type_of(def_id)` can be used to get the type of the
     /// underlying type if the type is an opaque.
-    Opaque { def_id: I::DefId },
+    Opaque { def_id: I::OpaqueTyId },
 
     /// A type alias that actually checks its trait bounds.
     ///
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    Free { def_id: I::DefId },
+    Free { def_id: I::FreeTyAliasId },
 }
 
 impl<I: Interner> AliasTyKind<I> {
@@ -79,12 +79,12 @@ impl<I: Interner> AliasTyKind<I> {
     }
 
     pub fn def_id(self) -> I::DefId {
-        let (AliasTyKind::Projection { def_id }
-        | AliasTyKind::Inherent { def_id }
-        | AliasTyKind::Opaque { def_id }
-        | AliasTyKind::Free { def_id }) = self;
-
-        def_id
+        match self {
+            AliasTyKind::Projection { def_id } => def_id.into(),
+            AliasTyKind::Inherent { def_id } => def_id.into(),
+            AliasTyKind::Opaque { def_id } => def_id.into(),
+            AliasTyKind::Free { def_id } => def_id.into(),
+        }
     }
 }
 
@@ -506,10 +506,10 @@ impl<I: Interner> AliasTy<I> {
         )
     }
 
-    pub fn trait_def_id(self, interner: I) -> I::DefId {
+    pub fn trait_def_id(self, interner: I) -> I::TraitId {
         let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
 
-        interner.parent(def_id)
+        interner.projection_parent(def_id.into())
     }
 
     /// Extracts the underlying trait reference and own args from this projection.
@@ -520,7 +520,7 @@ impl<I: Interner> AliasTy<I> {
     pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
         let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
 
-        interner.trait_ref_and_own_args_for_alias(def_id, self.args)
+        interner.trait_ref_and_own_args_for_alias(def_id.into(), self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
