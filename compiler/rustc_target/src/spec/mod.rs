@@ -51,6 +51,7 @@ use rustc_abi::{
     TargetDataLayoutError,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
@@ -3913,6 +3914,22 @@ impl Hash for TargetTuple {
                 1u8.hash(state);
                 tuple.hash(state);
                 contents.hash(state)
+            }
+        }
+    }
+}
+
+impl StableHash for TargetTuple {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        match self {
+            TargetTuple::TargetTuple(tuple) => {
+                0u8.stable_hash(hcx, hasher);
+                tuple.stable_hash(hcx, hasher)
+            }
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
+                1u8.stable_hash(hcx, hasher);
+                tuple.stable_hash(hcx, hasher);
+                contents.stable_hash(hcx, hasher)
             }
         }
     }
