@@ -75,8 +75,9 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
     Ending, HrefError, HrefInfo, PrintWithSpace, full_print_fn_decl, href, print_abi_with_space,
-    print_constness_with_space, print_generic_bounds, print_generics, print_impl, print_path,
-    print_type, print_where_clause, visibility_print_with_space,
+    print_constness_with_space, print_generic_bounds, print_generics, print_impl,
+    print_impl_with_disambiguation, print_path, print_type, print_where_clause,
+    visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine, short_markdown_summary,
@@ -2330,7 +2331,7 @@ fn render_impl_summary(
         )?;
 
         if let Some(use_absolute) = use_absolute {
-            write!(w, "{}", print_impl(inner_impl, use_absolute, cx))?;
+            write!(w, "{}", print_impl_with_disambiguation(inner_impl, use_absolute, cx))?;
             if show_def_docs {
                 for it in &inner_impl.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
@@ -2351,7 +2352,7 @@ fn render_impl_summary(
                 }
             }
         } else {
-            write!(w, "{}", print_impl(inner_impl, false, cx))?;
+            write!(w, "{}", print_impl_with_disambiguation(inner_impl, false, cx))?;
         }
         w.write_str("</h3>")?;
 
