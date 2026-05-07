@@ -163,22 +163,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vreplvei_w(a: __v4i32, b: u32) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vreplvei.d"]
     fn __lsx_vreplvei_d(a: __v2i64, b: u32) -> __v2i64;
-    #[link_name = "llvm.loongarch.lsx.vpickev.b"]
-    fn __lsx_vpickev_b(a: __v16i8, b: __v16i8) -> __v16i8;
-    #[link_name = "llvm.loongarch.lsx.vpickev.h"]
-    fn __lsx_vpickev_h(a: __v8i16, b: __v8i16) -> __v8i16;
-    #[link_name = "llvm.loongarch.lsx.vpickev.w"]
-    fn __lsx_vpickev_w(a: __v4i32, b: __v4i32) -> __v4i32;
-    #[link_name = "llvm.loongarch.lsx.vpickev.d"]
-    fn __lsx_vpickev_d(a: __v2i64, b: __v2i64) -> __v2i64;
-    #[link_name = "llvm.loongarch.lsx.vpickod.b"]
-    fn __lsx_vpickod_b(a: __v16i8, b: __v16i8) -> __v16i8;
-    #[link_name = "llvm.loongarch.lsx.vpickod.h"]
-    fn __lsx_vpickod_h(a: __v8i16, b: __v8i16) -> __v8i16;
-    #[link_name = "llvm.loongarch.lsx.vpickod.w"]
-    fn __lsx_vpickod_w(a: __v4i32, b: __v4i32) -> __v4i32;
-    #[link_name = "llvm.loongarch.lsx.vpickod.d"]
-    fn __lsx_vpickod_d(a: __v2i64, b: __v2i64) -> __v2i64;
     #[link_name = "llvm.loongarch.lsx.vilvh.b"]
     fn __lsx_vilvh_b(a: __v16i8, b: __v16i8) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vilvh.h"]
@@ -1591,62 +1575,6 @@ pub fn lsx_vreplvei_w<const IMM2: u32>(a: m128i) -> m128i {
 pub fn lsx_vreplvei_d<const IMM1: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe { transmute(__lsx_vreplvei_d(transmute(a), IMM1)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickev_b(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickev_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickev_h(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickev_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickev_w(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickev_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickev_d(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickev_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickod_b(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickod_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickod_h(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickod_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickod_w(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickod_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vpickod_d(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vpickod_d(transmute(a), transmute(b))) }
 }
 
 #[inline]

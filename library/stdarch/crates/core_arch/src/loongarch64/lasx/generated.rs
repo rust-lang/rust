@@ -155,22 +155,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvrepl128vei_w(a: __v8i32, b: u32) -> __v8i32;
     #[link_name = "llvm.loongarch.lasx.xvrepl128vei.d"]
     fn __lasx_xvrepl128vei_d(a: __v4i64, b: u32) -> __v4i64;
-    #[link_name = "llvm.loongarch.lasx.xvpickev.b"]
-    fn __lasx_xvpickev_b(a: __v32i8, b: __v32i8) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvpickev.h"]
-    fn __lasx_xvpickev_h(a: __v16i16, b: __v16i16) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvpickev.w"]
-    fn __lasx_xvpickev_w(a: __v8i32, b: __v8i32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvpickev.d"]
-    fn __lasx_xvpickev_d(a: __v4i64, b: __v4i64) -> __v4i64;
-    #[link_name = "llvm.loongarch.lasx.xvpickod.b"]
-    fn __lasx_xvpickod_b(a: __v32i8, b: __v32i8) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvpickod.h"]
-    fn __lasx_xvpickod_h(a: __v16i16, b: __v16i16) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvpickod.w"]
-    fn __lasx_xvpickod_w(a: __v8i32, b: __v8i32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvpickod.d"]
-    fn __lasx_xvpickod_d(a: __v4i64, b: __v4i64) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvilvh.b"]
     fn __lasx_xvilvh_b(a: __v32i8, b: __v32i8) -> __v32i8;
     #[link_name = "llvm.loongarch.lasx.xvilvh.h"]
@@ -1651,62 +1635,6 @@ pub fn lasx_xvrepl128vei_w<const IMM2: u32>(a: m256i) -> m256i {
 pub fn lasx_xvrepl128vei_d<const IMM1: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM1, 1);
     unsafe { transmute(__lasx_xvrepl128vei_d(transmute(a), IMM1)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickev_b(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickev_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickev_h(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickev_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickev_w(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickev_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickev_d(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickev_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickod_b(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickod_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickod_h(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickod_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickod_w(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickod_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvpickod_d(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvpickod_d(transmute(a), transmute(b))) }
 }
 
 #[inline]

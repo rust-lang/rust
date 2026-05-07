@@ -1440,41 +1440,49 @@ asm-fmts = vd, vj, ui1
 data-types = V2DI, V2DI, UQI
 
 /// lsx_vpickev_b
+impl = portable
 name = lsx_vpickev_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vpickev_h
+impl = portable
 name = lsx_vpickev_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vpickev_w
+impl = portable
 name = lsx_vpickev_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vpickev_d
+impl = portable
 name = lsx_vpickev_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
 
 /// lsx_vpickod_b
+impl = portable
 name = lsx_vpickod_b
 asm-fmts = vd, vj, vk
 data-types = V16QI, V16QI, V16QI
 
 /// lsx_vpickod_h
+impl = portable
 name = lsx_vpickod_h
 asm-fmts = vd, vj, vk
 data-types = V8HI, V8HI, V8HI
 
 /// lsx_vpickod_w
+impl = portable
 name = lsx_vpickod_w
 asm-fmts = vd, vj, vk
 data-types = V4SI, V4SI, V4SI
 
 /// lsx_vpickod_d
+impl = portable
 name = lsx_vpickod_d
 asm-fmts = vd, vj, vk
 data-types = V2DI, V2DI, V2DI
