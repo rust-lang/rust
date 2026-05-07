@@ -633,6 +633,21 @@ fn test_miropt_mode_forbidden_revisions() {
 }
 
 #[test]
+#[should_panic(expected = "malformed condition directive: multiple revisions aren't supported yet")]
+fn test_multiple_revisions_in_directive() {
+    let directive = "//@ [foo,bar] compile-flags: -Z hello";
+
+    // The problem: this is seen as a single revision.
+    let line_directive = line_directive(Utf8Path::new("foo.txt"), LineNumber::ZERO, directive);
+    assert!(line_directive.is_some());
+    assert_eq!(Some("foo,bar"), line_directive.unwrap().revision);
+
+    // The solution for now: forbid directives from having multiple revisions.
+    let config: Config = cfg().build();
+    parse_early_props(&config, directive);
+}
+
+#[test]
 fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
     let modes = [
