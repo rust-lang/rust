@@ -102,7 +102,7 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
 
     for intrinsic in intrinsics {
         for arg in &intrinsic.arguments.args {
-            if !arg.has_constraint() && arg.ty.is_rust_vals_array_const() {
+            if !arg.has_constraint() {
                 let name = arg.rust_vals_array_name().to_string();
 
                 if seen.insert(name) {
@@ -227,10 +227,6 @@ fn create_rust_test<T: IntrinsicTypeDefinition>(
         concatln!("#[test]", "fn test_{intrinsic_name}() {{"),
         intrinsic_name = intrinsic.name,
     )?;
-
-    // Define the arrays of arguments.
-    let arguments = &intrinsic.arguments;
-    arguments.gen_arglists_rust(w, Indentation::default().nested(), PASSES)?;
 
     generate_rust_test_loop(w, intrinsic, PASSES)?;
 

@@ -231,21 +231,6 @@ impl IntrinsicType {
             _ => unimplemented!("populate random: {self:#?}"),
         }
     }
-
-    pub fn is_rust_vals_array_const(&self) -> bool {
-        match self {
-            // Floats have to be loaded at runtime for stable NaN conversion.
-            IntrinsicType {
-                kind: TypeKind::Float,
-                ..
-            } => false,
-            IntrinsicType {
-                kind: TypeKind::Int(_) | TypeKind::Poly,
-                ..
-            } => true,
-            _ => true,
-        }
-    }
 }
 
 pub trait IntrinsicTypeDefinition: Deref<Target = IntrinsicType> {

@@ -53,28 +53,14 @@ where
         self.constraint.is_some()
     }
 
-    /// The binding keyword (e.g. "const" or "let") for the array of possible test inputs.
-    fn rust_vals_array_binding(&self) -> impl std::fmt::Display {
-        if self.ty.is_rust_vals_array_const() {
-            "const"
-        } else {
-            "let"
-        }
-    }
-
     /// The name (e.g. "A_VALS" or "a_vals") for the array of possible test inputs.
     pub(crate) fn rust_vals_array_name(&self) -> impl std::fmt::Display {
-        if self.ty.is_rust_vals_array_const() {
-            let loads = crate::common::gen_rust::PASSES;
-            format!(
-                "{}_{ty}_{load_size}",
-                self.name.to_uppercase(),
-                ty = self.ty.rust_scalar_type(),
-                load_size = self.ty.num_lanes() * self.ty.num_vectors() + loads - 1,
-            )
-        } else {
-            format!("{}_vals", self.name.to_lowercase())
-        }
+        let loads = crate::common::gen_rust::PASSES;
+        format!(
+            "{ty}_{load_size}",
+            ty = self.ty.rust_scalar_type().to_uppercase(),
+            load_size = self.ty.num_lanes() * self.ty.num_vectors() + loads - 1,
+        )
     }
 
     pub(crate) fn pass_by_ref(&self) -> bool {
@@ -160,26 +146,6 @@ where
             .join("")
     }
 
-    /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
-    /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
-    pub fn gen_arglists_rust(
-        &self,
-        w: &mut impl std::io::Write,
-        indentation: Indentation,
-        loads: u32,
-    ) -> std::io::Result<()> {
-        for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
-            // Constants are defined globally.
-            if arg.ty.is_rust_vals_array_const() {
-                continue;
-            }
-
-            Self::gen_arg_rust(arg, w, indentation, loads)?;
-        }
-
-        Ok(())
-    }
-
     pub fn gen_arg_rust(
         arg: &Argument<T>,
         w: &mut impl std::io::Write,
@@ -188,8 +154,7 @@ where
     ) -> std::io::Result<()> {
         writeln!(
             w,
-            "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};\n",
-            bind = arg.rust_vals_array_binding(),
+            "{indentation}static {name}: [{ty}; {load_size}] = {values};\n",
             name = arg.rust_vals_array_name(),
             ty = arg.ty.rust_scalar_type(),
             load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
