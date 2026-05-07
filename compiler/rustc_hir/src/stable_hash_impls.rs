@@ -1,59 +1,7 @@
-use rustc_data_structures::stable_hasher::{
-    StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
-};
-use rustc_span::def_id::DefPathHash;
+use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 
 use crate::HashIgnoredAttrId;
-use crate::hir::{
-    AttributeMap, BodyId, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
-};
-use crate::hir_id::ItemLocalId;
-
-impl ToStableHashKey for BodyId {
-    type KeyType = (DefPathHash, ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
-        let BodyId { hir_id } = *self;
-        hir_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for ItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        self.owner_id.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for TraitItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        self.owner_id.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for ImplItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        self.owner_id.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for ForeignItemId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        self.owner_id.def_id.to_stable_hash_key(hcx)
-    }
-}
+use crate::hir::{AttributeMap, OwnerNodes};
 
 // The following implementations of StableHash for `ItemId`, `TraitItemId`, and
 // `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within

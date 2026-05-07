@@ -459,22 +459,6 @@ impl StableOrd for String {
     const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
-impl ToStableHashKey for String {
-    type KeyType = String;
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Self::KeyType {
-        self.clone()
-    }
-}
-
-impl<T1: ToStableHashKey, T2: ToStableHashKey> ToStableHashKey for (T1, T2) {
-    type KeyType = (T1::KeyType, T2::KeyType);
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Self::KeyType {
-        (self.0.to_stable_hash_key(hcx), self.1.to_stable_hash_key(hcx))
-    }
-}
-
 impl StableHash for bool {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {

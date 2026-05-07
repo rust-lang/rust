@@ -4,7 +4,6 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -709,15 +708,6 @@ impl Namespace {
 impl IntoDiagArg for Namespace {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
-    }
-}
-
-impl ToStableHashKey for Namespace {
-    type KeyType = Namespace;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Namespace {
-        *self
     }
 }
 

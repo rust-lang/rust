@@ -14,7 +14,7 @@ use std::{cmp, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{StableHasher, StableOrd};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
@@ -628,22 +628,12 @@ macro_rules! define_output_types {
             )*
         }
 
-
         impl StableOrd for OutputType {
             const CAN_USE_UNSTABLE_SORT: bool = true;
 
             // Trivial C-Style enums have a stable sort order across compilation sessions.
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
-
-        impl ToStableHashKey for OutputType {
-            type KeyType = Self;
-
-            fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> Self::KeyType {
-                *self
-            }
-        }
-
 
         impl OutputType {
             pub fn iter_all() -> impl Iterator<Item = OutputType> {

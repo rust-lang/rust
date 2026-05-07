@@ -465,24 +465,6 @@ impl ToStableHashKey for LocalDefId {
     }
 }
 
-impl ToStableHashKey for CrateNum {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> DefPathHash {
-        self.as_def_id().to_stable_hash_key(hcx)
-    }
-}
-
-impl ToStableHashKey for DefPathHash {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> DefPathHash {
-        *self
-    }
-}
-
 macro_rules! typed_def_id {
     ($Name:ident, $LocalName:ident) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]

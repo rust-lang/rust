@@ -3,12 +3,11 @@ use std::fmt::Display;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
-    StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
+    StableCompare, StableHash, StableHashCtxt, StableHasher,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_hir_id::{HirId, ItemLocalId};
+use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
 use rustc_span::{AttrId, Ident, Symbol, sym};
 use serde::{Deserialize, Serialize};
@@ -149,23 +148,6 @@ impl StableHash for LintExpectationId {
                 unreachable!(
                     "StableHash should only be called for filled and stable `LintExpectationId`"
                 )
-            }
-        }
-    }
-}
-
-impl ToStableHashKey for LintExpectationId {
-    type KeyType = (DefPathHash, ItemLocalId, u16, u16);
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Self::KeyType {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
-                (def_path_hash, lint_idx, *attr_index, *lint_index)
-            }
-            _ => {
-                unreachable!("StableHash should only be called for a filled `LintExpectationId`")
             }
         }
     }
@@ -620,15 +602,6 @@ impl StableHash for LintId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().stable_hash(hcx, hasher);
-    }
-}
-
-impl ToStableHashKey for LintId {
-    type KeyType = &'static str;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> &'static str {
-        self.lint_name_raw()
     }
 }
 

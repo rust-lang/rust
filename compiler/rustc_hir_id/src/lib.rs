@@ -176,22 +176,3 @@ pub const CRATE_HIR_ID: HirId =
     HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::ZERO };
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };
-
-impl ToStableHashKey for HirId {
-    type KeyType = (DefPathHash, ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
-        let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
-        (def_path_hash, self.local_id)
-    }
-}
-
-impl ToStableHashKey for ItemLocalId {
-    type KeyType = ItemLocalId;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> ItemLocalId {
-        *self
-    }
-}
