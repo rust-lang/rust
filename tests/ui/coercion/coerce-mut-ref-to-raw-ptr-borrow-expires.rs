@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/47722
+
 //@ check-pass
 
 // Tests that automatic coercions from &mut T to *mut T
