@@ -2494,11 +2494,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         cg.codegen_units,
     );
 
-    if unstable_opts.threads == 0 {
-        early_dcx.early_fatal("value for threads must be a positive non-zero integer");
-    }
-
-    if unstable_opts.threads == parse::MAX_THREADS_CAP {
+    if unstable_opts.threads == Some(parse::MAX_THREADS_CAP) {
         early_dcx.early_warn(format!("number of threads was capped at {}", parse::MAX_THREADS_CAP));
     }
 

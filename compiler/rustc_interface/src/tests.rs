@@ -734,7 +734,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
-    untracked!(threads, 99);
+    untracked!(threads, Some(99));
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(time_passes_format, TimePassesFormat::Json);

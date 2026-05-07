@@ -629,7 +629,7 @@ impl DepGraphData {
             let ok = match color {
                 DepNodeColor::Unknown => true,
                 DepNodeColor::Red => false,
-                DepNodeColor::Green(..) => sess.threads() > 1, // Other threads may mark this green
+                DepNodeColor::Green(..) => sess.threads().is_some(), // Other threads may mark this green
             };
             if !ok {
                 panic!("{}", msg())
