@@ -59,6 +59,10 @@ where
         return None;
     }
 
+    if !tcx.opaque_types_defined_by(def).is_empty() {
+        return None;
+    }
+
     let body = body_provider();
 
     if body.has_opaque_types() {
