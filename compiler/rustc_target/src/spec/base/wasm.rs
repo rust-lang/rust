@@ -110,6 +110,14 @@ pub(crate) fn options() -> TargetOptions {
         // representation, so this is disabled.
         generate_arange_section: false,
 
+        // Differ from LLVM's default to use the legacy exception-handling
+        // proposal instructions and use the standard exception-handling
+        // instructions. Note that this is only applicable when unwinding is
+        // actually turned on, which it's not by default on this target. For
+        // `-Zbuild-std` builds, however, this affects when rebuilding libstd
+        // with unwinding.
+        llvm_args: cvs!["-wasm-use-legacy-eh=false"],
+
         ..Default::default()
     }
 }
