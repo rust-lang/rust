@@ -11470,8 +11470,8 @@ intrinsics:
                   - FnCall: ["vdup_n_{type[0]}", [b]]
             - '0'
 
-  - name: "vabdl_high_{neon_type[0]}"
-    doc: "Unsigned Absolute difference Long"
+  - name: "vabdl_high{neon_type[0].noq}"
+    doc: Unsigned Absolute difference Long
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
@@ -11479,13 +11479,99 @@ intrinsics:
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
     safety: safe
     types:
-      - [uint8x16_t, uint16x8_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x8_t, uint32x4_t, uint16x4_t, '[4, 5, 6, 7]']
-      - [uint32x4_t, uint64x2_t, uint32x2_t, '[2, 3]']
+      - [uint8x16_t, uint16x8_t, uint8x8_t]
     compose:
-      - Let: [c, "{neon_type[2]}", {FnCall: [simd_shuffle!, [a, a, "{type[3]}"]]}]
-      - Let: [d, "{neon_type[2]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
-      - FnCall: [simd_cast, [{FnCall: ["vabd_{neon_type[0]}", [c, d]]}]]
+      - Let:
+          - c
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - a
+                - a
+                - [8, 9, 10, 11, 12, 13, 14, 15]
+      - Let:
+          - d
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - b
+                - b
+                - [8, 9, 10, 11, 12, 13, 14, 15]
+      - FnCall:
+          - simd_cast
+          - - FnCall:
+                - "vabd_{neon_type[0]}"
+                - - c
+                  - d
+
+  - name: "vabdl_high{neon_type[0].noq}"
+    doc: Unsigned Absolute difference Long
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
+    safety: safe
+    types:
+      - [uint16x8_t, uint32x4_t, uint16x4_t]
+    compose:
+      - Let:
+          - c
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - a
+                - a
+                - [4, 5, 6, 7]
+      - Let:
+          - d
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - b
+                - b
+                - [4, 5, 6, 7]
+
+      - FnCall:
+          - simd_cast
+          - - FnCall:
+                - "vabd_{neon_type[0]}"
+                - - c
+                  - d
+
+  - name: "vabdl_high{neon_type[0].noq}"
+    doc: Unsigned Absolute difference Long
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
+    safety: safe
+    types:
+      - [uint32x4_t, uint64x2_t, uint32x2_t, int32x2_t]
+    compose:
+      - Let:
+          - c
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - a
+                - a
+                - [2, 3]
+      - Let:
+          - d
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - b
+                - b
+                - [2, 3]
+      - FnCall:
+          - simd_cast
+          - - FnCall:
+                - "vabd_{neon_type[0]}"
+                - - c
+                  - d
 
   - name: "vfms_n_f64"
     doc: "Floating-point fused Multiply-subtract to accumulator(vector)"
@@ -12138,20 +12224,29 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: false
     safety: safe
     types:
-      - [int8x8_t, int8x8x4_t]
+      - [int8x8_t, 'int8x8x4_t', 'int8x16x2', 'int8x8', 'i8x8::splat(32)']
     compose:
+      - Let:
+        - x
+        - FnCall:
+            - '{type[2]}_t'
+            - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
+              - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'b.3']]
       - FnCall:
-          - "vqtbx2"
-          - - FnCall: [transmute, [a]]
-            - FnCall:
-                - transmute
-                - - FnCall: ["vcombine{neon_type[0].noq}", ["b.0", "b.1"]]
-            - FnCall:
-                - transmute
-                - - FnCall: ["vcombine{neon_type[0].noq}", ["b.2", "b.3"]]
-            - FnCall: [transmute, [c]]
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[3]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[4]}"]]
+          - FnCall:
+              - 'vqtbx2{neon_type[0].no}'
+              - - a
+                - x
+                - FnCall: ['vreinterpret_u8{neon_type[0].no}', [c]]
+          - a
 
   - name: "vtbx4{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12163,21 +12258,27 @@ intrinsics:
     big_endian_inverse: false
     safety: safe
     types:
-      - [uint8x8_t, uint8x8x4_t, uint8x8_t]
-      - [poly8x8_t, poly8x8x4_t, uint8x8_t]
+      - [uint8x8_t, 'uint8x8x4_t', 'uint8x8_t', 'uint8x16x2', 'uint8x8', 'u8x8::splat(32)']
+      - [poly8x8_t, 'poly8x8x4_t', 'uint8x8_t', 'poly8x16x2', 'uint8x8', 'u8x8::splat(32)']
     compose:
+      - Let:
+        - x
+        - FnCall:
+            - '{type[3]}_t'
+            - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
+              - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'b.3']]
       - FnCall:
-          - transmute
-          - - FnCall:
-                - "vqtbx2"
-                - - FnCall: [transmute, [a]]
-                  - FnCall:
-                      - transmute
-                      - - FnCall: ["vcombine{neon_type[0].noq}", ["b.0", "b.1"]]
-                  - FnCall:
-                      - transmute
-                      - - FnCall: ["vcombine{neon_type[0].noq}", ["b.2", "b.3"]]
-                  - c
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[4]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[5]}"]]
+          - FnCall:
+              - 'vqtbx2{neon_type[0].no}'
+              - - a
+                - x
+                - c
+          - a
 
   - name: "vtbl1{neon_type[0].no}"
     doc: "Table look-up"
@@ -12187,6 +12288,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: false
     types:
       - [int8x8_t, 'int8x8_t', 'unsafe {{ transmute(b) }}']
       - [uint8x8_t, 'uint8x8_t', 'b']
@@ -12200,26 +12302,22 @@ intrinsics:
                   - 'unsafe {{ crate::mem::zeroed() }}'
             - Identifier: ['{type[2]}', Symbol]
 
-  - name: "vtbl2{neon_type[1].noq}"
+  - name: "vtbl2{neon_type[2].no}"
     doc: "Table look-up"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
-    return_type: "{neon_type[1]}"
+    return_type: "{neon_type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
+    big_endian_inverse: false
     safety: safe
     types:
-      - [int8x8x2_t, 'int8x8_t']
+      - ['int8x8x2_t',  'int8x8_t',  'int8x8_t']
     compose:
       - FnCall:
-          - vqtbl1
-          - - FnCall:
-                - transmute
-                - - FnCall:
-                      - 'vcombine{neon_type[1].noq}'
-                      - - 'a.0'
-                        - 'a.1'
-            - FnCall: [transmute, [b]]
+        - 'vqtbl1{neon_type[2].noq}'
+        - - FnCall: ['vcombine{neon_type[2].noq}', ['a.0', 'a.1']]
+          - FnCall: ['vreinterpret_u8{neon_type[2].noq}', [b]]
 
   - name: "vtbl2{neon_type[2].no}"
     doc: "Table look-up"
@@ -12231,124 +12329,108 @@ intrinsics:
     big_endian_inverse: false
     safety: safe
     types:
-      - [uint8x8x2_t, 'uint8x8_t', 'uint8x8_t']
-      - [poly8x8x2_t, 'uint8x8_t', 'poly8x8_t']
+      - ['uint8x8x2_t', 'uint8x8_t', 'uint8x8_t']
+      - ['poly8x8x2_t', 'uint8x8_t', 'poly8x8_t']
     compose:
       - FnCall:
-          - transmute
-          - - FnCall:
-                - vqtbl1
-                - - FnCall:
-                      - transmute
-                      - - FnCall:
-                            - 'vcombine{neon_type[2].noq}'
-                            - - 'a.0'
-                              - 'a.1'
-                  - b
+          - 'vqtbl1{neon_type[2].noq}'
+          - - FnCall: ['vcombine{neon_type[2].noq}', ['a.0', 'a.1']]
+            - b
 
   - name: "vtbl3{neon_type[1].no}"
     doc: "Table look-up"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
-    return_type: "{neon_type[1]}"
+    return_type: "{neon_type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
     safety: safe
-    types:
-      - [int8x8x3_t, 'int8x8_t', 'int8x16x2']
-    compose:
-      - Let:
-          - x
-          - FnCall:
-              - '{type[2]}_t'
-              - - FnCall: ['vcombine{neon_type[1].no}', ['a.0', 'a.1']]
-                - FnCall: ['vcombine{neon_type[1].no}', ['a.2', 'unsafe {{ crate::mem::zeroed() }}']]
-      - FnCall:
-          - transmute
-          - - FnCall:
-                - vqtbl2
-                - - FnCall: [transmute, ['x.0']]
-                  - FnCall: [transmute, ['x.1']]
-                  - FnCall: [transmute, [b]]
-
-  - name: "vtbl3{neon_type[3].no}"
-    doc: "Table look-up"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
-    return_type: "{neon_type[3]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - *neon-stable
-    safety: safe
-    types:
-      - [uint8x8x3_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
-      - [poly8x8x3_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
     big_endian_inverse: false
+    types:
+      - ['int8x8x3_t', 'int8x8_t', 'int8x8_t', 'int8x16x2']
     compose:
       - Let:
-          - x
-          - FnCall:
-              - '{type[2]}_t'
-              - - FnCall: ['vcombine{neon_type[3].no}', ['a.0', 'a.1']]
-                - FnCall: ['vcombine{neon_type[3].no}', ['a.2', 'unsafe {{ crate::mem::zeroed() }}']]
+        - x
+        - FnCall:
+          - '{type[3]}_t'
+          - - FnCall: ['vcombine{neon_type[2].no}', ['a.0', 'a.1']]
+            - FnCall: ['vcombine{neon_type[2].no}', ['a.2', 'unsafe {{ crate::mem::zeroed() }}']]
       - FnCall:
-          - transmute
-          - - FnCall:
-                - vqtbl2
-                - - FnCall: [transmute, ['x.0']]
-                  - FnCall: [transmute, ['x.1']]
-                  - b
+        - 'vqtbl2{neon_type[2].no}'
+        - - x
+          - FnCall: ['vreinterpret_u8{neon_type[2].noq}', [b]]
 
-  - name: "vtbl4{neon_type[1].no}"
+
+  - name: "vtbl3{neon_type[2].no}"
     doc: "Table look-up"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
-    return_type: "{neon_type[1]}"
+    return_type: "{neon_type[2]}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
     safety: safe
-    types:
-      - [int8x8x4_t, 'int8x8_t', 'int8x16x2']
-    compose:
-      - Let:
-          - x
-          - FnCall:
-              - '{type[2]}_t'
-              - - FnCall: ['vcombine{neon_type[1].no}', ['a.0', 'a.1']]
-                - FnCall: ['vcombine{neon_type[1].no}', ['a.2', 'a.3']]
-      - FnCall:
-          - transmute
-          - - FnCall:
-                - 'vqtbl2'
-                - - FnCall: [transmute, ['x.0']]
-                  - FnCall: [transmute, ['x.1']]
-                  - FnCall: [transmute, [b]]
-
-  - name: "vtbl4{neon_type[3].no}"
-    doc: "Table look-up"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
-    return_type: "{neon_type[3]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
-      - *neon-stable
-    safety: safe
-    types:
-      - [uint8x8x4_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
-      - [poly8x8x4_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
     big_endian_inverse: false
+    types:
+      - [uint8x8x3_t, 'uint8x8_t', 'uint8x8_t', 'uint8x16x2']
+      - [poly8x8x3_t, 'uint8x8_t', 'poly8x8_t', 'poly8x16x2']
     compose:
       - Let:
-          - x
-          - FnCall:
-              - '{type[2]}_t'
-              - - FnCall: ['vcombine{neon_type[3].no}', ['a.0', 'a.1']]
-                - FnCall: ['vcombine{neon_type[3].no}', ['a.2', 'a.3']]
+        - x
+        - FnCall:
+          - '{type[3]}_t'
+          - - FnCall: ['vcombine{neon_type[2].no}', ['a.0', 'a.1']]
+            - FnCall: ['vcombine{neon_type[2].no}', ['a.2', 'unsafe {{ crate::mem::zeroed() }}']]
       - FnCall:
-          - transmute
-          - - FnCall:
-                - 'vqtbl2'
-                - - FnCall: [transmute, ['x.0']]
-                  - FnCall: [transmute, ['x.1']]
-                  - b
+        - 'vqtbl2{neon_type[2].no}'
+        - - x
+          - b
+
+  - name: "vtbl4{neon_type[2].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - *neon-stable
+    safety: safe
+    big_endian_inverse: false
+    types:
+      - ['int8x8x4_t', 'int8x8_t', 'int8x8_t', 'int8x16x2']
+    compose:
+      - Let:
+        - x
+        - FnCall:
+            - '{type[3]}_t'
+            - - FnCall: ['vcombine{neon_type[1].no}', ['a.0', 'a.1']]
+              - FnCall: ['vcombine{neon_type[1].no}', ['a.2', 'a.3']]
+      - FnCall:
+        - 'vqtbl2{neon_type[2].no}'
+        - - x
+          - FnCall: ['vreinterpret_u8{neon_type[2].noq}', [b]]
+
+  - name: "vtbl4{neon_type[2].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - *neon-stable
+    safety: safe
+    big_endian_inverse: false
+    types:
+      - [uint8x8x4_t, 'uint8x8_t', 'uint8x8_t', 'uint8x16x2']
+      - [poly8x8x4_t, 'uint8x8_t', 'poly8x8_t', 'poly8x16x2']
+    compose:
+      - Let:
+        - x
+        - FnCall:
+            - '{type[3]}_t'
+            - - FnCall: ['vcombine{neon_type[2].no}', ['a.0', 'a.1']]
+              - FnCall: ['vcombine{neon_type[2].no}', ['a.2', 'a.3']]
+      - FnCall:
+        - 'vqtbl2{neon_type[2].no}'
+        - - x
+          - b
 
   - name: "vqtbx1{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12394,28 +12476,49 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: false
     safety: safe
     types:
-      - [int8x8_t, "int8x8_t", "transmute(c)", "i8x8::splat(8)", "int8x8"]
-      - [uint8x8_t, "uint8x8_t", "c", "u8x8::splat(8)", "uint8x8"]
-      - [poly8x8_t, "uint8x8_t", "c", "u8x8::splat(8)", "uint8x8"]
+      - [int8x8_t, "int8x8_t", "int8x8", "i8x8::splat(8)"]
     compose:
       - FnCall:
-          - simd_select
-          - - FnCall:
-                - "simd_lt::<{type[4]}_t, int8x8_t>"
-                - - c
-                  - FnCall: [transmute, ["{type[3]}"]]
-            - FnCall:
-                - transmute
-                - - FnCall:
-                      - "vqtbx1"
-                      - - "transmute(a)"
-                        - FnCall:
-                            - transmute
-                            - - FnCall: ["vcombine{neon_type[0].no}", [b, "crate::mem::zeroed()"]]
-                        - "{type[2]}"
-            - a
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[2]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[3]}"]]
+          - FnCall:
+            - 'vqtbx1{neon_type[0].no}'
+            - - a
+              - FnCall: ['vcombine{neon_type[0].no}', [b, 'crate::mem::zeroed()']]
+              - FnCall: ['vreinterpret_u8{neon_type[0].no}', [c]]
+          - a
+
+  - name: "vtbx1{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - *neon-stable
+    big_endian_inverse: false
+    safety: safe
+    types:
+      - [uint8x8_t, "uint8x8_t", "uint8x8", "u8x8::splat(8)"]
+      - [poly8x8_t, "uint8x8_t", "uint8x8", "u8x8::splat(8)"]
+    compose:
+      - FnCall:
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[2]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[3]}"]]
+          - FnCall:
+            - 'vqtbx1{neon_type[0].no}'
+            - - a
+              - FnCall: ['vcombine{neon_type[0].no}', [b, 'crate::mem::zeroed()']]
+              - c
+          - a
 
   - name: "vtbx2{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12424,17 +12527,23 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: false
     safety: safe
     types:
-      - [int8x8_t, 'int8x8x2_t']
+      - [int8x8_t, 'int8x8x2_t', 'int8x8', 'i8x8::splat(16)']
     compose:
       - FnCall:
-          - vqtbx1
-          - - FnCall: [transmute, [a]]
-            - FnCall:
-                - transmute
-                - - FnCall: ["vcombine{neon_type[0].no}", ['b.0', 'b.1']]
-            - FnCall: [transmute, [c]]
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[2]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[3]}"]]
+          - FnCall:
+              - 'vqtbx1{neon_type[0].no}'
+              - - a
+                - FnCall: ["vcombine{neon_type[0].no}", ['b.0', 'b.1']]
+                - FnCall: ['vreinterpret_u8{neon_type[0].no}', [c]]
+          - a
 
   - name: "vtbx2{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12446,18 +12555,21 @@ intrinsics:
     big_endian_inverse: false
     safety: safe
     types:
-      - [uint8x8_t, 'uint8x8x2_t', uint8x8_t]
-      - [poly8x8_t, 'poly8x8x2_t', uint8x8_t]
+      - [uint8x8_t, 'uint8x8x2_t', uint8x8_t, 'uint8x8', 'u8x8::splat(16)']
+      - [poly8x8_t, 'poly8x8x2_t', uint8x8_t, 'uint8x8', 'u8x8::splat(16)']
     compose:
       - FnCall:
-          - transmute
-          - - FnCall:
-                - vqtbx1
-                - - FnCall: [transmute, [a]]
-                  - FnCall:
-                      - transmute
-                      - - FnCall: ["vcombine{neon_type[0].no}", ['b.0', 'b.1']]
-                  - c
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[3]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[4]}"]]
+          - FnCall:
+              - 'vqtbx1{neon_type[0].no}'
+              - - a
+                - FnCall: ["vcombine{neon_type[0].no}", ['b.0', 'b.1']]
+                - c
+          - a
 
   - name: "vtbx3{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12466,33 +12578,29 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: false
     safety: safe
     types:
-      - [int8x8_t, 'int8x8x3_t', 'int8x16x2', 'i8x8::splat(24)', 'int8x8']
+      - [int8x8_t, 'int8x8x3_t', 'int8x16x2', 'int8x8', 'i8x8::splat(24)']
     compose:
       - Let:
-         - x
-         - FnCall:
-             - '{type[2]}_t'
-             - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
-               - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'unsafe {{ crate::mem::zeroed() }}']]
+        - x
+        - FnCall:
+            - '{type[2]}_t'
+            - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
+              - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'unsafe {{ crate::mem::zeroed() }}']]
       - FnCall:
-          - transmute
-          - - FnCall:
-                - simd_select
-                - - FnCall:
-                      - 'simd_lt::<{type[4]}_t, int8x8_t>'
-                      - - FnCall: [transmute, [c]]
-                        - FnCall: [transmute, ['{type[3]}']]
-                  - FnCall:
-                      - transmute
-                      - - FnCall:
-                            - 'vqtbx2'
-                            - - FnCall: [transmute, [a]]
-                              - FnCall: [transmute, ['x.0']]
-                              - FnCall: [transmute, ['x.1']]
-                              - FnCall: [transmute, [c]]
-                  - a
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[3]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[4]}"]]
+          - FnCall:
+              - 'vqtbx2{neon_type[0].no}'
+              - - a
+                - x
+                - FnCall: ['vreinterpret_u8{neon_type[0].no}', [c]]
+          - a
 
   - name: "vtbx3{neon_type[0].no}"
     doc: "Extended table look-up"
@@ -12501,11 +12609,11 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: false
     safety: safe
     types:
-      - [uint8x8_t, 'uint8x8x3_t', 'uint8x16x2', 'u8x8::splat(24)', 'uint8x8']
-      - [poly8x8_t, 'poly8x8x3_t', 'poly8x16x2', 'u8x8::splat(24)', 'poly8x8']
-    big_endian_inverse: false
+      - [uint8x8_t, 'uint8x8x3_t', 'uint8x16x2', 'uint8x8', 'u8x8::splat(24)']
+      - [poly8x8_t, 'poly8x8x3_t', 'poly8x16x2', 'uint8x8', 'u8x8::splat(24)']
     compose:
       - Let:
          - x
@@ -12514,22 +12622,17 @@ intrinsics:
              - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
                - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'unsafe {{ crate::mem::zeroed() }}']]
       - FnCall:
-          - transmute
-          - - FnCall:
-                - simd_select
-                - - FnCall:
-                      - 'simd_lt::<{type[4]}_t, int8x8_t>'
-                      - - FnCall: [transmute, [c]]
-                        - FnCall: [transmute, ['{type[3]}']]
-                  - FnCall:
-                      - transmute
-                      - - FnCall:
-                            - 'vqtbx2'
-                            - - FnCall: [transmute, [a]]
-                              - FnCall: [transmute, ['x.0']]
-                              - FnCall: [transmute, ['x.1']]
-                              - c
-                  - a
+        - simd_select
+        - - FnCall:
+              - "simd_lt::<{type[3]}_t, int8x8_t>"
+              - - c
+                - FnCall: [transmute, ["{type[4]}"]]
+          - FnCall:
+              - 'vqtbx2{neon_type[0].no}'
+              - - a
+                - x
+                - c
+          - a
 
   - name: "vqtbl1{neon_type[3].no}"
     doc: "Table look-up"
