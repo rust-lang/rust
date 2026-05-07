@@ -1,6 +1,6 @@
 //@ check-pass
 #![allow(dead_code)]
-// Regression test for #41936. The coerce-unsized trait check in
+// Regression test for https://github.com/rust-lang/rust/issues/41936. The coerce-unsized trait check in
 // coherence was using subtyping, which triggered variance
 // computation, which failed because it required type info for fields
 // that had not (yet) been computed.
