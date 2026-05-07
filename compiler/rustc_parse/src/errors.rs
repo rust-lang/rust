@@ -1288,6 +1288,26 @@ pub(crate) struct IncorrectImplRestriction {
 }
 
 #[derive(Diagnostic)]
+#[diag("incorrect `mut` restriction")]
+#[help(
+    "some possible `mut` restrictions are:
+    `mut(crate)`: can only be mutated in the current crate
+    `mut(super)`: can only be mutated in the parent module
+    `mut(self)`: can only be mutated in current module
+    `mut(in path::to::module)`: can only be mutated in the specified path"
+)]
+pub(crate) struct IncorrectMutRestriction {
+    #[primary_span]
+    #[suggestion(
+        "help: use `in` to restrict mutations to the path `{$inner_str}`",
+        code = "in {inner_str}",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("<assignment> ... else {\"{\"} ... {\"}\"} is not allowed")]
 pub(crate) struct AssignmentElseNotAllowed {
     #[primary_span]
