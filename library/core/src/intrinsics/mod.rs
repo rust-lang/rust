@@ -2955,6 +2955,15 @@ pub const fn type_id_variants(_id: crate::any::TypeId) -> usize {
     panic!("`TypeId::variants` can only be called at compile-time")
 }
 
+/// Gets the number of fields at the given `variant_index` represented by this `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::fields`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn type_id_fields(_id: crate::any::TypeId, _variant_index: usize) -> usize {
+    panic!("`TypeId::fields` can only be called at compile-time")
+}
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and

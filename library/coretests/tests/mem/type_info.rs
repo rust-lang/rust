@@ -67,6 +67,23 @@ fn test_tuples() {
             _ => unreachable!(),
         }
     }
+
+    const {
+        let ty_id = TypeId::of::<()>();
+        assert!(ty_id.size() == Some(size_of::<()>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 0);
+
+        let ty_id = TypeId::of::<(u8,)>();
+        assert!(ty_id.size() == Some(size_of::<(u8,)>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 1);
+
+        let ty_id = TypeId::of::<(u8, u8)>();
+        assert!(ty_id.size() == Some(size_of::<(u8, u8)>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 2);
+    }
 }
 
 #[test]
@@ -96,6 +113,7 @@ fn test_structs() {
         let ty_id = TypeId::of::<TestStruct>();
         assert!(ty_id.size() == Some(size_of::<TestStruct>()));
         assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 3);
     }
 
     const {
@@ -158,6 +176,7 @@ fn test_unions() {
         let ty_id = TypeId::of::<TestUnion>();
         assert!(ty_id.size() == Some(size_of::<TestUnion>()));
         assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 2);
     }
 
     const {
@@ -215,6 +234,9 @@ fn test_enums() {
         let ty_id = TypeId::of::<E>();
         assert!(ty_id.size() == Some(size_of::<E>()));
         assert!(ty_id.variants() == 3);
+        assert!(ty_id.fields(0) == 1);
+        assert!(ty_id.fields(1) == 0);
+        assert!(ty_id.fields(2) == 2);
     }
 
     const {
@@ -227,6 +249,8 @@ fn test_enums() {
         let ty_id = TypeId::of::<Option<i32>>();
         assert!(ty_id.size() == Some(size_of::<Option<i32>>()));
         assert!(ty_id.variants() == 2);
+        assert!(ty_id.fields(0) == 0);
+        assert!(ty_id.fields(1) == 1);
     }
 }
 

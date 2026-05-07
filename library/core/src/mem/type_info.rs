@@ -401,4 +401,66 @@ impl TypeId {
     pub const fn variants(self) -> usize {
         intrinsics::type_id_variants(self)
     }
+
+    /// Returns the number of fields at the given `variant_index` of the type represented by this `TypeId`.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<u32>().fields(0) }, 0);
+    ///
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(const { TypeId::of::<Point>().fields(0) }, 2);
+    ///
+    /// enum Enum {
+    ///     Unit,
+    ///     Tuple(u32, u64),
+    ///     Struct { x: u32, y: u32, z: String },
+    /// }
+    /// assert_eq!(const { TypeId::of::<Enum>().fields(0) }, 0);
+    /// assert_eq!(const { TypeId::of::<Enum>().fields(1) }, 2);
+    /// assert_eq!(const { TypeId::of::<Enum>().fields(2) }, 3);
+    /// ```
+    ///
+    /// The variant index refers to the source order index of a variant in a type.
+    ///
+    /// For enums, these are always `0..variant_count`, regardless of any custom discriminants that may have been defined.
+    /// `struct`s, `tuples`, and `unions`s are considered to have a single variant with variant index zero.
+    ///
+    /// ```
+    /// enum Number {
+    ///     Seven = 7, // variant index == 0
+    ///     Six = 6,   // variant index == 1
+    /// }
+    /// ```
+    ///
+    /// Out-of-bounds indexing will be treated as a compile-time error.
+    ///
+    /// ```compile_fail,E0080
+    /// # #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// #
+    /// # struct Point {
+    /// #     x: u32,
+    /// #     y: u32,
+    /// # }
+    /// # enum Enum {
+    /// #     Unit,
+    /// #     Tuple(u32, u64),
+    /// #     Struct { x: u32, y: u32, z: String },
+    /// # }
+    /// const {
+    ///     _ = TypeId::of::<Point>().fields(10); // error: indexing out of bounds: the len is 2 but the index is 10
+    ///     _ = TypeId::of::<Enum>().fields(10); // error: indexing out of bounds: the len is 3 but the index is 10
+    /// }
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    pub const fn fields(self, variant_index: usize) -> usize {
+        intrinsics::type_id_fields(self, variant_index)
+    }
 }

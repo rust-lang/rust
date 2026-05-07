@@ -2,7 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::{fmt, mem};
 
-use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size};
+use rustc_abi::{Align, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -620,6 +620,31 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     ecx.project_downcast_named(dest, sym::None)?.0
                 };
                 ecx.write_discriminant(variant_index, dest)?;
+            }
+
+            sym::type_id_fields => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let variant_idx = ecx.read_target_usize(&args[1])? as usize;
+
+                let variants_num =
+                    ty.ty_adt_def().map(|adt_def| adt_def.variants().len()).unwrap_or(1);
+                if variant_idx >= variants_num {
+                    throw_ub!(BoundsCheckFailed {
+                        len: variants_num as u64,
+                        index: variant_idx as u64
+                    });
+                }
+
+                let fields_num = match ty.kind() {
+                    ty::Adt(adt_def, _) => {
+                        let variant_def = &adt_def.variants()[VariantIdx::from_usize(variant_idx)];
+                        variant_def.fields.len()
+                    }
+                    ty::Tuple(fields) => fields.len(),
+                    _ => 0, // Other types have no fields
+                };
+
+                ecx.write_scalar(Scalar::from_target_usize(fields_num as u64, ecx), dest)?;
             }
 
             sym::type_id_variants => {
