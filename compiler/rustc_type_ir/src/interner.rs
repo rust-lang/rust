@@ -405,7 +405,7 @@ pub trait Interner:
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
-        self_ty: Self::Ty,
+        args: Self::GenericArgs,
         f: impl FnMut(Self::ImplId) -> R,
     ) -> R;
     fn for_each_blanket_impl<R: VisitorResult>(

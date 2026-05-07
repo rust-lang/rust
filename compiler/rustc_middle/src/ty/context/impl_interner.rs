@@ -528,7 +528,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
         macro_rules! ret {
@@ -540,6 +540,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             };
         }
 
+        let self_ty = args.type_at(0);
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {

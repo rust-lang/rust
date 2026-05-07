@@ -151,6 +151,10 @@ where
         self.self_ty()
     }
 
+    fn args(self) -> I::GenericArgs {
+        self.alias.args
+    }
+
     fn trait_ref(self, cx: I) -> ty::TraitRef<I> {
         self.alias.trait_ref(cx)
     }
