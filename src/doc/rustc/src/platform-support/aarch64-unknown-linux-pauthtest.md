@@ -407,6 +407,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   codegen-llvm codegen-units coverage crashes incremental library mir-opt \
   run-make ui ui-fulldeps \
   tests/assembly-llvm/pauth-basic.rs \
+  tests/codegen-llvm/pauth/pauth-attr-cli-flags.rs \
   tests/codegen-llvm/pauth/pauth-attr-special-funcs.rs \
   tests/codegen-llvm/pauth/pauth-extern-c.rs \
   tests/codegen-llvm/pauth/pauth-extern-c-direct-indirect-call.rs \

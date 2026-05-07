@@ -25,13 +25,12 @@ use rustc_middle::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
-use rustc_target::spec::{LlvmAbi, SanitizerSet};
+use rustc_target::spec::SanitizerSet;
 
 use super::ModuleLlvm;
 use crate::attributes;
 use crate::builder::Builder;
 use crate::builder::gpu_offload::OffloadGlobals;
-use crate::common::pauth_fn_attrs;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
 
@@ -131,8 +130,9 @@ pub(crate) fn compile_codegen_unit(
                 // FIXME(jchlanda) If it ever becomes necessary to ensure that all compiler
                 // generated functions receive the ptrauth-* attributes, `declare_fn` or
                 // `declare_raw_fn` could be used to provide those.
-                if cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest {
-                    for &ptrauth_attr in pauth_fn_attrs() {
+                if cx.sess().pointer_authentication() {
+                    let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
+                    for ptrauth_attr in cfg.fn_attrs() {
                         attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
                     }
                 }
@@ -152,7 +152,7 @@ pub(crate) fn compile_codegen_unit(
                 cx.add_objc_module_flags();
             }
 
-            if cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest {
+            if cx.sess().pointer_authentication() {
                 // FIXME(jchlanda): In LLVM/Clang, there are also `aarch64-elf-pauthabi-platform`
                 // and `aarch64-elf-pauthabi-version` module flags. These are emitted into the
                 // PAuth core info section of the resulting ELF, which the linker uses to enforce
@@ -170,10 +170,13 @@ pub(crate) fn compile_codegen_unit(
                 //
                 // Link to PAuth core info documentation:
                 // <https://github.com/ARM-software/abi-aa/blob/2025Q4/pauthabielf64/pauthabielf64.rst#core-information>
-                if cx.sess().opts.unstable_opts.ptrauth_elf_got {
+                let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
+                if cfg.elf_got {
                     cx.add_ptrauth_elf_got_flag();
                 }
-                cx.add_ptrauth_sign_personality_flag();
+                if cx.sess().pointer_authentication_functions() {
+                    cx.add_ptrauth_sign_personality_flag();
+                }
             }
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
