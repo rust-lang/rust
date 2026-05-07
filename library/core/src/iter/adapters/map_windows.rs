@@ -218,10 +218,8 @@ impl<T, const N: usize> Drop for Buffer<T, N> {
         // SAFETY: our invariant guarantees that N elements starting from
         // `self.start` are initialized. We drop them here.
         unsafe {
-            let initialized_part: *mut [T] = crate::ptr::slice_from_raw_parts_mut(
-                self.buffer_mut_ptr().add(self.start).cast(),
-                N,
-            );
+            let initialized_part: *mut [T] =
+                self.buffer_mut_ptr().add(self.start).cast::<T>().cast_slice(N);
             ptr::drop_in_place(initialized_part);
         }
     }

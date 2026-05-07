@@ -1444,7 +1444,7 @@ impl<T> NonNull<[T]> {
     #[inline]
     pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
         // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null
-        unsafe { Self::new_unchecked(super::slice_from_raw_parts_mut(data.as_ptr(), len)) }
+        unsafe { Self::new_unchecked(data.as_ptr().cast_slice(len)) }
     }
 
     /// Returns the length of a non-null raw slice.

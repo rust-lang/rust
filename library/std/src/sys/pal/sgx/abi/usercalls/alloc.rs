@@ -151,7 +151,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
         let elem_size = size_of::<T>();
         assert_eq!(size % elem_size, 0);
         let len = size / elem_size;
-        ptr::slice_from_raw_parts_mut(ptr as _, len)
+        (ptr as _).cast_slice(len)
     }
 }
 

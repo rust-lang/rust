@@ -1306,10 +1306,7 @@ impl<T> Arc<[T]> {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut ArcInner<[mem::MaybeUninit<T>]>
-                },
+                |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[mem::MaybeUninit<T>]>,
             ))
         }
     }
@@ -1378,10 +1375,7 @@ impl<T, A: Allocator> Arc<[T], A> {
                 Arc::allocate_for_layout(
                     Layout::array::<T>(len).unwrap(),
                     |layout| alloc.allocate_zeroed(layout),
-                    |mem| {
-                        ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                            as *mut ArcInner<[mem::MaybeUninit<T>]>
-                    },
+                    |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[mem::MaybeUninit<T>]>,
                 ),
                 alloc,
             )
@@ -2270,7 +2264,7 @@ impl<T> Arc<[T]> {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[T]>,
             )
         }
     }
@@ -2349,7 +2343,7 @@ impl<T, A: Allocator> Arc<[T], A> {
             Arc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut ArcInner<[T]>,
+                |mem| mem.cast::<T>().cast_slice(len) as *mut ArcInner<[T]>,
             )
         }
     }
