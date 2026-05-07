@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::cstore::DllImport;
-use rustc_target::spec::LlvmAbi;
+use rustc_session::{PointerAuthAddressDiscriminator, PointerAuthSchema};
 use tracing::debug;
 
 use crate::consts::{IsInitOrFini, IsStatic, const_alloc_to_llvm};
@@ -26,27 +26,13 @@ use crate::llvm::{
     self, BasicBlock, ConstantInt, FALSE, TRUE, ToLlvmBool, Type, Value, const_ptr_auth,
 };
 
-#[inline]
-pub(crate) fn pauth_fn_attrs() -> &'static [&'static str] {
-    // FIXME(jchlanda) This is not an exhaustive list of all `ptrauth`-related attributes, but only
-    // those currently supported. The list is expected to grow as additional functionality is
-    // implemented, particularly for C++ interoperability.
-    &[
-        "aarch64-jump-table-hardening",
-        "ptrauth-indirect-gotos",
-        "ptrauth-calls",
-        "ptrauth-returns",
-        "ptrauth-auth-traps",
-    ]
-}
-
 pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, '_>,
     instance: Instance<'tcx>,
     llfn: &'ll llvm::Value,
-    pac: PacMetadata,
+    schema: &PointerAuthSchema,
 ) -> &'ll llvm::Value {
-    if cx.sess().target.llvm_abiname != LlvmAbi::Pauthtest {
+    if !cx.tcx.sess.pointer_authentication_functions() {
         return llfn;
     }
 
@@ -68,16 +54,16 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
-    let addr_diversity = match pac.addr_diversity {
-        AddressDiversity::None => None,
-        AddressDiversity::Real => Some(llfn),
-        AddressDiversity::Synthetic(val) => {
+    let addr_diversity = match schema.is_address_discriminated {
+        PointerAuthAddressDiscriminator::HardwareAddress(true) => Some(llfn),
+        PointerAuthAddressDiscriminator::HardwareAddress(false) => None,
+        PointerAuthAddressDiscriminator::Synthetic(val) => {
             let llval = cx.const_u64(val);
             let llty = cx.val_ty(llfn);
             Some(unsafe { llvm::LLVMConstIntToPtr(llval, llty) })
         }
     };
-    const_ptr_auth(llfn, pac.key, pac.disc, addr_diversity)
+    const_ptr_auth(llfn, schema.key as u32, schema.constant_discriminator as u64, addr_diversity)
 }
 
 /*
@@ -331,7 +317,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         llty: &'ll Type,
-        pac: Option<PacMetadata>,
+        schema: Option<&PointerAuthSchema>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -387,7 +373,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             value
                         }
                     }
-                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance, pac),
+                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance, schema),
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx

@@ -1602,6 +1602,35 @@ pub struct BranchProtection {
     pub gcs: bool,
 }
 
+#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+pub enum PointerAuthOption {
+    Calls,
+    ReturnAddresses,
+    AuthTraps,
+    IndirectGotos,
+    ElfGot,
+    Aarch64JumpTableHardening,
+    FunctionPointerTypeDiscrimination,
+    InitFini,
+    InitFiniAddressDiscrimination,
+}
+impl PointerAuthOption {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "aarch64-jump-table-hardening" => Some(Self::Aarch64JumpTableHardening),
+            "auth-traps" => Some(Self::AuthTraps),
+            "calls" => Some(Self::Calls),
+            "elf-got" => Some(Self::ElfGot),
+            "function-pointer-type-discrimination" => Some(Self::FunctionPointerTypeDiscrimination),
+            "indirect-gotos" => Some(Self::IndirectGotos),
+            "init-fini" => Some(Self::InitFini),
+            "init-fini-address-discrimination" => Some(Self::InitFiniAddressDiscrimination),
+            "return-addresses" => Some(Self::ReturnAddresses),
+            _ => None,
+        }
+    }
+}
+
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     // First disallow some configuration given on the command line
     cfg::disallow_cfgs(sess, &user_cfg);
@@ -3098,8 +3127,8 @@ pub(crate) mod dep_tracking {
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
         LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
+        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
@@ -3207,6 +3236,7 @@ pub(crate) mod dep_tracking {
         Align,
         CodegenRetagOptions,
         RustcVersion,
+        PointerAuthOption,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
