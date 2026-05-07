@@ -537,35 +537,27 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         })
         .collect::<Vec<_>>();
     if bx.tcx().sess.opts.unstable_opts.codegen_emit_retag.is_some() {
-        if let ty::InstanceKind::DropGlue(_, _) | ty::InstanceKind::AsyncDropGlue(_, _) =
-            fx.instance.def
-        {
-            // We need to special-case drop glue for now. The first argument is
-            // a raw pointer, but it needs to be treated as if it were `&mut _`.
-            args[0] = dropee_emit_retag(bx, fx, &args[0]);
-        } else {
-            args = args
-                .iter()
-                .map(|arg| match arg {
-                    &LocalRef::Place(place_ref) => {
-                        fx.codegen_retag_place(bx, place_ref, true);
-                        LocalRef::Place(place_ref)
-                    }
-                    &LocalRef::UnsizedPlace(place_ref) => {
-                        let operand = bx.load_operand(place_ref);
-                        let retagged = fx.codegen_retag_operand(bx, operand, true);
-                        assert!(matches!(retagged.val, OperandValue::Pair(_, _)));
-                        retagged.val.store(bx, place_ref);
-                        LocalRef::UnsizedPlace(place_ref)
-                    }
-                    &LocalRef::Operand(operand_ref) => {
-                        let retagged = fx.codegen_retag_operand(bx, operand_ref, true);
-                        LocalRef::Operand(retagged)
-                    }
-                    LocalRef::PendingOperand => LocalRef::PendingOperand,
-                })
-                .collect::<Vec<_>>();
-        }
+        args = args
+            .iter()
+            .map(|arg| match arg {
+                &LocalRef::Place(place_ref) => {
+                    fx.codegen_retag_place(bx, place_ref, true);
+                    LocalRef::Place(place_ref)
+                }
+                &LocalRef::UnsizedPlace(place_ref) => {
+                    let operand = bx.load_operand(place_ref);
+                    let retagged = fx.codegen_retag_operand(bx, operand, true);
+                    assert!(matches!(retagged.val, OperandValue::Pair(_, _)));
+                    retagged.val.store(bx, place_ref);
+                    LocalRef::UnsizedPlace(place_ref)
+                }
+                &LocalRef::Operand(operand_ref) => {
+                    let retagged = fx.codegen_retag_operand(bx, operand_ref, true);
+                    LocalRef::Operand(retagged)
+                }
+                LocalRef::PendingOperand => LocalRef::PendingOperand,
+            })
+            .collect::<Vec<_>>();
         // If we branched during retagging, then we need to update the
         // start block to the new location.
         fx.cached_llbbs[mir::START_BLOCK] = CachedLlbb::Some(bx.llbb());
@@ -646,32 +638,4 @@ fn find_cold_blocks<'tcx>(
     }
 
     cold_blocks
-}
-
-fn dropee_emit_retag<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    fx: &mut FunctionCx<'a, 'tcx, Bx>,
-    local: &LocalRef<'tcx, Bx::Value>,
-) -> LocalRef<'tcx, Bx::Value> {
-    // We have `*mut _` as our first argument
-    if let &LocalRef::Operand(OperandRef { val, layout, move_annotation }) = local {
-        if layout.ty.is_raw_ptr()
-            && let Some(deref_ty) = layout.ty.builtin_deref(true)
-        {
-            // Create `&mut _`
-            let lifetime = bx.tcx().lifetimes.re_erased;
-            let subst_ty_kind = ty::Ref(lifetime, deref_ty, ty::Mutability::Mut);
-            let subst_ty = bx.tcx().mk_ty_from_kind(subst_ty_kind);
-            let subst_layout = bx.layout_of(subst_ty);
-
-            // We want the same operand value, but use the reference type for it.
-            let operand_ref = OperandRef { val, layout: subst_layout, move_annotation };
-
-            let retagged = fx.codegen_retag_operand(bx, operand_ref, true);
-
-            // Return the retagged parameter, but use the original layout now.
-            return LocalRef::Operand(OperandRef { val: retagged.val, layout, move_annotation });
-        }
-    }
-    bug!("dropee isn't a raw pointer")
 }
