@@ -1338,6 +1338,7 @@ symbols! {
         must_use,
         mut_preserve_binding_mode_2024,
         mut_ref,
+        mut_restriction,
         mutable,
         naked,
         naked_asm,
