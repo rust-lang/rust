@@ -136,7 +136,8 @@ impl ModuleConfig {
         let emit_obj = if !should_emit_obj {
             EmitObj::None
         } else if sess.target.obj_is_bitcode
-            || (sess.opts.cg.linker_plugin_lto.enabled() && !no_builtins)
+            || (sess.opts.cg.linker_plugin_lto.enabled()
+                && (!no_builtins || tcx.sess.is_sanitizer_cfi_enabled()))
         {
             // This case is selected if the target uses objects as bitcode, or
             // if linker plugin LTO is enabled. In the linker plugin LTO case
@@ -144,14 +145,23 @@ impl ModuleConfig {
             // and convert it to object code. This may be done by either the
             // native linker or rustc itself.
             //
-            // Note, however, that the linker-plugin-lto requested here is
-            // explicitly ignored for `#![no_builtins]` crates. These crates are
-            // specifically ignored by rustc's LTO passes and wouldn't work if
-            // loaded into the linker. These crates define symbols that LLVM
-            // lowers intrinsics to, and these symbol dependencies aren't known
-            // until after codegen. As a result any crate marked
-            // `#![no_builtins]` is assumed to not participate in LTO and
-            // instead goes on to generate object code.
+            // By default this branch is skipped for `#![no_builtins]` crates so
+            // they emit native object files (machine code), not LLVM bitcode
+            // objects for the linker (see rust-lang/rust#146133).
+            //
+            // However, when LLVM CFI is enabled (`-Zsanitizer=cfi`), this
+            // breaks LLVM's expected pipeline: LLVM emits `llvm.type.test`
+            // intrinsics and related metadata that must be lowered by LLVM's
+            // `LowerTypeTests` pass before instruction selection during
+            // link-time LTO. Otherwise, `llvm.type.test` intrinsics and related
+            // metadata are not lowered by LLVM's `LowerTypeTests` pass before
+            // reaching the target backend, and LLVM may abort during codegen
+            // (for example in SelectionDAG type legalization) (see
+            // rust-lang/rust#142284).
+            //
+            // Therefore, with `-Clinker-plugin-lto` and `-Zsanitizer=cfi`, a
+            // `#![no_builtins]` crate must still use rustc's `EmitObj::Bitcode`
+            // path (and emit LLVM bitcode in the `.o` for linker-based LTO).
             EmitObj::Bitcode
         } else if need_bitcode_in_object(tcx) || sess.target.requires_lto {
             EmitObj::ObjectCode(BitcodeSection::Full)
