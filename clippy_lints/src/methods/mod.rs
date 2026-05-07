@@ -5160,6 +5160,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 io_other_error::check(cx, expr, func, args, self.msrv);
                 swap_with_temporary::check(cx, expr, func, args);
                 ip_constant::check(cx, expr, func, args);
+                clone_on_copy::check_function(cx, expr);
                 unwrap_expect_used::check_call(
                     cx,
                     expr,
