@@ -42,7 +42,7 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
             simd_len,
             vec_len,
             ..
-        } = &self.data
+        } = **self
         {
             let quad = if simd_len.unwrap_or(1) * bl > 64 {
                 "q"
@@ -69,79 +69,69 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
     }
 }
 
-impl ArmIntrinsicType {
-    pub fn from_c(s: &str, target: &str) -> Result<Self, String> {
-        const CONST_STR: &str = "const";
-        if let Some(s) = s.strip_suffix('*') {
-            let (s, constant) = match s.trim().strip_suffix(CONST_STR) {
-                Some(stripped) => (stripped, true),
-                None => (s, false),
+pub fn parse_intrinsic_type(s: &str) -> Result<IntrinsicType, String> {
+    const CONST_STR: &str = "const";
+    if let Some(s) = s.strip_suffix('*') {
+        let (s, constant) = match s.trim().strip_suffix(CONST_STR) {
+            Some(stripped) => (stripped, true),
+            None => (s, false),
+        };
+        let s = s.trim_end();
+        let mut ty = parse_intrinsic_type(s)?;
+        ty.ptr = true;
+        ty.ptr_constant = constant;
+        Ok(ty)
+    } else {
+        // [const ]TYPE[{bitlen}[x{simdlen}[x{vec_len}]]][_t]
+        let (mut s, constant) = match s.strip_prefix(CONST_STR) {
+            Some(stripped) => (stripped.trim(), true),
+            None => (s, false),
+        };
+        s = s.strip_suffix("_t").unwrap_or(s);
+        let mut parts = s.split('x'); // [[{bitlen}], [{simdlen}], [{vec_len}] ]
+        let start = parts.next().ok_or("Impossible to parse type")?;
+        if let Some(digit_start) = start.find(|c: char| c.is_ascii_digit()) {
+            let (arg_kind, bit_len) = start.split_at(digit_start);
+            let arg_kind = arg_kind.parse::<TypeKind>()?;
+            let bit_len = bit_len.parse::<u32>().map_err(|err| err.to_string())?;
+            let simd_len = match parts.next() {
+                Some(part) => Some(
+                    part.parse::<u32>()
+                        .map_err(|_| "Couldn't parse simd_len: {part}")?,
+                ),
+                None => None,
             };
-            let s = s.trim_end();
-            let temp_return = ArmIntrinsicType::from_c(s, target);
-            temp_return.map(|mut op| {
-                op.ptr = true;
-                op.ptr_constant = constant;
-                op
+            let vec_len = match parts.next() {
+                Some(part) => Some(
+                    part.parse::<u32>()
+                        .map_err(|_| "Couldn't parse vec_len: {part}")?,
+                ),
+                None => None,
+            };
+            Ok(IntrinsicType {
+                ptr: false,
+                ptr_constant: false,
+                constant,
+                kind: arg_kind,
+                bit_len: Some(bit_len),
+                simd_len,
+                vec_len,
             })
         } else {
-            // [const ]TYPE[{bitlen}[x{simdlen}[x{vec_len}]]][_t]
-            let (mut s, constant) = match s.strip_prefix(CONST_STR) {
-                Some(stripped) => (stripped.trim(), true),
-                None => (s, false),
+            let kind = start.parse::<TypeKind>()?;
+            let bit_len = match kind {
+                TypeKind::Int(_) => Some(32),
+                _ => None,
             };
-            s = s.strip_suffix("_t").unwrap_or(s);
-            let mut parts = s.split('x'); // [[{bitlen}], [{simdlen}], [{vec_len}] ]
-            let start = parts.next().ok_or("Impossible to parse type")?;
-            if let Some(digit_start) = start.find(|c: char| c.is_ascii_digit()) {
-                let (arg_kind, bit_len) = start.split_at(digit_start);
-                let arg_kind = arg_kind.parse::<TypeKind>()?;
-                let bit_len = bit_len.parse::<u32>().map_err(|err| err.to_string())?;
-                let simd_len = match parts.next() {
-                    Some(part) => Some(
-                        part.parse::<u32>()
-                            .map_err(|_| "Couldn't parse simd_len: {part}")?,
-                    ),
-                    None => None,
-                };
-                let vec_len = match parts.next() {
-                    Some(part) => Some(
-                        part.parse::<u32>()
-                            .map_err(|_| "Couldn't parse vec_len: {part}")?,
-                    ),
-                    None => None,
-                };
-                Ok(ArmIntrinsicType {
-                    data: IntrinsicType {
-                        ptr: false,
-                        ptr_constant: false,
-                        constant,
-                        kind: arg_kind,
-                        bit_len: Some(bit_len),
-                        simd_len,
-                        vec_len,
-                    },
-                    target: target.to_string(),
-                })
-            } else {
-                let kind = start.parse::<TypeKind>()?;
-                let bit_len = match kind {
-                    TypeKind::Int(_) => Some(32),
-                    _ => None,
-                };
-                Ok(ArmIntrinsicType {
-                    data: IntrinsicType {
-                        ptr: false,
-                        ptr_constant: false,
-                        constant,
-                        kind: start.parse::<TypeKind>()?,
-                        bit_len,
-                        simd_len: None,
-                        vec_len: None,
-                    },
-                    target: target.to_string(),
-                })
-            }
+            Ok(IntrinsicType {
+                ptr: false,
+                ptr_constant: false,
+                constant,
+                kind: start.parse::<TypeKind>()?,
+                bit_len,
+                simd_len: None,
+                vec_len: None,
+            })
         }
     }
 }

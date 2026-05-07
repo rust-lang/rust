@@ -1,4 +1,5 @@
 use super::intrinsic::ArmIntrinsicType;
+use crate::arm::types::parse_intrinsic_type;
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::constraint::Constraint;
 use crate::common::intrinsic::Intrinsic;
@@ -58,7 +59,6 @@ struct JsonIntrinsic {
 
 pub fn get_neon_intrinsics(
     filename: &Path,
-    target: &str,
 ) -> Result<Vec<Intrinsic<ArmIntrinsicType>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
@@ -68,7 +68,7 @@ pub fn get_neon_intrinsics(
         .into_iter()
         .filter_map(|intr| {
             if intr.simd_isa == "Neon" {
-                Some(json_to_intrinsic(intr, target).expect("Couldn't parse JSON"))
+                Some(json_to_intrinsic(intr).expect("Couldn't parse JSON"))
             } else {
                 None
             }
@@ -79,11 +79,10 @@ pub fn get_neon_intrinsics(
 
 fn json_to_intrinsic(
     mut intr: JsonIntrinsic,
-    target: &str,
 ) -> Result<Intrinsic<ArmIntrinsicType>, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
-    let results = ArmIntrinsicType::from_c(&intr.return_type.value, target)?;
+    let result_ty = ArmIntrinsicType(parse_intrinsic_type(&intr.return_type.value)?);
 
     let args = intr
         .arguments
@@ -95,16 +94,18 @@ fn json_to_intrinsic(
             let metadata = metadata.and_then(|a| a.remove(arg_name));
             let arg_prep: Option<ArgPrep> = metadata.and_then(|a| a.try_into().ok());
             let constraint: Option<Constraint> = arg_prep.and_then(|a| a.try_into().ok());
-            let ty = ArmIntrinsicType::from_c(type_name, target)
-                .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
+            let arg_ty = ArmIntrinsicType(
+                parse_intrinsic_type(type_name)
+                    .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'")),
+            );
 
             let mut arg =
-                Argument::<ArmIntrinsicType>::new(i, String::from(arg_name), ty, constraint);
+                Argument::<ArmIntrinsicType>::new(i, String::from(arg_name), arg_ty, constraint);
 
             // The JSON doesn't list immediates as const
             let IntrinsicType {
                 ref mut constant, ..
-            } = arg.ty.data;
+            } = *arg.ty;
             if arg.name.starts_with("imm") {
                 *constant = true
             }
@@ -117,7 +118,7 @@ fn json_to_intrinsic(
     Ok(Intrinsic {
         name,
         arguments,
-        results,
+        results: result_ty,
         arch_tags: intr.architectures,
     })
 }
