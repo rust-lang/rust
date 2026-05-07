@@ -18,6 +18,10 @@ cfg_select! {
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(super) use unix::CachedFileMetadata;
         use crate::sys::helpers::run_path_with_cstr as with_native_path;
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        pub(crate) use unix::{
+            cfg_has_statx, StatxExtraFields
+        };
     }
     target_os = "windows" => {
         mod windows;
