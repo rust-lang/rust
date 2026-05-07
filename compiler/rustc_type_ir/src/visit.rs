@@ -67,7 +67,7 @@ pub trait TypeVisitable<I: Interner>: fmt::Debug {
     /// each field/element.
     ///
     /// For types of interest (such as `Ty`), the implementation of this method
-    /// that calls a visitor method specifically for that type (such as
+    /// calls a visitor method specifically for that type (such as
     /// `V::visit_ty`). This is where control transfers from `TypeVisitable` to
     /// `TypeVisitor`.
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result;
@@ -102,8 +102,8 @@ pub trait TypeVisitor<I: Interner>: Sized {
         t.super_visit_with(self)
     }
 
-    // The default region visitor is a no-op because `Region` is non-recursive
-    // and has no `super_visit_with` method to call.
+    // `Region` is non-recursive so the default region visitor has no
+    // `super_visit_with` method to call.
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
         if let ty::ReError(guar) = r.kind() {
             self.visit_error(guar)
@@ -251,10 +251,10 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_vars_bound_at_or_above(binder.shifted_in(1))
     }
 
-    /// Return `true` if this type has regions that are not a part of the type.
-    /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
-    /// would return `true`. The latter can occur when traversing through the
-    /// former.
+    /// Returns `true` if this type has regions that are not a part of the
+    /// type. For example, given a `for<'a> fn(&'a i32)` this function returns
+    /// `false`, while given a `fn(&'a i32)` it returns `true`. The latter can
+    /// occur when traversing through the former.
     ///
     /// See [`HasEscapingVarsVisitor`] for more information.
     fn has_escaping_bound_vars(&self) -> bool {
@@ -283,6 +283,10 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
 
     fn has_non_region_param(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
+    }
+
+    fn has_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_REGIONS)
     }
 
     fn has_infer_regions(&self) -> bool {
@@ -363,13 +367,12 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        let res =
-            self.visit_with(&mut HasTypeFlagsVisitor { flags }) == ControlFlow::Break(FoundFlags);
-        res
+        self.visit_with(&mut HasTypeFlagsVisitor { flags }) == ControlFlow::Break(FoundFlags)
     }
 
     fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
+        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder })
+            == ControlFlow::Break(FoundEscapingVars)
     }
 
     fn error_reported(&self) -> Result<(), I::ErrorGuaranteed> {
@@ -438,8 +441,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
         // Note: no `super_visit_with` call.
-        let flags = t.flags();
-        if flags.intersects(self.flags) {
+        if t.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::Continue(())
@@ -449,8 +451,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     #[inline]
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
         // Note: no `super_visit_with` call, as usual for `Region`.
-        let flags = r.flags();
-        if flags.intersects(self.flags) {
+        if r.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::Continue(())
@@ -571,7 +572,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
         // `outer_index`, that means that `ct` contains some content
         // bound at `outer_index` or above (because
         // `outer_exclusive_binder` is always 1 higher than the
-        // content in `t`). Therefore, `t` has some escaping vars.
+        // content in `ct`). Therefore, `ct` has some escaping vars.
         if ct.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
