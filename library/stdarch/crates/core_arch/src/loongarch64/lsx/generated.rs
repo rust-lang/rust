@@ -43,14 +43,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vsrlri_w(a: __v4i32, b: u32) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vsrlri.d"]
     fn __lsx_vsrlri_d(a: __v2i64, b: u32) -> __v2i64;
-    #[link_name = "llvm.loongarch.lsx.vbitclr.b"]
-    fn __lsx_vbitclr_b(a: __v16u8, b: __v16u8) -> __v16u8;
-    #[link_name = "llvm.loongarch.lsx.vbitclr.h"]
-    fn __lsx_vbitclr_h(a: __v8u16, b: __v8u16) -> __v8u16;
-    #[link_name = "llvm.loongarch.lsx.vbitclr.w"]
-    fn __lsx_vbitclr_w(a: __v4u32, b: __v4u32) -> __v4u32;
-    #[link_name = "llvm.loongarch.lsx.vbitclr.d"]
-    fn __lsx_vbitclr_d(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vbitclri.b"]
     fn __lsx_vbitclri_b(a: __v16u8, b: u32) -> __v16u8;
     #[link_name = "llvm.loongarch.lsx.vbitclri.h"]
@@ -59,14 +51,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vbitclri_w(a: __v4u32, b: u32) -> __v4u32;
     #[link_name = "llvm.loongarch.lsx.vbitclri.d"]
     fn __lsx_vbitclri_d(a: __v2u64, b: u32) -> __v2u64;
-    #[link_name = "llvm.loongarch.lsx.vbitset.b"]
-    fn __lsx_vbitset_b(a: __v16u8, b: __v16u8) -> __v16u8;
-    #[link_name = "llvm.loongarch.lsx.vbitset.h"]
-    fn __lsx_vbitset_h(a: __v8u16, b: __v8u16) -> __v8u16;
-    #[link_name = "llvm.loongarch.lsx.vbitset.w"]
-    fn __lsx_vbitset_w(a: __v4u32, b: __v4u32) -> __v4u32;
-    #[link_name = "llvm.loongarch.lsx.vbitset.d"]
-    fn __lsx_vbitset_d(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vbitseti.b"]
     fn __lsx_vbitseti_b(a: __v16u8, b: u32) -> __v16u8;
     #[link_name = "llvm.loongarch.lsx.vbitseti.h"]
@@ -75,14 +59,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vbitseti_w(a: __v4u32, b: u32) -> __v4u32;
     #[link_name = "llvm.loongarch.lsx.vbitseti.d"]
     fn __lsx_vbitseti_d(a: __v2u64, b: u32) -> __v2u64;
-    #[link_name = "llvm.loongarch.lsx.vbitrev.b"]
-    fn __lsx_vbitrev_b(a: __v16u8, b: __v16u8) -> __v16u8;
-    #[link_name = "llvm.loongarch.lsx.vbitrev.h"]
-    fn __lsx_vbitrev_h(a: __v8u16, b: __v8u16) -> __v8u16;
-    #[link_name = "llvm.loongarch.lsx.vbitrev.w"]
-    fn __lsx_vbitrev_w(a: __v4u32, b: __v4u32) -> __v4u32;
-    #[link_name = "llvm.loongarch.lsx.vbitrev.d"]
-    fn __lsx_vbitrev_d(a: __v2u64, b: __v2u64) -> __v2u64;
     #[link_name = "llvm.loongarch.lsx.vbitrevi.b"]
     fn __lsx_vbitrevi_b(a: __v16u8, b: u32) -> __v16u8;
     #[link_name = "llvm.loongarch.lsx.vbitrevi.h"]
@@ -1199,34 +1175,6 @@ pub fn lsx_vsrlri_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitclr_b(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitclr_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitclr_h(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitclr_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitclr_w(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitclr_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitclr_d(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitclr_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vbitclri_b<const IMM3: u32>(a: m128i) -> m128i {
@@ -1263,34 +1211,6 @@ pub fn lsx_vbitclri_d<const IMM6: u32>(a: m128i) -> m128i {
 
 #[inline]
 #[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitset_b(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitset_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitset_h(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitset_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitset_w(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitset_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitset_d(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitset_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vbitseti_b<const IMM3: u32>(a: m128i) -> m128i {
@@ -1323,34 +1243,6 @@ pub fn lsx_vbitseti_w<const IMM5: u32>(a: m128i) -> m128i {
 pub fn lsx_vbitseti_d<const IMM6: u32>(a: m128i) -> m128i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lsx_vbitseti_d(transmute(a), IMM6)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitrev_b(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitrev_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitrev_h(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitrev_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitrev_w(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitrev_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbitrev_d(a: m128i, b: m128i) -> m128i {
-    unsafe { transmute(__lsx_vbitrev_d(transmute(a), transmute(b))) }
 }
 
 #[inline]

@@ -120,6 +120,18 @@ impl_vvv!("lasx", lasx_xvsrl_b, ls::simd_shr, m256i, u8x32);
 impl_vvv!("lasx", lasx_xvsrl_h, ls::simd_shr, m256i, u16x16);
 impl_vvv!("lasx", lasx_xvsrl_w, ls::simd_shr, m256i, u32x8);
 impl_vvv!("lasx", lasx_xvsrl_d, ls::simd_shr, m256i, u64x4);
+impl_vvv!("lasx", lasx_xvbitclr_b, ls::simd_bitclr, m256i, u8x32);
+impl_vvv!("lasx", lasx_xvbitclr_h, ls::simd_bitclr, m256i, u16x16);
+impl_vvv!("lasx", lasx_xvbitclr_w, ls::simd_bitclr, m256i, u32x8);
+impl_vvv!("lasx", lasx_xvbitclr_d, ls::simd_bitclr, m256i, u64x4);
+impl_vvv!("lasx", lasx_xvbitset_b, ls::simd_bitset, m256i, u8x32);
+impl_vvv!("lasx", lasx_xvbitset_h, ls::simd_bitset, m256i, u16x16);
+impl_vvv!("lasx", lasx_xvbitset_w, ls::simd_bitset, m256i, u32x8);
+impl_vvv!("lasx", lasx_xvbitset_d, ls::simd_bitset, m256i, u64x4);
+impl_vvv!("lasx", lasx_xvbitrev_b, ls::simd_bitrev, m256i, u8x32);
+impl_vvv!("lasx", lasx_xvbitrev_h, ls::simd_bitrev, m256i, u16x16);
+impl_vvv!("lasx", lasx_xvbitrev_w, ls::simd_bitrev, m256i, u32x8);
+impl_vvv!("lasx", lasx_xvbitrev_d, ls::simd_bitrev, m256i, u64x4);
 
 impl_vuv!("lasx", lasx_xvslli_b, is::simd_shl, m256i, i8x32);
 impl_vuv!("lasx", lasx_xvslli_h, is::simd_shl, m256i, i16x16);
