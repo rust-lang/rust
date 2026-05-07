@@ -1114,11 +1114,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 else {
                     continue;
                 };
-                if did.is_local() {
-                    // We don't record the doc alias name in the local crate
-                    // because the people who write doc alias are usually not
-                    // confused by them.
-                    continue;
+                if let Some(local) = did.as_local() {
+                    if let Some(aliases) = r.doc_aliases.get(&local)
+                        && aliases.contains(&item_name)
+                    {
+                        return Some(did);
+                    } else {
+                        continue;
+                    }
                 }
                 if let Some(d) = hir::find_attr!(r.tcx, did, Doc(d) => d)
                     && d.aliases.contains_key(&item_name)
