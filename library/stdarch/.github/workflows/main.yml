@@ -297,6 +297,7 @@ jobs:
         rustup component add rust-src
         echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
       if: ${{ matrix.build_std }}
+    - run: rustup component add rustfmt
 
     # Configure some env vars based on matrix configuration
     - run: echo "PROFILE=${{ matrix.profile }}" >> $GITHUB_ENV

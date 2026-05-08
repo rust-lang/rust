@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use itertools::Itertools;
 
 use super::indentation::Indentation;
@@ -34,6 +36,22 @@ macro_rules! concatln {
     ($($lines:expr),* $(,)?) => {
         concat!($( $lines, "\n" ),*)
     };
+}
+
+/// Run rustfmt on the generated source code
+pub fn run_rustfmt(source_path: &str) {
+    let output = Command::new("rustfmt")
+        .args([source_path])
+        .output()
+        .expect("failed to run rustfmt on generated sources");
+
+    if !output.status.success() {
+        panic!(
+            "failed to run rustfmt on generated sources:\nstdout:{stdout}\nstderr:{stderr}",
+            stdout = String::from_utf8_lossy(&output.stdout),
+            stderr = String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 pub fn write_bin_cargo_toml(
