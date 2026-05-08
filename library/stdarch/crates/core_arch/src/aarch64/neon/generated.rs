@@ -10344,13 +10344,7 @@ pub fn veor3q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vextq_f64<const N: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_p64)"]
@@ -10361,13 +10355,7 @@ pub fn vextq_f64<const N: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vextq_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_f64)"]

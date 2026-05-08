@@ -11956,15 +11956,7 @@ pub fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vext_f16<const N: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_f32)"]
@@ -11987,13 +11979,7 @@ pub fn vext_f16<const N: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 pub fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s32)"]
@@ -12016,13 +12002,7 @@ pub fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 )]
 pub fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u32)"]
@@ -12045,13 +12025,7 @@ pub fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 )]
 pub fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s64)"]
@@ -12125,17 +12099,20 @@ pub unsafe fn vext_u64<const N: i32>(a: uint64x1_t, _b: uint64x1_t) -> uint64x1_
 pub fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12160,17 +12137,20 @@ pub fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12195,17 +12175,20 @@ pub fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12230,17 +12213,20 @@ pub fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12265,17 +12251,20 @@ pub fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12300,17 +12289,20 @@ pub fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 pub fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12336,17 +12328,20 @@ pub fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 pub fn vextq_f16<const N: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
-        match N & 0b111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-            4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-            5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-            6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-            7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12370,15 +12365,7 @@ pub fn vextq_f16<const N: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
 )]
 pub fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s16)"]
@@ -12401,15 +12388,7 @@ pub fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 )]
 pub fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s32)"]
@@ -12432,15 +12411,7 @@ pub fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 )]
 pub fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u16)"]
@@ -12463,15 +12434,7 @@ pub fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 )]
 pub fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u32)"]
@@ -12494,15 +12457,7 @@ pub fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 )]
 pub fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_p16)"]
@@ -12525,15 +12480,7 @@ pub fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 pub fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        match N & 0b11 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [1, 2, 3, 4]),
-            2 => simd_shuffle!(a, b, [2, 3, 4, 5]),
-            3 => simd_shuffle!(a, b, [3, 4, 5, 6]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s64)"]
@@ -12556,13 +12503,7 @@ pub fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 )]
 pub fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u64)"]
@@ -12585,13 +12526,7 @@ pub fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 )]
 pub fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        match N & 0b1 {
-            0 => simd_shuffle!(a, b, [0, 1]),
-            1 => simd_shuffle!(a, b, [1, 2]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    unsafe { simd_shuffle!(a, b, [N as u32, N as u32 + 1]) }
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s8)"]
@@ -12615,85 +12550,28 @@ pub fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 pub fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 4);
     unsafe {
-        match N & 0b1111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
-            ),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7,
+                N as u32 + 8,
+                N as u32 + 9,
+                N as u32 + 10,
+                N as u32 + 11,
+                N as u32 + 12,
+                N as u32 + 13,
+                N as u32 + 14,
+                N as u32 + 15
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12718,85 +12596,28 @@ pub fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 4);
     unsafe {
-        match N & 0b1111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
-            ),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7,
+                N as u32 + 8,
+                N as u32 + 9,
+                N as u32 + 10,
+                N as u32 + 11,
+                N as u32 + 12,
+                N as u32 + 13,
+                N as u32 + 14,
+                N as u32 + 15
+            ]
+        )
     }
 }
 #[doc = "Extract vector from pair of vectors"]
@@ -12821,85 +12642,28 @@ pub fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(N, 4);
     unsafe {
-        match N & 0b1111 {
-            0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
-            ),
-            _ => unreachable_unchecked(),
-        }
+        simd_shuffle!(
+            a,
+            b,
+            [
+                N as u32,
+                N as u32 + 1,
+                N as u32 + 2,
+                N as u32 + 3,
+                N as u32 + 4,
+                N as u32 + 5,
+                N as u32 + 6,
+                N as u32 + 7,
+                N as u32 + 8,
+                N as u32 + 9,
+                N as u32 + 10,
+                N as u32 + 11,
+                N as u32 + 12,
+                N as u32 + 13,
+                N as u32 + 14,
+                N as u32 + 15
+            ]
+        )
     }
 }
 #[doc = "Floating-point fused Multiply-Add to accumulator (vector)"]

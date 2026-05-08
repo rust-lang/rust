@@ -1719,10 +1719,10 @@ intrinsics:
           - "transmute"
           - - FnCall: ['vget{neon_type[1].lane_nox}', [a], [N]]
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 7']]}]]
@@ -1733,20 +1733,20 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
-      - [int16x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
-      - [uint8x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
-      - [uint16x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
-      - [poly8x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
-      - [poly16x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
+      - int8x8_t
+      - int16x8_t
+      - uint8x8_t
+      - uint16x8_t
+      - poly8x8_t
+      - poly16x8_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 3]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3, N as u32 + 4, N as u32 + 5, N as u32 + 6, N as u32 + 7]']]
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 15']]}]]
@@ -1757,17 +1757,17 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x16_t, 'match N & 0b1111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]), 8 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]), 9 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]), 10 => simd_shuffle!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]), 11 => simd_shuffle!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]), 12 => simd_shuffle!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]), 13 => simd_shuffle!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]), 14 => simd_shuffle!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]), 15 => simd_shuffle!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]), _ => unreachable_unchecked(), }']
-      - [uint8x16_t, 'match N & 0b1111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]), 8 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]), 9 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]), 10 => simd_shuffle!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]), 11 => simd_shuffle!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]), 12 => simd_shuffle!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]), 13 => simd_shuffle!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]), 14 => simd_shuffle!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]), 15 => simd_shuffle!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]), _ => unreachable_unchecked(), }']
-      - [poly8x16_t, 'match N & 0b1111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]), 8 => simd_shuffle!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]), 9 => simd_shuffle!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]), 10 => simd_shuffle!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]), 11 => simd_shuffle!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]), 12 => simd_shuffle!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]), 13 => simd_shuffle!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]), 14 => simd_shuffle!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]), 15 => simd_shuffle!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]), _ => unreachable_unchecked(), }']
+      - int8x16_t
+      - uint8x16_t
+      - poly8x16_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 4]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3, N as u32 + 4, N as u32 + 5, N as u32 + 6, N as u32 + 7, N as u32 + 8, N as u32 + 9, N as u32 + 10, N as u32 + 11, N as u32 + 12, N as u32 + 13, N as u32 + 14, N as u32 + 15]']]
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 3']]}]]
@@ -1778,21 +1778,21 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int16x4_t,'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
-      - [int32x4_t, 'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
-      - [uint16x4_t, 'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
-      - [uint32x4_t, 'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
-      - [poly16x4_t, 'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
-      - [float32x4_t, 'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
+      - int16x4_t
+      - int32x4_t
+      - uint16x4_t
+      - uint32x4_t
+      - poly16x4_t
+      - float32x4_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 2]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]']]
 
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 3']]}]]
@@ -1805,15 +1805,15 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [float16x4_t, 'match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
+      - float16x4_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 2]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3]']]
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 7']]}]]
@@ -1826,17 +1826,17 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [float16x8_t, 'match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
+      - float16x8_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 3]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1, N as u32 + 2, N as u32 + 3, N as u32 + 4, N as u32 + 5, N as u32 + 6, N as u32 + 7]']]
 
 
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vext.8"', 'N = 1']]}]]
@@ -1847,17 +1847,17 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int32x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
-      - [uint32x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
-      - [float32x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
+      - int32x2_t
+      - uint32x2_t
+      - float32x2_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1]']]
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmov, 'N = 1']]}]]
@@ -1868,11 +1868,11 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int64x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
-      - [uint64x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
+      - int64x2_t
+      - uint64x2_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1]']]
 
   - name: "vmla{neon_type[0].no}"
     doc: "Multiply-add to accumulator"

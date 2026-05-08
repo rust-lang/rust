@@ -2662,10 +2662,10 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [N, 2]]
       - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
-  - name: "vext{neon_type[0].no}"
+  - name: "vext{neon_type.no}"
     doc: "Extract vector from pair of vectors"
-    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[0]}"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ext, 'N = 1']]}]]
       - FnCall: [rustc_legacy_const_generics, ['2']]
@@ -2673,11 +2673,11 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [poly64x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
-      - [float64x2_t, 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
+      - poly64x2_t
+      - float64x2_t
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
-      - Identifier: ["{type[1]}", UnsafeSymbol]
+      - FnCall: [simd_shuffle!, [a, b, '[N as u32, N as u32 + 1]']]
 
   - name: "vmla{neon_type.no}"
     doc: "Floating-point multiply-add to accumulator"
