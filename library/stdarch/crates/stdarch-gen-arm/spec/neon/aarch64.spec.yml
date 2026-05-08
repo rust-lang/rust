@@ -8995,6 +8995,46 @@ intrinsics:
       - Identifier: ["{type[5]}", UnsafeSymbol]
       - Identifier: ["{type[6]}", UnsafeSymbol]
 
+  - name: "vcopy_lane_{neon_type[0]}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["_a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'LANE1 = {type[1]}', 'LANE2 = {type[1]}']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1', '3']]
+      - *neon-stable
+    static_defs: ['const LANE1: i32, const LANE2: i32']
+    safety: safe
+    types:
+      - [float64x1_t, '0', 'b']
+      - [poly64x1_t, '0', 'b']
+      - [uint64x1_t, '0', 'b']
+      - [int64x1_t, '0', 'b']
+    compose:
+      - FnCall: [static_assert!, ['LANE1 == {type[1]}']]
+      - FnCall: [static_assert!, ['LANE2 == {type[1]}']]
+      - Identifier: ["{type[2]}", Symbol]
+
+  - name: "vcopy_laneq_{neon_type[0]}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["_a: {neon_type[1]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'LANE1 = {type[2]}', 'LANE2 = {type[3]}']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1', '3']]
+      - *neon-stable
+    static_defs: ['const LANE1: i32, const LANE2: i32']
+    safety: safe
+    types:
+      - [float64x2_t, float64x1_t, '0', '1', 'transmute::<f64, _>(simd_extract!(b, LANE2 as u32))']
+      - [poly64x2_t, poly64x1_t, '0', '1', 'transmute::<u64, _>(simd_extract!(b, LANE2 as u32))']
+      - [uint64x2_t, uint64x1_t, '0', '1', 'transmute::<u64, _>(simd_extract!(b, LANE2 as u32))']
+      - [int64x2_t, int64x1_t, '0', '1', 'transmute::<i64, _>(simd_extract!(b, LANE2 as u32))']
+    compose:
+      - FnCall: [static_assert!, ['LANE1 == {type[2]}']]
+      - FnCall: [static_assert_uimm_bits!, [LANE2, '{type[3]}']]
+      - Identifier: ["{type[4]}", UnsafeSymbol]
+
   - name: "vcopy{neon_type[0].laneq_nox}"
     doc: "Insert vector element from another vector element"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
@@ -14467,3 +14507,46 @@ intrinsics:
           links:
             - link: "llvm.aarch64.fjcvtzs"
               arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[3]}']
+    safety: safe
+    types:
+      - ['vget_high_f64', 'float64x2_t', 'float64x1_t', 'fmov', 'float64x1_t([simd_extract!(a, 1)])']
+      - ['vget_low_f64', 'float64x2_t', 'float64x1_t', 'nop', 'float64x1_t([simd_extract!(a, 0)])']
+    compose:
+      - Identifier: ['{type[4]}', UnsafeSymbol]
+
+  - name: "vcombine{neon_type[0].noq}"
+    doc: Join two smaller vectors into a single larger vector
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [mov]
+    safety: safe
+    types:
+      - [float64x1_t, float64x2_t, '[0, 1]']
+    compose:
+      - FnCall: [simd_shuffle!, [a, b, '{type[2]}']]
+
+  - name: "vgetq_lane_{type[1]}"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+    assert_instr: [['nop', 'IMM5 = 0']]
+    safety: safe
+    static_defs: ["const IMM5: i32"]
+    types:
+      - ['float64x2_t', 'f64']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [IMM5, "1"]]
+      - FnCall: ['simd_extract!', [a, 'IMM5 as u32'], [] , true]

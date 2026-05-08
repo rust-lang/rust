@@ -15001,8 +15001,9 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - ['vget_high_s64', 'int64x2_t', 'int64x1_t', 'vmov', 'ext', 'int64x1_t([simd_extract!(a, 1)])']
-      - ['vget_high_u64', 'uint64x2_t', 'uint64x1_t', 'vmov', 'ext', 'uint64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_s64', 'int64x2_t',   'int64x1_t',   'vmov', 'ext',  'int64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_u64', 'uint64x2_t',  'uint64x1_t',  'vmov', 'ext',  'uint64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_p64', 'poly64x2_t',  'poly64x1_t',  'vmov', 'ext',  'transmute(u64x1::new(simd_extract!(a, 1)))']
     compose:
       - Identifier: ['{type[5]}', UnsafeSymbol]
 
@@ -15017,8 +15018,9 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - ['vget_low_s64', 'int64x2_t', 'int64x1_t', 'int64x1_t([simd_extract!(a, 0)])']
-      - ['vget_low_u64', 'uint64x2_t', 'uint64x1_t', 'uint64x1_t([simd_extract!(a, 0)])']
+      - ['vget_low_s64', 'int64x2_t',   'int64x1_t',   'int64x1_t([simd_extract!(a, 0)])']
+      - ['vget_low_u64', 'uint64x2_t',  'uint64x1_t',  'uint64x1_t([simd_extract!(a, 0)])']
+      - ['vget_low_p64', 'poly64x2_t',  'poly64x1_t',  'transmute(u64x1::new(simd_extract!(a, 0)))']
     compose:
       - Identifier: ['{type[3]}', UnsafeSymbol]
 
