@@ -237,7 +237,12 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) has_panic_handler: bool,
     // FIXME do we need to hash this?
     pub(crate) has_default_lib_allocator: bool,
-    // FIXME do we need to hash this?
+    // Changing externally implementable items should cause recompiles in all downstream crates.
+    // FIXME EiiDecl and EiiImpl contain spans. Should changing the span of these items cause
+    // recompiles?
+    // FIXME eii-s are collected in `rustc_metadata::eii::collect`. We should probably stable sort
+    // that there to make the query result more stable (but sorting might be useless if this
+    // should be sensitive to span changes)
     pub(crate) externally_implementable_items: Hashed<LazyArray<EiiMapEncodedKeyValue>>,
 
     // FIXME do we need to hash this?
