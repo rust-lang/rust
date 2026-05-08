@@ -66,7 +66,7 @@ use hir_expand::{
     EditionedFileId, ErasedAstId, HirFileId, InFile, MacroCallId, mod_path::ModPath, name::Name,
     proc_macro::ProcMacroKind,
 };
-use intern::Symbol;
+use intern::{Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
@@ -465,7 +465,16 @@ impl DefMap {
         block: Option<BlockInfo>,
     ) -> DefMap {
         let mut modules = ModulesMap::new();
-        let root = unsafe { ModuleIdLt::new(db, krate, block.map(|it| it.block)).to_static() };
+        let root = unsafe {
+            ModuleIdLt::new(
+                db,
+                krate,
+                block.map(|it| it.block),
+                None,
+                Name::new_symbol_root(sym::__empty),
+            )
+            .to_static()
+        };
         modules.insert(root, module_data);
 
         DefMap {
