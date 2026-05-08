@@ -225,6 +225,7 @@ impl<I: Interner> TraitPredicate<I> {
         }
     }
 
+    #[inline]
     pub fn def_id(self) -> I::TraitId {
         self.trait_ref.def_id
     }
@@ -1035,6 +1036,7 @@ impl<I: Interner> HostEffectPredicate<I> {
         Self { trait_ref: self.trait_ref.with_replaced_self_ty(interner, self_ty), ..self }
     }
 
+    #[inline]
     pub fn def_id(self) -> I::TraitId {
         self.trait_ref.def_id
     }

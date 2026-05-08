@@ -80,6 +80,7 @@ impl fmt::Debug for ValTree<'_> {
 impl<'tcx> rustc_type_ir::inherent::IntoKind for ty::ValTree<'tcx> {
     type Kind = ty::ValTreeKind<TyCtxt<'tcx>>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         *self.0
     }
@@ -226,10 +227,12 @@ impl<'tcx> Value<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
+    #[inline]
     fn ty(self) -> Ty<'tcx> {
         self.ty
     }
 
+    #[inline]
     fn valtree(self) -> ValTree<'tcx> {
         self.valtree
     }

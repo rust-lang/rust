@@ -86,10 +86,12 @@ impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
+    #[inline]
     fn safe() -> Self {
         hir::Safety::Safe
     }
 
+    #[inline]
     fn unsafe_mode() -> Self {
         hir::Safety::Unsafe
     }
@@ -131,6 +133,7 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
 }
 
 impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
+    #[inline]
     fn dummy() -> Self {
         DUMMY_SP
     }

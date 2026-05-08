@@ -285,6 +285,7 @@ pub struct ParamTy {
 }
 
 impl rustc_type_ir::inherent::ParamLike for ParamTy {
+    #[inline]
     fn index(self) -> u32 {
         self.index
     }
@@ -319,6 +320,7 @@ pub struct ParamConst {
 }
 
 impl rustc_type_ir::inherent::ParamLike for ParamConst {
+    #[inline]
     fn index(self) -> u32 {
         self.index
     }
@@ -927,10 +929,12 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
+    #[inline]
     fn new_bool(tcx: TyCtxt<'tcx>) -> Self {
         tcx.types.bool
     }
 
+    #[inline]
     fn new_u8(tcx: TyCtxt<'tcx>) -> Self {
         tcx.types.u8
     }
@@ -1130,10 +1134,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_unsafe_binder(interner, ty)
     }
 
+    #[inline]
     fn new_unit(interner: TyCtxt<'tcx>) -> Self {
         interner.types.unit
     }
 
+    #[inline]
     fn new_usize(interner: TyCtxt<'tcx>) -> Self {
         interner.types.usize
     }
@@ -2191,6 +2197,7 @@ impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx
 }
 
 impl<'tcx> rustc_type_ir::inherent::Symbol<TyCtxt<'tcx>> for Symbol {
+    #[inline]
     fn is_kw_underscore_lifetime(self) -> bool {
         self == kw::UnderscoreLifetime
     }

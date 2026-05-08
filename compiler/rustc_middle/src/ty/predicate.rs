@@ -63,10 +63,12 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::Flags for Predicate<'tcx> {
+    #[inline]
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
 
+    #[inline]
     fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
     }

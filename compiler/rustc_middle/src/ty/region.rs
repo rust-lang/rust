@@ -19,6 +19,7 @@ pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
     type Kind = RegionKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> RegionKind<'tcx> {
         *self.0.0
     }
@@ -183,6 +184,7 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
         Region::new_placeholder(tcx, placeholder)
     }
 
+    #[inline]
     fn new_static(tcx: TyCtxt<'tcx>) -> Self {
         tcx.lifetimes.re_static
     }
@@ -368,6 +370,7 @@ impl EarlyParamRegion {
 }
 
 impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
+    #[inline]
     fn index(self) -> u32 {
         self.index
     }

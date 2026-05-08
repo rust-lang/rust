@@ -168,18 +168,22 @@ impl<I: Interner, T> Binder<I, T> {
     ///
     /// See existing uses of `.skip_binder()` in `rustc_trait_selection::traits::select`
     /// or `rustc_next_trait_solver` for examples.
+    #[inline]
     pub fn skip_binder(self) -> T {
         self.value
     }
 
+    #[inline]
     pub fn bound_vars(&self) -> I::BoundVarKinds {
         self.bound_vars
     }
 
+    #[inline]
     pub fn as_ref(&self) -> Binder<I, &T> {
         Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
+    #[inline]
     pub fn as_deref(&self) -> Binder<I, &T::Target>
     where
         T: Deref,
@@ -394,10 +398,12 @@ generate!(
 );
 
 impl<I: Interner, T> EarlyBinder<I, T> {
+    #[inline]
     pub fn bind(value: T) -> EarlyBinder<I, T> {
         EarlyBinder { value, _tcx: PhantomData }
     }
 
+    #[inline]
     pub fn as_ref(&self) -> EarlyBinder<I, &T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
@@ -428,6 +434,7 @@ impl<I: Interner, T> EarlyBinder<I, T> {
         Ok(EarlyBinder { value, _tcx: PhantomData })
     }
 
+    #[inline]
     pub fn rebind<U>(&self, value: U) -> EarlyBinder<I, U> {
         EarlyBinder { value, _tcx: PhantomData }
     }
@@ -448,6 +455,7 @@ impl<I: Interner, T> EarlyBinder<I, T> {
     ///
     /// See also [`Binder::skip_binder`](Binder::skip_binder), which is
     /// the analogous operation on [`Binder`].
+    #[inline]
     pub fn skip_binder(self) -> T {
         self.value
     }
