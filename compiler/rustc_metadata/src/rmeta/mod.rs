@@ -415,6 +415,9 @@ macro_rules! define_tables {
     }
 }
 
+// When adding a new field, use `RDRHashAll` as the hasher and include a `// FIXME do we need to
+// hash this comment?` to note that it wasn't reviewed for public api hashing. The docs of
+// `HashableCrateHeader` contains more information about public api hashing.
 define_tables! {
 - defaulted:
     intrinsic: Table<RDRHashAll, DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
