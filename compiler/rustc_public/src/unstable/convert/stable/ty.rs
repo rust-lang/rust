@@ -453,8 +453,9 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::FnPtr(sig_tys, hdr) => {
                 TyKind::RigidTy(RigidTy::FnPtr(sig_tys.with(*hdr).stable(tables, cx)))
             }
-            // FIXME(unsafe_binders):
-            ty::UnsafeBinder(_) => todo!(),
+            ty::UnsafeBinder(binder) => {
+                TyKind::RigidTy(RigidTy::UnsafeBinder(binder.stable(tables, cx)))
+            }
             ty::Dynamic(existential_predicates, region) => TyKind::RigidTy(RigidTy::Dynamic(
                 existential_predicates
                     .iter()
