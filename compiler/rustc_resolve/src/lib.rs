@@ -61,7 +61,6 @@ use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguator
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
-use rustc_middle::bug;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
@@ -69,6 +68,7 @@ use rustc_middle::ty::{
     self, DelegationInfo, MainDefinition, RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt,
     TyCtxt, TyCtxtFeed, Visibility,
 };
+use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -561,6 +561,13 @@ impl ModuleKind {
             _ => None,
         }
     }
+
+    fn is_local(&self) -> bool {
+        match self {
+            ModuleKind::Def(_, def_id, ..) => def_id.is_local(),
+            _ => true,
+        }
+    }
 }
 
 /// Combination of a symbol and its macros 2.0 normalized hygiene context.
@@ -648,8 +655,8 @@ type Resolutions<'ra> = CmRefCell<FxIndexMap<BindingKey, &'ra CmRefCell<NameReso
 /// * `trait`
 /// * curly-braced block with statements
 ///
-/// You can use [`ModuleData::kind`] to determine the kind of module this is.
-struct ModuleData<'ra> {
+/// You can use [`CommonModuleData::kind`] to determine the kind of module this is.
+struct CommonModuleData<'ra> {
     /// The direct parent module (it may not be a `mod`, however).
     parent: Option<Module<'ra>>,
     /// What kind of module this is, because this may not be a `mod`.
@@ -687,27 +694,40 @@ struct ModuleData<'ra> {
     self_decl: Option<Decl<'ra>>,
 }
 
+#[derive(Hash)]
+struct LocalModuleData<'ra> {
+    common: CommonModuleData<'ra>,
+}
+
+#[derive(Hash)]
+struct ExternModuleData<'ra> {
+    common: CommonModuleData<'ra>,
+}
+
 /// All modules are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
-struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
+enum Module<'ra> {
+    Local(LocalModule<'ra>),
+    Extern(ExternModule<'ra>),
+}
 
 /// Same as `Module`, but is guaranteed to be from the current crate.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
-struct LocalModule<'ra>(Interned<'ra, ModuleData<'ra>>);
+struct LocalModule<'ra>(Interned<'ra, LocalModuleData<'ra>>);
 
 /// Same as `Module`, but is guaranteed to be from an external crate.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
-struct ExternModule<'ra>(Interned<'ra, ModuleData<'ra>>);
+struct ExternModule<'ra>(Interned<'ra, ExternModuleData<'ra>>);
 
 // Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
 // contained data.
 // FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
 // are upheld.
-impl std::hash::Hash for ModuleData<'_> {
+impl std::hash::Hash for CommonModuleData<'_> {
     fn hash<H>(&self, _: &mut H)
     where
         H: std::hash::Hasher,
@@ -716,7 +736,7 @@ impl std::hash::Hash for ModuleData<'_> {
     }
 }
 
-impl<'ra> ModuleData<'ra> {
+impl<'ra> CommonModuleData<'ra> {
     fn new(
         parent: Option<Module<'ra>>,
         kind: ModuleKind,
@@ -725,11 +745,8 @@ impl<'ra> ModuleData<'ra> {
         no_implicit_prelude: bool,
         self_decl: Option<Decl<'ra>>,
     ) -> Self {
-        let is_foreign = match kind {
-            ModuleKind::Def(_, def_id, _, _) => !def_id.is_local(),
-            ModuleKind::Block => false,
-        };
-        ModuleData {
+        let is_foreign = !kind.is_local();
+        CommonModuleData {
             parent,
             kind,
             lazy_resolutions: Default::default(),
@@ -751,7 +768,7 @@ impl<'ra> ModuleData<'ra> {
     }
 
     fn def_id(&self) -> DefId {
-        self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
+        self.opt_def_id().expect("`CommonModuleData::def_id` is called on a block module")
     }
 
     fn res(&self) -> Option<Res> {
@@ -860,58 +877,73 @@ impl<'ra> Module<'ra> {
 
     #[track_caller]
     fn expect_local(self) -> LocalModule<'ra> {
-        match self.kind {
-            ModuleKind::Def(_, def_id, _, _) if !def_id.is_local() => {
-                panic!("`Module::expect_local` is called on a non-local module: {self:?}")
-            }
-            ModuleKind::Def(..) | ModuleKind::Block => LocalModule(self.0),
+        match self {
+            Module::Local(m) => m,
+            Module::Extern(m) => span_bug!(m.span, "unexpected extern module: {m:?}"),
         }
     }
 
     #[track_caller]
     fn expect_extern(self) -> ExternModule<'ra> {
-        match self.kind {
-            ModuleKind::Def(_, def_id, _, _) if !def_id.is_local() => ExternModule(self.0),
-            ModuleKind::Def(..) | ModuleKind::Block => {
-                panic!("`Module::expect_extern` is called on a local module: {self:?}")
-            }
+        match self {
+            Module::Extern(m) => m,
+            Module::Local(m) => span_bug!(m.span, "unexpected local module: {m:?}"),
         }
     }
 }
 
 impl<'ra> LocalModule<'ra> {
     fn to_module(self) -> Module<'ra> {
-        Module(self.0)
+        Module::Local(self)
     }
 }
 
 impl<'ra> ExternModule<'ra> {
     fn to_module(self) -> Module<'ra> {
-        Module(self.0)
+        Module::Extern(self)
     }
 }
 
 impl<'ra> std::ops::Deref for Module<'ra> {
-    type Target = ModuleData<'ra>;
+    type Target = CommonModuleData<'ra>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        match self {
+            Module::Local(m) => &m.common,
+            Module::Extern(m) => &m.common,
+        }
     }
 }
 
 impl<'ra> std::ops::Deref for LocalModule<'ra> {
-    type Target = ModuleData<'ra>;
+    type Target = LocalModuleData<'ra>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
+impl<'ra> std::ops::Deref for LocalModuleData<'ra> {
+    type Target = CommonModuleData<'ra>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.common
+    }
+}
+
 impl<'ra> std::ops::Deref for ExternModule<'ra> {
-    type Target = ModuleData<'ra>;
+    type Target = ExternModuleData<'ra>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<'ra> std::ops::Deref for ExternModuleData<'ra> {
+    type Target = CommonModuleData<'ra>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.common
     }
 }
 
@@ -925,6 +957,12 @@ impl<'ra> fmt::Debug for Module<'ra> {
 }
 
 impl<'ra> fmt::Debug for LocalModule<'ra> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.to_module().fmt(f)
+    }
+}
+
+impl<'ra> fmt::Debug for ExternModule<'ra> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_module().fmt(f)
     }
@@ -1504,7 +1542,8 @@ pub struct Resolver<'ra, 'tcx> {
 /// used by many types in this crate is an abbreviation of `ResolverArenas`.
 #[derive(Default)]
 pub struct ResolverArenas<'ra> {
-    modules: TypedArena<ModuleData<'ra>>,
+    local_modules: TypedArena<LocalModuleData<'ra>>,
+    extern_modules: TypedArena<ExternModuleData<'ra>>,
     imports: TypedArena<ImportData<'ra>>,
     name_resolutions: TypedArena<CmRefCell<NameResolution<'ra>>>,
     ast_paths: TypedArena<ast::Path>,
@@ -1554,14 +1593,17 @@ impl<'ra> ResolverArenas<'ra> {
             }
             ModuleKind::Block => None,
         };
-        Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
-            parent,
-            kind,
-            expn_id,
-            span,
-            no_implicit_prelude,
-            self_decl,
-        ))))
+        let common =
+            CommonModuleData::new(parent, kind, expn_id, span, no_implicit_prelude, self_decl);
+        if common.kind.is_local() {
+            Module::Local(LocalModule(Interned::new_unchecked(
+                self.local_modules.alloc(LocalModuleData { common }),
+            )))
+        } else {
+            Module::Extern(ExternModule(Interned::new_unchecked(
+                self.extern_modules.alloc(ExternModuleData { common }),
+            )))
+        }
     }
     fn alloc_decl(&'ra self, data: DeclData<'ra>) -> Decl<'ra> {
         Interned::new_unchecked(self.dropless.alloc(data))
@@ -2149,7 +2191,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.populate_on_access.set(false);
             self.build_reduced_graph_external(module.expect_extern());
         }
-        &module.0.0.lazy_resolutions
+        match module {
+            Module::Local(m) => &m.0.0.lazy_resolutions,
+            Module::Extern(m) => &m.0.0.lazy_resolutions,
+        }
     }
 
     fn resolution(
