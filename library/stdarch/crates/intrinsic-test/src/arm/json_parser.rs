@@ -3,7 +3,7 @@ use crate::arm::types::parse_intrinsic_type;
 use crate::common::argument::{Argument, ArgumentList};
 use crate::common::constraint::Constraint;
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_helpers::IntrinsicType;
+use crate::common::intrinsic_helpers::{IntrinsicType, TypeKind};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -90,17 +90,36 @@ fn json_to_intrinsic(
         .enumerate()
         .map(|(i, arg)| {
             let (type_name, arg_name) = Argument::<ArmIntrinsicType>::type_and_name_from_c(&arg);
+
+            let arg_ty = parse_intrinsic_type(type_name)
+                .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
+
             let metadata = intr.args_prep.as_mut();
             let metadata = metadata.and_then(|a| a.remove(arg_name));
             let arg_prep: Option<ArgPrep> = metadata.and_then(|a| a.try_into().ok());
-            let constraint: Option<Constraint> = arg_prep.and_then(|a| a.try_into().ok());
-            let arg_ty = ArmIntrinsicType(
-                parse_intrinsic_type(type_name)
-                    .unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'")),
-            );
+            let constraint: Option<Constraint> =
+                arg_prep.and_then(|a| a.try_into().ok()).or_else(|| {
+                    if arg_ty.kind() == TypeKind::SvPattern {
+                        Some(Constraint::SvPattern)
+                    } else if arg_ty.kind() == TypeKind::SvPrefetchOp {
+                        Some(Constraint::SvPrefetchOp)
+                    } else if arg_name == "imm_rotation" {
+                        if name.starts_with("svcadd_") || name.starts_with("svqcadd_") {
+                            Some(Constraint::SvImmRotationAdd)
+                        } else {
+                            Some(Constraint::SvImmRotation)
+                        }
+                    } else {
+                        None
+                    }
+                });
 
-            let mut arg =
-                Argument::<ArmIntrinsicType>::new(i, String::from(arg_name), arg_ty, constraint);
+            let mut arg = Argument::<ArmIntrinsicType>::new(
+                i,
+                String::from(arg_name),
+                ArmIntrinsicType(arg_ty),
+                constraint,
+            );
 
             // The JSON doesn't list immediates as const
             let IntrinsicType {
