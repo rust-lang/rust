@@ -118,7 +118,8 @@ impl std::fmt::Debug for CStore {
         for (cnum, data) in self.iter_crate_data() {
             writeln!(fmt, "  name: {}", data.name())?;
             writeln!(fmt, "  cnum: {cnum}")?;
-            writeln!(fmt, "  hash: {}", data.hash())?;
+            writeln!(fmt, "  private hash: {}", data.private_hash())?;
+            writeln!(fmt, "  public hash:  {}", data.public_hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
             let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
@@ -251,7 +252,7 @@ impl CStore {
 
     fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
-        self.hash_to_cnum.insert(data.hash(), cnum);
+        self.hash_to_cnum.insert(data.public_hash(), cnum);
         self.metas[cnum] = Some(Box::new(data));
     }
 
@@ -644,12 +645,36 @@ impl CStore {
         }
     }
 
-    fn existing_match(&self, name: Symbol, hash: Option<Svh>) -> Option<CrateNum> {
-        let hash = hash?;
+    fn existing_match(&self, name: Symbol, public_hash: Option<Svh>) -> Option<CrateNum> {
+        let hash = public_hash?;
         let cnum = *self.hash_to_cnum.get(&hash)?;
         debug_assert_eq!(self.get_crate_data(cnum).name(), name);
         Some(cnum)
     }
+    /*
+        fn existing_match(&self, name: Symbol, public_hash: Option<Svh>) -> Option<CrateNum> {
+            let public_hash = public_hash?;
+
+            for (cnum, data) in self.iter_crate_data() {
+                if data.name() != name {
+                    trace!("{} did not match {}", data.name(), name);
+                    continue;
+                }
+
+                if public_hash == data.public_hash() {
+                    return Some(cnum);
+                } else {
+                    debug!(
+                        "actual public hash {} did not match expected {}",
+                        public_hash,
+                        data.public_hash()
+                    );
+                }
+            }
+
+            None
+        }
+    */
 
     /// Determine whether a dependency should be considered private.
     ///
@@ -688,7 +713,14 @@ impl CStore {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let unhashed = metadata.get_root_unhashed();
-        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_crate_hash());
+        let host_hash = host_lib.as_ref().map(|lib| {
+            assert_eq!(
+                lib.metadata.public_crate_hash(),
+                lib.metadata.private_crate_hash(),
+                "Mismatched public and private hash for proc macro!"
+            );
+            lib.metadata.public_crate_hash()
+        });
         let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
@@ -964,10 +996,12 @@ impl CStore {
         // as an already loaded crate. If this is the case prevent
         // duplicates by just using the first crate.
         let root_name = library.metadata.get_root().name();
-        let root_hash = library.metadata.get_crate_hash();
+        let root_public_hash = library.metadata.public_crate_hash();
+        let root_private_hash = library.metadata.private_crate_hash();
         let mut result = LoadResult::Loaded(library);
         for (cnum, data) in self.iter_crate_data() {
-            if data.name() == root_name && data.hash() == root_hash {
+            if data.name() == root_name && data.public_hash() == root_public_hash {
+                assert!(root_private_hash == data.private_hash());
                 assert!(locator.hash.is_none());
                 info!("load success, going to previous cnum: {}", cnum);
                 result = LoadResult::Previous(cnum);

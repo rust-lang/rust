@@ -727,7 +727,9 @@ impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
         adapted.encode(&mut self.encoder.opaque, self.hcx)
     }
 
-    fn encode_crate_root(&mut self) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
+    fn encode_crate_root(
+        &mut self,
+    ) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>, Option<Svh>) {
         let tcx = self.tcx();
 
         // We set it here as we need it only for metadata encoding,
@@ -924,7 +926,7 @@ impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
             def_path_hash_map,
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
         };
-        let crate_root = crate_root.into_crate_root(self.hcx);
+        let (crate_root, public_hash) = crate_root.into_crate_root(self.hcx);
         let root = stat!("crate-root", || self.lazy(crate_root));
 
         // By default the crate hash (SVH) is derived from the encoded metadata bytes. With
@@ -1020,7 +1022,7 @@ impl<'a, 'tcx, 'h, 'b, 'c> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c> {
             eprint!("{s}");
         }
 
-        (root, unhashed)
+        (root, unhashed, public_hash)
     }
 }
 
@@ -2757,8 +2759,11 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         let mmap = unsafe { Mmap::map(file) }.unwrap();
         let owned = slice_owned(mmap, Deref::deref);
         let blob = MetadataBlob::new(owned);
-        let hash = blob.expect("file already created").get_crate_hash();
-        tcx.untracked().local_crate_hash.set(hash).expect("local_crate_hash set twice");
+        let hashes = blob.expect("file already created").crate_hashes();
+        tcx.untracked()
+            .local_crate_hash
+            .set(hashes.private_hash)
+            .expect("local_crate_hash set twice");
 
         // Generate the metadata stub manually, as that is a small file compared to full metadata.
         if let Some(ref_path) = ref_path {
@@ -2771,7 +2776,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                     is_proc_macro_crate: false,
                     is_stub: true,
                 });
-                (header.position.get(), 0)
+                (header.position.get(), 0, Some(hashes.public_hash))
             })
         }
 
@@ -2791,6 +2796,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
+    let mut public_hash = None;
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
     tcx.dep_graph.with_task(
@@ -2809,9 +2815,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                         MetadataBuilder { encoder: ecx, hcx: &mut hcx, tables: Default::default() };
                     // Encode all the entries and extra information in the crate,
                     // culminating in the `CrateRoot` which points to all of it.
-                    let (root, unhashed) = builder.encode_crate_root();
+                    let (root, unhashed, public_crate_hash) = builder.encode_crate_root();
+                    public_hash = public_crate_hash;
 
-                    (root.position.get(), unhashed.position.get())
+                    (root.position.get(), unhashed.position.get(), public_hash)
                 })
             })
         },
@@ -2829,7 +2836,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 is_proc_macro_crate: false,
                 is_stub: true,
             });
-            (header.position.get(), 0)
+            (header.position.get(), 0, public_hash)
         })
     }
 }
@@ -2837,7 +2844,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 fn with_encode_metadata_header(
     tcx: TyCtxt<'_>,
     path: &Path,
-    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> (usize, usize),
+    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> (usize, usize, Option<Svh>),
 ) {
     // By default the crate hash (SVH) is computed from the bytes of the encoded metadata,
     // Under `-Z metadata-crate-hash=no` the SVH comes from the legacy `crate_hash` query instead and
@@ -2883,7 +2890,8 @@ fn with_encode_metadata_header(
     // Same with unhashed_position.
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
-    // Same with crate_hash.
+    // Same with private and public crate_hash.
+    encoder.emit_raw_bytes(&Fingerprint::ZERO.to_le_bytes());
     encoder.emit_raw_bytes(&Fingerprint::ZERO.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
@@ -2914,7 +2922,7 @@ fn with_encode_metadata_header(
     // Encode the rustc version string in a predictable location.
     rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
-    let (root_position, unhashed_position) = f(&mut ecx);
+    let (root_position, unhashed_position, public_hash) = f(&mut ecx);
 
     // Make sure we report any errors from writing to the file.
     // If we forget this, compilation can succeed with an incomplete rmeta file,
@@ -2941,7 +2949,7 @@ fn with_encode_metadata_header(
         .get()
         .copied()
         .expect("local_crate_hash set during encoding");
-    if let Err(err) = encode_crate_hash(file, hash) {
+    if let Err(err) = encode_crate_hash(file, hash, public_hash) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
@@ -2962,9 +2970,14 @@ fn encode_unhashed_position(mut file: &File, pos: usize) -> Result<(), std::io::
     Ok(())
 }
 
-fn encode_crate_hash(mut file: &File, hash: Svh) -> Result<(), std::io::Error> {
-    file.seek(SeekFrom::Start(CRATE_HASH_OFFSET as u64))?;
+fn encode_crate_hash(
+    mut file: &File,
+    hash: Svh,
+    public_hash: Option<Svh>,
+) -> Result<(), std::io::Error> {
+    file.seek(SeekFrom::Start(PRIVATE_CRATE_HASH_OFFSET as u64))?;
     file.write_all(&hash.as_fingerprint().to_le_bytes())?;
+    file.write_all(&public_hash.unwrap_or(hash).as_fingerprint().to_le_bytes())?;
     Ok(())
 }
 

@@ -25,7 +25,7 @@ use crate::rmeta::table::TableIdx;
 use crate::rmeta::{
     DefPathHashMapRef, EiiMapEncodedKeyValue, EncodeContext, EncodeFrom, ExpnDataTable,
     ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue,
-    OnDiskSourceFileIdx, ProcMacroData, RDRHashes, SyntaxContextTable, TraitImpls,
+    OnDiskSourceFileIdx, ProcMacroData, SyntaxContextTable, TraitImpls,
 };
 
 #[derive(Default)]
@@ -307,15 +307,18 @@ pub(crate) struct HashableCrateRoot {
 }
 
 impl HashableCrateRoot {
-    pub(super) fn into_crate_root(self, hcx: &mut PublicApiHashingContext<'_>) -> CrateRoot {
-        let rdr_hashes = if hcx.hash_public_api {
+    pub(super) fn into_crate_root(
+        self,
+        hcx: &mut PublicApiHashingContext<'_>,
+    ) -> (CrateRoot, Option<Svh>) {
+        let hashes = if hcx.hash_public_api {
             assert!(!self.header.is_proc_macro_crate);
             let mut hasher = StableHasher::default();
             self.stable_hash(&mut hcx.hcx, &mut hasher);
             let public_api_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
             debug!("public api hash: {}", public_api_hash);
-            Some(RDRHashes { public_api_hash })
+            Some(public_api_hash)
         } else {
             None
         };
@@ -326,7 +329,7 @@ impl HashableCrateRoot {
             is_proc_macro_crate: header.is_proc_macro_crate,
             is_stub: header.is_stub,
         };
-        CrateRoot {
+        let root = CrateRoot {
             header,
 
             stable_crate_id: self.stable_crate_id,
@@ -384,8 +387,7 @@ impl HashableCrateRoot {
             symbol_mangling_version: self.symbol_mangling_version,
 
             specialization_enabled_in: self.specialization_enabled_in,
-
-            rdr_hashes,
-        }
+        };
+        (root, hashes)
     }
 }

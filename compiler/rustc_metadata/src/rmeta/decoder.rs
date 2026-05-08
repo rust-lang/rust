@@ -766,10 +766,23 @@ impl MetadataBlob {
         self.get_root_unhashed().dep_extra_filenames
     }
 
-    pub(crate) fn get_crate_hash(&self) -> Svh {
-        let bytes: [u8; CRATE_HASH_LEN] =
-            self[CRATE_HASH_OFFSET..][..CRATE_HASH_LEN].try_into().unwrap();
+    pub(crate) fn public_crate_hash(&self) -> Svh {
+        let bytes: [u8; PUBLIC_CRATE_HASH_LEN] =
+            self[PUBLIC_CRATE_HASH_OFFSET..][..PUBLIC_CRATE_HASH_LEN].try_into().unwrap();
         Svh::new(Fingerprint::from_le_bytes(bytes))
+    }
+
+    pub(crate) fn private_crate_hash(&self) -> Svh {
+        let bytes: [u8; PRIVATE_CRATE_HASH_LEN] =
+            self[PRIVATE_CRATE_HASH_OFFSET..][..PRIVATE_CRATE_HASH_LEN].try_into().unwrap();
+        Svh::new(Fingerprint::from_le_bytes(bytes))
+    }
+
+    pub(crate) fn crate_hashes(&self) -> CrateHashes {
+        CrateHashes {
+            private_hash: self.private_crate_hash(),
+            public_hash: self.public_crate_hash(),
+        }
     }
 
     pub(crate) fn list_crate_metadata(
@@ -796,10 +809,11 @@ impl MetadataBlob {
                     writeln!(out, "name {}{}", root.name(), extra_filename)?;
                     writeln!(
                         out,
-                        "hash {} stable_crate_id {:?}",
-                        self.get_crate_hash(),
+                        "private hash {} stable_crate_id {:?}",
+                        self.private_crate_hash(),
                         root.stable_crate_id
                     )?;
+                    writeln!(out, "public_hash {}", self.public_crate_hash())?;
                     writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
                     writeln!(out, "triple {}", root.header.triple.tuple())?;
                     writeln!(out, "edition {}", root.edition)?;
@@ -2164,8 +2178,12 @@ impl CrateMetadata {
         self.root.header.name
     }
 
-    pub(crate) fn hash(&self) -> Svh {
-        self.blob.get_crate_hash()
+    pub(crate) fn private_hash(&self) -> Svh {
+        self.blob.private_crate_hash()
+    }
+
+    pub(crate) fn public_hash(&self) -> Svh {
+        self.blob.public_crate_hash()
     }
 
     pub(crate) fn has_async_drops(&self) -> bool {

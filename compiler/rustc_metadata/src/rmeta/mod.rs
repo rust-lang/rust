@@ -78,7 +78,7 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 12;
+const METADATA_VERSION: u8 = 13;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
@@ -95,9 +95,11 @@ const ROOT_POS_OFFSET: usize = METADATA_HEADER.len();
 const ROOT_POS_LEN: usize = size_of::<u64>();
 const UNHASHED_POS_OFFSET: usize = ROOT_POS_OFFSET + ROOT_POS_LEN;
 const UNHASHED_POS_LEN: usize = size_of::<u64>();
-const CRATE_HASH_OFFSET: usize = UNHASHED_POS_OFFSET + UNHASHED_POS_LEN;
-const CRATE_HASH_LEN: usize = size_of::<Fingerprint>();
-const VERSION_OFFSET: usize = CRATE_HASH_OFFSET + CRATE_HASH_LEN;
+const PRIVATE_CRATE_HASH_OFFSET: usize = UNHASHED_POS_OFFSET + UNHASHED_POS_LEN;
+const PRIVATE_CRATE_HASH_LEN: usize = size_of::<Fingerprint>();
+const PUBLIC_CRATE_HASH_OFFSET: usize = PRIVATE_CRATE_HASH_OFFSET + PRIVATE_CRATE_HASH_LEN;
+const PUBLIC_CRATE_HASH_LEN: usize = size_of::<Fingerprint>();
+const VERSION_OFFSET: usize = PUBLIC_CRATE_HASH_OFFSET + PUBLIC_CRATE_HASH_LEN;
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
@@ -339,8 +341,6 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
-
-    rdr_hashes: Option<RDRHashes>,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -387,17 +387,23 @@ impl Idx for ProcMacroQuotedSpansIdx {
     }
 }
 
-/// Hashes used for the feature [relink don't rebuild](https://github.com/rust-lang/compiler-team/issues/790)
-///
-/// This struct is not final. For example it might be
-/// beneficial for `cargo check` and `cargo build` to use different hashes for early cutoff. `check` doesn't really
-/// depend on spans of inlined/monomorphized mir, it also doesn't need private types used in them. While a full build will need it for code and debug info generation
-///
-/// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the feature is disabled.
-#[derive(MetadataEncodable, LazyDecodable, Debug)]
-struct RDRHashes {
-    /// Hash of the "public api". It tries to exclude things which cannot change the output in dependents, allowing to skip their rustc invocation, which can be quite expensive even if nothing has changed (macro expansion, checking that nothing changed in the query dependency graph is always executed)
-    public_api_hash: Svh,
+/// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.
+#[derive(MetadataEncodable, BlobDecodable, Clone, Copy, Eq, PartialEq, Hash)]
+pub(crate) struct CrateHashes {
+    /// Hash of the crate contents, including private items. For proc macros this includes the
+    /// private hashes of all dependencies. When `public-api-hash` is enabled, for other crate
+    /// types than proc macro, it only includes the public hash of dependencies. This is only
+    /// readable by queries in downstream dependencies if the crate querying is a proc macro.
+    pub(crate) private_hash: Svh,
+    /// Hash of most data in rmeta. same as `private_hash` if the `public-api-hash` option is
+    /// disabled.
+    ///
+    /// The public hash contains `StableCrateId`, so two crates in the dependency graph should not
+    /// have the same public hash just because they have the same "public api". This is asserted
+    /// while loading: if two crates have the same public hash but different private hashes, the
+    /// resolver reports that there are multiple candidates available for a crate and compilation
+    /// aborts.
+    pub(crate) public_hash: Svh,
 }
 
 /// A separate struct for extra metadata that must be encoded *after*
