@@ -15,6 +15,7 @@
  */
 
 use itertools::Itertools;
+use melior::ir::attribute::FloatAttribute;
 use melior::ir::operation::OperationLike;
 use melior::ir::r#type::{IntegerType, RankedTensorType};
 use melior::ir::{
@@ -259,6 +260,55 @@ impl<'a> TritonCodegen<'a> {
         )?;
 
         self.codegen_sub(tcx, location, lhs, rhs, mlir_block)
+    }
+
+    pub fn codegen_neg_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 1, "TritonCodegen::codegen_neg_call: args length must be 1");
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        // Determine element type (unwrap tensor wrapper if needed).
+        let x_ty = x.r#type();
+        let elem_ty = if x_ty.is_tensor() {
+            RankedTensorType::try_from(x_ty)
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?
+                .element()
+        } else {
+            x_ty
+        };
+        // Build a scalar 0 constant matching the element type, then subtract: 0 - x.
+        let zero_op: Operation<'a> = if elem_ty.is_integer() {
+            melior::dialect::arith::constant(
+                self.module.context(),
+                melior::ir::attribute::IntegerAttribute::new(elem_ty, 0).into(),
+                location,
+            )
+        } else {
+            melior::dialect::arith::constant(
+                self.module.context(),
+                FloatAttribute::new(self.module.context(), elem_ty, 0.0).into(),
+                location,
+            )
+        };
+        let zero: Value<'a, 'a> = zero_op.result(0).expect("neg zero constant").into();
+        mlir_block.append_operation(zero_op);
+        self.codegen_sub(tcx, location, zero, x, mlir_block)
     }
 
     pub fn codegen_lt_call<'tcx>(

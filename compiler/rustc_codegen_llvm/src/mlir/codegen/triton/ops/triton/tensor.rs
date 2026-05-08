@@ -73,7 +73,7 @@ impl<'a> TritonCodegen<'a> {
         &self,
         tcx: TyCtxt<'tcx>,
         instance: &Instance<'tcx>,
-        _mir: &Body<'tcx>,
+        mir: &Body<'tcx>,
         func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
@@ -97,8 +97,11 @@ impl<'a> TritonCodegen<'a> {
             args
         );
 
-        let start = self.to_scalar_int(tcx, instance, &args[0].node)?.to_i32();
-        let end = self.to_scalar_int(tcx, instance, &args[1].node)?.to_i32();
+        // Use try_eval_const_i32 so that computed const-generic expressions like
+        // `HEAD_DIM / 2` (which emit a MIR local rather than a literal constant)
+        // are constant-folded before being passed to the Triton make_range op.
+        let start = self.try_eval_const_i32(tcx, instance, mir, &args[0].node)?;
+        let end   = self.try_eval_const_i32(tcx, instance, mir, &args[1].node)?;
 
         let arange_op: Operation<'a> = make_range(self.module.context(), location, start, end)
             .map_err(|e| MlirError::CreateOperation { err: e })?
@@ -108,6 +111,56 @@ impl<'a> TritonCodegen<'a> {
         eprintln!("[DEBUG] AXM TritonCodegen::codegen_arange: {:?}", arange_op.to_string());
         mlir_block.append_operation(arange_op);
         Ok(Some(result.into()))
+    }
+
+    /// `Triton::arange_f32(start, end)` — like `arange` but returns a 1-D `f32`
+    /// tensor `[start as f32, (start+1) as f32, …, (end-1) as f32]`.
+    ///
+    /// Implemented as `make_range` followed by `arith.sitofp`, avoiding the
+    /// MIR `copy` nodes that would arise from casting an intermediate i32 local.
+    pub fn codegen_arange_f32<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        _state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(
+            args.len() == 2,
+            "TritonCodegen::codegen_arange_f32: args length must be 2: {:?}",
+            args
+        );
+
+        let start = self.try_eval_const_i32(tcx, instance, mir, &args[0].node)?;
+        let end   = self.try_eval_const_i32(tcx, instance, mir, &args[1].node)?;
+        let n = (end - start) as i64;
+
+        // Create i32 range [start, end).
+        let arange_op: Operation<'a> = make_range(self.module.context(), location, start, end)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let i32_range: Value<'a, 'a> = arange_op.result(0).expect("arange_f32: make_range").into();
+        mlir_block.append_operation(arange_op);
+
+        // Cast i32 tensor → f32 tensor via arith.sitofp.
+        let f32_ty = melior::ir::Type::float32(self.module.context());
+        let f32_tensor_ty = tensor_type(&[n], f32_ty).into();
+        let cast_op: Operation<'a> =
+            melior::dialect::arith::sitofp(i32_range, f32_tensor_ty, location).into();
+        let f32_range: Value<'a, 'a> = cast_op.result(0).expect("arange_f32: sitofp").into();
+        mlir_block.append_operation(cast_op);
+
+        Ok(Some(f32_range))
     }
 
     pub fn codegen_add_ptr<'tcx>(

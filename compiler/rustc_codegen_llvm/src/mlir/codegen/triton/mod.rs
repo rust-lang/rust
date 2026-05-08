@@ -1194,6 +1194,125 @@ impl<'a> TritonCodegen<'a> {
         }
     }
 
+    /// Evaluate an operand to an `i32` at MLIR-codegen time, performing limited
+    /// constant folding on MIR locals when needed.
+    ///
+    /// This handles the common pattern where `HEAD_DIM / 2` (a const-generic
+    /// expression) is not folded by rustc into a literal constant before being
+    /// passed to a Triton operation, resulting in MIR like:
+    ///
+    /// ```text
+    /// _12 = Div(const 16_i32, const 2_i32)   // HEAD_DIM / 2
+    /// _k  = T::arange(const 0_i32, copy _12)
+    /// ```
+    ///
+    /// `to_scalar_int` only handles `Operand::Constant`; this method also
+    /// handles `Operand::Copy` by scanning the MIR body for the local's
+    /// assignment and recursively evaluating it as a constant integer.
+    pub(crate) fn try_eval_const_i32<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        node: &Operand<'tcx>,
+    ) -> Result<i32, MlirError> {
+        // Fast path: literal constant.
+        if let Ok(si) = self.to_scalar_int(tcx, instance, node) {
+            return Ok(si.to_i32());
+        }
+        // Slow path: local variable — try constant folding through the MIR.
+        if let Operand::Copy(place) | Operand::Move(place) = node {
+            if place.projection.is_empty() {
+                if let Some(val) = Self::fold_local_as_i32(tcx, instance, mir, place.local) {
+                    return Ok(val);
+                }
+            }
+        }
+        Err(MlirError::InvalidScalar { node: format!("{:?}", node) })
+    }
+
+    /// Recursively constant-fold a MIR local to an `i32` value by scanning all
+    /// basic-block statements for its assignment and evaluating the rvalue.
+    ///
+    /// Handles `Use`, `BinaryOp`, and `UnaryOp` rvalues whose operands are
+    /// themselves foldable (either literal constants or other folded locals).
+    fn fold_local_as_i32<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        local: Local,
+    ) -> Option<i32> {
+        for block in mir.basic_blocks.iter() {
+            for stmt in &block.statements {
+                if let StatementKind::Assign(assign) = &stmt.kind {
+                    let (place, rvalue) = assign.as_ref();
+                    if place.local != local || !place.projection.is_empty() {
+                        continue;
+                    }
+                    return match rvalue {
+                        Rvalue::Use(op) => Self::fold_operand_as_i32(tcx, instance, mir, op),
+                        Rvalue::BinaryOp(bin_op, operands) => {
+                            let (lhs, rhs) = operands.as_ref();
+                            let l = Self::fold_operand_as_i32(tcx, instance, mir, lhs)?;
+                            let r = Self::fold_operand_as_i32(tcx, instance, mir, rhs)?;
+                            match bin_op {
+                                BinOp::Add => Some(l.wrapping_add(r)),
+                                BinOp::Sub => Some(l.wrapping_sub(r)),
+                                BinOp::Mul => Some(l.wrapping_mul(r)),
+                                BinOp::Div if r != 0 => Some(l.wrapping_div(r)),
+                                BinOp::Rem if r != 0 => Some(l.wrapping_rem(r)),
+                                BinOp::Shl => Some(l.wrapping_shl(r as u32)),
+                                BinOp::Shr => Some(l.wrapping_shr(r as u32)),
+                                BinOp::BitAnd => Some(l & r),
+                                BinOp::BitOr  => Some(l | r),
+                                BinOp::BitXor => Some(l ^ r),
+                                _ => None,
+                            }
+                        }
+                        Rvalue::UnaryOp(un_op, op) => {
+                            let v = Self::fold_operand_as_i32(tcx, instance, mir, op)?;
+                            match un_op {
+                                UnOp::Neg => Some(v.wrapping_neg()),
+                                UnOp::Not => Some(!v),
+                                _ => None,
+                            }
+                        }
+                        _ => None,
+                    };
+                }
+            }
+        }
+        None
+    }
+
+    /// Evaluate a single MIR operand to `i32`, delegating to `fold_local_as_i32`
+    /// for `Copy`/`Move` operands.
+    fn fold_operand_as_i32<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        op: &Operand<'tcx>,
+    ) -> Option<i32> {
+        match op {
+            Operand::Constant(c) => match c.const_ {
+                Const::Val(ConstValue::Scalar(Scalar::Int(si)), _) => Some(si.to_i32()),
+                Const::Ty(ty, const_val) if ty.is_integral() => {
+                    if let ConstKind::Param(param) = const_val.kind() {
+                        let value = instance.args.const_at(param.index as usize).to_value();
+                        Some(value.try_to_leaf()?.to_i32())
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+            Operand::Copy(p) | Operand::Move(p) if p.projection.is_empty() => {
+                Self::fold_local_as_i32(tcx, instance, mir, p.local)
+            }
+            _ => None,
+        }
+    }
+
     /// Try to extract i64 values from a promoted constant of type `&[i32; N]`.
     ///
     /// This handles the MIR pattern generated by `&[BLOCK_SIZE]` when coercing to `&[i32]`:
@@ -2302,15 +2421,20 @@ impl<'a> TritonCodegen<'a> {
                     let elems: Option<Vec<i64>> = index_vec
                         .iter()
                         .map(|op| {
-                            self.to_scalar_int(tcx, instance, op).ok().map(|s| {
-                                match s.size().bytes() {
+                            // First try literal-constant extraction, then constant-fold
+                            // computed locals (e.g. `HEAD_DIM / 2` where HEAD_DIM is a
+                            // const generic — the division is not folded by rustc before
+                            // being used as an array-size argument like `&[HEAD_DIM / 2]`).
+                            self.to_scalar_int(tcx, instance, op).ok()
+                                .map(|s| match s.size().bytes() {
                                     1 => s.to_u8() as i64,
                                     2 => s.to_i16() as i64,
                                     4 => s.to_i32() as i64,
                                     8 => s.to_i64(),
                                     n => todo!("ScalarInt size {} bytes", n),
-                                }
-                            })
+                                })
+                                .or_else(|| Self::fold_operand_as_i32(tcx, instance, mir, op)
+                                    .map(|v| v as i64))
                         })
                         .collect();
                     if let Some(elems) = elems {
