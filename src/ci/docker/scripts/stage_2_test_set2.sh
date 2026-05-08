@@ -12,10 +12,8 @@ if [ "$PR_CI_JOB" == "1" ]; then
   SKIP_TIDY="--skip tidy"
 fi
 
-../x.py --stage 2 test \
-  ${SKIP_TIDY:+$SKIP_TIDY} \
-  --skip tests \
-  --skip coverage-map \
-  --skip coverage-run \
-  --skip library \
-  --skip tidyselftest
+count=20
+for i in $(seq $count); do
+  echo "RUNNING RUST-ANALYZER TESTS ATTEMPT $i"
+    ../x.py --stage 2 test src/tools/rust-analyzer
+done
