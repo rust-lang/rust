@@ -53,7 +53,15 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
     let mut len = SUN_PATH_OFFSET + bytes.len();
     match bytes.get(0) {
         Some(&0) | None => {}
-        Some(_) => len += 1,
+        Some(_) => {
+            // on QNX7.1 and QNX8 the `len` value returned by the SUN_LEN
+            // macro in its libc does not include the null byte in the count so
+            // don't add it here to match what a C program passes to bind(2) and
+            // similar functions
+            if cfg!(not(any(target_os = "qnx", target_env = "nto71"))) {
+                len += 1
+            }
+        }
     }
     Ok((addr, len as libc::socklen_t))
 }
@@ -247,7 +255,13 @@ impl SocketAddr {
         } else if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
-            AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
+            // the value returned by getsockname(2) and similar on QNX7.1 and
+            // QNX8 does not count the NUL byte terminator of the path string,
+            // which matches the behavior of the SUN_LEN macro in libc, but
+            // other OSes do count the NUL byte so adjust accordingly
+            let end =
+                if cfg!(any(target_os = "qnx", target_env = "nto71")) { len } else { len - 1 };
+            AddressKind::Pathname(OsStr::from_bytes(&path[..end]).as_ref())
         }
     }
 }

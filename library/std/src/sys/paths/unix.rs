@@ -272,7 +272,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "nto", target_os = "qnx"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     let mut e = crate::fs::read("/proc/self/exefile")?;
-    // Current versions of QNX Neutrino provide a null-terminated path.
+    // Current versions of QNX SDP provide a null-terminated path.
     // Ensure the trailing null byte is not returned here.
     if let Some(0) = e.last() {
         e.pop();
