@@ -2675,7 +2675,7 @@ intrinsics:
       - [uint16x4_t, uint32x4_t, uint16x8_t]
       - [uint32x2_t, uint64x2_t, uint32x4_t]
     compose:
-          - FnCall:
+      - FnCall:
           - 'vcombine_{neon_type[0]}'
           - - a
             - FnCall: ['simd_cast', [b]]
@@ -5035,47 +5035,35 @@ intrinsics:
   - name: "vmull_high{neon_type[0].noq}"
     doc: Signed multiply long
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[3]}"
+    return_type: "{neon_type[1]}"
     attr:
       - *neon-stable
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [smull2]]}]]
     safety: safe
     types:
-      - [int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int16x8_t]
-      - [int16x8_t, int16x4_t, '[4, 5, 6, 7]', int32x4_t]
-      - [int32x4_t, int32x2_t, '[2, 3]', int64x2_t]
+      - [int8x16_t, int16x8_t]
+      - [int16x8_t, int32x4_t]
+      - [int32x4_t, int64x2_t]
     compose:
-      - Let:
-          - a
-          - "{neon_type[1]}"
-          - FnCall: [simd_shuffle!, [a, a, "{type[2]}"]]
-      - Let:
-          - b
-          - "{neon_type[1]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[2]}"]]
+      - Let: [a, {FnCall: ['vget_high_{neon_type[0]}', [a]]}]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[0]}', [b]]}]
       - FnCall: ["vmull_{neon_type[0]}", [a, b]]
 
   - name: "vmull_high{neon_type[0].noq}"
     doc: "Unsigned multiply long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[3]}"
+    return_type: "{neon_type[1]}"
     attr:
       - *neon-stable
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [umull2]]}]]
     safety: safe
     types:
-      - [uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', uint16x8_t]
-      - [uint16x8_t, uint16x4_t, '[4, 5, 6, 7]', uint32x4_t]
-      - [uint32x4_t, uint32x2_t, '[2, 3]', uint64x2_t]
+      - [uint8x16_t, uint16x8_t]
+      - [uint16x8_t, uint32x4_t]
+      - [uint32x4_t, uint64x2_t]
     compose:
-      - Let:
-          - a
-          - "{neon_type[1]}"
-          - FnCall: [simd_shuffle!, [a, a, "{type[2]}"]]
-      - Let:
-          - b
-          - "{neon_type[1]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[2]}"]]
+      - Let: [a, {FnCall: ['vget_high_{neon_type[0]}', [a]]}]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[0]}', [b]]}]
       - FnCall: ["vmull_{neon_type[0]}", [a, b]]
 
   - name: "vmull_p64"
@@ -5101,22 +5089,16 @@ intrinsics:
   - name: "vmull_high{neon_type[0].noq}"
     doc: "Polynomial multiply long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
-    return_type: "{neon_type[3]}"
+    return_type: "{neon_type[1]}"
     attr:
       - *neon-stable
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [pmull2]]}]]
     safety: safe
     types:
-      - [poly8x16_t, poly8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', poly16x8_t]
+      - [poly8x16_t, poly16x8_t]
     compose:
-      - Let:
-          - a
-          - "{neon_type[1]}"
-          - FnCall: [simd_shuffle!, [a, a, "{type[2]}"]]
-      - Let:
-          - b
-          - "{neon_type[1]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[2]}"]]
+      - Let: [a, {FnCall: ['vget_high_{neon_type[0]}', [a]]}]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[0]}', [b]]}]
       - FnCall: ["vmull_{neon_type[0]}", [a, b]]
 
   - name: "vmull_high{neon_type[0].noq}"

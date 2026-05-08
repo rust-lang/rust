@@ -11357,16 +11357,16 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int16x4_t, int16x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int16x4_t, int16x8_t, int32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x2_t, int32x2_t, int64x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [int32x2_t, int32x4_t, int64x2_t, '2', '[LANE as u32, LANE as u32]']
+      - [int16x4_t, int16x4_t, int32x4_t, '2']
+      - [int16x4_t, int16x8_t, int32x4_t, '3']
+      - [int32x2_t, int32x2_t, int64x2_t, '1']
+      - [int32x2_t, int32x4_t, int64x2_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
           - "vmull_{neon_type[0]}"
           - - a
-            - FnCall: [simd_shuffle!, [b, b, "{type[4]}"]]
+            - FnCall: ['vdup_lane{neon_type[1].nox}', [b], [LANE]]
 
   - name: "vmull_lane{neon_type[1].no}"
     doc: "Vector long multiply by scalar"
@@ -11382,16 +11382,16 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint16x4_t, uint16x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x4_t, uint16x8_t, uint32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x2_t, uint32x2_t, uint64x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [uint32x2_t, uint32x4_t, uint64x2_t, '2', '[LANE as u32, LANE as u32]']
+      - [uint16x4_t, uint16x4_t, uint32x4_t, '2']
+      - [uint16x4_t, uint16x8_t, uint32x4_t, '3']
+      - [uint32x2_t, uint32x2_t, uint64x2_t, '1']
+      - [uint32x2_t, uint32x4_t, uint64x2_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
           - "vmull_{neon_type[0]}"
           - - a
-            - FnCall: [simd_shuffle!, [b, b, "{type[4]}"]]
+            - FnCall: ['vdup_lane{neon_type[1].nox}', [b], [LANE]]
 
   - name: "vfms{neon_type[0].N}"
     doc: "Floating-point fused Multiply-subtract to accumulator(vector)"

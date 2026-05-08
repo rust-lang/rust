@@ -30965,12 +30965,7 @@ pub fn vmulq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 )]
 pub fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_s16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    vmull_s16(a, vdup_lane_s16::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_s16)"]
@@ -30993,12 +30988,7 @@ pub fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t 
 )]
 pub fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmull_s16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    vmull_s16(a, vdup_laneq_s16::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_s32)"]
@@ -31021,7 +31011,7 @@ pub fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t
 )]
 pub fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    vmull_s32(a, vdup_lane_s32::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_s32)"]
@@ -31044,7 +31034,7 @@ pub fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t 
 )]
 pub fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    vmull_s32(a, vdup_laneq_s32::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_u16)"]
@@ -31067,12 +31057,7 @@ pub fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t
 )]
 pub fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        vmull_u16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    vmull_u16(a, vdup_lane_u16::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_u16)"]
@@ -31095,12 +31080,7 @@ pub fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint32x4
 )]
 pub fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        vmull_u16(
-            a,
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
-        )
-    }
+    vmull_u16(a, vdup_laneq_u16::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_u32)"]
@@ -31123,7 +31103,7 @@ pub fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint32x
 )]
 pub fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    vmull_u32(a, vdup_lane_u32::<LANE>(b))
 }
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_u32)"]
@@ -31146,7 +31126,7 @@ pub fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint64x2
 )]
 pub fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32])) }
+    vmull_u32(a, vdup_laneq_u32::<LANE>(b))
 }
 #[doc = "Vector long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_s16)"]
