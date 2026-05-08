@@ -511,6 +511,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
+    gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
     gate_all!(unsafe_binders, "unsafe binder types are experimental");
     gate_all!(unsafe_fields, "`unsafe` fields are experimental");
     gate_all!(view_types, "view types are experimental");

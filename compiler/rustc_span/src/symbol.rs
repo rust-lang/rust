@@ -2171,6 +2171,7 @@ symbols! {
         unix,
         unlikely,
         unmarked_api,
+        unnamed_enum_variants,
         unnamed_fields,
         unpin,
         unqualified_local_imports,
