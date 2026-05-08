@@ -13074,7 +13074,7 @@ pub fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulx_f16(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmulx_f16(a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f16)"]
@@ -13086,7 +13086,7 @@ pub fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float1
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmulx_f16(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmulx_f16(a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f16)"]
@@ -13098,7 +13098,7 @@ pub fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulxq_f16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    vmulxq_f16(a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f16)"]
@@ -13110,7 +13110,7 @@ pub fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmulxq_f16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    vmulxq_f16(a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f32)"]
@@ -13121,7 +13121,7 @@ pub fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
+    vmulx_f32(a, vdup_lane_f32::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f32)"]
@@ -13132,7 +13132,7 @@ pub fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float3
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulx_f32(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
+    vmulx_f32(a, vdup_laneq_f32::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f32)"]
@@ -13143,7 +13143,7 @@ pub fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulxq_f32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmulxq_f32(a, vdupq_lane_f32::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f32)"]
@@ -13154,7 +13154,7 @@ pub fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulxq_f32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmulxq_f32(a, vdupq_laneq_f32::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f64)"]
@@ -13165,7 +13165,7 @@ pub fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
+    vmulxq_f64(a, vdupq_laneq_f64::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f64)"]
@@ -13335,7 +13335,7 @@ pub fn vmulxh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { vmulxq_f64(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
+    vmulxq_f64(a, vdupq_lane_f64::<LANE>(b))
 }
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_f64)"]

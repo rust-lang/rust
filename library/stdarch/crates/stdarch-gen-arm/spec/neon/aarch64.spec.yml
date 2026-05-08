@@ -5235,11 +5235,7 @@ intrinsics:
       - FnCall:
           - "vmulx{type[3]}"
           - - a
-            - FnCall:
-                - "simd_shuffle!"
-                - - b
-                  - b
-                  - "{type[4]}"
+            - FnCall: ['vdup{type[0]}', [b], [LANE]]
 
   - name: "vmulx{type[0]}"
     doc: Floating-point multiply extended
@@ -5292,21 +5288,17 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_f32', float32x2_t, float32x2_t, '1', '_f32', '[LANE as u32; 2]']
-      - ['_laneq_f32', float32x2_t, float32x4_t, '2', '_f32', '[LANE as u32; 2]']
-      - ['q_lane_f32', float32x4_t, float32x2_t, '1', 'q_f32', '[LANE as u32; 4]']
-      - ['q_laneq_f32', float32x4_t, float32x4_t, '2', 'q_f32', '[LANE as u32; 4]']
-      - ['q_laneq_f64', float64x2_t, float64x2_t, '1', 'q_f64', '[LANE as u32; 2]']
+      - ['_lane_f32', float32x2_t, float32x2_t, '1', '_f32']
+      - ['_laneq_f32', float32x2_t, float32x4_t, '2', '_f32']
+      - ['q_lane_f32', float32x4_t, float32x2_t, '1', 'q_f32']
+      - ['q_laneq_f32', float32x4_t, float32x4_t, '2', 'q_f32']
+      - ['q_laneq_f64', float64x2_t, float64x2_t, '1', 'q_f64']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
           - "vmulx{type[4]}"
           - - a
-            - FnCall:
-                - "simd_shuffle!"
-                - - b
-                  - b
-                  - "{type[5]}"
+            - FnCall: ['vdup{type[0]}', [b], [LANE]]
 
 
   - name: "vmulx{type[0]}"
@@ -5322,20 +5314,16 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16', '[LANE as u32; 4]']
-      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16', '[LANE as u32; 4]']
-      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16', '[LANE as u32; 8]']
-      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16', '[LANE as u32; 8]']
+      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16']
+      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16']
+      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16']
+      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
           - "vmulx{type[4]}"
           - - a
-            - FnCall:
-                - "simd_shuffle!"
-                - - b
-                  - b
-                  - "{type[5]}"
+            - FnCall: ['vdup{type[0]}', [b], [LANE]]
 
 
   - name: "vmulx{type[0]}"
