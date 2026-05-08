@@ -14837,11 +14837,9 @@ pub fn vqdmulhs_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_lane_s16<const N: i32>(a: int16x8_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let a: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
-        vqdmull_s16(a, b)
-    }
+    let a = vget_high_s16(a);
+    let b = vdup_lane_s16::<N>(b);
+    vqdmull_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_laneq_s32)"]
@@ -14852,11 +14850,9 @@ pub fn vqdmull_high_lane_s16<const N: i32>(a: int16x8_t, b: int16x4_t) -> int32x
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_laneq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let a: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
-        vqdmull_s32(a, b)
-    }
+    let a = vget_high_s32(a);
+    let b = vdup_laneq_s32::<N>(b);
+    vqdmull_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_lane_s32)"]
@@ -14867,11 +14863,9 @@ pub fn vqdmull_high_laneq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int64
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_lane_s32<const N: i32>(a: int32x4_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        let a: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
-        vqdmull_s32(a, b)
-    }
+    let a = vget_high_s32(a);
+    let b = vdup_lane_s32::<N>(b);
+    vqdmull_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_laneq_s16)"]
@@ -14882,11 +14876,9 @@ pub fn vqdmull_high_lane_s32<const N: i32>(a: int32x4_t, b: int32x2_t) -> int64x
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_laneq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        let a: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
-        vqdmull_s16(a, b)
-    }
+    let a = vget_high_s16(a);
+    let b = vdup_laneq_s16::<N>(b);
+    vqdmull_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_n_s16)"]
@@ -14895,11 +14887,9 @@ pub fn vqdmull_high_laneq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int32
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqdmull2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_n_s16(a: int16x8_t, b: i16) -> int32x4_t {
-    unsafe {
-        let a: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let b: int16x4_t = vdup_n_s16(b);
-        vqdmull_s16(a, b)
-    }
+    let a = vget_high_s16(a);
+    let b = vdup_n_s16(b);
+    vqdmull_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_n_s32)"]
@@ -14908,11 +14898,9 @@ pub fn vqdmull_high_n_s16(a: int16x8_t, b: i16) -> int32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqdmull2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_n_s32(a: int32x4_t, b: i32) -> int64x2_t {
-    unsafe {
-        let a: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let b: int32x2_t = vdup_n_s32(b);
-        vqdmull_s32(a, b)
-    }
+    let a = vget_high_s32(a);
+    let b = vdup_n_s32(b);
+    vqdmull_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_s16)"]
@@ -14921,11 +14909,9 @@ pub fn vqdmull_high_n_s32(a: int32x4_t, b: i32) -> int64x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqdmull2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
-    unsafe {
-        let a: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let b: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        vqdmull_s16(a, b)
-    }
+    let a = vget_high_s16(a);
+    let b = vget_high_s16(b);
+    vqdmull_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_s32)"]
@@ -14934,11 +14920,9 @@ pub fn vqdmull_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqdmull2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
-    unsafe {
-        let a: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let b: int32x2_t = simd_shuffle!(b, b, [2, 3]);
-        vqdmull_s32(a, b)
-    }
+    let a = vget_high_s32(a);
+    let b = vget_high_s32(b);
+    vqdmull_s32(a, b)
 }
 #[doc = "Vector saturating doubling long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_laneq_s16)"]
@@ -14949,10 +14933,8 @@ pub fn vqdmull_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_laneq_s16<const N: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
-        vqdmull_s16(a, b)
-    }
+    let b = vdup_laneq_s16::<N>(b);
+    vqdmull_s16(a, b)
 }
 #[doc = "Vector saturating doubling long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_laneq_s32)"]
@@ -14963,10 +14945,8 @@ pub fn vqdmull_laneq_s16<const N: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmull_laneq_s32<const N: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
-        vqdmull_s32(a, b)
-    }
+    let b = vdup_laneq_s32::<N>(b);
+    vqdmull_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmullh_lane_s16)"]

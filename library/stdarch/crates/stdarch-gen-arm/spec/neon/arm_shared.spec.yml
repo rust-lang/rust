@@ -7590,7 +7590,7 @@ intrinsics:
       - [int16x4_t, int16x4_t, int32x4_t, '[N as u32; 4]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, '2']]
-      - Let: [b, "{neon_type[0]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
+      - Let: [b, {FnCall: ['vdup{neon_type[0].lane_nox}', [b], [N]]}]
       - FnCall: [vqdmull_s16, [a, b]]
 
   - name: "vqdmull_lane_s32"
@@ -7607,10 +7607,10 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int32x2_t, int32x2_t, int64x2_t, '[N as u32; 2]']
+      - [int32x2_t, int32x2_t, int64x2_t]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, '1']]
-      - Let: [b, "{neon_type[0]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
+      - Let: [b, {FnCall: ['vdup{neon_type[0].lane_nox}', [b], [N]]}]
       - FnCall: [vqdmull_s32, [a, b]]
 
   - name: "vqdmlal{neon_type[1].noq}"
@@ -11230,17 +11230,17 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_s32, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, '2']
+      - [_laneq_s16, int16x4_t, int16x8_t, '3']
+      - [q_lane_s16, int16x8_t, int16x4_t, '2']
+      - [q_laneq_s16, int16x8_t, int16x8_t, '3']
+      - [_lane_s32, int32x2_t, int32x2_t, '1']
+      - [_laneq_s32, int32x2_t, int32x4_t, '2']
+      - [q_lane_s32, int32x4_t, int32x2_t, '1']
+      - [q_laneq_s32, int32x4_t, int32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
-      - Let: [b, "{neon_type[1]}", {FnCall: [simd_shuffle!, [b, b, '{type[4]}']]}]
+      - Let: [b, {FnCall: ['vdup{type[0]}', [b], [LANE]]}]
       - FnCall: ["vqrdmulh{neon_type[1].no}", [a, b]]
 
   - name: "vqrdmulh{neon_type[0].N}"

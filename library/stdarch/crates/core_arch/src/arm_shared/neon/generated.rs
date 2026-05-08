@@ -35001,10 +35001,8 @@ pub fn vqdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 )]
 pub fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let b: int16x4_t = simd_shuffle!(b, b, [N as u32; 4]);
-        vqdmull_s16(a, b)
-    }
+    let b = vdup_lane_s16::<N>(b);
+    vqdmull_s16(a, b)
 }
 #[doc = "Vector saturating doubling long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_lane_s32)"]
@@ -35027,10 +35025,8 @@ pub fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 )]
 pub fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [N as u32; 2]);
-        vqdmull_s32(a, b)
-    }
+    let b = vdup_lane_s32::<N>(b);
+    vqdmull_s32(a, b)
 }
 #[doc = "Vector saturating doubling long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_n_s16)"]
@@ -35588,11 +35584,8 @@ pub fn vqnegq_s32(a: int32x4_t) -> int32x4_t {
 )]
 pub fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let b: int16x4_t =
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vqrdmulh_s16(a, b)
-    }
+    let b = vdup_lane_s16::<LANE>(b);
+    vqrdmulh_s16(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_lane_s32)"]
@@ -35615,10 +35608,8 @@ pub fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4
 )]
 pub fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
-        vqrdmulh_s32(a, b)
-    }
+    let b = vdup_lane_s32::<LANE>(b);
+    vqrdmulh_s32(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_laneq_s16)"]
@@ -35641,11 +35632,8 @@ pub fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2
 )]
 pub fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let b: int16x4_t =
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vqrdmulh_s16(a, b)
-    }
+    let b = vdup_laneq_s16::<LANE>(b);
+    vqrdmulh_s16(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_laneq_s32)"]
@@ -35668,10 +35656,8 @@ pub fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x
 )]
 pub fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
-        vqrdmulh_s32(a, b)
-    }
+    let b = vdup_laneq_s32::<LANE>(b);
+    vqrdmulh_s32(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_lane_s16)"]
@@ -35694,23 +35680,8 @@ pub fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x
 )]
 pub fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let b: int16x8_t = simd_shuffle!(
-            b,
-            b,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
-        vqrdmulhq_s16(a, b)
-    }
+    let b = vdupq_lane_s16::<LANE>(b);
+    vqrdmulhq_s16(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_lane_s32)"]
@@ -35733,11 +35704,8 @@ pub fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x
 )]
 pub fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let b: int32x4_t =
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vqrdmulhq_s32(a, b)
-    }
+    let b = vdupq_lane_s32::<LANE>(b);
+    vqrdmulhq_s32(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_laneq_s16)"]
@@ -35760,23 +35728,8 @@ pub fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x
 )]
 pub fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let b: int16x8_t = simd_shuffle!(
-            b,
-            b,
-            [
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32,
-                LANE as u32
-            ]
-        );
-        vqrdmulhq_s16(a, b)
-    }
+    let b = vdupq_laneq_s16::<LANE>(b);
+    vqrdmulhq_s16(a, b)
 }
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_laneq_s32)"]
@@ -35799,11 +35752,8 @@ pub fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16
 )]
 pub fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let b: int32x4_t =
-            simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vqrdmulhq_s32(a, b)
-    }
+    let b = vdupq_laneq_s32::<LANE>(b);
+    vqrdmulhq_s32(a, b)
 }
 #[doc = "Vector saturating rounding doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_n_s16)"]
