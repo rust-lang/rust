@@ -2876,7 +2876,15 @@ impl<'a> TritonCodegen<'a> {
         Ok(Some(result.into()))
     }
 
-    /// `triton::Triton::sigmoid` — uses CUDA libdevice via `tt.extern_elementwise`.
+    /// `triton::Triton::sigmoid` — expanded as `1 / (1 + exp(-x))`.
+    ///
+    /// `__nv_sigmoidf` does not exist in CUDA libdevice, so we cannot use
+    /// `tt.extern_elementwise`. Instead we lower inline using math ops that
+    /// Triton's pipeline supports natively:
+    ///   neg_x       = 0.0 - x          (codegen_sub)
+    ///   exp_neg_x   = math.exp(neg_x)
+    ///   one_plus    = 1.0 + exp_neg_x  (codegen_add)
+    ///   result      = 1.0 / one_plus   (codegen_div)
     pub fn codegen_sigmoid_call<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -2885,7 +2893,7 @@ impl<'a> TritonCodegen<'a> {
         _func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
-        destination: &Place<'tcx>,
+        _destination: &Place<'tcx>,
         _target: &Option<BasicBlock>,
         _unwind: &UnwindAction,
         _call_source: &CallSource,
@@ -2897,33 +2905,45 @@ impl<'a> TritonCodegen<'a> {
         let x = self.codegen_operand(
             tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
         )?;
-        let result_ty = x.r#type();
-        let op: Operation<'a> = OperationBuilder::new("tt.extern_elementwise", location)
-            .add_operands(&[x])
-            .add_results(&[result_ty])
-            .add_attributes(&[
-                (
-                    melior::ir::Identifier::new(self.module.context(), "libname"),
-                    melior::ir::Attribute::parse(self.module.context(), r#""libdevice""#).unwrap(),
-                ),
-                (
-                    melior::ir::Identifier::new(self.module.context(), "libpath"),
-                    melior::ir::Attribute::parse(self.module.context(), r#""""#).unwrap(),
-                ),
-                (
-                    melior::ir::Identifier::new(self.module.context(), "symbol"),
-                    melior::ir::Attribute::parse(self.module.context(), r#""__nv_sigmoidf""#).unwrap(),
-                ),
-                (
-                    melior::ir::Identifier::new(self.module.context(), "pure"),
-                    melior::ir::Attribute::parse(self.module.context(), "true").unwrap(),
-                ),
-            ])
-            .build()
-            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
-        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
-        mlir_block.append_operation(op);
-        Ok(Some(result.into()))
+
+        // Helper: emit a scalar f32 constant of the given value.
+        let scalar_f32 = |val: f64| -> Result<Value<'a, 'a>, MlirError> {
+            let f32_ty = melior::ir::Type::float32(self.module.context());
+            let attr = FloatAttribute::new(self.module.context(), f32_ty, val);
+            let op: Operation<'a> = melior::dialect::arith::constant(
+                self.module.context(), attr.into(), location,
+            );
+            let v: Value<'a, 'a> = op.result(0).expect("scalar_f32 constant").into();
+            mlir_block.append_operation(op);
+            Ok(v)
+        };
+
+        // neg_x = 0.0 - x
+        let zero = scalar_f32(0.0)?;
+        let neg_x = self.codegen_sub(tcx, location, zero, x, mlir_block)?
+            .expect("sigmoid: neg_x");
+
+        // exp_neg_x = math.exp(neg_x)
+        let exp_neg_x = {
+            let ty = neg_x.r#type();
+            let op: Operation<'a> = OperationBuilder::new("math.exp", location)
+                .add_operands(&[neg_x])
+                .add_results(&[ty])
+                .build()
+                .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+            let v: Value<'a, 'a> = op.result(0).expect("sigmoid: exp_neg_x").into();
+            mlir_block.append_operation(op);
+            v
+        };
+
+        // one_plus = 1.0 + exp_neg_x
+        let one_a = scalar_f32(1.0)?;
+        let one_plus = self.codegen_add(tcx, location, one_a, exp_neg_x, mlir_block)?
+            .expect("sigmoid: one_plus");
+
+        // result = 1.0 / one_plus
+        let one_b = scalar_f32(1.0)?;
+        self.codegen_div(tcx, location, one_b, one_plus, mlir_block)
     }
 
     /// `triton::Triton::softmax` — numerically-stable softmax expanded inline.
