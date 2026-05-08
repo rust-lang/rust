@@ -565,6 +565,9 @@ rustc_queries! {
 
     query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
+        // This depends on the lint store, which includes internal lints when the
+        // untracked `-Zunstable-options` flag is set.
+        eval_always
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
     }
 
