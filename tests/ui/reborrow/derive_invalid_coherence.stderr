@@ -1,0 +1,27 @@
+error: implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+  --> $DIR/derive_invalid_coherence.rs:5:10
+   |
+LL | #[derive(Reborrow)]
+   |          ^^^^^^^^
+
+error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
+  --> $DIR/derive_invalid_coherence.rs:21:5
+   |
+LL |     field: NotCopy,
+   |     ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`
+   |
+help: consider annotating `NotCopy` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NotCopy;
+   |
+
+error[E0277]: the trait bound `&'a mut u32: CoerceShared<&'a ()>` is not satisfied
+  --> $DIR/derive_invalid_coherence.rs:12:20
+   |
+LL | #[derive(Reborrow, CoerceShared)]
+   |                    ^^^^^^^^^^^^ the nightly-only, unstable trait `CoerceShared<&'a ()>` is not implemented for `&'a mut u32`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
