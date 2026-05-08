@@ -5093,7 +5093,7 @@ pub fn vcvt_high_f32_f16(a: float16x8_t) -> float32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(fcvtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvt_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
-    unsafe { simd_shuffle!(a, simd_cast(b), [0, 1, 2, 3]) }
+    vcombine_f32(a, vcvt_f32_f64(b))
 }
 #[doc = "Floating-point convert to higher precision long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_high_f64_f32)"]
@@ -5102,10 +5102,7 @@ pub fn vcvt_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(fcvtl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvt_high_f64_f32(a: float32x4_t) -> float64x2_t {
-    unsafe {
-        let b: float32x2_t = simd_shuffle!(a, a, [2, 3]);
-        simd_cast(b)
-    }
+    unsafe { simd_cast(vget_high_f32(a)) }
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f64_s64)"]
@@ -7266,7 +7263,7 @@ pub fn vcvtx_f32_f64(a: float64x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(fcvtxn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvtx_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
-    unsafe { simd_shuffle!(a, vcvtx_f32_f64(b), [0, 1, 2, 3]) }
+    vcombine_f32(a, vcvtx_f32_f64(b))
 }
 #[doc = "Floating-point convert to lower precision narrow, rounding to odd"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtxd_f32_f64)"]

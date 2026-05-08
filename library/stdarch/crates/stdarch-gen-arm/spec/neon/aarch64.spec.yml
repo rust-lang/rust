@@ -1417,15 +1417,7 @@ intrinsics:
     types:
       - [float32x4_t, float64x2_t]
     compose:
-      - Let:
-          - b
-          - float32x2_t
-          - FnCall:
-              - simd_shuffle!
-              - - a
-                - a
-                - '[2, 3]'
-      - FnCall: [simd_cast, [b]]
+      - FnCall: [simd_cast, [{FnCall: ['vget_high_{neon_type[0]}', [a]]}]]
 
   - name: "vcvt_high_f16_f32"
     doc: "Floating-point convert to lower precision"
@@ -1486,10 +1478,9 @@ intrinsics:
       - [float32x2_t, float64x2_t, float32x4_t]
     compose:
       - FnCall:
-          - simd_shuffle!
+          - vcombine_f32
           - - a
-            - FnCall: [simd_cast, [b]]
-            - '[0, 1, 2, 3]'
+            - FnCall: [vcvt_f32_f64, [b]]
 
   - name: "vcvtx_f32_f64"
     doc: "Floating-point convert to lower precision narrow, rounding to odd"
@@ -1538,10 +1529,9 @@ intrinsics:
       - [float32x2_t, float64x2_t, float32x4_t]
     compose:
       - FnCall:
-          - simd_shuffle!
+          - vcombine_f32
           - - a
             - FnCall: [vcvtx_f32_f64, [b]]
-            - '[0, 1, 2, 3]'
 
   - name: "vcvt{type[2]}"
     doc: "Floating-point convert to fixed-point, rounding toward zero"
