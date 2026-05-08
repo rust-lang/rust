@@ -12147,11 +12147,9 @@ pub fn vmlal_high_n_u32(a: uint64x2_t, b: uint32x4_t, c: u32) -> uint64x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(smlal2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
-    unsafe {
-        let b: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let c: int8x8_t = simd_shuffle!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vmlal_s8(a, b, c)
-    }
+    let b = vget_high_s8(b);
+    let c = vget_high_s8(c);
+    vmlal_s8(a, b, c)
 }
 #[doc = "Signed multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_s16)"]
@@ -12160,11 +12158,9 @@ pub fn vmlal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(smlal2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
-    unsafe {
-        let b: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        let c: int16x4_t = simd_shuffle!(c, c, [4, 5, 6, 7]);
-        vmlal_s16(a, b, c)
-    }
+    let b = vget_high_s16(b);
+    let c = vget_high_s16(c);
+    vmlal_s16(a, b, c)
 }
 #[doc = "Signed multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_s32)"]
@@ -12173,11 +12169,9 @@ pub fn vmlal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(smlal2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [2, 3]);
-        let c: int32x2_t = simd_shuffle!(c, c, [2, 3]);
-        vmlal_s32(a, b, c)
-    }
+    let b = vget_high_s32(b);
+    let c = vget_high_s32(c);
+    vmlal_s32(a, b, c)
 }
 #[doc = "Unsigned multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_u8)"]
@@ -12186,11 +12180,9 @@ pub fn vmlal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(umlal2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t {
-    unsafe {
-        let b: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let c: uint8x8_t = simd_shuffle!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vmlal_u8(a, b, c)
-    }
+    let b = vget_high_u8(b);
+    let c = vget_high_u8(c);
+    vmlal_u8(a, b, c)
 }
 #[doc = "Unsigned multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_u16)"]
@@ -12199,11 +12191,9 @@ pub fn vmlal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t 
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(umlal2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
-    unsafe {
-        let b: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        let c: uint16x4_t = simd_shuffle!(c, c, [4, 5, 6, 7]);
-        vmlal_u16(a, b, c)
-    }
+    let b = vget_high_u16(b);
+    let c = vget_high_u16(c);
+    vmlal_u16(a, b, c)
 }
 #[doc = "Unsigned multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_u32)"]
@@ -12212,11 +12202,9 @@ pub fn vmlal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(umlal2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
-    unsafe {
-        let b: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
-        let c: uint32x2_t = simd_shuffle!(c, c, [2, 3]);
-        vmlal_u32(a, b, c)
-    }
+    let b = vget_high_u32(b);
+    let c = vget_high_u32(c);
+    vmlal_u32(a, b, c)
 }
 #[doc = "Floating-point multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_f64)"]
@@ -12391,11 +12379,9 @@ pub fn vmlsl_high_n_u32(a: uint64x2_t, b: uint32x4_t, c: u32) -> uint64x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(smlsl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
-    unsafe {
-        let b: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let c: int8x8_t = simd_shuffle!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vmlsl_s8(a, b, c)
-    }
+    let b = vget_high_s8(b);
+    let c = vget_high_s8(c);
+    vmlsl_s8(a, b, c)
 }
 #[doc = "Signed multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_s16)"]
@@ -12404,11 +12390,9 @@ pub fn vmlsl_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(smlsl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
-    unsafe {
-        let b: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        let c: int16x4_t = simd_shuffle!(c, c, [4, 5, 6, 7]);
-        vmlsl_s16(a, b, c)
-    }
+    let b = vget_high_s16(b);
+    let c = vget_high_s16(c);
+    vmlsl_s16(a, b, c)
 }
 #[doc = "Signed multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_s32)"]
@@ -12417,11 +12401,9 @@ pub fn vmlsl_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(smlsl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [2, 3]);
-        let c: int32x2_t = simd_shuffle!(c, c, [2, 3]);
-        vmlsl_s32(a, b, c)
-    }
+    let b = vget_high_s32(b);
+    let c = vget_high_s32(c);
+    vmlsl_s32(a, b, c)
 }
 #[doc = "Unsigned multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_u8)"]
@@ -12430,11 +12412,9 @@ pub fn vmlsl_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(umlsl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t {
-    unsafe {
-        let b: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let c: uint8x8_t = simd_shuffle!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vmlsl_u8(a, b, c)
-    }
+    let b = vget_high_u8(b);
+    let c = vget_high_u8(c);
+    vmlsl_u8(a, b, c)
 }
 #[doc = "Unsigned multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_u16)"]
@@ -12443,11 +12423,9 @@ pub fn vmlsl_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t 
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(umlsl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
-    unsafe {
-        let b: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        let c: uint16x4_t = simd_shuffle!(c, c, [4, 5, 6, 7]);
-        vmlsl_u16(a, b, c)
-    }
+    let b = vget_high_u16(b);
+    let c = vget_high_u16(c);
+    vmlsl_u16(a, b, c)
 }
 #[doc = "Unsigned multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_u32)"]
@@ -12456,11 +12434,9 @@ pub fn vmlsl_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(umlsl2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
-    unsafe {
-        let b: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
-        let c: uint32x2_t = simd_shuffle!(c, c, [2, 3]);
-        vmlsl_u32(a, b, c)
-    }
+    let b = vget_high_u32(b);
+    let c = vget_high_u32(c);
+    vmlsl_u32(a, b, c)
 }
 #[doc = "Vector move"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovl_high_s8)"]

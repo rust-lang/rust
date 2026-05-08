@@ -2600,12 +2600,12 @@ intrinsics:
       - *neon-stable
     safety: safe
     types:
-      - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int32x4_t, int16x8_t, int16x4_t, '[4, 5, 6, 7]', '[4, 5, 6, 7]']
-      - [int64x2_t, int32x4_t, int32x2_t, '[2, 3]', '[2, 3]']
+      - [int16x8_t, int8x16_t, int8x8_t]
+      - [int32x4_t, int16x8_t, int16x4_t]
+      - [int64x2_t, int32x4_t, int32x2_t]
     compose:
-      - Let: [b, "{neon_type[2]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
-      - Let: [c, "{neon_type[2]}", {FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]}]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[1]}', [b]]}]
+      - Let: [c, {FnCall: ['vget_high_{neon_type[1]}', [c]]}]
       - FnCall: ["vmlal_{neon_type[2]}", [a, b, c]]
 
   - name: "vmlal_high_{neon_type[1]}"
@@ -2617,18 +2617,12 @@ intrinsics:
       - *neon-stable
     safety: safe
     types:
-      - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '[4, 5, 6, 7]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '[2, 3]']
+      - [uint16x8_t, uint8x16_t, uint8x8_t]
+      - [uint32x4_t, uint16x8_t, uint16x4_t]
+      - [uint64x2_t, uint32x4_t, uint32x2_t]
     compose:
-      - Let:
-          - b
-          - "{neon_type[2]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]
-      - Let:
-          - c
-          - "{neon_type[2]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[1]}', [b]]}]
+      - Let: [c, {FnCall: ['vget_high_{neon_type[1]}', [c]]}]
       - FnCall: ["vmlal_{neon_type[1]}", [a, b, c]]
 
   - name: "vmlsl_high_{neon_type[1]}"
@@ -2640,18 +2634,12 @@ intrinsics:
       - *neon-stable
     safety: safe
     types:
-      - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int32x4_t, int16x8_t, int16x4_t, '[4, 5, 6, 7]']
-      - [int64x2_t, int32x4_t, int32x2_t, '[2, 3]']
+      - [int16x8_t, int8x16_t, int8x8_t]
+      - [int32x4_t, int16x8_t, int16x4_t]
+      - [int64x2_t, int32x4_t, int32x2_t]
     compose:
-      - Let:
-          - b
-          - "{neon_type[2]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]
-      - Let:
-          - c
-          - "{neon_type[2]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[1]}', [b]]}]
+      - Let: [c, {FnCall: ['vget_high_{neon_type[1]}', [c]]}]
       - FnCall: ["vmlsl_{neon_type[1]}", [a, b, c]]
 
   - name: "vmlsl_high_{neon_type[1]}"
@@ -2663,12 +2651,12 @@ intrinsics:
       - *neon-stable
     safety: safe
     types:
-      - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '[4, 5, 6, 7]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '[2, 3]']
+      - [uint16x8_t, uint8x16_t, uint8x8_t]
+      - [uint32x4_t, uint16x8_t, uint16x4_t]
+      - [uint64x2_t, uint32x4_t, uint32x2_t]
     compose:
-      - Let: [b, "{neon_type[2]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
-      - Let: [c, "{neon_type[2]}", {FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]}]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[1]}', [b]]}]
+      - Let: [c, {FnCall: ['vget_high_{neon_type[1]}', [c]]}]
       - FnCall: ["vmlsl_{neon_type[1]}", [a, b, c]]
 
   - name: "vmovn_high{neon_type[1].noq}"

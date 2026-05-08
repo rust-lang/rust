@@ -1992,17 +1992,17 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int32x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [int64x2_t, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
+      - [int32x4_t, int16x4_t, int16x4_t, '2']
+      - [int32x4_t, int16x4_t, int16x8_t, '3']
+      - [int64x2_t, int32x2_t, int32x2_t, '1']
+      - [int64x2_t, int32x2_t, int32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
           - "vmlal_{neon_type[1]}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
+            - FnCall: ['vdup_lane{neon_type[2].no}', [c], [LANE]]
 
   - name: "vmlal_lane{neon_type[2].no}"
     doc: "Vector widening multiply accumulate with scalar"
@@ -2018,17 +2018,17 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint32x4_t, uint16x4_t, uint16x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint16x4_t, uint16x8_t, uint32x4_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x2_t, uint32x2_t, uint64x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x2_t, uint32x4_t, uint64x2_t, '2', '[LANE as u32, LANE as u32]']
+      - [uint32x4_t, uint16x4_t, uint16x4_t, '2']
+      - [uint32x4_t, uint16x4_t, uint16x8_t, '3']
+      - [uint64x2_t, uint32x2_t, uint32x2_t, '1']
+      - [uint64x2_t, uint32x2_t, uint32x4_t, '2']
     compose:
-      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[4]}"]]
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
           - "vmlal_{neon_type[1]}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, '{type[5]}']]
+            - FnCall: ['vdup_lane{neon_type[2].no}', [c], [LANE]]
 
   - name: "vmlal_{neon_type[1]}"
     doc: "Unsigned multiply-add long"
@@ -2147,15 +2147,15 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int32x4_t, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x4_t, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int32x4_t, int16x4_t, int16x4_t, '2']
+      - [int32x4_t, int16x4_t, int16x8_t, '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmlsl_{neon_type[1]}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup_lane{neon_type[2].no}', [c], [LANE]]
 
   - name: "vmlsl_lane{neon_type[2].no}"
     doc: "Vector widening multiply subtract with scalar"
@@ -2171,15 +2171,15 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [int64x2_t, int32x2_t, int32x2_t, '[LANE as u32, LANE as u32]', '1']
-      - [int64x2_t, int32x2_t, int32x4_t, '[LANE as u32, LANE as u32]', '2']
+      - [int64x2_t, int32x2_t, int32x2_t, '1']
+      - [int64x2_t, int32x2_t, int32x4_t, '2']
     compose:
-      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[4]}"]]
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
           - "vmlsl_{neon_type[1]}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
+            - FnCall: ['vdup_lane{neon_type[2].no}', [c], [LANE]]
 
   - name: "vmlsl_lane{neon_type[2].no}"
     doc: "Vector widening multiply subtract with scalar"
@@ -2195,17 +2195,17 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [uint32x4_t, uint16x4_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint16x4_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x2_t, uint32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [uint64x2_t, uint32x2_t, uint32x4_t, '2', '[LANE as u32, LANE as u32]']
+      - [uint32x4_t, uint16x4_t, uint16x4_t, '2']
+      - [uint32x4_t, uint16x4_t, uint16x8_t, '3']
+      - [uint64x2_t, uint32x2_t, uint32x2_t, '1']
+      - [uint64x2_t, uint32x2_t, uint32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[3]}"]]
       - FnCall:
           - "vmlsl_{neon_type[1]}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup_lane{neon_type[2].no}', [c], [LANE]]
 
   - name: "vmlsl_{neon_type[1]}"
     doc: "Unsigned multiply-subtract long"
@@ -10901,21 +10901,21 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_u16, uint16x4_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_u16, uint16x4_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_u16, uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_u16, uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, '2']
+      - [_laneq_s16, int16x4_t, int16x8_t, '3']
+      - [q_lane_s16, int16x8_t, int16x4_t, '2']
+      - [q_laneq_s16, int16x8_t, int16x8_t, '3']
+      - [_lane_u16, uint16x4_t, uint16x4_t, '2']
+      - [_laneq_u16, uint16x4_t, uint16x8_t, '3']
+      - [q_lane_u16, uint16x8_t, uint16x4_t, '2']
+      - [q_laneq_u16, uint16x8_t, uint16x8_t, '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmla{neon_type[1].no}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup{type[0]}', [c], [LANE]]
 
   - name: "vmla{type[0]}"
     doc: "Vector multiply accumulate with scalar"
@@ -10931,21 +10931,21 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s32, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_u32, uint32x2_t, uint32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_u32, uint32x2_t, uint32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_u32, uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_u32, uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s32, int32x2_t, int32x2_t, '1']
+      - [_laneq_s32, int32x2_t, int32x4_t, '2']
+      - [q_lane_s32, int32x4_t, int32x2_t, '1']
+      - [q_laneq_s32, int32x4_t, int32x4_t, '2']
+      - [_lane_u32, uint32x2_t, uint32x2_t, '1']
+      - [_laneq_u32, uint32x2_t, uint32x4_t, '2']
+      - [q_lane_u32, uint32x4_t, uint32x2_t, '1']
+      - [q_laneq_u32, uint32x4_t, uint32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmla{neon_type[1].no}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup{type[0]}', [c], [LANE]]
 
   - name: "vmla{type[0]}"
     doc: "Vector multiply accumulate with scalar"
@@ -10961,17 +10961,17 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_f32, float32x2_t, float32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_f32, float32x2_t, float32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_f32, float32x4_t, float32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_f32, float32x4_t, float32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_f32, float32x2_t, float32x2_t, '1']
+      - [_laneq_f32, float32x2_t, float32x4_t, '2']
+      - [q_lane_f32, float32x4_t, float32x2_t, '1']
+      - [q_laneq_f32, float32x4_t, float32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmla{neon_type[1].no}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup{type[0]}', [c], [LANE]]
 
   - name: "vmls{neon_type[0].N}"
     doc: "Vector multiply subtract with scalar"
@@ -11050,21 +11050,21 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s16, int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_s16, int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_s16, int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s16, int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_u16, uint16x4_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_laneq_u16, uint16x4_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_lane_u16, uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_u16, uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s16, int16x4_t, int16x4_t, '2']
+      - [_laneq_s16, int16x4_t, int16x8_t, '3']
+      - [q_lane_s16, int16x8_t, int16x4_t, '2']
+      - [q_laneq_s16, int16x8_t, int16x8_t, '3']
+      - [_lane_u16, uint16x4_t, uint16x4_t, '2']
+      - [_laneq_u16, uint16x4_t, uint16x8_t, '3']
+      - [q_lane_u16, uint16x8_t, uint16x4_t, '2']
+      - [q_laneq_u16, uint16x8_t, uint16x8_t, '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmls{neon_type[1].no}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup{type[0]}', [c], [LANE]]
 
   - name: "vmls{type[0]}"
     doc: "Vector multiply subtract with scalar"
@@ -11080,21 +11080,21 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_s32, int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_s32, int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_s32, int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_s32, int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [_lane_u32, uint32x2_t, uint32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_u32, uint32x2_t, uint32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_u32, uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_u32, uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_s32, int32x2_t, int32x2_t, '1']
+      - [_laneq_s32, int32x2_t, int32x4_t, '2']
+      - [q_lane_s32, int32x4_t, int32x2_t, '1']
+      - [q_laneq_s32, int32x4_t, int32x4_t, '2']
+      - [_lane_u32, uint32x2_t, uint32x2_t, '1']
+      - [_laneq_u32, uint32x2_t, uint32x4_t, '2']
+      - [q_lane_u32, uint32x4_t, uint32x2_t, '1']
+      - [q_laneq_u32, uint32x4_t, uint32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmls{neon_type[1].no}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup{type[0]}', [c], [LANE]]
 
   - name: "vmls{type[0]}"
     doc: "Vector multiply subtract with scalar"
@@ -11110,17 +11110,17 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [_lane_f32, float32x2_t, float32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [_laneq_f32, float32x2_t, float32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [q_lane_f32, float32x4_t, float32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [q_laneq_f32, float32x4_t, float32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [_lane_f32, float32x2_t, float32x2_t, '1']
+      - [_laneq_f32, float32x2_t, float32x4_t, '2']
+      - [q_lane_f32, float32x4_t, float32x2_t, '1']
+      - [q_laneq_f32, float32x4_t, float32x4_t, '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - "vmls{neon_type[1].no}"
           - - a
             - b
-            - FnCall: [simd_shuffle!, [c, c, "{type[4]}"]]
+            - FnCall: ['vdup{type[0]}', [c], [LANE]]
 
   - name: "vmul{neon_type[0].N}"
     doc: "Vector multiply by scalar"
