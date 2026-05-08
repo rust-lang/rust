@@ -74,10 +74,12 @@ use crate::ty::{
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
+    #[inline]
     fn is_local(self) -> bool {
         self.is_local()
     }
 
+    #[inline]
     fn as_local(self) -> Option<LocalDefId> {
         self.as_local()
     }
@@ -92,24 +94,29 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
         hir::Safety::Unsafe
     }
 
+    #[inline]
     fn is_safe(self) -> bool {
         self.is_safe()
     }
 
+    #[inline]
     fn prefix_str(self) -> &'static str {
         self.prefix_str()
     }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
+    #[inline]
     fn generic_const_exprs(self) -> bool {
         self.generic_const_exprs()
     }
 
+    #[inline]
     fn generic_const_args(self) -> bool {
         self.generic_const_args()
     }
 
+    #[inline]
     fn coroutine_clone(self) -> bool {
         self.coroutine_clone()
     }

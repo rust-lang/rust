@@ -47,6 +47,7 @@ pub struct Predicate<'tcx>(
 );
 
 impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {
+    #[inline]
     fn as_clause(self) -> Option<ty::Clause<'tcx>> {
         self.as_clause()
     }
@@ -55,6 +56,7 @@ impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
     type Kind = ty::Binder<'tcx, ty::PredicateKind<'tcx>>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }
@@ -138,10 +140,12 @@ pub struct Clause<'tcx>(
 );
 
 impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
+    #[inline]
     fn as_predicate(self) -> Predicate<'tcx> {
         self.as_predicate()
     }
 
+    #[inline]
     fn instantiate_supertrait(self, tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> Self {
         self.instantiate_supertrait(tcx, trait_ref)
     }
@@ -150,6 +154,7 @@ impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
     type Kind = ty::Binder<'tcx, ClauseKind<'tcx>>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }

@@ -33,6 +33,7 @@ pub struct Const<'tcx>(pub(super) Interned<'tcx, WithCachedTypeInfo<ConstKind<'t
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Const<'tcx> {
     type Kind = ConstKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> ConstKind<'tcx> {
         self.kind()
     }
@@ -162,14 +163,17 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
+    #[inline]
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst) -> Self {
         Const::new_infer(tcx, infer)
     }
 
+    #[inline]
     fn new_var(tcx: TyCtxt<'tcx>, vid: ty::ConstVid) -> Self {
         Const::new_var(tcx, vid)
     }
 
+    #[inline]
     fn new_bound(
         interner: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
@@ -183,22 +187,27 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_bound(tcx, debruijn, ty::BoundConst::new(var))
     }
 
+    #[inline]
     fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: rustc_type_ir::BoundVar) -> Self {
         Const::new_canonical_bound(tcx, var)
     }
 
+    #[inline]
     fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderConst<'tcx>) -> Self {
         Const::new_placeholder(tcx, placeholder)
     }
 
+    #[inline]
     fn new_unevaluated(interner: TyCtxt<'tcx>, uv: ty::UnevaluatedConst<'tcx>) -> Self {
         Const::new_unevaluated(interner, uv)
     }
 
+    #[inline]
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {
         Const::new_expr(interner, expr)
     }
 
+    #[inline]
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
         Const::new_error(interner, guar)
     }

@@ -480,6 +480,7 @@ pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> TyKind<'tcx> {
         *self.kind()
     }
@@ -520,6 +521,7 @@ impl<'tcx> rustc_type_ir::inherent::Term<TyCtxt<'tcx>> for Term<'tcx> {}
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Term<'tcx> {
     type Kind = TermKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }
@@ -947,10 +949,12 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
 pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
 
 impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
+    #[inline]
     fn flags(&self) -> TypeFlags {
         (**self).flags()
     }
 
+    #[inline]
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         (**self).outer_exclusive_binder()
     }
@@ -973,6 +977,7 @@ pub struct ParamEnv<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    #[inline]
     fn caller_bounds(self) -> impl inherent::SliceLike<Item = ty::Clause<'tcx>> {
         self.caller_bounds()
     }

@@ -41,6 +41,7 @@ pub struct GenericArg<'tcx> {
 impl<'tcx> rustc_type_ir::inherent::GenericArg<TyCtxt<'tcx>> for GenericArg<'tcx> {}
 
 impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
+    #[inline]
     fn rebase_onto(
         self,
         tcx: TyCtxt<'tcx>,
@@ -51,24 +52,29 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
     }
 
     #[track_caller]
+    #[inline]
     fn type_at(self, i: usize) -> Ty<'tcx> {
         self.type_at(i)
     }
 
     #[track_caller]
+    #[inline]
     fn region_at(self, i: usize) -> ty::Region<'tcx> {
         self.region_at(i)
     }
 
     #[track_caller]
+    #[inline]
     fn const_at(self, i: usize) -> ty::Const<'tcx> {
         self.const_at(i)
     }
 
+    #[inline]
     fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
         GenericArgs::identity_for_item(tcx, def_id)
     }
 
+    #[inline]
     fn extend_with_error(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
@@ -130,6 +136,7 @@ impl<'tcx> rustc_type_ir::inherent::GenericArgs<TyCtxt<'tcx>> for ty::GenericArg
 impl<'tcx> rustc_type_ir::inherent::IntoKind for GenericArg<'tcx> {
     type Kind = GenericArgKind<'tcx>;
 
+    #[inline]
     fn kind(self) -> Self::Kind {
         self.kind()
     }

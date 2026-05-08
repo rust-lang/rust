@@ -255,10 +255,12 @@ impl<'tcx> AdtDef<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
+    #[inline]
     fn def_id(self) -> DefId {
         self.did()
     }
 
+    #[inline]
     fn is_struct(self) -> bool {
         self.is_struct()
     }
@@ -273,14 +275,17 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         Some(interner.type_of(self.non_enum_variant().tail_opt()?.did))
     }
 
+    #[inline]
     fn is_phantom_data(self) -> bool {
         self.is_phantom_data()
     }
 
+    #[inline]
     fn is_manually_drop(self) -> bool {
         self.is_manually_drop()
     }
 
+    #[inline]
     fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,
@@ -298,6 +303,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         )
     }
 
+    #[inline]
     fn sizedness_constraint(
         self,
         tcx: TyCtxt<'tcx>,
@@ -306,6 +312,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.sizedness_constraint(tcx, sizedness)
     }
 
+    #[inline]
     fn is_fundamental(self) -> bool {
         self.is_fundamental()
     }

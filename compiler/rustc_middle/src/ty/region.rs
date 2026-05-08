@@ -25,6 +25,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
+    #[inline]
     fn flags(&self) -> TypeFlags {
         self.type_flags()
     }
@@ -158,6 +159,7 @@ impl<'tcx> Region<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
+    #[inline]
     fn new_bound(
         interner: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
@@ -166,14 +168,17 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
         Region::new_bound(interner, debruijn, var)
     }
 
+    #[inline]
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon })
     }
 
+    #[inline]
     fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: rustc_type_ir::BoundVar) -> Self {
         Region::new_canonical_bound(tcx, var)
     }
 
+    #[inline]
     fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion<'tcx>) -> Self {
         Region::new_placeholder(tcx, placeholder)
     }

@@ -935,22 +935,27 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         tcx.types.u8
     }
 
+    #[inline]
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferTy) -> Self {
         Ty::new_infer(tcx, infer)
     }
 
+    #[inline]
     fn new_var(tcx: TyCtxt<'tcx>, vid: ty::TyVid) -> Self {
         Ty::new_var(tcx, vid)
     }
 
+    #[inline]
     fn new_param(tcx: TyCtxt<'tcx>, param: ty::ParamTy) -> Self {
         Ty::new_param(tcx, param.index, param.name)
     }
 
+    #[inline]
     fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Self {
         Ty::new_placeholder(tcx, placeholder)
     }
 
+    #[inline]
     fn new_bound(
         interner: TyCtxt<'tcx>,
         debruijn: ty::DebruijnIndex,
@@ -959,22 +964,27 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_bound(interner, debruijn, var)
     }
 
+    #[inline]
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
     }
 
+    #[inline]
     fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: ty::BoundVar) -> Self {
         Ty::new_canonical_bound(tcx, var)
     }
 
+    #[inline]
     fn new_alias(interner: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Self {
         Ty::new_alias(interner, alias_ty)
     }
 
+    #[inline]
     fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
         Ty::new_error(interner, guar)
     }
 
+    #[inline]
     fn new_adt(
         interner: TyCtxt<'tcx>,
         adt_def: ty::AdtDef<'tcx>,
@@ -983,10 +993,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_adt(interner, adt_def, args)
     }
 
+    #[inline]
     fn new_foreign(interner: TyCtxt<'tcx>, def_id: DefId) -> Self {
         Ty::new_foreign(interner, def_id)
     }
 
+    #[inline]
     fn new_dynamic(
         interner: TyCtxt<'tcx>,
         preds: &'tcx List<ty::PolyExistentialPredicate<'tcx>>,
@@ -995,6 +1007,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_dynamic(interner, preds, region)
     }
 
+    #[inline]
     fn new_coroutine(
         interner: TyCtxt<'tcx>,
         def_id: DefId,
@@ -1003,6 +1016,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_coroutine(interner, def_id, args)
     }
 
+    #[inline]
     fn new_coroutine_closure(
         interner: TyCtxt<'tcx>,
         def_id: DefId,
@@ -1011,10 +1025,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_coroutine_closure(interner, def_id, args)
     }
 
+    #[inline]
     fn new_closure(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
         Ty::new_closure(interner, def_id, args)
     }
 
+    #[inline]
     fn new_coroutine_witness(
         interner: TyCtxt<'tcx>,
         def_id: DefId,
@@ -1023,6 +1039,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_coroutine_witness(interner, def_id, args)
     }
 
+    #[inline]
     fn new_coroutine_witness_for_coroutine(
         interner: TyCtxt<'tcx>,
         def_id: DefId,
@@ -1031,10 +1048,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_coroutine_witness_for_coroutine(interner, def_id, coroutine_args)
     }
 
+    #[inline]
     fn new_ptr(interner: TyCtxt<'tcx>, ty: Self, mutbl: hir::Mutability) -> Self {
         Ty::new_ptr(interner, ty, mutbl)
     }
 
+    #[inline]
     fn new_ref(
         interner: TyCtxt<'tcx>,
         region: ty::Region<'tcx>,
@@ -1044,18 +1063,22 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_ref(interner, region, ty, mutbl)
     }
 
+    #[inline]
     fn new_array_with_const_len(interner: TyCtxt<'tcx>, ty: Self, len: ty::Const<'tcx>) -> Self {
         Ty::new_array_with_const_len(interner, ty, len)
     }
 
+    #[inline]
     fn new_slice(interner: TyCtxt<'tcx>, ty: Self) -> Self {
         Ty::new_slice(interner, ty)
     }
 
+    #[inline]
     fn new_tup(interner: TyCtxt<'tcx>, tys: &[Ty<'tcx>]) -> Self {
         Ty::new_tup(interner, tys)
     }
 
+    #[inline]
     fn new_tup_from_iter<It, T>(interner: TyCtxt<'tcx>, iter: It) -> T::Output
     where
         It: Iterator<Item = T>,
@@ -1064,18 +1087,22 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_tup_from_iter(interner, iter)
     }
 
+    #[inline]
     fn tuple_fields(self) -> &'tcx ty::List<Ty<'tcx>> {
         self.tuple_fields()
     }
 
+    #[inline]
     fn to_opt_closure_kind(self) -> Option<ty::ClosureKind> {
         self.to_opt_closure_kind()
     }
 
+    #[inline]
     fn from_closure_kind(interner: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Self {
         Ty::from_closure_kind(interner, kind)
     }
 
+    #[inline]
     fn from_coroutine_closure_kind(
         interner: TyCtxt<'tcx>,
         kind: rustc_type_ir::ClosureKind,
@@ -1083,18 +1110,22 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::from_coroutine_closure_kind(interner, kind)
     }
 
+    #[inline]
     fn new_fn_def(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
         Ty::new_fn_def(interner, def_id, args)
     }
 
+    #[inline]
     fn new_fn_ptr(interner: TyCtxt<'tcx>, sig: ty::Binder<'tcx, ty::FnSig<'tcx>>) -> Self {
         Ty::new_fn_ptr(interner, sig)
     }
 
+    #[inline]
     fn new_pat(interner: TyCtxt<'tcx>, ty: Self, pat: ty::Pattern<'tcx>) -> Self {
         Ty::new_pat(interner, ty, pat)
     }
 
+    #[inline]
     fn new_unsafe_binder(interner: TyCtxt<'tcx>, ty: ty::Binder<'tcx, Ty<'tcx>>) -> Self {
         Ty::new_unsafe_binder(interner, ty)
     }
@@ -1107,10 +1138,12 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         interner.types.usize
     }
 
+    #[inline]
     fn discriminant_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
         self.discriminant_ty(interner)
     }
 
+    #[inline]
     fn has_unsafe_fields(self) -> bool {
         Ty::has_unsafe_fields(self)
     }

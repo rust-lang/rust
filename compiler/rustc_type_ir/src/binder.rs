@@ -232,6 +232,7 @@ impl<I: Interner, T> Binder<I, T> {
     /// don't actually track bound vars. However, semantically, it is different
     /// because bound vars aren't allowed to change here, whereas they are
     /// in `bind`. This may be (debug) asserted in the future.
+    #[inline]
     pub fn rebind<U>(&self, value: U) -> Binder<I, U>
     where
         U: TypeVisitable<I>,

@@ -129,6 +129,7 @@ pub struct Generics {
 }
 
 impl<'tcx> rustc_type_ir::inherent::GenericsOf<TyCtxt<'tcx>> for &'tcx Generics {
+    #[inline]
     fn count(&self) -> usize {
         self.parent_count + self.own_params.len()
     }

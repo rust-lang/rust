@@ -144,10 +144,12 @@ impl<'a, H, T: Copy> rustc_type_ir::inherent::SliceLike for &'a RawList<H, T> {
 
     type IntoIter = iter::Copied<<&'a [T] as IntoIterator>::IntoIter>;
 
+    #[inline]
     fn iter(self) -> Self::IntoIter {
         (*self).iter()
     }
 
+    #[inline]
     fn as_slice(&self) -> &[Self::Item] {
         (*self).as_slice()
     }

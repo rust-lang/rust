@@ -185,6 +185,7 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
         self.map_bound_ref(|tr| tr.self_ty())
     }
 
+    #[inline]
     pub fn def_id(&self) -> I::TraitId {
         self.skip_binder().def_id
     }
@@ -228,6 +229,7 @@ impl<I: Interner> TraitPredicate<I> {
         self.trait_ref.def_id
     }
 
+    #[inline]
     pub fn self_ty(self) -> I::Ty {
         self.trait_ref.self_ty()
     }
@@ -454,6 +456,7 @@ impl<I: Interner> ExistentialTraitRef<I> {
 }
 
 impl<I: Interner> ty::Binder<I, ExistentialTraitRef<I>> {
+    #[inline]
     pub fn def_id(&self) -> I::TraitId {
         self.skip_binder().def_id
     }
@@ -552,6 +555,7 @@ impl<I: Interner> ty::Binder<I, ExistentialProjection<I>> {
         self.map_bound(|p| p.with_self_ty(cx, self_ty))
     }
 
+    #[inline]
     pub fn item_def_id(&self) -> I::TraitAssocTermId {
         self.skip_binder().def_id
     }
@@ -914,6 +918,7 @@ pub struct ProjectionPredicate<I: Interner> {
 impl<I: Interner> Eq for ProjectionPredicate<I> {}
 
 impl<I: Interner> ProjectionPredicate<I> {
+    #[inline]
     pub fn self_ty(self) -> I::Ty {
         self.projection_term.self_ty()
     }
@@ -925,10 +930,12 @@ impl<I: Interner> ProjectionPredicate<I> {
         }
     }
 
+    #[inline]
     pub fn trait_def_id(self, interner: I) -> I::TraitId {
         self.projection_term.trait_def_id(interner)
     }
 
+    #[inline]
     pub fn def_id(self) -> I::TraitAssocTermId {
         self.projection_term.expect_projection_def_id()
     }
@@ -941,6 +948,7 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
         self.skip_binder().projection_term.trait_def_id(cx)
     }
 
+    #[inline]
     pub fn term(&self) -> ty::Binder<I, I::Term> {
         self.map_bound(|predicate| predicate.term)
     }
@@ -978,6 +986,7 @@ pub struct NormalizesTo<I: Interner> {
 impl<I: Interner> Eq for NormalizesTo<I> {}
 
 impl<I: Interner> NormalizesTo<I> {
+    #[inline]
     pub fn self_ty(self) -> I::Ty {
         self.alias.self_ty()
     }
@@ -986,10 +995,12 @@ impl<I: Interner> NormalizesTo<I> {
         Self { alias: self.alias.with_replaced_self_ty(interner, self_ty), ..self }
     }
 
+    #[inline]
     pub fn trait_def_id(self, interner: I) -> I::TraitId {
         self.alias.trait_def_id(interner)
     }
 
+    #[inline]
     pub fn def_id(self) -> I::DefId {
         self.alias.def_id()
     }
@@ -1015,6 +1026,7 @@ pub struct HostEffectPredicate<I: Interner> {
 impl<I: Interner> Eq for HostEffectPredicate<I> {}
 
 impl<I: Interner> HostEffectPredicate<I> {
+    #[inline]
     pub fn self_ty(self) -> I::Ty {
         self.trait_ref.self_ty()
     }

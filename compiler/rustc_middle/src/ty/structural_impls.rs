@@ -317,6 +317,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Pattern<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -324,12 +325,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         folder.try_fold_ty(self)
     }
 
+    #[inline]
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_ty(self)
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_ty(*self)
     }
@@ -476,6 +479,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -483,18 +487,21 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
         folder.try_fold_region(self)
     }
 
+    #[inline]
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_region(self)
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_region(*self)
     }
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -502,6 +509,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         folder.try_fold_predicate(self)
     }
 
+    #[inline]
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_predicate(self)
     }
@@ -524,6 +532,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -531,12 +540,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
         folder.try_fold_clauses(self)
     }
 
+    #[inline]
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_clauses(self)
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_predicate(*self)
     }
@@ -579,6 +590,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_clauses(self)
     }
@@ -604,6 +616,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Clauses<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -611,12 +624,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         folder.try_fold_const(self)
     }
 
+    #[inline]
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_const(self)
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_const(*self)
     }
