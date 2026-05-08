@@ -457,6 +457,18 @@ macro_rules! record_defaulted_array {
     }};
 }
 
+/// Stable hashes an iterator while encoding it as a LazyArray.
+///
+/// The two forms it accepts are
+/// ```text
+/// hashed_lazy_array!(self, hashed_iterator, hcx)
+/// ```
+/// and
+/// ```text
+/// hashed_lazy_array!(self, hashed_iterator, hcx, map)
+/// ```
+/// `map` maps from hashed value returned from hashed_iterator to the encoded value. This is
+/// mostly used to map `LocalDefId`-s to `DefIndex` in the encoded values.
 macro_rules! hashed_lazy_array {
     ($self:ident, $values:expr, $hcx:ident, $encode_map:expr) => {{
         {
