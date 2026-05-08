@@ -188,6 +188,7 @@ symbols! {
         Clone,
         CoercePointee,
         CoercePointeeValidated,
+        CoerceShared,
         CoerceUnsized,
         Const,
         ConstParamTy,
