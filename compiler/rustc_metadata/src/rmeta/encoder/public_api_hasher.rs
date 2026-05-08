@@ -214,6 +214,32 @@ pub(crate) struct HashableCrateHeader {
     pub(crate) is_stub: bool,
 }
 
+/// Stable hashable version of [`CrateRoot`] we use to calculate the public api hash. When adding
+/// new fields to `CrateRoot`, it is important to include it in the public api hash. Not doing so
+/// can cause silent miscompiles. This struct helps make sure the compiler does not allow forgetting
+/// the hashing of new items added to rmeta and makes hashing them a local problem with a
+/// straightforward solution.
+///
+/// When adding a new field to `CrateRoot` we have 3 cases: it is encoded directly, bools for
+/// example, it is added as a `LazyValue` or `LazyArray`, or it is added as a new table to
+/// `LazyTables`
+/// 1. When encoded directly, the type likely implements `StableHash` or it can be derived for it.
+///    Simply adding it as-is to `HashableCrateRoot` then moving it into `CrateRoot` in
+///    `into_crate_root` should do the trick.
+/// 2. When encoded as some kind of lazy value, if one tries to do the same as in 1, the compiler
+///    will complain that it does not implement `StableHash`, so it cannot derive
+///    `StableHash` for `HashableCrateRoot`. In this case one should wrap it in [`Hashed`] and hash
+///    it where it was encoded. the `hash_lazy_array` macro can help with this for simple arrays.
+/// 3. When added to `LazyTables` in the `define_tables!` macro, simply defining its type as
+///    `Table<RDRHashAll, Idx, Value>` will take care of hashing it.
+///
+/// In all 3 cases a `// FIXME do we need to hash this?` comment should be included with the new
+/// field to note that it wasn't reviewed from the public api hash point of view. It might need
+/// stable sorting, or removing parts or all of it from the hash. However, removing anything from
+/// the public api hash should be done with extreme scrutiny. In most cases one can likely improve
+/// it by stable sorting before encoding, or removing unneeded items before encoding. If it does
+/// not need to be in the public api, it likely does not need to be in the rmeta at all. This also
+/// improves rmeta sizes.
 #[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
