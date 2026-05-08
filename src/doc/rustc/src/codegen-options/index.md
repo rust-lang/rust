@@ -654,15 +654,16 @@ This option allows for use of one or more of these sanitizers:
 These are the valid values for this option for targets that support one or more
 of these sanitizers:
 
-| Target                      | Sanitizers      |
-|-----------------------------|-----------------|
-| aarch64-apple-darwin        | address         |
-| aarch64-unknown-linux-gnu   | address, leak   |
-| i686-pc-windows-msvc        | address         |
-| i686-unknown-linux-gnu      | address         |
-| x86_64-apple-darwin         | address, leak   |
-| x86_64-pc-windows-msvc      | address         |
-| x86_64-unknown-linux-gnu    | address, leak   |
+| Target                       | Sanitizers      |
+|------------------------------|-----------------|
+| aarch64-apple-darwin         | address         |
+| aarch64-unknown-linux-gnu    | address, leak   |
+| i686-pc-windows-msvc         | address         |
+| i686-unknown-linux-gnu       | address         |
+| x86_64-apple-darwin          | address, leak   |
+| x86_64-pc-windows-msvc       | address         |
+| x86_64-unknown-linux-gnu     | address, leak   |
+| x86_64-unknown-linux-gnuasan | address         |
 
 The quality of the Sanitizers implementation and support varies across operating
 systems and architectures, and relies heavily on LLVM implementation--they are
