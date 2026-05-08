@@ -24,9 +24,9 @@ use tracing::debug;
 
 use super::{CrateDep, CrateHeader, CrateRoot, TargetTuple};
 use crate::rmeta::{
-    DefPathHashMapRef, EiiMapEncodedKeyValue, ExpnDataTable, ExpnHashTable, IncoherentImpls,
-    LazyArray, LazyTable, LazyTables, LazyValue, ProcMacroData, RDRHashes, SyntaxContextTable,
-    TraitImpls,
+    CrateHashes, DefPathHashMapRef, EiiMapEncodedKeyValue, ExpnDataTable, ExpnHashTable,
+    IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue, ProcMacroData,
+    SyntaxContextTable, TraitImpls,
 };
 
 #[derive(Default)]
@@ -360,22 +360,22 @@ impl HashableCrateRoot {
         tcx: TyCtxt<'_>,
         hcx: &mut PublicApiHashingContext<'_>,
     ) -> CrateRoot {
-        let rdr_hashes = if hcx.hash_public_api {
+        let hashes = if hcx.hash_public_api {
             assert!(!self.header.is_proc_macro_crate);
             let mut hasher = StableHasher::default();
             self.stable_hash(&mut hcx.hcx, &mut hasher);
-            let public_api_hash = Svh::new(hasher.finish());
+            let public_hash = Svh::new(hasher.finish());
             debug!("Hashed crate root: {self:#x?}");
-            debug!("public api hash: {}", public_api_hash);
-            RDRHashes { public_api_hash, private_hash: tcx.crate_hash(LOCAL_CRATE) }
+            debug!("public api hash: {}", public_hash);
+            CrateHashes { public_hash, private_hash: tcx.crate_hash(LOCAL_CRATE) }
         } else {
             let hash = tcx.crate_hash(LOCAL_CRATE);
-            RDRHashes { public_api_hash: hash, private_hash: hash }
+            CrateHashes { public_hash: hash, private_hash: hash }
         };
         let header = self.header;
         let header = CrateHeader {
             triple: header.triple,
-            hash: rdr_hashes.public_api_hash,
+            hashes,
             name: header.name,
             is_proc_macro_crate: header.is_proc_macro_crate,
             is_stub: header.is_stub,
@@ -437,8 +437,6 @@ impl HashableCrateRoot {
             symbol_mangling_version: self.symbol_mangling_version,
 
             specialization_enabled_in: self.specialization_enabled_in,
-
-            rdr_hashes,
         }
     }
 }

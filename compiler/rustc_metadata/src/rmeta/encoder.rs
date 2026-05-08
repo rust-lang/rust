@@ -719,7 +719,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_crate_root(
         &mut self,
         hcx: &mut PublicApiHashingContext<'_>,
-    ) -> (LazyValue<CrateRoot>, Svh) {
+    ) -> (LazyValue<CrateRoot>, CrateHashes) {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -902,7 +902,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
         };
         let crate_root = crate_root.into_crate_root(self.tcx, hcx);
-        let hash = crate_root.header.hash;
+        let hashes = crate_root.header.hashes;
 
         let root = stat!("final", || { self.lazy(crate_root) });
 
@@ -969,7 +969,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             eprint!("{s}");
         }
 
-        (root, hash)
+        (root, hashes)
     }
 }
 
@@ -2745,7 +2745,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
-    let mut hash = tcx.crate_hash(LOCAL_CRATE);
+    let mut hashes = CrateHashes {
+        private_hash: tcx.crate_hash(LOCAL_CRATE),
+        public_hash: tcx.crate_hash(LOCAL_CRATE),
+    };
 
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
@@ -2764,8 +2767,8 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                 with_encode_metadata_header(tcx, path, |ecx| {
                     // Encode all the entries and extra information in the crate,
                     // culminating in the `CrateRoot` which points to all of it.
-                    let (root, header_hash) = ecx.encode_crate_root(&mut hcx);
-                    hash = header_hash;
+                    let (root, crate_hashes) = ecx.encode_crate_root(&mut hcx);
+                    hashes = crate_hashes;
 
                     // Flush buffer to ensure backing file has the correct size.
                     ecx.opaque.flush();
@@ -2791,7 +2794,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
                 triple: tcx.sess.opts.target_triple.clone(),
-                hash,
+                hashes,
                 is_proc_macro_crate: false,
                 is_stub: true,
             });
