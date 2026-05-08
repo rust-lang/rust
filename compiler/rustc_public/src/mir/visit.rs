@@ -267,6 +267,10 @@ macro_rules! make_mir_visitor {
                     Rvalue::CopyForDeref(place) | Rvalue::Discriminant(place) | Rvalue::Len(place) => {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
+                    Rvalue::WrapUnsafeBinder(operand, ty) => {
+                        self.visit_operand(operand, location);
+                        self.visit_ty(ty, location);
+                    }
                     Rvalue::Ref(region, kind, place) => {
                         self.visit_region(region, location);
                         let pcx = PlaceContext { is_mut: matches!(kind, BorrowKind::Mut { .. }) };
@@ -468,6 +472,7 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
                 ProjectionElem::Downcast(_idx) => {}
                 ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
+                ProjectionElem::UnwrapUnsafeBinder(ty) => self.visit_ty(ty, location),
             }
         }
     };
@@ -508,6 +513,7 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
                 ProjectionElem::Downcast(_idx) => {}
                 ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
+                ProjectionElem::UnwrapUnsafeBinder(ty) => self.visit_ty(ty, location),
             }
         }
     };
