@@ -15,5 +15,5 @@ fi
 count=20
 for i in $(seq $count); do
   echo "RUNNING RUST-ANALYZER TESTS ATTEMPT $i"
-    ../x.py --stage 2 test src/tools/rust-analyzer
+  ../x.py --stage 1 test src/tools/rust-analyzer
 done
