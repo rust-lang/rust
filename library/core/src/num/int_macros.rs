@@ -4036,14 +4036,14 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
+        /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".truncate());")]
         #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").truncate());")]
         /// assert_eq!(120i8, 376i32.truncate());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
         pub const fn truncate<Target>(self) -> Target
             where Self: [const] traits::TruncateTarget<Target>
@@ -4057,15 +4057,15 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
+        /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(120i8, 120", stringify!($SelfT), ".saturating_truncate());")]
         #[doc = concat!("assert_eq!(-120i8, (-120", stringify!($SelfT), ").saturating_truncate());")]
         /// assert_eq!(127i8, 376i32.saturating_truncate());
         /// assert_eq!(-128i8, (-1000i32).saturating_truncate());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
         pub const fn saturating_truncate<Target>(self) -> Target
             where Self: [const] traits::TruncateTarget<Target>
@@ -4079,15 +4079,15 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
+        /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(Some(120i8), 120", stringify!($SelfT), ".checked_truncate());")]
         #[doc = concat!("assert_eq!(Some(-120i8), (-120", stringify!($SelfT), ").checked_truncate());")]
         /// assert_eq!(None, 376i32.checked_truncate::<i8>());
         /// assert_eq!(None, (-1000i32).checked_truncate::<i8>());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
         pub const fn checked_truncate<Target>(self) -> Option<Target>
             where Self: [const] traits::TruncateTarget<Target>
@@ -4095,23 +4095,23 @@ macro_rules! int_impl {
             traits::TruncateTarget::internal_checked_truncate(self)
         }
 
-        /// Extend to an integer of the same size or larger, preserving its value.
+        /// Widen to an integer of the same size or larger, preserving its value.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
-        #[doc = concat!("assert_eq!(120i128, 120i8.extend());")]
-        #[doc = concat!("assert_eq!(-120i128, (-120i8).extend());")]
+        /// #![feature(integer_widen_truncate)]
+        #[doc = concat!("assert_eq!(120i128, 120i8.widen());")]
+        #[doc = concat!("assert_eq!(-120i128, (-120i8).widen());")]
         /// ```
-        #[must_use = "this returns the extended value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[must_use = "this returns the widened value and does not modify the original"]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
-        pub const fn extend<Target>(self) -> Target
-            where Self: [const] traits::ExtendTarget<Target>
+        pub const fn widen<Target>(self) -> Target
+            where Self: [const] traits::WidenTarget<Target>
         {
-            traits::ExtendTarget::internal_extend(self)
+            traits::WidenTarget::internal_widen(self)
         }
     }
 }
