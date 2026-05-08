@@ -1,3 +1,5 @@
+use std::fmt;
+
 use rustc_attr_ir::StrippedCfgItem;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{ForeignModule, LinkagePreference, NativeLib};
@@ -17,6 +19,7 @@ use rustc_span::def_id::{LOCAL_CRATE, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_span::{SourceFile, Symbol};
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 use super::{CrateDep, CrateHeader, CrateRoot, TargetTuple};
 use crate::rmeta::table::TableIdx;
@@ -147,6 +150,12 @@ pub(crate) struct Hashed<T> {
     pub(crate) value: T,
 }
 
+impl<T> fmt::Debug for Hashed<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.hash.as_ref().unwrap().fmt(f)
+    }
+}
+
 impl<T> StableHash for Hashed<T> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.hash.expect("Hash must be present when stable hashing!").stable_hash(hcx, hasher);
@@ -157,6 +166,12 @@ pub(crate) struct NoneIfHashed<T> {
     pub(super) value: Option<T>,
 }
 
+impl<T> fmt::Debug for NoneIfHashed<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        None::<()>.fmt(f)
+    }
+}
+
 impl<T> StableHash for NoneIfHashed<T> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         assert!(self.value.is_none());
@@ -164,7 +179,7 @@ impl<T> StableHash for NoneIfHashed<T> {
     }
 }
 
-#[derive(StableHash)]
+#[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateHeader {
     // FIXME do we need to hash this?
     pub(crate) triple: TargetTuple,
@@ -176,7 +191,7 @@ pub(crate) struct HashableCrateHeader {
     pub(crate) is_stub: bool,
 }
 
-#[derive(StableHash)]
+#[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
     pub(crate) header: HashableCrateHeader,
@@ -298,6 +313,8 @@ impl HashableCrateRoot {
             let mut hasher = StableHasher::default();
             self.stable_hash(&mut hcx.hcx, &mut hasher);
             let public_api_hash = Svh::new(hasher.finish());
+            debug!("Hashed crate root: {self:#x?}");
+            debug!("public api hash: {}", public_api_hash);
             RDRHashes { public_api_hash }
         } else {
             let hash = tcx.crate_hash(LOCAL_CRATE);
