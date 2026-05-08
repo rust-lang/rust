@@ -12,6 +12,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, BufferedEarlyLint, Diagnostic, MultiSpan, pluralize, struct_span_code_err,
 };
+use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
@@ -1656,7 +1657,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match decl.kind {
                 // exclude decl_macro
                 DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
-                    if self.get_macro_by_def_id(def_id).macro_rules =>
+                    if let SyntaxExtensionKind::MacroRules(mr) =
+                        &self.get_macro_by_def_id(def_id).kind
+                        && mr.is_macro_rules() =>
                 {
                     err.subdiagnostic(ConsiderAddingMacroExport { span: decl.span });
                     err.subdiagnostic(ConsiderMarkingAsPubCrate { vis_span: import.vis_span });

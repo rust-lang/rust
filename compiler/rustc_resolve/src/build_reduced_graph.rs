@@ -14,7 +14,7 @@ use rustc_ast::{
     TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
-use rustc_expand::base::ResolverExpand;
+use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
@@ -37,9 +37,8 @@ use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
-    ExternPreludeEntry, Finalize, IdentKey, LocalModule, MacroData, Module, ModuleKind,
-    ModuleOrUniformRoot, ParentScope, PathResult, Res, Resolver, Segment, SyntaxExtension, Used,
-    VisResolutionError, errors,
+    ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
+    ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError, errors,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -208,28 +207,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Gets the `SyntaxExtension` corresponding to `res`.
-    pub(crate) fn get_macro(&self, res: Res) -> Option<&Arc<SyntaxExtension>> {
+    pub(crate) fn get_macro(&self, res: Res) -> Option<&'ra Arc<SyntaxExtension>> {
         match res {
-            Res::Def(DefKind::Macro(..), def_id) => Some(&self.get_macro_by_def_id(def_id).ext),
-            Res::NonMacroAttr(_) => Some(&self.non_macro_attr),
+            Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
+            Res::NonMacroAttr(_) => Some(self.non_macro_attr),
             _ => None,
         }
     }
 
-    pub(crate) fn get_macro_by_def_id(&self, def_id: DefId) -> &'ra MacroData {
+    pub(crate) fn get_macro_by_def_id(&self, def_id: DefId) -> &'ra Arc<SyntaxExtension> {
         // Local macros are always compiled.
         match def_id.as_local() {
             Some(local_def_id) => self.local_macro_map[&local_def_id],
-            None => *self.extern_macro_map.borrow_mut().entry(def_id).or_insert_with(|| {
+            None => self.extern_macro_map.borrow_mut().entry(def_id).or_insert_with(|| {
                 let loaded_macro = self.cstore().load_macro_untracked(self.tcx, def_id);
-                let macro_data = match loaded_macro {
+                let ext = match loaded_macro {
                     LoadedMacro::MacroDef { def, ident, attrs, span, edition } => {
                         self.compile_macro(&def, ident, &attrs, span, ast::DUMMY_NODE_ID, edition)
                     }
-                    LoadedMacro::ProcMacro(ext) => MacroData::new(Arc::new(ext)),
+                    LoadedMacro::ProcMacro(ext) => ext,
                 };
 
-                self.arenas.alloc_macro(macro_data)
+                self.arenas.alloc_macro(ext)
             }),
         }
     }
@@ -1277,8 +1276,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
-            let nrules = self.r.local_macro_map[&def_id].nrules;
-            self.r.unused_macro_rules.insert(node_id, (def_id, DenseBitSet::new_filled(nrules)));
+            if let SyntaxExtensionKind::MacroRules(mr) = &self.r.local_macro_map[&def_id].kind {
+                let value = (def_id, DenseBitSet::new_filled(mr.nrules()));
+                self.r.unused_macro_rules.insert(node_id, value);
+            }
         }
     }
 
@@ -1299,8 +1300,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     Some((macro_kind, ident, span)) => {
                         let macro_kinds = macro_kind.into();
                         let res = Res::Def(DefKind::Macro(macro_kinds), def_id.to_def_id());
-                        let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
-                        self.r.new_local_macro(def_id, macro_data);
+                        self.r.local_macro_map.insert(def_id, self.r.dummy_ext(macro_kind));
                         self.r.proc_macro_stubs.insert(def_id);
                         (res, ident, span, false)
                     }
