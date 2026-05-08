@@ -291,6 +291,81 @@ impl<'a> TritonCodegen<'a> {
         Ok(Some(result.into()))
     }
 
+    /// `Triton::load_scalar_f32_as_i32(ptr, offset)` — scalar gather with f32→i32 cast.
+    ///
+    /// 1. `tt.addptr(%ptr, %offset)` on scalar `!tt.ptr<f32>` → scalar `!tt.ptr<f32>`
+    /// 2. `tt.load` → scalar `f32`
+    /// 3. `arith.fptosi` → scalar `i32`
+    ///
+    /// Used when token IDs are stored as f32 (the default graph dtype).
+    /// The returned `i32` is usable directly in scalar arithmetic such as
+    /// `I32Tensor + i32` offset expressions.
+    pub fn codegen_load_scalar_f32_as_i32<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 2, "load_scalar_f32_as_i32: expected 2 args");
+
+        let ptr = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let offset = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+
+        // ptr + offset → !tt.ptr<f32>
+        let f32_ty = melior::ir::Type::float32(self.module.context());
+        let f32_ptr_ty = pointer_type(f32_ty);
+        let addptr_op: Operation<'a> = add_ptr(self.module.context(), location, ptr, offset, f32_ptr_ty)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let new_ptr: Value<'a, 'a> = addptr_op.result(0)
+            .expect("load_scalar_f32_as_i32: addptr result").into();
+        mlir_block.append_operation(addptr_op);
+
+        // tt.load !tt.ptr<f32> → f32
+        let load_op: Operation<'a> = load(
+            self.module.context(),
+            location,
+            new_ptr,
+            None,
+            None,
+            f32_ty,
+            CacheModifier::None,
+            EvictionPolicy::Normal,
+            false,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let f32_val: Value<'a, 'a> = load_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?
+            .into();
+        mlir_block.append_operation(load_op);
+
+        // arith.fptosi f32 → i32
+        let i32_ty = IntegerType::new(self.module.context(), 32).into();
+        let fptosi_op: Operation<'a> =
+            melior::dialect::arith::fptosi(f32_val, i32_ty, location).into();
+        let i32_val: Value<'a, 'a> = fptosi_op.result(0)
+            .expect("load_scalar_f32_as_i32: fptosi result").into();
+        mlir_block.append_operation(fptosi_op);
+
+        Ok(Some(i32_val))
+    }
+
     pub fn codegen_store<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,

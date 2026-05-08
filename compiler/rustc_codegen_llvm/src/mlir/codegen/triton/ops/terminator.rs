@@ -194,6 +194,7 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::arange" => TritonCodegen::codegen_arange as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::arange_f32" => TritonCodegen::codegen_arange_f32 as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::load" => TritonCodegen::codegen_load as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::load_scalar_f32_as_i32" => TritonCodegen::codegen_load_scalar_f32_as_i32 as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::store" => TritonCodegen::codegen_store as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::maximum" => {
                 TritonCodegen::codegen_maximum as LocalCallHandler<'a, 'tcx>
