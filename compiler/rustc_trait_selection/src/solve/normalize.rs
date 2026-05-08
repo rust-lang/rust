@@ -1,6 +1,6 @@
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
-use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::solve::{Goal, NoSolutionOrRerunNonErased};
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
@@ -9,7 +9,9 @@ use rustc_middle::ty::{
     self, Binder, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
     UniverseIndex, Unnormalized,
 };
-use rustc_next_trait_solver::normalize::NormalizationFolder;
+use rustc_next_trait_solver::normalize::{
+    BinderRenormalizer, NormalizationFolder, NormalizationScope,
+};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 
 use super::{FulfillmentCtxt, NextSolverError};
@@ -17,11 +19,15 @@ use crate::solve::{Certainty, SolverDelegate};
 use crate::traits::{BoundVarReplacer, ScrubbedTraitError};
 
 /// see `normalize_with_universes`.
-pub fn normalize<'tcx, T>(at: At<'_, 'tcx>, value: Unnormalized<'tcx, T>) -> Normalized<'tcx, T>
+pub fn normalize<'tcx, T>(
+    at: At<'_, 'tcx>,
+    value: Unnormalized<'tcx, T>,
+    scope: NormalizationScope,
+) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    normalize_with_universes(at, value, vec![])
+    normalize_with_universes(at, value, vec![], scope)
 }
 
 /// Like `deeply_normalize`, but we handle ambiguity and inference variables in this routine.
@@ -35,6 +41,7 @@ fn normalize_with_universes<'tcx, T>(
     at: At<'_, 'tcx>,
     value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
+    scope: NormalizationScope,
 ) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
@@ -43,27 +50,42 @@ where
     let value = value.skip_normalization();
     let value = infcx.resolve_vars_if_possible(value);
     let original_value = value.clone();
-    let mut folder =
-        NormalizationFolder::new(infcx, universes.clone(), Default::default(), |alias_term| {
-            let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-            let infer_term = delegate.next_term_var_of_kind(alias_term, at.cause.span);
-            let predicate = ty::PredicateKind::AliasRelate(
-                alias_term.into(),
-                infer_term.into(),
-                ty::AliasRelationDirection::Equate,
+    let normalize_term = |alias_term| -> Result<_, NoSolutionOrRerunNonErased> {
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        let infer_term = delegate.next_term_var_of_kind(alias_term, at.cause.span);
+        let predicate = ty::PredicateKind::AliasRelate(
+            alias_term.into(),
+            infer_term.into(),
+            ty::AliasRelationDirection::Equate,
+        );
+        let goal = Goal::new(infcx.tcx, at.param_env, predicate);
+        let result = delegate.evaluate_root_goal(goal, at.cause.span, None)?;
+        let normalized = infcx.resolve_vars_if_possible(infer_term);
+        let stalled_goal = match result.certainty {
+            Certainty::Yes => None,
+            Certainty::Maybe { .. } => Some(infcx.resolve_vars_if_possible(result.goal)),
+        };
+        Ok((normalized, stalled_goal))
+    };
+    let (normalized, stalled_goals) = match scope {
+        NormalizationScope::All => {
+            let mut folder = NormalizationFolder::new(
+                infcx,
+                universes.clone(),
+                Default::default(),
+                normalize_term,
             );
-            let goal = Goal::new(infcx.tcx, at.param_env, predicate);
-            let result = delegate.evaluate_root_goal(goal, at.cause.span, None)?;
-            let normalized = infcx.resolve_vars_if_possible(infer_term);
-            let stalled_goal = match result.certainty {
-                Certainty::Yes => None,
-                Certainty::Maybe { .. } => Some(infcx.resolve_vars_if_possible(result.goal)),
-            };
-            Ok((normalized, stalled_goal))
-        });
-    if let Ok(value) = value.try_fold_with(&mut folder) {
-        let obligations = folder
-            .stalled_goals()
+            let normalized = value.try_fold_with(&mut folder);
+            (normalized, folder.stalled_goals())
+        }
+        NormalizationScope::AmbiguousAlias => {
+            let mut folder = BinderRenormalizer::new(infcx, Default::default(), normalize_term);
+            let normalized = value.try_fold_with(&mut folder);
+            (normalized, folder.stalled_goals())
+        }
+    };
+    if let Ok(value) = normalized {
+        let obligations = stalled_goals
             .into_iter()
             .map(|goal| {
                 Obligation::new(infcx.tcx, at.cause.clone(), goal.param_env, goal.predicate)
@@ -210,7 +232,8 @@ where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
-    let Normalized { value, obligations } = normalize_with_universes(at, value, universes);
+    let Normalized { value, obligations } =
+        normalize_with_universes(at, value, universes, NormalizationScope::All);
 
     let mut fulfill_cx = FulfillmentCtxt::new(at.infcx);
     for pred in obligations {

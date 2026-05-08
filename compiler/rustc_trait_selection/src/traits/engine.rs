@@ -119,6 +119,16 @@ where
         self.register_infer_ok_obligations(infer_ok)
     }
 
+    pub fn renormalize_ambiguous_aliases<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::UnnormalizedAmbiguous<'tcx, T>,
+    ) -> T {
+        let infer_ok = self.infcx.at(cause, param_env).renormalize_ambiguous_aliases(value);
+        self.register_infer_ok_obligations(infer_ok)
+    }
+
     pub fn eq<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
