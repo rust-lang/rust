@@ -4131,13 +4131,7 @@ pub fn vcopy_lane_f32<const LANE1: i32, const LANE2: i32>(
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_f32::<LANE1>(vget_lane_f32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_s8)"]
@@ -4152,19 +4146,7 @@ pub fn vcopy_lane_f32<const LANE1: i32, const LANE2: i32>(
 pub fn vcopy_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_s8::<LANE1>(vget_lane_s8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_s16)"]
@@ -4179,15 +4161,7 @@ pub fn vcopy_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x8_
 pub fn vcopy_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_s16::<LANE1>(vget_lane_s16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_s32)"]
@@ -4202,13 +4176,7 @@ pub fn vcopy_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16
 pub fn vcopy_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_s32::<LANE1>(vget_lane_s32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_u8)"]
@@ -4223,19 +4191,7 @@ pub fn vcopy_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32
 pub fn vcopy_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_u8::<LANE1>(vget_lane_u8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_u16)"]
@@ -4253,15 +4209,7 @@ pub fn vcopy_lane_u16<const LANE1: i32, const LANE2: i32>(
 ) -> uint16x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_u16::<LANE1>(vget_lane_u16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_u32)"]
@@ -4279,13 +4227,7 @@ pub fn vcopy_lane_u32<const LANE1: i32, const LANE2: i32>(
 ) -> uint32x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_u32::<LANE1>(vget_lane_u32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_p8)"]
@@ -4300,19 +4242,7 @@ pub fn vcopy_lane_u32<const LANE1: i32, const LANE2: i32>(
 pub fn vcopy_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_p8::<LANE1>(vget_lane_p8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_p16)"]
@@ -4330,15 +4260,7 @@ pub fn vcopy_lane_p16<const LANE1: i32, const LANE2: i32>(
 ) -> poly16x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_p16::<LANE1>(vget_lane_p16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_f64)"]
@@ -4416,14 +4338,7 @@ pub fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        let a: float32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_f32::<LANE1>(vgetq_lane_f32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s8)"]
@@ -4438,21 +4353,7 @@ pub fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(
 pub fn vcopy_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x16_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 4);
-    unsafe {
-        let a: int8x16_t =
-            simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_s8::<LANE1>(vgetq_lane_s8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s16)"]
@@ -4470,16 +4371,7 @@ pub fn vcopy_laneq_s16<const LANE1: i32, const LANE2: i32>(
 ) -> int16x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        let a: int16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_s16::<LANE1>(vgetq_lane_s16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s32)"]
@@ -4497,14 +4389,7 @@ pub fn vcopy_laneq_s32<const LANE1: i32, const LANE2: i32>(
 ) -> int32x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        let a: int32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_s32::<LANE1>(vgetq_lane_s32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u8)"]
@@ -4522,21 +4407,7 @@ pub fn vcopy_laneq_u8<const LANE1: i32, const LANE2: i32>(
 ) -> uint8x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 4);
-    unsafe {
-        let a: uint8x16_t =
-            simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_u8::<LANE1>(vgetq_lane_u8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u16)"]
@@ -4554,16 +4425,7 @@ pub fn vcopy_laneq_u16<const LANE1: i32, const LANE2: i32>(
 ) -> uint16x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        let a: uint16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_u16::<LANE1>(vgetq_lane_u16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u32)"]
@@ -4581,14 +4443,7 @@ pub fn vcopy_laneq_u32<const LANE1: i32, const LANE2: i32>(
 ) -> uint32x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        let a: uint32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_u32::<LANE1>(vgetq_lane_u32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_p8)"]
@@ -4606,21 +4461,7 @@ pub fn vcopy_laneq_p8<const LANE1: i32, const LANE2: i32>(
 ) -> poly8x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 4);
-    unsafe {
-        let a: poly8x16_t =
-            simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_p8::<LANE1>(vgetq_lane_p8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_p16)"]
@@ -4638,16 +4479,7 @@ pub fn vcopy_laneq_p16<const LANE1: i32, const LANE2: i32>(
 ) -> poly16x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        let a: poly16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vset_lane_p16::<LANE1>(vgetq_lane_p16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_f64)"]
@@ -4722,16 +4554,7 @@ pub fn vcopyq_lane_f32<const LANE1: i32, const LANE2: i32>(
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        let b: float32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]);
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_f32::<LANE1>(vget_lane_f32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_f64)"]
@@ -4749,14 +4572,8 @@ pub fn vcopyq_lane_f64<const LANE1: i32, const LANE2: i32>(
 ) -> float64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert!(LANE2 == 0);
-    unsafe {
-        let b: float64x2_t = simd_shuffle!(b, b, [0, 1]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: float64x2_t = vcombine_f64(b, b);
+    vsetq_lane_f64::<LANE1>(vgetq_lane_f64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s64)"]
@@ -4774,14 +4591,8 @@ pub fn vcopyq_lane_s64<const LANE1: i32, const LANE2: i32>(
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert!(LANE2 == 0);
-    unsafe {
-        let b: int64x2_t = simd_shuffle!(b, b, [0, 1]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: int64x2_t = vcombine_s64(b, b);
+    vsetq_lane_s64::<LANE1>(vgetq_lane_s64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u64)"]
@@ -4799,14 +4610,8 @@ pub fn vcopyq_lane_u64<const LANE1: i32, const LANE2: i32>(
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert!(LANE2 == 0);
-    unsafe {
-        let b: uint64x2_t = simd_shuffle!(b, b, [0, 1]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: uint64x2_t = vcombine_u64(b, b);
+    vsetq_lane_u64::<LANE1>(vgetq_lane_u64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_p64)"]
@@ -4824,14 +4629,8 @@ pub fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(
 ) -> poly64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert!(LANE2 == 0);
-    unsafe {
-        let b: poly64x2_t = simd_shuffle!(b, b, [0, 1]);
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: poly64x2_t = vcombine_p64(b, b);
+    vsetq_lane_p64::<LANE1>(vgetq_lane_p64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s8)"]
@@ -4846,365 +4645,8 @@ pub fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(
 pub fn vcopyq_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b: int8x8_t) -> int8x16_t {
     static_assert_uimm_bits!(LANE1, 4);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        let b: int8x16_t =
-            simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        match LANE1 & 0b1111 {
-            0 => simd_shuffle!(
-                a,
-                b,
-                [
-                    16 + LANE2 as u32,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    16 + LANE2 as u32,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    16 + LANE2 as u32,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    16 + LANE2 as u32,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    16 + LANE2 as u32,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    16 + LANE2 as u32,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    16 + LANE2 as u32,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    16 + LANE2 as u32,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    16 + LANE2 as u32,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    16 + LANE2 as u32,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    16 + LANE2 as u32,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    16 + LANE2 as u32,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    16 + LANE2 as u32,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    16 + LANE2 as u32,
-                    14,
-                    15
-                ]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    16 + LANE2 as u32,
-                    15
-                ]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    16 + LANE2 as u32
-                ]
-            ),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: int8x16_t = vcombine_s8(b, b);
+    vsetq_lane_s8::<LANE1>(vgetq_lane_s8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s16)"]
@@ -5222,20 +4664,8 @@ pub fn vcopyq_lane_s16<const LANE1: i32, const LANE2: i32>(
 ) -> int16x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        let b: int16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: int16x8_t = vcombine_s16(b, b);
+    vsetq_lane_s16::<LANE1>(vgetq_lane_s16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s32)"]
@@ -5253,16 +4683,8 @@ pub fn vcopyq_lane_s32<const LANE1: i32, const LANE2: i32>(
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        let b: int32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]);
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: int32x4_t = vcombine_s32(b, b);
+    vsetq_lane_s32::<LANE1>(vgetq_lane_s32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u8)"]
@@ -5280,365 +4702,8 @@ pub fn vcopyq_lane_u8<const LANE1: i32, const LANE2: i32>(
 ) -> uint8x16_t {
     static_assert_uimm_bits!(LANE1, 4);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        let b: uint8x16_t =
-            simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        match LANE1 & 0b1111 {
-            0 => simd_shuffle!(
-                a,
-                b,
-                [
-                    16 + LANE2 as u32,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    16 + LANE2 as u32,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    16 + LANE2 as u32,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    16 + LANE2 as u32,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    16 + LANE2 as u32,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    16 + LANE2 as u32,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    16 + LANE2 as u32,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    16 + LANE2 as u32,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    16 + LANE2 as u32,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    16 + LANE2 as u32,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    16 + LANE2 as u32,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    16 + LANE2 as u32,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    16 + LANE2 as u32,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    16 + LANE2 as u32,
-                    14,
-                    15
-                ]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    16 + LANE2 as u32,
-                    15
-                ]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    16 + LANE2 as u32
-                ]
-            ),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: uint8x16_t = vcombine_u8(b, b);
+    vsetq_lane_u8::<LANE1>(vgetq_lane_u8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u16)"]
@@ -5656,20 +4721,8 @@ pub fn vcopyq_lane_u16<const LANE1: i32, const LANE2: i32>(
 ) -> uint16x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        let b: uint16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: uint16x8_t = vcombine_u16(b, b);
+    vsetq_lane_u16::<LANE1>(vgetq_lane_u16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_u32)"]
@@ -5687,16 +4740,8 @@ pub fn vcopyq_lane_u32<const LANE1: i32, const LANE2: i32>(
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        let b: uint32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]);
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: uint32x4_t = vcombine_u32(b, b);
+    vsetq_lane_u32::<LANE1>(vgetq_lane_u32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_p8)"]
@@ -5714,365 +4759,8 @@ pub fn vcopyq_lane_p8<const LANE1: i32, const LANE2: i32>(
 ) -> poly8x16_t {
     static_assert_uimm_bits!(LANE1, 4);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        let b: poly8x16_t =
-            simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-        match LANE1 & 0b1111 {
-            0 => simd_shuffle!(
-                a,
-                b,
-                [
-                    16 + LANE2 as u32,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    16 + LANE2 as u32,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    16 + LANE2 as u32,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    16 + LANE2 as u32,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    16 + LANE2 as u32,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    16 + LANE2 as u32,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    16 + LANE2 as u32,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    16 + LANE2 as u32,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    16 + LANE2 as u32,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    16 + LANE2 as u32,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    16 + LANE2 as u32,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    16 + LANE2 as u32,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    16 + LANE2 as u32,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    16 + LANE2 as u32,
-                    14,
-                    15
-                ]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    16 + LANE2 as u32,
-                    15
-                ]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    16 + LANE2 as u32
-                ]
-            ),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: poly8x16_t = vcombine_p8(b, b);
+    vsetq_lane_p8::<LANE1>(vgetq_lane_p8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_p16)"]
@@ -6090,20 +4778,8 @@ pub fn vcopyq_lane_p16<const LANE1: i32, const LANE2: i32>(
 ) -> poly16x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        let b: poly16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    let b: poly16x8_t = vcombine_p16(b, b);
+    vsetq_lane_p16::<LANE1>(vgetq_lane_p16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_f32)"]
@@ -6121,15 +4797,7 @@ pub fn vcopyq_laneq_f32<const LANE1: i32, const LANE2: i32>(
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_f32::<LANE1>(vgetq_lane_f32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_f64)"]
@@ -6147,13 +4815,7 @@ pub fn vcopyq_laneq_f64<const LANE1: i32, const LANE2: i32>(
 ) -> float64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_f64::<LANE1>(vgetq_lane_f64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s8)"]
@@ -6171,363 +4833,7 @@ pub fn vcopyq_laneq_s8<const LANE1: i32, const LANE2: i32>(
 ) -> int8x16_t {
     static_assert_uimm_bits!(LANE1, 4);
     static_assert_uimm_bits!(LANE2, 4);
-    unsafe {
-        match LANE1 & 0b1111 {
-            0 => simd_shuffle!(
-                a,
-                b,
-                [
-                    16 + LANE2 as u32,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    16 + LANE2 as u32,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    16 + LANE2 as u32,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    16 + LANE2 as u32,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    16 + LANE2 as u32,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    16 + LANE2 as u32,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    16 + LANE2 as u32,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    16 + LANE2 as u32,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    16 + LANE2 as u32,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    16 + LANE2 as u32,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    16 + LANE2 as u32,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    16 + LANE2 as u32,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    16 + LANE2 as u32,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    16 + LANE2 as u32,
-                    14,
-                    15
-                ]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    16 + LANE2 as u32,
-                    15
-                ]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    16 + LANE2 as u32
-                ]
-            ),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_s8::<LANE1>(vgetq_lane_s8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s16)"]
@@ -6545,19 +4851,7 @@ pub fn vcopyq_laneq_s16<const LANE1: i32, const LANE2: i32>(
 ) -> int16x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_s16::<LANE1>(vgetq_lane_s16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s32)"]
@@ -6575,15 +4869,7 @@ pub fn vcopyq_laneq_s32<const LANE1: i32, const LANE2: i32>(
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_s32::<LANE1>(vgetq_lane_s32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_s64)"]
@@ -6601,13 +4887,7 @@ pub fn vcopyq_laneq_s64<const LANE1: i32, const LANE2: i32>(
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_s64::<LANE1>(vgetq_lane_s64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u8)"]
@@ -6625,363 +4905,7 @@ pub fn vcopyq_laneq_u8<const LANE1: i32, const LANE2: i32>(
 ) -> uint8x16_t {
     static_assert_uimm_bits!(LANE1, 4);
     static_assert_uimm_bits!(LANE2, 4);
-    unsafe {
-        match LANE1 & 0b1111 {
-            0 => simd_shuffle!(
-                a,
-                b,
-                [
-                    16 + LANE2 as u32,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    16 + LANE2 as u32,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    16 + LANE2 as u32,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    16 + LANE2 as u32,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    16 + LANE2 as u32,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    16 + LANE2 as u32,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    16 + LANE2 as u32,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    16 + LANE2 as u32,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    16 + LANE2 as u32,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    16 + LANE2 as u32,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    16 + LANE2 as u32,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    16 + LANE2 as u32,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    16 + LANE2 as u32,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    16 + LANE2 as u32,
-                    14,
-                    15
-                ]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    16 + LANE2 as u32,
-                    15
-                ]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    16 + LANE2 as u32
-                ]
-            ),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_u8::<LANE1>(vgetq_lane_u8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u16)"]
@@ -6999,19 +4923,7 @@ pub fn vcopyq_laneq_u16<const LANE1: i32, const LANE2: i32>(
 ) -> uint16x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_u16::<LANE1>(vgetq_lane_u16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u32)"]
@@ -7029,15 +4941,7 @@ pub fn vcopyq_laneq_u32<const LANE1: i32, const LANE2: i32>(
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE1, 2);
     static_assert_uimm_bits!(LANE2, 2);
-    unsafe {
-        match LANE1 & 0b11 {
-            0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-            1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-            2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_u32::<LANE1>(vgetq_lane_u32::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_u64)"]
@@ -7055,13 +4959,7 @@ pub fn vcopyq_laneq_u64<const LANE1: i32, const LANE2: i32>(
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_u64::<LANE1>(vgetq_lane_u64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_p8)"]
@@ -7079,363 +4977,7 @@ pub fn vcopyq_laneq_p8<const LANE1: i32, const LANE2: i32>(
 ) -> poly8x16_t {
     static_assert_uimm_bits!(LANE1, 4);
     static_assert_uimm_bits!(LANE2, 4);
-    unsafe {
-        match LANE1 & 0b1111 {
-            0 => simd_shuffle!(
-                a,
-                b,
-                [
-                    16 + LANE2 as u32,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            1 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    16 + LANE2 as u32,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            2 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    16 + LANE2 as u32,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            3 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    16 + LANE2 as u32,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            4 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    16 + LANE2 as u32,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            5 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    16 + LANE2 as u32,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            6 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    16 + LANE2 as u32,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            7 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    16 + LANE2 as u32,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            8 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    16 + LANE2 as u32,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            9 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    16 + LANE2 as u32,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            10 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    16 + LANE2 as u32,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            11 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    16 + LANE2 as u32,
-                    12,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            12 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    16 + LANE2 as u32,
-                    13,
-                    14,
-                    15
-                ]
-            ),
-            13 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    16 + LANE2 as u32,
-                    14,
-                    15
-                ]
-            ),
-            14 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    16 + LANE2 as u32,
-                    15
-                ]
-            ),
-            15 => simd_shuffle!(
-                a,
-                b,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    16 + LANE2 as u32
-                ]
-            ),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_p8::<LANE1>(vgetq_lane_p8::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_p16)"]
@@ -7453,19 +4995,7 @@ pub fn vcopyq_laneq_p16<const LANE1: i32, const LANE2: i32>(
 ) -> poly16x8_t {
     static_assert_uimm_bits!(LANE1, 3);
     static_assert_uimm_bits!(LANE2, 3);
-    unsafe {
-        match LANE1 & 0b111 {
-            0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-            1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-            2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-            3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-            4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-            5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-            6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-            7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_p16::<LANE1>(vgetq_lane_p16::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_laneq_p64)"]
@@ -7483,13 +5013,7 @@ pub fn vcopyq_laneq_p64<const LANE1: i32, const LANE2: i32>(
 ) -> poly64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe {
-        match LANE1 & 0b1 {
-            0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]),
-            1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]),
-            _ => unreachable_unchecked(),
-        }
-    }
+    vsetq_lane_p64::<LANE1>(vgetq_lane_p64::<LANE2>(b), a)
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_f64)"]
