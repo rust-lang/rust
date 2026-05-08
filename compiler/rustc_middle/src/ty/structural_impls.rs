@@ -509,6 +509,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 
 // FIXME(clause): This is wonky
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    #[inline]
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
@@ -516,6 +517,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
         Ok(folder.try_fold_predicate(self.as_predicate())?.expect_clause())
     }
 
+    #[inline]
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
         folder.fold_predicate(self.as_predicate()).expect_clause()
     }
@@ -541,6 +543,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::Clause<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
         visitor.visit_predicate(self.as_predicate())
     }

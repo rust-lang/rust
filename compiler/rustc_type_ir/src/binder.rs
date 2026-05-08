@@ -109,6 +109,7 @@ where
         Binder { value, bound_vars: Default::default() }
     }
 
+    #[inline]
     pub fn bind_with_vars(value: T, bound_vars: I::BoundVarKinds) -> Binder<I, T> {
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
@@ -186,6 +187,7 @@ impl<I: Interner, T> Binder<I, T> {
         Binder { value: &self.value, bound_vars: self.bound_vars }
     }
 
+    #[inline]
     pub fn map_bound_ref<F, U: TypeVisitable<I>>(&self, f: F) -> Binder<I, U>
     where
         F: FnOnce(&T) -> U,
@@ -193,6 +195,7 @@ impl<I: Interner, T> Binder<I, T> {
         self.as_ref().map_bound(f)
     }
 
+    #[inline]
     pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -206,6 +209,7 @@ impl<I: Interner, T> Binder<I, T> {
         Binder { value, bound_vars }
     }
 
+    #[inline]
     pub fn try_map_bound<F, U: TypeVisitable<I>, E>(self, f: F) -> Result<Binder<I, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
@@ -245,6 +249,7 @@ impl<I: Interner, T> Binder<I, T> {
     /// binders, but that would require adjusting the debruijn
     /// indices, and given the shallow binding structure we often use,
     /// would not be that useful.)
+    #[inline]
     pub fn no_bound_vars(self) -> Option<T>
     where
         T: TypeVisitable<I>,
@@ -396,6 +401,7 @@ impl<I: Interner, T> EarlyBinder<I, T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
 
+    #[inline]
     pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<I, U>
     where
         F: FnOnce(&T) -> U,
@@ -403,6 +409,7 @@ impl<I: Interner, T> EarlyBinder<I, T> {
         self.as_ref().map_bound(f)
     }
 
+    #[inline]
     pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -411,6 +418,7 @@ impl<I: Interner, T> EarlyBinder<I, T> {
         EarlyBinder { value, _tcx: PhantomData }
     }
 
+    #[inline]
     pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<I, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,

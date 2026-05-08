@@ -156,10 +156,12 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
 }
 
 impl<'tcx> Clause<'tcx> {
+    #[inline]
     pub fn as_predicate(self) -> Predicate<'tcx> {
         Predicate(self.0)
     }
 
+    #[inline]
     pub fn kind(self) -> ty::Binder<'tcx, ClauseKind<'tcx>> {
         self.0.internee.map_bound(|kind| match kind {
             PredicateKind::Clause(clause) => clause,
@@ -167,6 +169,7 @@ impl<'tcx> Clause<'tcx> {
         })
     }
 
+    #[inline]
     pub fn as_trait_clause(self) -> Option<ty::Binder<'tcx, TraitPredicate<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::Trait(trait_clause) = clause.skip_binder() {
@@ -176,6 +179,7 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
+    #[inline]
     pub fn as_projection_clause(self) -> Option<ty::Binder<'tcx, ProjectionPredicate<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::Projection(projection_clause) = clause.skip_binder() {
@@ -185,6 +189,7 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
+    #[inline]
     pub fn as_type_outlives_clause(self) -> Option<ty::Binder<'tcx, TypeOutlivesPredicate<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::TypeOutlives(o) = clause.skip_binder() {
@@ -194,6 +199,7 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
+    #[inline]
     pub fn as_region_outlives_clause(
         self,
     ) -> Option<ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>> {
@@ -603,6 +609,7 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, NormalizesTo<'tcx>> for Predicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
+    #[inline]
     pub fn as_trait_clause(self) -> Option<PolyTraitPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
@@ -611,6 +618,7 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
+    #[inline]
     pub fn as_projection_clause(self) -> Option<PolyProjectionPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
@@ -620,6 +628,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     /// Matches a `PredicateKind::Clause` and turns it into a `Clause`, otherwise returns `None`.
+    #[inline]
     pub fn as_clause(self) -> Option<Clause<'tcx>> {
         match self.kind().skip_binder() {
             PredicateKind::Clause(..) => Some(self.expect_clause()),
@@ -628,6 +637,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     /// Assert that the predicate is a clause.
+    #[inline]
     pub fn expect_clause(self) -> Clause<'tcx> {
         match self.kind().skip_binder() {
             PredicateKind::Clause(..) => Clause(self.0),

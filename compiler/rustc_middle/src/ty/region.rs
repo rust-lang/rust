@@ -29,6 +29,7 @@ impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
         self.type_flags()
     }
 
+    #[inline]
     fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
         match self.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn.shifted_in(1),

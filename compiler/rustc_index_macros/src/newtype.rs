@@ -101,12 +101,14 @@ impl Parse for Newtype {
             quote! {
                 #gate_rustc_only
                 impl<D: ::rustc_serialize::Decoder> ::rustc_serialize::Decodable<D> for #name {
+                    #[inline]
                     fn decode(d: &mut D) -> Self {
                         Self::from_u32(d.read_u32())
                     }
                 }
                 #gate_rustc_only
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
+                    #[inline]
                     fn encode(&self, e: &mut E) {
                         e.emit_u32(self.as_u32());
                     }
@@ -138,11 +140,13 @@ impl Parse for Newtype {
                     }
                 }
                 impl ::std::cmp::Ord for #name {
+                    #[inline]
                     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
                         self.as_u32().cmp(&other.as_u32())
                     }
                 }
                 impl ::std::cmp::PartialOrd for #name {
+                    #[inline]
                     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
                         self.as_u32().partial_cmp(&other.as_u32())
                     }
@@ -156,6 +160,7 @@ impl Parse for Newtype {
             quote! {
                 #gate_rustc_only
                 impl ::rustc_data_structures::stable_hasher::StableHash for #name {
+                    #[inline]
                     fn stable_hash<
                         __Hcx: ::rustc_data_structures::stable_hasher::StableHashCtxt
                     >(
@@ -340,6 +345,7 @@ impl Parse for Newtype {
             impl ::std::cmp::Eq for #name {}
 
             impl ::std::cmp::PartialEq for #name {
+                #[inline]
                 fn eq(&self, other: &Self) -> bool {
                     self.as_u32().eq(&other.as_u32())
                 }
@@ -349,6 +355,7 @@ impl Parse for Newtype {
             impl ::std::marker::StructuralPartialEq for #name {}
 
             impl ::std::hash::Hash for #name {
+                #[inline]
                 fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
                     self.as_u32().hash(state)
                 }

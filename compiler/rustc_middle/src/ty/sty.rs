@@ -2146,10 +2146,12 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
+    #[inline]
     fn inputs(self) -> &'tcx [Ty<'tcx>] {
         self.split_last().unwrap().1
     }
 
+    #[inline]
     fn output(self) -> Ty<'tcx> {
         *self.split_last().unwrap().0
     }

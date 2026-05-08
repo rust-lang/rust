@@ -180,6 +180,7 @@ impl<I: Interner> TraitRef<I> {
 }
 
 impl<I: Interner> ty::Binder<I, TraitRef<I>> {
+    #[inline]
     pub fn self_ty(&self) -> ty::Binder<I, I::Ty> {
         self.map_bound_ref(|tr| tr.self_ty())
     }
@@ -233,11 +234,13 @@ impl<I: Interner> TraitPredicate<I> {
 }
 
 impl<I: Interner> ty::Binder<I, TraitPredicate<I>> {
+    #[inline]
     pub fn def_id(self) -> I::TraitId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
     }
 
+    #[inline]
     pub fn self_ty(self) -> ty::Binder<I, I::Ty> {
         self.map_bound(|trait_ref| trait_ref.self_ty())
     }
@@ -946,6 +949,7 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     ///
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
+    #[inline]
     pub fn item_def_id(&self) -> I::DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_term.def_id()
@@ -1025,11 +1029,13 @@ impl<I: Interner> HostEffectPredicate<I> {
 }
 
 impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
+    #[inline]
     pub fn def_id(self) -> I::TraitId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
     }
 
+    #[inline]
     pub fn self_ty(self) -> ty::Binder<I, I::Ty> {
         self.map_bound(|trait_ref| trait_ref.self_ty())
     }
