@@ -2499,9 +2499,9 @@ pub fn vaddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
+    let a: int16x4_t = vget_high_s16(a);
+    let b: int16x4_t = vget_high_s16(b);
     unsafe {
-        let a: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let b: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
         let a: int32x4_t = simd_cast(a);
         let b: int32x4_t = simd_cast(b);
         simd_add(a, b)
@@ -2530,9 +2530,9 @@ pub fn vaddl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
+    let a: int32x2_t = vget_high_s32(a);
+    let b: int32x2_t = vget_high_s32(b);
     unsafe {
-        let a: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let b: int32x2_t = simd_shuffle!(b, b, [2, 3]);
         let a: int64x2_t = simd_cast(a);
         let b: int64x2_t = simd_cast(b);
         simd_add(a, b)
@@ -2561,9 +2561,9 @@ pub fn vaddl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
+    let a: int8x8_t = vget_high_s8(a);
+    let b: int8x8_t = vget_high_s8(b);
     unsafe {
-        let a: int8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let b: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
         let a: int16x8_t = simd_cast(a);
         let b: int16x8_t = simd_cast(b);
         simd_add(a, b)
@@ -2592,9 +2592,9 @@ pub fn vaddl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
+    let a: uint16x4_t = vget_high_u16(a);
+    let b: uint16x4_t = vget_high_u16(b);
     unsafe {
-        let a: uint16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let b: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
         let a: uint32x4_t = simd_cast(a);
         let b: uint32x4_t = simd_cast(b);
         simd_add(a, b)
@@ -2623,9 +2623,9 @@ pub fn vaddl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
+    let a: uint32x2_t = vget_high_u32(a);
+    let b: uint32x2_t = vget_high_u32(b);
     unsafe {
-        let a: uint32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let b: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
         let a: uint64x2_t = simd_cast(a);
         let b: uint64x2_t = simd_cast(b);
         simd_add(a, b)
@@ -2654,9 +2654,9 @@ pub fn vaddl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
+    let a: uint8x8_t = vget_high_u8(a);
+    let b: uint8x8_t = vget_high_u8(b);
     unsafe {
-        let a: uint8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let b: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
         let a: uint16x8_t = simd_cast(a);
         let b: uint16x8_t = simd_cast(b);
         simd_add(a, b)
@@ -2856,8 +2856,8 @@ pub fn vaddq_p128(a: p128, b: p128) -> p128 {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
+    let b = vget_high_s16(b);
     unsafe {
-        let b: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
         let b: int32x4_t = simd_cast(b);
         simd_add(a, b)
     }
@@ -2885,8 +2885,8 @@ pub fn vaddw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
+    let b = vget_high_s32(b);
     unsafe {
-        let b: int32x2_t = simd_shuffle!(b, b, [2, 3]);
         let b: int64x2_t = simd_cast(b);
         simd_add(a, b)
     }
@@ -2914,8 +2914,8 @@ pub fn vaddw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
+    let b = vget_high_s8(b);
     unsafe {
-        let b: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
         let b: int16x8_t = simd_cast(b);
         simd_add(a, b)
     }
@@ -2943,8 +2943,8 @@ pub fn vaddw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
+    let b = vget_high_u16(b);
     unsafe {
-        let b: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
         let b: uint32x4_t = simd_cast(b);
         simd_add(a, b)
     }
@@ -2972,8 +2972,8 @@ pub fn vaddw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
+    let b = vget_high_u32(b);
     unsafe {
-        let b: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
         let b: uint64x2_t = simd_cast(b);
         simd_add(a, b)
     }
@@ -3001,8 +3001,8 @@ pub fn vaddw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vaddw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
+    let b = vget_high_u8(b);
     unsafe {
-        let b: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
         let b: uint16x8_t = simd_cast(b);
         simd_add(a, b)
     }

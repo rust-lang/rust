@@ -14478,21 +14478,21 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - ['vaddl_high_s8', 'int8x16_t', 'int16x8_t', 'vaddl', 'saddl2',  'int8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vaddl_high_s16', 'int16x8_t', 'int32x4_t', 'vaddl', 'saddl2',  'int16x4_t', '[4, 5, 6, 7]']
-      - ['vaddl_high_s32', 'int32x4_t', 'int64x2_t', 'vaddl', 'saddl2',  'int32x2_t', '[2, 3]']
-      - ['vaddl_high_u8', 'uint8x16_t', 'uint16x8_t', 'vaddl', 'uaddl2',  'uint8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vaddl_high_u16', 'uint16x8_t', 'uint32x4_t', 'vaddl', 'uaddl2',  'uint16x4_t', '[4, 5, 6, 7]']
-      - ['vaddl_high_u32', 'uint32x4_t', 'uint64x2_t', 'vaddl', 'uaddl2',  'uint32x2_t', '[2, 3]']
+      - ['vaddl_high_s8', 'int8x16_t', 'int16x8_t', 'vaddl', 'saddl2',  'int8x8_t']
+      - ['vaddl_high_s16', 'int16x8_t', 'int32x4_t', 'vaddl', 'saddl2',  'int16x4_t']
+      - ['vaddl_high_s32', 'int32x4_t', 'int64x2_t', 'vaddl', 'saddl2',  'int32x2_t']
+      - ['vaddl_high_u8', 'uint8x16_t', 'uint16x8_t', 'vaddl', 'uaddl2',  'uint8x8_t']
+      - ['vaddl_high_u16', 'uint16x8_t', 'uint32x4_t', 'vaddl', 'uaddl2',  'uint16x4_t']
+      - ['vaddl_high_u32', 'uint32x4_t', 'uint64x2_t', 'vaddl', 'uaddl2',  'uint32x2_t']
     compose:
       - Let:
           - a
           - '{neon_type[5]}'
-          - FnCall: ['simd_shuffle!', [a, a, '{type[6]}']]
+          - FnCall: ['vget_high_{neon_type[1]}', [a]]
       - Let:
           - b
           - '{neon_type[5]}'
-          - FnCall: ['simd_shuffle!', [b, b, '{type[6]}']]
+          - FnCall: ['vget_high_{neon_type[1]}', [b]]
       - Let: [a, '{neon_type[2]}', {FnCall: [simd_cast, [a]]}]
       - Let: [b, '{neon_type[2]}', {FnCall: [simd_cast, [b]]}]
       - FnCall: [simd_add, [a, b]]
@@ -14534,17 +14534,16 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - ['vaddw_high_s8', 'int16x8_t', 'int8x16_t', 'vaddw', 'saddw2', 'int8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vaddw_high_s16', 'int32x4_t', 'int16x8_t', 'vaddw', 'saddw2', 'int16x4_t', '[4, 5, 6, 7]']
-      - ['vaddw_high_s32', 'int64x2_t', 'int32x4_t', 'vaddw', 'saddw2', 'int32x2_t', '[2, 3]']
-      - ['vaddw_high_u8', 'uint16x8_t', 'uint8x16_t', 'vaddw', 'uaddw2', 'uint8x8_t', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vaddw_high_u16', 'uint32x4_t', 'uint16x8_t', 'vaddw', 'uaddw2', 'uint16x4_t', '[4, 5, 6, 7]']
-      - ['vaddw_high_u32', 'uint64x2_t', 'uint32x4_t', 'vaddw', 'uaddw2', 'uint32x2_t', '[2, 3]']
+      - ['vaddw_high_s8', 'int16x8_t', 'int8x16_t', 'vaddw', 'saddw2', 'int8x8_t']
+      - ['vaddw_high_s16', 'int32x4_t', 'int16x8_t', 'vaddw', 'saddw2', 'int16x4_t']
+      - ['vaddw_high_s32', 'int64x2_t', 'int32x4_t', 'vaddw', 'saddw2', 'int32x2_t']
+      - ['vaddw_high_u8', 'uint16x8_t', 'uint8x16_t', 'vaddw', 'uaddw2', 'uint8x8_t']
+      - ['vaddw_high_u16', 'uint32x4_t', 'uint16x8_t', 'vaddw', 'uaddw2', 'uint16x4_t']
+      - ['vaddw_high_u32', 'uint64x2_t', 'uint32x4_t', 'vaddw', 'uaddw2', 'uint32x2_t']
     compose:
       - Let:
           - b
-          - '{neon_type[5]}'
-          - FnCall: ['simd_shuffle!', [b, b, '{type[6]}']]
+          - FnCall: ['vget_high_{neon_type[2]}', [b]]
       - Let:
           - b
           - '{neon_type[1]}'

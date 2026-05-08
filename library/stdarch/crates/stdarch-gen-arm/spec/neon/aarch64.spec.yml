@@ -5667,14 +5667,13 @@ intrinsics:
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [ssubw2]]}]]
     safety: safe
     types:
-      - [int16x8_t, int8x16_t, int8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int32x4_t, int16x8_t, int16x4_t, '[4, 5, 6, 7]']
-      - [int64x2_t, int32x4_t, int32x2_t, '[2, 3]']
+      - [int16x8_t, int8x16_t]
+      - [int32x4_t, int16x8_t]
+      - [int64x2_t, int32x4_t]
     compose:
       - Let:
           - c
-          - "{neon_type[2]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]
+          - FnCall: ['vget_high_{neon_type[1]}', [b]]
       - FnCall:
           - simd_sub
           - - a
@@ -5689,14 +5688,13 @@ intrinsics:
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [usubw2]]}]]
     safety: safe
     types:
-      - [uint16x8_t, uint8x16_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint32x4_t, uint16x8_t, uint16x4_t, '[4, 5, 6, 7]']
-      - [uint64x2_t, uint32x4_t, uint32x2_t, '[2, 3]']
+      - [uint16x8_t, uint8x16_t]
+      - [uint32x4_t, uint16x8_t]
+      - [uint64x2_t, uint32x4_t]
     compose:
       - Let:
           - c
-          - "{neon_type[2]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]
+          - FnCall: ['vget_high_{neon_type[1]}', [b]]
       - FnCall:
           - simd_sub
           - - a
@@ -5711,27 +5709,19 @@ intrinsics:
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [ssubl2]]}]]
     safety: safe
     types:
-      - [int8x16_t, int16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', int8x8_t]
-      - [int16x8_t, int32x4_t, '[4, 5, 6, 7]', int16x4_t]
-      - [int32x4_t, int64x2_t, '[2, 3]', int32x2_t]
+      - [int8x16_t, int16x8_t]
+      - [int32x4_t, int64x2_t]
+      - [int16x8_t, int32x4_t]
     compose:
       - Let:
           - c
-          - "{neon_type[3]}"
-          - FnCall: [simd_shuffle!, [a, a, "{type[2]}"]]
+          - "{neon_type[1]}"
+          - FnCall: [simd_cast, [{FnCall: ['vget_high_{neon_type[0]}', [a]]}]]
       - Let:
           - d
           - "{neon_type[1]}"
-          - FnCall: [simd_cast, [c]]
-      - Let:
-          - e
-          - "{neon_type[3]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[2]}"]]
-      - Let:
-          - f
-          - "{neon_type[1]}"
-          - FnCall: [simd_cast, [e]]
-      - FnCall: [simd_sub, [d, f]]
+          - FnCall: [simd_cast, [{FnCall: ['vget_high_{neon_type[0]}', [b]]}]]
+      - FnCall: [simd_sub, [c, d]]
 
   - name: "vsubl_high{neon_type[0].noq}"
     doc: "Unsigned Subtract Long"
@@ -5742,27 +5732,19 @@ intrinsics:
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [usubl2]]}]]
     safety: safe
     types:
-      - [uint8x16_t, uint16x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]', uint8x8_t]
-      - [uint16x8_t, uint32x4_t, '[4, 5, 6, 7]', uint16x4_t]
-      - [uint32x4_t, uint64x2_t, '[2, 3]', uint32x2_t]
+      - [uint8x16_t, uint16x8_t]
+      - [uint16x8_t, uint32x4_t]
+      - [uint32x4_t, uint64x2_t]
     compose:
       - Let:
           - c
-          - "{neon_type[3]}"
-          - FnCall: [simd_shuffle!, [a, a, "{type[2]}"]]
+          - "{neon_type[1]}"
+          - FnCall: [simd_cast, [{FnCall: ['vget_high_{neon_type[0]}', [a]]}]]
       - Let:
           - d
           - "{neon_type[1]}"
-          - FnCall: [simd_cast, [c]]
-      - Let:
-          - e
-          - "{neon_type[3]}"
-          - FnCall: [simd_shuffle!, [b, b, "{type[2]}"]]
-      - Let:
-          - f
-          - "{neon_type[1]}"
-          - FnCall: [simd_cast, [e]]
-      - FnCall: [simd_sub, [d, f]]
+          - FnCall: [simd_cast, [{FnCall: ['vget_high_{neon_type[0]}', [b]]}]]
+      - FnCall: [simd_sub, [c, d]]
 
   - name: "vbcax{neon_type.no}"
     doc: Bit clear and exclusive OR

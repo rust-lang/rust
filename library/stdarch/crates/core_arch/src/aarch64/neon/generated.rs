@@ -23299,11 +23299,9 @@ pub fn vsubh_f16(a: f16, b: f16) -> f16 {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(ssubl2))]
 pub fn vsubl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
     unsafe {
-        let c: int8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let d: int16x8_t = simd_cast(c);
-        let e: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let f: int16x8_t = simd_cast(e);
-        simd_sub(d, f)
+        let c: int16x8_t = simd_cast(vget_high_s8(a));
+        let d: int16x8_t = simd_cast(vget_high_s8(b));
+        simd_sub(c, d)
     }
 }
 #[doc = "Signed Subtract Long"]
@@ -23314,11 +23312,9 @@ pub fn vsubl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(ssubl2))]
 pub fn vsubl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     unsafe {
-        let c: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let d: int32x4_t = simd_cast(c);
-        let e: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        let f: int32x4_t = simd_cast(e);
-        simd_sub(d, f)
+        let c: int32x4_t = simd_cast(vget_high_s16(a));
+        let d: int32x4_t = simd_cast(vget_high_s16(b));
+        simd_sub(c, d)
     }
 }
 #[doc = "Signed Subtract Long"]
@@ -23329,11 +23325,9 @@ pub fn vsubl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(ssubl2))]
 pub fn vsubl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     unsafe {
-        let c: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let d: int64x2_t = simd_cast(c);
-        let e: int32x2_t = simd_shuffle!(b, b, [2, 3]);
-        let f: int64x2_t = simd_cast(e);
-        simd_sub(d, f)
+        let c: int64x2_t = simd_cast(vget_high_s32(a));
+        let d: int64x2_t = simd_cast(vget_high_s32(b));
+        simd_sub(c, d)
     }
 }
 #[doc = "Unsigned Subtract Long"]
@@ -23344,11 +23338,9 @@ pub fn vsubl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(usubl2))]
 pub fn vsubl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
     unsafe {
-        let c: uint8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let d: uint16x8_t = simd_cast(c);
-        let e: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        let f: uint16x8_t = simd_cast(e);
-        simd_sub(d, f)
+        let c: uint16x8_t = simd_cast(vget_high_u8(a));
+        let d: uint16x8_t = simd_cast(vget_high_u8(b));
+        simd_sub(c, d)
     }
 }
 #[doc = "Unsigned Subtract Long"]
@@ -23359,11 +23351,9 @@ pub fn vsubl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(usubl2))]
 pub fn vsubl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
     unsafe {
-        let c: uint16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        let d: uint32x4_t = simd_cast(c);
-        let e: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        let f: uint32x4_t = simd_cast(e);
-        simd_sub(d, f)
+        let c: uint32x4_t = simd_cast(vget_high_u16(a));
+        let d: uint32x4_t = simd_cast(vget_high_u16(b));
+        simd_sub(c, d)
     }
 }
 #[doc = "Unsigned Subtract Long"]
@@ -23374,11 +23364,9 @@ pub fn vsubl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(usubl2))]
 pub fn vsubl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
     unsafe {
-        let c: uint32x2_t = simd_shuffle!(a, a, [2, 3]);
-        let d: uint64x2_t = simd_cast(c);
-        let e: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
-        let f: uint64x2_t = simd_cast(e);
-        simd_sub(d, f)
+        let c: uint64x2_t = simd_cast(vget_high_u32(a));
+        let d: uint64x2_t = simd_cast(vget_high_u32(b));
+        simd_sub(c, d)
     }
 }
 #[doc = "Signed Subtract Wide"]
@@ -23388,10 +23376,8 @@ pub fn vsubl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(ssubw2))]
 pub fn vsubw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
-    unsafe {
-        let c: int8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        simd_sub(a, simd_cast(c))
-    }
+    let c = vget_high_s8(b);
+    unsafe { simd_sub(a, simd_cast(c)) }
 }
 #[doc = "Signed Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_high_s16)"]
@@ -23400,10 +23386,8 @@ pub fn vsubw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(ssubw2))]
 pub fn vsubw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
-    unsafe {
-        let c: int16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        simd_sub(a, simd_cast(c))
-    }
+    let c = vget_high_s16(b);
+    unsafe { simd_sub(a, simd_cast(c)) }
 }
 #[doc = "Signed Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_high_s32)"]
@@ -23412,10 +23396,8 @@ pub fn vsubw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(ssubw2))]
 pub fn vsubw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(b, b, [2, 3]);
-        simd_sub(a, simd_cast(c))
-    }
+    let c = vget_high_s32(b);
+    unsafe { simd_sub(a, simd_cast(c)) }
 }
 #[doc = "Unsigned Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_high_u8)"]
@@ -23424,10 +23406,8 @@ pub fn vsubw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(usubw2))]
 pub fn vsubw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
-    unsafe {
-        let c: uint8x8_t = simd_shuffle!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-        simd_sub(a, simd_cast(c))
-    }
+    let c = vget_high_u8(b);
+    unsafe { simd_sub(a, simd_cast(c)) }
 }
 #[doc = "Unsigned Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_high_u16)"]
@@ -23436,10 +23416,8 @@ pub fn vsubw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(usubw2))]
 pub fn vsubw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
-    unsafe {
-        let c: uint16x4_t = simd_shuffle!(b, b, [4, 5, 6, 7]);
-        simd_sub(a, simd_cast(c))
-    }
+    let c = vget_high_u16(b);
+    unsafe { simd_sub(a, simd_cast(c)) }
 }
 #[doc = "Unsigned Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_high_u32)"]
@@ -23448,10 +23426,8 @@ pub fn vsubw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(usubw2))]
 pub fn vsubw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
-    unsafe {
-        let c: uint32x2_t = simd_shuffle!(b, b, [2, 3]);
-        simd_sub(a, simd_cast(c))
-    }
+    let c = vget_high_u32(b);
+    unsafe { simd_sub(a, simd_cast(c)) }
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1_s8)"]
