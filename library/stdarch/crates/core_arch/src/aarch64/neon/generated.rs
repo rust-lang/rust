@@ -10756,7 +10756,7 @@ pub fn vfmlal_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlal_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_high_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_laneq_high_f16)"]
@@ -10773,7 +10773,7 @@ pub fn vfmlal_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlal_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_high_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_lane_high_f16)"]
@@ -10790,7 +10790,7 @@ pub fn vfmlalq_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlalq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_high_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_laneq_high_f16)"]
@@ -10807,7 +10807,7 @@ pub fn vfmlalq_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlalq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_high_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_lane_low_f16)"]
@@ -10824,7 +10824,7 @@ pub fn vfmlal_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlal_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_low_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_laneq_low_f16)"]
@@ -10841,7 +10841,7 @@ pub fn vfmlal_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlal_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlal_low_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_lane_low_f16)"]
@@ -10858,7 +10858,7 @@ pub fn vfmlalq_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlalq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_low_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_laneq_low_f16)"]
@@ -10875,7 +10875,7 @@ pub fn vfmlalq_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlalq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlalq_low_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_low_f16)"]
@@ -10964,7 +10964,7 @@ pub fn vfmlsl_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlsl_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_high_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_laneq_high_f16)"]
@@ -10981,7 +10981,7 @@ pub fn vfmlsl_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlsl_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_high_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_lane_high_f16)"]
@@ -10998,7 +10998,7 @@ pub fn vfmlslq_lane_high_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlslq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_high_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_laneq_high_f16)"]
@@ -11015,7 +11015,7 @@ pub fn vfmlslq_laneq_high_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlslq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_high_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_lane_low_f16)"]
@@ -11032,7 +11032,7 @@ pub fn vfmlsl_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlsl_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_low_f16(r, a, vdup_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_laneq_low_f16)"]
@@ -11049,7 +11049,7 @@ pub fn vfmlsl_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlsl_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlsl_low_f16(r, a, vdup_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_lane_low_f16)"]
@@ -11066,7 +11066,7 @@ pub fn vfmlslq_lane_low_f16<const LANE: i32>(
     b: float16x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmlslq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_low_f16(r, a, vdupq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_laneq_low_f16)"]
@@ -11083,7 +11083,7 @@ pub fn vfmlslq_laneq_low_f16<const LANE: i32>(
     b: float16x8_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmlslq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32))) }
+    vfmlslq_low_f16(r, a, vdupq_laneq_f16::<LANE>(b))
 }
 #[doc = "Floating-point fused Multiply-Subtract Long from accumulator (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_low_f16)"]
@@ -14520,7 +14520,7 @@ pub fn vmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlal_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlal_high_s16(a, b, vdupq_lane_s16::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_s16)"]
@@ -14535,7 +14535,7 @@ pub fn vmlal_high_laneq_s16<const LANE: i32>(
     c: int16x8_t,
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmlal_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlal_high_s16(a, b, vdupq_laneq_s16::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_s32)"]
@@ -14546,7 +14546,7 @@ pub fn vmlal_high_laneq_s16<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlal_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmlal_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlal_high_s32(a, b, vdupq_lane_s32::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_s32)"]
@@ -14561,7 +14561,7 @@ pub fn vmlal_high_laneq_s32<const LANE: i32>(
     c: int32x4_t,
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlal_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlal_high_s32(a, b, vdupq_laneq_s32::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_u16)"]
@@ -14576,7 +14576,7 @@ pub fn vmlal_high_lane_u16<const LANE: i32>(
     c: uint16x4_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlal_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlal_high_u16(a, b, vdupq_lane_u16::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_u16)"]
@@ -14591,7 +14591,7 @@ pub fn vmlal_high_laneq_u16<const LANE: i32>(
     c: uint16x8_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmlal_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlal_high_u16(a, b, vdupq_laneq_u16::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_lane_u32)"]
@@ -14606,7 +14606,7 @@ pub fn vmlal_high_lane_u32<const LANE: i32>(
     c: uint32x2_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmlal_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlal_high_u32(a, b, vdupq_lane_u32::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_laneq_u32)"]
@@ -14621,7 +14621,7 @@ pub fn vmlal_high_laneq_u32<const LANE: i32>(
     c: uint32x4_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlal_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlal_high_u32(a, b, vdupq_laneq_u32::<LANE>(c))
 }
 #[doc = "Multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_high_n_s16)"]
@@ -14764,7 +14764,7 @@ pub fn vmlsq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlsl_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlsl_high_s16(a, b, vdupq_lane_s16::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_s16)"]
@@ -14779,7 +14779,7 @@ pub fn vmlsl_high_laneq_s16<const LANE: i32>(
     c: int16x8_t,
 ) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmlsl_high_s16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlsl_high_s16(a, b, vdupq_laneq_s16::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_s32)"]
@@ -14790,7 +14790,7 @@ pub fn vmlsl_high_laneq_s16<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmlsl_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmlsl_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlsl_high_s32(a, b, vdupq_lane_s32::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_s32)"]
@@ -14805,7 +14805,7 @@ pub fn vmlsl_high_laneq_s32<const LANE: i32>(
     c: int32x4_t,
 ) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlsl_high_s32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlsl_high_s32(a, b, vdupq_laneq_s32::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_u16)"]
@@ -14820,7 +14820,7 @@ pub fn vmlsl_high_lane_u16<const LANE: i32>(
     c: uint16x4_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlsl_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlsl_high_u16(a, b, vdupq_lane_u16::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_u16)"]
@@ -14835,7 +14835,7 @@ pub fn vmlsl_high_laneq_u16<const LANE: i32>(
     c: uint16x8_t,
 ) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmlsl_high_u16(a, b, simd_shuffle!(c, c, [LANE as u32; 8])) }
+    vmlsl_high_u16(a, b, vdupq_laneq_u16::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_lane_u32)"]
@@ -14850,7 +14850,7 @@ pub fn vmlsl_high_lane_u32<const LANE: i32>(
     c: uint32x2_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmlsl_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlsl_high_u32(a, b, vdupq_lane_u32::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_laneq_u32)"]
@@ -14865,7 +14865,7 @@ pub fn vmlsl_high_laneq_u32<const LANE: i32>(
     c: uint32x4_t,
 ) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmlsl_high_u32(a, b, simd_shuffle!(c, c, [LANE as u32; 4])) }
+    vmlsl_high_u32(a, b, vdupq_laneq_u32::<LANE>(c))
 }
 #[doc = "Multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_high_n_s16)"]
@@ -15270,7 +15270,7 @@ pub fn vmulh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmull_high_s16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    vmull_high_s16(a, vdupq_lane_s16::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_s16)"]
@@ -15281,7 +15281,7 @@ pub fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmull_high_s16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    vmull_high_s16(a, vdupq_laneq_s16::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_s32)"]
@@ -15292,7 +15292,7 @@ pub fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int3
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmull_high_s32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmull_high_s32(a, vdupq_lane_s32::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_s32)"]
@@ -15303,7 +15303,7 @@ pub fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmull_high_s32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmull_high_s32(a, vdupq_laneq_s32::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_u16)"]
@@ -15314,7 +15314,7 @@ pub fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmull_high_u16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    vmull_high_u16(a, vdupq_lane_u16::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_u16)"]
@@ -15325,7 +15325,7 @@ pub fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uin
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmull_high_u16(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    vmull_high_u16(a, vdupq_laneq_u16::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_u32)"]
@@ -15336,7 +15336,7 @@ pub fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> ui
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmull_high_u32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmull_high_u32(a, vdupq_lane_u32::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_laneq_u32)"]
@@ -15347,7 +15347,7 @@ pub fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uin
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmull_high_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmull_high_u32(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    vmull_high_u32(a, vdupq_laneq_u32::<LANE>(b))
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_n_s16)"]
