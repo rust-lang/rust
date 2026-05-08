@@ -880,6 +880,7 @@ where
                 }
             })
         })
+        .map_err(Into::into)
     }
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
@@ -1322,10 +1323,12 @@ where
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
-        &self,
+        &mut self,
+        param_env: I::ParamEnv,
         value: ty::Binder<I, T>,
-    ) -> T {
-        self.delegate.instantiate_binder_with_infer(value)
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        let instantiated = self.delegate.instantiate_binder_with_infer(value);
+        self.normalize_ambiguous_only(param_env, instantiated)
     }
 
     /// `enter_forall`, but takes `&mut self` and passes it back through the
@@ -1339,9 +1342,10 @@ where
         &mut self,
         value: ty::Binder<I, T>,
         param_env: I::ParamEnv,
-        f: impl FnOnce(&mut Self, T) -> U,
-    ) -> U {
+        f: impl FnOnce(&mut Self, T) -> Result<U, NoSolutionOrRerunNonErased>,
+    ) -> Result<U, NoSolutionOrRerunNonErased> {
         self.delegate.enter_forall(value, |value| {
+            let value = self.normalize_ambiguous_only(param_env, value)?;
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)

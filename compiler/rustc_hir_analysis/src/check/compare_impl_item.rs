@@ -326,15 +326,18 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxIndexSet::default();
 
-    let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
-        impl_m_span,
-        BoundRegionConversionTime::HigherRankedType,
-        tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
-    );
+    // We need to check wf of unnormalized sig.
+    let unnormalized_impl_sig = tcx.fn_sig(impl_m.def_id).instantiate_identity().map(|sig| {
+        infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+            impl_m_span,
+            BoundRegionConversionTime::HigherRankedType,
+            sig,
+        )
+    });
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let impl_sig =
-        ocx.normalize(&norm_cause, param_env, Unnormalized::new_wip(unnormalized_impl_sig));
+    let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
+
     debug!(?impl_sig);
 
     let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_norm_wip();
@@ -375,7 +378,7 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if !(impl_sig, trait_sig).references_error() {
-        for ty in unnormalized_impl_sig.inputs_and_output {
+        for ty in unnormalized_impl_sig.skip_normalization().inputs_and_output {
             ocx.register_obligation(traits::Obligation::new(
                 infcx.tcx,
                 cause.clone(),
@@ -534,15 +537,14 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     // Normalize the impl signature with fresh variables for lifetime inference.
     let misc_cause = ObligationCause::misc(return_span, impl_m_def_id);
-    let impl_sig = ocx.normalize(
-        &misc_cause,
-        param_env,
-        Unnormalized::new_wip(infcx.instantiate_binder_with_fresh_vars(
+    let impl_sig = tcx.fn_sig(impl_m.def_id).instantiate_identity().map(|sig| {
+        infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             return_span,
             BoundRegionConversionTime::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
-        )),
-    );
+            sig,
+        )
+    });
+    let impl_sig = ocx.normalize(&misc_cause, param_env, impl_sig);
     impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();
 

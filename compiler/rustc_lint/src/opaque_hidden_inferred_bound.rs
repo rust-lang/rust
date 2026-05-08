@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             .iter_identity_copied()
             .map(Unnormalized::skip_norm_wip)
         {
-            infcx.enter_forall(pred.kind(), |predicate| {
+            infcx.enter_forall_no_ambiguous_aliases(pred.kind(), |predicate| {
                 let ty::ClauseKind::Projection(proj) = predicate else {
                     return;
                 };

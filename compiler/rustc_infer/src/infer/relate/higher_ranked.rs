@@ -20,8 +20,29 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `fn enter_forall` should be preferred over this method.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    #[instrument(level = "debug", skip(self), ret)]
+    ///
+    /// This is expected to be used in the old solver only so no ambiguous aliases allowed.
     pub fn enter_forall_and_leak_universe<T>(&self, binder: ty::Binder<'tcx, T>) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        debug_assert!(!binder.has_ambiguous_aliases());
+        self.enter_forall_and_leak_universe_inner(binder)
+    }
+
+    /// Same as `enter_forall_and_leak_universe`, but we allow ambiguous aliases here.
+    pub fn enter_forall_and_leak_universe_for_diagnostics<T>(
+        &self,
+        binder: ty::Binder<'tcx, T>,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.enter_forall_and_leak_universe_inner(binder)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn enter_forall_and_leak_universe_inner<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -63,7 +84,11 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     #[instrument(level = "debug", skip(self, f))]
-    pub fn enter_forall<T, U>(&self, forall: ty::Binder<'tcx, T>, f: impl FnOnce(T) -> U) -> U
+    pub fn enter_forall<T, U>(
+        &self,
+        forall: ty::Binder<'tcx, T>,
+        f: impl FnOnce(ty::UnnormalizedAmbiguous<'tcx, T>) -> U,
+    ) -> U
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -71,6 +96,20 @@ impl<'tcx> InferCtxt<'tcx> {
         // used after exiting `f`. For example region subtyping can result in outlives constraints
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
+        let value = self.enter_forall_and_leak_universe_inner(forall);
+        debug!(?value);
+        f(ty::UnnormalizedAmbiguous::new(value))
+    }
+
+    #[instrument(level = "debug", skip(self, f))]
+    pub fn enter_forall_no_ambiguous_aliases<T, U>(
+        &self,
+        forall: ty::Binder<'tcx, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         let value = self.enter_forall_and_leak_universe(forall);
         debug!(?value);
         f(value)

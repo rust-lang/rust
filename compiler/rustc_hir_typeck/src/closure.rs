@@ -20,6 +20,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::NormalizeExt;
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
@@ -823,11 +824,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
             let mut all_obligations = PredicateObligations::new();
-            let supplied_sig = self.instantiate_binder_with_fresh_vars(
-                self.tcx.def_span(expr_def_id),
-                BoundRegionConversionTime::FnCall,
-                supplied_sig,
-            );
+            let supplied_sig = self
+                .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases_with(
+                    self.tcx.def_span(expr_def_id),
+                    BoundRegionConversionTime::FnCall,
+                    supplied_sig,
+                    |value| {
+                        // FIXME: a proper cause?
+                        let cause = self.misc(DUMMY_SP);
+                        let InferOk { value, obligations } =
+                            self.at(&cause, self.param_env).renormalize_ambiguous_aliases(value);
+                        all_obligations.extend(obligations);
+                        value
+                    },
+                );
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.

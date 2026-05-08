@@ -1096,13 +1096,14 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
     let prev_universe = infcx.universe();
 
     // FIXME(-Zassumptions-on-binders): Handle the assumptions on this binder
-    infcx.enter_forall(bound_outlives, |(alias, r)| {
+    infcx.enter_forall(bound_outlives, |bound_outlives| {
+        let (alias, r) = bound_outlives.skip_norm_wip();
         let u = infcx.universe();
         infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
 
         for bound_type_outlives in assumptions.type_outlives.iter() {
             let OutlivesPredicate(alias2, r2) =
-                infcx.instantiate_binder_with_infer(*bound_type_outlives);
+                infcx.instantiate_binder_with_infer(*bound_type_outlives).skip_norm_wip();
 
             let mut relation = HigherRankedAliasMatcher {
                 infcx,
@@ -1187,16 +1188,18 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         T: Relate<I>,
     {
         self.infcx.enter_forall(a, |a| {
+            let a = a.skip_norm_wip();
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
-            let b = self.infcx.instantiate_binder_with_infer(b);
+            let b = self.infcx.instantiate_binder_with_infer(b).skip_norm_wip();
             self.relate(a, b)
         })?;
 
         self.infcx.enter_forall(b, |b| {
+            let b = b.skip_norm_wip();
             let u = self.infcx.universe();
             self.infcx.insert_placeholder_assumptions(u, Some(Assumptions::empty()));
-            let a = self.infcx.instantiate_binder_with_infer(a);
+            let a = self.infcx.instantiate_binder_with_infer(a).skip_norm_wip();
             self.relate(a, b)
         })?;
 

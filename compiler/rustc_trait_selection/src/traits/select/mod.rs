@@ -624,8 +624,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
-                    self.infcx.enter_forall(bound_predicate.rebind(data), |data| {
+                ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => self
+                    .infcx
+                    .enter_forall_no_ambiguous_aliases(bound_predicate.rebind(data), |data| {
                         match effects::evaluate_host_effect_obligation(
                             self,
                             &obligation.with(self.tcx(), data),
@@ -636,8 +637,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             Err(effects::EvaluationFailure::Ambiguous) => Ok(EvaluatedToAmbig),
                             Err(effects::EvaluationFailure::NoSolution) => Ok(EvaluatedToErr),
                         }
-                    })
-                }
+                    }),
 
                 ty::PredicateKind::Subtype(p) => {
                     let p = bound_predicate.rebind(p);
@@ -1721,7 +1721,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let trait_bound = self.infcx.instantiate_binder_with_fresh_vars(
+        let trait_bound = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             HigherRankedType,
             trait_bound,
@@ -1778,7 +1778,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug_assert_eq!(obligation.predicate.def_id(), env_predicate.item_def_id());
 
         let mut nested_obligations = PredicateObligations::new();
-        let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
+        let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
             env_predicate,
@@ -2623,24 +2623,28 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
                     nested.extend(
                         self.infcx
-                            .enter_forall(hr_target_principal, |target_principal| {
-                                let source_principal =
-                                    self.infcx.instantiate_binder_with_fresh_vars(
-                                        obligation.cause.span,
-                                        HigherRankedType,
-                                        hr_source_principal,
-                                    );
-                                self.infcx.at(&obligation.cause, obligation.param_env).eq_trace(
-                                    DefineOpaqueTypes::Yes,
-                                    ToTrace::to_trace(
-                                        &obligation.cause,
-                                        hr_target_principal,
-                                        hr_source_principal,
-                                    ),
-                                    target_principal,
-                                    source_principal,
-                                )
-                            })
+                            .enter_forall_no_ambiguous_aliases(
+                                hr_target_principal,
+                                |target_principal| {
+                                    let source_principal = self
+                                        .infcx
+                                        .instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                                            obligation.cause.span,
+                                            HigherRankedType,
+                                            hr_source_principal,
+                                        );
+                                    self.infcx.at(&obligation.cause, obligation.param_env).eq_trace(
+                                        DefineOpaqueTypes::Yes,
+                                        ToTrace::to_trace(
+                                            &obligation.cause,
+                                            hr_target_principal,
+                                            hr_source_principal,
+                                        ),
+                                        target_principal,
+                                        source_principal,
+                                    )
+                                },
+                            )
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
                     );
@@ -2659,27 +2663,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             // here instead of equating and processing obligations.
                             hr_source_projection.item_def_id() == hr_target_projection.item_def_id()
                                 && self.infcx.probe(|_| {
-                                    self.infcx
-                                        .enter_forall(hr_target_projection, |target_projection| {
-                                            let source_projection =
-                                                self.infcx.instantiate_binder_with_fresh_vars(
-                                                    obligation.cause.span,
-                                                    HigherRankedType,
+                                    self.infcx.enter_forall_no_ambiguous_aliases(hr_target_projection,
+                                    |target_projection| {
+                                        let source_projection =
+                                            self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(obligation.cause.span, HigherRankedType, hr_source_projection);
+                                        self.infcx
+                                            .at(&obligation.cause, obligation.param_env)
+                                            .eq_trace(
+                                                DefineOpaqueTypes::Yes,
+                                                ToTrace::to_trace(
+                                                    &obligation.cause,
+                                                    hr_target_projection,
                                                     hr_source_projection,
-                                                );
-                                            self.infcx
-                                                .at(&obligation.cause, obligation.param_env)
-                                                .eq_trace(
-                                                    DefineOpaqueTypes::Yes,
-                                                    ToTrace::to_trace(
-                                                        &obligation.cause,
-                                                        hr_target_projection,
-                                                        hr_source_projection,
-                                                    ),
-                                                    target_projection,
-                                                    source_projection,
-                                                )
-                                        })
+                                                ),
+                                                target_projection,
+                                                source_projection,
+                                            )
+                                    },)
                                         .is_ok()
                                 })
                         });
@@ -2692,24 +2692,28 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     }
                     nested.extend(
                         self.infcx
-                            .enter_forall(hr_target_projection, |target_projection| {
-                                let source_projection =
-                                    self.infcx.instantiate_binder_with_fresh_vars(
-                                        obligation.cause.span,
-                                        HigherRankedType,
-                                        hr_source_projection,
-                                    );
-                                self.infcx.at(&obligation.cause, obligation.param_env).eq_trace(
-                                    DefineOpaqueTypes::Yes,
-                                    ToTrace::to_trace(
-                                        &obligation.cause,
-                                        hr_target_projection,
-                                        hr_source_projection,
-                                    ),
-                                    target_projection,
-                                    source_projection,
-                                )
-                            })
+                            .enter_forall_no_ambiguous_aliases(
+                                hr_target_projection,
+                                |target_projection| {
+                                    let source_projection = self
+                                        .infcx
+                                        .instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                                            obligation.cause.span,
+                                            HigherRankedType,
+                                            hr_source_projection,
+                                        );
+                                    self.infcx.at(&obligation.cause, obligation.param_env).eq_trace(
+                                        DefineOpaqueTypes::Yes,
+                                        ToTrace::to_trace(
+                                            &obligation.cause,
+                                            hr_target_projection,
+                                            hr_source_projection,
+                                        ),
+                                        target_projection,
+                                        source_projection,
+                                    )
+                                },
+                            )
                             .map_err(|_| SelectionError::Unimplemented)?
                             .into_obligations(),
                     );
@@ -2754,7 +2758,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, ()> {
         let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
-        let trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+        let trait_ref = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             HigherRankedType,
             poly_trait_ref,

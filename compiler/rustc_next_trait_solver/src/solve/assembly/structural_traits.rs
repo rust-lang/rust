@@ -885,7 +885,8 @@ where
     I: Interner,
 {
     let cx = ecx.cx();
-    let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
+    let trait_ref =
+        ecx.instantiate_binder_with_infer(param_env, trait_ref).map_err(|_| Ambiguous)?;
     let mut requirements = vec![];
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
@@ -972,7 +973,8 @@ where
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
                 .enter_without_propagated_nested_goals(|ecx| {
-                    let source_projection = ecx.instantiate_binder_with_infer(source_projection);
+                    let source_projection =
+                        ecx.instantiate_binder_with_infer(self.param_env, source_projection)?;
                     ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
                     ecx.try_evaluate_added_goals()
                 })
@@ -1013,7 +1015,10 @@ where
             return Err(Ambiguous);
         }
 
-        let replacement = self.ecx.instantiate_binder_with_infer(*replacement);
+        let replacement = self
+            .ecx
+            .instantiate_binder_with_infer(self.param_env, *replacement)
+            .map_err(|_| Ambiguous)?;
         self.nested.extend(
             self.ecx
                 .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)

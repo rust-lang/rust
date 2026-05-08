@@ -172,6 +172,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        debug_assert!(!binder.has_ambiguous_aliases());
         let value = if let Some(inner) = binder.no_bound_vars() {
             inner
         } else {
@@ -215,6 +216,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        debug_assert!(!binder.has_ambiguous_aliases());
         if let Some(inner) = binder.no_bound_vars() {
             return inner;
         }

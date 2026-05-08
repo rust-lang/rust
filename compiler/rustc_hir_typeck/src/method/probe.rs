@@ -1073,13 +1073,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
-                let fty =
-                    self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args).skip_norm_wip();
-                let fty = self.instantiate_binder_with_fresh_vars(
-                    self.span,
-                    BoundRegionConversionTime::FnCall,
-                    fty,
-                );
+                let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args).map(|sig| {
+                    self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                        self.span,
+                        BoundRegionConversionTime::FnCall,
+                        sig,
+                    )
+                });
+                let fty = self.normalize(self.span, fty);
                 self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
@@ -1901,11 +1902,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref, _) => self.probe(|_| {
-                let trait_ref = self.instantiate_binder_with_fresh_vars(
-                    self.span,
-                    BoundRegionConversionTime::FnCall,
-                    trait_ref,
-                );
+                let trait_ref = self
+                    .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases(
+                        self.span,
+                        BoundRegionConversionTime::FnCall,
+                        trait_ref,
+                    );
                 let (xform_self_ty, _) =
                     self.xform_self_ty(candidate.item, trait_ref.self_ty(), trait_ref.args);
                 // Guide the trait selection to show impls that have methods whose type matches
@@ -2035,13 +2037,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
 
-                    let trait_ref = self.instantiate_binder_with_fresh_vars(
-                        self.span,
-                        BoundRegionConversionTime::FnCall,
-                        poly_trait_ref,
-                    );
-                    let trait_ref =
-                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(trait_ref));
+                    let trait_ref = self
+                        .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases_with(
+                            self.span,
+                            BoundRegionConversionTime::FnCall,
+                            poly_trait_ref,
+                            |value| ocx.renormalize_ambiguous_aliases(cause, self.param_env, value),
+                        );
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty =
@@ -2100,11 +2102,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     trait_predicate = Some(trait_ref.upcast(self.tcx));
                 }
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
-                    let trait_ref = self.instantiate_binder_with_fresh_vars(
-                        self.span,
-                        BoundRegionConversionTime::FnCall,
-                        poly_trait_ref,
-                    );
+                    // If we normalize the whole trait ref, this candidate can fail.
+                    // Unsure if that's desirable. See
+                    // `tests/ui/traits/trait-upcasting/mono-impossible.rs`.
+                    let trait_ref = self
+                        .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases_with(
+                            self.span,
+                            BoundRegionConversionTime::FnCall,
+                            poly_trait_ref,
+                            |value| value.skip_norm_wip(),
+                        );
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
 

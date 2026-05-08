@@ -1910,7 +1910,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     let cause = &obligation.cause;
     let param_env = obligation.param_env;
 
-    let cache_entry = infcx.instantiate_binder_with_fresh_vars(
+    let cache_entry = infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
         cause.span,
         BoundRegionConversionTime::HigherRankedType,
         poly_cache_entry,

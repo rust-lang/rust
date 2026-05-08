@@ -40,7 +40,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 
     let impl_may_apply = |impl_def_id| {
         let ocx = ObligationCtxt::new(infcx);
-        infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
+        infcx.enter_forall_no_ambiguous_aliases(obligation.predicate, |placeholder_obligation| {
             let obligation_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
@@ -98,18 +98,19 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 
     let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
         let ocx = ObligationCtxt::new(infcx);
-        infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
+        infcx.enter_forall_no_ambiguous_aliases(obligation.predicate, |placeholder_obligation| {
             let obligation_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
                 Unnormalized::new_wip(placeholder_obligation.trait_ref),
             );
 
-            let param_env_predicate = infcx.instantiate_binder_with_fresh_vars(
-                DUMMY_SP,
-                BoundRegionConversionTime::HigherRankedType,
-                poly_trait_predicate,
-            );
+            let param_env_predicate = infcx
+                .instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                    DUMMY_SP,
+                    BoundRegionConversionTime::HigherRankedType,
+                    poly_trait_predicate,
+                );
             let param_env_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,

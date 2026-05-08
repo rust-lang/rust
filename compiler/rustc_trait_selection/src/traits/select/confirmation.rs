@@ -171,7 +171,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let candidate = candidate_predicate.map_bound(|t| t.trait_ref);
 
-        let candidate = self.infcx.instantiate_binder_with_fresh_vars(
+        let candidate = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
             candidate,
@@ -499,7 +499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let object_trait_ref = data.principal().unwrap_or_else(|| {
             span_bug!(obligation.cause.span, "object candidate with no principal")
         });
-        let object_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+        let object_trait_ref = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
             object_trait_ref,
@@ -512,7 +512,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let unnormalized_upcast_trait_ref =
             supertraits.nth(index).expect("supertraits iterator no longer has as many elements");
 
-        let upcast_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+        let upcast_trait_ref = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
             unnormalized_upcast_trait_ref,
@@ -962,7 +962,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: TraitObligation<'tcx>,
         found_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
-        let found_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
+        let found_trait_ref = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
             found_trait_ref,

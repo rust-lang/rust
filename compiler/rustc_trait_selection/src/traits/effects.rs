@@ -89,7 +89,7 @@ fn match_candidate<'tcx>(
         return Err(NoSolution);
     }
 
-    let mut candidate = selcx.infcx.instantiate_binder_with_fresh_vars(
+    let mut candidate = selcx.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
         obligation.cause.span,
         BoundRegionConversionTime::HigherRankedType,
         candidate,

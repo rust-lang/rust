@@ -1460,14 +1460,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         if let ty::Adt(def, args) = ty.peel_refs().kind()
                             && tcx.is_lang_item(def.did(), LangItem::Pin)
                             && let ty::Ref(_, _, hir::Mutability::Mut) = args.type_at(0).kind()
-                            && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
-                                fn_call_span,
-                                BoundRegionConversionTime::FnCall,
-                                tcx.fn_sig(method_did)
-                                    .instantiate(tcx, method_args)
-                                    .skip_norm_wip()
-                                    .input(0),
-                            )
+                            && let self_ty =
+                                self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                                    fn_call_span,
+                                    BoundRegionConversionTime::FnCall,
+                                    tcx.fn_sig(method_did)
+                                        .instantiate(tcx, method_args)
+                                        .skip_norm_wip()
+                                        .input(0),
+                                )
                             && self.infcx.can_eq(self.infcx.param_env, ty, self_ty)
                         {
                             err.subdiagnostic(CaptureReasonSuggest::FreshReborrow {

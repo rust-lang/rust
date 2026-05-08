@@ -1076,11 +1076,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             && let target_sig = target_fn_tys.with(target_hdr)
                             && let Some(target_sig) = target_sig.no_bound_vars()
                         {
-                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
-                                span,
-                                BoundRegionConversionTime::HigherRankedType,
-                                src_sig,
-                            );
+                            let src_sig =
+                                self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                                    span,
+                                    BoundRegionConversionTime::HigherRankedType,
+                                    src_sig,
+                                );
                             let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
                             self.prove_predicate(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
@@ -1676,11 +1677,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
                     unreachable!();
                 };
-                let expected_ty = self.infcx.instantiate_binder_with_fresh_vars(
-                    self.body().source_info(location).span,
-                    BoundRegionConversionTime::HigherRankedType,
-                    binder_ty.into(),
-                );
+                let expected_ty =
+                    self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                        self.body().source_info(location).span,
+                        BoundRegionConversionTime::HigherRankedType,
+                        binder_ty.into(),
+                    );
                 self.sub_types(
                     operand_ty,
                     expected_ty,
@@ -1916,7 +1918,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
                     unreachable!();
                 };
-                let found_ty = self.infcx.instantiate_binder_with_fresh_vars(
+                let found_ty = self.infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
                     self.body.source_info(location).span,
                     BoundRegionConversionTime::HigherRankedType,
                     binder_ty.into(),

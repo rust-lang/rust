@@ -201,7 +201,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn instantiate_binder_with_infer<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
-    ) -> T {
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T> {
         self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
             BoundRegionConversionTime::HigherRankedType,
@@ -212,7 +212,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
         &self,
         value: ty::Binder<'tcx, T>,
-        f: impl FnOnce(T) -> U,
+        f: impl FnOnce(ty::UnnormalizedAmbiguous<'tcx, T>) -> U,
     ) -> U {
         self.enter_forall(value, f)
     }

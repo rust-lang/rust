@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return false;
         }
 
-        let self_ty = self.instantiate_binder_with_fresh_vars(
+        let self_ty = self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             DUMMY_SP,
             BoundRegionConversionTime::FnCall,
             trait_pred.self_ty(),
@@ -1346,7 +1346,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        self.enter_forall(self_ty, |ty: Ty<'_>| {
+        self.enter_forall_no_ambiguous_aliases(self_ty, |ty: Ty<'_>| {
             let Some(generics) = self.tcx.hir_get_generics(obligation.cause.body_id) else {
                 return false;
             };
@@ -1558,7 +1558,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         };
 
-        let output = self.instantiate_binder_with_fresh_vars(
+        let output = self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
             DUMMY_SP,
             BoundRegionConversionTime::FnCall,
             output,
@@ -1567,7 +1567,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .skip_binder()
             .iter()
             .map(|ty| {
-                self.instantiate_binder_with_fresh_vars(
+                self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
                     DUMMY_SP,
                     BoundRegionConversionTime::FnCall,
                     inputs.rebind(*ty),
@@ -4845,12 +4845,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(failed_pred) = failed_pred.as_trait_clause()
                     && where_pred.def_id() == failed_pred.def_id()
                 {
-                    self.enter_forall(where_pred, |where_pred| {
-                        let failed_pred = self.instantiate_binder_with_fresh_vars(
-                            expr.span,
-                            BoundRegionConversionTime::FnCall,
-                            failed_pred,
-                        );
+                    self.enter_forall_no_ambiguous_aliases(where_pred, |where_pred| {
+                        let failed_pred = self
+                            .instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+                                expr.span,
+                                BoundRegionConversionTime::FnCall,
+                                failed_pred,
+                            );
 
                         let zipped =
                             iter::zip(where_pred.trait_ref.args, failed_pred.trait_ref.args);
@@ -5588,7 +5589,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
-                self.enter_forall(pred, |pred| {
+                self.enter_forall_no_ambiguous_aliases(pred, |pred| {
                     let pred = ocx.normalize(
                         &ObligationCause::dummy(),
                         param_env,
@@ -6061,13 +6062,17 @@ fn hint_missing_borrow<'tcx>(
     }
 
     let found_args = match found.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => {
+            infcx.enter_forall_no_ambiguous_aliases(*sig_tys, |sig_tys| sig_tys.inputs().iter())
+        }
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => {
+            infcx.enter_forall_no_ambiguous_aliases(*sig_tys, |sig_tys| sig_tys.inputs().iter())
+        }
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }

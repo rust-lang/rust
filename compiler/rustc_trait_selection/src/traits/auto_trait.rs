@@ -739,7 +739,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(binder)) => {
                     let binder = bound_predicate.rebind(binder);
-                    selcx.infcx.enter_forall(binder, |pred| {
+                    selcx.infcx.enter_forall_no_ambiguous_aliases(binder, |pred| {
                         selcx.infcx.register_region_outlives_constraint(pred, ty::VisibleForLeakCheck::Yes,&dummy_cause);
                     });
                 }
