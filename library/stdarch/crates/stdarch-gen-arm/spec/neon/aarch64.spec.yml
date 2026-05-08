@@ -182,12 +182,12 @@ intrinsics:
       - ['d_f64', 'f64']
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vabd_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - 0
+          - - 0
 
   - name: "vabd{type[0]}"
     doc: "Floating-point absolute difference"
@@ -203,12 +203,12 @@ intrinsics:
       - ['h_f16', 'f16']
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vabd_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - 0
+          - - 0
 
   - name: "vabdl_high{neon_type[0].noq}"
     doc: Signed Absolute difference Long
@@ -375,12 +375,12 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vceq_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - 0
 
 
   - name: "vceq{type[0]}"
@@ -397,12 +397,12 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vceq_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - 0
 
   - name: "vceqd_{type[0]}"
     doc: "Compare bitwise equal"
@@ -491,12 +491,12 @@ intrinsics:
       - ["h_s16", "i16", "u16", "s16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[3]}'
           - - FnCall:
                 - "vuqadd_{type[3]}"
                 - - FnCall: ["vdup_n_{type[3]}", [a]]
                   - FnCall: ["vdup_n_{type[2]}", [b]]
-            - '0'
+          - - '0'
 
   - name: "vabs{neon_type.no}"
     doc: "Floating-point absolute value"
@@ -567,12 +567,12 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - 'simd_extract!'
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcgt_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - '0'
 
 
   - name: "vcgt{type[0]}"
@@ -589,12 +589,12 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - 'simd_extract!'
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcgt_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - '0'
 
   - name: "vclt{neon_type[0].no}"
     doc: "Compare signed less than"
@@ -651,12 +651,12 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcle_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - '0'
 
 
   - name: "vcle{type[0]}"
@@ -673,12 +673,12 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcle_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - '0'
 
   - name: "vcge{neon_type[0].no}"
     doc: "Compare signed greater than or equal"
@@ -789,11 +789,11 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vclez_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vclez{type[0]}"
     doc: "Floating-point compare less than or equal to zero"
@@ -809,11 +809,11 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vclez_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vcltz{neon_type[0].no}"
     doc: "Compare signed less than zero"
@@ -872,11 +872,11 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcltz_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vcltz{type[0]}"
     doc: "Floating-point compare less than zero"
@@ -892,11 +892,11 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcltz_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vcltzd_s64"
     doc: "Compare less than zero"
@@ -1612,11 +1612,11 @@ intrinsics:
       - ["f64", "f32"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - vcvtx_f32_f64
                 - - FnCall: [vdupq_n_f64, [a]]
-            - '0'
+          - - '0'
 
   - name: "vcvtx_high_f32_f64"
     doc: "Floating-point convert to lower precision narrow, rounding to odd"
@@ -2521,7 +2521,7 @@ intrinsics:
       - [float64x1_t, "f64"]
     compose:
       - FnCall: [static_assert!, ['N == 0']]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
   - name: "vdup_laneq_{neon_type[0]}"
     doc: "Set all vector lanes to the same value"
@@ -2539,8 +2539,8 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
       - FnCall:
-          - "transmute::<{type[2]}, _>"
-          - - FnCall: [simd_extract!, [a, 'N as u32']]
+          - transmute
+          - - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
   - name: "vdup{type[2]}"
     doc: "Set all vector lanes to the same value"
@@ -2561,7 +2561,7 @@ intrinsics:
       - [float64x2_t, "f64", d_laneq_f64]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
   - name: "vdup{type[2]}"
     doc: "Set all vector lanes to the same value"
@@ -2582,7 +2582,7 @@ intrinsics:
       - [poly16x8_t, "p16", h_laneq_p16]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 3]]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
 
   - name: "vdup{type[2]}"
@@ -2601,7 +2601,7 @@ intrinsics:
       - [float16x4_t, "f16", h_lane_f16]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 2]]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
 
   - name: "vdup{type[2]}"
@@ -2620,7 +2620,7 @@ intrinsics:
       - [float16x8_t, "f16", h_laneq_f16]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 4]]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
 
   - name: "vdup{type[2]}"
@@ -2639,7 +2639,7 @@ intrinsics:
       - [poly8x16_t, "p8", b_laneq_p8]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 4]]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
   - name: "vdup{type[2]}"
     doc: "Set all vector lanes to the same value"
@@ -2660,7 +2660,7 @@ intrinsics:
       - [float32x4_t, "f32", s_laneq_f32]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 2]]
-      - FnCall: [simd_extract!, [a, 'N as u32']]
+      - FnCall: ['vget{neon_type[0].lane_nox}', [a], [N]]
 
   - name: "vext{neon_type[0].no}"
     doc: "Extract vector from pair of vectors"
@@ -2877,11 +2877,11 @@ intrinsics:
       - [i64, 'd_s64', 's64']
     compose:
       - FnCall:
-          - 'simd_extract!'
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - 'vqneg_{type[2]}'
                 - - FnCall: ['vdup_n_{type[2]}', [a]]
-            - 0
+          - - 0
 
   - name: "vqneg{neon_type[0].no}"
     doc: Signed saturating negate
@@ -2958,12 +2958,12 @@ intrinsics:
               - "vdup_n_{type[2]}"
               - - b
       - FnCall:
-          - 'simd_extract!'
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqsub_{type[2]}"
                 - - a
                   - b
-            - "0"
+          - - "0"
 
   - name: "vqsub{type[3]}"
     doc: Saturating subtract
@@ -2989,12 +2989,12 @@ intrinsics:
               - "vdup_n_{type[2]}"
               - - b
       - FnCall:
-          - 'simd_extract!'
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqsub_{type[2]}"
                 - - a
                   - b
-            - "0"
+          - - "0"
 
   - name: "vrbit{neon_type.no}"
     doc: Reverse bit order
@@ -3443,12 +3443,12 @@ intrinsics:
               - "vdup_n_{type[0]}"
               - - b
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[0]}'
           - - FnCall:
                 - "vqadd_{type[0]}"
                 - - a
                   - b
-            - "0"
+          - - "0"
 
   - name: "vqadd{type[2]}"
     doc: Saturating add
@@ -3474,12 +3474,12 @@ intrinsics:
               - "vdup_n_{type[0]}"
               - - b
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[0]}'
           - - FnCall:
                 - "vqadd_{type[0]}"
                 - - a
                   - b
-            - "0"
+          - - "0"
 
   - name: "vld1{neon_type[1].no}"
     doc: "Load multiple single-element structures to one, two, three, or four registers"
@@ -4484,7 +4484,7 @@ intrinsics:
       - Let:
         - "lane"
         - i64
-        - FnCall: [simd_extract!, [val, 'LANE as u32']]
+        - FnCall: ['vget{neon_type[1].lane_nox}', [val], [LANE]]
       - MethodCall:
         - "(*atomic_dst)"
         - store
@@ -5254,8 +5254,8 @@ intrinsics:
     compose:
       - FnCall:
           - "vmull_{neon_type[0]}"
-          - - FnCall: [simd_extract!, [a, '1']]
-            - FnCall: [simd_extract!, [b, '1']]
+          - - FnCall: ['vget{neon_type[0].lane_nox}', [a], [1]]
+            - FnCall: ['vget{neon_type[0].lane_nox}', [b], [1]]
 
   - name: "vmulx{neon_type.no}"
     doc: Floating-point multiply extended
@@ -5354,11 +5354,8 @@ intrinsics:
           - vmulx_f64
           - - a
             - FnCall:
-                - 'transmute::<f64, _>'
-                - - FnCall:
-                      - "simd_extract!"
-                      - - b
-                        - 'LANE as u32'
+                - 'transmute'
+                - - FnCall: ['vget{neon_type.lane_nox}', [b], [LANE]]
 
   - name: "vmulx{type[0]}"
     doc: Floating-point multiply extended
@@ -5394,16 +5391,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ["d_lane_f64", "f64", float64x1_t, "d_f64", 'LANE as u32']
+      - ["d_lane_f64", "f64", float64x1_t, "d_f64"]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
       - FnCall:
           - "vmulx{type[3]}"
           - - a
-            - FnCall:
-                - "simd_extract!"
-                - - b
-                  - "{type[4]}"
+            - FnCall: ['vget{neon_type[2].lane_nox}', [b], [LANE]]
 
   - name: "vmulx_laneq_f64"
     doc: Floating-point multiply extended
@@ -5423,11 +5417,8 @@ intrinsics:
           - vmulx_f64
           - - a
             - FnCall:
-                - 'transmute::<f64, _>'
-                - - FnCall:
-                      - "simd_extract!"
-                      - - b
-                        - 'LANE as u32'
+                - 'transmute'
+                - - FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]
 
   - name: "vmulx{type[0]}"
     doc: Floating-point multiply extended
@@ -5497,18 +5488,15 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['s_lane_f32', f32, float32x2_t, '1', 's_f32', 'LANE as u32']
-      - ['s_laneq_f32', f32, float32x4_t, '2', 's_f32', 'LANE as u32']
-      - ['d_laneq_f64', f64, float64x2_t, '1', 'd_f64', 'LANE as u32']
+      - ['s_lane_f32', f32, float32x2_t, '1', 's_f32']
+      - ['s_laneq_f32', f32, float32x4_t, '2', 's_f32']
+      - ['d_laneq_f64', f64, float64x2_t, '1', 'd_f64']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
       - FnCall:
           - "vmulx{type[4]}"
           - - a
-            - FnCall:
-                - "simd_extract!"
-                - - b
-                  - "{type[5]}"
+            - FnCall: ['vget{neon_type[2].lane_nox}', [b], [LANE]]
 
 
   - name: "vmulx{type[0]}"
@@ -5531,10 +5519,7 @@ intrinsics:
       - FnCall:
           - "vmulx{type[4]}"
           - - a
-            - FnCall:
-                - "simd_extract!"
-                - - b
-                  - "{type[5]}"
+            - FnCall: ['vget{neon_type[2].lane_nox}', [b], [LANE]]
 
 
   - name: "vmulx{neon_type[0].N}"
@@ -7084,11 +7069,11 @@ intrinsics:
       - Let:
           - a1
           - "{type[2]}"
-          - FnCall: [simd_extract!, [a, '0']]
+          - FnCall: ['vget{neon_type[1].lane_nox}', [a], [0]]
       - Let:
           - a2
           - "{type[2]}"
-          - FnCall: [simd_extract!, [a, '1']]
+          - FnCall: ['vget{neon_type[1].lane_nox}', [a], [1]]
       - Identifier: ['a1 + a2', Symbol]
 
   - name: "vpmin{type[0]}"
@@ -7121,7 +7106,7 @@ intrinsics:
     compose:
       - Let: [a, int16x4_t, {FnCall: [vdup_n_s16, [a]]}]
       - Let: [b, int16x4_t, {FnCall: [vdup_n_s16, [b]]}]
-      - FnCall: [simd_extract!, [{FnCall: [vqdmull_s16, [a, b]]}, '0']]
+      - FnCall: ['vgetq_lane_{type[1]}', [{FnCall: [vqdmull_s16, [a, b]]}], ['0']]
 
   - name: "vqdmulls_s32"
     doc: "Signed saturating doubling multiply long"
@@ -7187,7 +7172,7 @@ intrinsics:
       - ["i32", int32x4_t, "i64", 's_laneq_s32', 's_s32']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 2]]
-      - Let: [b, "{type[0]}", {FnCall: [simd_extract!, [b, 'N as u32']]}]
+      - Let: [b, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [b], [N]]}]
       - FnCall: ["vqdmull{type[4]}", [a, b]]
 
   - name: "vqdmullh_laneq_s16"
@@ -7204,7 +7189,7 @@ intrinsics:
       - ["i16", int16x8_t, "i32"]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 3]]
-      - Let: [b, "{type[0]}", {FnCall: [simd_extract!, [b, 'N as u32']]}]
+      - Let: [b, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [b], [N]]}]
       - FnCall: ["vqdmullh_s16", [a, b]]
 
   - name: "vqdmulls_lane_s32"
@@ -7221,7 +7206,7 @@ intrinsics:
       - ["i32", int32x2_t, "i64"]
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
-      - Let: [b, "{type[0]}", {FnCall: [simd_extract!, [b, 'N as u32']]}]
+      - Let: [b, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [b], [N]]}]
       - FnCall: ["vqdmulls_s32", [a, b]]
 
   - name: "vqdmull{type[6]}"
@@ -7360,7 +7345,7 @@ intrinsics:
       - ["i32", "i16", "s16"]
     compose:
       - Let: [x, int32x4_t, {FnCall: [vqdmull_s16, [{FnCall: [vdup_n_s16, [b]]}, {FnCall: [vdup_n_s16, [c]]}]]}]
-      - FnCall: [vqadds_s32, [a, {FnCall: [simd_extract!, [x, 0]]}]]
+      - FnCall: [vqadds_s32, [a, {FnCall: ['vgetq_lane_s32', [x], [0]]}]]
 
   - name: "vqdmlals_s32"
     doc: "Signed saturating doubling multiply-add long"
@@ -7393,7 +7378,7 @@ intrinsics:
       - ["i64", "i32", int32x4_t, "i64", s_laneq_s32, '2', s_s32]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[5]}"]]
-      - FnCall: ["vqdmlal{type[6]}", [a, b, {FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+      - FnCall: ["vqdmlal{type[6]}", [a, b, {FnCall: ['vget{neon_type[2].lane_nox}', [c], [LANE]]}]]
 
   - name: "vqdmlal_laneq_s16"
     doc: "Vector widening saturating doubling multiply accumulate with scalar"
@@ -7474,7 +7459,7 @@ intrinsics:
       - ["i32", "i16"]
     compose:
       - Let: [x, int32x4_t, {FnCall: [vqdmull_s16, [{FnCall: [vdup_n_s16, [b]]}, {FnCall: [vdup_n_s16, [c]]}]]}]
-      - FnCall: [vqsubs_s32, [a, {FnCall: [simd_extract!, [x, '0']]}]]
+      - FnCall: [vqsubs_s32, [a, {FnCall: ['vgetq_lane_s32', [x], [0]]}]]
 
   - name: "vqdmlsls_s32"
     doc: "Signed saturating doubling multiply-subtract long"
@@ -7507,7 +7492,7 @@ intrinsics:
       - ["i64", "i32", int32x4_t, "i64", 's_laneq_s32', '2', 's_s32']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[5]}"]]
-      - FnCall: ["vqdmlsl{type[6]}", [a, b, {FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+      - FnCall: ["vqdmlsl{type[6]}", [a, b, {FnCall: ['vget{neon_type[2].lane_nox}', [c], [LANE]]}]]
 
   - name: "vqdmlsl_laneq_s16"
     doc: "Vector widening saturating doubling multiply subtract with scalar"
@@ -7555,7 +7540,7 @@ intrinsics:
     compose:
       - Let: [a, "{neon_type[3]}", {FnCall: ["vdup_n{neon_type[3].no}", [a]]}]
       - Let: [b, "{neon_type[3]}", {FnCall: ["vdup_n{neon_type[3].no}", [b]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqdmulh{neon_type[3].no}", [a, b]]}, '0']]
+      - FnCall: ['vget{neon_type[3].lane_nox}', [{FnCall: ["vqdmulh{neon_type[3].no}", [a, b]]}], ['0']]
 
   - name: "vqdmulhh{type[3]}"
     doc: "Signed saturating doubling multiply returning high half"
@@ -7572,7 +7557,7 @@ intrinsics:
       - ["i16", int16x8_t, "i16", '_laneq_s16', '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[4]}"]]
-      - Let: [b, 'i16', {FnCall: [simd_extract!, [b, 'N as u32']]}]
+      - Let: [b, 'i16', {FnCall: ['vget{neon_type[1].lane_nox}', [b], [N]]}]
       - FnCall: ['vqdmulhh_s16', [a, b]]
 
   - name: "vqdmulhs{type[3]}"
@@ -7590,7 +7575,7 @@ intrinsics:
       - ["i32", int32x4_t, "i32", "_laneq_s32", '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[4]}"]]
-      - Let: [b, 'i32', {FnCall: [simd_extract!, [b, 'N as u32']]}]
+      - Let: [b, 'i32', {FnCall: ['vget{neon_type[1].lane_nox}', [b], [N]]}]
       - FnCall: ['vqdmulhs_s32', [a, b]]
 
   - name: "vqmovn_high{neon_type[1].noq}"
@@ -7635,7 +7620,7 @@ intrinsics:
       - ["i16", "i8", 'h_s16', s16]
       - ["i32", "i16", 's_s32', s32]
     compose:
-      - FnCall: [simd_extract!, [{FnCall: ["vqmovn_{type[3]}", [{FnCall: ["vdupq_n_{type[3]}", [a]]}]]}, '0']]
+      - FnCall: ['vget_lane_{type[1]}', [{FnCall: ["vqmovn_{type[3]}", [{FnCall: ["vdupq_n_{type[3]}", [a]]}]]}], ['0']]
 
   - name: "vqmovn{type[2]}"
     doc: "Saturating extract narrow"
@@ -7649,7 +7634,7 @@ intrinsics:
       - ["u16", "u8", 'h_u16', 'u16']
       - ["u32", "u16", 's_u32', 'u32']
     compose:
-      - FnCall: [simd_extract!, [{FnCall: ["vqmovn_{type[3]}", [{FnCall: ["vdupq_n_{type[3]}", [a]]}]]}, '0']]
+      - FnCall: ['vget_lane_{type[1]}', [{FnCall: ["vqmovn_{type[3]}", [{FnCall: ["vdupq_n_{type[3]}", [a]]}]]}], ['0']]
 
   - name: "vqmovnd_s64"
     doc: "Saturating extract narrow"
@@ -7698,7 +7683,7 @@ intrinsics:
       - ["i32", "u16", 's_s32', s32]
       - ["i64", "u32", 'd_s64', s64]
     compose:
-      - FnCall: [simd_extract!, [{FnCall: ["vqmovun_{type[3]}", [{FnCall: ["vdupq_n_{type[3]}", [a]]}]]}, '0']]
+      - FnCall: ['vget_lane_{type[1]}', [{FnCall: ["vqmovun_{type[3]}", [{FnCall: ["vdupq_n_{type[3]}", [a]]}]]}], ['0']]
 
   - name: "vqmovun_high_{neon_type[1]}"
     doc: "Signed saturating extract unsigned narrow"
@@ -7727,7 +7712,7 @@ intrinsics:
       - ["i16", 'h_s16', 's16']
       - ["i32", 's_s32', 's32']
     compose:
-      - FnCall: [simd_extract!, [{FnCall: ["vqrdmulh_{type[2]}", [{FnCall: ["vdup_n_{type[2]}", [a]]}, {FnCall: ["vdup_n_{type[2]}", [b]]}]]}, '0']]
+      - FnCall: ['vget_lane_{type[2]}', [{FnCall: ["vqrdmulh_{type[2]}", [{FnCall: ["vdup_n_{type[2]}", [a]]}, {FnCall: ["vdup_n_{type[2]}", [b]]}]]}], ['0']]
 
   - name: "vqrdmulh{type[2]}"
     doc: "Signed saturating rounding doubling multiply returning high half"
@@ -7746,7 +7731,7 @@ intrinsics:
       - ["i32", int32x4_t, 's_laneq_s32', 's_s32', '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[4]}"]]
-      - FnCall: ["vqrdmulh{type[3]}", [a, {FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
+      - FnCall: ["vqrdmulh{type[3]}", [a, {FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]}]]
 
   - name: "vqrdmlah{neon_type.no}"
     doc: "Signed saturating rounding doubling multiply accumulate returning high half"
@@ -7785,7 +7770,7 @@ intrinsics:
       - Let: [a, "{neon_type[1]}", {FnCall: ["vdup_n_{type[2]}", [a]]}]
       - Let: [b, "{neon_type[1]}", {FnCall: ["vdup_n_{type[2]}", [b]]}]
       - Let: [c, "{neon_type[1]}", {FnCall: ["vdup_n_{type[2]}", [c]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqrdmlah_{type[2]}", [a, b, c]]}, '0']]
+      - FnCall: ['vget_lane_{type[2]}', [{FnCall: ["vqrdmlah_{type[2]}", [a, b, c]]}], ['0']]
 
   - name: "vqrdmlah{type[0]}"
     doc: "Signed saturating rounding doubling multiply accumulate returning high half"
@@ -7830,7 +7815,7 @@ intrinsics:
       - ["i32", int32x4_t, '2', "s_s32", s_laneq_s32, s_s32]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
-      - FnCall: ["vqrdmlah{type[5]}", [a, b, {FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+      - FnCall: ["vqrdmlah{type[5]}", [a, b, {FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
   - name: "vqrdmlsh{neon_type.no}"
     doc: "Signed saturating rounding doubling multiply subtract returning high half"
@@ -7869,7 +7854,7 @@ intrinsics:
       - Let: [a, "{neon_type[2]}", {FnCall: ["vdup_n_{type[3]}", [a]]}]
       - Let: [b, "{neon_type[2]}", {FnCall: ["vdup_n_{type[3]}", [b]]}]
       - Let: [c, "{neon_type[2]}", {FnCall: ["vdup_n_{type[3]}", [c]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqrdmlsh_{type[3]}", [a, b, c]]}, '0']]
+      - FnCall: ['vget{neon_type[2].lane_nox}', [{FnCall: ["vqrdmlsh_{type[3]}", [a, b, c]]}], ['0']]
 
   - name: "vqrdmlsh{type[0]}"
     doc: "Signed saturating rounding doubling multiply subtract returning high half"
@@ -7914,7 +7899,7 @@ intrinsics:
       - ["i32", int32x4_t, '2', s_laneq_s32, s_s32]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
-      - FnCall: ["vqrdmlsh{type[4]}", [a, b, {FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+      - FnCall: ["vqrdmlsh{type[4]}", [a, b, {FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
   - name: "vqrshl{type[0]}"
     doc: "Signed saturating rounding shift left"
@@ -7948,7 +7933,7 @@ intrinsics:
     compose:
       - Let: [a, "{neon_type[2]}", {FnCall: ["vdup_n_{type[3]}", [a]]}]
       - Let: [b, "{neon_type[2]}", {FnCall: ["vdup_n_{type[3]}", [b]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqrshl_{type[3]}", [a, b]]}, '0']]
+      - FnCall: ['vget{neon_type[2].lane_nox}', [{FnCall: ["vqrshl_{type[3]}", [a, b]]}], ['0']]
 
   - name: "vqrshl{type[2]}"
     doc: "Unsigned signed saturating rounding shift left"
@@ -7982,7 +7967,7 @@ intrinsics:
     compose:
       - Let: [a, "{neon_type[3]}", {FnCall: ["vdup_n_{type[0]}", [a]]}]
       - Let: [b, "{neon_type[4]}", {FnCall: ["vdup_n_{type[5]}", [b]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqrshl_{type[0]}", [a, b]]}, '0']]
+      - FnCall: ['vget{neon_type[3].lane_nox}', [{FnCall: ["vqrshl_{type[0]}", [a, b]]}], ['0']]
 
   - name: "vqrshrn{type[2]}"
     doc: "Signed saturating rounded shift right narrow"
@@ -8001,7 +7986,7 @@ intrinsics:
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - Let: [a, "{neon_type[4]}", {FnCall: ["vdup{type[5]}", [a]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqrshrn_n{neon_type[4].noq}::<N>", [a]]}, '0']]
+      - FnCall: ['vget_lane_{type[1]}', [{FnCall: ["vqrshrn_n{neon_type[4].noq}::<N>", [a]]}], ['0']]
 
   - name: "vqrshrn{type[3]}"
     doc: "Signed saturating rounded shift right narrow"
@@ -8038,7 +8023,7 @@ intrinsics:
     compose:
       - FnCall: [static_assert!, ['{type[3]}']]
       - Let: [a, "{neon_type[4]}", {FnCall: ["vdup{type[5]}", [a]]}]
-      - FnCall: [simd_extract!, [{FnCall: ["vqrshrn{type[6]}::<N>", [a]]}, '0']]
+      - FnCall: ['vget_lane_{type[2]}', [{FnCall: ["vqrshrn{type[6]}::<N>", [a]]}], ['0']]
 
   - name: "vqrshrn_high_n{neon_type[1].noq}"
     doc: "Unsigned saturating rounded shift right narrow"
@@ -8085,11 +8070,11 @@ intrinsics:
           - "{neon_type[4]}"
           - FnCall: ["vdupq_n_{type[5]}", [a]]
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqrshrun_n_{type[5]}::<N>"
                 - - a
-            - '0'
+          - - '0'
 
   - name: "vqrshrun_high_n{neon_type[1].noq}"
     doc: "Signed saturating rounded shift right unsigned narrow"
@@ -8152,7 +8137,7 @@ intrinsics:
               - "vqshl{neon_type[2].noq}"
               - - FnCall: ["vdup_n{neon_type[2].no}", [a]]
                 - FnCall: ["vdup_n{neon_type[2].no}", [b]]
-      - FnCall: [simd_extract!, [c, '0']]
+      - FnCall: ['vget{neon_type[2].lane_nox}', [c], ['0']]
 
   - name: "vqshl{type[0]}"
     doc: "Signed saturating shift left"
@@ -8172,11 +8157,11 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[2]}"]]
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vqshl_n_{type[3]}::<N>"
                 - - FnCall: ["vdup_n_{type[3]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vqshld_{type[0]}"
     doc: "Unsigned saturating shift left"
@@ -8215,7 +8200,7 @@ intrinsics:
               - "vqshl{neon_type[3].noq}"
               - - FnCall: ["vdup{neon_type[3].N}", [a]]
                 - FnCall: ["vdup{neon_type[4].N}", [b]]
-      - FnCall: [simd_extract!, [c, '0']]
+      - FnCall: ['vget{neon_type[3].lane_nox}', [c], ['0']]
 
   - name: "vqshl{type[0]}"
     doc: "Unsigned saturating shift left"
@@ -8235,9 +8220,9 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[2]}"]]
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall: ["vqshl_n_{type[1]}::<N>", [{FnCall: ["vdup_n_{type[1]}", [a]]}]]
-            - '0'
+          - - '0'
 
   - name: "vqshrnd_n_s64"
     doc: "Signed saturating shift right narrow"
@@ -8279,11 +8264,11 @@ intrinsics:
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqshrn_n_{type[4]}::<N>"
                 - - FnCall: ["vdupq_n_{type[4]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vqshrn{type[0]}"
     doc: "Signed saturating shift right narrow"
@@ -8347,11 +8332,11 @@ intrinsics:
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - "simd_extract!"
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqshrn_n_{type[1]}::<N>"
                 - - FnCall: ["vdupq_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vqshrn{type[0]}"
     doc: "Unsigned saturating shift right narrow"
@@ -8392,11 +8377,11 @@ intrinsics:
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqshrun_n_{type[4]}::<N>"
                 - - FnCall: ["vdupq_n_{type[4]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vqshrun_high_n_{neon_type[1]}"
     doc: "Signed saturating shift right unsigned narrow"
@@ -8433,12 +8418,12 @@ intrinsics:
       - [h_u16, "u16", "i16", s16]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vsqadd_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[2]}", [b]]
-            - '0'
+          - - '0'
 
   - name: "vsqadd{type[0]}"
     doc: "Unsigned saturating accumulate of signed value"
@@ -9026,14 +9011,14 @@ intrinsics:
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
     types:
-      - [float64x2_t, float64x1_t, '0', '1', 'transmute::<f64, _>(simd_extract!(b, LANE2 as u32))']
-      - [poly64x2_t, poly64x1_t, '0', '1', 'transmute::<u64, _>(simd_extract!(b, LANE2 as u32))']
-      - [uint64x2_t, uint64x1_t, '0', '1', 'transmute::<u64, _>(simd_extract!(b, LANE2 as u32))']
-      - [int64x2_t, int64x1_t, '0', '1', 'transmute::<i64, _>(simd_extract!(b, LANE2 as u32))']
+      - [float64x2_t, float64x1_t, '0', '1']
+      - [poly64x2_t, poly64x1_t, '0', '1']
+      - [uint64x2_t, uint64x1_t, '0', '1']
+      - [int64x2_t, int64x1_t, '0', '1']
     compose:
       - FnCall: [static_assert!, ['LANE1 == {type[2]}']]
       - FnCall: [static_assert_uimm_bits!, [LANE2, '{type[3]}']]
-      - Identifier: ["{type[4]}", UnsafeSymbol]
+      - FnCall: [transmute, [{FnCall: ['vget{neon_type[0].lane_nox}', [b], [LANE2]]}]]
 
   - name: "vcopy{neon_type[0].laneq_nox}"
     doc: "Insert vector element from another vector element"
@@ -9566,7 +9551,7 @@ intrinsics:
           - transmute
           - - FnCall:
                 - _vrnd32x_f64
-                - - FnCall: [simd_extract!, [a, 0]]
+                - - FnCall: ['vget{neon_type.lane_nox}', [a], [0]]
 
   - name: "vrnd32z{neon_type.no}"
     doc: "Floating-point round to 32-bit integer toward zero"
@@ -9610,7 +9595,7 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall:
           - transmute
-          - - FnCall: [_vrnd32z_f64, [{FnCall: [simd_extract!, [a, 0]]}]]
+          - - FnCall: [_vrnd32z_f64, [{FnCall: ['vget{neon_type.lane_nox}', [a], [0]]}]]
 
   - name: "vrnd64x{neon_type.no}"
     doc: "Floating-point round to 64-bit integer, using current rounding mode"
@@ -9654,7 +9639,7 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall:
           - transmute
-          - - FnCall: [_vrnd64x_f64, [{FnCall: [simd_extract!, [a, 0]]}]]
+          - - FnCall: [_vrnd64x_f64, [{FnCall: ['vget{neon_type.lane_nox}', [a], [0]]}]]
 
   - name: "vrnd64z{neon_type.no}"
     doc: "Floating-point round to 64-bit integer toward zero"
@@ -9698,7 +9683,7 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall:
           - transmute
-          - - FnCall: [_vrnd64z_f64, [{FnCall: [simd_extract!, [a, 0]]}]]
+          - - FnCall: [_vrnd64z_f64, [{FnCall: ['vget{neon_type.lane_nox}', [a], [0]]}]]
 
   - name: "vtrn1{neon_type[0].no}"
     doc: Transpose vectors
@@ -10323,7 +10308,7 @@ intrinsics:
           - "vfma{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
 
   - name: "vfma{type[3]}"
@@ -10349,7 +10334,7 @@ intrinsics:
           - "vfma{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
 
   # vfms lane f16
@@ -10376,7 +10361,7 @@ intrinsics:
           - "vfms{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
 
   - name: "vfms{type[1]}"
@@ -10413,7 +10398,7 @@ intrinsics:
           - "vfma{neon_type.no}"
           - - a
             - b
-            - FnCall: ["vdup{neon_type.N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+            - FnCall: ["vdup{neon_type.N}", [{FnCall: ['vget{neon_type.lane_nox}', [c], [LANE]]}]]
 
   - name: "vfma_laneq_f64"
     doc: "Floating-point fused multiply-add to accumulator"
@@ -10433,7 +10418,7 @@ intrinsics:
           - "vfma{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
   - name: "vfmaq_lane_f64"
     doc: "Floating-point fused multiply-add to accumulator"
@@ -10453,7 +10438,7 @@ intrinsics:
           - "vfma{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]
 
   - name: "vfma{type[2]}"
     doc: "Floating-point fused multiply-add to accumulator"
@@ -10471,7 +10456,7 @@ intrinsics:
       - ["f64", float64x2_t, "d_laneq_f64", '1']
     compose:
       - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
-      - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [c, 'LANE as u32']]}]
+      - Let: [c, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]
       - FnCall: ["fma{type[0]}", [b, c, a]]
 
   - name: "vfmad_lane_f64"
@@ -10488,7 +10473,7 @@ intrinsics:
       - ["f64", float64x1_t]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [c, 'LANE as u32']]}]
+      - Let: [c, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]
       - FnCall: [fmaf64, [b, c, a]]
 
 
@@ -10525,7 +10510,7 @@ intrinsics:
       - ["f16", float16x8_t, 'q_f16', '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
-      - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [v, 'LANE as u32']]}]
+      - Let: [c, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [v], [LANE]]}]
       - FnCall: ["vfmah_{type[0]}", [a, b, c]]
 
   - name: "vfmsh_lane{type[2]}"
@@ -10545,7 +10530,7 @@ intrinsics:
       - ["f16", float16x8_t, 'q_f16', '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
-      - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [v, 'LANE as u32']]}]
+      - Let: [c, "{type[0]}", {FnCall: ['vget{neon_type[1].lane_nox}', [v], [LANE]]}]
       - FnCall: ["vfmsh_{type[0]}", [a, b, c]]
 
   - name: "vfms_f64"
@@ -10608,7 +10593,7 @@ intrinsics:
       - [float64x2_t, float64x2_t, '1', q_laneq_f64]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[2]}']]
-      - FnCall: ["vfms{neon_type[0].no}", [a, b, {FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]}]]
+      - FnCall: ["vfms{neon_type[0].no}", [a, b, {FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]}]]
 
   - name: "vfms_lane_f64"
     doc: "Floating-point fused multiply-subtract to accumulator"
@@ -10624,7 +10609,7 @@ intrinsics:
       - float64x1_t
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - FnCall: ["vfms{neon_type.no}", [a, b, {FnCall: ["vdup{neon_type.N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]}]]
+      - FnCall: ["vfms{neon_type.no}", [a, b, {FnCall: ["vdup{neon_type.N}", [{FnCall: ['vget{neon_type.lane_nox}', [c], [LANE]]}]]}]]
 
   - name: "vfms_laneq_f64"
     doc: "Floating-point fused multiply-subtract to accumulator"
@@ -10640,7 +10625,7 @@ intrinsics:
       - [float64x1_t, float64x2_t]
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
-      - FnCall: ["vfms{neon_type[0].no}", [a, b, {FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]}]]
+      - FnCall: ["vfms{neon_type[0].no}", [a, b, {FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]}]]
 
   - name: "vfmsq_lane_f64"
     doc: "Floating-point fused multiply-subtract to accumulator"
@@ -10656,7 +10641,7 @@ intrinsics:
       - [float64x2_t, float64x1_t]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - FnCall: ["vfms{neon_type[0].no}", [a, b, {FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]}]]
+      - FnCall: ["vfms{neon_type[0].no}", [a, b, {FnCall: ["vdup{neon_type[0].N}", [{FnCall: ['vget{neon_type[1].lane_nox}', [c], [LANE]]}]]}]]
 
   - name: "vfms{type[2]}"
     doc: "Floating-point fused multiply-subtract to accumulator"
@@ -10724,11 +10709,11 @@ intrinsics:
       - ["f64", "u64", "d_f64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vceqz_{type[0]}"
                 - - FnCall: ["vdup_n_{type[0]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vceqz{type[2]}"
     doc: "Floating-point compare bitwise equal to zero"
@@ -10744,11 +10729,11 @@ intrinsics:
       - ["f16", "u16", "h_f16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vceqz_{type[0]}"
                 - - FnCall: ["vdup_n_{type[0]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vceqzd_{type[2]}"
     doc: "Compare bitwise equal to zero"
@@ -10847,12 +10832,12 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcge_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - '0'
 
 
   - name: "vcge{type[0]}"
@@ -10869,12 +10854,12 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcge_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
                   - FnCall: ["vdup_n_{type[1]}", [b]]
-            - '0'
+          - - '0'
 
   - name: "vcge{neon_type[0].no}"
     doc: "Floating-point compare greater than or equal"
@@ -10991,11 +10976,11 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcgez_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
 
   - name: "vcgez{type[0]}"
@@ -11012,11 +10997,11 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcgez_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vclezd_s64"
     doc: "Compare less than or equal to zero"
@@ -11123,11 +11108,11 @@ intrinsics:
       - ["d_f64", "f64", "u64"]
     compose:
       - FnCall:
-          - "simd_extract!"
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcgtz_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vcgtz{type[0]}"
     doc: "Floating-point compare greater than zero"
@@ -11143,11 +11128,11 @@ intrinsics:
       - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
-          - "simd_extract!"
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vcgtz_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
     doc: "Floating-point convert to unsigned fixed-point, rounding toward zero"
@@ -11203,7 +11188,7 @@ intrinsics:
           - - a
             - FnCall:
                 - "transmute::<f64, _>"
-                - - FnCall: [simd_extract!, [b, 'LANE as u32']]
+                - - FnCall: ['vget{neon_type.lane_nox}', [b], [LANE]]
 
   - name: "vmulq_lane_f64"
     doc: "Floating-point multiply"
@@ -11238,7 +11223,7 @@ intrinsics:
       - ["f64", float64x1_t]
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Let: [b, '{type[0]}', {FnCall: [simd_extract!, [b, 'LANE as u32']]}]
+      - Let: [b, '{type[0]}', {FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]}]
       - Identifier: ['a * b', Symbol]
 
   - name: "vmul_laneq_f64"
@@ -11260,7 +11245,7 @@ intrinsics:
           - - a
             - FnCall:
                 - "transmute::<f64, _>"
-                - - FnCall: [simd_extract!, [b, 'LANE as u32']]
+                - - FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]
 
   - name: "vmulq_laneq_f64"
     doc: "Floating-point multiply"
@@ -11338,7 +11323,7 @@ intrinsics:
       - ["f64", float64x2_t, "d_laneq_f64", '1']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
-      - Let: [b, '{type[0]}', {FnCall: [simd_extract!, [b, 'LANE as u32']]}]
+      - Let: [b, '{type[0]}', {FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]}]
       - Identifier: ['a * b', Symbol]
 
 
@@ -11359,7 +11344,7 @@ intrinsics:
       - ["f16", float16x8_t, "h_laneq_f16", '3']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
-      - Let: [b, '{type[0]}', {FnCall: [simd_extract!, [b, 'LANE as u32']]}]
+      - Let: [b, '{type[0]}', {FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]}]
       - Identifier: ['a * b', Symbol]
 
 
@@ -11481,12 +11466,12 @@ intrinsics:
       - ["f64", "u64", 'd_f64']
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vclt_{type[0]}"
                 - - FnCall: ["vdup_n_{type[0]}", [a]]
                   - FnCall: ["vdup_n_{type[0]}", [b]]
-            - '0'
+          - - '0'
 
 
   - name: "vclt{type[2]}"
@@ -11503,12 +11488,12 @@ intrinsics:
       - ["f16", "u16", 'h_f16']
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vclt_{type[0]}"
                 - - FnCall: ["vdup_n_{type[0]}", [a]]
                   - FnCall: ["vdup_n_{type[0]}", [b]]
-            - '0'
+          - - '0'
 
   - name: "vabdl_high{neon_type[0].noq}"
     doc: Unsigned Absolute difference Long
@@ -11748,7 +11733,7 @@ intrinsics:
           - - a
             - FnCall:
                 - "vdup{neon_type[0].N}"
-                - - FnCall: [simd_extract!, [b, 'LANE as u32']]
+                - - FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]
 
   - name: "vqabs{type[2]}"
     doc: "Signed saturating absolute value"
@@ -11763,9 +11748,9 @@ intrinsics:
       - ["i16", "s16", 'h_s16']
     compose:
       - FnCall:
-          - "simd_extract!"
+          - 'vget_lane_{type[0]}'
           - - FnCall: ["vqabs_{type[1]}", [{FnCall: ["vdup_n_{type[1]}", [a]]}]]
-            - '0'
+          - - '0'
 
   - name: "vqabs{type[1]}"
     doc: "Signed saturating absolute value"
@@ -11957,11 +11942,11 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[2]}'
           - - FnCall:
                 - "vqshlu_n_{type[4]}::<N>"
                 - - FnCall: ["vdup_n_{type[4]}", [a]]
-            - '0'
+          - - '0'
 
   - name: "vcvta{neon_type[1].no}_{neon_type[0]}"
     doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to away"

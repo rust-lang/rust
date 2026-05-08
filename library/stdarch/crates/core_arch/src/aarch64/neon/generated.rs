@@ -204,7 +204,7 @@ pub fn vabdq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fabd))]
 pub fn vabdd_f64(a: f64, b: f64) -> f64 {
-    unsafe { simd_extract!(vabd_f64(vdup_n_f64(a), vdup_n_f64(b)), 0) }
+    vget_lane_f64::<0>(vabd_f64(vdup_n_f64(a), vdup_n_f64(b)))
 }
 #[doc = "Floating-point absolute difference"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabds_f32)"]
@@ -213,7 +213,7 @@ pub fn vabdd_f64(a: f64, b: f64) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(fabd))]
 pub fn vabds_f32(a: f32, b: f32) -> f32 {
-    unsafe { simd_extract!(vabd_f32(vdup_n_f32(a), vdup_n_f32(b)), 0) }
+    vget_lane_f32::<0>(vabd_f32(vdup_n_f32(a), vdup_n_f32(b)))
 }
 #[doc = "Floating-point absolute difference"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdh_f16)"]
@@ -223,7 +223,7 @@ pub fn vabds_f32(a: f32, b: f32) -> f32 {
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(fabd))]
 pub fn vabdh_f16(a: f16, b: f16) -> f16 {
-    unsafe { simd_extract!(vabd_f16(vdup_n_f16(a), vdup_n_f16(b)), 0) }
+    vget_lane_f16::<0>(vabd_f16(vdup_n_f16(a), vdup_n_f16(b)))
 }
 #[doc = "Signed Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_high_s16)"]
@@ -1539,7 +1539,7 @@ pub fn vceqq_p64(a: poly64x2_t, b: poly64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vceqd_f64(a: f64, b: f64) -> u64 {
-    unsafe { simd_extract!(vceq_f64(vdup_n_f64(a), vdup_n_f64(b)), 0) }
+    vget_lane_u64::<0>(vceq_f64(vdup_n_f64(a), vdup_n_f64(b)))
 }
 #[doc = "Floating-point compare equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqs_f32)"]
@@ -1548,7 +1548,7 @@ pub fn vceqd_f64(a: f64, b: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vceqs_f32(a: f32, b: f32) -> u32 {
-    unsafe { simd_extract!(vceq_f32(vdup_n_f32(a), vdup_n_f32(b)), 0) }
+    vget_lane_u32::<0>(vceq_f32(vdup_n_f32(a), vdup_n_f32(b)))
 }
 #[doc = "Compare bitwise equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqd_s64)"]
@@ -1576,7 +1576,7 @@ pub fn vceqd_u64(a: u64, b: u64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqh_f16(a: f16, b: f16) -> u16 {
-    unsafe { simd_extract!(vceq_f16(vdup_n_f16(a), vdup_n_f16(b)), 0) }
+    vget_lane_u16::<0>(vceq_f16(vdup_n_f16(a), vdup_n_f16(b)))
 }
 #[doc = "Floating-point compare bitwise equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqz_f16)"]
@@ -1866,7 +1866,7 @@ pub fn vceqzd_u64(a: u64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqzh_f16(a: f16) -> u16 {
-    unsafe { simd_extract!(vceqz_f16(vdup_n_f16(a)), 0) }
+    vget_lane_u16::<0>(vceqz_f16(vdup_n_f16(a)))
 }
 #[doc = "Floating-point compare bitwise equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqzs_f32)"]
@@ -1875,7 +1875,7 @@ pub fn vceqzh_f16(a: f16) -> u16 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vceqzs_f32(a: f32) -> u32 {
-    unsafe { simd_extract!(vceqz_f32(vdup_n_f32(a)), 0) }
+    vget_lane_u32::<0>(vceqz_f32(vdup_n_f32(a)))
 }
 #[doc = "Floating-point compare bitwise equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqzd_f64)"]
@@ -1884,7 +1884,7 @@ pub fn vceqzs_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vceqzd_f64(a: f64) -> u64 {
-    unsafe { simd_extract!(vceqz_f64(vdup_n_f64(a)), 0) }
+    vget_lane_u64::<0>(vceqz_f64(vdup_n_f64(a)))
 }
 #[doc = "Floating-point compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_f64)"]
@@ -1947,7 +1947,7 @@ pub fn vcgeq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcged_f64(a: f64, b: f64) -> u64 {
-    unsafe { simd_extract!(vcge_f64(vdup_n_f64(a), vdup_n_f64(b)), 0) }
+    vget_lane_u64::<0>(vcge_f64(vdup_n_f64(a), vdup_n_f64(b)))
 }
 #[doc = "Floating-point compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcges_f32)"]
@@ -1956,7 +1956,7 @@ pub fn vcged_f64(a: f64, b: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcges_f32(a: f32, b: f32) -> u32 {
-    unsafe { simd_extract!(vcge_f32(vdup_n_f32(a), vdup_n_f32(b)), 0) }
+    vget_lane_u32::<0>(vcge_f32(vdup_n_f32(a), vdup_n_f32(b)))
 }
 #[doc = "Compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcged_s64)"]
@@ -1984,7 +1984,7 @@ pub fn vcged_u64(a: u64, b: u64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgeh_f16(a: f16, b: f16) -> u16 {
-    unsafe { simd_extract!(vcge_f16(vdup_n_f16(a), vdup_n_f16(b)), 0) }
+    vget_lane_u16::<0>(vcge_f16(vdup_n_f16(a), vdup_n_f16(b)))
 }
 #[doc = "Floating-point compare greater than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgez_f32)"]
@@ -2113,7 +2113,7 @@ pub fn vcgezq_s64(a: int64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcgezd_f64(a: f64) -> u64 {
-    unsafe { simd_extract!(vcgez_f64(vdup_n_f64(a)), 0) }
+    vget_lane_u64::<0>(vcgez_f64(vdup_n_f64(a)))
 }
 #[doc = "Floating-point compare greater than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezs_f32)"]
@@ -2122,7 +2122,7 @@ pub fn vcgezd_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcgezs_f32(a: f32) -> u32 {
-    unsafe { simd_extract!(vcgez_f32(vdup_n_f32(a)), 0) }
+    vget_lane_u32::<0>(vcgez_f32(vdup_n_f32(a)))
 }
 #[doc = "Compare signed greater than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezd_s64)"]
@@ -2141,7 +2141,7 @@ pub fn vcgezd_s64(a: i64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgezh_f16(a: f16) -> u16 {
-    unsafe { simd_extract!(vcgez_f16(vdup_n_f16(a)), 0) }
+    vget_lane_u16::<0>(vcgez_f16(vdup_n_f16(a)))
 }
 #[doc = "Floating-point compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_f64)"]
@@ -2204,7 +2204,7 @@ pub fn vcgtq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcgtd_f64(a: f64, b: f64) -> u64 {
-    unsafe { simd_extract!(vcgt_f64(vdup_n_f64(a), vdup_n_f64(b)), 0) }
+    vget_lane_u64::<0>(vcgt_f64(vdup_n_f64(a), vdup_n_f64(b)))
 }
 #[doc = "Floating-point compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgts_f32)"]
@@ -2213,7 +2213,7 @@ pub fn vcgtd_f64(a: f64, b: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcgts_f32(a: f32, b: f32) -> u32 {
-    unsafe { simd_extract!(vcgt_f32(vdup_n_f32(a), vdup_n_f32(b)), 0) }
+    vget_lane_u32::<0>(vcgt_f32(vdup_n_f32(a), vdup_n_f32(b)))
 }
 #[doc = "Compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtd_s64)"]
@@ -2241,7 +2241,7 @@ pub fn vcgtd_u64(a: u64, b: u64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgth_f16(a: f16, b: f16) -> u16 {
-    unsafe { simd_extract!(vcgt_f16(vdup_n_f16(a), vdup_n_f16(b)), 0) }
+    vget_lane_u16::<0>(vcgt_f16(vdup_n_f16(a), vdup_n_f16(b)))
 }
 #[doc = "Floating-point compare greater than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtz_f32)"]
@@ -2370,7 +2370,7 @@ pub fn vcgtzq_s64(a: int64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcgtzd_f64(a: f64) -> u64 {
-    unsafe { simd_extract!(vcgtz_f64(vdup_n_f64(a)), 0) }
+    vget_lane_u64::<0>(vcgtz_f64(vdup_n_f64(a)))
 }
 #[doc = "Floating-point compare greater than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtzs_f32)"]
@@ -2379,7 +2379,7 @@ pub fn vcgtzd_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcgtzs_f32(a: f32) -> u32 {
-    unsafe { simd_extract!(vcgtz_f32(vdup_n_f32(a)), 0) }
+    vget_lane_u32::<0>(vcgtz_f32(vdup_n_f32(a)))
 }
 #[doc = "Compare signed greater than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtzd_s64)"]
@@ -2398,7 +2398,7 @@ pub fn vcgtzd_s64(a: i64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgtzh_f16(a: f16) -> u16 {
-    unsafe { simd_extract!(vcgtz_f16(vdup_n_f16(a)), 0) }
+    vget_lane_u16::<0>(vcgtz_f16(vdup_n_f16(a)))
 }
 #[doc = "Floating-point compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_f64)"]
@@ -2461,7 +2461,7 @@ pub fn vcleq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcled_f64(a: f64, b: f64) -> u64 {
-    unsafe { simd_extract!(vcle_f64(vdup_n_f64(a), vdup_n_f64(b)), 0) }
+    vget_lane_u64::<0>(vcle_f64(vdup_n_f64(a), vdup_n_f64(b)))
 }
 #[doc = "Floating-point compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcles_f32)"]
@@ -2470,7 +2470,7 @@ pub fn vcled_f64(a: f64, b: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcles_f32(a: f32, b: f32) -> u32 {
-    unsafe { simd_extract!(vcle_f32(vdup_n_f32(a), vdup_n_f32(b)), 0) }
+    vget_lane_u32::<0>(vcle_f32(vdup_n_f32(a), vdup_n_f32(b)))
 }
 #[doc = "Compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcled_u64)"]
@@ -2498,7 +2498,7 @@ pub fn vcled_s64(a: i64, b: i64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcleh_f16(a: f16, b: f16) -> u16 {
-    unsafe { simd_extract!(vcle_f16(vdup_n_f16(a), vdup_n_f16(b)), 0) }
+    vget_lane_u16::<0>(vcle_f16(vdup_n_f16(a), vdup_n_f16(b)))
 }
 #[doc = "Floating-point compare less than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclez_f32)"]
@@ -2627,7 +2627,7 @@ pub fn vclezq_s64(a: int64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vclezd_f64(a: f64) -> u64 {
-    unsafe { simd_extract!(vclez_f64(vdup_n_f64(a)), 0) }
+    vget_lane_u64::<0>(vclez_f64(vdup_n_f64(a)))
 }
 #[doc = "Floating-point compare less than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezs_f32)"]
@@ -2636,7 +2636,7 @@ pub fn vclezd_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vclezs_f32(a: f32) -> u32 {
-    unsafe { simd_extract!(vclez_f32(vdup_n_f32(a)), 0) }
+    vget_lane_u32::<0>(vclez_f32(vdup_n_f32(a)))
 }
 #[doc = "Compare less than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezd_s64)"]
@@ -2655,7 +2655,7 @@ pub fn vclezd_s64(a: i64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vclezh_f16(a: f16) -> u16 {
-    unsafe { simd_extract!(vclez_f16(vdup_n_f16(a)), 0) }
+    vget_lane_u16::<0>(vclez_f16(vdup_n_f16(a)))
 }
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_f64)"]
@@ -2737,7 +2737,7 @@ pub fn vcltd_s64(a: i64, b: i64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vclth_f16(a: f16, b: f16) -> u16 {
-    unsafe { simd_extract!(vclt_f16(vdup_n_f16(a), vdup_n_f16(b)), 0) }
+    vget_lane_u16::<0>(vclt_f16(vdup_n_f16(a), vdup_n_f16(b)))
 }
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclts_f32)"]
@@ -2746,7 +2746,7 @@ pub fn vclth_f16(a: f16, b: f16) -> u16 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vclts_f32(a: f32, b: f32) -> u32 {
-    unsafe { simd_extract!(vclt_f32(vdup_n_f32(a), vdup_n_f32(b)), 0) }
+    vget_lane_u32::<0>(vclt_f32(vdup_n_f32(a), vdup_n_f32(b)))
 }
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltd_f64)"]
@@ -2755,7 +2755,7 @@ pub fn vclts_f32(a: f32, b: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcltd_f64(a: f64, b: f64) -> u64 {
-    unsafe { simd_extract!(vclt_f64(vdup_n_f64(a), vdup_n_f64(b)), 0) }
+    vget_lane_u64::<0>(vclt_f64(vdup_n_f64(a), vdup_n_f64(b)))
 }
 #[doc = "Floating-point compare less than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltz_f32)"]
@@ -2884,7 +2884,7 @@ pub fn vcltzq_s64(a: int64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcltzd_f64(a: f64) -> u64 {
-    unsafe { simd_extract!(vcltz_f64(vdup_n_f64(a)), 0) }
+    vget_lane_u64::<0>(vcltz_f64(vdup_n_f64(a)))
 }
 #[doc = "Floating-point compare less than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltzs_f32)"]
@@ -2893,7 +2893,7 @@ pub fn vcltzd_f64(a: f64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcltzs_f32(a: f32) -> u32 {
-    unsafe { simd_extract!(vcltz_f32(vdup_n_f32(a)), 0) }
+    vget_lane_u32::<0>(vcltz_f32(vdup_n_f32(a)))
 }
 #[doc = "Compare less than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltzd_s64)"]
@@ -2912,7 +2912,7 @@ pub fn vcltzd_s64(a: i64) -> u64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcltzh_f16(a: f16) -> u16 {
-    unsafe { simd_extract!(vcltz_f16(vdup_n_f16(a)), 0) }
+    vget_lane_u16::<0>(vcltz_f16(vdup_n_f16(a)))
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_f16)"]
@@ -4662,7 +4662,7 @@ pub fn vcopy_laneq_f64<const LANE1: i32, const LANE2: i32>(
 ) -> float64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe { transmute::<f64, _>(simd_extract!(b, LANE2 as u32)) }
+    unsafe { transmute(vgetq_lane_f64::<LANE2>(b)) }
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s64)"]
@@ -4677,7 +4677,7 @@ pub fn vcopy_laneq_s64<const LANE1: i32, const LANE2: i32>(
 ) -> int64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe { transmute::<i64, _>(simd_extract!(b, LANE2 as u32)) }
+    unsafe { transmute(vgetq_lane_s64::<LANE2>(b)) }
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u64)"]
@@ -4692,7 +4692,7 @@ pub fn vcopy_laneq_u64<const LANE1: i32, const LANE2: i32>(
 ) -> uint64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe { transmute::<u64, _>(simd_extract!(b, LANE2 as u32)) }
+    unsafe { transmute(vgetq_lane_u64::<LANE2>(b)) }
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_p64)"]
@@ -4707,7 +4707,7 @@ pub fn vcopy_laneq_p64<const LANE1: i32, const LANE2: i32>(
 ) -> poly64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    unsafe { transmute::<u64, _>(simd_extract!(b, LANE2 as u32)) }
+    unsafe { transmute(vgetq_lane_p64::<LANE2>(b)) }
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_f32)"]
@@ -9763,7 +9763,7 @@ pub fn vcvtx_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
 #[cfg_attr(test, assert_instr(fcvtxn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vcvtxd_f32_f64(a: f64) -> f32 {
-    unsafe { simd_extract!(vcvtx_f32_f64(vdupq_n_f64(a)), 0) }
+    vget_lane_f32::<0>(vcvtx_f32_f64(vdupq_n_f64(a)))
 }
 #[doc = "Divide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdiv_f16)"]
@@ -9862,7 +9862,7 @@ pub fn vdup_lane_p64<const N: i32>(a: poly64x1_t) -> poly64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdup_laneq_f64<const N: i32>(a: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe { transmute::<f64, _>(simd_extract!(a, N as u32)) }
+    unsafe { transmute(vgetq_lane_f64::<N>(a)) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_p64)"]
@@ -9873,7 +9873,7 @@ pub fn vdup_laneq_f64<const N: i32>(a: float64x2_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdup_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x1_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe { transmute::<u64, _>(simd_extract!(a, N as u32)) }
+    unsafe { transmute(vgetq_lane_p64::<N>(a)) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_lane_s8)"]
@@ -9884,7 +9884,7 @@ pub fn vdup_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupb_lane_s8<const N: i32>(a: int8x8_t) -> i8 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_s8::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_laneq_s16)"]
@@ -9895,7 +9895,7 @@ pub fn vdupb_lane_s8<const N: i32>(a: int8x8_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vduph_laneq_s16<const N: i32>(a: int16x8_t) -> i16 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_s16::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_lane_u8)"]
@@ -9906,7 +9906,7 @@ pub fn vduph_laneq_s16<const N: i32>(a: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupb_lane_u8<const N: i32>(a: uint8x8_t) -> u8 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_u8::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_laneq_u16)"]
@@ -9917,7 +9917,7 @@ pub fn vdupb_lane_u8<const N: i32>(a: uint8x8_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vduph_laneq_u16<const N: i32>(a: uint16x8_t) -> u16 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_u16::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_lane_p8)"]
@@ -9928,7 +9928,7 @@ pub fn vduph_laneq_u16<const N: i32>(a: uint16x8_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupb_lane_p8<const N: i32>(a: poly8x8_t) -> p8 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_p8::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_laneq_p16)"]
@@ -9939,7 +9939,7 @@ pub fn vdupb_lane_p8<const N: i32>(a: poly8x8_t) -> p8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vduph_laneq_p16<const N: i32>(a: poly16x8_t) -> p16 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_p16::<N>(a)
 }
 #[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_laneq_s8)"]
@@ -9950,7 +9950,7 @@ pub fn vduph_laneq_p16<const N: i32>(a: poly16x8_t) -> p16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupb_laneq_s8<const N: i32>(a: int8x16_t) -> i8 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_s8::<N>(a)
 }
 #[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_laneq_u8)"]
@@ -9961,7 +9961,7 @@ pub fn vdupb_laneq_s8<const N: i32>(a: int8x16_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupb_laneq_u8<const N: i32>(a: uint8x16_t) -> u8 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_u8::<N>(a)
 }
 #[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_laneq_p8)"]
@@ -9972,7 +9972,7 @@ pub fn vdupb_laneq_u8<const N: i32>(a: uint8x16_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupb_laneq_p8<const N: i32>(a: poly8x16_t) -> p8 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_p8::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupd_lane_f64)"]
@@ -9983,7 +9983,7 @@ pub fn vdupb_laneq_p8<const N: i32>(a: poly8x16_t) -> p8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupd_lane_f64<const N: i32>(a: float64x1_t) -> f64 {
     static_assert!(N == 0);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_f64::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupd_lane_s64)"]
@@ -9994,7 +9994,7 @@ pub fn vdupd_lane_f64<const N: i32>(a: float64x1_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupd_lane_s64<const N: i32>(a: int64x1_t) -> i64 {
     static_assert!(N == 0);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_s64::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupd_lane_u64)"]
@@ -10005,7 +10005,7 @@ pub fn vdupd_lane_s64<const N: i32>(a: int64x1_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupd_lane_u64<const N: i32>(a: uint64x1_t) -> u64 {
     static_assert!(N == 0);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_u64::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_lane_f16)"]
@@ -10017,7 +10017,7 @@ pub fn vdupd_lane_u64<const N: i32>(a: uint64x1_t) -> u64 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vduph_lane_f16<const N: i32>(a: float16x4_t) -> f16 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_f16::<N>(a)
 }
 #[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_laneq_f16)"]
@@ -10029,7 +10029,7 @@ pub fn vduph_lane_f16<const N: i32>(a: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vduph_laneq_f16<const N: i32>(a: float16x8_t) -> f16 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_f16::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_f64)"]
@@ -10084,7 +10084,7 @@ pub fn vdupq_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdups_lane_f32<const N: i32>(a: float32x2_t) -> f32 {
     static_assert_uimm_bits!(N, 1);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_f32::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupd_laneq_f64)"]
@@ -10095,7 +10095,7 @@ pub fn vdups_lane_f32<const N: i32>(a: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupd_laneq_f64<const N: i32>(a: float64x2_t) -> f64 {
     static_assert_uimm_bits!(N, 1);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_f64::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdups_lane_s32)"]
@@ -10106,7 +10106,7 @@ pub fn vdupd_laneq_f64<const N: i32>(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdups_lane_s32<const N: i32>(a: int32x2_t) -> i32 {
     static_assert_uimm_bits!(N, 1);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_s32::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupd_laneq_s64)"]
@@ -10117,7 +10117,7 @@ pub fn vdups_lane_s32<const N: i32>(a: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupd_laneq_s64<const N: i32>(a: int64x2_t) -> i64 {
     static_assert_uimm_bits!(N, 1);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_s64::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdups_lane_u32)"]
@@ -10128,7 +10128,7 @@ pub fn vdupd_laneq_s64<const N: i32>(a: int64x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdups_lane_u32<const N: i32>(a: uint32x2_t) -> u32 {
     static_assert_uimm_bits!(N, 1);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_u32::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupd_laneq_u64)"]
@@ -10139,7 +10139,7 @@ pub fn vdups_lane_u32<const N: i32>(a: uint32x2_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdupd_laneq_u64<const N: i32>(a: uint64x2_t) -> u64 {
     static_assert_uimm_bits!(N, 1);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_u64::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdups_laneq_f32)"]
@@ -10150,7 +10150,7 @@ pub fn vdupd_laneq_u64<const N: i32>(a: uint64x2_t) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdups_laneq_f32<const N: i32>(a: float32x4_t) -> f32 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_f32::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_lane_s16)"]
@@ -10161,7 +10161,7 @@ pub fn vdups_laneq_f32<const N: i32>(a: float32x4_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vduph_lane_s16<const N: i32>(a: int16x4_t) -> i16 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_s16::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdups_laneq_s32)"]
@@ -10172,7 +10172,7 @@ pub fn vduph_lane_s16<const N: i32>(a: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdups_laneq_s32<const N: i32>(a: int32x4_t) -> i32 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_s32::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_lane_u16)"]
@@ -10183,7 +10183,7 @@ pub fn vdups_laneq_s32<const N: i32>(a: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vduph_lane_u16<const N: i32>(a: uint16x4_t) -> u16 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_u16::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdups_laneq_u32)"]
@@ -10194,7 +10194,7 @@ pub fn vduph_lane_u16<const N: i32>(a: uint16x4_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vdups_laneq_u32<const N: i32>(a: uint32x4_t) -> u32 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vgetq_lane_u32::<N>(a)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_lane_p16)"]
@@ -10205,7 +10205,7 @@ pub fn vdups_laneq_u32<const N: i32>(a: uint32x4_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vduph_lane_p16<const N: i32>(a: poly16x4_t) -> p16 {
     static_assert_uimm_bits!(N, 2);
-    unsafe { simd_extract!(a, N as u32) }
+    vget_lane_p16::<N>(a)
 }
 #[doc = "Three-way exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor3q_s8)"]
@@ -10392,7 +10392,7 @@ pub fn vfma_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfma_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32))) }
+    vfma_f16(a, b, vdup_n_f16(vget_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_laneq_f16)"]
@@ -10408,7 +10408,7 @@ pub fn vfma_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfma_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32))) }
+    vfma_f16(a, b, vdup_n_f16(vgetq_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_lane_f16)"]
@@ -10424,7 +10424,7 @@ pub fn vfmaq_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmaq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32))) }
+    vfmaq_f16(a, b, vdupq_n_f16(vget_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_laneq_f16)"]
@@ -10440,7 +10440,7 @@ pub fn vfmaq_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmaq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32))) }
+    vfmaq_f16(a, b, vdupq_n_f16(vgetq_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_lane_f32)"]
@@ -10455,7 +10455,7 @@ pub fn vfma_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfma_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32))) }
+    vfma_f32(a, b, vdup_n_f32(vget_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_laneq_f32)"]
@@ -10470,7 +10470,7 @@ pub fn vfma_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfma_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32))) }
+    vfma_f32(a, b, vdup_n_f32(vgetq_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_lane_f32)"]
@@ -10485,7 +10485,7 @@ pub fn vfmaq_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfmaq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32))) }
+    vfmaq_f32(a, b, vdupq_n_f32(vget_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_laneq_f32)"]
@@ -10500,7 +10500,7 @@ pub fn vfmaq_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmaq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32))) }
+    vfmaq_f32(a, b, vdupq_n_f32(vgetq_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_laneq_f64)"]
@@ -10515,7 +10515,7 @@ pub fn vfmaq_laneq_f64<const LANE: i32>(
     c: float64x2_t,
 ) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfmaq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32))) }
+    vfmaq_f64(a, b, vdupq_n_f64(vgetq_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_lane_f64)"]
@@ -10530,7 +10530,7 @@ pub fn vfma_lane_f64<const LANE: i32>(
     c: float64x1_t,
 ) -> float64x1_t {
     static_assert!(LANE == 0);
-    unsafe { vfma_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32))) }
+    vfma_f64(a, b, vdup_n_f64(vget_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_laneq_f64)"]
@@ -10545,7 +10545,7 @@ pub fn vfma_laneq_f64<const LANE: i32>(
     c: float64x2_t,
 ) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfma_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32))) }
+    vfma_f64(a, b, vdup_n_f64(vgetq_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused Multiply-Subtract from accumulator."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_n_f16)"]
@@ -10585,10 +10585,8 @@ pub fn vfma_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: f64 = simd_extract!(c, LANE as u32);
-        fmaf64(b, c, a)
-    }
+    let c: f64 = vget_lane_f64::<LANE>(c);
+    fmaf64(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_f16)"]
@@ -10610,10 +10608,8 @@ pub fn vfmah_f16(a: f16, b: f16, c: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmah_lane_f16<const LANE: i32>(a: f16, b: f16, v: float16x4_t) -> f16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: f16 = simd_extract!(v, LANE as u32);
-        vfmah_f16(a, b, c)
-    }
+    let c: f16 = vget_lane_f16::<LANE>(v);
+    vfmah_f16(a, b, c)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_laneq_f16)"]
@@ -10625,10 +10621,8 @@ pub fn vfmah_lane_f16<const LANE: i32>(a: f16, b: f16, v: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmah_laneq_f16<const LANE: i32>(a: f16, b: f16, v: float16x8_t) -> f16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let c: f16 = simd_extract!(v, LANE as u32);
-        vfmah_f16(a, b, c)
-    }
+    let c: f16 = vgetq_lane_f16::<LANE>(v);
+    vfmah_f16(a, b, c)
 }
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_f64)"]
@@ -10652,7 +10646,7 @@ pub fn vfmaq_lane_f64<const LANE: i32>(
     c: float64x1_t,
 ) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { vfmaq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32))) }
+    vfmaq_f64(a, b, vdupq_n_f64(vget_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_n_f64)"]
@@ -10672,10 +10666,8 @@ pub fn vfmaq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: f32 = simd_extract!(c, LANE as u32);
-        fmaf32(b, c, a)
-    }
+    let c: f32 = vget_lane_f32::<LANE>(c);
+    fmaf32(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmas_laneq_f32)"]
@@ -10686,10 +10678,8 @@ pub fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: f32 = simd_extract!(c, LANE as u32);
-        fmaf32(b, c, a)
-    }
+    let c: f32 = vgetq_lane_f32::<LANE>(c);
+    fmaf32(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmad_laneq_f64)"]
@@ -10700,10 +10690,8 @@ pub fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: f64 = simd_extract!(c, LANE as u32);
-        fmaf64(b, c, a)
-    }
+    let c: f64 = vgetq_lane_f64::<LANE>(c);
+    fmaf64(b, c, a)
 }
 #[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_high_f16)"]
@@ -11147,7 +11135,7 @@ pub fn vfms_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfms_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32))) }
+    vfms_f16(a, b, vdup_n_f16(vget_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_laneq_f16)"]
@@ -11163,7 +11151,7 @@ pub fn vfms_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfms_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32))) }
+    vfms_f16(a, b, vdup_n_f16(vgetq_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_lane_f16)"]
@@ -11179,7 +11167,7 @@ pub fn vfmsq_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmsq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32))) }
+    vfmsq_f16(a, b, vdupq_n_f16(vget_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_laneq_f16)"]
@@ -11195,7 +11183,7 @@ pub fn vfmsq_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vfmsq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32))) }
+    vfmsq_f16(a, b, vdupq_n_f16(vgetq_lane_f16::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_lane_f32)"]
@@ -11210,7 +11198,7 @@ pub fn vfms_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfms_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32))) }
+    vfms_f32(a, b, vdup_n_f32(vget_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_laneq_f32)"]
@@ -11225,7 +11213,7 @@ pub fn vfms_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfms_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32))) }
+    vfms_f32(a, b, vdup_n_f32(vgetq_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_lane_f32)"]
@@ -11240,7 +11228,7 @@ pub fn vfmsq_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfmsq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32))) }
+    vfmsq_f32(a, b, vdupq_n_f32(vget_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_laneq_f32)"]
@@ -11255,7 +11243,7 @@ pub fn vfmsq_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vfmsq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32))) }
+    vfmsq_f32(a, b, vdupq_n_f32(vgetq_lane_f32::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_laneq_f64)"]
@@ -11270,7 +11258,7 @@ pub fn vfmsq_laneq_f64<const LANE: i32>(
     c: float64x2_t,
 ) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfmsq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32))) }
+    vfmsq_f64(a, b, vdupq_n_f64(vgetq_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_lane_f64)"]
@@ -11285,7 +11273,7 @@ pub fn vfms_lane_f64<const LANE: i32>(
     c: float64x1_t,
 ) -> float64x1_t {
     static_assert!(LANE == 0);
-    unsafe { vfms_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32))) }
+    vfms_f64(a, b, vdup_n_f64(vget_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_laneq_f64)"]
@@ -11300,7 +11288,7 @@ pub fn vfms_laneq_f64<const LANE: i32>(
     c: float64x2_t,
 ) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vfms_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32))) }
+    vfms_f64(a, b, vdup_n_f64(vgetq_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused Multiply-Subtract from accumulator."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_n_f16)"]
@@ -11351,10 +11339,8 @@ pub fn vfmsh_f16(a: f16, b: f16, c: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsh_lane_f16<const LANE: i32>(a: f16, b: f16, v: float16x4_t) -> f16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: f16 = simd_extract!(v, LANE as u32);
-        vfmsh_f16(a, b, c)
-    }
+    let c: f16 = vget_lane_f16::<LANE>(v);
+    vfmsh_f16(a, b, c)
 }
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsh_laneq_f16)"]
@@ -11366,10 +11352,8 @@ pub fn vfmsh_lane_f16<const LANE: i32>(a: f16, b: f16, v: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsh_laneq_f16<const LANE: i32>(a: f16, b: f16, v: float16x8_t) -> f16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let c: f16 = simd_extract!(v, LANE as u32);
-        vfmsh_f16(a, b, c)
-    }
+    let c: f16 = vgetq_lane_f16::<LANE>(v);
+    vfmsh_f16(a, b, c)
 }
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_f64)"]
@@ -11396,7 +11380,7 @@ pub fn vfmsq_lane_f64<const LANE: i32>(
     c: float64x1_t,
 ) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { vfmsq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32))) }
+    vfmsq_f64(a, b, vdupq_n_f64(vget_lane_f64::<LANE>(c)))
 }
 #[doc = "Floating-point fused Multiply-subtract to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_n_f64)"]
@@ -15152,7 +15136,7 @@ pub fn vmulq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    unsafe { simd_mul(a, transmute::<f64, _>(simd_extract!(b, LANE as u32))) }
+    unsafe { simd_mul(a, transmute::<f64, _>(vget_lane_f64::<LANE>(b))) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f16)"]
@@ -15187,7 +15171,7 @@ pub fn vmulq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmul_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { simd_mul(a, transmute::<f64, _>(simd_extract!(b, LANE as u32))) }
+    unsafe { simd_mul(a, transmute::<f64, _>(vgetq_lane_f64::<LANE>(b))) }
 }
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_f64)"]
@@ -15216,10 +15200,8 @@ pub fn vmulq_n_f64(a: float64x2_t, b: f64) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmuld_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
-    unsafe {
-        let b: f64 = simd_extract!(b, LANE as u32);
-        a * b
-    }
+    let b: f64 = vget_lane_f64::<LANE>(b);
+    a * b
 }
 #[doc = "Add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulh_f16)"]
@@ -15241,10 +15223,8 @@ pub fn vmulh_f16(a: f16, b: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulh_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> f16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let b: f16 = simd_extract!(b, LANE as u32);
-        a * b
-    }
+    let b: f16 = vget_lane_f16::<LANE>(b);
+    a * b
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulh_laneq_f16)"]
@@ -15256,10 +15236,8 @@ pub fn vmulh_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let b: f16 = simd_extract!(b, LANE as u32);
-        a * b
-    }
+    let b: f16 = vgetq_lane_f16::<LANE>(b);
+    a * b
 }
 #[doc = "Multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_lane_s16)"]
@@ -15392,7 +15370,7 @@ pub fn vmull_high_n_u32(a: uint32x4_t, b: u32) -> uint64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(pmull2))]
 pub fn vmull_high_p64(a: poly64x2_t, b: poly64x2_t) -> p128 {
-    unsafe { vmull_p64(simd_extract!(a, 1), simd_extract!(b, 1)) }
+    vmull_p64(vgetq_lane_p64::<1>(a), vgetq_lane_p64::<1>(b))
 }
 #[doc = "Polynomial multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_high_p8)"]
@@ -15532,10 +15510,8 @@ pub fn vmulq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmuls_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let b: f32 = simd_extract!(b, LANE as u32);
-        a * b
-    }
+    let b: f32 = vget_lane_f32::<LANE>(b);
+    a * b
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmuls_laneq_f32)"]
@@ -15546,10 +15522,8 @@ pub fn vmuls_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmuls_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let b: f32 = simd_extract!(b, LANE as u32);
-        a * b
-    }
+    let b: f32 = vgetq_lane_f32::<LANE>(b);
+    a * b
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmuld_laneq_f64)"]
@@ -15560,10 +15534,8 @@ pub fn vmuls_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmuld_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let b: f64 = simd_extract!(b, LANE as u32);
-        a * b
-    }
+    let b: f64 = vgetq_lane_f64::<LANE>(b);
+    a * b
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_f16)"]
@@ -15775,7 +15747,7 @@ pub fn vmulxq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> floa
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    unsafe { vmulx_f64(a, transmute::<f64, _>(simd_extract!(b, LANE as u32))) }
+    unsafe { vmulx_f64(a, transmute(vget_lane_f64::<LANE>(b))) }
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f64)"]
@@ -15786,7 +15758,7 @@ pub fn vmulx_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulx_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulx_f64(a, transmute::<f64, _>(simd_extract!(b, LANE as u32))) }
+    unsafe { vmulx_f64(a, transmute(vgetq_lane_f64::<LANE>(b))) }
 }
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_n_f16)"]
@@ -15849,7 +15821,7 @@ pub fn vmulxs_f32(a: f32, b: f32) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxd_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
-    unsafe { vmulxd_f64(a, simd_extract!(b, LANE as u32)) }
+    vmulxd_f64(a, vget_lane_f64::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxd_laneq_f64)"]
@@ -15860,7 +15832,7 @@ pub fn vmulxd_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxd_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulxd_f64(a, simd_extract!(b, LANE as u32)) }
+    vmulxd_f64(a, vgetq_lane_f64::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxs_lane_f32)"]
@@ -15871,7 +15843,7 @@ pub fn vmulxd_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxs_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vmulxs_f32(a, simd_extract!(b, LANE as u32)) }
+    vmulxs_f32(a, vget_lane_f32::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxs_laneq_f32)"]
@@ -15882,7 +15854,7 @@ pub fn vmulxs_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulxs_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulxs_f32(a, simd_extract!(b, LANE as u32)) }
+    vmulxs_f32(a, vgetq_lane_f32::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxh_f16)"]
@@ -15911,7 +15883,7 @@ pub fn vmulxh_f16(a: f16, b: f16) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxh_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> f16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vmulxh_f16(a, simd_extract!(b, LANE as u32)) }
+    vmulxh_f16(a, vget_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxh_laneq_f16)"]
@@ -15923,7 +15895,7 @@ pub fn vmulxh_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> f16 {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulxh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vmulxh_f16(a, simd_extract!(b, LANE as u32)) }
+    vmulxh_f16(a, vgetq_lane_f16::<LANE>(b))
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f64)"]
@@ -15998,11 +15970,9 @@ pub fn vnegh_f16(a: f16) -> f16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vpaddd_f64(a: float64x2_t) -> f64 {
-    unsafe {
-        let a1: f64 = simd_extract!(a, 0);
-        let a2: f64 = simd_extract!(a, 1);
-        a1 + a2
-    }
+    let a1: f64 = vgetq_lane_f64::<0>(a);
+    let a2: f64 = vgetq_lane_f64::<1>(a);
+    a1 + a2
 }
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpadds_f32)"]
@@ -16011,11 +15981,9 @@ pub fn vpaddd_f64(a: float64x2_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vpadds_f32(a: float32x2_t) -> f32 {
-    unsafe {
-        let a1: f32 = simd_extract!(a, 0);
-        let a2: f32 = simd_extract!(a, 1);
-        a1 + a2
-    }
+    let a1: f32 = vget_lane_f32::<0>(a);
+    let a2: f32 = vget_lane_f32::<1>(a);
+    a1 + a2
 }
 #[doc = "Add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddd_s64)"]
@@ -16834,7 +16802,7 @@ pub fn vqabsq_s64(a: int64x2_t) -> int64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 pub fn vqabsb_s8(a: i8) -> i8 {
-    unsafe { simd_extract!(vqabs_s8(vdup_n_s8(a)), 0) }
+    vget_lane_s8::<0>(vqabs_s8(vdup_n_s8(a)))
 }
 #[doc = "Signed saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsh_s16)"]
@@ -16843,7 +16811,7 @@ pub fn vqabsb_s8(a: i8) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(sqabs))]
 pub fn vqabsh_s16(a: i16) -> i16 {
-    unsafe { simd_extract!(vqabs_s16(vdup_n_s16(a)), 0) }
+    vget_lane_s16::<0>(vqabs_s16(vdup_n_s16(a)))
 }
 #[doc = "Signed saturating absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabss_s32)"]
@@ -16886,7 +16854,7 @@ pub fn vqabsd_s64(a: i64) -> i64 {
 pub fn vqaddb_s8(a: i8, b: i8) -> i8 {
     let a: int8x8_t = vdup_n_s8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    unsafe { simd_extract!(vqadd_s8(a, b), 0) }
+    vget_lane_s8::<0>(vqadd_s8(a, b))
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddh_s16)"]
@@ -16897,7 +16865,7 @@ pub fn vqaddb_s8(a: i8, b: i8) -> i8 {
 pub fn vqaddh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    unsafe { simd_extract!(vqadd_s16(a, b), 0) }
+    vget_lane_s16::<0>(vqadd_s16(a, b))
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddb_u8)"]
@@ -16908,7 +16876,7 @@ pub fn vqaddh_s16(a: i16, b: i16) -> i16 {
 pub fn vqaddb_u8(a: u8, b: u8) -> u8 {
     let a: uint8x8_t = vdup_n_u8(a);
     let b: uint8x8_t = vdup_n_u8(b);
-    unsafe { simd_extract!(vqadd_u8(a, b), 0) }
+    vget_lane_u8::<0>(vqadd_u8(a, b))
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddh_u16)"]
@@ -16919,7 +16887,7 @@ pub fn vqaddb_u8(a: u8, b: u8) -> u8 {
 pub fn vqaddh_u16(a: u16, b: u16) -> u16 {
     let a: uint16x4_t = vdup_n_u16(a);
     let b: uint16x4_t = vdup_n_u16(b);
-    unsafe { simd_extract!(vqadd_u16(a, b), 0) }
+    vget_lane_u16::<0>(vqadd_u16(a, b))
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadds_s32)"]
@@ -17096,7 +17064,7 @@ pub fn vqdmlal_laneq_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t)
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlalh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmlalh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlalh_s16(a, b, vget_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlalh_laneq_s16)"]
@@ -17107,7 +17075,7 @@ pub fn vqdmlalh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlalh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) -> i32 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqdmlalh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlalh_s16(a, b, vgetq_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlals_lane_s32)"]
@@ -17118,7 +17086,7 @@ pub fn vqdmlalh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) -> i32 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlals_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -> i64 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqdmlals_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlals_s32(a, b, vget_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlals_laneq_s32)"]
@@ -17129,7 +17097,7 @@ pub fn vqdmlals_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlals_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) -> i64 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmlals_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlals_s32(a, b, vgetq_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlalh_s16)"]
@@ -17139,7 +17107,7 @@ pub fn vqdmlals_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) -> i64 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlalh_s16(a: i32, b: i16, c: i16) -> i32 {
     let x: int32x4_t = vqdmull_s16(vdup_n_s16(b), vdup_n_s16(c));
-    unsafe { vqadds_s32(a, simd_extract!(x, 0)) }
+    vqadds_s32(a, vgetq_lane_s32::<0>(x))
 }
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlals_s32)"]
@@ -17262,7 +17230,7 @@ pub fn vqdmlsl_laneq_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t)
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlslh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmlslh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlslh_s16(a, b, vget_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlslh_laneq_s16)"]
@@ -17273,7 +17241,7 @@ pub fn vqdmlslh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlslh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) -> i32 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqdmlslh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlslh_s16(a, b, vgetq_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsls_lane_s32)"]
@@ -17284,7 +17252,7 @@ pub fn vqdmlslh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) -> i32 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlsls_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -> i64 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqdmlsls_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlsls_s32(a, b, vget_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsls_laneq_s32)"]
@@ -17295,7 +17263,7 @@ pub fn vqdmlsls_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlsls_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) -> i64 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmlsls_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqdmlsls_s32(a, b, vgetq_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlslh_s16)"]
@@ -17305,7 +17273,7 @@ pub fn vqdmlsls_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) -> i64 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmlslh_s16(a: i32, b: i16, c: i16) -> i32 {
     let x: int32x4_t = vqdmull_s16(vdup_n_s16(b), vdup_n_s16(c));
-    unsafe { vqsubs_s32(a, simd_extract!(x, 0)) }
+    vqsubs_s32(a, vgetq_lane_s32::<0>(x))
 }
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsls_s32)"]
@@ -17326,7 +17294,7 @@ pub fn vqdmlsls_s32(a: i64, b: i32, c: i32) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmulh_s16(a, vdup_n_s16(simd_extract!(b, LANE as u32))) }
+    vqdmulh_s16(a, vdup_n_s16(vget_lane_s16::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_lane_s16)"]
@@ -17337,7 +17305,7 @@ pub fn vqdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmulhq_s16(a, vdupq_n_s16(simd_extract!(b, LANE as u32))) }
+    vqdmulhq_s16(a, vdupq_n_s16(vget_lane_s16::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_lane_s32)"]
@@ -17348,7 +17316,7 @@ pub fn vqdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqdmulh_s32(a, vdup_n_s32(simd_extract!(b, LANE as u32))) }
+    vqdmulh_s32(a, vdup_n_s32(vget_lane_s32::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_lane_s32)"]
@@ -17359,7 +17327,7 @@ pub fn vqdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqdmulhq_s32(a, vdupq_n_s32(simd_extract!(b, LANE as u32))) }
+    vqdmulhq_s32(a, vdupq_n_s32(vget_lane_s32::<LANE>(b)))
 }
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhh_lane_s16)"]
@@ -17370,10 +17338,8 @@ pub fn vqdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulhh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i16 {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let b: i16 = simd_extract!(b, N as u32);
-        vqdmulhh_s16(a, b)
-    }
+    let b: i16 = vget_lane_s16::<N>(b);
+    vqdmulhh_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhh_laneq_s16)"]
@@ -17384,10 +17350,8 @@ pub fn vqdmulhh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulhh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i16 {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        let b: i16 = simd_extract!(b, N as u32);
-        vqdmulhh_s16(a, b)
-    }
+    let b: i16 = vgetq_lane_s16::<N>(b);
+    vqdmulhh_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhh_s16)"]
@@ -17398,7 +17362,7 @@ pub fn vqdmulhh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i16 {
 pub fn vqdmulhh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    unsafe { simd_extract!(vqdmulh_s16(a, b), 0) }
+    vget_lane_s16::<0>(vqdmulh_s16(a, b))
 }
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhs_s32)"]
@@ -17409,7 +17373,7 @@ pub fn vqdmulhh_s16(a: i16, b: i16) -> i16 {
 pub fn vqdmulhs_s32(a: i32, b: i32) -> i32 {
     let a: int32x2_t = vdup_n_s32(a);
     let b: int32x2_t = vdup_n_s32(b);
-    unsafe { simd_extract!(vqdmulh_s32(a, b), 0) }
+    vget_lane_s32::<0>(vqdmulh_s32(a, b))
 }
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhs_lane_s32)"]
@@ -17420,10 +17384,8 @@ pub fn vqdmulhs_s32(a: i32, b: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulhs_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i32 {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        let b: i32 = simd_extract!(b, N as u32);
-        vqdmulhs_s32(a, b)
-    }
+    let b: i32 = vget_lane_s32::<N>(b);
+    vqdmulhs_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhs_laneq_s32)"]
@@ -17434,10 +17396,8 @@ pub fn vqdmulhs_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulhs_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i32 {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let b: i32 = simd_extract!(b, N as u32);
-        vqdmulhs_s32(a, b)
-    }
+    let b: i32 = vgetq_lane_s32::<N>(b);
+    vqdmulhs_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_high_lane_s16)"]
@@ -17588,10 +17548,8 @@ pub fn vqdmull_laneq_s32<const N: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmullh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i32 {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let b: i16 = simd_extract!(b, N as u32);
-        vqdmullh_s16(a, b)
-    }
+    let b: i16 = vget_lane_s16::<N>(b);
+    vqdmullh_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulls_laneq_s32)"]
@@ -17602,10 +17560,8 @@ pub fn vqdmullh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulls_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i64 {
     static_assert_uimm_bits!(N, 2);
-    unsafe {
-        let b: i32 = simd_extract!(b, N as u32);
-        vqdmulls_s32(a, b)
-    }
+    let b: i32 = vgetq_lane_s32::<N>(b);
+    vqdmulls_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmullh_laneq_s16)"]
@@ -17616,10 +17572,8 @@ pub fn vqdmulls_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmullh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i32 {
     static_assert_uimm_bits!(N, 3);
-    unsafe {
-        let b: i16 = simd_extract!(b, N as u32);
-        vqdmullh_s16(a, b)
-    }
+    let b: i16 = vgetq_lane_s16::<N>(b);
+    vqdmullh_s16(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmullh_s16)"]
@@ -17630,7 +17584,7 @@ pub fn vqdmullh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i32 {
 pub fn vqdmullh_s16(a: i16, b: i16) -> i32 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    unsafe { simd_extract!(vqdmull_s16(a, b), 0) }
+    vgetq_lane_s32::<0>(vqdmull_s16(a, b))
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulls_lane_s32)"]
@@ -17641,10 +17595,8 @@ pub fn vqdmullh_s16(a: i16, b: i16) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqdmulls_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i64 {
     static_assert_uimm_bits!(N, 1);
-    unsafe {
-        let b: i32 = simd_extract!(b, N as u32);
-        vqdmulls_s32(a, b)
-    }
+    let b: i32 = vget_lane_s32::<N>(b);
+    vqdmulls_s32(a, b)
 }
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulls_s32)"]
@@ -17767,7 +17719,7 @@ pub fn vqmovnd_u64(a: u64) -> u32 {
 #[cfg_attr(test, assert_instr(sqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovnh_s16(a: i16) -> i8 {
-    unsafe { simd_extract!(vqmovn_s16(vdupq_n_s16(a)), 0) }
+    vget_lane_s8::<0>(vqmovn_s16(vdupq_n_s16(a)))
 }
 #[doc = "Saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovns_s32)"]
@@ -17776,7 +17728,7 @@ pub fn vqmovnh_s16(a: i16) -> i8 {
 #[cfg_attr(test, assert_instr(sqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovns_s32(a: i32) -> i16 {
-    unsafe { simd_extract!(vqmovn_s32(vdupq_n_s32(a)), 0) }
+    vget_lane_s16::<0>(vqmovn_s32(vdupq_n_s32(a)))
 }
 #[doc = "Saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovnh_u16)"]
@@ -17785,7 +17737,7 @@ pub fn vqmovns_s32(a: i32) -> i16 {
 #[cfg_attr(test, assert_instr(uqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovnh_u16(a: u16) -> u8 {
-    unsafe { simd_extract!(vqmovn_u16(vdupq_n_u16(a)), 0) }
+    vget_lane_u8::<0>(vqmovn_u16(vdupq_n_u16(a)))
 }
 #[doc = "Saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovns_u32)"]
@@ -17794,7 +17746,7 @@ pub fn vqmovnh_u16(a: u16) -> u8 {
 #[cfg_attr(test, assert_instr(uqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovns_u32(a: u32) -> u16 {
-    unsafe { simd_extract!(vqmovn_u32(vdupq_n_u32(a)), 0) }
+    vget_lane_u16::<0>(vqmovn_u32(vdupq_n_u32(a)))
 }
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_high_s16)"]
@@ -17836,7 +17788,7 @@ pub fn vqmovun_high_s64(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(sqxtun))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovunh_s16(a: i16) -> u8 {
-    unsafe { simd_extract!(vqmovun_s16(vdupq_n_s16(a)), 0) }
+    vget_lane_u8::<0>(vqmovun_s16(vdupq_n_s16(a)))
 }
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovuns_s32)"]
@@ -17845,7 +17797,7 @@ pub fn vqmovunh_s16(a: i16) -> u8 {
 #[cfg_attr(test, assert_instr(sqxtun))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovuns_s32(a: i32) -> u16 {
-    unsafe { simd_extract!(vqmovun_s32(vdupq_n_s32(a)), 0) }
+    vget_lane_u16::<0>(vqmovun_s32(vdupq_n_s32(a)))
 }
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovund_s64)"]
@@ -17854,7 +17806,7 @@ pub fn vqmovuns_s32(a: i32) -> u16 {
 #[cfg_attr(test, assert_instr(sqxtun))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovund_s64(a: i64) -> u32 {
-    unsafe { simd_extract!(vqmovun_s64(vdupq_n_s64(a)), 0) }
+    vget_lane_u32::<0>(vqmovun_s64(vdupq_n_s64(a)))
 }
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s64)"]
@@ -17895,7 +17847,7 @@ pub fn vqnegq_s64(a: int64x2_t) -> int64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sqneg))]
 pub fn vqnegb_s8(a: i8) -> i8 {
-    unsafe { simd_extract!(vqneg_s8(vdup_n_s8(a)), 0) }
+    vget_lane_s8::<0>(vqneg_s8(vdup_n_s8(a)))
 }
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegh_s16)"]
@@ -17904,7 +17856,7 @@ pub fn vqnegb_s8(a: i8) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sqneg))]
 pub fn vqnegh_s16(a: i16) -> i16 {
-    unsafe { simd_extract!(vqneg_s16(vdup_n_s16(a)), 0) }
+    vget_lane_s16::<0>(vqneg_s16(vdup_n_s16(a)))
 }
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegs_s32)"]
@@ -17913,7 +17865,7 @@ pub fn vqnegh_s16(a: i16) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sqneg))]
 pub fn vqnegs_s32(a: i32) -> i32 {
-    unsafe { simd_extract!(vqneg_s32(vdup_n_s32(a)), 0) }
+    vget_lane_s32::<0>(vqneg_s32(vdup_n_s32(a)))
 }
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegd_s64)"]
@@ -17922,7 +17874,7 @@ pub fn vqnegs_s32(a: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(sqneg))]
 pub fn vqnegd_s64(a: i64) -> i64 {
-    unsafe { simd_extract!(vqneg_s64(vdup_n_s64(a)), 0) }
+    vget_lane_s64::<0>(vqneg_s64(vdup_n_s64(a)))
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlah_lane_s16)"]
@@ -18109,7 +18061,7 @@ pub fn vqrdmlahq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) -> i16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqrdmlahh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlahh_s16(a, b, vget_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahh_laneq_s16)"]
@@ -18120,7 +18072,7 @@ pub fn vqrdmlahh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) -> i16 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t) -> i16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqrdmlahh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlahh_s16(a, b, vgetq_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahs_lane_s32)"]
@@ -18131,7 +18083,7 @@ pub fn vqrdmlahh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t) -> i16
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) -> i32 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqrdmlahs_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlahs_s32(a, b, vget_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahs_laneq_s32)"]
@@ -18142,7 +18094,7 @@ pub fn vqrdmlahs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) -> i32 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahs_laneq_s32<const LANE: i32>(a: i32, b: i32, c: int32x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqrdmlahs_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlahs_s32(a, b, vgetq_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahh_s16)"]
@@ -18154,7 +18106,7 @@ pub fn vqrdmlahh_s16(a: i16, b: i16, c: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
     let c: int16x4_t = vdup_n_s16(c);
-    unsafe { simd_extract!(vqrdmlah_s16(a, b, c), 0) }
+    vget_lane_s16::<0>(vqrdmlah_s16(a, b, c))
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahs_s32)"]
@@ -18166,7 +18118,7 @@ pub fn vqrdmlahs_s32(a: i32, b: i32, c: i32) -> i32 {
     let a: int32x2_t = vdup_n_s32(a);
     let b: int32x2_t = vdup_n_s32(b);
     let c: int32x2_t = vdup_n_s32(c);
-    unsafe { simd_extract!(vqrdmlah_s32(a, b, c), 0) }
+    vget_lane_s32::<0>(vqrdmlah_s32(a, b, c))
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlsh_lane_s16)"]
@@ -18353,7 +18305,7 @@ pub fn vqrdmlshq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) -> i16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqrdmlshh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlshh_s16(a, b, vget_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshh_laneq_s16)"]
@@ -18364,7 +18316,7 @@ pub fn vqrdmlshh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) -> i16 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t) -> i16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqrdmlshh_s16(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlshh_s16(a, b, vgetq_lane_s16::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshs_lane_s32)"]
@@ -18375,7 +18327,7 @@ pub fn vqrdmlshh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t) -> i16
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) -> i32 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqrdmlshs_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlshs_s32(a, b, vget_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshs_laneq_s32)"]
@@ -18386,7 +18338,7 @@ pub fn vqrdmlshs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) -> i32 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshs_laneq_s32<const LANE: i32>(a: i32, b: i32, c: int32x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqrdmlshs_s32(a, b, simd_extract!(c, LANE as u32)) }
+    vqrdmlshs_s32(a, b, vgetq_lane_s32::<LANE>(c))
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshh_s16)"]
@@ -18398,7 +18350,7 @@ pub fn vqrdmlshh_s16(a: i16, b: i16, c: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
     let c: int16x4_t = vdup_n_s16(c);
-    unsafe { simd_extract!(vqrdmlsh_s16(a, b, c), 0) }
+    vget_lane_s16::<0>(vqrdmlsh_s16(a, b, c))
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshs_s32)"]
@@ -18410,7 +18362,7 @@ pub fn vqrdmlshs_s32(a: i32, b: i32, c: i32) -> i32 {
     let a: int32x2_t = vdup_n_s32(a);
     let b: int32x2_t = vdup_n_s32(b);
     let c: int32x2_t = vdup_n_s32(c);
-    unsafe { simd_extract!(vqrdmlsh_s32(a, b, c), 0) }
+    vget_lane_s32::<0>(vqrdmlsh_s32(a, b, c))
 }
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhh_lane_s16)"]
@@ -18421,7 +18373,7 @@ pub fn vqrdmlshs_s32(a: i32, b: i32, c: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrdmulhh_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> i16 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqrdmulhh_s16(a, simd_extract!(b, LANE as u32)) }
+    vqrdmulhh_s16(a, vget_lane_s16::<LANE>(b))
 }
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhh_laneq_s16)"]
@@ -18432,7 +18384,7 @@ pub fn vqrdmulhh_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrdmulhh_laneq_s16<const LANE: i32>(a: i16, b: int16x8_t) -> i16 {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqrdmulhh_s16(a, simd_extract!(b, LANE as u32)) }
+    vqrdmulhh_s16(a, vgetq_lane_s16::<LANE>(b))
 }
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhs_lane_s32)"]
@@ -18443,7 +18395,7 @@ pub fn vqrdmulhh_laneq_s16<const LANE: i32>(a: i16, b: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrdmulhs_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> i32 {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { vqrdmulhs_s32(a, simd_extract!(b, LANE as u32)) }
+    vqrdmulhs_s32(a, vget_lane_s32::<LANE>(b))
 }
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhs_laneq_s32)"]
@@ -18454,7 +18406,7 @@ pub fn vqrdmulhs_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrdmulhs_laneq_s32<const LANE: i32>(a: i32, b: int32x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqrdmulhs_s32(a, simd_extract!(b, LANE as u32)) }
+    vqrdmulhs_s32(a, vgetq_lane_s32::<LANE>(b))
 }
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhh_s16)"]
@@ -18463,7 +18415,7 @@ pub fn vqrdmulhs_laneq_s32<const LANE: i32>(a: i32, b: int32x4_t) -> i32 {
 #[cfg_attr(test, assert_instr(sqrdmulh))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrdmulhh_s16(a: i16, b: i16) -> i16 {
-    unsafe { simd_extract!(vqrdmulh_s16(vdup_n_s16(a), vdup_n_s16(b)), 0) }
+    vget_lane_s16::<0>(vqrdmulh_s16(vdup_n_s16(a), vdup_n_s16(b)))
 }
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhs_s32)"]
@@ -18472,7 +18424,7 @@ pub fn vqrdmulhh_s16(a: i16, b: i16) -> i16 {
 #[cfg_attr(test, assert_instr(sqrdmulh))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrdmulhs_s32(a: i32, b: i32) -> i32 {
-    unsafe { simd_extract!(vqrdmulh_s32(vdup_n_s32(a), vdup_n_s32(b)), 0) }
+    vget_lane_s32::<0>(vqrdmulh_s32(vdup_n_s32(a), vdup_n_s32(b)))
 }
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlb_s8)"]
@@ -18483,7 +18435,7 @@ pub fn vqrdmulhs_s32(a: i32, b: i32) -> i32 {
 pub fn vqrshlb_s8(a: i8, b: i8) -> i8 {
     let a: int8x8_t = vdup_n_s8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    unsafe { simd_extract!(vqrshl_s8(a, b), 0) }
+    vget_lane_s8::<0>(vqrshl_s8(a, b))
 }
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlh_s16)"]
@@ -18494,7 +18446,7 @@ pub fn vqrshlb_s8(a: i8, b: i8) -> i8 {
 pub fn vqrshlh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    unsafe { simd_extract!(vqrshl_s16(a, b), 0) }
+    vget_lane_s16::<0>(vqrshl_s16(a, b))
 }
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlb_u8)"]
@@ -18505,7 +18457,7 @@ pub fn vqrshlh_s16(a: i16, b: i16) -> i16 {
 pub fn vqrshlb_u8(a: u8, b: i8) -> u8 {
     let a: uint8x8_t = vdup_n_u8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    unsafe { simd_extract!(vqrshl_u8(a, b), 0) }
+    vget_lane_u8::<0>(vqrshl_u8(a, b))
 }
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlh_u16)"]
@@ -18516,7 +18468,7 @@ pub fn vqrshlb_u8(a: u8, b: i8) -> u8 {
 pub fn vqrshlh_u16(a: u16, b: i16) -> u16 {
     let a: uint16x4_t = vdup_n_u16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    unsafe { simd_extract!(vqrshl_u16(a, b), 0) }
+    vget_lane_u16::<0>(vqrshl_u16(a, b))
 }
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshld_s64)"]
@@ -18670,7 +18622,7 @@ pub fn vqrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x
 pub fn vqrshrnd_n_u64<const N: i32>(a: u64) -> u32 {
     static_assert!(N >= 1 && N <= 32);
     let a: uint64x2_t = vdupq_n_u64(a);
-    unsafe { simd_extract!(vqrshrn_n_u64::<N>(a), 0) }
+    vget_lane_u32::<0>(vqrshrn_n_u64::<N>(a))
 }
 #[doc = "Unsigned saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrnh_n_u16)"]
@@ -18682,7 +18634,7 @@ pub fn vqrshrnd_n_u64<const N: i32>(a: u64) -> u32 {
 pub fn vqrshrnh_n_u16<const N: i32>(a: u16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
     let a: uint16x8_t = vdupq_n_u16(a);
-    unsafe { simd_extract!(vqrshrn_n_u16::<N>(a), 0) }
+    vget_lane_u8::<0>(vqrshrn_n_u16::<N>(a))
 }
 #[doc = "Unsigned saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrns_n_u32)"]
@@ -18694,7 +18646,7 @@ pub fn vqrshrnh_n_u16<const N: i32>(a: u16) -> u8 {
 pub fn vqrshrns_n_u32<const N: i32>(a: u32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
     let a: uint32x4_t = vdupq_n_u32(a);
-    unsafe { simd_extract!(vqrshrn_n_u32::<N>(a), 0) }
+    vget_lane_u16::<0>(vqrshrn_n_u32::<N>(a))
 }
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrnh_n_s16)"]
@@ -18706,7 +18658,7 @@ pub fn vqrshrns_n_u32<const N: i32>(a: u32) -> u16 {
 pub fn vqrshrnh_n_s16<const N: i32>(a: i16) -> i8 {
     static_assert!(N >= 1 && N <= 8);
     let a: int16x8_t = vdupq_n_s16(a);
-    unsafe { simd_extract!(vqrshrn_n_s16::<N>(a), 0) }
+    vget_lane_s8::<0>(vqrshrn_n_s16::<N>(a))
 }
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrns_n_s32)"]
@@ -18718,7 +18670,7 @@ pub fn vqrshrnh_n_s16<const N: i32>(a: i16) -> i8 {
 pub fn vqrshrns_n_s32<const N: i32>(a: i32) -> i16 {
     static_assert!(N >= 1 && N <= 16);
     let a: int32x4_t = vdupq_n_s32(a);
-    unsafe { simd_extract!(vqrshrn_n_s32::<N>(a), 0) }
+    vget_lane_s16::<0>(vqrshrn_n_s32::<N>(a))
 }
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrnd_n_s64)"]
@@ -18730,7 +18682,7 @@ pub fn vqrshrns_n_s32<const N: i32>(a: i32) -> i16 {
 pub fn vqrshrnd_n_s64<const N: i32>(a: i64) -> i32 {
     static_assert!(N >= 1 && N <= 32);
     let a: int64x2_t = vdupq_n_s64(a);
-    unsafe { simd_extract!(vqrshrn_n_s64::<N>(a), 0) }
+    vget_lane_s32::<0>(vqrshrn_n_s64::<N>(a))
 }
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_high_n_s16)"]
@@ -18781,7 +18733,7 @@ pub fn vqrshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> uint32x
 pub fn vqrshrund_n_s64<const N: i32>(a: i64) -> u32 {
     static_assert!(N >= 1 && N <= 32);
     let a: int64x2_t = vdupq_n_s64(a);
-    unsafe { simd_extract!(vqrshrun_n_s64::<N>(a), 0) }
+    vget_lane_u32::<0>(vqrshrun_n_s64::<N>(a))
 }
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrunh_n_s16)"]
@@ -18793,7 +18745,7 @@ pub fn vqrshrund_n_s64<const N: i32>(a: i64) -> u32 {
 pub fn vqrshrunh_n_s16<const N: i32>(a: i16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
     let a: int16x8_t = vdupq_n_s16(a);
-    unsafe { simd_extract!(vqrshrun_n_s16::<N>(a), 0) }
+    vget_lane_u8::<0>(vqrshrun_n_s16::<N>(a))
 }
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshruns_n_s32)"]
@@ -18805,7 +18757,7 @@ pub fn vqrshrunh_n_s16<const N: i32>(a: i16) -> u8 {
 pub fn vqrshruns_n_s32<const N: i32>(a: i32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
     let a: int32x4_t = vdupq_n_s32(a);
-    unsafe { simd_extract!(vqrshrun_n_s32::<N>(a), 0) }
+    vget_lane_u16::<0>(vqrshrun_n_s32::<N>(a))
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlb_n_s8)"]
@@ -18816,7 +18768,7 @@ pub fn vqrshruns_n_s32<const N: i32>(a: i32) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlb_n_s8<const N: i32>(a: i8) -> i8 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(vqshl_n_s8::<N>(vdup_n_s8(a)), 0) }
+    vget_lane_s8::<0>(vqshl_n_s8::<N>(vdup_n_s8(a)))
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshld_n_s64)"]
@@ -18827,7 +18779,7 @@ pub fn vqshlb_n_s8<const N: i32>(a: i8) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshld_n_s64<const N: i32>(a: i64) -> i64 {
     static_assert_uimm_bits!(N, 6);
-    unsafe { simd_extract!(vqshl_n_s64::<N>(vdup_n_s64(a)), 0) }
+    vget_lane_s64::<0>(vqshl_n_s64::<N>(vdup_n_s64(a)))
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlh_n_s16)"]
@@ -18838,7 +18790,7 @@ pub fn vqshld_n_s64<const N: i32>(a: i64) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlh_n_s16<const N: i32>(a: i16) -> i16 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(vqshl_n_s16::<N>(vdup_n_s16(a)), 0) }
+    vget_lane_s16::<0>(vqshl_n_s16::<N>(vdup_n_s16(a)))
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshls_n_s32)"]
@@ -18849,7 +18801,7 @@ pub fn vqshlh_n_s16<const N: i32>(a: i16) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshls_n_s32<const N: i32>(a: i32) -> i32 {
     static_assert_uimm_bits!(N, 5);
-    unsafe { simd_extract!(vqshl_n_s32::<N>(vdup_n_s32(a)), 0) }
+    vget_lane_s32::<0>(vqshl_n_s32::<N>(vdup_n_s32(a)))
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlb_n_u8)"]
@@ -18860,7 +18812,7 @@ pub fn vqshls_n_s32<const N: i32>(a: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlb_n_u8<const N: i32>(a: u8) -> u8 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(vqshl_n_u8::<N>(vdup_n_u8(a)), 0) }
+    vget_lane_u8::<0>(vqshl_n_u8::<N>(vdup_n_u8(a)))
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshld_n_u64)"]
@@ -18871,7 +18823,7 @@ pub fn vqshlb_n_u8<const N: i32>(a: u8) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshld_n_u64<const N: i32>(a: u64) -> u64 {
     static_assert_uimm_bits!(N, 6);
-    unsafe { simd_extract!(vqshl_n_u64::<N>(vdup_n_u64(a)), 0) }
+    vget_lane_u64::<0>(vqshl_n_u64::<N>(vdup_n_u64(a)))
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlh_n_u16)"]
@@ -18882,7 +18834,7 @@ pub fn vqshld_n_u64<const N: i32>(a: u64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlh_n_u16<const N: i32>(a: u16) -> u16 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(vqshl_n_u16::<N>(vdup_n_u16(a)), 0) }
+    vget_lane_u16::<0>(vqshl_n_u16::<N>(vdup_n_u16(a)))
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshls_n_u32)"]
@@ -18893,7 +18845,7 @@ pub fn vqshlh_n_u16<const N: i32>(a: u16) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshls_n_u32<const N: i32>(a: u32) -> u32 {
     static_assert_uimm_bits!(N, 5);
-    unsafe { simd_extract!(vqshl_n_u32::<N>(vdup_n_u32(a)), 0) }
+    vget_lane_u32::<0>(vqshl_n_u32::<N>(vdup_n_u32(a)))
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlb_s8)"]
@@ -18903,7 +18855,7 @@ pub fn vqshls_n_u32<const N: i32>(a: u32) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlb_s8(a: i8, b: i8) -> i8 {
     let c: int8x8_t = vqshl_s8(vdup_n_s8(a), vdup_n_s8(b));
-    unsafe { simd_extract!(c, 0) }
+    vget_lane_s8::<0>(c)
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlh_s16)"]
@@ -18913,7 +18865,7 @@ pub fn vqshlb_s8(a: i8, b: i8) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlh_s16(a: i16, b: i16) -> i16 {
     let c: int16x4_t = vqshl_s16(vdup_n_s16(a), vdup_n_s16(b));
-    unsafe { simd_extract!(c, 0) }
+    vget_lane_s16::<0>(c)
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshls_s32)"]
@@ -18923,7 +18875,7 @@ pub fn vqshlh_s16(a: i16, b: i16) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshls_s32(a: i32, b: i32) -> i32 {
     let c: int32x2_t = vqshl_s32(vdup_n_s32(a), vdup_n_s32(b));
-    unsafe { simd_extract!(c, 0) }
+    vget_lane_s32::<0>(c)
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlb_u8)"]
@@ -18933,7 +18885,7 @@ pub fn vqshls_s32(a: i32, b: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlb_u8(a: u8, b: i8) -> u8 {
     let c: uint8x8_t = vqshl_u8(vdup_n_u8(a), vdup_n_s8(b));
-    unsafe { simd_extract!(c, 0) }
+    vget_lane_u8::<0>(c)
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlh_u16)"]
@@ -18943,7 +18895,7 @@ pub fn vqshlb_u8(a: u8, b: i8) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlh_u16(a: u16, b: i16) -> u16 {
     let c: uint16x4_t = vqshl_u16(vdup_n_u16(a), vdup_n_s16(b));
-    unsafe { simd_extract!(c, 0) }
+    vget_lane_u16::<0>(c)
 }
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshls_u32)"]
@@ -18953,7 +18905,7 @@ pub fn vqshlh_u16(a: u16, b: i16) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshls_u32(a: u32, b: i32) -> u32 {
     let c: uint32x2_t = vqshl_u32(vdup_n_u32(a), vdup_n_s32(b));
-    unsafe { simd_extract!(c, 0) }
+    vget_lane_u32::<0>(c)
 }
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshld_s64)"]
@@ -18996,7 +18948,7 @@ pub fn vqshld_u64(a: u64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlub_n_s8<const N: i32>(a: i8) -> u8 {
     static_assert_uimm_bits!(N, 3);
-    unsafe { simd_extract!(vqshlu_n_s8::<N>(vdup_n_s8(a)), 0) }
+    vget_lane_u8::<0>(vqshlu_n_s8::<N>(vdup_n_s8(a)))
 }
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlud_n_s64)"]
@@ -19007,7 +18959,7 @@ pub fn vqshlub_n_s8<const N: i32>(a: i8) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlud_n_s64<const N: i32>(a: i64) -> u64 {
     static_assert_uimm_bits!(N, 6);
-    unsafe { simd_extract!(vqshlu_n_s64::<N>(vdup_n_s64(a)), 0) }
+    vget_lane_u64::<0>(vqshlu_n_s64::<N>(vdup_n_s64(a)))
 }
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluh_n_s16)"]
@@ -19018,7 +18970,7 @@ pub fn vqshlud_n_s64<const N: i32>(a: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshluh_n_s16<const N: i32>(a: i16) -> u16 {
     static_assert_uimm_bits!(N, 4);
-    unsafe { simd_extract!(vqshlu_n_s16::<N>(vdup_n_s16(a)), 0) }
+    vget_lane_u16::<0>(vqshlu_n_s16::<N>(vdup_n_s16(a)))
 }
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlus_n_s32)"]
@@ -19029,7 +18981,7 @@ pub fn vqshluh_n_s16<const N: i32>(a: i16) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshlus_n_s32<const N: i32>(a: i32) -> u32 {
     static_assert_uimm_bits!(N, 5);
-    unsafe { simd_extract!(vqshlu_n_s32::<N>(vdup_n_s32(a)), 0) }
+    vget_lane_u32::<0>(vqshlu_n_s32::<N>(vdup_n_s32(a)))
 }
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_high_n_s16)"]
@@ -19154,7 +19106,7 @@ pub fn vqshrnd_n_u64<const N: i32>(a: u64) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrnh_n_s16<const N: i32>(a: i16) -> i8 {
     static_assert!(N >= 1 && N <= 8);
-    unsafe { simd_extract!(vqshrn_n_s16::<N>(vdupq_n_s16(a)), 0) }
+    vget_lane_s8::<0>(vqshrn_n_s16::<N>(vdupq_n_s16(a)))
 }
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrns_n_s32)"]
@@ -19165,7 +19117,7 @@ pub fn vqshrnh_n_s16<const N: i32>(a: i16) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrns_n_s32<const N: i32>(a: i32) -> i16 {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_extract!(vqshrn_n_s32::<N>(vdupq_n_s32(a)), 0) }
+    vget_lane_s16::<0>(vqshrn_n_s32::<N>(vdupq_n_s32(a)))
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrnh_n_u16)"]
@@ -19176,7 +19128,7 @@ pub fn vqshrns_n_s32<const N: i32>(a: i32) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrnh_n_u16<const N: i32>(a: u16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
-    unsafe { simd_extract!(vqshrn_n_u16::<N>(vdupq_n_u16(a)), 0) }
+    vget_lane_u8::<0>(vqshrn_n_u16::<N>(vdupq_n_u16(a)))
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrns_n_u32)"]
@@ -19187,7 +19139,7 @@ pub fn vqshrnh_n_u16<const N: i32>(a: u16) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrns_n_u32<const N: i32>(a: u32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_extract!(vqshrn_n_u32::<N>(vdupq_n_u32(a)), 0) }
+    vget_lane_u16::<0>(vqshrn_n_u32::<N>(vdupq_n_u32(a)))
 }
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_high_n_s16)"]
@@ -19237,7 +19189,7 @@ pub fn vqshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> uint32x4
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrund_n_s64<const N: i32>(a: i64) -> u32 {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_extract!(vqshrun_n_s64::<N>(vdupq_n_s64(a)), 0) }
+    vget_lane_u32::<0>(vqshrun_n_s64::<N>(vdupq_n_s64(a)))
 }
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrunh_n_s16)"]
@@ -19248,7 +19200,7 @@ pub fn vqshrund_n_s64<const N: i32>(a: i64) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrunh_n_s16<const N: i32>(a: i16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
-    unsafe { simd_extract!(vqshrun_n_s16::<N>(vdupq_n_s16(a)), 0) }
+    vget_lane_u8::<0>(vqshrun_n_s16::<N>(vdupq_n_s16(a)))
 }
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshruns_n_s32)"]
@@ -19259,7 +19211,7 @@ pub fn vqshrunh_n_s16<const N: i32>(a: i16) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshruns_n_s32<const N: i32>(a: i32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_extract!(vqshrun_n_s32::<N>(vdupq_n_s32(a)), 0) }
+    vget_lane_u16::<0>(vqshrun_n_s32::<N>(vdupq_n_s32(a)))
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubb_s8)"]
@@ -19270,7 +19222,7 @@ pub fn vqshruns_n_s32<const N: i32>(a: i32) -> u16 {
 pub fn vqsubb_s8(a: i8, b: i8) -> i8 {
     let a: int8x8_t = vdup_n_s8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    unsafe { simd_extract!(vqsub_s8(a, b), 0) }
+    vget_lane_s8::<0>(vqsub_s8(a, b))
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubh_s16)"]
@@ -19281,7 +19233,7 @@ pub fn vqsubb_s8(a: i8, b: i8) -> i8 {
 pub fn vqsubh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    unsafe { simd_extract!(vqsub_s16(a, b), 0) }
+    vget_lane_s16::<0>(vqsub_s16(a, b))
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubb_u8)"]
@@ -19292,7 +19244,7 @@ pub fn vqsubh_s16(a: i16, b: i16) -> i16 {
 pub fn vqsubb_u8(a: u8, b: u8) -> u8 {
     let a: uint8x8_t = vdup_n_u8(a);
     let b: uint8x8_t = vdup_n_u8(b);
-    unsafe { simd_extract!(vqsub_u8(a, b), 0) }
+    vget_lane_u8::<0>(vqsub_u8(a, b))
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubh_u16)"]
@@ -19303,7 +19255,7 @@ pub fn vqsubb_u8(a: u8, b: u8) -> u8 {
 pub fn vqsubh_u16(a: u16, b: u16) -> u16 {
     let a: uint16x4_t = vdup_n_u16(a);
     let b: uint16x4_t = vdup_n_u16(b);
-    unsafe { simd_extract!(vqsub_u16(a, b), 0) }
+    vget_lane_u16::<0>(vqsub_u16(a, b))
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubs_s32)"]
@@ -22050,7 +22002,7 @@ pub fn vrnd32x_f64(a: float64x1_t) -> float64x1_t {
         )]
         fn _vrnd32x_f64(a: f64) -> f64;
     }
-    unsafe { transmute(_vrnd32x_f64(simd_extract!(a, 0))) }
+    unsafe { transmute(_vrnd32x_f64(vget_lane_f64::<0>(a))) }
 }
 #[doc = "Floating-point round to 32-bit integer toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd32z_f32)"]
@@ -22114,7 +22066,7 @@ pub fn vrnd32z_f64(a: float64x1_t) -> float64x1_t {
         )]
         fn _vrnd32z_f64(a: f64) -> f64;
     }
-    unsafe { transmute(_vrnd32z_f64(simd_extract!(a, 0))) }
+    unsafe { transmute(_vrnd32z_f64(vget_lane_f64::<0>(a))) }
 }
 #[doc = "Floating-point round to 64-bit integer, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64x_f32)"]
@@ -22178,7 +22130,7 @@ pub fn vrnd64x_f64(a: float64x1_t) -> float64x1_t {
         )]
         fn _vrnd64x_f64(a: f64) -> f64;
     }
-    unsafe { transmute(_vrnd64x_f64(simd_extract!(a, 0))) }
+    unsafe { transmute(_vrnd64x_f64(vget_lane_f64::<0>(a))) }
 }
 #[doc = "Floating-point round to 64-bit integer toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd64z_f32)"]
@@ -22242,7 +22194,7 @@ pub fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
         )]
         fn _vrnd64z_f64(a: f64) -> f64;
     }
-    unsafe { transmute(_vrnd64z_f64(simd_extract!(a, 0))) }
+    unsafe { transmute(_vrnd64z_f64(vget_lane_f64::<0>(a))) }
 }
 #[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f16)"]
@@ -24157,7 +24109,7 @@ pub fn vsqaddq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
 #[cfg_attr(test, assert_instr(usqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsqaddb_u8(a: u8, b: i8) -> u8 {
-    unsafe { simd_extract!(vsqadd_u8(vdup_n_u8(a), vdup_n_s8(b)), 0) }
+    vget_lane_u8::<0>(vsqadd_u8(vdup_n_u8(a), vdup_n_s8(b)))
 }
 #[doc = "Unsigned saturating accumulate of signed value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddh_u16)"]
@@ -24166,7 +24118,7 @@ pub fn vsqaddb_u8(a: u8, b: i8) -> u8 {
 #[cfg_attr(test, assert_instr(usqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vsqaddh_u16(a: u16, b: i16) -> u16 {
-    unsafe { simd_extract!(vsqadd_u16(vdup_n_u16(a), vdup_n_s16(b)), 0) }
+    vget_lane_u16::<0>(vsqadd_u16(vdup_n_u16(a), vdup_n_s16(b)))
 }
 #[doc = "Unsigned saturating accumulate of signed value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddd_u64)"]
@@ -25845,7 +25797,7 @@ pub unsafe fn vstl1q_lane_p64<const LANE: i32>(ptr: *mut p64, val: poly64x2_t) {
 pub unsafe fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
     static_assert!(LANE == 0);
     let atomic_dst = ptr as *mut crate::sync::atomic::AtomicI64;
-    let lane: i64 = simd_extract!(val, LANE as u32);
+    let lane: i64 = vget_lane_s64::<LANE>(val);
     (*atomic_dst).store(transmute(lane), crate::sync::atomic::Ordering::Release)
 }
 #[doc = "Store-Release a single-element structure from one lane of one register."]
@@ -25861,7 +25813,7 @@ pub unsafe fn vstl1_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x1_t) {
 pub unsafe fn vstl1q_lane_s64<const LANE: i32>(ptr: *mut i64, val: int64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     let atomic_dst = ptr as *mut crate::sync::atomic::AtomicI64;
-    let lane: i64 = simd_extract!(val, LANE as u32);
+    let lane: i64 = vgetq_lane_s64::<LANE>(val);
     (*atomic_dst).store(transmute(lane), crate::sync::atomic::Ordering::Release)
 }
 #[doc = "Subtract"]
@@ -27245,7 +27197,7 @@ pub fn vuqaddq_s64(a: int64x2_t, b: uint64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(suqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vuqaddb_s8(a: i8, b: u8) -> i8 {
-    unsafe { simd_extract!(vuqadd_s8(vdup_n_s8(a), vdup_n_u8(b)), 0) }
+    vget_lane_s8::<0>(vuqadd_s8(vdup_n_s8(a), vdup_n_u8(b)))
 }
 #[doc = "Signed saturating accumulate of unsigned value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddh_s16)"]
@@ -27254,7 +27206,7 @@ pub fn vuqaddb_s8(a: i8, b: u8) -> i8 {
 #[cfg_attr(test, assert_instr(suqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vuqaddh_s16(a: i16, b: u16) -> i16 {
-    unsafe { simd_extract!(vuqadd_s16(vdup_n_s16(a), vdup_n_u16(b)), 0) }
+    vget_lane_s16::<0>(vuqadd_s16(vdup_n_s16(a), vdup_n_u16(b)))
 }
 #[doc = "Signed saturating accumulate of unsigned value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddd_s64)"]

@@ -1659,7 +1659,7 @@ pub fn vabsq_s32(a: int32x4_t) -> int32x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vabsh_f16(a: f16) -> f16 {
-    unsafe { simd_extract!(vabs_f16(vdup_n_f16(a)), 0) }
+    vget_lane_f16::<0>(vabs_f16(vdup_n_f16(a)))
 }
 #[doc = "Floating-point Add (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_f16)"]
@@ -10945,7 +10945,7 @@ pub fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 )]
 pub fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe { transmute::<i64, _>(simd_extract!(a, N as u32)) }
+    unsafe { transmute(vgetq_lane_s64::<N>(a)) }
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u64)"]
@@ -10968,7 +10968,7 @@ pub fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
 )]
 pub fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 1);
-    unsafe { transmute::<u64, _>(simd_extract!(a, N as u32)) }
+    unsafe { transmute(vgetq_lane_u64::<N>(a)) }
 }
 #[doc = "Create a new vector with all lanes set to a value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_n_f16)"]
@@ -35281,7 +35281,7 @@ pub fn vqdmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 )]
 pub fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqdmulh_s16(a, vdup_n_s16(simd_extract!(b, LANE as u32))) }
+    vqdmulh_s16(a, vdup_n_s16(vgetq_lane_s16::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_laneq_s16)"]
@@ -35304,7 +35304,7 @@ pub fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4
 )]
 pub fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { vqdmulhq_s16(a, vdupq_n_s16(simd_extract!(b, LANE as u32))) }
+    vqdmulhq_s16(a, vdupq_n_s16(vgetq_lane_s16::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_laneq_s32)"]
@@ -35327,7 +35327,7 @@ pub fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x
 )]
 pub fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmulh_s32(a, vdup_n_s32(simd_extract!(b, LANE as u32))) }
+    vqdmulh_s32(a, vdup_n_s32(vgetq_lane_s32::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_laneq_s32)"]
@@ -35350,7 +35350,7 @@ pub fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2
 )]
 pub fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe { vqdmulhq_s32(a, vdupq_n_s32(simd_extract!(b, LANE as u32))) }
+    vqdmulhq_s32(a, vdupq_n_s32(vgetq_lane_s32::<LANE>(b)))
 }
 #[doc = "Vector saturating doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_n_s16)"]

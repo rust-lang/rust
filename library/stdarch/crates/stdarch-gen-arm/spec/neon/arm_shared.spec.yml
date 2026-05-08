@@ -506,11 +506,11 @@ intrinsics:
       - ['h_f16', 'f16']
     compose:
       - FnCall:
-          - simd_extract!
+          - 'vget_lane_{type[1]}'
           - - FnCall:
                 - "vabs_{type[1]}"
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
-            - 0
+          - - 0
 
   - name: "vcgt{neon_type[0].no}"
     doc: "Compare signed greater than"
@@ -1716,8 +1716,8 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, 1]]
       - FnCall:
-          - "transmute{type[3]}"
-          - - FnCall: [simd_extract!, [a, 'N as u32']]
+          - "transmute"
+          - - FnCall: ['vget{neon_type[1].lane_nox}', [a], [N]]
 
   - name: "vext{neon_type[0].no}"
     doc: "Extract vector from pair of vectors"
@@ -11461,7 +11461,7 @@ intrinsics:
           - - a
             - FnCall:
                 - "vdup{neon_type[0].N}"
-                - - FnCall: [simd_extract!, [b, 'LANE as u32']]
+                - - FnCall: ['vget{neon_type[1].lane_nox}', [b], [LANE]]
 
   - name: "vrecpe{neon_type.no}"
     doc: "Unsigned reciprocal estimate"
