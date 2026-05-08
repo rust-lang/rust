@@ -119,7 +119,8 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
         for (cnum, data) in self.0.iter_crate_data() {
             writeln!(fmt, "  name: {}", data.name())?;
             writeln!(fmt, "  cnum: {cnum}")?;
-            writeln!(fmt, "  hash: {}", data.hash())?;
+            writeln!(fmt, "  private hash: {}", data.private_hash())?;
+            writeln!(fmt, "  public hash:  {}", data.public_hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
             let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
@@ -551,8 +552,8 @@ impl CStore {
         }
     }
 
-    fn existing_match(&self, name: Symbol, hash: Option<Svh>) -> Option<CrateNum> {
-        let hash = hash?;
+    fn existing_match(&self, name: Symbol, public_hash: Option<Svh>) -> Option<CrateNum> {
+        let public_hash = public_hash?;
 
         for (cnum, data) in self.iter_crate_data() {
             if data.name() != name {
@@ -560,10 +561,14 @@ impl CStore {
                 continue;
             }
 
-            if hash == data.hash() {
+            if public_hash == data.public_hash() {
                 return Some(cnum);
             } else {
-                debug!("actual hash {} did not match expected {}", hash, data.hash());
+                debug!(
+                    "actual public hash {} did not match expected {}",
+                    public_hash,
+                    data.public_hash()
+                );
             }
         }
 
@@ -606,7 +611,15 @@ impl CStore {
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
-        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
+        let host_hash = host_lib.as_ref().map(|lib| {
+            let host_root = lib.metadata.get_root();
+            assert_eq!(
+                host_root.public_hash(),
+                host_root.private_hash(),
+                "Mismatched public and private hash for proc macro!"
+            );
+            host_root.public_hash()
+        });
         let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
@@ -877,7 +890,8 @@ impl CStore {
         let root = library.metadata.get_root();
         let mut result = LoadResult::Loaded(library);
         for (cnum, data) in self.iter_crate_data() {
-            if data.name() == root.name() && root.hash() == data.hash() {
+            if data.name() == root.name() && root.public_hash() == data.public_hash() {
+                assert!(root.private_hash() == data.private_hash());
                 assert!(locator.hash.is_none());
                 info!("load success, going to previous cnum: {}", cnum);
                 result = LoadResult::Previous(cnum);

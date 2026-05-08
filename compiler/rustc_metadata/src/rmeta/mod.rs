@@ -210,8 +210,7 @@ pub(crate) struct ProcMacroData {
 #[derive(MetadataEncodable, BlobDecodable)]
 pub(crate) struct CrateHeader {
     pub(crate) triple: TargetTuple,
-    /// Hash of the crate contents, including private items
-    pub(crate) hash: Svh,
+    pub(crate) hashes: CrateHashes,
     pub(crate) name: Symbol,
     /// Whether this is the header for a proc-macro crate.
     ///
@@ -302,26 +301,25 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
-
-    rdr_hashes: RDRHashes,
 }
 
-/// Hashes used for the feature [relink don't rebuild](https://github.com/rust-lang/compiler-team/issues/790)
-///
-/// This struct is not final. For example it might be
-/// beneficial for `cargo check` and `cargo build` to use different hashes for early cutoff. `check` doesn't really
-/// depend on spans of inlined/monomorphized mir, it also doesn't need private types used in them. While a full build will need it for code and debug info generation
-///
-/// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the feature is disabled.
-#[derive(MetadataEncodable, LazyDecodable)]
-struct RDRHashes {
-    /// Hash of the "public api". It tries to exclude things which cannot change the output in dependents, allowing to skip their rustc invocation, which can be quite expensive even if nothing has changed (macro expansion, checking that nothing changed in the query dependency graph is always executed)
-    public_api_hash: Svh,
-
-    /// This is the previous crate_hash, but the dependencies are only hashed using their public
-    /// api hash. Proc macros combine this from all dependencies to derive their full hash, which
-    /// is also their public api hash.
-    private_hash: Svh,
+/// All hashes here are equal to the hash from the crate header (the `crate_hash` query) when the public-api-hash unstable feature is disabled.
+#[derive(MetadataEncodable, BlobDecodable, Clone, Copy, Eq, PartialEq, Hash)]
+pub(crate) struct CrateHashes {
+    /// Hash of the crate contents, including private items. For proc macros this includes the
+    /// private hashes of all dependencies. When `public-api-hash` is enabled, for other crate
+    /// types than proc macro, it only includes the public hash of dependencies. This is only
+    /// readable by queries in downstream dependencies if the crate querying is a proc macro.
+    pub(crate) private_hash: Svh,
+    /// Hash of most data in rmeta. same as `private_hash` if the `public-api-hash` option is
+    /// disabled.
+    ///
+    /// The public hash contains `StableCrateId`, so two crates in the dependency graph should not
+    /// have the same public hash just because they have the same "public api". This is asserted
+    /// while loading: if two crates have the same public hash but different private hashes, the
+    /// resolver reports that there are multiple candidates available for a crate and compilation
+    /// aborts.
+    pub(crate) public_hash: Svh,
 }
 
 /// On-disk representation of `DefId`.

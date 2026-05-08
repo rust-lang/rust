@@ -374,21 +374,18 @@ provide! { tcx, def_id, other, cdata,
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
     crate_hash => {
-        if tcx.sess.opts.unstable_opts.public_api_hash {
-            assert!(
-                // We could allow all binary targets, they should always get a rustc invocation for
-                // linking, but there is no reason to (yet).
-                tcx.crate_types().contains(&CrateType::ProcMacro),
-                "Calling the crate_hash query for dependencies outside of proc-macro crates is unsound!"
-            );
-            cdata.root.rdr_hashes.private_hash
-        } else {
-            cdata.root.header.hash
-        }
+        assert!(
+            // We could allow all binary targets, they should always get a rustc invocation for
+            // linking, but there is no reason to (yet).
+            !tcx.sess.opts.unstable_opts.public_api_hash
+            || tcx.crate_types().contains(&CrateType::ProcMacro),
+            "Calling the crate_hash query for dependencies outside of proc-macro crates is unsound!"
+        );
+        cdata.root.header.hashes.private_hash
     }
     public_api_hash => { {
-        tracing::debug!("public api hash: {} {}", cdata.root.header.name, cdata.root.rdr_hashes.public_api_hash);
-        cdata.root.rdr_hashes.public_api_hash
+        tracing::debug!("public api hash: {} {}", cdata.root.header.name, cdata.root.header.hashes.public_hash);
+        cdata.root.header.hashes.public_hash
     } }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
