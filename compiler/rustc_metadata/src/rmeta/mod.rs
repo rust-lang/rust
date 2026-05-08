@@ -394,11 +394,17 @@ macro_rules! define_tables {
                 let tables = LazyTables {
                     $($name1: {
                         let table = self.$name1.encode(buf, hcx);
+                        if let Some(hash) = table.hash {
+                            tracing::debug!("{}: {hash:x?}", stringify!($name1));
+                        }
                         hasher.digest(&table, hcx);
                         table.value
                     },)+
                     $($name2: {
                         let table = self.$name2.encode(buf, hcx);
+                        if let Some(hash) = table.hash {
+                            tracing::debug!("{}: {hash:x?}", stringify!($name2));
+                        }
                         hasher.digest(&table, hcx);
                         table.value
                     },)+
