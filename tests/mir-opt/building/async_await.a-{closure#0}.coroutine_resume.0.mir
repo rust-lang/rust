@@ -10,13 +10,15 @@
 } */
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
-    debug _task_context => _2;
+    debug _task_context => _6;
     let mut _0: std::task::Poll<()>;
     let mut _3: ();
     let mut _4: u32;
     let mut _5: &mut {async fn body of a()};
+    let mut _6: unsafe<'a, 'b> &'a mut std::task::Context<'b>;
 
     bb0: {
+        _6 = wrap_binder!(move _2; unsafe<'a, 'b> &'a mut std::task::Context<'b>);
         _5 = copy (_1.0: &mut {async fn body of a()});
         _4 = discriminant((*_5));
         switchInt(move _4) -> [0: bb1, 1: bb4, otherwise: bb5];

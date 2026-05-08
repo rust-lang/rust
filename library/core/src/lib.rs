@@ -172,6 +172,7 @@
 #![feature(try_blocks)]
 #![feature(uint_carryless_mul)]
 #![feature(unboxed_closures)]
+#![feature(unsafe_binders)]
 #![feature(unsized_fn_params)]
 #![feature(with_negative_coherence)]
 // tidy-alphabetical-end

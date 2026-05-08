@@ -32,19 +32,19 @@
 +                 let mut _20: &mut std::future::Ready<()>;
 +                 let mut _21: &mut std::future::Ready<()>;
 +                 let mut _22: &mut std::task::Context<'_>;
-+                 let mut _23: &mut std::task::Context<'_>;
-+                 let mut _24: &mut std::task::Context<'_>;
-+                 let mut _25: isize;
-+                 let mut _27: !;
++                 let mut _23: isize;
++                 let mut _25: !;
++                 let mut _26: unsafe<'a, 'b> &'a mut std::task::Context<'b>;
++                 let mut _27: ();
 +                 let mut _28: &mut std::task::Context<'_>;
 +                 let mut _29: ();
-+                 let mut _30: ();
-+                 let mut _31: u32;
-+                 let mut _32: &mut {async fn body of ActionPermit<'_, T>::perform()};
++                 let mut _30: u32;
++                 let mut _31: &mut {async fn body of ActionPermit<'_, T>::perform()};
++                 let mut _32: unsafe<'a, 'b> &'a mut std::task::Context<'b>;
 +                 scope 7 {
 +                     let mut _15: std::future::Ready<()>;
 +                     scope 8 {
-+                         let _26: ();
++                         let _24: ();
 +                         scope 9 {
 +                         }
 +                         scope 12 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
@@ -121,13 +121,16 @@
           _9 = &mut (*_10);
 -         _7 = <{async fn body of ActionPermit<'_, T>::perform()} as Future>::poll(move _8, move _9) -> [return: bb3, unwind: bb5];
 +         StorageLive(_16);
-+         StorageLive(_25);
++         StorageLive(_23);
++         StorageLive(_28);
++         StorageLive(_29);
 +         StorageLive(_30);
 +         StorageLive(_31);
 +         StorageLive(_32);
-+         _32 = copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         _31 = discriminant((*_32));
-+         switchInt(move _31) -> [0: bb5, 1: bb15, 2: bb14, 3: bb13, otherwise: bb7];
++         _32 = wrap_binder!(move _9; unsafe<'a, 'b> &'a mut std::task::Context<'b>);
++         _31 = copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
++         _30 = discriminant((*_31));
++         switchInt(move _30) -> [0: bb5, 1: bb15, 2: bb14, 3: bb13, otherwise: bb7];
       }
   
 -     bb3: {
@@ -148,7 +151,9 @@
 +         StorageDead(_32);
 +         StorageDead(_31);
 +         StorageDead(_30);
-+         StorageDead(_25);
++         StorageDead(_29);
++         StorageDead(_28);
++         StorageDead(_23);
 +         StorageDead(_16);
           StorageDead(_9);
           StorageDead(_8);
@@ -165,7 +170,7 @@
 -         StorageDead(_2);
 -         return;
 +     bb5: {
-+         (((*_32) as variant#3).0: ActionPermit<'_, T>) = move ((*_32).0: ActionPermit<'_, T>);
++         (((*_31) as variant#3).0: ActionPermit<'_, T>) = move ((*_31).0: ActionPermit<'_, T>);
 +         StorageLive(_12);
 +         StorageLive(_13);
 +         StorageLive(_14);
@@ -177,7 +182,7 @@
 +         StorageDead(_14);
 +         _12 = move _13;
 +         StorageDead(_13);
-+         (((*_32) as variant#3).1: std::future::Ready<()>) = move _12;
++         (((*_31) as variant#3).1: std::future::Ready<()>) = move _12;
 +         goto -> bb6;
       }
   
@@ -189,17 +194,13 @@
 +         StorageLive(_19);
 +         StorageLive(_20);
 +         StorageLive(_21);
-+         _21 = &mut (((*_32) as variant#3).1: std::future::Ready<()>);
++         _21 = &mut (((*_31) as variant#3).1: std::future::Ready<()>);
 +         _20 = &mut (*_21);
 +         _19 = Pin::<&mut std::future::Ready<()>> { pointer: copy _20 };
 +         StorageDead(_20);
 +         StorageLive(_22);
-+         StorageLive(_23);
-+         StorageLive(_24);
-+         _24 = copy _9;
-+         _23 = move _24;
-+         _22 = &mut (*_23);
-+         StorageDead(_24);
++         _28 = no_retag copy unwrap_binder!(_32; &mut Context<'_>);
++         _22 = &mut (*_28);
 +         StorageLive(_37);
 +         StorageLive(_39);
 +         StorageLive(_44);
@@ -228,64 +229,61 @@
 + 
 +     bb8: {
 +         _17 = const ();
-+         StorageDead(_23);
 +         StorageDead(_21);
 +         StorageDead(_18);
 +         StorageDead(_17);
-+         StorageLive(_28);
-+         StorageLive(_29);
-+         _29 = ();
++         StorageLive(_26);
++         StorageLive(_27);
++         _27 = ();
 +         _7 = Poll::<()>::Pending;
 +         StorageDead(_12);
-+         StorageDead(_28);
-+         StorageDead(_29);
-+         discriminant((*_32)) = 3;
++         StorageDead(_26);
++         StorageDead(_27);
++         discriminant((*_31)) = 3;
 +         goto -> bb4;
 +     }
 + 
 +     bb9: {
-+         StorageLive(_26);
-+         _26 = copy ((_18 as Ready).0: ());
-+         _30 = copy _26;
-+         StorageDead(_26);
-+         StorageDead(_23);
++         StorageLive(_24);
++         _24 = copy ((_18 as Ready).0: ());
++         _29 = copy _24;
++         StorageDead(_24);
 +         StorageDead(_21);
 +         StorageDead(_18);
 +         StorageDead(_17);
 +         StorageDead(_12);
-+         drop((((*_32) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb10, unwind: bb12];
++         drop((((*_31) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb10, unwind: bb12];
 +     }
 + 
 +     bb10: {
-+         _7 = Poll::<()>::Ready(move _30);
-+         discriminant((*_32)) = 1;
++         _7 = Poll::<()>::Ready(move _29);
++         discriminant((*_31)) = 1;
 +         goto -> bb4;
 +     }
 + 
 +     bb11 (cleanup): {
 +         StorageDead(_22);
 +         StorageDead(_19);
-+         StorageDead(_23);
 +         StorageDead(_21);
 +         StorageDead(_18);
 +         StorageDead(_17);
 +         StorageDead(_12);
-+         drop((((*_32) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb12, unwind terminate(cleanup)];
++         drop((((*_31) as variant#3).0: ActionPermit<'_, T>)) -> [return: bb12, unwind terminate(cleanup)];
 +     }
 + 
 +     bb12 (cleanup): {
-+         discriminant((*_32)) = 2;
++         discriminant((*_31)) = 2;
 +         goto -> bb2;
 +     }
 + 
 +     bb13: {
 +         StorageLive(_12);
-+         StorageLive(_28);
-+         StorageLive(_29);
-+         _28 = move _9;
-+         StorageDead(_29);
-+         _9 = move _28;
-+         StorageDead(_28);
++         StorageLive(_26);
++         StorageLive(_27);
++         _26 = copy _32;
++         StorageDead(_27);
++         _32 = move _26;
++         StorageDead(_26);
 +         _16 = const ();
 +         goto -> bb6;
 +     }
@@ -313,8 +311,8 @@
 +         StorageDead(_37);
 +         StorageDead(_22);
 +         StorageDead(_19);
-+         _25 = discriminant(_18);
-+         switchInt(move _25) -> [0: bb9, 1: bb8, otherwise: bb7];
++         _23 = discriminant(_18);
++         switchInt(move _23) -> [0: bb9, 1: bb8, otherwise: bb7];
 +     }
 + }
 + 

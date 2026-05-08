@@ -39,7 +39,8 @@ fn build_poll_call<'tcx>(
     switch_block: BasicBlock,
     fut_pin_place: &Place<'tcx>,
     fut_ty: Ty<'tcx>,
-    context_ref_place: &Place<'tcx>,
+    // This local has type `ResumeTy`.
+    resume_local: Local,
     unwind: UnwindAction,
 ) -> BasicBlock {
     let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, DUMMY_SP);
@@ -49,11 +50,15 @@ fn build_poll_call<'tcx>(
         user_ty: None,
         const_: Const::zero_sized(poll_fn),
     }));
+    let context_ref_place = tcx.mk_place_elem(
+        resume_local.into(),
+        PlaceElem::UnwrapUnsafeBinder(Ty::new_task_context(tcx)),
+    );
     let call = TerminatorKind::Call {
         func: poll_fn.clone(),
         args: [
             dummy_spanned(Operand::Move(*fut_pin_place)),
-            dummy_spanned(Operand::Move(*context_ref_place)),
+            dummy_spanned(Operand::Move(context_ref_place)),
         ]
         .into(),
         destination: *poll_unit_place,
@@ -255,10 +260,10 @@ pub(super) fn has_expandable_async_drops<'tcx>(
 pub(super) fn expand_async_drops<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    context_mut_ref: Ty<'tcx>,
     coroutine_kind: hir::CoroutineKind,
     coroutine_ty: Ty<'tcx>,
 ) {
+    let resume_ty = Ty::new_resume_ty(tcx);
     let dropline = gather_dropline_blocks(body);
     // Clean drop and async_fut fields if potentially async drop is not expanded (stays sync)
     let remove_asyncness = |block: &mut BasicBlockData<'tcx>| {
@@ -326,12 +331,13 @@ pub(super) fn expand_async_drops<'tcx>(
         let poll_unit_place = Place::from(body.local_decls.push(poll_decl));
 
         // First state-loop yield for mainline
-        let context_ref_place =
-            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)));
-        let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)), WithRetag::Yes);
+        let resume_local = body.local_decls.push(LocalDecl::new(resume_ty, source_info.span));
         body[bb].statements.push(Statement::new(
             source_info,
-            StatementKind::Assign(Box::new((context_ref_place, arg))),
+            StatementKind::Assign(Box::new((
+                resume_local.into(),
+                Rvalue::Use(Operand::Move(CTX_ARG.into()), WithRetag::Yes),
+            ))),
         ));
         let yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
         let (pin_bb, fut_pin_place) =
@@ -352,19 +358,17 @@ pub(super) fn expand_async_drops<'tcx>(
             switch_block,
             &fut_pin_place,
             fut_ty,
-            &context_ref_place,
+            resume_local,
             unwind,
         );
 
         // Second state-loop yield for transition to dropline (when coroutine async drop started)
         let mut dropline_transition_bb: Option<BasicBlock> = None;
         let mut dropline_yield_bb: Option<BasicBlock> = None;
-        let mut dropline_context_ref: Option<Place<'_>> = None;
+        let mut dropline_resume_local: Option<Local> = None;
         let mut dropline_call_bb: Option<BasicBlock> = None;
         if !is_dropline_bb {
-            let context_ref_place2: Place<'_> = Place::from(
-                body.local_decls.push(LocalDecl::new(context_mut_ref, source_info.span)),
-            );
+            let resume_local2 = body.local_decls.push(LocalDecl::new(resume_ty, source_info.span));
             let drop_yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
             let (pin_bb2, fut_pin_place2) =
                 build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
@@ -384,12 +388,12 @@ pub(super) fn expand_async_drops<'tcx>(
                 drop_switch_block,
                 &fut_pin_place2,
                 fut_ty,
-                &context_ref_place2,
+                resume_local2,
                 unwind,
             );
             dropline_transition_bb = Some(pin_bb2);
             dropline_yield_bb = Some(drop_yield_block);
-            dropline_context_ref = Some(context_ref_place2);
+            dropline_resume_local = Some(resume_local2);
             dropline_call_bb = Some(drop_call_bb);
         }
 
@@ -428,20 +432,20 @@ pub(super) fn expand_async_drops<'tcx>(
             body[yield_block].terminator_mut().kind = TerminatorKind::Yield {
                 value: value.clone(),
                 resume: panic_bb,
-                resume_arg: context_ref_place,
+                resume_arg: resume_local.into(),
                 drop: Some(pin_bb),
             };
         } else {
             body[yield_block].terminator_mut().kind = TerminatorKind::Yield {
                 value: value.clone(),
                 resume: pin_bb,
-                resume_arg: context_ref_place,
+                resume_arg: resume_local.into(),
                 drop: dropline_transition_bb,
             };
             body[dropline_yield_bb.unwrap()].terminator_mut().kind = TerminatorKind::Yield {
                 value,
                 resume: panic_bb,
-                resume_arg: dropline_context_ref.unwrap(),
+                resume_arg: dropline_resume_local.unwrap().into(),
                 drop: dropline_transition_bb,
             };
         }
@@ -708,6 +712,9 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
+    if transform.coroutine_kind.is_async_desugaring() {
+        transform_async_context(tcx, &mut body);
+    }
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
         dumper.dump_mir(&body);
@@ -721,6 +728,7 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
 pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
+    coroutine_kind: CoroutineKind,
 ) -> Body<'tcx> {
     let mut body = body.clone();
     // Take the coroutine info out of the body, since the drop shim is
@@ -758,6 +766,9 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
+    if coroutine_kind.is_async_desugaring() {
+        transform_async_context(tcx, &mut body);
+    }
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
         dumper.dump_mir(&body);

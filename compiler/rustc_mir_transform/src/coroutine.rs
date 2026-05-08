@@ -563,20 +563,13 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     );
 }
 
-/// Transforms the `body` of the coroutine applying the following transforms:
+/// Transforms the `body` of the coroutine replacing `CTX_ARG: ResumeTy` types with
+/// `CTX_ARG: &mut Context<'_>` (`context_mut_ref`), and making all users wrap/unwrap
+/// into a `ResumeTy`.
 ///
-/// - Eliminates all the `get_context` calls that async lowering created.
-/// - Replace all `Local` `ResumeTy` types with `&mut Context<'_>` (`context_mut_ref`).
+/// The `ResumeTy` hides a `&mut Context<'_>` behind an unsafe binder.
 ///
-/// The `Local`s that have their types replaced are:
-/// - The `resume` argument itself.
-/// - The argument to `get_context`.
-/// - The yielded value of a `yield`.
-///
-/// The `ResumeTy` hides a `&mut Context<'_>` behind an unsafe raw pointer, and the
-/// `get_context` function is being used to convert that back to a `&mut Context<'_>`.
-///
-/// Ideally the async lowering would not use the `ResumeTy`/`get_context` indirection,
+/// Ideally the async lowering would not use the `ResumeTy` indirection,
 /// but rather directly use `&mut Context<'_>`, however that would currently
 /// lead to higher-kinded lifetime errors.
 /// See <https://github.com/rust-lang/rust/issues/105501>.
@@ -585,78 +578,20 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 /// still using the `ResumeTy` indirection for the time being, and that indirection
 /// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
 #[tracing::instrument(level = "trace", skip(tcx, body), ret)]
-fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty<'tcx> {
-    let context_mut_ref = Ty::new_task_context(tcx);
+fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let resume_ty = body.local_decls[CTX_ARG].ty;
+    let resume_local = body.local_decls.push(LocalDecl::new(Ty::new_task_context(tcx), body.span));
+    body.local_decls.swap(CTX_ARG, resume_local);
 
-    // replace the type of the `resume` argument
-    replace_resume_ty_local(tcx, body, CTX_ARG, context_mut_ref);
+    RenameLocalVisitor { from: CTX_ARG, to: resume_local, tcx }.visit_body(body);
 
-    let get_context_def_id = tcx.require_lang_item(LangItem::GetContext, body.span);
-
-    for bb in body.basic_blocks.indices() {
-        let bb_data = &body[bb];
-        if bb_data.is_cleanup {
-            continue;
-        }
-
-        match &bb_data.terminator().kind {
-            TerminatorKind::Call { func, .. } => {
-                let func_ty = func.ty(body, tcx);
-                if let ty::FnDef(def_id, _) = *func_ty.kind()
-                    && def_id == get_context_def_id
-                {
-                    let local = eliminate_get_context_call(&mut body[bb]);
-                    replace_resume_ty_local(tcx, body, local, context_mut_ref);
-                }
-            }
-            TerminatorKind::Yield { resume_arg, .. } => {
-                replace_resume_ty_local(tcx, body, resume_arg.local, context_mut_ref);
-            }
-            _ => {}
-        }
-    }
-    context_mut_ref
-}
-
-fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local {
-    let terminator = bb_data.terminator.take().unwrap();
-    let TerminatorKind::Call { args, destination, target, .. } = terminator.kind else {
-        bug!();
-    };
-    let [arg] = *Box::try_from(args).unwrap();
-    let local = arg.node.place().unwrap().local;
-
-    let arg = Rvalue::Use(arg.node, WithRetag::Yes);
-    let assign =
-        Statement::new(terminator.source_info, StatementKind::Assign(Box::new((destination, arg))));
-    bb_data.statements.push(assign);
-    bb_data.terminator = Some(Terminator {
-        source_info: terminator.source_info,
-        kind: TerminatorKind::Goto { target: target.unwrap() },
-    });
-    local
-}
-
-#[cfg_attr(not(debug_assertions), allow(unused))]
-#[tracing::instrument(level = "trace", skip(tcx, body), ret)]
-fn replace_resume_ty_local<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    local: Local,
-    context_mut_ref: Ty<'tcx>,
-) {
-    let local_ty = std::mem::replace(&mut body.local_decls[local].ty, context_mut_ref);
-    // We have to replace the `ResumeTy` that is used for type and borrow checking
-    // with `&mut Context<'_>` in MIR.
-    #[cfg(debug_assertions)]
-    {
-        if let ty::Adt(resume_ty_adt, _) = local_ty.kind() {
-            let expected_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, body.span));
-            assert_eq!(*resume_ty_adt, expected_adt);
-        } else {
-            panic!("expected `ResumeTy`, found `{:?}`", local_ty);
-        };
-    }
+    // Now `CTX_ARG` is `&mut Context` and `resume_local` is a `unsafe<>`.
+    let source_info = SourceInfo::outermost(body.span);
+    let rhs = Rvalue::WrapUnsafeBinder(Operand::Move(CTX_ARG.into()), resume_ty);
+    let assign = StatementKind::Assign(Box::new((resume_local.into(), rhs)));
+    body.basic_blocks.as_mut_preserves_cfg()[START_BLOCK]
+        .statements
+        .insert(0, Statement::new(source_info, assign));
 }
 
 /// Transforms the `body` of the coroutine applying the following transform:
@@ -1316,6 +1251,9 @@ fn create_coroutine_resume_function<'tcx>(
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, body, false);
+    if transform.coroutine_kind.is_async_desugaring() {
+        transform_async_context(tcx, body);
+    }
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_resume", body) {
         dumper.dump_mir(body);
@@ -1364,13 +1302,13 @@ fn create_cases<'tcx>(
                     }
                 }
 
+                // Move the resume argument to the destination place of the `Yield` terminator
                 if operation == Operation::Resume && point.resume_arg != CTX_ARG.into() {
-                    // Move the resume argument to the destination place of the `Yield` terminator
                     statements.push(Statement::new(
                         source_info,
                         StatementKind::Assign(Box::new((
                             point.resume_arg,
-                            Rvalue::Use(Operand::Move(CTX_ARG.into()), WithRetag::Yes),
+                            Rvalue::Use(Operand::Copy(CTX_ARG.into()), WithRetag::Yes),
                         ))),
                     ));
                 }
@@ -1522,18 +1460,11 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // (finally in open_drop_for_tuple) before async drop expansion.
         // Async drops, produced by this drop elaboration, will be expanded,
         // and corresponding futures kept in layout.
-        let has_async_drops = matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) && has_expandable_async_drops(tcx, body, coroutine_ty);
+        let has_async_drops = coroutine_kind.is_async_desugaring()
+            && has_expandable_async_drops(tcx, body, coroutine_ty);
 
-        // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
-        if matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) {
-            let context_mut_ref = transform_async_context(tcx, body);
-            expand_async_drops(tcx, body, context_mut_ref, coroutine_kind, coroutine_ty);
+        if has_async_drops {
+            expand_async_drops(tcx, body, coroutine_kind, coroutine_ty);
 
             if let Some(dumper) = MirDumper::new(tcx, "coroutine_async_drop_expand", body) {
                 dumper.dump_mir(body);
@@ -1663,7 +1594,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 
             // For coroutine with sync drop, generating async proxy for `future_drop_poll` call
-            let proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body);
+            let proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body, coroutine_kind);
             body.coroutine.as_mut().unwrap().coroutine_drop_proxy_async = Some(proxy_shim);
         }
 

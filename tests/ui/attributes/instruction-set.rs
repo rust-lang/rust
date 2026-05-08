@@ -5,7 +5,7 @@
 //@ edition: 2024
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items,)]
+#![feature(no_core, lang_items, unsafe_binders)]
 #![no_core]
 
 extern crate minicore;
@@ -70,7 +70,7 @@ impl Bazzest for Fooer {
 
 // The following lang items need to be defined for the async closure to work
 #[lang = "ResumeTy"]
-pub struct ResumeTy(NonNull<Context<'static>>);
+pub type ResumeTy = unsafe<'a, 'b> &'a mut Context<'b>;
 
 #[lang = "future_trait"]
 pub trait Future {
@@ -99,12 +99,6 @@ pub enum Poll<T> {
 pub struct Context<'a> {
     // NOTE: misses a bunch of fields.
     _marker: PhantomData<fn(&'a ()) -> &'a ()>,
-}
-
-#[lang = "get_context"]
-pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
-    // NOTE: the actual implementation looks different.
-    unsafe {mem::transmute(cx.0)}
 }
 
 #[lang = "pin"]

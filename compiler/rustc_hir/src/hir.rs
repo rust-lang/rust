@@ -2327,6 +2327,13 @@ impl CoroutineKind {
         matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
     }
 
+    pub fn is_async_desugaring(self) -> bool {
+        matches!(
+            self,
+            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
+        )
+    }
+
     pub fn to_plural_string(&self) -> String {
         match self {
             CoroutineKind::Desugared(d, CoroutineSource::Fn) => format!("{d:#}fn bodies"),

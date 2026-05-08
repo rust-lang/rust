@@ -1,5 +1,6 @@
 //@ compile-flags: -Zverbose-internals
 //@ edition:2021
+//@ normalize-stderr: "DefId\([^)]*" -> ""
 
 fn main() {
     let x = async || {};

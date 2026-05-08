@@ -42,10 +42,12 @@ fn foo::{closure#0}::{closure#0}(_1: Pin<&mut {async closure body@$DIR/async-clo
     let mut _5: ();
     let mut _6: u32;
     let mut _7: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
-    debug _task_context => _2;
+    let mut _8: unsafe<'a, 'b> &'a mut Context<'b>;
+    debug _task_context => _8;
     debug y => (*((*_7).0: &i32));
     debug y => _3;
     bb0: {
+        _8 = wrap_binder!(Move(_2); Ty { id: 12, kind: RigidTy(UnsafeBinder(Binder { value: Ty { id: 19, kind: RigidTy(Ref(Region { kind: ReBound(0, BoundRegion { var: 0, kind: BrAnon }) }, Ty { id: 20, kind: RigidTy(Adt(AdtDef(DefId { id: 5, name: "std::task::Context" }), GenericArgs([Lifetime(Region { kind: ReBound(0, BoundRegion { var: 1, kind: BrAnon }) })]))) }, Mut)) }, bound_vars: [Region(BrAnon), Region(BrAnon)] })) });
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
         switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];
@@ -74,10 +76,12 @@ fn foo::{closure#0}::{synthetic#0}(_1: Pin<&mut {async closure body@$DIR/async-c
     let mut _5: ();
     let mut _6: u32;
     let mut _7: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6};
-    debug _task_context => _2;
+    let mut _8: unsafe<'a, 'b> &'a mut Context<'b>;
+    debug _task_context => _8;
     debug y => (*((*_7).0: &i32));
     debug y => _3;
     bb0: {
+        _8 = wrap_binder!(Move(_2); Ty { id: 12, kind: RigidTy(UnsafeBinder(Binder { value: Ty { id: 19, kind: RigidTy(Ref(Region { kind: ReBound(0, BoundRegion { var: 0, kind: BrAnon }) }, Ty { id: 20, kind: RigidTy(Adt(AdtDef(DefId { id: 5, name: "std::task::Context" }), GenericArgs([Lifetime(Region { kind: ReBound(0, BoundRegion { var: 1, kind: BrAnon }) })]))) }, Mut)) }, bound_vars: [Region(BrAnon), Region(BrAnon)] })) });
         _7 = (_1.0: &mut {async closure body@$DIR/async-closure.rs:9:22: 11:6});
         _6 = discriminant((*_7));
         switchInt(move _6) -> [0: bb1, 1: bb2, otherwise: bb3];

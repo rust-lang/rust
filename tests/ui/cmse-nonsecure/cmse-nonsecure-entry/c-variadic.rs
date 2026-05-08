@@ -3,7 +3,7 @@
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 //@ ignore-backends: gcc
-#![feature(cmse_nonsecure_entry, c_variadic, no_core, lang_items)]
+#![feature(cmse_nonsecure_entry, c_variadic, no_core, lang_items, unsafe_binders)]
 #![no_core]
 
 extern crate minicore;
@@ -33,7 +33,7 @@ async unsafe extern "cmse-nonsecure-entry" fn async_is_not_allowed() {
 // them.
 
 #[lang = "ResumeTy"]
-pub struct ResumeTy(NonNull<Context<'static>>);
+pub type ResumeTy = unsafe<'a, 'b> &'a mut Context<'b>;
 
 #[lang = "future_trait"]
 pub trait Future {
@@ -62,12 +62,6 @@ pub enum Poll<T> {
 pub struct Context<'a> {
     // NOTE: misses a bunch of fields.
     _marker: PhantomData<fn(&'a ()) -> &'a ()>,
-}
-
-#[lang = "get_context"]
-pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
-    // NOTE: the actual implementation looks different.
-    mem::transmute(cx.0)
 }
 
 #[lang = "pin"]
