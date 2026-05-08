@@ -15276,10 +15276,8 @@ pub fn vqnegd_s64(a: i64) -> i64 {
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlah_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlah_s16(a, b, c)
-    }
+    let c = vdup_lane_s16::<LANE>(c);
+    vqrdmlah_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlah_lane_s32)"]
@@ -15290,10 +15288,8 @@ pub fn vqrdmlah_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlah_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
-        vqrdmlah_s32(a, b, c)
-    }
+    let c = vdup_lane_s32::<LANE>(c);
+    vqrdmlah_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlah_laneq_s16)"]
@@ -15304,10 +15300,8 @@ pub fn vqrdmlah_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlah_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlah_s16(a, b, c)
-    }
+    let c = vdup_laneq_s16::<LANE>(c);
+    vqrdmlah_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlah_laneq_s32)"]
@@ -15318,10 +15312,8 @@ pub fn vqrdmlah_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlah_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
-        vqrdmlah_s32(a, b, c)
-    }
+    let c = vdup_laneq_s32::<LANE>(c);
+    vqrdmlah_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahq_lane_s16)"]
@@ -15332,10 +15324,8 @@ pub fn vqrdmlah_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
-        vqrdmlahq_s16(a, b, c)
-    }
+    let c = vdupq_lane_s16::<LANE>(c);
+    vqrdmlahq_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahq_lane_s32)"]
@@ -15346,10 +15336,8 @@ pub fn vqrdmlahq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlahq_s32(a, b, c)
-    }
+    let c = vdupq_lane_s32::<LANE>(c);
+    vqrdmlahq_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahq_laneq_s16)"]
@@ -15360,10 +15348,8 @@ pub fn vqrdmlahq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
-        vqrdmlahq_s16(a, b, c)
-    }
+    let c = vdupq_laneq_s16::<LANE>(c);
+    vqrdmlahq_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlahq_laneq_s32)"]
@@ -15374,10 +15360,8 @@ pub fn vqrdmlahq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlahq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlahq_s32(a, b, c)
-    }
+    let c = vdupq_laneq_s32::<LANE>(c);
+    vqrdmlahq_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply accumulate returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlah_s16)"]
@@ -15520,10 +15504,8 @@ pub fn vqrdmlahs_s32(a: i32, b: i32, c: i32) -> i32 {
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlsh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlsh_s16(a, b, c)
-    }
+    let c = vdup_lane_s16::<LANE>(c);
+    vqrdmlsh_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlsh_lane_s32)"]
@@ -15534,10 +15516,8 @@ pub fn vqrdmlsh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlsh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
-        vqrdmlsh_s32(a, b, c)
-    }
+    let c = vdup_lane_s32::<LANE>(c);
+    vqrdmlsh_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlsh_laneq_s16)"]
@@ -15548,10 +15528,8 @@ pub fn vqrdmlsh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlsh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let c: int16x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlsh_s16(a, b, c)
-    }
+    let c = vdup_laneq_s16::<LANE>(c);
+    vqrdmlsh_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlsh_laneq_s32)"]
@@ -15562,10 +15540,8 @@ pub fn vqrdmlsh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlsh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32; 2]);
-        vqrdmlsh_s32(a, b, c)
-    }
+    let c = vdup_laneq_s32::<LANE>(c);
+    vqrdmlsh_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshq_lane_s16)"]
@@ -15576,10 +15552,8 @@ pub fn vqrdmlsh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
-        vqrdmlshq_s16(a, b, c)
-    }
+    let c = vdupq_lane_s16::<LANE>(c);
+    vqrdmlshq_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshq_lane_s32)"]
@@ -15590,10 +15564,8 @@ pub fn vqrdmlshq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlshq_s32(a, b, c)
-    }
+    let c = vdupq_lane_s32::<LANE>(c);
+    vqrdmlshq_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshq_laneq_s16)"]
@@ -15604,10 +15576,8 @@ pub fn vqrdmlshq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe {
-        let c: int16x8_t = simd_shuffle!(c, c, [LANE as u32; 8]);
-        vqrdmlshq_s16(a, b, c)
-    }
+    let c = vdupq_laneq_s16::<LANE>(c);
+    vqrdmlshq_s16(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlshq_laneq_s32)"]
@@ -15618,10 +15588,8 @@ pub fn vqrdmlshq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub fn vqrdmlshq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32; 4]);
-        vqrdmlshq_s32(a, b, c)
-    }
+    let c = vdupq_laneq_s32::<LANE>(c);
+    vqrdmlshq_s32(a, b, c)
 }
 #[doc = "Signed saturating rounding doubling multiply subtract returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmlsh_s16)"]
