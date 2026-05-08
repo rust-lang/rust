@@ -15030,13 +15030,7 @@ pub fn vqdmulls_s32(a: i32, b: i32) -> i64 {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqxtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovn_high_s16(a: int8x8_t, b: int16x8_t) -> int8x16_t {
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqmovn_s16(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_s8(a, vqmovn_s16(b))
 }
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_high_s32)"]
@@ -15045,7 +15039,7 @@ pub fn vqmovn_high_s16(a: int8x8_t, b: int16x8_t) -> int8x16_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqxtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovn_high_s32(a: int16x4_t, b: int32x4_t) -> int16x8_t {
-    unsafe { simd_shuffle!(a, vqmovn_s32(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_s16(a, vqmovn_s32(b))
 }
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_high_s64)"]
@@ -15054,7 +15048,7 @@ pub fn vqmovn_high_s32(a: int16x4_t, b: int32x4_t) -> int16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqxtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovn_high_s64(a: int32x2_t, b: int64x2_t) -> int32x4_t {
-    unsafe { simd_shuffle!(a, vqmovn_s64(b), [0, 1, 2, 3]) }
+    vcombine_s32(a, vqmovn_s64(b))
 }
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_high_u16)"]
@@ -15063,13 +15057,7 @@ pub fn vqmovn_high_s64(a: int32x2_t, b: int64x2_t) -> int32x4_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(uqxtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovn_high_u16(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqmovn_u16(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vqmovn_u16(b))
 }
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_high_u32)"]
@@ -15078,7 +15066,7 @@ pub fn vqmovn_high_u16(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(uqxtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovn_high_u32(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
-    unsafe { simd_shuffle!(a, vqmovn_u32(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vqmovn_u32(b))
 }
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_high_u64)"]
@@ -15087,7 +15075,7 @@ pub fn vqmovn_high_u32(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(uqxtn2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovn_high_u64(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
-    unsafe { simd_shuffle!(a, vqmovn_u64(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vqmovn_u64(b))
 }
 #[doc = "Saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovnd_s64)"]
@@ -15164,13 +15152,7 @@ pub fn vqmovns_u32(a: u32) -> u16 {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqxtun2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovun_high_s16(a: uint8x8_t, b: int16x8_t) -> uint8x16_t {
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqmovun_s16(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vqmovun_s16(b))
 }
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_high_s32)"]
@@ -15179,7 +15161,7 @@ pub fn vqmovun_high_s16(a: uint8x8_t, b: int16x8_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqxtun2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovun_high_s32(a: uint16x4_t, b: int32x4_t) -> uint16x8_t {
-    unsafe { simd_shuffle!(a, vqmovun_s32(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vqmovun_s32(b))
 }
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_high_s64)"]
@@ -15188,7 +15170,7 @@ pub fn vqmovun_high_s32(a: uint16x4_t, b: int32x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sqxtun2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqmovun_high_s64(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
-    unsafe { simd_shuffle!(a, vqmovun_s64(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vqmovun_s64(b))
 }
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovunh_s16)"]
