@@ -12445,10 +12445,8 @@ pub fn vmlsl_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sxtl2))]
 pub fn vmovl_high_s8(a: int8x16_t) -> int16x8_t {
-    unsafe {
-        let a: int8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vmovl_s8(a)
-    }
+    let a = vget_high_s8(a);
+    vmovl_s8(a)
 }
 #[doc = "Vector move"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovl_high_s16)"]
@@ -12457,10 +12455,8 @@ pub fn vmovl_high_s8(a: int8x16_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sxtl2))]
 pub fn vmovl_high_s16(a: int16x8_t) -> int32x4_t {
-    unsafe {
-        let a: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        vmovl_s16(a)
-    }
+    let a = vget_high_s16(a);
+    vmovl_s16(a)
 }
 #[doc = "Vector move"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovl_high_s32)"]
@@ -12469,10 +12465,8 @@ pub fn vmovl_high_s16(a: int16x8_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(sxtl2))]
 pub fn vmovl_high_s32(a: int32x4_t) -> int64x2_t {
-    unsafe {
-        let a: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        vmovl_s32(a)
-    }
+    let a = vget_high_s32(a);
+    vmovl_s32(a)
 }
 #[doc = "Vector move"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovl_high_u8)"]
@@ -12481,10 +12475,8 @@ pub fn vmovl_high_s32(a: int32x4_t) -> int64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(uxtl2))]
 pub fn vmovl_high_u8(a: uint8x16_t) -> uint16x8_t {
-    unsafe {
-        let a: uint8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vmovl_u8(a)
-    }
+    let a = vget_high_u8(a);
+    vmovl_u8(a)
 }
 #[doc = "Vector move"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovl_high_u16)"]
@@ -12493,10 +12485,8 @@ pub fn vmovl_high_u8(a: uint8x16_t) -> uint16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(uxtl2))]
 pub fn vmovl_high_u16(a: uint16x8_t) -> uint32x4_t {
-    unsafe {
-        let a: uint16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        vmovl_u16(a)
-    }
+    let a = vget_high_u16(a);
+    vmovl_u16(a)
 }
 #[doc = "Vector move"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovl_high_u32)"]
@@ -12505,10 +12495,8 @@ pub fn vmovl_high_u16(a: uint16x8_t) -> uint32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(uxtl2))]
 pub fn vmovl_high_u32(a: uint32x4_t) -> uint64x2_t {
-    unsafe {
-        let a: uint32x2_t = simd_shuffle!(a, a, [2, 3]);
-        vmovl_u32(a)
-    }
+    let a = vget_high_u32(a);
+    vmovl_u32(a)
 }
 #[doc = "Extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovn_high_s16)"]
@@ -12517,10 +12505,7 @@ pub fn vmovl_high_u32(a: uint32x4_t) -> uint64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(xtn2))]
 pub fn vmovn_high_s16(a: int8x8_t, b: int16x8_t) -> int8x16_t {
-    unsafe {
-        let c: int8x8_t = simd_cast(b);
-        simd_shuffle!(a, c, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
-    }
+    unsafe { vcombine_s8(a, simd_cast(b)) }
 }
 #[doc = "Extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovn_high_s32)"]
@@ -12529,10 +12514,7 @@ pub fn vmovn_high_s16(a: int8x8_t, b: int16x8_t) -> int8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(xtn2))]
 pub fn vmovn_high_s32(a: int16x4_t, b: int32x4_t) -> int16x8_t {
-    unsafe {
-        let c: int16x4_t = simd_cast(b);
-        simd_shuffle!(a, c, [0, 1, 2, 3, 4, 5, 6, 7])
-    }
+    unsafe { vcombine_s16(a, simd_cast(b)) }
 }
 #[doc = "Extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovn_high_s64)"]
@@ -12541,10 +12523,7 @@ pub fn vmovn_high_s32(a: int16x4_t, b: int32x4_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(xtn2))]
 pub fn vmovn_high_s64(a: int32x2_t, b: int64x2_t) -> int32x4_t {
-    unsafe {
-        let c: int32x2_t = simd_cast(b);
-        simd_shuffle!(a, c, [0, 1, 2, 3])
-    }
+    unsafe { vcombine_s32(a, simd_cast(b)) }
 }
 #[doc = "Extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovn_high_u16)"]
@@ -12553,10 +12532,7 @@ pub fn vmovn_high_s64(a: int32x2_t, b: int64x2_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(xtn2))]
 pub fn vmovn_high_u16(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
-    unsafe {
-        let c: uint8x8_t = simd_cast(b);
-        simd_shuffle!(a, c, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
-    }
+    unsafe { vcombine_u8(a, simd_cast(b)) }
 }
 #[doc = "Extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovn_high_u32)"]
@@ -12565,10 +12541,7 @@ pub fn vmovn_high_u16(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(xtn2))]
 pub fn vmovn_high_u32(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
-    unsafe {
-        let c: uint16x4_t = simd_cast(b);
-        simd_shuffle!(a, c, [0, 1, 2, 3, 4, 5, 6, 7])
-    }
+    unsafe { vcombine_u16(a, simd_cast(b)) }
 }
 #[doc = "Extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmovn_high_u64)"]
@@ -12577,10 +12550,7 @@ pub fn vmovn_high_u32(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(all(test, target_endian = "little"), assert_instr(xtn2))]
 pub fn vmovn_high_u64(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
-    unsafe {
-        let c: uint32x2_t = simd_cast(b);
-        simd_shuffle!(a, c, [0, 1, 2, 3])
-    }
+    unsafe { vcombine_u32(a, simd_cast(b)) }
 }
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_f64)"]
