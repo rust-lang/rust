@@ -1032,7 +1032,7 @@ def StdSliceSummaryProvider(valobj, dict):
 class StdVecDequeSyntheticProvider:
     """Pretty-printer for alloc::collections::vec_deque::VecDeque<T>
 
-    struct VecDeque<T> { head: BufferIndex, len: usize, buf: RawVec<T> }
+    struct VecDeque<T> { head: WrappedIndex, len: usize, buf: RawVec<T> }
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):

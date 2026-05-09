@@ -510,7 +510,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     self.copy(src, dst, src_pre_wrap_len);
                     self.copy(WrappedIndex::zero(), dst.add(src_pre_wrap_len), delta);
                     self.copy(
-                        WrappedIndex::new(delta),
+                        WrappedIndex::from_arbitrary_number(delta),
                         WrappedIndex::zero(),
                         len - dst_pre_wrap_len,
                     );
@@ -531,11 +531,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 unsafe {
                     self.copy(
                         WrappedIndex::zero(),
-                        WrappedIndex::new(delta),
+                        WrappedIndex::from_arbitrary_number(delta),
                         len - src_pre_wrap_len,
                     );
                     self.copy(
-                        WrappedIndex::new(self.capacity() - delta),
+                        WrappedIndex::from_arbitrary_number(self.capacity() - delta),
                         WrappedIndex::zero(),
                         delta,
                     );
@@ -702,13 +702,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 unsafe {
                     self.copy_nonoverlapping(
                         WrappedIndex::zero(),
-                        WrappedIndex::new(old_capacity),
+                        WrappedIndex::from_arbitrary_number(old_capacity),
                         tail_len,
                     );
                 }
             } else {
                 // C
-                let new_head = unsafe { WrappedIndex::new(new_capacity - head_len) };
+                let new_head = WrappedIndex::from_arbitrary_number(new_capacity - head_len);
                 unsafe {
                     // can't use copy_nonoverlapping here, because if e.g. head_len = 2
                     // and new_capacity = old_capacity + 1, then the heads overlap.
@@ -941,7 +941,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // and that the allocation is valid for use in `RawVec`.
         unsafe {
             VecDeque {
-                head: WrappedIndex::new(initialized.start),
+                head: WrappedIndex::from_arbitrary_number(initialized.start),
                 len: initialized.end.unchecked_sub(initialized.start),
                 buf: RawVec::from_raw_parts_in(ptr, capacity, alloc),
             }
@@ -1313,7 +1313,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
             let len = self.head + self.len - target_cap;
             // Safety: head is < target_cap, so the index is wrapped
             unsafe {
-                self.copy_nonoverlapping(WrappedIndex::new(target_cap), WrappedIndex::zero(), len);
+                self.copy_nonoverlapping(
+                    WrappedIndex::from_arbitrary_number(target_cap),
+                    WrappedIndex::zero(),
+                    len,
+                );
             }
         } else if !self.is_contiguous() {
             // The head slice is at least partially out of bounds, tail is in bounds.
@@ -1328,8 +1332,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             //   [o o o o o . o o ]
             let head_len = self.capacity() - self.head.as_index();
 
-            // Safety: head_len is at least one, so new_head will be < target_cap
-            let new_head = unsafe { WrappedIndex::new(target_cap - head_len) };
+            // head_len is at least one, so new_head will be < target_cap
+            let new_head = WrappedIndex::from_arbitrary_number(target_cap - head_len);
             unsafe {
                 // can't use `copy_nonoverlapping()` here because the new and old
                 // regions for the head might overlap.
@@ -1394,7 +1398,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 // head slice ends at `target_cap`, so that's where we copy to.
                 self.copy_nonoverlapping(
                     WrappedIndex::zero(),
-                    WrappedIndex::new(target_cap),
+                    WrappedIndex::from_arbitrary_number(target_cap),
                     tail_len,
                 );
             }
@@ -2909,8 +2913,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let free = cap - len;
         let head_len = cap - head.as_index();
 
-        // Safety: tail <= head_len <= len <= capacity
-        let tail = unsafe { WrappedIndex::new(len - head_len) };
+        // tail <= head < capacity
+        // head cannot be <= capacity, because we know that VecDeque is non-empty, since it is not
+        // contiguous at this point
+        let tail = WrappedIndex::from_arbitrary_number(len - head_len);
         let tail_len = tail.as_index();
 
         if free >= head_len {
@@ -2921,7 +2927,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
             // from: DEFGH....ABC
             // to:   ABCDEFGH....
             unsafe {
-                self.copy(WrappedIndex::zero(), WrappedIndex::new(head_len), tail_len);
+                self.copy(
+                    WrappedIndex::zero(),
+                    WrappedIndex::from_arbitrary_number(head_len),
+                    tail_len,
+                );
                 // ...DEFGH.ABC
                 self.copy_nonoverlapping(head, WrappedIndex::zero(), head_len);
                 // ABCDEFGH....
@@ -2974,7 +2984,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
                         // because we only move the tail forward as much as there's free space
                         // behind it, we don't overwrite any elements of the head slice, and
                         // the slices end up right next to each other.
-                        self.copy(WrappedIndex::zero(), WrappedIndex::new(free), tail_len);
+                        self.copy(
+                            WrappedIndex::zero(),
+                            WrappedIndex::from_arbitrary_number(free),
+                            tail_len,
+                        );
                     }
 
                     // We just copied the tail right next to the head slice,
@@ -2987,7 +3001,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
                     // the used part of the buffer now is `free..self.capacity()`, so set
                     // `head` to the beginning of that range.
-                    self.head = WrappedIndex::new(free);
+                    self.head = WrappedIndex::from_arbitrary_number(free);
                 }
             } else {
                 // head is shorter so:
@@ -3000,7 +3014,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     // right next to each other and we don't need to move any memory.
                     if free != 0 {
                         // copy the head slice to lie right behind the tail slice.
-                        self.copy(self.head, WrappedIndex::new(tail_len), head_len);
+                        self.copy(
+                            self.head,
+                            WrappedIndex::from_arbitrary_number(tail_len),
+                            head_len,
+                        );
                     }
 
                     // because we copied the head slice so that both slices lie right
@@ -3541,7 +3559,7 @@ impl<T: Clone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
                 if self.head.is_zero() {
                     // SAFETY: the wrapped index may be temporarily equal to the capacity even if it
                     // is not zero, because we subtract it one line below.
-                    self.head = WrappedIndex::new(cap);
+                    self.head = WrappedIndex::from_arbitrary_number(cap);
                 }
                 self.head = self.head.sub(1);
                 self.len += 1;
@@ -3636,9 +3654,10 @@ mod index {
     pub(super) struct WrappedIndex(usize);
 
     impl WrappedIndex {
-        /// Safety invariant: the newly constructed index must be in-bounds for the VecDeque
+        /// The newly constructed index has to be in-bounds for the VecDeque
+        /// that uses the index.
         #[inline(always)]
-        pub(super) unsafe fn new(index: usize) -> Self {
+        pub(super) fn from_arbitrary_number(index: usize) -> Self {
             Self(index)
         }
 

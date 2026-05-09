@@ -109,9 +109,7 @@ fn test_swap_front_back_remove() {
             let expected: VecDeque<_> =
                 if back { (0..len).collect() } else { (0..len).rev().collect() };
             for head_pos in 0..usable_cap {
-                unsafe {
-                    tester.head = WrappedIndex::new(head_pos);
-                }
+                tester.head = WrappedIndex::from_arbitrary_number(head_pos);
                 tester.len = 0;
                 if back {
                     for i in 0..len * 2 {
@@ -157,9 +155,7 @@ fn test_insert() {
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for head_pos in 0..cap {
             for to_insert in 0..len {
-                unsafe {
-                    tester.head = WrappedIndex::new(head_pos);
-                }
+                tester.head = WrappedIndex::from_arbitrary_number(head_pos);
                 tester.len = 0;
                 for i in 0..len {
                     if i != to_insert {
@@ -640,9 +636,7 @@ fn test_remove() {
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for head_pos in 0..cap {
             for to_remove in 0..=len {
-                unsafe {
-                    tester.head = WrappedIndex::new(head_pos);
-                }
+                tester.head = WrappedIndex::from_arbitrary_number(head_pos);
                 tester.len = 0;
                 for i in 0..len {
                     if i == to_remove {
@@ -672,9 +666,7 @@ fn test_range() {
         for head in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
-                    unsafe {
-                        tester.head = WrappedIndex::new(head);
-                    }
+                    tester.head = WrappedIndex::from_arbitrary_number(head);
                     tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
@@ -699,9 +691,7 @@ fn test_range_mut() {
         for head in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
-                    unsafe {
-                        tester.head = WrappedIndex::new(head);
-                    }
+                    tester.head = WrappedIndex::from_arbitrary_number(head);
                     tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
@@ -735,9 +725,7 @@ fn test_drain() {
         for head in 0..cap {
             for drain_start in 0..=len {
                 for drain_end in drain_start..=len {
-                    unsafe {
-                        tester.head = WrappedIndex::new(head);
-                    }
+                    tester.head = WrappedIndex::from_arbitrary_number(head);
                     tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
@@ -794,9 +782,7 @@ fn test_shrink_to() {
                 assert_eq!(deque.capacity(), cap);
 
                 // we can let the head point anywhere in the buffer since the deque is empty.
-                unsafe {
-                    deque.head = WrappedIndex::new(head);
-                }
+                deque.head = WrappedIndex::from_arbitrary_number(head);
                 deque.extend(1..=len);
 
                 deque.shrink_to(target_cap);
@@ -825,9 +811,7 @@ fn test_shrink_to_fit() {
         let expected = (0..).take(len).collect::<VecDeque<_>>();
         for head_pos in 0..=max_cap {
             tester.reserve(head_pos);
-            unsafe {
-                tester.head = WrappedIndex::new(head_pos);
-            }
+            tester.head = WrappedIndex::from_arbitrary_number(head_pos);
             tester.len = 0;
             tester.reserve(63);
             for i in 0..len {
@@ -864,9 +848,7 @@ fn test_split_off() {
             let expected_other = (at..).take(len - at).collect::<VecDeque<_>>();
 
             for head_pos in 0..cap {
-                unsafe {
-                    tester.head = WrappedIndex::new(head_pos);
-                }
+                tester.head = WrappedIndex::from_arbitrary_number(head_pos);
                 tester.len = 0;
                 for i in 0..len {
                     tester.push_back(i);
