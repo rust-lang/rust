@@ -316,6 +316,49 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
     // or else another kind of cache entry.
     let cache_entry = infcx.inner.borrow_mut().projection_cache().try_start(cache_key);
     match cache_entry {
+        // This is the hottest path in this function.
+        //
+        // If we find the value in the cache, then return it along with the
+        // obligations that went along with it. Note that, when using a
+        // fulfillment context, these obligations could in principle be
+        // ignored: they have already been registered when the cache entry
+        // was created (and hence the new ones will quickly be discarded as
+        // duplicated). But when doing trait evaluation this is not the
+        // case, and dropping the trait evaluations can causes ICEs (e.g.,
+        // #43132).
+        Err(ProjectionCacheEntry::NormalizedTerm { ty, complete: _ }) => {
+            debug!(?ty, "found normalized ty");
+            obligations.extend(ty.obligations);
+            Ok(Some(ty.value))
+        }
+        cache_entry => opt_normalize_projection_term_slow(
+            selcx,
+            param_env,
+            projection_term,
+            cause,
+            depth,
+            obligations,
+            cache_entry,
+            cache_key,
+        ),
+    }
+}
+
+/// Cold-path body of [`opt_normalize_projection_term`].
+#[cold]
+#[inline(never)]
+fn opt_normalize_projection_term_slow<'a, 'b, 'tcx>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    projection_term: ty::AliasTerm<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    obligations: &mut PredicateObligations<'tcx>,
+    cache_entry: Result<(), ProjectionCacheEntry<'tcx>>,
+    cache_key: ProjectionCacheKey<'tcx>,
+) -> Result<Option<Term<'tcx>>, InProgress> {
+    let infcx = selcx.infcx;
+    match cache_entry {
         Ok(()) => debug!("no cache"),
         Err(ProjectionCacheEntry::Ambiguous) => {
             // If we found ambiguity the last time, that means we will continue
@@ -345,21 +388,8 @@ pub(super) fn opt_normalize_projection_term<'a, 'b, 'tcx>(
             debug!("recur cache");
             return Err(InProgress);
         }
-        Err(ProjectionCacheEntry::NormalizedTerm { ty, complete: _ }) => {
-            // This is the hottest path in this function.
-            //
-            // If we find the value in the cache, then return it along
-            // with the obligations that went along with it. Note
-            // that, when using a fulfillment context, these
-            // obligations could in principle be ignored: they have
-            // already been registered when the cache entry was
-            // created (and hence the new ones will quickly be
-            // discarded as duplicated). But when doing trait
-            // evaluation this is not the case, and dropping the trait
-            // evaluations can causes ICEs (e.g., #43132).
-            debug!(?ty, "found normalized ty");
-            obligations.extend(ty.obligations);
-            return Ok(Some(ty.value));
+        Err(ProjectionCacheEntry::NormalizedTerm { .. }) => {
+            unreachable!("NormalizedTerm cache hit should be handled by the hot dispatcher");
         }
         Err(ProjectionCacheEntry::Error) => {
             debug!("opt_normalize_projection_type: found error");
