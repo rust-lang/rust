@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_literal_escaper::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
@@ -172,6 +172,8 @@ pub(crate) fn emit_unescape_error(
                     "for more information, visit \
                      <https://doc.rust-lang.org/reference/tokens.html#literals>",
                 );
+
+                foreign_escape_suggestion(&mut diag, (&ec, span), err_span);
             }
             diag.emit()
         }
@@ -300,6 +302,42 @@ pub(crate) fn emit_unescape_error(
             return None;
         }
     })
+}
+
+/// Add additional suggestions for escapes that are supported by C.
+fn foreign_escape_suggestion(
+    diag: &mut Diag<'_>,
+    (escaped_char, escape_span): (&str, Span),
+    err_span: Span,
+) {
+    if escaped_char == "?" {
+        diag.span_suggestion(
+            err_span.until(escape_span),
+            "if you meant to write a literal question mark, don't escape the character",
+            "",
+            Applicability::MaybeIncorrect,
+        );
+        return;
+    }
+
+    let (name, hex) = match escaped_char {
+        "a" => ("an audible bell", String::from("07")),
+        "b" => ("a backspace", String::from("08")),
+        "f" => ("a form feed", String::from("0C")),
+        "v" => ("a vertical tab", String::from("0B")),
+        "e" => ("an ANSI escape sequence", String::from("1B")),
+        ec if ec.chars().all(|c| c.is_ascii_digit()) => {
+            ("an ASCII control code", format!("0{}", ec))
+        }
+        _ => return,
+    };
+
+    diag.span_suggestion(
+        escape_span,
+        format!("if you meant to write {name}, use a hex escape"),
+        format!("\\x{hex}"),
+        Applicability::MaybeIncorrect,
+    );
 }
 
 /// Pushes a character to a message string for error reporting
