@@ -2835,7 +2835,7 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall: [simd_insert!, [src, "LANE as u32", "*ptr"]]
 
-  - name: "vld1{type[2]}_{neon_type[1]}"
+  - name: "vld1{neon_type[1].dup_nox}"
     doc: "Load one single-element structure and replicate to all lanes of one register"
     arguments: ["ptr: {type[0]}"]
     return_type: "{neon_type[1]}"
@@ -2849,11 +2849,11 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - ["*const f16", float16x4_t, '_dup', 'f16x4', "[0, 0, 0, 0]"]
-      - ["*const f16", float16x8_t, 'q_dup', 'f16x8', "[0, 0, 0, 0, 0, 0, 0, 0]"]
+      - ["*const f16", float16x4_t, '_lane', 'f16x4']
+      - ["*const f16", float16x8_t, 'q_laneq', 'f16x8']
     compose:
-      - Let: [x, "{neon_type[1]}", "vld1{neon_type[1].lane_nox}::<0>(ptr, transmute({type[3]}::splat(0.0)))"]
-      - FnCall: [simd_shuffle!, [x, x, "{type[4]}"]]
+      - Let: [x, {FnCall: ["vld1{neon_type[1].lane_nox}", [ptr, {FnCall: [transmute, ["{type[3]}::splat(0.0)"]]}], [0]]}]
+      - FnCall: ['vdup{type[2]}_{neon_type[1]}', [x], [0]]
 
 
   - name: "vld2{neon_type[1].nox}"

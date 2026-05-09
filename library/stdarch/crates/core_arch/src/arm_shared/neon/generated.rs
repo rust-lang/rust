@@ -14634,8 +14634,8 @@ pub fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_dup_f16(ptr: *const f16) -> float16x4_t {
-    let x: float16x4_t = vld1_lane_f16::<0>(ptr, transmute(f16x4::splat(0.0)));
-    simd_shuffle!(x, x, [0, 0, 0, 0])
+    let x = vld1_lane_f16::<0>(ptr, transmute(f16x4::splat(0.0)));
+    vdup_lane_f16::<0>(x)
 }
 #[doc = "Load one single-element structure and replicate to all lanes of one register"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_f16)"]
@@ -14653,8 +14653,8 @@ pub unsafe fn vld1_dup_f16(ptr: *const f16) -> float16x4_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_dup_f16(ptr: *const f16) -> float16x8_t {
-    let x: float16x8_t = vld1q_lane_f16::<0>(ptr, transmute(f16x8::splat(0.0)));
-    simd_shuffle!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    let x = vld1q_lane_f16::<0>(ptr, transmute(f16x8::splat(0.0)));
+    vdupq_laneq_f16::<0>(x)
 }
 #[doc = "Load one single-element structure and Replicate to all lanes (of one register)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_f32)"]
