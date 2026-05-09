@@ -991,7 +991,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // Nothing to check.
                 interp_ok(true)
             }
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             ty::Adt(..)
@@ -1002,6 +1001,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::Pat(..)
+            | ty::UnsafeBinder(_)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..) => interp_ok(false),
             // Some types only occur during typechecking, they have no layout.
@@ -1545,6 +1545,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     BackendRepr::SimdVector { .. } | BackendRepr::SimdScalableVector { .. } => unreachable!(),
                     BackendRepr::Memory { .. } => unreachable!()
                 }
+            }
+            ty::UnsafeBinder(base) => {
+                // First check that the base type is valid
+                let base = self.ecx.tcx.instantiate_bound_regions_with_erased((*base).into());
+                let inner_layout = self.ecx.layout_of(base)?;
+                self.visit_value(&val.transmute(inner_layout, self.ecx)?)?;
             }
             ty::Adt(adt, _) if adt.is_maybe_dangling() => {
                 let old_may_dangle = mem::replace(&mut self.may_dangle, true);
