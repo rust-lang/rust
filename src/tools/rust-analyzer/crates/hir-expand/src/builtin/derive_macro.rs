@@ -638,7 +638,7 @@ fn expand_reborrow_marker_derive(
 }
 
 fn coerce_shared_target(
-    _db: &dyn ExpandDatabase,
+    db: &dyn ExpandDatabase,
     span: Span,
     strukt: &ast::Struct,
 ) -> Option<tt::TopSubtree> {
@@ -668,11 +668,7 @@ fn coerce_shared_target(
         |_, _| (true, Vec::new()),
     );
 
-    let (parse, _) = crate::db::token_tree_to_syntax_node(
-        db,
-        &target,
-        crate::ExpandTo::Type,
-    );
+    let (parse, _) = crate::db::token_tree_to_syntax_node(db, &target, crate::ExpandTo::Type);
     if !parse.errors().is_empty() {
         return None;
     }
