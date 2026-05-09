@@ -1442,6 +1442,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [_lane_s8, int8x8_t, int8x8_t, '3', '[N as u32; 8]']
       - [q_lane_s8, int8x8_t, int8x16_t, '3', '[N as u32; 16]']
@@ -1466,6 +1467,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [q_laneq_s8, int8x16_t, int8x16_t, '4', '[N as u32; 16]']
       - [_laneq_s8, int8x16_t, int8x8_t, '4', '[N as u32; 8]']
@@ -1490,6 +1492,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [_lane_s16, int16x4_t, int16x4_t, '2', '[N as u32; 4]']
       - [q_lane_s16, int16x4_t, int16x8_t, '2', '[N as u32; 8]']
@@ -1514,6 +1517,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [q_laneq_s16, int16x8_t, int16x8_t, '3', '[N as u32; 8]']
       - [_laneq_s16, int16x8_t, int16x4_t, '3', '[N as u32; 4]']
@@ -1541,6 +1545,7 @@ intrinsics:
       - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [q_laneq_f16, float16x8_t, float16x8_t, '3', '[N as u32; 8]']
       - [_laneq_f16, float16x8_t, float16x4_t, '3', '[N as u32; 4]']
@@ -1581,6 +1586,7 @@ intrinsics:
       - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [_lane_f16, float16x4_t, float16x4_t, '2', '[N as u32; 4]']
       - [q_lane_f16, float16x4_t, float16x8_t, '2', '[N as u32; 8]']
@@ -1602,6 +1608,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [_lane_s32, int32x2_t, int32x2_t, '1', '[N as u32, N as u32]']
       - [q_lane_s32, int32x2_t, int32x4_t, '1', '[N as u32, N as u32, N as u32, N as u32]']
@@ -1626,6 +1633,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [q_laneq_s32, int32x4_t, int32x4_t, '2', '[N as u32, N as u32, N as u32, N as u32]']
       - [_laneq_s32, int32x4_t, int32x2_t, '2', '[N as u32, N as u32]']
@@ -1650,6 +1658,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [q_laneq_s64, int64x2_t, '1', '[N as u32, N as u32]']
       - [q_laneq_u64, uint64x2_t, '1', '[N as u32, N as u32]']
@@ -1670,6 +1679,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [q_lane_s64, int64x1_t, int64x2_t]
       - [q_lane_u64, uint64x1_t, uint64x2_t]
@@ -1732,6 +1742,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x8_t
       - int16x8_t
@@ -1756,6 +1767,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x16_t
       - uint8x16_t
@@ -1777,6 +1789,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - int16x4_t
       - int32x4_t
@@ -1804,6 +1817,7 @@ intrinsics:
       - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
     compose:
@@ -1825,6 +1839,7 @@ intrinsics:
       - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x8_t
     compose:
@@ -1846,6 +1861,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - int32x2_t
       - uint32x2_t
@@ -1867,6 +1883,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const N: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - int64x2_t
       - uint64x2_t
@@ -6138,6 +6155,7 @@ intrinsics:
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, uint8x8_t, int8x8_t]
       - [int32x4_t, uint8x16_t, int8x16_t]
@@ -7076,6 +7094,7 @@ intrinsics:
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, int8x8_t]
       - [int32x4_t, int8x16_t]
@@ -7100,6 +7119,7 @@ intrinsics:
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x2_t, uint8x8_t]
       - [uint32x4_t, uint8x16_t]
@@ -7473,6 +7493,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
     compose:
@@ -7497,6 +7518,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
     compose:
@@ -8494,7 +8516,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
-    big_endian_inverse: true
     types:
       - [poly64x1_t, int32x2_t]
       - [poly64x1_t, uint32x2_t]
@@ -8790,7 +8811,6 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
-    big_endian_inverse: true
     types:
       # non-q
       - [float32x2_t, float16x4_t]
@@ -8873,7 +8893,6 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
-    big_endian_inverse: true
     types:
       - [poly64x1_t, float16x4_t]
       - [float16x4_t, poly64x1_t]
@@ -8898,6 +8917,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, "[3, 2, 1, 0]"]
       - [float16x8_t, "[3, 2, 1, 0, 7, 6, 5, 4]"]
@@ -9187,7 +9207,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
-    big_endian_inverse: true
     types:
       - ["u64", int8x8_t]
       - ["u64", int16x4_t]
@@ -9216,7 +9235,6 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
-    big_endian_inverse: true
     types:
       - ["u64", float16x4_t]
     compose:
@@ -9234,7 +9252,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
-    big_endian_inverse: true
     types:
       - ["u64", poly64x1_t]
     compose:
@@ -9253,6 +9270,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["i8", int8x8_t, '3']
       - ["i16", int16x4_t, '2']
@@ -9293,6 +9311,7 @@ intrinsics:
       - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["f16", float16x4_t, '2']
       - ["f16", float16x8_t, '3']
@@ -9314,6 +9333,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["i64", int64x1_t, int64x1_t]
       - ["u64", uint64x1_t, uint64x1_t]
@@ -9335,6 +9355,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["p64", poly64x1_t, poly64x1_t]
     compose:
@@ -9355,6 +9376,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["p64", poly64x2_t, poly64x2_t]
     compose:
@@ -9681,6 +9703,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, int8x8x2_t, '[0, 8, 2, 10, 4, 12, 6, 14]', '[1, 9, 3, 11, 5, 13, 7, 15]']
       - [int16x4_t, int16x4x2_t, '[0, 4, 2, 6]', '[1, 5, 3, 7]']
@@ -9725,6 +9748,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, float16x4x2_t, '[0, 4, 2, 6]', '[1, 5, 3, 7]']
       - [float16x8_t, float16x8x2_t, '[0, 8, 2, 10, 4, 12, 6, 14]', '[1, 9, 3, 11, 5, 13, 7, 15]']
@@ -9754,6 +9778,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, int32x2x2_t, '[0, 2]', '[1, 3]']
       - [uint32x2_t, uint32x2x2_t, '[0, 2]', '[1, 3]']
@@ -9783,6 +9808,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x16_t, int8x16x2_t, '[0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]', '[8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]']
       - [int16x8_t, int16x8x2_t, '[0, 8, 1, 9, 2, 10, 3, 11]', '[4, 12, 5, 13, 6, 14, 7, 15]']
@@ -9818,6 +9844,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, int32x2x2_t, '[0, 2]', '[1, 3]']
       - [uint32x2_t, uint32x2x2_t, '[0, 2]', '[1, 3]']
@@ -9847,6 +9874,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, int8x8x2_t, '[0, 8, 1, 9, 2, 10, 3, 11]', '[4, 12, 5, 13, 6, 14, 7, 15]']
       - [int16x4_t, int16x4x2_t, '[0, 4, 1, 5]', '[2, 6, 3, 7]']
@@ -9882,6 +9910,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, float16x4x2_t, '[0, 4, 1, 5]', '[2, 6, 3, 7]']
       - [float16x8_t, float16x8x2_t, '[0, 8, 1, 9, 2, 10, 3, 11]', '[4, 12, 5, 13, 6, 14, 7, 15]']
@@ -9910,6 +9939,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, int8x8x2_t, '[0, 2, 4, 6, 8, 10, 12, 14]', '[1, 3, 5, 7, 9, 11, 13, 15]']
       - [int16x4_t, int16x4x2_t, '[0, 2, 4, 6]', '[1, 3, 5, 7]']
@@ -9954,6 +9984,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, float16x4x2_t, '[0, 2, 4, 6]', '[1, 3, 5, 7]']
       - [float16x8_t, float16x8x2_t, '[0, 2, 4, 6, 8, 10, 12, 14]', '[1, 3, 5, 7, 9, 11, 13, 15]']
@@ -9983,6 +10014,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x2_t, float32x2x2_t, '[0, 2]', '[1, 3]']
       - [int32x2_t, int32x2x2_t, '[0, 2]', '[1, 3]']
@@ -12502,6 +12534,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x2_t, float32x4_t, '[0, 1, 2, 3]']
       - [poly8x8_t, poly8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
@@ -12529,6 +12562,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint8x16_t
     compose:
@@ -12551,6 +12585,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint8x16_t
     compose:
@@ -12573,6 +12608,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint8x16_t, "aesmc"]
     compose:
@@ -12595,6 +12631,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint8x16_t, "aesimc"]
     compose:
@@ -12617,6 +12654,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [u32, "sha1h"]
     compose:
@@ -12639,6 +12677,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [u32, "sha1c", "uint32x4_t"]
     compose:
@@ -12661,6 +12700,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [u32, "sha1m", "uint32x4_t"]
     compose:
@@ -12683,6 +12723,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [u32, "sha1p", "uint32x4_t"]
     compose:
@@ -12705,6 +12746,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x4_t, "sha1su0"]
     compose:
@@ -12727,6 +12769,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x4_t, "sha1su1"]
     compose:
@@ -12749,6 +12792,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x4_t, "sha256h"]
     compose:
@@ -12771,6 +12815,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x4_t, "sha256h2"]
     compose:
@@ -12793,6 +12838,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x4_t, "sha256su0"]
     compose:
@@ -12815,6 +12861,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - FnCall: [cfg_attr, [*not-arm, { FnCall: [stable, ['feature = "aarch64_neon_crypto_intrinsics"', 'since = "1.72.0"']] }]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [uint32x4_t, "sha256su1"]
     compose:
@@ -13052,6 +13099,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x8_t
       - int16x4_t
@@ -13076,6 +13124,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - uint8x8_t
       - uint16x4_t
@@ -13100,6 +13149,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
     compose:
@@ -13122,6 +13172,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x8_t
       - int16x4_t
@@ -13146,6 +13197,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - uint8x8_t
       - uint16x4_t
@@ -13170,6 +13222,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
     compose:
@@ -13290,6 +13343,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x8_t
       - int16x4_t
@@ -14140,6 +14194,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [nop]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, float16x8_t]
     compose:
@@ -14157,6 +14212,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [nop]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, float16x8_t, 'low', "[0, 1, 2, 3]"]
       - [float16x4_t, float16x8_t, 'high', "[4, 5, 6, 7]"]
@@ -14177,6 +14233,7 @@ intrinsics:
       - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, f16, '_lane_f16',  '2']
       - [float16x8_t, f16, 'q_lane_f16', '3']
@@ -14928,6 +14985,7 @@ intrinsics:
     arguments: ["v: {neon_type[1]}"]
     return_type: "{type[2]}"
     safety: safe
+    big_endian_inverse: true
     static_defs: ['const IMM5: i32']
     attr:
       - *neon-v7
@@ -14966,6 +15024,7 @@ intrinsics:
     arguments: ["v: {neon_type[1]}"]
     return_type: "{type[2]}"
     safety: safe
+    big_endian_inverse: true
     static_defs: ['const IMM5: i32']
     attr:
       - *neon-v7
@@ -15012,6 +15071,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['vget_high_s64', 'int64x2_t',   'int64x1_t',   'vmov', 'ext',  'int64x1_t([simd_extract!(a, 1)])']
       - ['vget_high_u64', 'uint64x2_t',  'uint64x1_t',  'vmov', 'ext',  'uint64x1_t([simd_extract!(a, 1)])']
@@ -15029,6 +15089,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['vget_low_s64', 'int64x2_t',   'int64x1_t',   'int64x1_t([simd_extract!(a, 0)])']
       - ['vget_low_u64', 'uint64x2_t',  'uint64x1_t',  'uint64x1_t([simd_extract!(a, 0)])']
@@ -15047,6 +15108,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['vget_high_s8', 'int8x16_t', 'int8x8_t', 'vmov', 'ext', '[8, 9, 10, 11, 12, 13, 14, 15]']
       - ['vget_high_u8', 'uint8x16_t', 'uint8x8_t', 'vmov', 'ext', '[8, 9, 10, 11, 12, 13, 14, 15]']
@@ -15070,6 +15132,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['vget_low_s8', 'int8x16_t', 'int8x8_t', '[0, 1, 2, 3, 4, 5, 6, 7]']
       - ['vget_low_u8', 'uint8x16_t', 'uint8x8_t','[0, 1, 2, 3, 4, 5, 6, 7]']
@@ -15222,6 +15285,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['vrev16_s8', 'int8x8_t', 'vrev16.8', 'rev16', '[1, 0, 3, 2, 5, 4, 7, 6]']
       - ['vrev16q_s8', 'int8x16_t', 'vrev16.8', 'rev16', '[1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14]']
