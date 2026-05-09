@@ -10,12 +10,15 @@ use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
+use std::ptr;
 
 #[path = "../../utils/mod.rs"]
 mod utils;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+
+use libc_utils::errno_result;
 
 fn main() {
     test_dup();
@@ -58,6 +61,16 @@ fn main() {
     test_statx_on_file_descriptor();
     #[cfg(target_os = "linux")]
     test_statx_empty_path_on_pipe();
+    test_readv();
+    test_readv_empty_bufs();
+    #[cfg(not(target_os = "solaris"))]
+    test_preadv();
+    test_pread();
+    test_writev();
+    test_writev_empty_bufs();
+    #[cfg(not(target_os = "solaris"))]
+    test_pwritev();
+    test_pwrite();
 }
 
 #[cfg(target_os = "linux")]
@@ -845,4 +858,278 @@ pub fn check_stat_fields(stat: &libc::stat) {
     let _st_atime_nsec = stat.st_atime_nsec;
     let _st_mtime_nsec = stat.st_mtime_nsec;
     let _st_ctime_nsec = stat.st_ctime_nsec;
+}
+
+/// Test vectored reads with multiple buffers.
+fn test_readv() {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("pass-libc-readv.txt", &file_contents);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut buffer = [0u8; 4];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let bytes_read = unsafe {
+        errno_result(libc::readv(fd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap() as usize
+    };
+
+    // The vectored read should read at least one byte.
+    assert!(bytes_read > 0);
+    assert_eq!(&buffer[0..bytes_read], &file_contents[0..bytes_read]);
+}
+
+/// Test that vectored reads without any buffers return zero.
+fn test_readv_empty_bufs() {
+    let path = utils::prepare_with_content("pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+    unsafe { assert_eq!(errno_result(libc::readv(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0) };
+}
+
+/// Test vectored reads with multiple buffers and a byte offset.
+///
+/// **Note**: We skip this test on Solaris targets because Solaris
+/// doesn't have `preadv`.
+#[cfg(not(target_os = "solaris"))]
+fn test_preadv() {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("pass-libc-preadv.txt", &file_contents);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut buffer = [0u8; 4];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    // Read with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_read = unsafe {
+        errno_result(libc::preadv(
+            fd,
+            iov.as_ptr(),
+            iov.len() as libc::c_int,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+
+    // The vectored read should read at least one byte.
+    assert!(bytes_read > 0);
+    // The vectored read should start at the provided byte offset.
+    assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
+}
+
+/// Test reading with an offset.
+fn test_pread() {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("pass-libc-pread.txt", &file_contents);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut buffer = [0u8; 2];
+
+    // Read with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_read = unsafe {
+        errno_result(libc::pread(
+            fd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len() as libc::size_t,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+
+    // We should read at least one byte.
+    assert!(bytes_read > 0);
+    // The read should start at the provided byte offset.
+    assert_eq!(&buffer[0..bytes_read], &file_contents[OFFSET..(bytes_read + OFFSET)]);
+}
+
+/// Test vectored writes with multiple buffers.
+fn test_writev() {
+    let path = utils::prepare_with_content("pass-libc-writev.txt", &[]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+
+    let mut write_buffer = [1u8, 2, 3, 4, 5, 6];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(3);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let bytes_written = unsafe {
+        errno_result(libc::writev(fd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap() as usize
+    };
+    // The vectored write should write at least one byte.
+    assert!(bytes_written > 0);
+
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut read_buffer = [0u8; 16];
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            bytes_written as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[0..bytes_written]);
+}
+
+/// Test that vectored writes without any buffers return zero.
+fn test_writev_empty_bufs() {
+    let path = utils::prepare_with_content("pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+    unsafe {
+        assert_eq!(errno_result(libc::writev(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0)
+    };
+}
+
+/// Test vectored writes with multiple buffers and a byte offset.
+///
+/// **Note**: We skip this test on Solaris targets because Solaris
+/// doesn't have `pwritev`.
+#[cfg(not(target_os = "solaris"))]
+fn test_pwritev() {
+    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+
+    let mut write_buffer = [1u8, 2, 3, 4, 5, 6];
+    let (buffer1, buffer2) = write_buffer.split_at_mut(3);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    // Write with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_written = unsafe {
+        errno_result(libc::pwritev(
+            fd,
+            iov.as_ptr(),
+            iov.len() as libc::c_int,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+    // The vectored write should write at least one byte.
+    assert!(bytes_written > 0);
+
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut read_buffer = [0u8; 16];
+    // Read offset + bytes written.
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            (bytes_written + OFFSET) as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    // The vectored write should start at the provided byte offset.
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+/// Test writing with an offset.
+fn test_pwrite() {
+    let path = utils::prepare_with_content("pass-libc-pwritev.txt", &[]);
+    let cpath = CString::new(path.into_os_string().into_encoded_bytes()).unwrap();
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
+    assert_ne!(fd, -1);
+
+    let write_buffer = [1u8, 2, 3, 4, 5, 6];
+
+    // Write with a 2 byte offset.
+    const OFFSET: usize = 2;
+    let bytes_written = unsafe {
+        errno_result(libc::pwrite(
+            fd,
+            write_buffer.as_ptr().cast(),
+            write_buffer.len() as libc::size_t,
+            OFFSET as libc::off_t,
+        ))
+        .unwrap() as usize
+    };
+    // We should write at least one byte.
+    assert!(bytes_written > 0);
+
+    // Open the FD again in readonly mode and with an unadvanced pointer.
+    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
+    assert_ne!(fd, -1);
+
+    let mut read_buffer = [0u8; 16];
+    // Read offset + bytes written.
+    unsafe {
+        libc_utils::read_exact_generic(
+            read_buffer.as_mut_ptr().cast(),
+            (bytes_written + OFFSET) as libc::size_t,
+            libc_utils::Retry::NoRetry,
+            |buf, count| libc::read(fd, buf, count),
+        )
+        .unwrap()
+    };
+
+    // The write should start at the provided byte offset.
+    assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
 }

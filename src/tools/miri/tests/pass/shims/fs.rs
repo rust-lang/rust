@@ -2,13 +2,16 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![cfg_attr(unix, feature(unix_file_vectored_at))]
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{
     self, File, OpenOptions, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename,
 };
-use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
+use std::io::{
+    Error, ErrorKind, IoSlice, IoSliceMut, IsTerminal, Read, Result, Seek, SeekFrom, Write,
+};
 use std::path::Path;
 
 #[path = "../../utils/mod.rs"]
@@ -39,6 +42,9 @@ fn main() {
         test_pread_pwrite();
         #[cfg(not(any(target_os = "solaris", target_os = "android")))]
         test_flock();
+        test_readv_writev();
+        #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+        test_preadv_pwritev();
     }
 }
 
@@ -426,4 +432,83 @@ fn test_flock() {
     assert!(matches!(file2.try_lock_shared().unwrap_err(), fs::TryLockError::WouldBlock));
     // Unlock exclusive lock
     file1.unlock().unwrap();
+}
+
+/// Test vectored reads and vectored writes.
+fn test_readv_writev() {
+    let bytes = b"hello world!";
+    let path = utils::prepare_with_content("miri_test_fs_readv_writev.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    let mut read_buffer = [0u8; 10];
+    let (buffer1, buffer2) = read_buffer.split_at_mut(5);
+
+    let bytes_read =
+        f.read_vectored(&mut [IoSliceMut::new(buffer1), IoSliceMut::new(buffer2)]).unwrap();
+
+    // Vectored read should read at least a byte.
+    assert!(bytes_read > 0);
+    assert_eq!(read_buffer[0..bytes_read], bytes[0..bytes_read]);
+
+    let write_buffer = b"some additional bytes";
+    let (buffer1, buffer2) = write_buffer.split_at(write_buffer.len() / 2);
+
+    let bytes_written = f.write_vectored(&[IoSlice::new(buffer1), IoSlice::new(buffer2)]).unwrap();
+
+    // Vectored write should write at least a byte.
+    assert!(bytes_written > 0);
+
+    // Reset file cursor to read the written bytes.
+    f.seek(SeekFrom::Start(bytes_read as u64)).unwrap();
+    let mut written_bytes = vec![0u8; bytes_written];
+    f.read_exact(&mut written_bytes).unwrap();
+    assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+/// Test vectored reads and vectored writes with byte offsets.
+///
+/// **Note**: We skip this test on Solaris and Android targets. This is
+/// because Solaris doesn't have `preadv`/`pwritev`, and on Android the
+/// standard library uses `syscall(...)` for vectored reads/writes with
+/// offsets because older Android versions also didn't have `preadv`/`pwritev`.
+#[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+fn test_preadv_pwritev() {
+    use std::os::unix::fs::FileExt;
+
+    let bytes = b"hello world!";
+    let path = utils::prepare_with_content("miri_test_fs_preadv_pwritev.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    const OFFSET: usize = 2;
+
+    let mut read_buffer = [0u8; 10];
+    let (buffer1, buffer2) = read_buffer.split_at_mut(5);
+
+    let bytes_read = f
+        .read_vectored_at(&mut [IoSliceMut::new(buffer1), IoSliceMut::new(buffer2)], OFFSET as u64)
+        .unwrap();
+
+    // Vectored read should read at least a byte at the provided offset.
+    assert!(bytes_read > 0);
+    assert_eq!(read_buffer[0..bytes_read], bytes[OFFSET..(bytes_read + OFFSET)]);
+
+    let write_buffer = b"some additional bytes";
+    let (buffer1, buffer2) = write_buffer.split_at(write_buffer.len() / 2);
+
+    let bytes_written = f
+        .write_vectored_at(
+            &[IoSlice::new(buffer1), IoSlice::new(buffer2)],
+            (bytes.len() + OFFSET) as u64,
+        )
+        .unwrap();
+
+    // Vectored write should write at least a byte at the provided offset.
+    assert!(bytes_written > 0);
+
+    // Reset file cursor to read the written bytes. We move the cursor
+    // to include the offset.
+    f.seek(SeekFrom::Start((bytes.len() + OFFSET) as u64)).unwrap();
+    let mut written_bytes = vec![0u8; bytes_written];
+    f.read_exact(&mut written_bytes).unwrap();
+    assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
 }
