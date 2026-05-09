@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config \
   xz-utils \
+  clang \
+  lld \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/

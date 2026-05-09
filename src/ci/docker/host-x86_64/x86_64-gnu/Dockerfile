@@ -19,7 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   zlib1g-dev \
   libzstd-dev \
+  clang \
+  lld \
   && rm -rf /var/lib/apt/lists/*
+
+# Install Intel SDE for AVX-512 emulation
+RUN curl -L http://ci-mirrors.rust-lang.org/sde-external-10.8.0-2026-03-15-lin.tar.xz -o /tmp/sde.tar.xz \
+  && mkdir -p /intel-sde \
+  && tar -xJf /tmp/sde.tar.xz --strip-components=1 -C /intel-sde \
+  && rm /tmp/sde.tar.xz
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

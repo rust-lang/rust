@@ -993,6 +993,71 @@ impl Step for StdarchVerify {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct IntrinsicTest {
+    host: TargetSelection,
+}
+
+impl Step for IntrinsicTest {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/stdarch/crates/intrinsic-test")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(IntrinsicTest { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+
+        let (input_file, skip_file, runner, cppflags) = if host.contains("x86_64-unknown-linux") {
+            let cpuid_def =
+                builder.src.join("library/stdarch/ci/docker/x86_64-unknown-linux-gnu/cpuid.def");
+            let runner = format!(
+                "/intel-sde/sde64 -cpuid-in {} -rtm-mode full -tsx --",
+                cpuid_def.display()
+            );
+            (
+                builder.src.join("library/stdarch/intrinsics_data/x86-intel.xml"),
+                builder.src.join("library/stdarch/crates/intrinsic-test/missing_x86.txt"),
+                runner,
+                String::from("-fuse-ld=lld -I/usr/include/x86_64-linux-gnu/"),
+            )
+        } else if host.contains("aarch64-unknown-linux") {
+            (
+                builder.src.join("library/stdarch/intrinsics_data/arm_intrinsics.json"),
+                builder.src.join("library/stdarch/crates/intrinsic-test/missing_aarch64.txt"),
+                String::from("env"),
+                String::from("-fuse-ld=lld"),
+            )
+        } else {
+            return;
+        };
+
+        let out_dir = builder.out.join(host).join("intrinsic-test");
+        t!(fs::create_dir_all(&out_dir));
+
+        let mut cmd = builder.tool_cmd(Tool::IntrinsicTest);
+        cmd.current_dir(&out_dir);
+        cmd.arg(&input_file);
+        cmd.arg("--target").arg(&*host.triple);
+        cmd.arg("--cppcompiler").arg("clang++");
+        cmd.arg("--runner").arg(&runner);
+        cmd.arg("--skip").arg(&skip_file);
+        cmd.arg("--sample-percentage").arg("10");
+        cmd.env("CPPFLAGS", &cppflags);
+
+        cmd.delay_failure().run(builder);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
 }

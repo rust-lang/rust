@@ -508,6 +508,7 @@ bootstrap_tool!(
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
     OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
     RunMakeSupport, "src/tools/run-make-support", "run_make_support", artifact_kind = ToolArtifactKind::Library;
+    IntrinsicTest, "library/stdarch/crates/intrinsic-test", "intrinsic-test", is_external_tool = true;
 );
 
 /// These are the submodules that are required for rustbook to work due to
