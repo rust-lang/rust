@@ -9663,11 +9663,9 @@ pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
 )]
 pub fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: int32x2_t = vreinterpret_s32_s8(c);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_s32(a, b, vreinterpret_s8_s32(c))
-    }
+    let c = vreinterpret_s32_s8(c);
+    let c = vdup_lane_s32::<LANE>(c);
+    vdot_s32(a, b, vreinterpret_s8_s32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_lane_s32)"]
@@ -9690,12 +9688,9 @@ pub fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) ->
 )]
 pub fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: int32x2_t = vreinterpret_s32_s8(c);
-    unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_s32(a, b, vreinterpretq_s8_s32(c))
-    }
+    let c = vreinterpret_s32_s8(c);
+    let c = vdupq_lane_s32::<LANE>(c);
+    vdotq_s32(a, b, vreinterpretq_s8_s32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_lane_u32)"]
@@ -9718,11 +9713,9 @@ pub fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) 
 )]
 pub fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: uint32x2_t = vreinterpret_u32_u8(c);
-    unsafe {
-        let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_u32(a, b, vreinterpret_u8_u32(c))
-    }
+    let c = vreinterpret_u32_u8(c);
+    let c = vdup_lane_u32::<LANE>(c);
+    vdot_u32(a, b, vreinterpret_u8_u32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_lane_u32)"]
@@ -9745,12 +9738,9 @@ pub fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t)
 )]
 pub fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: uint32x2_t = vreinterpret_u32_u8(c);
-    unsafe {
-        let c: uint32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_u32(a, b, vreinterpretq_u8_u32(c))
-    }
+    let c = vreinterpret_u32_u8(c);
+    let c = vdupq_lane_u32::<LANE>(c);
+    vdotq_u32(a, b, vreinterpretq_u8_u32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_laneq_s32)"]
@@ -9766,11 +9756,9 @@ pub fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    let c: int32x4_t = vreinterpretq_s32_s8(c);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_s32(a, b, vreinterpret_s8_s32(c))
-    }
+    let c = vreinterpretq_s32_s8(c);
+    let c = vdup_laneq_s32::<LANE>(c);
+    vdot_s32(a, b, vreinterpret_s8_s32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_laneq_s32)"]
@@ -9786,12 +9774,9 @@ pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) 
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    let c: int32x4_t = vreinterpretq_s32_s8(c);
-    unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_s32(a, b, vreinterpretq_s8_s32(c))
-    }
+    let c = vreinterpretq_s32_s8(c);
+    let c = vdupq_laneq_s32::<LANE>(c);
+    vdotq_s32(a, b, vreinterpretq_s8_s32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_laneq_u32)"]
@@ -9807,11 +9792,9 @@ pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    let c: uint32x4_t = vreinterpretq_u32_u8(c);
-    unsafe {
-        let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_u32(a, b, transmute(c))
-    }
+    let c = vreinterpretq_u32_u8(c);
+    let c = vdup_laneq_u32::<LANE>(c);
+    vdot_u32(a, b, vreinterpret_u8_u32(c))
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_laneq_u32)"]
@@ -9827,12 +9810,9 @@ pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdotq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    let c: uint32x4_t = vreinterpretq_u32_u8(c);
-    unsafe {
-        let c: uint32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_u32(a, b, transmute(c))
-    }
+    let c = vreinterpretq_u32_u8(c);
+    let c = vdupq_laneq_u32::<LANE>(c);
+    vdotq_u32(a, b, vreinterpretq_u8_u32(c))
 }
 #[doc = "Dot product arithmetic (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_s32)"]
@@ -69646,11 +69626,9 @@ pub fn vsubw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
 )]
 pub fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: uint32x2_t = vreinterpret_u32_u8(c);
-    unsafe {
-        let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, vreinterpret_u8_u32(c), b)
-    }
+    let c = vreinterpret_u32_u8(c);
+    let c = vdup_lane_u32::<LANE>(c);
+    vusdot_s32(a, vreinterpret_u8_u32(c), b)
 }
 #[doc = "Dot product index form with signed and unsigned integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudotq_lane_s32)"]
@@ -69677,12 +69655,9 @@ pub fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x8_t)
 )]
 pub fn vsudotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: uint32x2_t = vreinterpret_u32_u8(c);
-    unsafe {
-        let c: uint32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, vreinterpretq_u8_u32(c), b)
-    }
+    let c = vreinterpret_u32_u8(c);
+    let c = vdupq_lane_u32::<LANE>(c);
+    vusdotq_s32(a, vreinterpretq_u8_u32(c), b)
 }
 #[doc = "Dot product index form with signed and unsigned integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudot_laneq_s32)"]
@@ -69702,11 +69677,9 @@ pub fn vsudotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x8_
 #[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
 pub fn vsudot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x16_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: uint32x4_t = transmute(c);
-        let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, transmute(c), b)
-    }
+    let c = vreinterpretq_u32_u8(c);
+    let c = vdup_laneq_u32::<LANE>(c);
+    vusdot_s32(a, vreinterpret_u8_u32(c), b)
 }
 #[doc = "Dot product index form with signed and unsigned integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudotq_laneq_s32)"]
@@ -69726,12 +69699,9 @@ pub fn vsudot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x16_
 #[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
 pub fn vsudotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x16_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: uint32x4_t = transmute(c);
-        let c: uint32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, transmute(c), b)
-    }
+    let c = vreinterpretq_u32_u8(c);
+    let c = vdupq_laneq_u32::<LANE>(c);
+    vusdotq_s32(a, vreinterpretq_u8_u32(c), b)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1)"]
@@ -71633,11 +71603,9 @@ pub fn vtstq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 pub fn vusdot_lane_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: int32x2_t = vreinterpret_s32_s8(c);
-    unsafe {
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, b, vreinterpret_s8_s32(c))
-    }
+    let c = vreinterpret_s32_s8(c);
+    let c = vdup_lane_s32::<LANE>(c);
+    vusdot_s32(a, b, vreinterpret_s8_s32(c))
 }
 #[doc = "Dot product index form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdotq_lane_s32)"]
@@ -71660,12 +71628,9 @@ pub fn vusdot_lane_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x8_t)
 )]
 pub fn vusdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    let c: int32x2_t = vreinterpret_s32_s8(c);
-    unsafe {
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, b, vreinterpretq_s8_s32(c))
-    }
+    let c = vreinterpret_s32_s8(c);
+    let c = vdupq_lane_s32::<LANE>(c);
+    vusdotq_s32(a, b, vreinterpretq_s8_s32(c))
 }
 #[doc = "Dot product index form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdot_laneq_s32)"]
@@ -71681,11 +71646,9 @@ pub fn vusdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x8_
 #[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
 pub fn vusdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x16_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int32x4_t = transmute(c);
-        let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, b, vreinterpret_s8_s32(c))
-    }
+    let c = vreinterpretq_s32_s8(c);
+    let c = vdup_laneq_s32::<LANE>(c);
+    vusdot_s32(a, b, vreinterpret_s8_s32(c))
 }
 #[doc = "Dot product index form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdotq_laneq_s32)"]
@@ -71701,12 +71664,9 @@ pub fn vusdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x16_
 #[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
 pub fn vusdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: int32x4_t = transmute(c);
-        let c: int32x4_t =
-            simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, b, vreinterpretq_s8_s32(c))
-    }
+    let c = vreinterpretq_s32_s8(c);
+    let c = vdupq_laneq_s32::<LANE>(c);
+    vusdotq_s32(a, b, vreinterpretq_s8_s32(c))
 }
 #[doc = "Dot product vector form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdot_s32)"]

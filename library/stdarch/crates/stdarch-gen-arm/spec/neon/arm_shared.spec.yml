@@ -6159,10 +6159,10 @@ intrinsics:
             - link: "llvm.arm.neon.usdot.v{neon_type[0].lane}i32.v{neon_type[1].lane}i8"
               arch: arm
 
-  - name: "vusdot{type[0]}"
+  - name: "vusdot{neon_type[0].lane_nox}"
     doc: "Dot product index form with unsigned and signed integers"
-    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}", "c: int8x8_t"]
-    return_type: "{neon_type[1]}"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: int8x8_t"]
+    return_type: "{neon_type[0]}"
     attr:
       - *neon-i8mm
       - *neon-v8
@@ -6174,19 +6174,17 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_s32', int32x2_t, uint8x8_t, '[LANE as u32, LANE as u32]','']
-      - ['q_lane_s32', int32x4_t, uint8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
+      - [int32x2_t, uint8x8_t, '']
+      - [int32x4_t, uint8x16_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
-          - int32x2_t
           - FnCall: ['vreinterpret_s32_s8', [c]]
       - Let:
           - c
-          - "{type[1]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
-      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]]
+          - FnCall: ['vdup{neon_type[0].lane_nox}', [c], [LANE]]
+      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[2]}_s8_s32', [c]]}]]
 
   - name: "vsudot{neon_type[0].lane_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -6203,22 +6201,20 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [int32x2_t, int8x8_t, uint8x8_t, '[LANE as u32, LANE as u32]', uint32x2_t,'']
-      - [int32x4_t, int8x16_t, uint8x8_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]', uint32x4_t,'q']
+      - [int32x2_t, int8x8_t, uint8x8_t, uint32x2_t, '']
+      - [int32x4_t, int8x16_t, uint8x8_t, uint32x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
-          - uint32x2_t
           - FnCall: ['vreinterpret_u32_u8', [c]]
       - Let:
           - c
-          - "{type[4]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
+          - FnCall: ['vdup{neon_type[3].lane_nox}', [c], [LANE]]
       - FnCall: 
           - "vusdot{neon_type[0].no}"
           - - a
-            - FnCall: ['vreinterpret{type[5]}_u8_u32', [c]]
+            - FnCall: ['vreinterpret{type[4]}_u8_u32', [c]]
             - b
 
   - name: "vmul{neon_type[1].no}"
@@ -6979,13 +6975,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [int32x2_t, uint8x8_t, int8x16_t, '[LANE as u32, LANE as u32]','']
-      - [int32x4_t, uint8x16_t, int8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
+      - [int32x2_t, uint8x8_t, int8x16_t, '']
+      - [int32x4_t, uint8x16_t, int8x16_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
-      - Let: [c, int32x4_t, {FnCall: [transmute, [c]]}]
-      - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]}]
-      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]] 
+      - Let: [c, {FnCall: [vreinterpretq_s32_s8, [c]]}]
+      - Let: [c, {FnCall: ['vdup{neon_type[0].laneq_nox}', [c], [LANE]]}]
+      - FnCall: ["vusdot{neon_type[0].no}", [a, b, {FnCall: ['vreinterpret{type[3]}_s8_s32', [c]]}]] 
 
   - name: "vsudot{neon_type[0].laneq_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -7001,22 +6997,20 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [int32x2_t, int8x8_t, uint8x16_t, '[LANE as u32, LANE as u32]', uint32x2_t]
-      - [int32x4_t, int8x16_t, uint8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]', uint32x4_t]
+      - [int32x2_t, int8x8_t, uint8x16_t, uint32x2_t, '']
+      - [int32x4_t, int8x16_t, uint8x16_t, uint32x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
       - Let:
           - c
-          - uint32x4_t
-          - FnCall: [transmute, [c]]
+          - FnCall: [vreinterpretq_u32_u8, [c]]
       - Let:
           - c
-          - "{type[4]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
+          - FnCall: ['vdup{neon_type[3].laneq_nox}', [c], [LANE]]
       - FnCall: 
           - "vusdot{neon_type[0].no}"
           - - a
-            - FnCall: [transmute, [c]]
+            - FnCall: ['vreinterpret{type[4]}_u8_u32', [c]]
             - b
 
   - name: "vdot{neon_type[0].laneq_nox}"
@@ -7033,23 +7027,21 @@ intrinsics:
       - FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]
     safety: safe
     types:
-      - [int32x2_t, int8x8_t, int8x16_t, int32x4_t, '[LANE as u32, LANE as u32]', '']
-      - [int32x4_t, int8x16_t, int8x16_t, int32x4_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
+      - [int32x2_t, int8x8_t, int8x16_t, '']
+      - [int32x4_t, int8x16_t, int8x16_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
       - Let:
           - c
-          - "{neon_type[3]}"
-          - FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: [vreinterpretq_s32_s8, [c]]
       - Let:
           - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
+          - FnCall: ['vdup{neon_type[0].laneq_nox}', [c], [LANE]]
       - FnCall:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: ['vreinterpret{type[3]}_s8_s32', [c]]
 
   - name: "vdot{neon_type[0].laneq_nox}"
     doc: Dot product arithmetic (indexed)
@@ -7065,23 +7057,21 @@ intrinsics:
       - FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]
     safety: safe
     types:
-      - [uint32x2_t, uint8x8_t, uint8x16_t, uint32x4_t, '[LANE as u32, LANE as u32]','']
-      - [uint32x4_t, uint8x16_t, uint8x16_t, uint32x4_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
+      - [uint32x2_t, uint8x8_t, uint8x16_t, '']
+      - [uint32x4_t, uint8x16_t, uint8x16_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
       - Let:
           - c
-          - "{neon_type[3]}"
-          - FnCall: ['vreinterpretq_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: ['vreinterpretq_u32_u8', [c]]
       - Let:
           - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
+          - FnCall: ['vdup{neon_type[0].laneq_nox}', [c], [LANE]]
       - FnCall:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: [transmute, [c]]
+            - FnCall: ['vreinterpret{type[3]}_u8_u32', [c]]
 
   - name: "vdot{neon_type[0].no}"
     doc: Dot product arithmetic (vector)
@@ -7146,23 +7136,21 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [int32x2_t, int8x8_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32]','']
-      - [int32x4_t, int8x16_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
+      - [int32x2_t, int8x8_t, int8x8_t, '']
+      - [int32x4_t, int8x16_t, int8x8_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
-          - "{neon_type[3]}"
-          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: ['vreinterpret_s32_s8', [c]]
       - Let:
           - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
+          - FnCall: ['vdup{neon_type[0].lane_nox}', [c], [LANE]]
       - FnCall:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: ['vreinterpret{type[3]}_s8_s32', [c]]
 
   - name: "vdot{neon_type[0].lane_nox}"
     doc: Dot product arithmetic (indexed)
@@ -7179,23 +7167,21 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [uint32x2_t, uint8x8_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32]','']
-      - [uint32x4_t, uint8x16_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
+      - [uint32x2_t, uint8x8_t, uint8x8_t, '']
+      - [uint32x4_t, uint8x16_t, uint8x8_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
-          - "{neon_type[3]}"
-          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: ['vreinterpret_u32_u8', [c]]
       - Let:
           - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, '{type[4]}']]
+          - FnCall: ['vdup{neon_type[0].lane_nox}', [c], [LANE]]
       - FnCall:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: ['vreinterpret{type[3]}_u8_u32', [c]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
