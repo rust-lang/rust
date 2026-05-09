@@ -66,31 +66,6 @@ use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
 use crate::vec::{self, Vec};
 
-/// A hack because we cannot add a type parameter, even one with a default value, to existing types
-/// which previously had no parameters.
-///
-/// Introducing generic parameters means any use of the type is now a possible site of type
-/// inference. Where previously, `String` just meant, well `String`, now `String` can mean
-/// `String<_>` (ie please infer the value from the context), or `String<Global>` (ie please use the
-/// default value). It's not always clear which is meant, and this is an open issue [#98931].
-///
-/// [#98931]: https://github.com/rust-lang/rust/issues/98931
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub mod generic {
-    use super::{Allocator, Global, Vec};
-
-    /// A generic version of [`alloc::string::String`], which adds a type parameter for an Allocator
-    ///
-    /// see the docs for [`alloc::string::String`] for more info
-    ///
-    /// [`alloc::string::String`]: super::String
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[lang = "String"]
-    pub struct String<#[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-        pub(super) vec: Vec<u8, A>,
-    }
-}
-
 /// A UTF-8–encoded, growable string.
 ///
 /// `String` is the most common string type. It has ownership over the contents
@@ -371,9 +346,48 @@ pub mod generic {
 /// [Deref]: core::ops::Deref "ops::Deref"
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
+#[cfg(doc)]
+pub struct String<A: Allocator = Global> {
+    vec: Vec<u8, A>,
+}
+
+#[cfg(doc)]
+#[allow(missing_docs)]
+pub mod generic {
+    pub use super::String;
+}
+
+#[cfg(not(doc))]
+#[allow(missing_docs)]
 #[rustc_diagnostic_item = "string_in_global"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type String = generic::String;
+
+/// A hack because we cannot add a type parameter, even one with a default value, to existing types
+/// which previously had no parameters.
+///
+/// Introducing generic parameters means any use of the type is now a possible site of type
+/// inference. Where previously, `String` just meant, well `String`, now `String` can mean
+/// `String<_>` (ie please infer the value from the context), or `String<Global>` (ie please use the
+/// default value). It's not always clear which is meant, and this is an open issue [#98931].
+///
+/// [#98931]: https://github.com/rust-lang/rust/issues/98931
+#[cfg(not(doc))]
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub mod generic {
+    use super::{Allocator, Global, Vec};
+
+    /// A generic version of [`alloc::string::String`], which adds a type parameter for an Allocator
+    ///
+    /// see the docs for [`alloc::string::String`] for more info
+    ///
+    /// [`alloc::string::String`]: super::String
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[lang = "String"]
+    pub struct String<#[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+        pub(super) vec: Vec<u8, A>,
+    }
+}
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.
 ///
@@ -2228,7 +2242,8 @@ impl<A: Allocator> generic::String<A> {
     /// assert_eq!(s, "Test Results: ✅❌❌");
     /// ```
     ///
-    /// [replacen]: ../../../std/primitive.str.html#method.replacen
+    #[cfg_attr(not(doc), doc = "[replacen]: ../../../std/primitive.str.html#method.replacen")]
+    #[cfg_attr(doc, doc = "[replacen]: ../../std/primitive.str.html#method.replacen")]
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_replace_in_place", issue = "147949")]
     pub fn replace_first<P: Pattern>(&mut self, from: P, to: &str) {
