@@ -668,10 +668,10 @@ fn coerce_shared_target(
         |_, _| (true, Vec::new()),
     );
 
-    let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
+    let (parse, _) = crate::db::token_tree_to_syntax_node(
+        db,
         &target,
-        syntax_bridge::TopEntryPoint::Type,
-        &mut |_| Edition::CURRENT,
+        crate::ExpandTo::Type,
     );
     if !parse.errors().is_empty() {
         return None;
