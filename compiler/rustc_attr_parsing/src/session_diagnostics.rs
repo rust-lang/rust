@@ -397,6 +397,13 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(Diagnostic)]
+#[diag("`export_name` may not be empty")]
+pub(crate) struct EmptyExportName {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`export_name` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
