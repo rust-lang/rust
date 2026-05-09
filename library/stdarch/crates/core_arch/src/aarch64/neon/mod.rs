@@ -12,7 +12,6 @@ pub use self::generated::*;
 
 use crate::{
     core_arch::{arm_shared::*, simd::*},
-    hint::unreachable_unchecked,
     intrinsics::{simd::*, *},
     mem::transmute,
 };
