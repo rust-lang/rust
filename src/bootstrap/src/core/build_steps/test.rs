@@ -1034,7 +1034,7 @@ impl Step for IntrinsicTest {
                 builder.src.join("library/stdarch/intrinsics_data/arm_intrinsics.json"),
                 builder.src.join("library/stdarch/crates/intrinsic-test/missing_aarch64.txt"),
                 String::from("env"),
-                String::from("-fuse-ld=lld"),
+                String::from(""),
             )
         } else {
             return;
@@ -1047,7 +1047,8 @@ impl Step for IntrinsicTest {
         cmd.current_dir(&out_dir);
         cmd.arg(&input_file);
         cmd.arg("--target").arg(&*host.triple);
-        cmd.arg("--cppcompiler").arg("clang++");
+        let cppcompiler = if host.contains("x86_64-unknown-linux") { "clang++" } else { "g++" };
+        cmd.arg("--cppcompiler").arg(cppcompiler);
         cmd.arg("--runner").arg(&runner);
         cmd.arg("--skip").arg(&skip_file);
         cmd.arg("--sample-percentage").arg("10");

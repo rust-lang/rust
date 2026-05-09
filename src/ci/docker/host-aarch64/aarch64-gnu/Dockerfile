@@ -18,14 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   clang \
   lld \
-  && rm -rf /var/lib/apt/lists/* \
-  && find /usr/lib -maxdepth 5 -name 'clang++' -executable 2>/dev/null \
-     | sort -V | tail -1 | xargs -r ln -sf -t /usr/local/bin/ \
-  && if ! test -x /usr/local/bin/clang++; then \
-       find /usr/bin -name 'clang++-*' -executable 2>/dev/null \
-       | sort -V | tail -1 | xargs -r -I{} ln -sf {} /usr/local/bin/clang++; \
-     fi \
-  && clang++ --version
+  && rm -rf /var/lib/apt/lists/*
   
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
