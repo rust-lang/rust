@@ -143,6 +143,7 @@ impl GenericParamsCollector {
                         let param = LifetimeParamData {
                             name: name.clone(),
                             bound_type: LifetimeBoundType::EarlyBound,
+                            is_opaque_captured: false,
                         };
                         let _idx = self.lifetimes.alloc(param);
                         ec.with_lifetime_bound_scope(LifetimeBoundScope::WhereClause, |ec| {
@@ -291,6 +292,10 @@ impl GenericParamsCollector {
     ) {
         for (_param_id, lifetime) in self.lifetimes.iter_mut() {
             let lifetime_name = &lifetime.name;
+            if named_lifetime_store.opaque_captured_lifetimes.contains(lifetime_name) {
+                lifetime.is_opaque_captured = true;
+            }
+
             if named_lifetime_store.lifetimes_in_where_clause.contains(lifetime_name) {
                 continue;
             }

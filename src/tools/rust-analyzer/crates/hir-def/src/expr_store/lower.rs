@@ -565,6 +565,7 @@ pub struct NamedLifetimeStore {
     lifetimes_in_where_clause: FxIndexSet<Name>,
     lifetimes_constraint_by_input: FxIndexSet<Name>,
     lifetimes_in_output: FxIndexSet<Name>,
+    opaque_captured_lifetimes: FxIndexSet<Name>,
 }
 
 #[derive(Debug)]
@@ -572,6 +573,7 @@ enum LifetimeBoundScope {
     Argument,
     Return,
     WhereClause,
+    ImplTrait(bool),
 }
 
 impl NamedLifetimeStore {
@@ -580,13 +582,23 @@ impl NamedLifetimeStore {
     pub(crate) fn push_named_lifetime(&mut self, lifetime: Name) {
         match self.lifetime_bound_scope {
             Some(LifetimeBoundScope::Argument) => {
-                self.lifetimes_constraint_by_input.insert(lifetime)
+                self.lifetimes_constraint_by_input.insert(lifetime);
             }
-            Some(LifetimeBoundScope::Return) => self.lifetimes_in_output.insert(lifetime),
+            Some(LifetimeBoundScope::Return) => {
+                self.lifetimes_in_output.insert(lifetime);
+            }
             Some(LifetimeBoundScope::WhereClause) => {
-                self.lifetimes_in_where_clause.insert(lifetime)
+                self.lifetimes_in_where_clause.insert(lifetime);
             }
-            _ => false,
+            Some(LifetimeBoundScope::ImplTrait(is_argument_scope)) => {
+                if is_argument_scope {
+                    self.lifetimes_in_where_clause.insert(lifetime);
+                } else {
+                    self.opaque_captured_lifetimes.insert(lifetime.clone());
+                    self.lifetimes_in_output.insert(lifetime);
+                }
+            }
+            _ => (),
         };
     }
 }
@@ -758,8 +770,16 @@ impl<'db> ExprCollector<'db> {
                     TypeRef::Error
                 } else {
                     return self.with_outer_impl_trait_scope(true, |this| {
-                        let type_bounds =
-                            this.type_bounds_from_ast(inner.type_bound_list(), impl_trait_lower_fn);
+                        let is_argument_lt_bound_scope = this.is_argument_lt_bound_scope();
+                        let type_bounds = this.with_lifetime_bound_scope(
+                            LifetimeBoundScope::ImplTrait(is_argument_lt_bound_scope),
+                            |this| {
+                                this.type_bounds_from_ast(
+                                    inner.type_bound_list(),
+                                    impl_trait_lower_fn,
+                                )
+                            },
+                        );
                         impl_trait_lower_fn(this, AstPtr::new(&node), type_bounds)
                     });
                 }

@@ -34,6 +34,7 @@ pub struct TypeParamData {
 pub struct LifetimeParamData {
     pub name: Name,
     pub bound_type: LifetimeBoundType,
+    pub is_opaque_captured: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -348,7 +349,9 @@ impl GenericParams {
     pub fn iter_early_bound_lt(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
-        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::EarlyBound)
+        self.lifetimes
+            .iter()
+            .filter(|(_, p)| p.is_opaque_captured || p.bound_type == LifetimeBoundType::EarlyBound)
     }
 
     #[inline]
@@ -409,6 +412,15 @@ impl GenericParams {
     ) -> Option<usize> {
         self.iter_late_bound_lt().position(|(id, data)| {
             data.bound_type == LifetimeBoundType::LateBound && id == *lifetime_param_id
+        })
+    }
+
+    pub fn early_bound_lifetime_idx(
+        &self,
+        lifetime_param_id: &LocalLifetimeParamId,
+    ) -> Option<usize> {
+        self.iter_early_bound_lt().position(|(id, data)| {
+            data.bound_type == LifetimeBoundType::EarlyBound && id == *lifetime_param_id
         })
     }
 }

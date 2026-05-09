@@ -301,12 +301,12 @@ impl<'db> Generics<'db> {
             return (late_bound_idx as u32, true);
         }
         let has_trait_self = matches!(owner.def, GenericDefId::TraitId(_));
-        (
-            owner.preceding_params_len
-                + u32::from(has_trait_self)
-                + param.local_id.into_raw().into_u32(),
-            false,
-        )
+        match owner.params.early_bound_lifetime_idx(&param.local_id) {
+            Some(idx) => {
+                (owner.preceding_params_len + u32::from(has_trait_self) + (idx as u32), false)
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[deprecated = "don't use this; it's easy to expose an erroneous `Generics` with this"]
