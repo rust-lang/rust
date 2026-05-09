@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   clang \
   lld \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && ln -sf "$(ls /usr/bin/clang++-* | tail -1)" /usr/local/bin/clang++
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
