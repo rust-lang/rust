@@ -4618,7 +4618,7 @@ pub fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(
     static_assert_uimm_bits!(LANE1, 1);
     static_assert!(LANE2 == 0);
     let b: poly64x2_t = vcombine_p64(b, b);
-    vsetq_lane_p64::<LANE1>(vgetq_lane_p64::<LANE2>(b), a)
+    unsafe { simd_insert!(a, LANE1 as u32, simd_extract!(b, LANE2 as u32, p64)) }
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_s8)"]
@@ -5001,7 +5001,7 @@ pub fn vcopyq_laneq_p64<const LANE1: i32, const LANE2: i32>(
 ) -> poly64x2_t {
     static_assert_uimm_bits!(LANE1, 1);
     static_assert_uimm_bits!(LANE2, 1);
-    vsetq_lane_p64::<LANE1>(vgetq_lane_p64::<LANE2>(b), a)
+    unsafe { simd_insert!(a, LANE1 as u32, simd_extract!(b, LANE2 as u32, p64)) }
 }
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_f64)"]
