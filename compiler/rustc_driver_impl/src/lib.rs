@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(trim_prefix_suffix)]
@@ -333,7 +334,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }

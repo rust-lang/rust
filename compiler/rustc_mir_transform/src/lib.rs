@@ -2,7 +2,6 @@
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
-#![feature(file_buffered)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iterator_try_collect)]
 #![feature(try_blocks)]

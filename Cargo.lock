@@ -3831,7 +3831,6 @@ dependencies = [
  "rustc_metadata",
  "rustc_middle",
  "rustc_mir_build",
- "rustc_mir_transform",
  "rustc_parse",
  "rustc_public",
  "rustc_resolve",
