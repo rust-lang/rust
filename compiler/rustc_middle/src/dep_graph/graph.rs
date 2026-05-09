@@ -12,11 +12,13 @@ use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
+use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
+use rustc_span::def_id::LocalDefId;
 use tracing::instrument;
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -50,6 +52,8 @@ pub enum QuerySideEffect {
     /// if we mark the query as green, as that query will have
     /// the side effect dep node as a dependency.
     CheckFeature { symbol: Symbol },
+    /// Creates a new definition.
+    CreateDef { parent: LocalDefId, data: DisambiguatedDefPathData },
 }
 
 #[derive(Clone)]
@@ -218,6 +222,13 @@ impl DepGraph {
         OP: FnOnce() -> R,
     {
         with_deps(TaskDepsRef::Ignore, op)
+    }
+
+    pub fn with_replay<OP, R>(&self, op: OP) -> R
+    where
+        OP: FnOnce() -> R,
+    {
+        with_deps(TaskDepsRef::Replay, op)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -457,7 +468,7 @@ impl DepGraph {
                         // queries. They are re-evaluated unconditionally anyway.
                         return;
                     }
-                    TaskDepsRef::Ignore => return,
+                    TaskDepsRef::Ignore | TaskDepsRef::Replay => return,
                     TaskDepsRef::Forbid => {
                         // Reading is forbidden in this context. ICE with a useful error message.
                         panic_on_forbidden_read(data, dep_node_index)
@@ -507,7 +518,7 @@ impl DepGraph {
     pub fn record_diagnostic<'tcx>(&self, tcx: TyCtxt<'tcx>, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
             read_deps(|task_deps| match task_deps {
-                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore | TaskDepsRef::Replay => return,
                 TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
                     let dep_node_index = data
                         .encode_side_effect(tcx, QuerySideEffect::Diagnostic(diagnostic.clone()));
@@ -532,7 +543,9 @@ impl DepGraph {
         side_effect: QuerySideEffect,
     ) -> DepNodeIndex {
         if let Some(ref data) = self.data {
-            data.encode_side_effect(tcx, side_effect)
+            let dep_node_index = data.encode_side_effect(tcx, side_effect);
+            self.read_index(dep_node_index);
+            dep_node_index
         } else {
             self.next_virtual_depnode_index()
         }
@@ -599,7 +612,7 @@ impl DepGraph {
                 TaskDepsRef::EvalAlways => {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);
                 }
-                TaskDepsRef::Ignore => {}
+                TaskDepsRef::Ignore | TaskDepsRef::Replay => {}
                 TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
@@ -723,6 +736,9 @@ impl DepGraphData {
                 }
                 QuerySideEffect::CheckFeature { symbol } => {
                     tcx.sess.used_features.lock().insert(*symbol, dep_node_index.as_u32());
+                }
+                QuerySideEffect::CreateDef { parent, data } => {
+                    tcx.untracked().definitions.write().create_def(*parent, *data);
                 }
             }
 
@@ -1210,6 +1226,9 @@ pub enum TaskDepsRef<'a> {
     EvalAlways,
     /// New dependencies are ignored. This is also used for `dep_graph.with_ignore`.
     Ignore,
+    /// This query has already been marked green, its dependency graph is recorded,
+    /// but we need to re-run the code to get its result.
+    Replay,
     /// Any attempt to add new dependencies will cause a panic.
     /// This is used when decoding a query result from disk,
     /// to ensure that the decoding process doesn't itself

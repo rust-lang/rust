@@ -26,11 +26,12 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::StableHash;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
+    self, AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, FreezeReadGuard, Lock, RwLock,
+    WorkerLocal,
 };
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, StableCrateIdMap};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
@@ -51,7 +52,7 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
-use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::dep_graph::{DepGraph, DepKindVTable, QuerySideEffect, TaskDepsRef};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -916,7 +917,7 @@ impl<'tcx> TyCtxt<'tcx> {
         stable_crate_id: StableCrateId,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked: Untracked,
+        cstore: Box<CrateStoreDyn>,
         dep_graph: DepGraph,
         dep_kind_vtables: &'tcx [DepKindVTable<'tcx>],
         query_system: QuerySystem<'tcx>,
@@ -925,6 +926,17 @@ impl<'tcx> TyCtxt<'tcx> {
         jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
+        let cstore = FreezeLock::new(cstore);
+        let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
+
+        let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
+        let untracked = Untracked {
+            cstore,
+            source_span: AppendOnlyIndexVec::new(),
+            definitions,
+            stable_crate_ids,
+        };
+
         let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
             sess.dcx().emit_fatal(err);
         });
@@ -1278,25 +1290,39 @@ impl<'tcx> TyCtxt<'tcx> {
         disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
-        // The following call has the side effect of modifying the tables inside `definitions`.
-        // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
-        // decode the on-disk cache.
-        //
-        // Any LocalDefId which is used within queries, either as key or result, either:
-        // - has been created before the construction of the TyCtxt;
-        // - has been created by this call to `create_def`.
-        // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
-        // comp. engine itself.
-        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
 
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Find the next free disambiguator for this key.
+        let data = disambiguator.disambiguate(parent, data);
+
+        let def_id = ty::tls::with_context(|icx| match icx.task_deps {
+            // If we are not tracking dependencies, we can use global mutable state.
+            // This is only an optimization to avoid the cost of registering the dep-node.
+            TaskDepsRef::EvalAlways | TaskDepsRef::Forbid | TaskDepsRef::Ignore => {
+                self.untracked.definitions.write().create_def(parent, data)
+            }
+
+            // We are tracking dependencies, so we need to record a side-effect for the dep-graph
+            // to pick up in next execution.
+            TaskDepsRef::Allow(..) => {
+                self.dep_graph
+                    .encode_side_effect(self, QuerySideEffect::CreateDef { parent, data });
+                self.untracked.definitions.write().create_def(parent, data)
+            }
+
+            // We are in replay mode: the def-id has already been created by
+            // `dep_graph.force_side_effect`. We need to recover it, without creating a new one.
+            TaskDepsRef::Replay => {
+                let parent_hash = self.def_path_hash(parent.to_def_id());
+                let def_path_hash = data.compute_stable_hash(parent_hash);
+                self.def_path_hash_to_def_id(def_path_hash)
+                    .expect("first execution should have created this definition")
+                    .expect_local()
+            }
+        });
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
+
         // Unique types created for closures participate in type privacy checking.
         // They have visibilities inherited from the module they are defined in.
         // Visibilities for opaque types are meaningless, but still provided

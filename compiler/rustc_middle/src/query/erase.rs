@@ -214,6 +214,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
     rustc_hir::def::DefKind,
     rustc_hir::def_id::DefId,
+    rustc_hir::def_id::LocalDefId,
     rustc_middle::middle::codegen_fn_attrs::SanitizerFnAttrs,
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
     rustc_middle::mir::ConstQualifs,
