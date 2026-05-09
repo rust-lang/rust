@@ -1461,13 +1461,10 @@ impl<'ra> ResolverArenas<'ra> {
         no_implicit_prelude: bool,
     ) -> Module<'ra> {
         let self_decl = match kind {
-            ModuleKind::Def(def_kind, def_id, _) => Some(self.new_def_decl(
-                Res::Def(def_kind, def_id),
-                vis,
-                span,
-                LocalExpnId::ROOT,
-                None,
-            )),
+            ModuleKind::Def(def_kind, def_id, _) => {
+                let expn_id = expn_id.as_local().unwrap_or(LocalExpnId::ROOT);
+                Some(self.new_def_decl(Res::Def(def_kind, def_id), vis, span, expn_id, parent))
+            }
             ModuleKind::Block => None,
         };
         Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
