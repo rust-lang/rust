@@ -332,8 +332,37 @@ impl<'tcx> SizeSkeleton<'tcx> {
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
+        span: Span,
+    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+        Self::compute_inner(ty, tcx, typing_env, span, 0)
+    }
+
+    fn compute_inner(
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        span: Span,
+        depth: usize,
     ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
+
+        // Bail out if we've recursed too deeply (issue #156137); a cyclic type
+        // alias can otherwise blow the stack here. Using `>=` rather than `>`
+        // means we fire exactly at the limit, which lets us report the
+        // cycle-root type (`Thing<T>`) instead of an innocent field type.
+        let recursion_limit = tcx.recursion_limit();
+        if depth >= recursion_limit.0 {
+            let suggested_limit = match recursion_limit {
+                hir::limit::Limit(0) => hir::limit::Limit(2),
+                limit => limit * 2,
+            };
+            let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
+                span,
+                ty,
+                suggested_limit,
+            });
+            return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
+        }
 
         // First try computing a static layout.
         let err = match tcx.layout_of(typing_env.as_query_input(ty)) {
@@ -407,7 +436,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));
                 }
 
-                match SizeSkeleton::compute(inner, tcx, typing_env)? {
+                match SizeSkeleton::compute_inner(inner, tcx, typing_env, span, depth + 1)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
                     SizeSkeleton::Known(s, a) => {
@@ -434,10 +463,15 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 // Get a zero-sized variant or a pointer newtype.
                 let zero_or_ptr_variant = |i| {
                     let i = VariantIdx::from_usize(i);
-                    let fields =
-                        def.variant(i).fields.iter().map(|field| {
-                            SizeSkeleton::compute(field.ty(tcx, args), tcx, typing_env)
-                        });
+                    let fields = def.variant(i).fields.iter().map(|field| {
+                        SizeSkeleton::compute_inner(
+                            field.ty(tcx, args),
+                            tcx,
+                            typing_env,
+                            span,
+                            depth + 1,
+                        )
+                    });
                     let mut ptr = None;
                     for field in fields {
                         let field = field?;
@@ -487,13 +521,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 if ty == normalized {
                     Err(err)
                 } else {
-                    SizeSkeleton::compute(normalized, tcx, typing_env)
+                    SizeSkeleton::compute_inner(normalized, tcx, typing_env, span, depth + 1)
                 }
             }
 
             ty::Pat(base, pat) => {
                 // Pattern types are always the same size as their base.
-                let base = SizeSkeleton::compute(base, tcx, typing_env);
+                let base = SizeSkeleton::compute_inner(base, tcx, typing_env, span, depth + 1);
                 match *pat {
                     ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => base,
                     // But in the case of `!null` patterns we need to note that in the
