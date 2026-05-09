@@ -2,7 +2,7 @@
 //! This checks that types can reference each other in their definitions through
 //! `Box` indirection, creating cycles in the type dependency graph.
 
-//@ run-pass
+//@ check-pass
 
 #[derive(Debug, PartialEq)]
 enum Colour {

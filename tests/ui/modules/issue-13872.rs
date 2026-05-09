@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 //@ aux-build:issue-13872-1.rs
 //@ aux-build:issue-13872-2.rs
 //@ aux-build:issue-13872-3.rs

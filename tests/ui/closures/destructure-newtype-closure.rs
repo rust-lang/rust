@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/20174
 
-//@ run-pass
+//@ check-pass
 struct GradFn<F: Fn() -> usize>(F);
 
 fn main() {

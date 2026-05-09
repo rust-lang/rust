@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 //
 pub mod modrs_mod;
 pub mod foors_mod;

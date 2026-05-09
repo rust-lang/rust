@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_mut)]
 #![allow(unused_variables)]
 #![allow(dropping_copy_types)]

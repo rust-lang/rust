@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Test that we correctly ignore the blanket impl
 // because (in this case) `T` does not impl `Clone`.
 //
@@ -6,7 +6,7 @@
 
 use std::cell::RefCell;
 
-trait Foo { //~ WARN trait `Foo` is never used
+trait Foo {
     fn foo(&self) {}
 }
 

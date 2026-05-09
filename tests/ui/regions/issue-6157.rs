@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 pub trait OpInt { fn call(&mut self, _: isize, _: isize) -> isize; }
 

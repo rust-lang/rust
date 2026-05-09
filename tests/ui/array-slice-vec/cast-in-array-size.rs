@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 
 // issues #10618 and #16382

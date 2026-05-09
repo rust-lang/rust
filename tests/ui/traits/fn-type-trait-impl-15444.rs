@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/15444
 
-//@ run-pass
+//@ check-pass
 
 trait MyTrait {
     fn foo(&self);

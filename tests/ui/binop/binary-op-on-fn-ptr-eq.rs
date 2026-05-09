@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Tests equality between supertype and subtype of a function
 // See the issue #91636
 

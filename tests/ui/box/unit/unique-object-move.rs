@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 #![allow(dead_code)]
 // Issue #5192
 

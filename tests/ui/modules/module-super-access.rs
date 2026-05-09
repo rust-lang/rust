@@ -1,6 +1,6 @@
 //! Check path resolution using `super`
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 

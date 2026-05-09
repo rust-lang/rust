@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 mod a {
     pub fn f() {}

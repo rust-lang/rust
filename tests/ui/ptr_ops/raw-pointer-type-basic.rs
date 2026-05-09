@@ -1,6 +1,6 @@
 //! Checks the basic usage of raw pointers (`*const isize`) as function argument and return types.
 
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code)]
 

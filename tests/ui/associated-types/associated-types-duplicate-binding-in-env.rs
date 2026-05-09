@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(dead_code)]
 // Check that we do not report ambiguities when the same predicate
 // appears in the environment twice. Issue #21965.

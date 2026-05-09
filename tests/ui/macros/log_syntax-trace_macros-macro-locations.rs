@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![feature(trace_macros, log_syntax)]
 

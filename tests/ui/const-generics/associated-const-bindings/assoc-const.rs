@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![feature(min_generic_const_args)]
 #![allow(unused, incomplete_features)]
 

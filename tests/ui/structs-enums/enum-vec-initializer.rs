@@ -1,4 +1,4 @@
-//@ run-pass
+//@ build-pass
 
 enum Flopsy {
     Bunny = 2

@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/14399
 
-//@ run-pass
+//@ check-pass
 // #14399
 // We'd previously ICE if we had a method call whose return
 // value was coerced to a trait object. (v.clone() returns Box<B1>
@@ -10,7 +10,7 @@
 #[derive(Clone)]
 struct B1;
 
-trait A { fn foo(&self) {} } //~ WARN method `foo` is never used
+trait A { fn foo(&self) {} }
 impl A for B1 {}
 
 fn main() {

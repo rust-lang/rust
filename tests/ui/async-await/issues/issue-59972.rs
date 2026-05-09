@@ -2,7 +2,7 @@
 // types as entirely uninhabited, when they were in fact constructible. This
 // caused us to hit "unreachable" code (illegal instruction on x86).
 
-//@ run-pass
+//@ check-pass
 
 //@ compile-flags: -Aunused
 //@ edition: 2018

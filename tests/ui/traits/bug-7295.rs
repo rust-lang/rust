@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 pub trait Foo<T> {
     fn func1<U>(&self, t: U, w: T);

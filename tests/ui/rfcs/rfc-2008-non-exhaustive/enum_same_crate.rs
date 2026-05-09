@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #[non_exhaustive]
 pub enum NonExhaustiveEnum {

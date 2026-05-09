@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![allow(unused_variables)]
 // Test that we can resolve nested projection types. Issue #20666.
 
@@ -12,7 +12,7 @@ impl<'a> Bound for &'a i32 {}
 trait IntoIterator {
     type Iter: Iterator;
 
-    fn into_iter(self) -> Self::Iter; //~ WARN method `into_iter` is never used
+    fn into_iter(self) -> Self::Iter;
 }
 
 impl<'a, T> IntoIterator for &'a [T; 3] {

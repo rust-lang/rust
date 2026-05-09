@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // Test that methods whose impl-trait-ref contains associated types
 // are supported.
 

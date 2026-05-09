@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {

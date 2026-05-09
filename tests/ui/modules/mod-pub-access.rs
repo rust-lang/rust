@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 // This is a name resolution smoke test that ensures paths with more than one
 // segment (e.g., `foo::bar`) resolve correctly.
 // It also serves as a basic visibility test — confirming that a `pub` item

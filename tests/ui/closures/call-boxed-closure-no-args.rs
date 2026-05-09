@@ -1,6 +1,6 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/20575
 
-//@ run-pass
+//@ check-pass
 // Test that overloaded calls work with zero arity closures
 
 

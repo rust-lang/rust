@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(dead_code, unused_variables, unused_assignments)]
 

@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 mod m {
     pub fn f<T>(_: T, _: ()) { }

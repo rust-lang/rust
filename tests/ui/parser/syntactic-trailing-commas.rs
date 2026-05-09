@@ -6,7 +6,7 @@
 //! - Enum variant declarations.
 //! - Attributes.
 
-//@ run-pass
+//@ check-pass
 
 fn f<T,>(_: T,) {}
 

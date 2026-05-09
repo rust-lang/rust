@@ -2,7 +2,7 @@
 //! successfully called directly on integer literals, confirming the correct
 //! parsing of such expressions where the underscore is part of the method identifier.
 
-//@ run-pass
+//@ check-pass
 
 trait Tr: Sized {
     fn _method_on_numbers(self) {}

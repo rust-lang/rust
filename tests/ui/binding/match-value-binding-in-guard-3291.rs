@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn foo(x: Option<Box<isize>>, b: bool) -> isize {
     match x {

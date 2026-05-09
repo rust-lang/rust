@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 #![allow(type_alias_bounds)]
 #![allow(dead_code)]

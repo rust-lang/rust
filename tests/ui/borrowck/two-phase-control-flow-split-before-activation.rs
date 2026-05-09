@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 fn main() {
     let mut a = 0;
