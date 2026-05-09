@@ -174,9 +174,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::NonExhaustive(attr_span)) => {
                     self.check_non_exhaustive(*attr_span, span, target, item)
                 }
-                &Attribute::Parsed(AttributeKind::FfiPure(attr_span)) => {
-                    self.check_ffi_pure(attr_span, attrs)
-                }
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
@@ -229,6 +226,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ExportStable
                     | AttributeKind::Feature(..)
                     | AttributeKind::FfiConst
+                    | AttributeKind::FfiPure(..)
                     | AttributeKind::Fundamental
                     | AttributeKind::Ignore { .. }
                     | AttributeKind::InstructionSet(..)
@@ -1087,13 +1085,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         if let Some(span) = masked {
             self.check_doc_masked(*span, hir_id, target);
-        }
-    }
-
-    fn check_ffi_pure(&self, attr_span: Span, attrs: &[Attribute]) {
-        if find_attr!(attrs, FfiConst) {
-            // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-            self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
         }
     }
 
