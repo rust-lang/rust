@@ -9,7 +9,7 @@ use core::mem;
 use crate::fs::Metadata;
 #[allow(deprecated)]
 use crate::os::linux::raw;
-use crate::os::raw::c_void;
+use crate::os::raw::{c_uint, c_void};
 use crate::sys::AsInner;
 use crate::sys::fs::cfg_has_statx;
 cfg_has_statx! {{
@@ -18,6 +18,15 @@ cfg_has_statx! {{
 } else {
     use crate::sys::unsupported;
 }}
+
+/// This is the [`statx`] mask expected by [`Metadata::from_statx`], which sets both
+/// `STATX_BASIC_STATS` and `STATX_BTIME`. See the [Linux man page] for statx for more
+/// details.
+///
+/// [`statx`]: https://docs.rs/libc/latest/libc/struct.statx.html
+/// [Linux man page]: https://man7.org/linux/man-pages/man2/statx.2.html
+#[unstable(feature = "metadata_statx", issue = "156268")]
+pub const STATX_MASK: c_uint = libc::STATX_BASIC_STATS | libc::STATX_BTIME;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///
@@ -53,10 +62,18 @@ pub trait MetadataExt {
 
     /// Creates a [`Metadata`] from a const void pointer populated by the [`statx`] syscall.
     ///
+    /// Currently [`Metadata::from_statx`] is only supported on Linux platforms with a target
+    /// environment of GNU.
+    ///
     /// # Safety
     ///
     /// The caller must take care to provide a valid const void pointer containing information
-    /// populated by the [`statx`] syscall.
+    /// populated by the [`statx`] syscall. In particular, the provided pointer should contain
+    /// statx information pertaining to the mask [`STATX_MASK`], so that there will be no
+    /// uninitialized data encountered in constructing [`Metadata`].
+    ///
+    /// Note that the relevant information is copied out of the structure and the pointer is
+    /// not retained past the call.
     ///
     /// [`Metadata`]: crate::fs::Metadata
     /// [`statx`]: https://docs.rs/libc/latest/libc/struct.statx.html
@@ -67,7 +84,7 @@ pub trait MetadataExt {
     /// use std::ffi::c_void;
     /// use std::fs::{write, Metadata};
     /// use std::io;
-    /// use std::os::linux::fs::MetadataExt;
+    /// use std::os::linux::fs::{MetadataExt, STATX_MASK};
     ///
     /// fn main() -> io::Result<()> {
     ///     write("hello.txt", "Hello World!")?;
@@ -77,7 +94,7 @@ pub trait MetadataExt {
     ///             libc::AT_FDCWD,
     ///             "hello.txt".as_ptr().cast(),
     ///             libc::AT_STATX_SYNC_AS_STAT,
-    ///             libc::STATX_BASIC_STATS,
+    ///             STATX_MASK,
     ///             buf.as_mut_ptr().cast()
     ///         );
     ///     }
