@@ -266,7 +266,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let impl_trait_mode = ImplTraitLoweringState::new(ImplTraitLoweringMode::Disallowed);
         let in_binders = DebruijnIndex::ZERO;
         let interner = DbInterner::new_with(db, resolver.krate());
-        let bound_vars = Vec::from(&[Self::bound_vars(db, interner, generic_def.into())]);
+        let bound_vars = Vec::from(&[Self::bound_vars(db, interner, generic_def)]);
         Self {
             db,
             // Can provide no block since we don't use it for trait solving.
@@ -1259,7 +1259,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             Some(resolution) => match resolution {
                 LifetimeNs::Static => Region::new_static(self.interner),
                 LifetimeNs::LifetimeParam(id) => {
-                    let (idx, is_late_bound) = self.generics().lifetime_param_idx(id);
+                    let is_opaque_lowering =
+                        self.impl_trait_mode.mode == ImplTraitLoweringMode::Opaque;
+                    let (idx, is_late_bound) =
+                        self.generics().lifetime_param_idx(id, is_opaque_lowering);
                     self.region_param(id, idx, is_late_bound)
                 }
             },

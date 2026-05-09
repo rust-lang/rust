@@ -306,7 +306,10 @@ impl GenericParams {
 
     #[inline]
     pub fn len_late_bound_lifetimes(&self) -> usize {
-        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::LateBound).count()
+        self.lifetimes
+            .iter()
+            .filter(|(_, p)| !p.is_opaque_captured && p.bound_type == LifetimeBoundType::LateBound)
+            .count()
     }
 
     #[inline]
@@ -409,18 +412,24 @@ impl GenericParams {
     pub fn late_bound_lifetime_idx(
         &self,
         lifetime_param_id: &LocalLifetimeParamId,
+        is_opaque_lowering: bool,
     ) -> Option<usize> {
         self.iter_late_bound_lt().position(|(id, data)| {
-            data.bound_type == LifetimeBoundType::LateBound && id == *lifetime_param_id
+            !(is_opaque_lowering && data.is_opaque_captured)
+                && data.bound_type == LifetimeBoundType::LateBound
+                && id == *lifetime_param_id
         })
     }
 
     pub fn early_bound_lifetime_idx(
         &self,
         lifetime_param_id: &LocalLifetimeParamId,
+        is_opaque_lowering: bool,
     ) -> Option<usize> {
         self.iter_early_bound_lt().position(|(id, data)| {
-            data.bound_type == LifetimeBoundType::EarlyBound && id == *lifetime_param_id
+            ((is_opaque_lowering && data.is_opaque_captured)
+                || data.bound_type == LifetimeBoundType::EarlyBound)
+                && id == *lifetime_param_id
         })
     }
 }

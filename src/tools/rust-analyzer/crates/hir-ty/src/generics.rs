@@ -295,13 +295,19 @@ impl<'db> Generics<'db> {
     }
 
     // Rename this?
-    pub(crate) fn lifetime_param_idx(&self, param: LifetimeParamId) -> (u32, bool) {
+    pub(crate) fn lifetime_param_idx(
+        &self,
+        param: LifetimeParamId,
+        is_opaque_lowering: bool,
+    ) -> (u32, bool) {
         let owner = self.find_owner(param.parent);
-        if let Some(late_bound_idx) = owner.params.late_bound_lifetime_idx(&param.local_id) {
+        if let Some(late_bound_idx) =
+            owner.params.late_bound_lifetime_idx(&param.local_id, is_opaque_lowering)
+        {
             return (late_bound_idx as u32, true);
         }
         let has_trait_self = matches!(owner.def, GenericDefId::TraitId(_));
-        match owner.params.early_bound_lifetime_idx(&param.local_id) {
+        match owner.params.early_bound_lifetime_idx(&param.local_id, is_opaque_lowering) {
             Some(idx) => {
                 (owner.preceding_params_len + u32::from(has_trait_self) + (idx as u32), false)
             }

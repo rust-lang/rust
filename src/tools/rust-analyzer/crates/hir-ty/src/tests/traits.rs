@@ -1634,10 +1634,10 @@ fn test<'lifetime>(
 ) {}
 "#,
         expect![[r#"
-            39..40 'a': impl Trait + '?0.0
-            70..71 'b': impl '?0.0
+            39..40 'a': impl Trait + 'lifetime
+            70..71 'b': impl 'lifetime
             93..94 'c': impl Trait
-            114..115 'd': impl '?0.0
+            114..115 'd': impl 'lifetime
             139..140 'e': impl ?Sized
             159..160 'f': impl Trait + ?Sized
             184..186 '{}': ()
@@ -4875,12 +4875,29 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
             431..433 '{}': ()
             447..450 'baz': impl Baz<Assoc = impl Foo>
             480..482 '{}': ()
-            500..503 'baz': impl Baz<Assoc = &'?0.0 (impl Foo + '?0.0)>
+            500..503 'baz': impl Baz<Assoc = &'a (impl Foo + 'a)>
             544..546 '{}': ()
             560..563 'baz': impl Baz<Assoc = Qux<impl Foo>>
             598..600 '{}': ()
         "#]],
     )
+}
+
+#[test]
+fn rpit_with_lifetimes() {
+    check_no_mismatches(
+        r#"
+struct Event<'a> {};
+struct Range<T> {}
+trait Iterator {
+    type Item;
+}
+
+struct Vec<T> {}
+
+fn foo<'e>(events: &'e mut dyn Iterator<Item = (Event<'e>, Range<usize>)>) -> impl Iterator<Item = Event<'e>> {}
+"#,
+    );
 }
 
 #[test]

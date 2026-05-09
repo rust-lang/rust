@@ -221,7 +221,7 @@ pub fn type_or_const_param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> 
 }
 
 pub fn lifetime_param_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> u32 {
-    generics::generics(db, id.parent).lifetime_param_idx(id).0
+    generics::generics(db, id.parent).lifetime_param_idx(id, false).0
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]

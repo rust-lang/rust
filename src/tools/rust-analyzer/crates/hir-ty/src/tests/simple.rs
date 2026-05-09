@@ -4324,21 +4324,3 @@ fn foo() {
     );
 }
 
-#[test]
-fn rpit_with_lifetimes() {
-    check_infer(
-        r#"
-struct Event<'a> {};
-struct Range<T> {}
-trait Iterator {
-    type Item;
-}
-
-struct Vec<T> {}
-
-fn foo<'e>(events: &'e mut dyn Iterator<Item = (Event<'e>, Range<usize>)>) -> impl Iterator<Item = Event<'e>> {
-
-}"#,
-        expect![[r#""#]],
-    );
-}
