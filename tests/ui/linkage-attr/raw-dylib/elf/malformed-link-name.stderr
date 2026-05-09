@@ -16,11 +16,5 @@ error: link name must be well-formed if link kind is `raw-dylib`
 LL |     pub safe fn exit_2(status: i32) -> !;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: link name must be well-formed if link kind is `raw-dylib`
-  --> $DIR/malformed-link-name.rs:17:5
-   |
-LL |     pub safe fn exit_3(status: i32) -> !;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
