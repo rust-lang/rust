@@ -824,7 +824,7 @@ impl Options {
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
         let no_capture = matches.opt_present("no-capture");
-        let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
+        let generate_link_to_definition = true;
         let generate_macro_expansion = matches.opt_present("generate-macro-expansion");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
