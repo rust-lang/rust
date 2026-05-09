@@ -8717,18 +8717,14 @@ intrinsics:
       - *neon-stable
     safety: safe
     types:
-      - [int8x8_t, int16x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x4_t, int32x4_t, int32x4_t, int16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [int32x2_t, int64x2_t, int64x2_t, int32x4_t, '[0, 1, 2, 3]']
-      - [uint8x8_t, uint16x8_t, uint16x8_t, uint8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint32x4_t, uint16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint64x2_t, uint32x4_t, '[0, 1, 2, 3]']
+      - [int8x8_t, int16x8_t, int16x8_t, int8x16_t]
+      - [int16x4_t, int32x4_t, int32x4_t, int16x8_t]
+      - [int32x2_t, int64x2_t, int64x2_t, int32x4_t]
+      - [uint8x8_t, uint16x8_t, uint16x8_t, uint8x16_t]
+      - [uint16x4_t, uint32x4_t, uint32x4_t, uint16x8_t]
+      - [uint32x2_t, uint64x2_t, uint64x2_t, uint32x4_t]
     compose:
-      - Let:
-          - x
-          - "{neon_type[0]}"
-          - FnCall: ["vrsubhn_{neon_type[1]}", [b, c]]
-      - FnCall: [simd_shuffle!, [a, x, "{type[4]}"]]
+      - FnCall: ['vcombine_{neon_type[0]}', [a, {FnCall: ["vrsubhn_{neon_type[1]}", [b, c]]}]]
 
   - name: "vrsubhn_high_{neon_type[1]}"
     doc: "Rounding subtract returning high narrow"
@@ -8740,18 +8736,14 @@ intrinsics:
       - *neon-stable
     safety: safe
     types:
-      - [int8x8_t, int16x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x4_t, int32x4_t, int32x4_t, int16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [int32x2_t, int64x2_t, int64x2_t, int32x4_t, '[0, 1, 2, 3]']
-      - [uint8x8_t, uint16x8_t, uint16x8_t, uint8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint32x4_t, uint16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint64x2_t, uint32x4_t, '[0, 1, 2, 3]']
+      - [int8x8_t, int16x8_t, int16x8_t, int8x16_t]
+      - [int16x4_t, int32x4_t, int32x4_t, int16x8_t]
+      - [int32x2_t, int64x2_t, int64x2_t, int32x4_t]
+      - [uint8x8_t, uint16x8_t, uint16x8_t, uint8x16_t]
+      - [uint16x4_t, uint32x4_t, uint32x4_t, uint16x8_t]
+      - [uint32x2_t, uint64x2_t, uint64x2_t, uint32x4_t]
     compose:
-      - Let:
-          - x
-          - "{neon_type[0]}"
-          - FnCall: ["vrsubhn_{neon_type[1]}", [b, c]]
-      - FnCall: [simd_shuffle!, [a, x, "{type[4]}"]]
+      - FnCall: ['vcombine_{neon_type[0]}', [a, {FnCall: ["vrsubhn_{neon_type[1]}", [b, c]]}]]
 
   - name: "vcopy{neon_type[0].lane_nox}"
     doc: "Insert vector element from another vector element"

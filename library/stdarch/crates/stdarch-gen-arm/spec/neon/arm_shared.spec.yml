@@ -6805,18 +6805,17 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [int8x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x4_t, int32x4_t, int16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [int32x2_t, int64x2_t, int32x4_t, '[0, 1, 2, 3]']
-      - [uint8x8_t, uint16x8_t, uint8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint32x4_t, '[0, 1, 2, 3]']
+      - [int8x8_t, int16x8_t, int8x16_t]
+      - [int16x4_t, int32x4_t, int16x8_t]
+      - [int32x2_t, int64x2_t, int32x4_t]
+      - [uint8x8_t, uint16x8_t, uint8x16_t]
+      - [uint16x4_t, uint32x4_t, uint16x8_t]
+      - [uint32x2_t, uint64x2_t, uint32x4_t]
     compose:
       - Let:
           - d
-          - "{neon_type[0]}"
           - FnCall: ["vsubhn{neon_type[1].noq}", [b, c]]
-      - FnCall: [simd_shuffle!, [a, d, "{type[3]}"]]
+      - FnCall: ['vcombine_{neon_type[0]}', [a, d]]
 
   - name: "vhsub{neon_type[1].no}"
     doc: "Signed halving subtract"
@@ -13225,9 +13224,9 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [uint8x8_t , uint16x8_t, uint8x16_t, 'vraddhn.i16', int16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint16x8_t, 'vraddhn.i32', int32x4_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint32x4_t, 'vraddhn.i64', int64x2_t, '[0, 1, 2, 3]']
+      - [uint8x8_t , uint16x8_t, uint8x16_t, 'vraddhn.i16', int16x8_t]
+      - [uint16x4_t, uint32x4_t, uint16x8_t, 'vraddhn.i32', int32x4_t]
+      - [uint32x2_t, uint64x2_t, uint32x4_t, 'vraddhn.i64', int64x2_t]
     compose:
       - Let:
           - x
@@ -13238,7 +13237,7 @@ intrinsics:
                     - "vraddhn{neon_type[4].noq}"
                     - - FnCall: [transmute, [b]]
                       - FnCall: [transmute, [c]]
-      - FnCall: ["simd_shuffle!", [a, x, '{type[5]}']]
+      - FnCall: ['vcombine_{neon_type[0]}', [a, x]]
 
   - name: "vraddhn_high{neon_type[1].noq}"
     doc: "Rounding Add returning High Narrow (high half)."
@@ -13252,9 +13251,9 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [int8x8_t , int16x8_t, int8x16_t, 'vraddhn.i16', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x4_t, int32x4_t, int16x8_t, 'vraddhn.i32', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [int32x2_t, int64x2_t, int32x4_t, 'vraddhn.i64', '[0, 1, 2, 3]']
+      - [int8x8_t , int16x8_t, int8x16_t, 'vraddhn.i16']
+      - [int16x4_t, int32x4_t, int16x8_t, 'vraddhn.i32']
+      - [int32x2_t, int64x2_t, int32x4_t, 'vraddhn.i64']
     compose:
       - Let:
           - x
@@ -13262,7 +13261,7 @@ intrinsics:
               - "vraddhn{neon_type[1].noq}"
               - - b
                 - c
-      - FnCall: ["simd_shuffle!", [a, x, '{type[4]}']]
+      - FnCall: ['vcombine_{neon_type[0]}', [a, x]]
 
   - name: "vpadd{neon_type.no}"
     doc: "Add pairwise."
@@ -14591,12 +14590,12 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - ['vaddhn_high_s16', 'int8x8_t', 'int16x8_t', 'int8x16_t', 'int16x8_t::splat(8)', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vaddhn_high_s32', 'int16x4_t', 'int32x4_t', 'int16x8_t', 'int32x4_t::splat(16)', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - ['vaddhn_high_s64', 'int32x2_t', 'int64x2_t', 'int32x4_t', 'int64x2_t::splat(32)', '[0, 1, 2, 3]']
-      - ['vaddhn_high_u16', 'uint8x8_t', 'uint16x8_t', 'uint8x16_t', 'uint16x8_t::splat(8)', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - ['vaddhn_high_u32', 'uint16x4_t', 'uint32x4_t', 'uint16x8_t', 'uint32x4_t::splat(16)', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - ['vaddhn_high_u64', 'uint32x2_t', 'uint64x2_t', 'uint32x4_t', 'uint64x2_t::splat(32)', '[0, 1, 2, 3]']
+      - ['vaddhn_high_s16', 'int8x8_t', 'int16x8_t', 'int8x16_t', 'int16x8_t::splat(8)']
+      - ['vaddhn_high_s32', 'int16x4_t', 'int32x4_t', 'int16x8_t', 'int32x4_t::splat(16)']
+      - ['vaddhn_high_s64', 'int32x2_t', 'int64x2_t', 'int32x4_t', 'int64x2_t::splat(32)']
+      - ['vaddhn_high_u16', 'uint8x8_t', 'uint16x8_t', 'uint8x16_t', 'uint16x8_t::splat(8)']
+      - ['vaddhn_high_u32', 'uint16x4_t', 'uint32x4_t', 'uint16x8_t', 'uint32x4_t::splat(16)']
+      - ['vaddhn_high_u64', 'uint32x2_t', 'uint64x2_t', 'uint32x4_t', 'uint64x2_t::splat(32)']
     compose:
       - Let:
         - x
@@ -14609,7 +14608,7 @@ intrinsics:
                   - - a
                     - b
                 - '{type[4]}'
-      - FnCall: ['simd_shuffle!', [r, x, '{type[5]}']]
+      - FnCall: ['vcombine_{neon_type[1]}', [r, x]]
 
   - name: "{type[0]}"
     doc: "Vector narrow integer."

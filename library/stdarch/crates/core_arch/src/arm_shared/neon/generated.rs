@@ -2207,7 +2207,7 @@ pub fn vaddh_f16(a: f16, b: f16) -> f16 {
 pub fn vaddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x16_t {
     unsafe {
         let x = simd_cast(simd_shr(simd_add(a, b), int16x8_t::splat(8)));
-        simd_shuffle!(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        vcombine_s8(r, x)
     }
 }
 #[doc = "Add returning High Narrow (high half)."]
@@ -2235,7 +2235,7 @@ pub fn vaddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x16_t {
 pub fn vaddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16x8_t {
     unsafe {
         let x = simd_cast(simd_shr(simd_add(a, b), int32x4_t::splat(16)));
-        simd_shuffle!(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
+        vcombine_s16(r, x)
     }
 }
 #[doc = "Add returning High Narrow (high half)."]
@@ -2263,7 +2263,7 @@ pub fn vaddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16x8_t {
 pub fn vaddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32x4_t {
     unsafe {
         let x = simd_cast(simd_shr(simd_add(a, b), int64x2_t::splat(32)));
-        simd_shuffle!(r, x, [0, 1, 2, 3])
+        vcombine_s32(r, x)
     }
 }
 #[doc = "Add returning High Narrow (high half)."]
@@ -2291,7 +2291,7 @@ pub fn vaddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32x4_t {
 pub fn vaddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uint8x16_t {
     unsafe {
         let x = simd_cast(simd_shr(simd_add(a, b), uint16x8_t::splat(8)));
-        simd_shuffle!(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        vcombine_u8(r, x)
     }
 }
 #[doc = "Add returning High Narrow (high half)."]
@@ -2319,7 +2319,7 @@ pub fn vaddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uint8x16_t
 pub fn vaddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> uint16x8_t {
     unsafe {
         let x = simd_cast(simd_shr(simd_add(a, b), uint32x4_t::splat(16)));
-        simd_shuffle!(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
+        vcombine_u16(r, x)
     }
 }
 #[doc = "Add returning High Narrow (high half)."]
@@ -2347,7 +2347,7 @@ pub fn vaddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> uint16x8_
 pub fn vaddhn_high_u64(r: uint32x2_t, a: uint64x2_t, b: uint64x2_t) -> uint32x4_t {
     unsafe {
         let x = simd_cast(simd_shr(simd_add(a, b), uint64x2_t::splat(32)));
-        simd_shuffle!(r, x, [0, 1, 2, 3])
+        vcombine_u32(r, x)
     }
 }
 #[doc = "Add returning High Narrow."]
@@ -38521,7 +38521,7 @@ pub fn vqsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 )]
 pub fn vraddhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
     let x = vraddhn_s16(b, c);
-    unsafe { simd_shuffle!(a, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) }
+    vcombine_s8(a, x)
 }
 #[doc = "Rounding Add returning High Narrow (high half)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vraddhn_high_s32)"]
@@ -38547,7 +38547,7 @@ pub fn vraddhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
 )]
 pub fn vraddhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
     let x = vraddhn_s32(b, c);
-    unsafe { simd_shuffle!(a, x, [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_s16(a, x)
 }
 #[doc = "Rounding Add returning High Narrow (high half)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vraddhn_high_s64)"]
@@ -38573,7 +38573,7 @@ pub fn vraddhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
 )]
 pub fn vraddhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
     let x = vraddhn_s64(b, c);
-    unsafe { simd_shuffle!(a, x, [0, 1, 2, 3]) }
+    vcombine_s32(a, x)
 }
 #[doc = "Rounding Add returning High Narrow (high half)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vraddhn_high_u16)"]
@@ -38600,7 +38600,7 @@ pub fn vraddhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
 pub fn vraddhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
     unsafe {
         let x: uint8x8_t = transmute(vraddhn_s16(transmute(b), transmute(c)));
-        simd_shuffle!(a, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+        vcombine_u8(a, x)
     }
 }
 #[doc = "Rounding Add returning High Narrow (high half)."]
@@ -38628,7 +38628,7 @@ pub fn vraddhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_
 pub fn vraddhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
     unsafe {
         let x: uint16x4_t = transmute(vraddhn_s32(transmute(b), transmute(c)));
-        simd_shuffle!(a, x, [0, 1, 2, 3, 4, 5, 6, 7])
+        vcombine_u16(a, x)
     }
 }
 #[doc = "Rounding Add returning High Narrow (high half)."]
@@ -38656,7 +38656,7 @@ pub fn vraddhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8
 pub fn vraddhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
     unsafe {
         let x: uint32x2_t = transmute(vraddhn_s64(transmute(b), transmute(c)));
-        simd_shuffle!(a, x, [0, 1, 2, 3])
+        vcombine_u32(a, x)
     }
 }
 #[doc = "Rounding Add returning High Narrow."]
@@ -69225,8 +69225,8 @@ pub fn vsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
-    let d: int8x8_t = vsubhn_s16(b, c);
-    unsafe { simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) }
+    let d = vsubhn_s16(b, c);
+    vcombine_s8(a, d)
 }
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s32)"]
@@ -69251,8 +69251,8 @@ pub fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
-    let d: int16x4_t = vsubhn_s32(b, c);
-    unsafe { simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7]) }
+    let d = vsubhn_s32(b, c);
+    vcombine_s16(a, d)
 }
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s64)"]
@@ -69277,8 +69277,8 @@ pub fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
-    let d: int32x2_t = vsubhn_s64(b, c);
-    unsafe { simd_shuffle!(a, d, [0, 1, 2, 3]) }
+    let d = vsubhn_s64(b, c);
+    vcombine_s32(a, d)
 }
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u16)"]
@@ -69303,8 +69303,8 @@ pub fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
-    let d: uint8x8_t = vsubhn_u16(b, c);
-    unsafe { simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) }
+    let d = vsubhn_u16(b, c);
+    vcombine_u8(a, d)
 }
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u32)"]
@@ -69329,8 +69329,8 @@ pub fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
-    let d: uint16x4_t = vsubhn_u32(b, c);
-    unsafe { simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7]) }
+    let d = vsubhn_u32(b, c);
+    vcombine_u16(a, d)
 }
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u64)"]
@@ -69355,8 +69355,8 @@ pub fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
-    let d: uint32x2_t = vsubhn_u64(b, c);
-    unsafe { simd_shuffle!(a, d, [0, 1, 2, 3]) }
+    let d = vsubhn_u64(b, c);
+    vcombine_u32(a, d)
 }
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s16)"]
