@@ -1,0 +1,15 @@
+error[E0284]: type annotations needed: cannot normalize `X::{constant#0}`
+  --> $DIR/type-const-free-anon-const-mismatch.rs:6:1
+   |
+LL | type const X: usize = const { N };
+   | ^^^^^^^^^^^^^^^^^^^ cannot normalize `X::{constant#0}`
+
+error: the constant `"this isn't a usize"` is not of type `usize`
+  --> $DIR/type-const-free-anon-const-mismatch.rs:9:1
+   |
+LL | type const N: usize = "this isn't a usize";
+   | ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

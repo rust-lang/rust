@@ -49,7 +49,7 @@ where
             kind => panic!("expected free alias, found {kind:?}"),
         };
 
-        self.instantiate_normalizes_to_term(goal, actual);
+        self.instantiate_normalizes_to_term_with_type_check(goal, actual);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
