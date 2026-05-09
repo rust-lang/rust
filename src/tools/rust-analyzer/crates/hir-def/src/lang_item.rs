@@ -471,6 +471,8 @@ language_item_table! { LangItems =>
 
     CoerceUnsized,           sym::coerce_unsized,      TraitId;
     DispatchFromDyn,         sym::dispatch_from_dyn,   TraitId;
+    Reborrow,                sym::reborrow,            TraitId;
+    CoerceShared,            sym::coerce_shared,       TraitId;
 
     // language items relating to transmutability
     TransmuteOpts,           sym::transmute_opts,      StructId;
@@ -682,7 +684,9 @@ language_item_table! { LangItems =>
     core::cmp, PartialEq, PartialEqDerive;
     core::cmp, Eq, EqDerive;
     core::marker, CoercePointee, CoercePointeeDerive;
+    core::marker, CoerceShared, CoerceSharedDerive;
     core::marker, Copy, CopyDerive;
+    core::marker, Reborrow, ReborrowDerive;
     core::clone, Clone, CloneDerive;
 
     @resolve_manually:

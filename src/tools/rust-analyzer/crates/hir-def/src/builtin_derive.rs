@@ -86,6 +86,8 @@ declare_enum!(
     PartialEq => [eq],
     CoerceUnsized => [],
     DispatchFromDyn => [],
+    Reborrow => [],
+    CoerceShared => [],
 );
 
 impl BuiltinDeriveImplTrait {
@@ -103,6 +105,8 @@ impl BuiltinDeriveImplTrait {
             BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
                 lang_items.CoercePointeeDerive
             }
+            BuiltinDeriveImplTrait::Reborrow => lang_items.ReborrowDerive,
+            BuiltinDeriveImplTrait::CoerceShared => lang_items.CoerceSharedDerive,
         }
     }
 }
@@ -139,6 +143,8 @@ pub(crate) fn with_derive_traits(
             f(BuiltinDeriveImplTrait::DispatchFromDyn);
             return;
         }
+        BuiltinDeriveExpander::Reborrow => BuiltinDeriveImplTrait::Reborrow,
+        BuiltinDeriveExpander::CoerceShared => return,
     };
     f(trait_);
 }
