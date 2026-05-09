@@ -9469,7 +9469,6 @@ pub unsafe fn vld2_lane_u64<const LANE: i32>(a: *const u64, b: uint64x1x2_t) -> 
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
@@ -9477,46 +9476,15 @@ pub unsafe fn vld2q_dup_p64(a: *const p64) -> poly64x2x2_t {
     transmute(vld2q_dup_s64(transmute(a)))
 }
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,aes")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld2r))]
-pub unsafe fn vld2q_dup_p64(a: *const p64) -> poly64x2x2_t {
-    let mut ret_val: poly64x2x2_t = transmute(vld2q_dup_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val
-}
-#[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2r))]
 pub unsafe fn vld2q_dup_u64(a: *const u64) -> uint64x2x2_t {
     transmute(vld2q_dup_s64(transmute(a)))
-}
-#[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld2r))]
-pub unsafe fn vld2q_dup_u64(a: *const u64) -> uint64x2x2_t {
-    let mut ret_val: uint64x2x2_t = transmute(vld2q_dup_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val
 }
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_f64)"]
@@ -9672,27 +9640,11 @@ pub unsafe fn vld2q_lane_p8<const LANE: i32>(a: *const p8, b: poly8x16x2_t) -> p
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld2))]
 pub unsafe fn vld2q_p64(a: *const p64) -> poly64x2x2_t {
     transmute(vld2q_s64(transmute(a)))
-}
-#[doc = "Load multiple 2-element structures to two registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,aes")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld2))]
-pub unsafe fn vld2q_p64(a: *const p64) -> poly64x2x2_t {
-    let mut ret_val: poly64x2x2_t = transmute(vld2q_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val
 }
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u64)"]
@@ -9853,7 +9805,6 @@ pub unsafe fn vld3_lane_u64<const LANE: i32>(a: *const u64, b: uint64x1x3_t) -> 
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
@@ -9861,48 +9812,15 @@ pub unsafe fn vld3q_dup_p64(a: *const p64) -> poly64x2x3_t {
     transmute(vld3q_dup_s64(transmute(a)))
 }
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,aes")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld3r))]
-pub unsafe fn vld3q_dup_p64(a: *const p64) -> poly64x2x3_t {
-    let mut ret_val: poly64x2x3_t = transmute(vld3q_dup_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val.2 = simd_shuffle!(ret_val.2, ret_val.2, [1, 0]);
-    ret_val
-}
-#[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3r))]
 pub unsafe fn vld3q_dup_u64(a: *const u64) -> uint64x2x3_t {
     transmute(vld3q_dup_s64(transmute(a)))
-}
-#[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld3r))]
-pub unsafe fn vld3q_dup_u64(a: *const u64) -> uint64x2x3_t {
-    let mut ret_val: uint64x2x3_t = transmute(vld3q_dup_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val.2 = simd_shuffle!(ret_val.2, ret_val.2, [1, 0]);
-    ret_val
 }
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_f64)"]
@@ -10061,28 +9979,11 @@ pub unsafe fn vld3q_lane_p8<const LANE: i32>(a: *const p8, b: poly8x16x3_t) -> p
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(ld3))]
 pub unsafe fn vld3q_p64(a: *const p64) -> poly64x2x3_t {
     transmute(vld3q_s64(transmute(a)))
-}
-#[doc = "Load multiple 3-element structures to three registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,aes")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(ld3))]
-pub unsafe fn vld3q_p64(a: *const p64) -> poly64x2x3_t {
-    let mut ret_val: poly64x2x3_t = transmute(vld3q_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val.2 = simd_shuffle!(ret_val.2, ret_val.2, [1, 0]);
-    ret_val
 }
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u64)"]
@@ -10245,7 +10146,6 @@ pub unsafe fn vld4_lane_u64<const LANE: i32>(a: *const u64, b: uint64x1x4_t) -> 
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -10253,50 +10153,15 @@ pub unsafe fn vld4q_dup_p64(a: *const p64) -> poly64x2x4_t {
     transmute(vld4q_dup_s64(transmute(a)))
 }
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon,aes")]
-#[cfg_attr(test, assert_instr(ld4r))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vld4q_dup_p64(a: *const p64) -> poly64x2x4_t {
-    let mut ret_val: poly64x2x4_t = transmute(vld4q_dup_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val.2 = simd_shuffle!(ret_val.2, ret_val.2, [1, 0]);
-    ret_val.3 = simd_shuffle!(ret_val.3, ret_val.3, [1, 0]);
-    ret_val
-}
-#[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ld4r))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld4q_dup_u64(a: *const u64) -> uint64x2x4_t {
     transmute(vld4q_dup_s64(transmute(a)))
-}
-#[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ld4r))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vld4q_dup_u64(a: *const u64) -> uint64x2x4_t {
-    let mut ret_val: uint64x2x4_t = transmute(vld4q_dup_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val.2 = simd_shuffle!(ret_val.2, ret_val.2, [1, 0]);
-    ret_val.3 = simd_shuffle!(ret_val.3, ret_val.3, [1, 0]);
-    ret_val
 }
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_f64)"]
@@ -10458,29 +10323,11 @@ pub unsafe fn vld4q_lane_p8<const LANE: i32>(a: *const p8, b: poly8x16x4_t) -> p
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ld4))]
 pub unsafe fn vld4q_p64(a: *const p64) -> poly64x2x4_t {
     transmute(vld4q_s64(transmute(a)))
-}
-#[doc = "Load multiple 4-element structures to four registers"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon intrinsic unsafe"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[target_feature(enable = "neon,aes")]
-#[cfg_attr(test, assert_instr(ld4))]
-pub unsafe fn vld4q_p64(a: *const p64) -> poly64x2x4_t {
-    let mut ret_val: poly64x2x4_t = transmute(vld4q_s64(transmute(a)));
-    ret_val.0 = simd_shuffle!(ret_val.0, ret_val.0, [1, 0]);
-    ret_val.1 = simd_shuffle!(ret_val.1, ret_val.1, [1, 0]);
-    ret_val.2 = simd_shuffle!(ret_val.2, ret_val.2, [1, 0]);
-    ret_val.3 = simd_shuffle!(ret_val.3, ret_val.3, [1, 0]);
-    ret_val
 }
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u64)"]
@@ -17516,7 +17363,6 @@ pub fn vrbitq_s8(a: int8x16_t) -> int8x16_t {
 #[doc = "Reverse bit order"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbit_u8)"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(rbit))]
@@ -17524,23 +17370,8 @@ pub fn vrbit_u8(a: uint8x8_t) -> uint8x8_t {
     unsafe { transmute(vrbit_s8(transmute(a))) }
 }
 #[doc = "Reverse bit order"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbit_u8)"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(rbit))]
-pub fn vrbit_u8(a: uint8x8_t) -> uint8x8_t {
-    unsafe {
-        let a: uint8x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
-        let ret_val: uint8x8_t = transmute(vrbit_s8(transmute(a)));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Reverse bit order"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbitq_u8)"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(rbit))]
@@ -17548,28 +17379,8 @@ pub fn vrbitq_u8(a: uint8x16_t) -> uint8x16_t {
     unsafe { transmute(vrbitq_s8(transmute(a))) }
 }
 #[doc = "Reverse bit order"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbitq_u8)"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(rbit))]
-pub fn vrbitq_u8(a: uint8x16_t) -> uint8x16_t {
-    unsafe {
-        let a: uint8x16_t =
-            simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
-        let ret_val: uint8x16_t = transmute(vrbitq_s8(transmute(a)));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
-}
-#[doc = "Reverse bit order"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbit_p8)"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(rbit))]
@@ -17577,47 +17388,13 @@ pub fn vrbit_p8(a: poly8x8_t) -> poly8x8_t {
     unsafe { transmute(vrbit_s8(transmute(a))) }
 }
 #[doc = "Reverse bit order"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbit_p8)"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(rbit))]
-pub fn vrbit_p8(a: poly8x8_t) -> poly8x8_t {
-    unsafe {
-        let a: poly8x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
-        let ret_val: poly8x8_t = transmute(vrbit_s8(transmute(a)));
-        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
-    }
-}
-#[doc = "Reverse bit order"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbitq_p8)"]
 #[inline]
-#[cfg(target_endian = "little")]
 #[target_feature(enable = "neon")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 #[cfg_attr(test, assert_instr(rbit))]
 pub fn vrbitq_p8(a: poly8x16_t) -> poly8x16_t {
     unsafe { transmute(vrbitq_s8(transmute(a))) }
-}
-#[doc = "Reverse bit order"]
-#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbitq_p8)"]
-#[inline]
-#[cfg(target_endian = "big")]
-#[target_feature(enable = "neon")]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(test, assert_instr(rbit))]
-pub fn vrbitq_p8(a: poly8x16_t) -> poly8x16_t {
-    unsafe {
-        let a: poly8x16_t =
-            simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
-        let ret_val: poly8x16_t = transmute(vrbitq_s8(transmute(a)));
-        simd_shuffle!(
-            ret_val,
-            ret_val,
-            [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-        )
-    }
 }
 #[doc = "Reciprocal estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpe_f64)"]

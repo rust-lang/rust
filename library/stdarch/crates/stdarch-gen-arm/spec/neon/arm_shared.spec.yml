@@ -2685,7 +2685,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -2744,7 +2743,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -2982,7 +2980,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -3013,7 +3010,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -3110,7 +3106,6 @@ intrinsics:
       - *neon-cfg-arm-unstable
     static_defs:
       - "const LANE: i32"
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4099,7 +4094,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ['const LANE: i32']
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4130,7 +4124,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4494,7 +4487,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4]]}]]
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -4616,7 +4608,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
-    big_endian_inverse: false
     safety:
       unsafe: [neon]
     types:
@@ -8476,7 +8467,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
-    big_endian_inverse: false
     types:
       - [p128, int64x2_t]
       - [p128, uint64x2_t]
@@ -8504,6 +8494,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - [poly64x1_t, int32x2_t]
       - [poly64x1_t, uint32x2_t]
@@ -8743,7 +8734,6 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
-    big_endian_inverse: false
     types:
       - [uint8x8_t, int8x8_t]
       - [poly8x8_t, int8x8_t]
@@ -8800,6 +8790,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       # non-q
       - [float32x2_t, float16x4_t]
@@ -8851,7 +8842,6 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
-    big_endian_inverse: false
     types:
       # non-q
       - [poly16x4_t, float16x4_t]
@@ -8883,6 +8873,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - [poly64x1_t, float16x4_t]
       - [float16x4_t, poly64x1_t]
@@ -9196,6 +9187,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ["u64", int8x8_t]
       - ["u64", int16x4_t]
@@ -9224,6 +9216,7 @@ intrinsics:
       - *neon-cfg-arm-unstable
       - *target-not-arm64ec
     safety: safe
+    big_endian_inverse: true
     types:
       - ["u64", float16x4_t]
     compose:
@@ -9241,6 +9234,7 @@ intrinsics:
       - *neon-not-arm-stable
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true
     types:
       - ["u64", poly64x1_t]
     compose:
@@ -13313,7 +13307,6 @@ intrinsics:
     doc: "Add pairwise."
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[0]}"
-    big_endian_inverse: false
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vpadd]]}]]
@@ -14338,7 +14331,6 @@ intrinsics:
     doc: "Load one single-element structure and Replicate to all lanes (of one register)."
     arguments: ["ptr: {type[1]}"]
     return_type: "{neon_type[2]}"
-    big_endian_inverse: false
     attr:
       - *neon-v7
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['"{type[3]}"']] }  ]]
