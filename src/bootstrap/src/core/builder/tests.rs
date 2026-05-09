@@ -2138,6 +2138,7 @@ mod snapshot {
         [test] link-check <host>
         [test] tier-check <host>
         [test] rustc 0 <host> -> rust-analyzer 1 <host>
+        [build] rustc 0 <host> -> IntrinsicTest 1 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 1 <host>
         [test] compiletest-rustdoc-ui 1 <host>
@@ -2321,6 +2322,7 @@ mod snapshot {
         [test] rustc 1 <host> -> rust-analyzer 2 <host>
         [doc] rustc (book) <host>
         [test] rustc 1 <host> -> lint-docs 2 <host>
+        [build] rustc 0 <host> -> IntrinsicTest 1 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 2 <host>
         [test] compiletest-rustdoc-ui 2 <host>
