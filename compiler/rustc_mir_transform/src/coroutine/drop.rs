@@ -600,6 +600,9 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(&mut body);
 
+    // Run derefer to fix Derefs that are not in the first place
+    deref_finder(tcx, &mut body, false);
+
     // Update the body's def to become the drop glue.
     let coroutine_instance = body.source.instance;
     let drop_glue = tcx.require_lang_item(LangItem::DropGlue, body.span);
@@ -703,6 +706,9 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
         None,
     );
 
+    // Run derefer to fix Derefs that are not in the first place
+    deref_finder(tcx, &mut body, false);
+
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
         dumper.dump_mir(&body);
     }
@@ -749,6 +755,9 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         async_fut: None,
     };
     body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+
+    // Run derefer to fix Derefs that are not in the first place
+    deref_finder(tcx, &mut body, false);
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
         dumper.dump_mir(&body);
