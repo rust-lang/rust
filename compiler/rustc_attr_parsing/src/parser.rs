@@ -18,7 +18,7 @@ use rustc_parse::exp;
 use rustc_parse::parser::{ForceCollect, Parser, PathStyle, Recovery, token_descr};
 use rustc_session::errors::create_lit_error;
 use rustc_session::parse::ParseSess;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol};
 use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
@@ -104,42 +104,64 @@ impl ArgParser {
         }
     }
 
+    /// Create an `ArgParser`.
     pub fn from_attr_args<'sess>(
         value: &AttrArgs,
-        parts: &[Symbol],
         psess: &'sess ParseSess,
         should_emit: ShouldEmit,
         allow_expr_metavar: AllowExprMetavar,
     ) -> Option<Self> {
+        Self::from_attr_args_inner(value, psess, should_emit, allow_expr_metavar, false)
+    }
+
+    /// Create an `ArgParser` for parsing diagnostic attributes.
+    ///
+    /// This parser will deal with invalid input by swallowing it, so it should never be
+    /// used outside of diagnostic attributes(or rustc_dummy).
+    pub fn from_diagnostic_attr_args<'sess>(
+        value: &AttrArgs,
+        psess: &'sess ParseSess,
+        should_emit: ShouldEmit,
+        allow_expr_metavar: AllowExprMetavar,
+    ) -> Option<Self> {
+        Self::from_attr_args_inner(value, psess, should_emit, allow_expr_metavar, true)
+    }
+
+    fn from_attr_args_inner<'sess>(
+        value: &AttrArgs,
+        psess: &'sess ParseSess,
+        should_emit: ShouldEmit,
+        allow_expr_metavar: AllowExprMetavar,
+        permit_malformed_delimited: bool,
+    ) -> Option<Self> {
         Some(match value {
             AttrArgs::Empty => Self::NoArgs,
-            AttrArgs::Delimited(args) => {
+            AttrArgs::Delimited(args) if permit_malformed_delimited => {
                 // Diagnostic attributes can't error if they encounter non meta item syntax.
                 // However, the current syntax for diagnostic attributes is meta item syntax.
                 // Therefore we can substitute with a dummy value on invalid syntax.
-                if matches!(parts, [sym::rustc_dummy] | [sym::diagnostic, ..]) {
-                    match MetaItemListParser::new(
-                        &args.tokens,
-                        args.dspan.entire(),
-                        psess,
-                        ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
-                        allow_expr_metavar,
-                    ) {
-                        Ok(p) => return Some(ArgParser::List(p)),
-                        Err(e) => {
-                            // We can just dispose of the diagnostic and not bother with a lint,
-                            // because this will look like `#[diagnostic::attr()]` was used. This
-                            // is invalid for all diagnostic attrs, so a lint explaining the proper
-                            // form will be issued later.
-                            e.cancel();
-                            return Some(ArgParser::List(MetaItemListParser {
-                                sub_parsers: ThinVec::new(),
-                                span: args.dspan.entire(),
-                            }));
-                        }
+                match MetaItemListParser::new(
+                    &args.tokens,
+                    args.dspan.entire(),
+                    psess,
+                    ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden },
+                    allow_expr_metavar,
+                ) {
+                    Ok(p) => return Some(ArgParser::List(p)),
+                    Err(e) => {
+                        // We can just dispose of the diagnostic and not bother with a lint,
+                        // because this will look like `#[diagnostic::attr()]` was used. This
+                        // is invalid for all diagnostic attrs, so a lint explaining the proper
+                        // form will be issued later.
+                        e.cancel();
+                        return Some(ArgParser::List(MetaItemListParser {
+                            sub_parsers: ThinVec::new(),
+                            span: args.dspan.entire(),
+                        }));
                     }
                 }
-
+            }
+            AttrArgs::Delimited(args) => {
                 if args.delim != Delimiter::Parenthesis {
                     should_emit.emit_err(psess.dcx().create_err(MetaBadDelim {
                         span: args.dspan.entire(),

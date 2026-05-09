@@ -12,6 +12,7 @@ use rustc_lint_defs::RegisteredTools;
 use rustc_session::Session;
 use rustc_session::lint::LintId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use smallvec::SmallVec;
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
@@ -158,17 +159,22 @@ impl<'sess> AttributeParser<'sess> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
         };
-        let parts =
-            normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let first = normal_attr.item.path.segments.first().map(|seg| seg.ident.name);
 
         let path = AttrPath::from_ast(&normal_attr.item.path, identity);
-        let args = ArgParser::from_attr_args(
+        let parser_ctor = if matches!(first, Some(sym::rustc_dummy | sym::diagnostic)) {
+            ArgParser::from_diagnostic_attr_args
+        } else {
+            ArgParser::from_attr_args
+        };
+
+        let args = parser_ctor(
             &normal_attr.item.args.unparsed_ref().unwrap(),
-            &parts,
             &sess.psess,
             emit_errors,
             allow_expr_metavar,
         )?;
+
         Self::parse_single_args(
             sess,
             attr.span,
@@ -339,8 +345,13 @@ impl<'sess> AttributeParser<'sess> {
                         }
                     };
 
-                    let parts =
-                        n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let parts = n
+                        .item
+                        .path
+                        .segments
+                        .iter()
+                        .map(|seg| seg.ident.name)
+                        .collect::<SmallVec<[_; 2]>>();
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
@@ -351,9 +362,15 @@ impl<'sess> AttributeParser<'sess> {
                             &mut emit_lint,
                         );
 
-                        let Some(args) = ArgParser::from_attr_args(
+                        let parser_ctor =
+                            if matches!(&*parts, [sym::rustc_dummy] | [sym::diagnostic, ..]) {
+                                ArgParser::from_diagnostic_attr_args
+                            } else {
+                                ArgParser::from_attr_args
+                            };
+
+                        let Some(args) = parser_ctor(
                             args,
-                            &parts,
                             &self.sess.psess,
                             self.should_emit,
                             AllowExprMetavar::No,
