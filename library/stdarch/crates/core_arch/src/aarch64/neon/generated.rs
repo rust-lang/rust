@@ -12591,7 +12591,7 @@ pub fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 4])) }
+    unsafe { simd_mul(a, vdup_laneq_f16::<LANE>(b)) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f16)"]
@@ -12603,7 +12603,7 @@ pub fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float1
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 8])) }
+    unsafe { simd_mul(a, vdupq_laneq_f16::<LANE>(b)) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f64)"]
@@ -12917,7 +12917,7 @@ pub fn vmull_p64(a: p64, b: p64) -> p128 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
+    unsafe { simd_mul(a, vdupq_lane_f64::<LANE>(b)) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f64)"]
@@ -12928,7 +12928,7 @@ pub fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float6
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vmulq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe { simd_mul(a, simd_shuffle!(b, b, [LANE as u32; 2])) }
+    unsafe { simd_mul(a, vdupq_laneq_f64::<LANE>(b)) }
 }
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmuls_lane_f32)"]

@@ -6300,20 +6300,20 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [int16x4_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int16x8_t, int16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x2_t, int32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [int32x4_t, int32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x4_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x8_t, uint16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x2_t, uint32x2_t, '1', '[LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint32x2_t, '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int16x4_t, int16x4_t, '2']
+      - [int16x8_t, int16x4_t, '2']
+      - [int32x2_t, int32x2_t, '1']
+      - [int32x4_t, int32x2_t, '1']
+      - [uint16x4_t, uint16x4_t, '2']
+      - [uint16x8_t, uint16x4_t, '2']
+      - [uint32x2_t, uint32x2_t, '1']
+      - [uint32x4_t, uint32x2_t, '1']
     compose:
       - FnCall: ["static_assert_uimm_bits!", [LANE, "{type[2]}"]]
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: ["simd_shuffle!", [b, b, "{type[3]}"]]
+            - FnCall: ["vdup{neon_type[0].lane_nox}", [b], [LANE]]
 
 
   - name: "vmul{neon_type[0].lane_nox}"
@@ -6332,14 +6332,14 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [float16x8_t, float16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [float16x4_t, float16x4_t, '2']
+      - [float16x8_t, float16x4_t, '2']
     compose:
       - FnCall: ["static_assert_uimm_bits!", [LANE, "{type[2]}"]]
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: ["simd_shuffle!", [v, v, "{type[3]}"]]
+            - FnCall: ["vdup{neon_type[0].lane_nox}", [v], [LANE]]
 
 
   - name: "vmul{neon_type[0].laneq_nox}"
@@ -6356,20 +6356,20 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [int16x4_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int16x8_t, int16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [int32x2_t, int32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [int32x4_t, int32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x4_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint16x8_t, uint16x8_t, '3', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [uint32x2_t, uint32x4_t, '2', '[LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint32x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int16x4_t, int16x8_t, '3']
+      - [int16x8_t, int16x8_t, '3']
+      - [int32x2_t, int32x4_t, '2']
+      - [int32x4_t, int32x4_t, '2']
+      - [uint16x4_t, uint16x8_t, '3']
+      - [uint16x8_t, uint16x8_t, '3']
+      - [uint32x2_t, uint32x4_t, '2']
+      - [uint32x4_t, uint32x4_t, '2']
     compose:
       - FnCall: ["static_assert_uimm_bits!", [LANE, "{type[2]}"]]
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: ["simd_shuffle!", [b, b, "{type[3]}"]]
+            - FnCall: ["vdup{neon_type[0].laneq_nox}", [b], [LANE]]
 
   - name: "vmull{neon_type[1].no}"
     doc: Signed multiply long
@@ -11204,16 +11204,16 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [float32x2_t, float32x2_t, '_lane_f32', '1', '[LANE as u32, LANE as u32]']
-      - [float32x2_t, float32x4_t, '_laneq_f32', '2', '[LANE as u32, LANE as u32]']
-      - [float32x4_t, float32x2_t, 'q_lane_f32', '1', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
-      - [float32x4_t, float32x4_t, 'q_laneq_f32', '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [float32x2_t, float32x2_t, '_lane_f32', '1']
+      - [float32x2_t, float32x4_t, '_laneq_f32', '2']
+      - [float32x4_t, float32x2_t, 'q_lane_f32', '1']
+      - [float32x4_t, float32x4_t, 'q_laneq_f32', '2']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: [simd_shuffle!, [b, b, "{type[4]}"]]
+            - FnCall: ['vdup{type[2]}', [b], [LANE]]
 
   - name: "vqrdmulh{type[0]}"
     doc: "Vector rounding saturating doubling multiply high by scalar"

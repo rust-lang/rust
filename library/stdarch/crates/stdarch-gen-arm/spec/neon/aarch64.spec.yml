@@ -11006,7 +11006,7 @@ intrinsics:
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: ["simd_shuffle!", [b, b, '[LANE as u32; 2]']]
+            - FnCall: [vdupq_lane_f64, [b], [LANE]]
 
   - name: "vmuld_lane_f64"
     doc: "Floating-point multiply"
@@ -11063,7 +11063,7 @@ intrinsics:
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: [simd_shuffle!, [b, b, '[LANE as u32; 2]']]
+            - FnCall: [vdupq_laneq_f64, [b], [LANE]]
 
 
   # vmulq_laneq_f16
@@ -11080,14 +11080,14 @@ intrinsics:
     static_defs: ['const LANE: i32']
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '_lane', "[LANE as u32; 4]"]
-      - [float16x8_t, float16x8_t, 'q_lane', "[LANE as u32; 8]"]
+      - [float16x4_t, float16x8_t, '_lane']
+      - [float16x8_t, float16x8_t, 'q_lane']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
       - FnCall:
           - simd_mul
           - - a
-            - FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]
+            - FnCall: ['vdup{neon_type[0].laneq_nox}', [b], [LANE]]
 
 
   - name: "vmul{type[1]}_{type[0]}"
