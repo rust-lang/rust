@@ -54,7 +54,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, 
             "exponent for bases 2 and e can be computed more accurately",
             |diag| {
                 let mut app = Applicability::MachineApplicable;
-                let recv = super::lib::prepare_receiver_sugg(cx, &args[0], &mut app);
+                let (recv, _) = super::lib::prepare_receiver_sugg(cx, &args[0], &mut app);
                 diag.span_suggestion(expr.span, "consider using", format!("{recv}.{method}()"), app);
             },
         );
