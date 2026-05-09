@@ -15902,13 +15902,7 @@ pub fn vqrshld_u64(a: u64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqrshrn_n_s16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_s8(a, vqrshrn_n_s16::<N>(b))
 }
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_high_n_s32)"]
@@ -15919,7 +15913,7 @@ pub fn vqrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vqrshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_s16(a, vqrshrn_n_s32::<N>(b))
 }
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_high_n_s64)"]
@@ -15930,7 +15924,7 @@ pub fn vqrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vqrshrn_n_s64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_s32(a, vqrshrn_n_s64::<N>(b))
 }
 #[doc = "Unsigned saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_high_n_u16)"]
@@ -15941,13 +15935,7 @@ pub fn vqrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqrshrn_n_u16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vqrshrn_n_u16::<N>(b))
 }
 #[doc = "Unsigned saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_high_n_u32)"]
@@ -15958,7 +15946,7 @@ pub fn vqrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vqrshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vqrshrn_n_u32::<N>(b))
 }
 #[doc = "Unsigned saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_high_n_u64)"]
@@ -15969,7 +15957,7 @@ pub fn vqrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vqrshrn_n_u64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vqrshrn_n_u64::<N>(b))
 }
 #[doc = "Unsigned saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrnd_n_u64)"]
@@ -16052,13 +16040,7 @@ pub fn vqrshrnd_n_s64<const N: i32>(a: i64) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqrshrun_n_s16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vqrshrun_n_s16::<N>(b))
 }
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_high_n_s32)"]
@@ -16069,7 +16051,7 @@ pub fn vqrshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> uint8x16
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vqrshrun_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vqrshrun_n_s32::<N>(b))
 }
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_high_n_s64)"]
@@ -16080,7 +16062,7 @@ pub fn vqrshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> uint16x
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqrshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vqrshrun_n_s64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vqrshrun_n_s64::<N>(b))
 }
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrund_n_s64)"]
@@ -16351,13 +16333,7 @@ pub fn vqshlus_n_s32<const N: i32>(a: i32) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqshrn_n_s16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_s8(a, vqshrn_n_s16::<N>(b))
 }
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_high_n_s32)"]
@@ -16368,7 +16344,7 @@ pub fn vqshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vqshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_s16(a, vqshrn_n_s32::<N>(b))
 }
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_high_n_s64)"]
@@ -16379,7 +16355,7 @@ pub fn vqshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vqshrn_n_s64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_s32(a, vqshrn_n_s64::<N>(b))
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_high_n_u16)"]
@@ -16390,13 +16366,7 @@ pub fn vqshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqshrn_n_u16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vqshrn_n_u16::<N>(b))
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_high_n_u32)"]
@@ -16407,7 +16377,7 @@ pub fn vqshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vqshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vqshrn_n_u32::<N>(b))
 }
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_high_n_u64)"]
@@ -16418,7 +16388,7 @@ pub fn vqshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vqshrn_n_u64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vqshrn_n_u64::<N>(b))
 }
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrnd_n_s64)"]
@@ -16509,13 +16479,7 @@ pub fn vqshrns_n_u32<const N: i32>(a: u32) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vqshrun_n_s16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vqshrun_n_s16::<N>(b))
 }
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_high_n_s32)"]
@@ -16526,7 +16490,7 @@ pub fn vqshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> uint8x16_
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vqshrun_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vqshrun_n_s32::<N>(b))
 }
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_high_n_s64)"]
@@ -16537,7 +16501,7 @@ pub fn vqshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> uint16x8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vqshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vqshrun_n_s64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vqshrun_n_s64::<N>(b))
 }
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrund_n_s64)"]
@@ -20128,13 +20092,7 @@ pub fn vrshrd_n_u64<const N: i32>(a: u64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vrshrn_n_s16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_s8(a, vrshrn_n_s16::<N>(b))
 }
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_high_n_s32)"]
@@ -20145,7 +20103,7 @@ pub fn vrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vrshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_s16(a, vrshrn_n_s32::<N>(b))
 }
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_high_n_s64)"]
@@ -20156,7 +20114,7 @@ pub fn vrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vrshrn_n_s64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_s32(a, vrshrn_n_s64::<N>(b))
 }
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_high_n_u16)"]
@@ -20167,13 +20125,7 @@ pub fn vrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vrshrn_n_u16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vrshrn_n_u16::<N>(b))
 }
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_high_n_u32)"]
@@ -20184,7 +20136,7 @@ pub fn vrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vrshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vrshrn_n_u32::<N>(b))
 }
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_high_n_u64)"]
@@ -20195,7 +20147,7 @@ pub fn vrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vrshrn_n_u64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vrshrn_n_u64::<N>(b))
 }
 #[doc = "Reciprocal square-root estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrte_f64)"]
@@ -20708,10 +20660,8 @@ pub fn vshld_u64(a: u64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshll_high_n_s8<const N: i32>(a: int8x16_t) -> int16x8_t {
     static_assert!(N >= 0 && N <= 8);
-    unsafe {
-        let b: int8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vshll_n_s8::<N>(b)
-    }
+    let b = vget_high_s8(a);
+    vshll_n_s8::<N>(b)
 }
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_high_n_s16)"]
@@ -20722,10 +20672,8 @@ pub fn vshll_high_n_s8<const N: i32>(a: int8x16_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshll_high_n_s16<const N: i32>(a: int16x8_t) -> int32x4_t {
     static_assert!(N >= 0 && N <= 16);
-    unsafe {
-        let b: int16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        vshll_n_s16::<N>(b)
-    }
+    let b = vget_high_s16(a);
+    vshll_n_s16::<N>(b)
 }
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_high_n_s32)"]
@@ -20736,10 +20684,8 @@ pub fn vshll_high_n_s16<const N: i32>(a: int16x8_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshll_high_n_s32<const N: i32>(a: int32x4_t) -> int64x2_t {
     static_assert!(N >= 0 && N <= 32);
-    unsafe {
-        let b: int32x2_t = simd_shuffle!(a, a, [2, 3]);
-        vshll_n_s32::<N>(b)
-    }
+    let b = vget_high_s32(a);
+    vshll_n_s32::<N>(b)
 }
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_high_n_u8)"]
@@ -20750,10 +20696,8 @@ pub fn vshll_high_n_s32<const N: i32>(a: int32x4_t) -> int64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshll_high_n_u8<const N: i32>(a: uint8x16_t) -> uint16x8_t {
     static_assert!(N >= 0 && N <= 8);
-    unsafe {
-        let b: uint8x8_t = simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-        vshll_n_u8::<N>(b)
-    }
+    let b: uint8x8_t = vget_high_u8(a);
+    vshll_n_u8::<N>(b)
 }
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_high_n_u16)"]
@@ -20764,10 +20708,8 @@ pub fn vshll_high_n_u8<const N: i32>(a: uint8x16_t) -> uint16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshll_high_n_u16<const N: i32>(a: uint16x8_t) -> uint32x4_t {
     static_assert!(N >= 0 && N <= 16);
-    unsafe {
-        let b: uint16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
-        vshll_n_u16::<N>(b)
-    }
+    let b: uint16x4_t = vget_high_u16(a);
+    vshll_n_u16::<N>(b)
 }
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_high_n_u32)"]
@@ -20778,10 +20720,8 @@ pub fn vshll_high_n_u16<const N: i32>(a: uint16x8_t) -> uint32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshll_high_n_u32<const N: i32>(a: uint32x4_t) -> uint64x2_t {
     static_assert!(N >= 0 && N <= 32);
-    unsafe {
-        let b: uint32x2_t = simd_shuffle!(a, a, [2, 3]);
-        vshll_n_u32::<N>(b)
-    }
+    let b: uint32x2_t = vget_high_u32(a);
+    vshll_n_u32::<N>(b)
 }
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_high_n_s16)"]
@@ -20792,13 +20732,7 @@ pub fn vshll_high_n_u32<const N: i32>(a: uint32x4_t) -> uint64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vshrn_n_s16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_s8(a, vshrn_n_s16::<N>(b))
 }
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_high_n_s32)"]
@@ -20809,7 +20743,7 @@ pub fn vshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_s16(a, vshrn_n_s32::<N>(b))
 }
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_high_n_s64)"]
@@ -20820,7 +20754,7 @@ pub fn vshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vshrn_n_s64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_s32(a, vshrn_n_s64::<N>(b))
 }
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_high_n_u16)"]
@@ -20831,13 +20765,7 @@ pub fn vshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
-    unsafe {
-        simd_shuffle!(
-            a,
-            vshrn_n_u16::<N>(b),
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        )
-    }
+    vcombine_u8(a, vshrn_n_u16::<N>(b))
 }
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_high_n_u32)"]
@@ -20848,7 +20776,7 @@ pub fn vshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
-    unsafe { simd_shuffle!(a, vshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7]) }
+    vcombine_u16(a, vshrn_n_u32::<N>(b))
 }
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_high_n_u64)"]
@@ -20859,7 +20787,7 @@ pub fn vshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
-    unsafe { simd_shuffle!(a, vshrn_n_u64::<N>(b), [0, 1, 2, 3]) }
+    vcombine_u32(a, vshrn_n_u64::<N>(b))
 }
 #[doc = "Shift Left and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_s8)"]

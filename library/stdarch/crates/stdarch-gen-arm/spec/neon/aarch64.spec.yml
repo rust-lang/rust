@@ -7828,12 +7828,12 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t, int16x8_t, int8x16_t, '_high_n_s16', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]', 'N >= 1 && N <= 8']
-      - [int16x4_t, int32x4_t, int16x8_t, '_high_n_s32', '[0, 1, 2, 3, 4, 5, 6, 7]', 'N >= 1 && N <= 16']
-      - [int32x2_t, int64x2_t, int32x4_t, '_high_n_s64', '[0, 1, 2, 3]', 'N >= 1 && N <= 32']
+      - [int8x8_t, int16x8_t, int8x16_t, '_high_n_s16', 'N >= 1 && N <= 8']
+      - [int16x4_t, int32x4_t, int16x8_t, '_high_n_s32', 'N >= 1 && N <= 16']
+      - [int32x2_t, int64x2_t, int32x4_t, '_high_n_s64', 'N >= 1 && N <= 32']
     compose:
-      - FnCall: [static_assert!, ["{type[5]}"]]
-      - FnCall: [simd_shuffle!, [a, {FnCall: ["vqrshrn_n{neon_type[1].noq}::<N>", [b]]}, "{type[4]}"]]
+      - FnCall: [static_assert!, ["{type[4]}"]]
+      - FnCall: ['vcombine_{neon_type[0]}', [a, {FnCall: ["vqrshrn_n{neon_type[1].noq}::<N>", [b]]}]]
 
   - name: "vqrshrn{type[0]}"
     doc: "Unsigned saturating rounded shift right narrow"
@@ -7865,18 +7865,17 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
+      - [uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8']
+      - [uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16']
+      - [uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ['{type[3]}']]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[0]}'
           - - a
             - FnCall:
                 - "vqrshrn_n{neon_type[1].noq}::<N>"
                 - - b
-            - "{type[4]}"
 
   - name: "vqrshrun{type[0]}"
     doc: "Signed saturating rounded shift right unsigned narrow"
@@ -7916,18 +7915,17 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [uint8x8_t, int16x8_t, uint8x16_t, 'N >= 1 && N <= 8', s16, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, int32x4_t, uint16x8_t, 'N >= 1 && N <= 16', s32, '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, int64x2_t, uint32x4_t, 'N >= 1 && N <= 32', s64, '[0, 1, 2, 3]']
+      - [uint8x8_t, int16x8_t, uint8x16_t, 'N >= 1 && N <= 8']
+      - [uint16x4_t, int32x4_t, uint16x8_t, 'N >= 1 && N <= 16']
+      - [uint32x2_t, int64x2_t, uint32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[0]}'
           - - a
             - FnCall:
-                - "vqrshrun_n_{type[4]}::<N>"
+                - "vqrshrun_n_{neon_type[1]}::<N>"
                 - - b
-            - "{type[5]}"
 
   - name: "vqshld_{type}"
     doc: "Signed saturating shift left"
@@ -8110,16 +8108,15 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [_high_n_s16, int8x8_t, int16x8_t, int8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]', s16]
-      - [_high_n_s32, int16x4_t, int32x4_t, int16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]', s32]
-      - [_high_n_s64, int32x2_t, int64x2_t, int32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]', s64]
+      - [_high_n_s16, int8x8_t, int16x8_t, int8x16_t, 'N >= 1 && N <= 8']
+      - [_high_n_s32, int16x4_t, int32x4_t, int16x8_t, 'N >= 1 && N <= 16']
+      - [_high_n_s64, int32x2_t, int64x2_t, int32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[4]}"]]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[1]}'
           - - a
-            - FnCall: ["vqshrn_n_{type[6]}::<N>", [b]]
-            - "{type[5]}"
+            - FnCall: ["vqshrn_n_{neon_type[2]}::<N>", [b]]
 
   - name: "vqshrnd_n_u64"
     doc: "Unsigned saturating shift right narrow"
@@ -8178,16 +8175,15 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [_high_n_u16, uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [_high_n_u32, uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [_high_n_u64, uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
+      - [_high_n_u16, uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8']
+      - [_high_n_u32, uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16']
+      - [_high_n_u64, uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[4]}"]]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[1]}'
           - - a
             - FnCall: ["vqshrn_n_{neon_type[2]}::<N>", [b]]
-            - "{type[5]}"
 
   - name: "vqshrun{type[0]}"
     doc: "Signed saturating shift right unsigned narrow"
@@ -8223,16 +8219,15 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [uint8x8_t, int16x8_t, uint8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, int32x4_t, uint16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, int64x2_t, uint32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
+      - [uint8x8_t, int16x8_t, uint8x16_t, 'N >= 1 && N <= 8']
+      - [uint16x4_t, int32x4_t, uint16x8_t, 'N >= 1 && N <= 16']
+      - [uint32x2_t, int64x2_t, uint32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[0]}'
           - - a
             - FnCall: ["vqshrun_n_{neon_type[1]}::<N>", [b]]
-            - "{type[4]}"
 
   - name: "vsqadd{type[0]}"
     doc: "Unsigned saturating accumulate of signed value"
@@ -8699,19 +8694,18 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t, int16x8_t, int8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x4_t, int32x4_t, int16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [int32x2_t, int64x2_t, int32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
-      - [uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
+      - [int8x8_t, int16x8_t, int8x16_t, 'N >= 1 && N <= 8']
+      - [int16x4_t, int32x4_t, int16x8_t, 'N >= 1 && N <= 16']
+      - [int32x2_t, int64x2_t, int32x4_t, 'N >= 1 && N <= 32']
+      - [uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8']
+      - [uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16']
+      - [uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[0]}'
           - - a
             - FnCall: ["vrshrn_n_{neon_type[1]}::<N>", [b]]
-            - "{type[4]}"
 
   - name: "vrsubhn_high_{neon_type[1]}"
     doc: "Rounding subtract returning high narrow"
@@ -9033,13 +9027,13 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x16_t, int16x8_t, int8x8_t, 'N >= 0 && N <= 8', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x8_t, int32x4_t, int16x4_t, 'N >= 0 && N <= 16', '[4, 5, 6, 7]']
-      - [int32x4_t, int64x2_t, int32x2_t, 'N >= 0 && N <= 32', '[2, 3]']
+      - [int8x16_t, int16x8_t, int8x8_t, 'N >= 0 && N <= 8']
+      - [int16x8_t, int32x4_t, int16x4_t, 'N >= 0 && N <= 16']
+      - [int32x4_t, int64x2_t, int32x2_t, 'N >= 0 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
-      - Let: [b, "{neon_type[2]}", {FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]}]
-      - FnCall: ["vshll_n_{neon_type[2]}::<N>", [b]]
+      - Let: [b, {FnCall: ['vget_high_{neon_type[0]}', [a]]}]
+      - FnCall: ["vshll_n_{neon_type[2]}", [b], [N]]
 
   - name: "vshll_high_n_{neon_type[0]}"
     doc: "Signed shift left long"
@@ -9052,13 +9046,13 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [uint8x16_t, uint16x8_t, uint8x8_t, 'N >= 0 && N <= 8', '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x8_t, uint32x4_t, uint16x4_t, 'N >= 0 && N <= 16', '[4, 5, 6, 7]']
-      - [uint32x4_t, uint64x2_t, uint32x2_t, 'N >= 0 && N <= 32', '[2, 3]']
+      - [uint8x16_t, uint16x8_t, uint8x8_t, 'N >= 0 && N <= 8']
+      - [uint16x8_t, uint32x4_t, uint16x4_t, 'N >= 0 && N <= 16']
+      - [uint32x4_t, uint64x2_t, uint32x2_t, 'N >= 0 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
-      - Let: [b, "{neon_type[2]}", {FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]}]
-      - FnCall: ["vshll_n_{neon_type[2]}::<N>", [b]]
+      - Let: [b, "{neon_type[2]}", {FnCall: ['vget_high_{neon_type[0]}', [a]]}]
+      - FnCall: ["vshll_n_{neon_type[2]}", [b], [N]]
 
   - name: "vshrn_high_n_{neon_type[1]}"
     doc: "Shift right narrow"
@@ -9071,19 +9065,18 @@ intrinsics:
     static_defs: ['const N: i32']
     safety: safe
     types:
-      - [int8x8_t, int16x8_t, int8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [int16x4_t, int32x4_t, int16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [int32x2_t, int64x2_t, int32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
-      - [uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8', '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16', '[0, 1, 2, 3, 4, 5, 6, 7]']
-      - [uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32', '[0, 1, 2, 3]']
+      - [int8x8_t, int16x8_t, int8x16_t, 'N >= 1 && N <= 8']
+      - [int16x4_t, int32x4_t, int16x8_t, 'N >= 1 && N <= 16']
+      - [int32x2_t, int64x2_t, int32x4_t, 'N >= 1 && N <= 32']
+      - [uint8x8_t, uint16x8_t, uint8x16_t, 'N >= 1 && N <= 8']
+      - [uint16x4_t, uint32x4_t, uint16x8_t, 'N >= 1 && N <= 16']
+      - [uint32x2_t, uint64x2_t, uint32x4_t, 'N >= 1 && N <= 32']
     compose:
       - FnCall: [static_assert!, ["{type[3]}"]]
       - FnCall:
-          - simd_shuffle!
+          - 'vcombine_{neon_type[0]}'
           - - a
-            - FnCall: ["vshrn_n_{neon_type[1]}::<N>", [b]]
-            - "{type[4]}"
+            - FnCall: ["vshrn_n_{neon_type[1]}", [b], [N]]
 
   - name: "vsm3partw1{neon_type.no}"
     doc: "SM3PARTW1"
