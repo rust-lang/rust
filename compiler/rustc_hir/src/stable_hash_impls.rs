@@ -1,4 +1,4 @@
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 use crate::HashIgnoredAttrId;
 use crate::hir::{AttributeMap, OwnerNodes};

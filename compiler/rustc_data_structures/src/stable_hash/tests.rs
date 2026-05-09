@@ -8,16 +8,16 @@ use super::*;
 // need to be updated whenever StableHasher changes its hashing algorithm.
 
 impl StableHashCtxt for () {
-    fn span_hash_stable(&mut self, _: RawSpan, _: &mut StableHasher) {
+    fn stable_hash_span(&mut self, _: RawSpan, _: &mut StableHasher) {
         panic!();
     }
     fn def_path_hash(&self, _: RawDefId) -> RawDefPathHash {
         panic!();
     }
-    fn hashing_controls(&self) -> HashingControls {
+    fn stable_hash_controls(&self) -> StableHashControls {
         panic!();
     }
-    fn assert_default_hashing_controls(&self, _: &str) {
+    fn assert_default_stable_hash_controls(&self, _: &str) {
         panic!();
     }
 }

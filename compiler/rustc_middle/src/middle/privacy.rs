@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_macros::StableHash;

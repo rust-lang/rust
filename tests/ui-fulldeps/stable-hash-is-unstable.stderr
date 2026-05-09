@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:2:1
+  --> $DIR/stable-hash-is-unstable.rs:2:1
    |
 LL | extern crate rustc_data_structures;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | extern crate rustc_data_structures;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:6:1
+  --> $DIR/stable-hash-is-unstable.rs:6:1
    |
 LL | extern crate rustc_macros;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | extern crate rustc_macros;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:10:1
+  --> $DIR/stable-hash-is-unstable.rs:10:1
    |
 LL | extern crate rustc_middle;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | extern crate rustc_middle;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:15:5
+  --> $DIR/stable-hash-is-unstable.rs:15:5
    |
 LL | use rustc_macros::StableHash;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL | use rustc_macros::StableHash;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:20:10
+  --> $DIR/stable-hash-is-unstable.rs:20:10
    |
 LL | #[derive(StableHash)]
    |          ^^^^^^^^^^

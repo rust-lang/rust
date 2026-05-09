@@ -12,7 +12,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::fingerprint::Fingerprint;
 use crate::fx::{FxBuildHasher, FxHashMap, FxHashSet};
-use crate::stable_hasher::{
+use crate::stable_hash::{
     StableCompare, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 

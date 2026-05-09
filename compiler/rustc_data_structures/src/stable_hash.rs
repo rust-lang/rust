@@ -21,17 +21,17 @@ pub use rustc_stable_hash::{
 /// visible.
 pub trait StableHashCtxt {
     /// The main event: stable hashing of a span.
-    fn span_hash_stable(&mut self, span: RawSpan, hasher: &mut StableHasher);
+    fn stable_hash_span(&mut self, span: RawSpan, hasher: &mut StableHasher);
 
     /// Compute a `DefPathHash`.
     fn def_path_hash(&self, def_id: RawDefId) -> RawDefPathHash;
 
-    /// Get the hashing controls.
-    fn hashing_controls(&self) -> HashingControls;
+    /// Get the stable hash controls.
+    fn stable_hash_controls(&self) -> StableHashControls;
 
     /// Assert that the provided `StableHashCtxt` is configured with the default
-    /// `HashingControls`. We should always have bailed out before getting to here with a
-    fn assert_default_hashing_controls(&self, msg: &str);
+    /// `StableHashControls`. We should always have bailed out before getting to here with a
+    fn assert_default_stable_hash_controls(&self, msg: &str);
 }
 
 // A type used to work around `Span` not being visible in this crate. It is the same layout as
@@ -167,18 +167,18 @@ impl<T: StableOrd> StableCompare for T {
 /// Use `#[derive(StableHash)]` instead.
 macro_rules! impl_stable_traits_for_trivial_type {
     ($t:ty) => {
-        impl $crate::stable_hasher::StableHash for $t {
+        impl $crate::stable_hash::StableHash for $t {
             #[inline]
             fn stable_hash<Hcx>(
                 &self,
                 _: &mut Hcx,
-                hasher: &mut $crate::stable_hasher::StableHasher,
+                hasher: &mut $crate::stable_hash::StableHasher,
             ) {
                 ::std::hash::Hash::hash(self, hasher);
             }
         }
 
-        impl $crate::stable_hasher::StableOrd for $t {
+        impl $crate::stable_hash::StableOrd for $t {
             const CAN_USE_UNSTABLE_SORT: bool = true;
 
             // Encoding and decoding doesn't change the bytes of trivial types
@@ -612,12 +612,12 @@ where
 
 /// Controls what data we do or do not hash.
 /// Whenever a `StableHash` implementation caches its
-/// result, it needs to include `HashingControls` as part
+/// result, it needs to include `StableHashControls` as part
 /// of the key, to ensure that it does not produce an incorrect
 /// result (for example, using a `Fingerprint` produced while
 /// hashing `Span`s when a `Fingerprint` without `Span`s is
 /// being requested)
 #[derive(Clone, Copy, Hash, Eq, PartialEq, Debug)]
-pub struct HashingControls {
+pub struct StableHashControls {
     pub hash_spans: bool,
 }

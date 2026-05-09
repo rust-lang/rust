@@ -14,7 +14,7 @@ use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
