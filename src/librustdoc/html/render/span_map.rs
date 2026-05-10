@@ -271,19 +271,15 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, segment) => {
-                if let Res::Err = segment.res {
-                    if let Some(typeck_results) = self.typeck_results_for(id.owner) {
-                        let path = hir::Path {
-                            // We change the span to not include parens.
-                            span: segment.ident.span,
-                            res: typeck_results.qpath_res(qpath, id),
-                            // FIXME(fmease): Don't create a path with zero segments!
-                            segments: &[],
-                        };
-                        self.handle_path(&path, false);
-                    }
-                } else {
-                    self.infer_id(segment.hir_id, Some(id), segment.ident.span.into());
+                if let Some(typeck_results) = self.typeck_results_for(id.owner) {
+                    let path = hir::Path {
+                        // We change the span to not include parens.
+                        span: segment.ident.span,
+                        res: typeck_results.qpath_res(qpath, id),
+                        // FIXME(fmease): Don't create a path with zero segments!
+                        segments: &[],
+                    };
+                    self.handle_path(&path, false);
                 }
 
                 rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
