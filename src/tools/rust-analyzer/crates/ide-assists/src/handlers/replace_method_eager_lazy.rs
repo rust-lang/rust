@@ -1,5 +1,5 @@
 use hir::Semantics;
-use ide_db::{RootDatabase, assists::AssistId, defs::Definition};
+use ide_db::{RootDatabase, assists::AssistId, defs::Definition, famous_defs::FamousDefs};
 use syntax::{
     AstNode,
     ast::{self, Expr, HasArgList, make, syntax_factory::SyntaxFactory},
@@ -64,7 +64,20 @@ pub(crate) fn replace_with_lazy_method(
         format!("Replace {method_name} with {method_name_lazy}"),
         call.syntax().text_range(),
         |builder| {
-            let closured = into_closure(&last_arg, &method_name_lazy);
+            let param_name = match &*method_name_lazy {
+                "and_then" => "it",
+                "or_else" | "unwrap_or_else" => {
+                    if let Some(result) = FamousDefs(&ctx.sema, scope.krate()).core_result_Result()
+                        && result.ty(ctx.db()).could_unify_with(ctx.db(), &receiver_ty)
+                    {
+                        "e"
+                    } else {
+                        ""
+                    }
+                }
+                _ => "",
+            };
+            let closured = into_closure(&last_arg, param_name);
             builder.replace(method_name.syntax().text_range(), method_name_lazy);
             builder.replace_ast(last_arg, closured);
         },
@@ -83,7 +96,7 @@ fn lazy_method_name(name: &str) -> String {
     }
 }
 
-fn into_closure(param: &Expr, name_lazy: &str) -> Expr {
+fn into_closure(param: &Expr, param_name: &str) -> Expr {
     (|| {
         if let ast::Expr::CallExpr(call) = param {
             if call.arg_list()?.args().count() == 0 { Some(call.expr()?) } else { None }
@@ -92,8 +105,9 @@ fn into_closure(param: &Expr, name_lazy: &str) -> Expr {
         }
     })()
     .unwrap_or_else(|| {
-        let pats = (name_lazy == "and_then")
-            .then(|| make::untyped_param(make::ext::simple_ident_pat(make::name("it")).into()));
+        let pats = (!param_name.is_empty()).then(|| {
+            make::untyped_param(make::ext::simple_ident_pat(make::name(param_name)).into())
+        });
         make::expr_closure(pats, param.clone()).into()
     })
 }
@@ -213,7 +227,7 @@ mod tests {
         check_assist(
             replace_with_lazy_method,
             r#"
-//- minicore: option, fn
+//- minicore: option, result, fn
 fn foo() {
     let foo = Some(1);
     return foo.unwrap_$0or(2);
@@ -223,6 +237,26 @@ fn foo() {
 fn foo() {
     let foo = Some(1);
     return foo.unwrap_or_else(|| 2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_or_with_or_else_with_parameter() {
+        check_assist(
+            replace_with_lazy_method,
+            r#"
+//- minicore: option, result, fn
+fn foo() {
+    let foo = Ok(1);
+    return foo.unwrap_$0or(2);
+}
+"#,
+            r#"
+fn foo() {
+    let foo = Ok(1);
+    return foo.unwrap_or_else(|e| 2);
 }
 "#,
         )
