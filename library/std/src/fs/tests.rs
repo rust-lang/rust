@@ -1,10 +1,7 @@
 use rand::RngCore;
 
-#[cfg(not(miri))]
 use super::Dir;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
-#[cfg(not(miri))]
-use crate::io;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -20,7 +17,7 @@ use crate::path::Path;
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
-use crate::{assert_matches, env, str, thread};
+use crate::{assert_matches, env, io, str, thread};
 
 macro_rules! check {
     ($e:expr) => {
@@ -856,10 +853,12 @@ fn recursive_mkdir_failure() {
 
 #[test]
 fn concurrent_recursive_mkdir() {
-    for _ in 0..100 {
+    let count = if cfg!(miri) { 10 } else { 100 };
+    let nest = if cfg!(miri) { 10 } else { 40 };
+    for _ in 0..count {
         let dir = tmpdir();
         let mut dir = dir.join("a");
-        for _ in 0..40 {
+        for _ in 0..nest {
             dir = dir.join("a");
         }
         let mut join = vec![];
@@ -1869,7 +1868,7 @@ fn create_dir_long_paths() {
 fn read_large_dir() {
     let tmpdir = tmpdir();
 
-    let count = 32 * 1024;
+    let count = if cfg!(miri) { 1024 } else { 32 * 1024 };
     for i in 0..count {
         check!(fs::File::create(tmpdir.join(&i.to_string())));
     }
@@ -1954,6 +1953,7 @@ fn test_eq_windows_file_type() {
 /// Regression test for https://github.com/rust-lang/rust/issues/50619.
 #[test]
 #[cfg(target_os = "linux")]
+#[cfg_attr(miri, ignore)] // Cannot spawn processes on Miri
 fn test_read_dir_infinite_loop() {
     use crate::io::ErrorKind;
     use crate::process::Command;
@@ -2530,8 +2530,6 @@ fn test_fs_set_times_nofollow() {
 }
 
 #[test]
-// FIXME: libc calls fail on miri
-#[cfg(not(miri))]
 fn test_dir_smoke_test() {
     let tmpdir = tmpdir();
     let dir = Dir::open(tmpdir.path());
@@ -2539,8 +2537,6 @@ fn test_dir_smoke_test() {
 }
 
 #[test]
-// FIXME: libc calls fail on miri
-#[cfg(not(miri))]
 fn test_dir_read_file() {
     let tmpdir = tmpdir();
     let mut f = check!(File::create(tmpdir.join("foo.txt")));
