@@ -9,7 +9,7 @@ ar_archive_writer = "0.5"
 bitflags = "2.4.1"
 bstr = "1.11.3"
 find-msvc-tools = "0.1.2"
-itertools = "0.12"
+itertools = "0.15"
 pathdiff = "0.2.0"
 regex = "1.4"
 rustc_abi = { path = "../rustc_abi" }
