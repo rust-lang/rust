@@ -9,6 +9,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 
 use super::*;
+use crate::deref_separator::deref_finder;
 use crate::patch::MirPatch;
 
 pub(super) fn build_async_destructor_ctor_shim<'tcx>(
@@ -39,12 +40,12 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
 }
 
 // build_drop_shim analog for async drop glue (for generated coroutine poll function)
+#[tracing::instrument(level = "trace", skip(tcx), ret)]
 pub(super) fn build_async_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    debug!("build_async_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
     let ty::Coroutine(_, parent_args) = ty.kind() else {
         bug!();
     };
@@ -111,45 +112,47 @@ pub(super) fn build_async_drop_shim<'tcx>(
         parent_args.as_coroutine().resume_ty(),
     )));
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
-    if !needs_async_drop || drop_ty.references_error() {
-        // Returning noop body for types without `need async drop`
-        // (or sync Drop in case of !`need async drop` && `need drop`).
-        // And also for error types.
-        return body;
+
+    // Returning noop body for types without `need async drop`
+    // (or sync Drop in case of !`need async drop` && `need drop`).
+    // And also for error types.
+    if needs_async_drop && !drop_ty.references_error() {
+        let dropee_ptr = Place::from(body.local_decls.push(LocalDecl::new(drop_ptr_ty, span)));
+        let st_kind = StatementKind::Assign(Box::new((
+            dropee_ptr,
+            Rvalue::Use(Operand::Move(coroutine_layout_dropee), WithRetag::Yes),
+        )));
+        body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, st_kind));
+
+        let dropline = body.basic_blocks.last_index();
+
+        let patch = {
+            let mut elaborator = DropShimElaborator {
+                body: &body,
+                patch: MirPatch::new(&body),
+                tcx,
+                typing_env,
+                produce_async_drops: true,
+            };
+            let dropee = tcx.mk_place_deref(dropee_ptr);
+            let resume_block = elaborator.patch.resume_block();
+            elaborate_drop(
+                &mut elaborator,
+                source_info,
+                dropee,
+                (),
+                return_block,
+                Unwind::To(resume_block),
+                START_BLOCK,
+                dropline,
+            );
+            elaborator.patch
+        };
+        patch.apply(&mut body);
     }
 
-    let dropee_ptr = Place::from(body.local_decls.push(LocalDecl::new(drop_ptr_ty, span)));
-    let st_kind = StatementKind::Assign(Box::new((
-        dropee_ptr,
-        Rvalue::Use(Operand::Move(coroutine_layout_dropee), WithRetag::Yes),
-    )));
-    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, st_kind));
-
-    let dropline = body.basic_blocks.last_index();
-
-    let patch = {
-        let mut elaborator = DropShimElaborator {
-            body: &body,
-            patch: MirPatch::new(&body),
-            tcx,
-            typing_env,
-            produce_async_drops: true,
-        };
-        let dropee = tcx.mk_place_deref(dropee_ptr);
-        let resume_block = elaborator.patch.resume_block();
-        elaborate_drop(
-            &mut elaborator,
-            source_info,
-            dropee,
-            (),
-            return_block,
-            Unwind::To(resume_block),
-            START_BLOCK,
-            dropline,
-        );
-        elaborator.patch
-    };
-    patch.apply(&mut body);
+    // We did not bother respectig deref separation, do it here.
+    deref_finder(tcx, &mut body, false);
 
     body
 }
