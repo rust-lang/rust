@@ -1,6 +1,7 @@
 //! Functions dealing with attributes and meta items.
 
 pub mod data_structures;
+pub mod diagnostic;
 pub mod version;
 
 use std::fmt::Debug;
