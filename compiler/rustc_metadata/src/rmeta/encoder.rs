@@ -74,6 +74,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    encoded_crate_nums: Option<IndexVec<CrateNum, bool>>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -149,6 +150,9 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
             panic!("Attempted to encode non-local CrateNum {crate_num:?} for proc-macro crate");
         }
         self.emit_u32(crate_num.as_u32());
+        if let Some(encoded_crate_nums) = self.encoded_crate_nums.as_mut() {
+            encoded_crate_nums[crate_num] = true;
+        }
     }
 
     fn encode_def_index(&mut self, def_index: DefIndex) {
@@ -2770,7 +2774,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
                     & tcx.sess.opts.incremental.is_some();
                 let mut hcx = PublicApiHashingContext::new(hash_public_api, hcx);
 
-                with_encode_metadata_header(tcx, path, |ecx| {
+                with_encode_metadata_header(tcx, path, hash_public_api, |ecx| {
                     // Encode all the entries and extra information in the crate,
                     // culminating in the `CrateRoot` which points to all of it.
                     let (root, crate_hashes) = ecx.encode_crate_root(&mut hcx);
@@ -2796,7 +2800,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     if let Some(ref_path) = ref_path {
         let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
+        with_encode_metadata_header(tcx, ref_path, false, |ecx| {
             let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
                 triple: tcx.sess.opts.target_triple.clone(),
@@ -2812,6 +2816,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 fn with_encode_metadata_header(
     tcx: TyCtxt<'_>,
     path: &Path,
+    hash_public_api: bool,
     f: impl FnOnce(&mut EncodeContext<'_, '_>) -> usize,
 ) {
     let mut encoder = opaque::FileEncoder::new(path)
@@ -2843,6 +2848,8 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_index_table: Default::default(),
+        encoded_crate_nums: hash_public_api
+            .then(|| IndexVec::from_elem_n(false, tcx.crates(()).len() + 1)),
     };
 
     // Encode the rustc version string in a predictable location.
