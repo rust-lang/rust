@@ -46,7 +46,7 @@ diff = "0.1"
 dirs = "6.0"
 getopts = "0.2"
 ignore = "0.4"
-itertools = "0.12"
+itertools = "0.15"
 regex = "1.7"
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"

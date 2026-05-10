@@ -114,7 +114,7 @@ dot = "0.1.4"
 either = "1.15.0"
 expect-test = "1.5.1"
 indexmap = { version = "2.9.0", features = ["serde"] }
-itertools = "0.14.0"
+itertools = "0.15"
 libc = "0.2.172"
 libloading = "0.8.8"
 memmap2 = "0.9.5"
