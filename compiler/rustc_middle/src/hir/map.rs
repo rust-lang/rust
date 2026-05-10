@@ -980,8 +980,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 span,
                 ..
             }) => {
-                // Ensure that the returned span has the item's SyntaxContext.
-                fn_decl_span.find_ancestor_inside(*span).unwrap_or(*span)
+                // Ensure that the returned span has the closure expression's SyntaxContext.
+                fn_decl_span.find_ancestor_inside_same_ctxt(*span).unwrap_or(*span)
             }
             _ => self.hir_span_with_body(hir_id),
         };
