@@ -79,6 +79,12 @@ pub trait CodegenBackend {
         vec![]
     }
 
+    /// Returns a list of all intrinsics that this backend definitely
+    /// does *not* replace, which means their fallback bodies can be MIR-inlined.
+    fn fallback_intrinsics(&self) -> Vec<Symbol> {
+        vec![]
+    }
+
     /// Is ThinLTO supported by this backend?
     fn thin_lto_supported(&self) -> bool {
         true

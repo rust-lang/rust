@@ -742,30 +742,7 @@ unsafe impl Sync for TypeId {}
 impl const PartialEq for TypeId {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        #[cfg(miri)]
-        return crate::intrinsics::type_id_eq(*self, *other);
-        #[cfg(not(miri))]
-        {
-            let this = self;
-            crate::intrinsics::const_eval_select!(
-                @capture { this: &TypeId, other: &TypeId } -> bool:
-                if const {
-                    crate::intrinsics::type_id_eq(*this, *other)
-                } else {
-                    // Ideally we would just invoke `type_id_eq` unconditionally here,
-                    // but since we do not MIR inline intrinsics, because backends
-                    // may want to override them (and miri does!), MIR opts do not
-                    // clean up this call sufficiently for LLVM to turn repeated calls
-                    // of `TypeId` comparisons against one specific `TypeId` into
-                    // a lookup table.
-                    // SAFETY: We know that at runtime none of the bits have provenance and all bits
-                    // are initialized. So we can just convert the whole thing to a `u128` and compare that.
-                    unsafe {
-                        crate::mem::transmute::<_, u128>(*this) == crate::mem::transmute::<_, u128>(*other)
-                    }
-                }
-            )
-        }
+        crate::intrinsics::type_id_eq(*self, *other)
     }
 }
 
