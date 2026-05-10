@@ -213,6 +213,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::truncf128
         | sym::type_id
         | sym::type_id_eq
+        | sym::type_id_field
         | sym::type_id_fields
         | sym::type_id_variants
         | sym::type_id_vtable
@@ -321,6 +322,9 @@ pub(crate) fn check_intrinsic_type(
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
         sym::type_id => (1, 0, vec![], type_id_ty()),
         sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
+        sym::type_id_field => {
+            (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
+        }
         sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_vtable => {

@@ -2,6 +2,7 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
+use crate::fmt;
 use crate::intrinsics::{self, type_id, type_of};
 use crate::marker::PointeeSized;
 use crate::ptr::DynMetadata;
@@ -462,5 +463,95 @@ impl TypeId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     pub const fn fields(self, variant_index: usize) -> usize {
         intrinsics::type_id_fields(self, variant_index)
+    }
+
+    /// Returns the field representing type at the given index of the type represented by this `TypeId`.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// struct Point {
+    ///     x: u32,
+    ///     y: u32,
+    /// }
+    /// assert_eq!(const { TypeId::of::<Point>().field(0, 0).type_id() }, TypeId::of::<u32>());
+    /// assert_eq!(const { TypeId::of::<Point>().field(0, 1).type_id() }, TypeId::of::<u32>());
+    ///
+    /// enum Enum {
+    ///     Unit,
+    ///     Tuple(u32, u64),
+    ///     Struct { x: u32, y: u32, z: String },
+    /// }
+    /// assert_eq!(const { TypeId::of::<Enum>().field(1, 0).type_id() }, TypeId::of::<u32>());
+    /// assert_eq!(const { TypeId::of::<Enum>().field(2, 2).type_id() }, TypeId::of::<String>());
+    /// ```
+    ///
+    /// The variant index and field index refer to the source order index of a variant in a type and
+    /// the source order index of a field in a variant, respectively.
+    ///
+    /// For enums, variant indexes are always `0..variant_count`, regardless of any custom discriminants that may have been defined.
+    /// `struct`s, `tuples`, and `unions`s are considered to have a single variant with variant index zero.
+    ///
+    /// As for field indexes, they may not be the same as the layout order for `repr(Rust)` types, but they are for `repr(C)` types.
+    ///
+    /// ```
+    /// enum Enum {
+    ///     Foo,  // variant index == 0
+    ///     Bar { // variant index == 1
+    ///         a: (), // field index == 0 in `Bar`
+    ///         b: (), // field index == 1 in `Bar`
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Out-of-bounds indexing will be treated as a compile-time error.
+    ///
+    /// ```compile_fail,E0080
+    /// # #![feature(type_info)]
+    /// # use std::any::TypeId;
+    /// #
+    /// # struct Point {
+    /// #     x: u32,
+    /// #     y: u32,
+    /// # }
+    /// # enum Enum {
+    /// #     Unit,
+    /// #     Tuple(u32, u64),
+    /// #     Struct { x: u32, y: u32, z: String },
+    /// # }
+    /// const {
+    ///     _ = TypeId::of::<Point>().field(0, 10); // error: indexing out of bounds: the len is 2 but the index is 10
+    ///     _ = TypeId::of::<Enum>().field(2, 10); // error: indexing out of bounds: the len is 3 but the index is 10
+    /// }
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    pub const fn field(self, variant_index: usize, field_index: usize) -> FieldId {
+        FieldId { type_id: intrinsics::type_id_field(self, variant_index, field_index) }
+    }
+}
+
+/// `FieldId` is a wrapper of `TypeId`, representing a field of a struct, tuple or enum variant.
+#[derive(Copy, PartialOrd, Ord, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
+#[unstable(feature = "type_info", issue = "146922")]
+pub struct FieldId {
+    type_id: TypeId,
+}
+
+#[unstable(feature = "type_info", issue = "146922")]
+impl fmt::Debug for FieldId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FieldId({:#034x})", self.type_id.as_u128())
+    }
+}
+
+impl FieldId {
+    /// Returns the `TypeId` of this field.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    pub const fn type_id(self) -> TypeId {
+        self.type_id
     }
 }

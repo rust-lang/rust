@@ -17,6 +17,25 @@ LL | |
 LL | | };
    | |_^
 
-error: aborting due to 1 previous error
+error[E0080]: indexing out of bounds: the len is 0 but the index is 1
+  --> $DIR/variant_index_out_of_bounds.rs:13:5
+   |
+LL |     TypeId::of::<Option::<()>>().field(0, 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_::{constant#0}` failed inside this call
+   |
+note: inside `type_info::<impl TypeId>::field`
+  --> $SRC_DIR/core/src/mem/type_info.rs:LL:COL
+
+note: erroneous constant encountered
+  --> $DIR/variant_index_out_of_bounds.rs:12:15
+   |
+LL |   const _: () = const {
+   |  _______________^
+LL | |     TypeId::of::<Option::<()>>().field(0, 1);
+LL | |
+LL | | };
+   | |_^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

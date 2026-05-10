@@ -78,11 +78,14 @@ fn test_tuples() {
         assert!(ty_id.size() == Some(size_of::<(u8,)>()));
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 1);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
 
-        let ty_id = TypeId::of::<(u8, u8)>();
-        assert!(ty_id.size() == Some(size_of::<(u8, u8)>()));
+        let ty_id = TypeId::of::<(u8, u16)>();
+        assert!(ty_id.size() == Some(size_of::<(u8, u16)>()));
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
     }
 }
 
@@ -114,6 +117,9 @@ fn test_structs() {
         assert!(ty_id.size() == Some(size_of::<TestStruct>()));
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 3);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
+        assert!(ty_id.field(0, 2).type_id() == TypeId::of::<&u16>());
     }
 
     const {
@@ -135,6 +141,13 @@ fn test_structs() {
         assert!(ty.fields[0].ty == TypeId::of::<u8>());
         assert!(ty.fields[1].name == "1");
         assert!(ty.fields[1].ty == TypeId::of::<u16>());
+
+        let ty_id = TypeId::of::<TupleStruct>();
+        assert!(ty_id.size() == Some(size_of::<TupleStruct>()));
+        assert!(ty_id.variants() == 1);
+        assert!(ty_id.fields(0) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u8>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
     }
 
     const {
@@ -177,6 +190,8 @@ fn test_unions() {
         assert!(ty_id.size() == Some(size_of::<TestUnion>()));
         assert!(ty_id.variants() == 1);
         assert!(ty_id.fields(0) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<i16>());
+        assert!(ty_id.field(0, 1).type_id() == TypeId::of::<u16>());
     }
 
     const {
@@ -237,6 +252,9 @@ fn test_enums() {
         assert!(ty_id.fields(0) == 1);
         assert!(ty_id.fields(1) == 0);
         assert!(ty_id.fields(2) == 2);
+        assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u32>());
+        assert!(ty_id.field(2, 0).type_id() == TypeId::of::<()>());
+        assert!(ty_id.field(2, 1).type_id() == TypeId::of::<&str>());
     }
 
     const {
@@ -251,6 +269,7 @@ fn test_enums() {
         assert!(ty_id.variants() == 2);
         assert!(ty_id.fields(0) == 0);
         assert!(ty_id.fields(1) == 1);
+        assert!(ty_id.field(1, 0).type_id() == TypeId::of::<i32>());
     }
 }
 
