@@ -1,16 +1,11 @@
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
-use crate::net::test::{next_test_ip4, next_test_ip6};
+use crate::net::test::{LOCALHOST_IP4, LOCALHOST_IP6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::time::{Duration, Instant};
 use crate::{fmt, thread};
-
-fn each_ip(f: &mut dyn FnMut(SocketAddr)) {
-    f(next_test_ip4());
-    f(next_test_ip6());
-}
 
 macro_rules! t {
     ($e:expr) => {
@@ -19,6 +14,11 @@ macro_rules! t {
             Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
         }
     };
+}
+
+fn each_ip(f: &mut dyn FnMut(TcpListener)) {
+    f(t!(TcpListener::bind(LOCALHOST_IP4)));
+    f(t!(TcpListener::bind(LOCALHOST_IP6)));
 }
 
 #[test]
@@ -49,7 +49,9 @@ fn connect_error() {
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
 fn connect_timeout_error() {
-    let socket_addr = next_test_ip4();
+    // Use a non-standard localhost address to hopefully get an unused port.
+    let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 136), 19600));
+
     let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
     assert!(!matches!(result, Err(e) if e.kind() == ErrorKind::TimedOut));
 
@@ -60,11 +62,11 @@ fn connect_timeout_error() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn listen_localhost() {
-    let socket_addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&socket_addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
+    let addr = t!(listener.local_addr());
 
     let _t = thread::spawn(move || {
-        let mut stream = t!(TcpStream::connect(&("localhost", socket_addr.port())));
+        let mut stream = t!(TcpStream::connect(addr));
         t!(stream.write(&[144]));
     });
 
@@ -77,15 +79,11 @@ fn listen_localhost() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn connect_loopback() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let _t = thread::spawn(move || {
-            let host = match addr {
-                SocketAddr::V4(..) => "127.0.0.1",
-                SocketAddr::V6(..) => "::1",
-            };
-            let mut stream = t!(TcpStream::connect(&(host, addr.port())));
+            let mut stream = t!(TcpStream::connect(addr));
             t!(stream.write(&[66]));
         });
 
@@ -99,8 +97,8 @@ fn connect_loopback() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn smoke_test() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let (tx, rx) = channel();
         let _t = thread::spawn(move || {
@@ -120,8 +118,8 @@ fn smoke_test() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn read_eof() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let _t = thread::spawn(move || {
             let _stream = t!(TcpStream::connect(&addr));
@@ -140,8 +138,8 @@ fn read_eof() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn write_close() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let (tx, rx) = channel();
         let _t = thread::spawn(move || {
@@ -169,9 +167,9 @@ fn write_close() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn multiple_connect_serial() {
-    each_ip(&mut |addr| {
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
         let max = 10;
-        let acceptor = t!(TcpListener::bind(&addr));
 
         let _t = thread::spawn(move || {
             for _ in 0..max {
@@ -193,8 +191,8 @@ fn multiple_connect_serial() {
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn multiple_connect_interleaved_greedy_schedule() {
     const MAX: usize = 10;
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let _t = thread::spawn(move || {
             let acceptor = acceptor;
@@ -231,8 +229,8 @@ fn multiple_connect_interleaved_greedy_schedule() {
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn multiple_connect_interleaved_lazy_schedule() {
     const MAX: usize = 10;
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let _t = thread::spawn(move || {
             for stream in acceptor.incoming().take(MAX) {
@@ -266,25 +264,25 @@ fn multiple_connect_interleaved_lazy_schedule() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn socket_and_peer_name() {
-    each_ip(&mut |addr| {
-        let listener = t!(TcpListener::bind(&addr));
-        let so_name = t!(listener.local_addr());
-        assert_eq!(addr, so_name);
-        let _t = thread::spawn(move || {
-            t!(listener.accept());
-        });
+    each_ip(&mut |listener| {
+        let addr = t!(listener.local_addr());
+        let other_stream = thread::spawn(move || t!(listener.accept()));
 
         let stream = t!(TcpStream::connect(&addr));
         assert_eq!(addr, t!(stream.peer_addr()));
+        let (other_stream, other_peer) = other_stream.join().unwrap();
+        assert_eq!(addr, t!(other_stream.local_addr()));
+        assert_eq!(other_peer, t!(other_stream.peer_addr()));
+        assert_eq!(other_peer, t!(stream.local_addr()));
     })
 }
 
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn partial_read() {
-    each_ip(&mut |addr| {
+    each_ip(&mut |srv| {
+        let addr = t!(srv.local_addr());
         let (tx, rx) = channel();
-        let srv = t!(TcpListener::bind(&addr));
         let _t = thread::spawn(move || {
             let mut cl = t!(srv.accept()).0;
             cl.write(&[10]).unwrap();
@@ -304,8 +302,8 @@ fn partial_read() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn read_buf() {
-    each_ip(&mut |addr| {
-        let srv = t!(TcpListener::bind(&addr));
+    each_ip(&mut |srv| {
+        let addr = t!(srv.local_addr());
         let t = thread::spawn(move || {
             let mut s = t!(TcpStream::connect(&addr));
             s.write_all(&[1, 2, 3, 4]).unwrap();
@@ -325,8 +323,8 @@ fn read_buf() {
 
 #[test]
 fn read_vectored() {
-    each_ip(&mut |addr| {
-        let srv = t!(TcpListener::bind(&addr));
+    each_ip(&mut |srv| {
+        let addr = t!(srv.local_addr());
         let mut s1 = t!(TcpStream::connect(&addr));
         let mut s2 = t!(srv.accept()).0;
 
@@ -350,8 +348,8 @@ fn read_vectored() {
 
 #[test]
 fn write_vectored() {
-    each_ip(&mut |addr| {
-        let srv = t!(TcpListener::bind(&addr));
+    each_ip(&mut |srv| {
+        let addr = t!(srv.local_addr());
         let mut s1 = t!(TcpStream::connect(&addr));
         let mut s2 = t!(srv.accept()).0;
 
@@ -374,8 +372,8 @@ fn write_vectored() {
 
 #[test]
 fn double_bind() {
-    each_ip(&mut |addr| {
-        let listener1 = t!(TcpListener::bind(&addr));
+    each_ip(&mut |listener1| {
+        let addr = t!(listener1.local_addr());
         match TcpListener::bind(&addr) {
             Ok(listener2) => panic!(
                 "This system (perhaps due to options set by TcpListener::bind) \
@@ -399,8 +397,8 @@ fn double_bind() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn tcp_clone_smoke() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let _t = thread::spawn(move || {
             let mut s = t!(TcpStream::connect(&addr));
@@ -431,8 +429,8 @@ fn tcp_clone_smoke() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn tcp_clone_two_read() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
         let (tx1, rx) = channel();
         let tx2 = tx1.clone();
 
@@ -466,8 +464,8 @@ fn tcp_clone_two_read() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn tcp_clone_two_write() {
-    each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+    each_ip(&mut |acceptor| {
+        let addr = t!(acceptor.local_addr());
 
         let _t = thread::spawn(move || {
             let mut s = t!(TcpStream::connect(&addr));
@@ -496,8 +494,8 @@ fn tcp_clone_two_write() {
 #[cfg_attr(target_env = "sgx", ignore)]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn shutdown_smoke() {
-    each_ip(&mut |addr| {
-        let a = t!(TcpListener::bind(&addr));
+    each_ip(&mut |a| {
+        let addr = t!(a.local_addr());
         let _t = thread::spawn(move || {
             let mut c = t!(a.accept()).0;
             let mut b = [0];
@@ -519,8 +517,8 @@ fn shutdown_smoke() {
 #[cfg_attr(target_env = "sgx", ignore)]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn close_readwrite_smoke() {
-    each_ip(&mut |addr| {
-        let a = t!(TcpListener::bind(&addr));
+    each_ip(&mut |a| {
+        let addr = t!(a.local_addr());
         let (tx, rx) = channel::<()>();
         let _t = thread::spawn(move || {
             let _s = t!(a.accept());
@@ -562,8 +560,8 @@ fn close_readwrite_smoke() {
 #[cfg_attr(windows, ignore)]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn close_read_wakes_up() {
-    each_ip(&mut |addr| {
-        let listener = t!(TcpListener::bind(&addr));
+    each_ip(&mut |listener| {
+        let addr = t!(listener.local_addr());
         let _t = thread::spawn(move || {
             let (stream, _) = t!(listener.accept());
             stream
@@ -590,8 +588,8 @@ fn close_read_wakes_up() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn clone_while_reading() {
-    each_ip(&mut |addr| {
-        let accept = t!(TcpListener::bind(&addr));
+    each_ip(&mut |accept| {
+        let addr = t!(accept.local_addr());
 
         // Enqueue a thread to write to a socket
         let (tx, rx) = channel();
@@ -631,8 +629,8 @@ fn clone_while_reading() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn clone_accept_smoke() {
-    each_ip(&mut |addr| {
-        let a = t!(TcpListener::bind(&addr));
+    each_ip(&mut |a| {
+        let addr = t!(a.local_addr());
         let a2 = t!(a.try_clone());
 
         let _t = thread::spawn(move || {
@@ -650,8 +648,8 @@ fn clone_accept_smoke() {
 #[test]
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn clone_accept_concurrent() {
-    each_ip(&mut |addr| {
-        let a = t!(TcpListener::bind(&addr));
+    each_ip(&mut |a| {
+        let addr = t!(a.local_addr());
         let a2 = t!(a.try_clone());
 
         let (tx, rx) = channel();
@@ -701,9 +699,9 @@ fn debug() {
     }
 
     let inner_name = if cfg!(windows) { "socket" } else { "fd" };
-    let socket_addr = next_test_ip4();
 
-    let listener = t!(TcpListener::bind(&socket_addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
+    let socket_addr = t!(listener.local_addr());
     let compare = format!(
         "TcpListener {{ addr: {:?}, {}: {:?} }}",
         render_socket_addr(&socket_addr),
@@ -734,10 +732,9 @@ fn debug() {
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 #[test]
 fn timeouts() {
-    let addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
-    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
     let dur = Duration::new(15410, 0);
 
     assert_eq!(None, t!(stream.read_timeout()));
@@ -762,10 +759,9 @@ fn timeouts() {
 #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 fn test_read_timeout() {
-    let addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
-    let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let mut stream = t!(TcpStream::connect(t!(listener.local_addr())));
     t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
     let mut buf = [0; 10];
@@ -784,10 +780,9 @@ fn test_read_timeout() {
 #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
 #[cfg_attr(target_os = "wasi", ignore)] // timeout not supported
 fn test_read_with_timeout() {
-    let addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
-    let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let mut stream = t!(TcpStream::connect(t!(listener.local_addr())));
     t!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
     let mut other_end = t!(listener.accept()).0;
@@ -812,10 +807,8 @@ fn test_read_with_timeout() {
 // when passed zero Durations
 #[test]
 fn test_timeout_zero_duration() {
-    let addr = next_test_ip4();
-
-    let listener = t!(TcpListener::bind(&addr));
-    let stream = t!(TcpStream::connect(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     let result = stream.set_write_timeout(Some(Duration::new(0, 0)));
     let err = result.unwrap_err();
@@ -832,10 +825,9 @@ fn test_timeout_zero_duration() {
 #[cfg_attr(target_env = "sgx", ignore)]
 #[cfg_attr(target_os = "wasi", ignore)] // linger not supported
 fn linger() {
-    let addr = next_test_ip4();
-    let _listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
-    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     assert_eq!(None, t!(stream.linger()));
     t!(stream.set_linger(Some(Duration::from_secs(1))));
@@ -848,9 +840,8 @@ fn linger() {
 #[cfg_attr(target_env = "sgx", ignore)]
 #[cfg_attr(target_os = "wasi", ignore)]
 fn keepalive() {
-    let addr = next_test_ip4();
-    let _listener = t!(TcpListener::bind(&addr));
-    let stream = t!(TcpStream::connect(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     assert_eq!(false, t!(stream.keepalive()));
     t!(stream.set_keepalive(true));
@@ -862,10 +853,9 @@ fn keepalive() {
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
 fn nodelay() {
-    let addr = next_test_ip4();
-    let _listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
-    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     assert_eq!(false, t!(stream.nodelay()));
     t!(stream.set_nodelay(true));
@@ -879,13 +869,12 @@ fn nodelay() {
 fn ttl() {
     let ttl = 100;
 
-    let addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
     t!(listener.set_ttl(ttl));
     assert_eq!(ttl, t!(listener.ttl()));
 
-    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     t!(stream.set_ttl(ttl));
     assert_eq!(ttl, t!(stream.ttl()));
@@ -894,13 +883,12 @@ fn ttl() {
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
 fn set_nonblocking() {
-    let addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&addr));
+    let listener = t!(TcpListener::bind(LOCALHOST_IP4));
 
     t!(listener.set_nonblocking(true));
     t!(listener.set_nonblocking(false));
 
-    let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
+    let mut stream = t!(TcpStream::connect(t!(listener.local_addr())));
 
     t!(stream.set_nonblocking(false));
     t!(stream.set_nonblocking(true));
@@ -917,10 +905,11 @@ fn set_nonblocking() {
 #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
 #[cfg_attr(target_os = "wasi", ignore)] // no threads
 fn peek() {
-    each_ip(&mut |addr| {
+    each_ip(&mut |srv| {
+        let addr = t!(srv.local_addr());
+
         let (txdone, rxdone) = channel();
 
-        let srv = t!(TcpListener::bind(&addr));
         let _t = thread::spawn(move || {
             let mut cl = t!(srv.accept()).0;
             cl.write(&[1, 3, 3, 7]).unwrap();
