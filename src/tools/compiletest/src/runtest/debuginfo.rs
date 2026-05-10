@@ -406,6 +406,7 @@ impl TestCx<'_> {
             "command script import {}/lldb_lookup.py\n",
             rust_pp_module_abs_path
         ));
+        script_str.push_str("script print(lldb_lookup.FEATURE_FLAGS)\n");
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap();
