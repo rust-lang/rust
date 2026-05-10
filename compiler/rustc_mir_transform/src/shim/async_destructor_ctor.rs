@@ -12,6 +12,8 @@ use super::*;
 use crate::deref_separator::deref_finder;
 use crate::patch::MirPatch;
 
+const SELF_ARG: Local = Local::arg(0);
+
 pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -76,7 +78,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let source_info = SourceInfo::outermost(span);
 
     // The first argument (index 0) which will be local 1 (after the return value).
-    let coroutine_layout = Place::from(Local::arg(0));
+    let coroutine_layout = Place::from(SELF_ARG);
     let coroutine_layout_dropee =
         tcx.mk_place_field(coroutine_layout, FieldIdx::new(0), drop_ptr_ty);
 
@@ -199,87 +201,85 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     let ty::Coroutine(coroutine_def_id, impl_args) = impl_ty.kind() else {
         bug!("build_adrop_for_coroutine_shim not for coroutine impl type: ({:?})", instance);
     };
-    let proxy_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, proxy_ty);
-    // taking _1.0 (impl from Pin)
-    let pin_proxy_layout_local = Local::new(1);
     let source_info = SourceInfo::outermost(span);
-    // converting `(_1: Pin<&mut CorLayout>, _2: &mut Context<'_>) -> Poll<()>`
-    // into `(_1: Pin<&mut ProxyLayout>, _2: &mut Context<'_>) -> Poll<()>`
-    // let mut _x: &mut CorLayout = &mut *_1.0.0;
-    // Replace old _1.0 accesses into _x accesses;
     let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
     let mut body: Body<'tcx> =
         EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
     body.source.instance = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
+
+    // converting `(_1: Pin<&mut CorLayout>, _2: &mut Context<'_>) -> Poll<()>`
+    // into `(_1: Pin<&mut ProxyLayout>, _2: &mut Context<'_>) -> Poll<()>`
+    // let mut _x: &mut CorLayout = &mut *_1.0.0;
+    // Replace old _1.0 accesses into _x accesses;
+    let proxy_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, proxy_ty);
+
     let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let args = tcx.mk_args(&[proxy_ref.into()]);
     let pin_proxy_ref = Ty::new_adt(tcx, pin_adt_ref, args);
 
     let cor_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, impl_ty);
-
-    let proxy_ref_local = body.local_decls.push(LocalDecl::new(proxy_ref, span));
     let cor_ref_local = body.local_decls.push(LocalDecl::new(cor_ref, span));
 
     FixProxyFutureDropVisitor { tcx, replace_to: cor_ref_local }.visit_body(&mut body);
+
     // Now changing first arg from Pin<&mut ImplCoroutine> to Pin<&mut ProxyCoroutine>
-    body.local_decls[pin_proxy_layout_local] = LocalDecl::new(pin_proxy_ref, span);
+    body.local_decls[SELF_ARG] = LocalDecl::new(pin_proxy_ref, span);
 
-    {
-        let mut idx: usize = 0;
-        // _proxy = _1.0 : Pin<&mut ProxyLayout> ==> &mut ProxyLayout
-        let proxy_ref_place = Place::from(pin_proxy_layout_local)
-            .project_deeper(&[PlaceElem::Field(FieldIdx::ZERO, proxy_ref)], tcx);
-        body.basic_blocks_mut()[START_BLOCK].statements.insert(
-            idx,
-            Statement::new(
-                source_info,
-                StatementKind::Assign(Box::new((
-                    Place::from(proxy_ref_local),
-                    Rvalue::Use(Operand::Copy(proxy_ref_place), WithRetag::Yes),
-                ))),
-            ),
-        );
-        idx += 1;
+    // Build the projection to assign `cor_ref_local = _1.<projection>`.
+    let mut pin_proxy_to_cor_projection = vec![
+        // _1.0 : Pin<&mut ProxyLayout> ==> &mut ProxyLayout
+        PlaceElem::Field(FieldIdx::ZERO, proxy_ref),
+    ];
 
-        // _cor_ref_tmp = (*(*_proxy).0).0...
-        let mut cor_ref_tmp_local = proxy_ref_local;
-        proxy_ty.find_async_drop_impl_coroutine(tcx, |ty| {
-            if ty != proxy_ty {
-                let ty_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
-                let impl_ptr_place = Place::from(cor_ref_tmp_local).project_deeper(
-                    &[PlaceElem::Deref, PlaceElem::Field(FieldIdx::ZERO, ty_ref)],
-                    tcx,
-                );
-                cor_ref_tmp_local = body.local_decls.push(LocalDecl::new(ty_ref, span));
-                body.basic_blocks_mut()[START_BLOCK].statements.insert(
-                    idx,
-                    Statement::new(
-                        source_info,
-                        StatementKind::Assign(Box::new((
-                            Place::from(cor_ref_tmp_local),
-                            Rvalue::Use(Operand::Copy(impl_ptr_place), WithRetag::Yes),
-                        ))),
-                    ),
-                );
-                idx += 1;
-            }
-        });
+    // _cor_ref_tmp = (*(*_proxy).0).0...
+    proxy_ty.find_async_drop_impl_coroutine(tcx, |ty| {
+        if ty != proxy_ty {
+            let ty_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
+            pin_proxy_to_cor_projection.push(PlaceElem::Deref);
+            pin_proxy_to_cor_projection.push(PlaceElem::Field(FieldIdx::ZERO, ty_ref));
+        }
+    });
 
-        // _cor_ref = cor_ref_tmp
-        body.basic_blocks_mut()[START_BLOCK].statements.insert(
-            idx,
-            Statement::new(
-                source_info,
-                StatementKind::Assign(Box::new((
-                    Place::from(cor_ref_local),
-                    Rvalue::Use(Operand::Move(Place::from(cor_ref_tmp_local)), WithRetag::Yes),
-                ))),
-            ),
-        );
+    // _cor_ref = cor_ref_tmp
+    let projected_pin = Place::from(SELF_ARG).project_deeper(&pin_proxy_to_cor_projection, tcx);
+    body.basic_blocks_mut()[START_BLOCK].statements.insert(
+        0,
+        Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                Place::from(cor_ref_local),
+                Rvalue::Use(Operand::Move(projected_pin), WithRetag::Yes),
+            ))),
+        ),
+    );
+
+    // We did not bother respectig deref separation, do it here.
+    deref_finder(tcx, &mut body, false);
+
+    return body;
+
+    /// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> accesses
+    struct FixProxyFutureDropVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        replace_to: Local,
     }
-    body
+
+    impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _: Location) {
+            if place.local == SELF_ARG
+                && let Some((first, rest)) = place.projection.split_first()
+            {
+                assert!(matches!(first, ProjectionElem::Field(FieldIdx::ZERO, _)));
+                *place = Place::from(self.replace_to).project_deeper(rest, self.tcx);
+            }
+        }
+    }
 }
 
 // When dropping async drop coroutine, we continue its execution.
@@ -294,9 +294,8 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let source_info = SourceInfo::outermost(span);
     let proxy_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, proxy_ty);
     // taking _1.0 (impl from Pin)
-    let pin_proxy_layout_local = Local::new(1);
-    let proxy_ref_place = Place::from(pin_proxy_layout_local)
-        .project_deeper(&[PlaceElem::Field(FieldIdx::ZERO, proxy_ref)], tcx);
+    let proxy_ref_place =
+        Place::from(SELF_ARG).project_deeper(&[PlaceElem::Field(FieldIdx::ZERO, proxy_ref)], tcx);
     let cor_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, impl_ty);
 
     // ret_ty = `Poll<()>`
