@@ -316,23 +316,14 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        let mut handle_type_dependent_def = |hir_id: HirId, span: rustc_span::Span| {
-            // Exprs *have* to exist in a body, so typeck results should always be available.
-            let typeck_results = self.maybe_typeck_results().unwrap();
-            if let Some(def_id) = typeck_results.type_dependent_def_id(hir_id) {
-                self.matches.insert(span.into(), self.link_for_def(def_id));
-            }
-        };
-
         match expr.kind {
-            ExprKind::MethodCall(seg, ..) => handle_type_dependent_def(expr.hir_id, seg.ident.span),
-            // FIXME(fmease): We needlessly request `TypeckResults` even if the callee isn't
-            //                type-relative. In the majority of cases, it's just gonna be a
-            //                `Resolved` path meaning we can end up unnecessarily
-            //                `typeck`'ing the body which is super costly!
-            //                Moreover, if it actually is a type-relative path, we end up
-            //                "resolving" it twice (with slightly different spans).
-            ExprKind::Call(callee, ..) => handle_type_dependent_def(callee.hir_id, callee.span),
+            ExprKind::MethodCall(segment, ..) => {
+                // Exprs *have* to exist in a body, so typeck results should always be available.
+                let typeck_results = self.maybe_typeck_results().unwrap();
+                if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
+                    self.matches.insert(segment.ident.span.into(), self.link_for_def(def_id));
+                }
+            }
             // We don't want to go deeper into the macro.
             _ if self.handle_macro(expr.span) => return,
             _ => {}
