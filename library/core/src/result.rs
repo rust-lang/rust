@@ -619,11 +619,14 @@ impl<T, E> Result<T, E> {
     pub const fn is_ok_and<F>(self, f: F) -> bool
     where
         F: [const] FnOnce(T) -> bool + [const] Destruct,
-        T: [const] Destruct,
         E: [const] Destruct,
     {
         match self {
-            Err(_) => false,
+            // FIXME(const_hack): change back to `Err(_) => false,` once const dropck is smart enough
+            Err(e) => {
+                drop(e);
+                false
+            }
             Ok(x) => f(x),
         }
     }
@@ -674,11 +677,14 @@ impl<T, E> Result<T, E> {
     pub const fn is_err_and<F>(self, f: F) -> bool
     where
         F: [const] FnOnce(E) -> bool + [const] Destruct,
-        E: [const] Destruct,
         T: [const] Destruct,
     {
         match self {
-            Ok(_) => false,
+            // FIXME(const_hack): change back to `Ok(_) => false,` once const dropck is smart enough
+            Ok(t) => {
+                drop(t);
+                false
+            }
             Err(e) => f(e),
         }
     }
@@ -707,12 +713,15 @@ impl<T, E> Result<T, E> {
     #[rustc_diagnostic_item = "result_ok_method"]
     pub const fn ok(self) -> Option<T>
     where
-        T: [const] Destruct,
         E: [const] Destruct,
     {
         match self {
             Ok(x) => Some(x),
-            Err(_) => None,
+            // FIXME(const_hack): change back to `Err(_) => None,` once const dropck is smart enough
+            Err(e) => {
+                drop(e);
+                None
+            }
         }
     }
 
@@ -736,10 +745,13 @@ impl<T, E> Result<T, E> {
     pub const fn err(self) -> Option<E>
     where
         T: [const] Destruct,
-        E: [const] Destruct,
     {
         match self {
-            Ok(_) => None,
+            // FIXME(const_hack): change back to `Ok(_) => None,` once const dropck is smart enough
+            Ok(t) => {
+                drop(t);
+                None
+            }
             Err(x) => Some(x),
         }
     }
@@ -863,13 +875,16 @@ impl<T, E> Result<T, E> {
     pub const fn map_or<U, F>(self, default: U, f: F) -> U
     where
         F: [const] FnOnce(T) -> U + [const] Destruct,
-        T: [const] Destruct,
         E: [const] Destruct,
         U: [const] Destruct,
     {
         match self {
             Ok(t) => f(t),
-            Err(_) => default,
+            // FIXME(const_hack): change back to `Err(_) => default,` once const dropck is smart enough
+            Err(e) => {
+                drop(e);
+                default
+            }
         }
     }
 
@@ -929,12 +944,15 @@ impl<T, E> Result<T, E> {
     where
         F: [const] FnOnce(T) -> U + [const] Destruct,
         U: [const] Default,
-        T: [const] Destruct,
         E: [const] Destruct,
     {
         match self {
             Ok(t) => f(t),
-            Err(_) => U::default(),
+            // FIXME(const_hack): change back to `Err(_) => U::default(),` once const dropck is smart enough
+            Err(e) => {
+                drop(e);
+                U::default()
+            }
         }
     }
 
@@ -1264,12 +1282,16 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn unwrap_or_default(self) -> T
     where
-        T: [const] Default + [const] Destruct,
+        T: [const] Default,
         E: [const] Destruct,
     {
         match self {
             Ok(x) => x,
-            Err(_) => Default::default(),
+            // FIXME(const_hack): change back to `Err(_) => T::default(),` once const dropck is smart enough
+            Err(e) => {
+                drop(e);
+                T::default()
+            }
         }
     }
 
