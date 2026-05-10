@@ -781,7 +781,7 @@ impl Item {
     }
 
     /// Returns true if this a macro declared with the `macro` keyword or with `macro_rules!.
-    pub(crate) fn is_bang_macro_or_macro_rules(&self) -> bool {
+    pub(crate) fn is_decl_macro(&self) -> bool {
         matches!(self.kind, ItemKind::MacroItem(..))
     }
 

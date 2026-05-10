@@ -129,9 +129,8 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let item_vars = ItemVars {
             typ,
             name: item.name.as_ref().unwrap().as_str(),
-            // It's fine to use `type_` here because, even if it's a bang macro with multiple kinds,
-            // since we're generating its documentation page, we can default to the "parent" type,
-            // ie "macro".
+            // It's fine to use `type_` here because, even if it's a decl macro with multiple kinds,
+            // since we're generating its documentation page, we can default to the macro type.
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
@@ -231,7 +230,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             FxIndexMap::default();
 
         for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
-            // To prevent having new "bang macro attribute/derive" sections in the module,
+            // To prevent having new "decl macro attribute/derive" sections in the module,
             // we cheat by turning them into their "proc-macro equivalent".
             for type_ in item.types() {
                 let type_ = match type_ {

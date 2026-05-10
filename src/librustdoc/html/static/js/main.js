@@ -732,12 +732,7 @@ function preLoadCss(cssUrl) {
             ul.className = "block " + shortty;
 
             for (const item of filtered) {
-                let name = item;
-                let isMacro = false;
-                if (Array.isArray(item)) {
-                    name = item[0];
-                    isMacro = true;
-                }
+                const [name, isMacro] = Array.isArray(item) ? [item[0], true] : [item, false];
                 let path;
                 if (shortty === "mod") {
                     path = `${modpath}${name}/index.html`;

@@ -27,7 +27,7 @@ declare global {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
         /** Generated in `render/context.rs` */
-        SIDEBAR_ITEMS?: { [key: string]: string[] };
+        SIDEBAR_ITEMS?: { [key: string]: Array<string | string[]> };
         /** Notable trait data */
         NOTABLE_TRAITS?: { [key: string]: string };
         CURRENT_TOOLTIP_ELEMENT?: HTMLElement & { TOOLTIP_BASE: HTMLElement };

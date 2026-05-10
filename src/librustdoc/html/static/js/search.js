@@ -1661,8 +1661,8 @@ class DocSearch {
             forceMacroHref: false,
         };
         if (item.ty === 28 || item.ty === 29) {
-            // "proc attribute" is 23, "proc derive" is 24 whereas "bang macro attribute" is 28 and
-            // "bang macro derive" is 29, so 5 of difference to go from the latter to the former.
+            // "proc attribute" is 23, "proc derive" is 24 whereas "decl macro attribute" is 28 and
+            // "decl macro derive" is 29, so 5 of difference to go from the latter to the former.
             item.ty -= 5;
             item.forceMacroHref = true;
         }
