@@ -2,7 +2,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_middle::ty::TyCtxt;
 
 use crate::clean;
-use crate::config::RenderOptions;
+use crate::config::{EmitType, RenderOptions};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 
@@ -10,13 +10,15 @@ use crate::formats::cache::Cache;
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
 /// module, and cleanup/finalizing output.
 pub(crate) trait FormatRenderer<'tcx>: Sized {
-    /// Gives a description of the renderer. Used for performance profiling.
-    fn descr() -> &'static str;
+    /// A description of the renderer. Used for performance profiling.
+    const DESCR: &'static str;
 
-    /// Whether to call `item` recursively for modules
+    /// Whether to call `item` recursively for modules.
     ///
-    /// This is true for html, and false for json. See #80664
+    /// See [#80664](https://github.com/rust-lang/rust/issues/80664).
     const RUN_ON_MODULE: bool;
+
+    const NON_STATIC_FILE_EMIT_TYPE: EmitType;
 
     /// This associated type is the type where the current module information is stored.
     ///
@@ -109,18 +111,18 @@ pub(crate) fn run_format<
 ) -> Result<(), Error> {
     let prof = &tcx.sess.prof;
 
-    let emit_crate = options.should_emit_crate();
+    let emit_non_static_files = options.emit.contains(&T::NON_STATIC_FILE_EMIT_TYPE);
     let (mut format_renderer, krate) = prof
-        .verbose_generic_activity_with_arg("create_renderer", T::descr())
+        .verbose_generic_activity_with_arg("create_renderer", T::DESCR)
         .run(|| init(krate, options, cache, tcx))?;
 
-    if !emit_crate {
+    if !emit_non_static_files {
         return Ok(());
     }
 
     // Render the crate documentation
     run_format_inner(&mut format_renderer, &krate.module, prof)?;
 
-    prof.verbose_generic_activity_with_arg("renderer_after_krate", T::descr())
+    prof.verbose_generic_activity_with_arg("renderer_after_krate", T::DESCR)
         .run(|| format_renderer.after_krate())
 }
