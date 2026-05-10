@@ -1,6 +1,6 @@
 //! Item signature IR definitions
 
-use std::{cell::LazyCell, ops::Not as _};
+use std::cell::LazyCell;
 
 use bitflags::bitflags;
 use cfg::{CfgExpr, CfgOptions};
@@ -1065,7 +1065,7 @@ impl EnumVariants {
     pub(crate) fn of(
         db: &dyn DefDatabase,
         e: EnumId,
-    ) -> (EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
+    ) -> (EnumVariants, ThinVec<InactiveEnumVariantCode>) {
         let loc = e.lookup(db);
         let source = loc.source(db);
         let ast_id_map = db.ast_id_map(source.file_id);
@@ -1073,7 +1073,7 @@ impl EnumVariants {
         let mut diagnostics = ThinVec::new();
         let cfg_options = loc.container.krate(db).cfg_options(db);
         let Some(variants) = source.value.variant_list() else {
-            return (EnumVariants { variants: FxIndexMap::default() }, None);
+            return (EnumVariants { variants: FxIndexMap::default() }, ThinVec::new());
         };
         let mut variants = variants
             .variants()
@@ -1103,8 +1103,9 @@ impl EnumVariants {
             })
             .collect::<FxIndexMap<_, _>>();
         variants.shrink_to_fit();
+        diagnostics.shrink_to_fit();
 
-        (EnumVariants { variants }, diagnostics.is_empty().not().then_some(diagnostics))
+        (EnumVariants { variants }, diagnostics)
     }
 }
 

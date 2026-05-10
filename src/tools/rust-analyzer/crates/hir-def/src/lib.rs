@@ -298,7 +298,7 @@ impl EnumId {
     pub fn enum_variants_with_diagnostics(
         self,
         db: &dyn DefDatabase,
-    ) -> &(EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
+    ) -> &(EnumVariants, ThinVec<InactiveEnumVariantCode>) {
         EnumVariants::of(db, self)
     }
 }

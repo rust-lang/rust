@@ -781,20 +781,18 @@ impl Module {
                             let (variants, diagnostics) = e.id.enum_variants_with_diagnostics(db);
                             let file = e.id.lookup(db).id.file_id;
                             let ast_id_map = db.ast_id_map(file);
-                            if let Some(diagnostics) = &diagnostics {
-                                for diag in diagnostics.iter() {
-                                    acc.push(
-                                        InactiveCode {
-                                            node: InFile::new(
-                                                file,
-                                                ast_id_map.get(diag.ast_id).syntax_node_ptr(),
-                                            ),
-                                            cfg: diag.cfg.clone(),
-                                            opts: diag.opts.clone(),
-                                        }
-                                        .into(),
-                                    );
-                                }
+                            for diag in diagnostics {
+                                acc.push(
+                                    InactiveCode {
+                                        node: InFile::new(
+                                            file,
+                                            ast_id_map.get(diag.ast_id).syntax_node_ptr(),
+                                        ),
+                                        cfg: diag.cfg.clone(),
+                                        opts: diag.opts.clone(),
+                                    }
+                                    .into(),
+                                );
                             }
                             for &(v, _) in variants.variants.values() {
                                 let source_map = &v.fields_with_source_map(db).1;
