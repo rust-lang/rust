@@ -1,6 +1,7 @@
 //@ skip-filecheck
 //@ edition:2024
-//@ compile-flags: -Zmir-opt-level=0 -C panic=abort
+//@ compile-flags: -Zmir-opt-level=0
+//@ needs-unwind
 
 #![feature(stmt_expr_attributes)]
 #![feature(closure_track_caller)]
