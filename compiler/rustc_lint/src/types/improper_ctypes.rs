@@ -468,12 +468,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         base_ty: Unnormalized<'tcx, Ty<'tcx>>,
         base_fn_mode: CItemKind,
     ) -> Self {
-        ImproperCTypesVisitor {
-            cx,
-            base_ty: maybe_normalize_erasing_regions(cx, base_ty),
-            base_fn_mode,
-            cache: FxHashSet::default(),
-        }
+        // Don't normalize opaques: the new solver populates OpaqueTypeStorage during
+        // normalization, causing a delayed bug on InferCtxt drop (issue #156352).
+        let base_ty = if base_ty.skip_norm_wip().has_opaque_types() {
+            base_ty.skip_norm_wip()
+        } else {
+            maybe_normalize_erasing_regions(cx, base_ty)
+        };
+        ImproperCTypesVisitor { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
     }
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
@@ -894,6 +896,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: None,
             },
 
+            // Can appear when the new solver reveals an opaque before the lint intercepts it.
+            ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => FfiUnsafe {
+                ty,
+                reason: msg!("closures and coroutines are not FFI-safe"),
+                help: None,
+            },
+
             ty::Param(..)
             | ty::Alias(ty::AliasTy {
                 kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
@@ -902,10 +914,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
@@ -941,6 +949,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> FfiResult<'tcx> {
+        // Check before normalizing: the new solver can reveal opaques (e.g.
+        // `async extern fn` return → `Coroutine`), bypassing the opaque check below.
+        if let Some(res) = self.visit_for_opaque_ty(ty.skip_norm_wip()) {
+            return res;
+        }
         let ty = maybe_normalize_erasing_regions(self.cx, ty);
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;
