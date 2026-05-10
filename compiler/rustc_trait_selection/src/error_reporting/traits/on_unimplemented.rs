@@ -37,19 +37,37 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> CustomDiagnostic {
+        let mut custom = CustomDiagnostic::default();
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
-            return CustomDiagnostic::default();
+            return custom;
         }
         let (filter_options, format_args) =
             self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
-        if let Some(command) = find_attr!(self.tcx, trait_pred.def_id(), OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
-            command.eval(
-                Some(&filter_options),
-                &format_args,
-            )
-        } else {
-            CustomDiagnostic::default()
+        if let Some(command) = find_attr!(
+            self.tcx,
+            trait_pred.def_id(),
+            OnUnimplemented { directive, .. } => directive.as_deref()
+        )
+        .flatten()
+        {
+            custom = command.eval(Some(&filter_options), &format_args)
         }
+        if let ObligationCauseCode::FunctionArg { parent_code, .. } = obligation.cause.code()
+            && let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, _) = &**parent_code
+            && let Some(command) = find_attr!(
+                self.tcx,
+                *def_id,
+                OnUnimplemented { directive, .. } => directive.as_deref()
+            )
+            .flatten()
+        {
+            tracing::info!("{:#?}", obligation.cause.code());
+            let x = command.eval(Some(&filter_options), &format_args);
+            tracing::info!(?x);
+            custom.merge(x);
+        }
+        tracing::info!(?custom);
+        custom
     }
 
     pub(crate) fn on_unimplemented_components(
@@ -250,6 +268,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .collect();
 
         let format_args = FormatArgs { this, this_sugared, generic_args, item_context };
+        tracing::info!("{filter_options:#?}");
         (filter_options, format_args)
     }
 }

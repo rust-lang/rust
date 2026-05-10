@@ -153,7 +153,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::Deprecated { span: attr_span, .. }) => {
                     self.check_deprecated(hir_id, *attr_span, target)
                 }
-                Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, ..}) => {
+                Attribute::Parsed(AttributeKind::TargetFeature{ attr_span, .. }) => {
                     self.check_target_feature(hir_id, *attr_span, target, attrs)
                 }
                 Attribute::Parsed(AttributeKind::RustcDumpObjectLifetimeDefaults) => {
@@ -182,28 +182,32 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
-                },
+                }
                 Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {
                     self.check_link(hir_id, *attr_span, span, target)
-                },
+                }
                 Attribute::Parsed(AttributeKind::MacroExport { span, .. }) => {
                     self.check_macro_export(hir_id, *span, target)
-                },
+                }
                 Attribute::Parsed(AttributeKind::RustcLegacyConstGenerics{attr_span, fn_indexes}) => {
                     self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
-                },
+                }
                 Attribute::Parsed(AttributeKind::Doc(attr)) => self.check_doc_attrs(attr, hir_id, target),
                 Attribute::Parsed(AttributeKind::EiiImpls(impls)) => {
                      self.check_eii_impl(impls, target)
-                },
+                }
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
-                },
-                Attribute::Parsed(AttributeKind::OnUnimplemented{directive}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)},
+                }
+                Attribute::Parsed(AttributeKind::OnUnimplemented { directive } ) => {
+                    self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())
+                }
+                Attribute::Parsed(AttributeKind::OnConst{ span, .. }) => {
+                    self.check_diagnostic_on_const(*span, hir_id, target, item)
+                }
                 Attribute::Parsed(AttributeKind::OnMove { directive }) => {
                     self.check_diagnostic_on_move(hir_id, directive.as_deref())
-                },
+                }
                 Attribute::Parsed(
                     // tidy-alphabetical-start
                     AttributeKind::RustcAllowIncoherentImpl(..)
@@ -521,6 +525,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         )
                     }
                 })
+            } else {
+                let node = self.tcx.hir_node(hir_id);
+                tracing::info!(?node);
             }
         }
     }
