@@ -1047,8 +1047,7 @@ impl Step for IntrinsicTest {
         cmd.current_dir(&out_dir);
         cmd.arg(&input_file);
         cmd.arg("--target").arg(&*host.triple);
-        let cppcompiler = if host.contains("x86_64-unknown-linux") { "clang++" } else { "g++" };
-        cmd.arg("--cppcompiler").arg(cppcompiler);
+        cmd.arg("--cppcompiler").arg("clang++");
         cmd.arg("--runner").arg(&runner);
         cmd.arg("--skip").arg(&skip_file);
         cmd.arg("--sample-percentage").arg("10");
