@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{BytePos, ExpnKind};
 
 use crate::clean::{self, PrimitiveType, rustc_span};
@@ -82,7 +83,8 @@ pub(crate) fn collect_spans_and_sources(
     generate_link_to_definition: bool,
 ) -> (FxIndexMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
     if include_sources {
-        let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
+        let mut visitor =
+            SpanMapVisitor { tcx, maybe_typeck_results: None, matches: FxHashMap::default() };
 
         if generate_link_to_definition {
             tcx.hir_walk_toplevel_module(&mut visitor);
@@ -96,12 +98,34 @@ pub(crate) fn collect_spans_and_sources(
 
 struct SpanMapVisitor<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) maybe_typeck_results: Option<LazyTypeckResults<'tcx>>,
     pub(crate) matches: FxHashMap<Span, LinkFromSrc>,
 }
 
-impl SpanMapVisitor<'_> {
+impl<'tcx> SpanMapVisitor<'tcx> {
+    /// Returns the typeck results of the current body if we're in one.
+    ///
+    /// This will typeck the body if it hasn't been already. Since rustdoc intentionally doesn't run
+    /// all semantic analysis passes on function bodies at the time of writing, this can lead to us
+    /// "suddenly" rejecting the user's code under `--generate-link-to-definition` while accepting
+    /// it if that flag isn't passed! So use this method sparingly and think about the consequences
+    /// including performance!
+    ///
+    /// This behavior is documented in the rustdoc book. Ideally, it wouldn't be that way but no
+    /// good solution has been found so far. Don't think about adding some sort of flag to rustc to
+    /// suppress diagnostic emission that would be unsound wrt. `ErrorGuaranteed`[^1] and generally
+    /// be quite hacky!
+    ///
+    /// [^1]: Historical context:
+    /// <https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352>.
+    fn maybe_typeck_results(&mut self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
+        let results = self.maybe_typeck_results.as_mut()?;
+        let results = results.cache.get_or_insert_with(|| self.tcx.typeck_body(results.body_id));
+        Some(results)
+    }
+
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
-    fn handle_path(&mut self, path: &rustc_hir::Path<'_>, only_use_last_segment: bool) {
+    fn handle_path(&mut self, path: &hir::Path<'_>, only_use_last_segment: bool) {
         match path.res {
             // FIXME: For now, we handle `DefKind` if it's not a `DefKind::TyParam`.
             // Would be nice to support them too alongside the other `DefKind`
@@ -218,41 +242,19 @@ impl SpanMapVisitor<'_> {
     }
 
     fn infer_id(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
-        let tcx = self.tcx;
-        let body_id = tcx.hir_enclosing_body_owner(hir_id);
-        // FIXME: this is showing error messages for parts of the code that are not
-        // compiled (because of cfg)!
-        //
-        // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-        let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
+        let Some(typeck_results) = self.maybe_typeck_results() else { return };
+
         // Interestingly enough, for method calls, we need the whole expression whereas for static
         // method/function calls, we need the call expression specifically.
         if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
             let link = if def_id.as_local().is_some() {
-                LinkFromSrc::Local(rustc_span(def_id, tcx))
+                LinkFromSrc::Local(rustc_span(def_id, self.tcx))
             } else {
                 LinkFromSrc::External(def_id)
             };
             self.matches.insert(span, link);
         }
     }
-}
-
-// This is a reimplementation of `hir_enclosing_body_owner` which allows to fail without
-// panicking.
-fn hir_enclosing_body_owner(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<LocalDefId> {
-    for (_, node) in tcx.hir_parent_iter(hir_id) {
-        // FIXME: associated type impl items don't have an associated body, so we don't handle
-        // them currently.
-        if let Node::ImplItem(impl_item) = node
-            && matches!(impl_item.kind, rustc_hir::ImplItemKind::Type(_))
-        {
-            return None;
-        } else if let Some((def_id, _)) = node.associated_body() {
-            return Some(def_id);
-        }
-    }
-    None
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
@@ -262,7 +264,14 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) -> Self::Result {
+        let maybe_typeck_results =
+            self.maybe_typeck_results.replace(LazyTypeckResults { body_id, cache: None });
+        self.visit_body(self.tcx.hir_body(body_id));
+        self.maybe_typeck_results = maybe_typeck_results;
+    }
+
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: HirId) {
         if self.handle_macro(path.span) {
             return;
         }
@@ -272,25 +281,37 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
-            QPath::TypeRelative(qself, path) => {
-                if matches!(path.res, Res::Err) {
-                    let tcx = self.tcx;
-                    if let Some(body_id) = hir_enclosing_body_owner(tcx, id) {
-                        let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
-                        let path = rustc_hir::Path {
+            QPath::TypeRelative(qself, segment) => {
+                if let Res::Err = segment.res {
+                    // FIXME: This doesn't work for paths in *types* since HIR ty lowering currently
+                    //        doesn't write back the resolution of type-relative paths. Updating it
+                    //        to do so should be a simple fix.
+                    // FIXME: This obviously doesn't support item signatures / non-bodies. Sadly,
+                    //        rustc currently doesn't keep around that information & thus can't
+                    //        provide an API for it.
+                    //        `ItemCtxt`s would need a place to write back the resolution of type-
+                    //        dependent definitions. Ideally there was some sort of query keyed on
+                    //        the `LocalDefId` of the owning item that returns some table with which
+                    //        we can map the `HirId` to a `DefId`.
+                    //        Of course, we could re-HIR-ty-lower such paths *here* if we were to
+                    //        extend the public API of HIR analysis. However, I strongly advise
+                    //        against it as it would be too much of a hack.
+                    if let Some(typeck_results) = self.maybe_typeck_results() {
+                        let path = hir::Path {
                             // We change the span to not include parens.
-                            span: path.ident.span,
+                            span: segment.ident.span,
                             res: typeck_results.qpath_res(qpath, id),
+                            // FIXME(fmease): Don't create a path with zero segments!
                             segments: &[],
                         };
                         self.handle_path(&path, false);
                     }
                 } else {
-                    self.infer_id(path.hir_id, Some(id), path.ident.span.into());
+                    self.infer_id(segment.hir_id, Some(id), segment.ident.span.into());
                 }
 
                 rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
-                self.visit_path_segment(path);
+                self.visit_path_segment(segment);
             }
             QPath::Resolved(maybe_qself, path) => {
                 self.handle_path(path, true);
@@ -323,11 +344,17 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         intravisit::walk_mod(self, m);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(segment, ..) => {
                 self.infer_id(segment.hir_id, Some(expr.hir_id), segment.ident.span.into())
             }
+            // FIXME(fmease): We needlessly request `TypeckResults` even if the callee isn't
+            //                type-relative. In the majority of cases, it's just gonna be a
+            //                `Resolved` path meaning we can end up unnecessarily
+            //                `typeck`'ing the body which is super costly!
+            //                Moreover, if it actually is a type-relative path, we end up
+            //                "resolving" it twice (with slightly different spans).
             ExprKind::Call(call, ..) => self.infer_id(call.hir_id, None, call.span.into()),
             _ => {
                 if self.handle_macro(expr.span) {
@@ -340,6 +367,10 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        // We're no longer in a body since we've crossed an item boundary.
+        // Temporarily take away the typeck results which are only valid in bodies.
+        let maybe_typeck_results = self.maybe_typeck_results.take();
+
         match item.kind {
             ItemKind::Static(..)
             | ItemKind::Const(..)
@@ -359,6 +390,15 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(..) => {}
         }
+
         intravisit::walk_item(self, item);
+
+        self.maybe_typeck_results = maybe_typeck_results;
     }
+}
+
+/// Lazily computed & cached [`ty::TypeckResults`].
+struct LazyTypeckResults<'tcx> {
+    body_id: hir::BodyId,
+    cache: Option<&'tcx ty::TypeckResults<'tcx>>,
 }
