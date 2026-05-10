@@ -2010,3 +2010,23 @@ pub(crate) struct ViewedFieldIsAlreadyPartOfTheView {
     #[label("field `{$name}` is declared as viewed here")]
     pub previous_field_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("only structs can be viewed")]
+pub(crate) struct OnlyStructsCanBeViewedNonAdt<'tcx> {
+    #[primary_span]
+    #[label("type `{$ty}` cannot be viewed")]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag("only structs can be viewed")]
+pub(crate) struct OnlyStructsCanBeViewedAdt<'tcx> {
+    #[primary_span]
+    #[label("`{$ty}` is {$article} {$kind}, it cannot be viewed")]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub article: &'static str,
+    pub kind: &'static str,
+}

@@ -3401,7 +3401,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 *variant,
                 *field,
             ),
-            hir::TyKind::View(ty, fields) => self.lower_view(self.lower_ty(ty), fields),
+            hir::TyKind::View(ty, fields) => {
+                self.lower_view(self.lower_ty(ty), fields, hir_ty.span)
+            }
+
             hir::TyKind::Err(guar) => Ty::new_error(tcx, *guar),
         };
 
@@ -3814,7 +3817,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ty::Const::new_value(tcx, valtree, adt_ty)
     }
 
-    fn lower_view(&self, inner_ty: Ty<'tcx>, fields: &'tcx [Ident]) -> Ty<'tcx> {
+    fn lower_view(&self, inner_ty: Ty<'tcx>, fields: &[Ident], ty_span: Span) -> Ty<'tcx> {
         // Step 1: check that every field is unique, and keep a list of field that we know are
         // unique.
         let mut viewed_fields = Vec::<Ident>::with_capacity(fields.len());
@@ -3835,7 +3838,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             viewed_fields.push(f);
         }
 
-        // FIXME(scrabsha): check that `inner_ty` is a struct.
+        // Step 2: check that the viewed type is a struct.
+        match inner_ty.kind() {
+            ty::Adt(def, _) if def.is_struct() => {}
+
+            ty::Adt(def, _) => {
+                let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedAdt {
+                    ty: inner_ty,
+                    span: ty_span,
+                    article: def.article(),
+                    kind: def.descr(),
+                });
+                return Ty::new_error(self.tcx(), guar);
+            }
+
+            _ => {
+                let guar = self.dcx().emit_err(diagnostics::OnlyStructsCanBeViewedNonAdt {
+                    ty: inner_ty,
+                    span: ty_span,
+                });
+                return Ty::new_error(self.tcx(), guar);
+            }
+        }
+
         // FIXME(scrabsha): resolve the fields in `viewed_fields` to actual fields.
         // FIXME(scrabsha): actually lower view types.
         inner_ty
