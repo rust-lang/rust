@@ -1,0 +1,142 @@
+// MIR for `std::future::async_drop_in_place::{closure#0}` after MentionedItems
+
+fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<AsyncEnum>()}, _2: std::future::ResumeTy) -> ()
+yields ()
+ {
+    let mut _0: ();
+    let mut _3: &mut AsyncEnum;
+    let mut _4: impl std::future::Future<Output = ()>;
+    let mut _5: &mut AsyncInt;
+    let mut _6: std::pin::Pin<&mut AsyncInt>;
+    let mut _7: &mut AsyncInt;
+    let mut _8: impl std::future::Future<Output = ()>;
+    let mut _9: &mut AsyncInt;
+    let mut _10: std::pin::Pin<&mut AsyncInt>;
+    let mut _11: &mut AsyncInt;
+    let mut _12: isize;
+    let mut _13: isize;
+    let mut _14: isize;
+    let mut _15: impl std::future::Future<Output = ()>;
+    let mut _16: &mut AsyncEnum;
+    let mut _17: std::pin::Pin<&mut AsyncEnum>;
+
+    bb0: {
+        _3 = move (_1.0: &mut AsyncEnum);
+        goto -> bb21;
+    }
+
+    bb1: {
+        StorageDead(_8);
+        return;
+    }
+
+    bb2 (cleanup): {
+        StorageDead(_4);
+        StorageDead(_8);
+        resume;
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4 (cleanup): {
+        drop((((*_3) as A).0: AsyncInt)) -> [return: bb2, unwind terminate(cleanup)];
+    }
+
+    bb5 (cleanup): {
+        drop((((*_3) as A).0: AsyncInt)) -> [return: bb2, unwind terminate(cleanup)];
+    }
+
+    bb6: {
+        _5 = &mut (((*_3) as A).0: AsyncInt);
+        _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb9, unwind: bb2];
+    }
+
+    bb7: {
+        StorageDead(_4);
+        goto -> bb1;
+    }
+
+    bb8: {
+        async drop((((*_3) as A).0: AsyncInt); poll=_4) -> [return: bb7, unwind: bb2];
+    }
+
+    bb9: {
+        _7 = copy (_6.0: &mut AsyncInt);
+        StorageLive(_4);
+        _4 = async_drop_in_place::<AsyncInt>(move _7) -> [return: bb8, unwind: bb2];
+    }
+
+    bb10: {
+        _9 = &mut (((*_3) as A).0: AsyncInt);
+        _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb13, unwind: bb2];
+    }
+
+    bb11: {
+        StorageDead(_8);
+        goto -> bb3;
+    }
+
+    bb12: {
+        async drop((((*_3) as A).0: AsyncInt); poll=_8) -> [return: bb11, unwind: bb2, drop: bb1];
+    }
+
+    bb13: {
+        _11 = copy (_10.0: &mut AsyncInt);
+        StorageLive(_8);
+        _8 = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb12, unwind: bb2];
+    }
+
+    bb14 (cleanup): {
+        drop((((*_3) as B).0: SyncInt)) -> [return: bb2, unwind terminate(cleanup)];
+    }
+
+    bb15 (cleanup): {
+        drop((((*_3) as B).0: SyncInt)) -> [return: bb2, unwind terminate(cleanup)];
+    }
+
+    bb16: {
+        drop((((*_3) as B).0: SyncInt)) -> [return: bb1, unwind: bb2];
+    }
+
+    bb17: {
+        drop((((*_3) as B).0: SyncInt)) -> [return: bb3, unwind: bb2];
+    }
+
+    bb18: {
+        _12 = discriminant((*_3));
+        switchInt(move _12) -> [0: bb10, otherwise: bb17];
+    }
+
+    bb19 (cleanup): {
+        StorageDead(_15);
+        _13 = discriminant((*_3));
+        switchInt(move _13) -> [0: bb4, otherwise: bb14];
+    }
+
+    bb20: {
+        StorageDead(_15);
+        _14 = discriminant((*_3));
+        switchInt(move _14) -> [0: bb6, otherwise: bb16];
+    }
+
+    bb21: {
+        _16 = &mut (*_3);
+        _17 = Pin::<&mut AsyncEnum>::new_unchecked(move _16) -> [return: bb24, unwind: bb19];
+    }
+
+    bb22: {
+        StorageDead(_15);
+        goto -> bb18;
+    }
+
+    bb23: {
+        async drop((*_3); poll=_15) -> [return: bb22, unwind: bb19, drop: bb20];
+    }
+
+    bb24: {
+        StorageLive(_15);
+        _15 = <AsyncEnum as AsyncDrop>::drop(move _17) -> [return: bb23, unwind: bb19];
+    }
+}

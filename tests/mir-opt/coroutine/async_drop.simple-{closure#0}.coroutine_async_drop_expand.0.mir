@@ -1,0 +1,173 @@
+// MIR for `simple::{closure#0}` 0 coroutine_async_drop_expand
+
+fn simple::{closure#0}(_1: {async fn body of simple()}, _2: &mut Context<'_>) -> ()
+yields ()
+ {
+    debug _task_context => _2;
+    let mut _0: ();
+    let _3: SyncInt;
+    let mut _5: impl std::future::Future<Output = ()>;
+    let mut _6: &mut AsyncInt;
+    let mut _7: std::pin::Pin<&mut AsyncInt>;
+    let mut _8: &mut AsyncInt;
+    let mut _9: impl std::future::Future<Output = ()>;
+    let mut _10: &mut {async fn body of simple()};
+    let mut _11: std::pin::Pin<&mut {async fn body of simple()}>;
+    let mut _12: &mut {async fn body of simple()};
+    let mut _13: std::task::Poll<()>;
+    let mut _14: &mut std::task::Context<'_>;
+    let mut _15: &mut impl std::future::Future<Output = ()>;
+    let mut _16: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _17: isize;
+    let mut _18: &mut std::task::Context<'_>;
+    let mut _19: &mut impl std::future::Future<Output = ()>;
+    let mut _20: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _21: isize;
+    scope 1 {
+        debug sync_int => _3;
+        let _4: AsyncInt;
+        scope 2 {
+            debug async_int => _4;
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = SyncInt(const 0_i32);
+        StorageLive(_4);
+        _4 = AsyncInt(const 0_i32);
+        _0 = const ();
+        _6 = &mut _4;
+        _7 = Pin::<&mut AsyncInt>::new_unchecked(move _6) -> [return: bb12, unwind: bb7];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        drop(_3) -> [return: bb2, unwind: bb8];
+    }
+
+    bb2: {
+        StorageDead(_3);
+        _10 = &mut _1;
+        _11 = Pin::<&mut {async fn body of simple()}>::new_unchecked(move _10) -> [return: bb15, unwind: bb9];
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4: {
+        StorageDead(_5);
+        StorageDead(_4);
+        goto -> bb5;
+    }
+
+    bb5: {
+        StorageDead(_3);
+        goto -> bb6;
+    }
+
+    bb6: {
+        StorageDead(_9);
+        coroutine_drop;
+    }
+
+    bb7 (cleanup): {
+        StorageDead(_5);
+        StorageDead(_4);
+        drop(_3) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        StorageDead(_3);
+        drop(_1) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb9 (cleanup): {
+        StorageDead(_9);
+        resume;
+    }
+
+    bb10: {
+        StorageDead(_5);
+        goto -> bb1;
+    }
+
+    bb11: {
+        _14 = move _2;
+        goto -> bb17;
+    }
+
+    bb12: {
+        _8 = copy (_7.0: &mut AsyncInt);
+        StorageLive(_5);
+        _5 = async_drop_in_place::<AsyncInt>(move _8) -> [return: bb11, unwind: bb7];
+    }
+
+    bb13: {
+        StorageDead(_9);
+        goto -> bb3;
+    }
+
+    bb14: {
+        drop(_1) -> [return: bb13, unwind: bb9];
+    }
+
+    bb15: {
+        _12 = copy (_11.0: &mut {async fn body of simple()});
+        StorageLive(_9);
+        _9 = async_drop_in_place::<{async fn body of simple()}>(move _12) -> [return: bb14, unwind: bb9];
+    }
+
+    bb16: {
+        _14 = yield(const false) -> [resume: bb17, drop: bb22];
+    }
+
+    bb17: {
+        StorageLive(_16);
+        _15 = &mut _5;
+        _16 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _15) -> [return: bb20, unwind continue];
+    }
+
+    bb18: {
+        unreachable;
+    }
+
+    bb19: {
+        StorageDead(_16);
+        _17 = discriminant(_13);
+        switchInt(move _17) -> [0: bb10, 1: bb16, otherwise: bb18];
+    }
+
+    bb20: {
+        _13 = <impl Future<Output = ()> as Future>::poll(move _16, move _14) -> [return: bb19, unwind: bb7];
+    }
+
+    bb21: {
+        _18 = yield(const false) -> [resume: bb26, drop: bb22];
+    }
+
+    bb22: {
+        StorageLive(_20);
+        _19 = &mut _5;
+        _20 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _19) -> [return: bb25, unwind continue];
+    }
+
+    bb23: {
+        unreachable;
+    }
+
+    bb24: {
+        StorageDead(_20);
+        _21 = discriminant(_13);
+        switchInt(move _21) -> [0: bb4, 1: bb21, otherwise: bb23];
+    }
+
+    bb25: {
+        _13 = <impl Future<Output = ()> as Future>::poll(move _20, move _18) -> [return: bb24, unwind: bb7];
+    }
+
+    bb26: {
+        assert(const false, "`async fn` resumed after async drop") -> [success: bb26, unwind continue];
+    }
+}

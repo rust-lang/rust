@@ -1,0 +1,141 @@
+- // MIR for `std::future::async_drop_in_place::{closure#0}` before StateTransform
++ // MIR for `std::future::async_drop_in_place::{closure#0}` after StateTransform
+  
+- fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<AsyncInt>()}, _2: std::future::ResumeTy) -> ()
+- yields ()
+-  {
+-     let mut _0: ();
++ fn async_drop_in_place::{closure#0}(_1: Pin<&mut {async fn body of async_drop_in_place<AsyncInt>()}>, _2: &mut Context<'_>) -> Poll<()> {
++     coroutine layout {
++         field _s0: impl Future<Output = ()>;
++         variant_fields = {
++             Unresumed(0): [],
++             Returned (1): [],
++             Panicked (2): [],
++             Suspend0 (3): [_s0],
++             Suspend1 (4): [_s0],
++         }
++         storage_conflicts = BitMatrix(1x1) {(_s0, _s0)}
++     }
++     let mut _0: std::task::Poll<()>;
+      let mut _3: &mut AsyncInt;
+      let mut _4: impl std::future::Future<Output = ()>;
+      let mut _5: &mut AsyncInt;
+      let mut _6: std::pin::Pin<&mut AsyncInt>;
++     let mut _7: std::task::Poll<()>;
++     let mut _8: &mut std::task::Context<'_>;
++     let mut _9: &mut impl std::future::Future<Output = ()>;
++     let mut _10: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
++     let mut _11: isize;
++     let mut _12: &mut std::task::Context<'_>;
++     let mut _13: &mut impl std::future::Future<Output = ()>;
++     let mut _14: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
++     let mut _15: isize;
++     let mut _16: ();
++     let mut _17: u32;
++     let mut _18: &mut {async fn body of std::future::async_drop_in_place<AsyncInt>()};
+  
+      bb0: {
+-         _3 = move (_1.0: &mut AsyncInt);
+-         _5 = &mut (*_3);
+-         _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb5, unwind: bb2];
++         _18 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<AsyncInt>()});
++         _17 = discriminant((*_18));
++         switchInt(move _17) -> [0: bb17, 1: bb16, 2: bb15, 3: bb13, 4: bb14, otherwise: bb8];
+      }
+  
+      bb1: {
+-         StorageDead(_4);
++         nop;
++         _0 = Poll::<()>::Ready(move _16);
++         discriminant((*_18)) = 1;
+          return;
+      }
+  
+      bb2 (cleanup): {
+-         StorageDead(_4);
+-         resume;
++         nop;
++         goto -> bb12;
+      }
+  
+      bb3: {
+-         StorageDead(_4);
++         nop;
+          goto -> bb1;
+      }
+  
+      bb4: {
+-         async drop((*_3); poll=_4) -> [return: bb3, unwind: bb2, drop: bb1];
++         _8 = move _2;
++         goto -> bb7;
+      }
+  
+      bb5: {
+-         StorageLive(_4);
+-         _4 = <AsyncInt as AsyncDrop>::drop(move _6) -> [return: bb4, unwind: bb2];
++         nop;
++         (((*_18) as variant#4).0: impl std::future::Future<Output = ()>) = <AsyncInt as AsyncDrop>::drop(move _6) -> [return: bb4, unwind: bb2];
++     }
++ 
++     bb6: {
++         _0 = Poll::<()>::Pending;
++         discriminant((*_18)) = 3;
++         return;
++     }
++ 
++     bb7: {
++         StorageLive(_10);
++         _9 = &mut (((*_18) as variant#4).0: impl std::future::Future<Output = ()>);
++         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _9) -> [return: bb10, unwind: bb12];
++     }
++ 
++     bb8: {
++         unreachable;
++     }
++ 
++     bb9: {
++         StorageDead(_10);
++         _11 = discriminant(_7);
++         switchInt(move _11) -> [0: bb3, 1: bb6, otherwise: bb8];
++     }
++ 
++     bb10: {
++         _7 = <impl Future<Output = ()> as Future>::poll(move _10, move _8) -> [return: bb9, unwind: bb2];
++     }
++ 
++     bb11: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb11, unwind: bb12];
++     }
++ 
++     bb12 (cleanup): {
++         discriminant((*_18)) = 2;
++         resume;
++     }
++ 
++     bb13: {
++         _8 = move _2;
++         goto -> bb7;
++     }
++ 
++     bb14: {
++         _12 = move _2;
++         goto -> bb11;
++     }
++ 
++     bb15: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb15, unwind continue];
++     }
++ 
++     bb16: {
++         _0 = Poll::<()>::Ready(const ());
++         return;
++     }
++ 
++     bb17: {
++         _3 = move ((*_18).0: &mut AsyncInt);
++         _5 = &mut (*_3);
++         _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb5, unwind: bb2];
+      }
+  }
+  

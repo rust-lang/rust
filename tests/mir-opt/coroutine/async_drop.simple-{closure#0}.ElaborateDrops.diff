@@ -1,0 +1,123 @@
+- // MIR for `simple::{closure#0}` before ElaborateDrops
++ // MIR for `simple::{closure#0}` after ElaborateDrops
+  
+  fn simple::{closure#0}(_1: {async fn body of simple()}, _2: std::future::ResumeTy) -> ()
+  yields ()
+   {
+      debug _task_context => _2;
+      let mut _0: ();
+      let _3: SyncInt;
++     let mut _5: impl std::future::Future<Output = ()>;
++     let mut _6: &mut AsyncInt;
++     let mut _7: std::pin::Pin<&mut AsyncInt>;
++     let mut _8: &mut AsyncInt;
++     let mut _9: impl std::future::Future<Output = ()>;
++     let mut _10: &mut {async fn body of simple()};
++     let mut _11: std::pin::Pin<&mut {async fn body of simple()}>;
++     let mut _12: &mut {async fn body of simple()};
+      scope 1 {
+          debug sync_int => _3;
+          let _4: AsyncInt;
+          scope 2 {
+              debug async_int => _4;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = SyncInt(const 0_i32);
+          StorageLive(_4);
+          _4 = AsyncInt(const 0_i32);
+          _0 = const ();
+-         drop(_4) -> [return: bb1, unwind: bb7, drop: bb4];
++         _6 = &mut _4;
++         _7 = Pin::<&mut AsyncInt>::new_unchecked(move _6) -> [return: bb13, unwind: bb7];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          drop(_3) -> [return: bb2, unwind: bb8];
+      }
+  
+      bb2: {
+          StorageDead(_3);
+-         drop(_1) -> [return: bb3, drop: bb6, unwind continue];
++         _10 = &mut _1;
++         _11 = Pin::<&mut {async fn body of simple()}>::new_unchecked(move _10) -> [return: bb16, unwind: bb9];
+      }
+  
+      bb3: {
+          return;
+      }
+  
+      bb4: {
++         StorageDead(_5);
+          StorageDead(_4);
+-         drop(_3) -> [return: bb5, unwind: bb10];
++         goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_3);
+-         drop(_1) -> [return: bb6, unwind continue];
++         goto -> bb6;
+      }
+  
+      bb6: {
++         StorageDead(_9);
+          coroutine_drop;
+      }
+  
+      bb7 (cleanup): {
++         StorageDead(_5);
+          StorageDead(_4);
+          drop(_3) -> [return: bb8, unwind terminate(cleanup)];
+      }
+  
+      bb8 (cleanup): {
+          StorageDead(_3);
+          drop(_1) -> [return: bb9, unwind terminate(cleanup)];
+      }
+  
+      bb9 (cleanup): {
++         StorageDead(_9);
+          resume;
+      }
+  
+      bb10 (cleanup): {
+          StorageDead(_3);
+-         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
++         goto -> bb9;
++     }
++ 
++     bb11: {
++         StorageDead(_5);
++         goto -> bb1;
++     }
++ 
++     bb12: {
++         async drop(_4; poll=_5) -> [return: bb11, unwind: bb7, drop: bb4];
++     }
++ 
++     bb13: {
++         _8 = copy (_7.0: &mut AsyncInt);
++         StorageLive(_5);
++         _5 = async_drop_in_place::<AsyncInt>(move _8) -> [return: bb12, unwind: bb7];
++     }
++ 
++     bb14: {
++         StorageDead(_9);
++         goto -> bb3;
++     }
++ 
++     bb15: {
++         async drop(_1; poll=_9) -> [return: bb14, unwind: bb9, drop: bb6];
++     }
++ 
++     bb16: {
++         _12 = copy (_11.0: &mut {async fn body of simple()});
++         StorageLive(_9);
++         _9 = async_drop_in_place::<{async fn body of simple()}>(move _12) -> [return: bb15, unwind: bb9];
+      }
+  }
+  

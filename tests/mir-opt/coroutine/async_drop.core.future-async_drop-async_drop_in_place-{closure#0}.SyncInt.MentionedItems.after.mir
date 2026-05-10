@@ -1,0 +1,15 @@
+// MIR for `std::future::async_drop_in_place::{closure#0}` after MentionedItems
+
+fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<SyncInt>()}, _2: std::future::ResumeTy) -> ()
+yields ()
+ {
+    let mut _0: ();
+
+    bb0: {
+        drop((*(_1.0: &mut SyncInt))) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

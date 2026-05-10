@@ -1,0 +1,59 @@
+- // MIR for `std::future::async_drop_in_place::{closure#0}` before StateTransform
++ // MIR for `std::future::async_drop_in_place::{closure#0}` after StateTransform
+  
+- fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<SyncInt>()}, _2: std::future::ResumeTy) -> ()
+- yields ()
+-  {
+-     let mut _0: ();
++ fn async_drop_in_place::{closure#0}(_1: Pin<&mut {async fn body of async_drop_in_place<SyncInt>()}>, _2: &mut Context<'_>) -> Poll<()> {
++     coroutine layout {
++         variant_fields = {
++             Unresumed(0): [],
++             Returned (1): [],
++             Panicked (2): [],
++         }
++         storage_conflicts = BitMatrix(0x0) {}
++     }
++     let mut _0: std::task::Poll<()>;
++     let mut _3: ();
++     let mut _4: u32;
++     let mut _5: &mut {async fn body of std::future::async_drop_in_place<SyncInt>()};
++     let mut _6: &mut SyncInt;
+  
+      bb0: {
+-         drop((*(_1.0: &mut SyncInt))) -> [return: bb1, unwind continue];
++         _5 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<SyncInt>()});
++         _4 = discriminant((*_5));
++         switchInt(move _4) -> [0: bb6, 1: bb4, 2: bb3, otherwise: bb5];
+      }
+  
+      bb1: {
++         _0 = Poll::<()>::Ready(move _3);
++         discriminant((*_5)) = 1;
+          return;
++     }
++ 
++     bb2 (cleanup): {
++         discriminant((*_5)) = 2;
++         resume;
++     }
++ 
++     bb3: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb3, unwind continue];
++     }
++ 
++     bb4: {
++         _0 = Poll::<()>::Ready(const ());
++         return;
++     }
++ 
++     bb5: {
++         unreachable;
++     }
++ 
++     bb6: {
++         _6 = no_retag copy ((*_5).0: &mut SyncInt);
++         drop((*_6)) -> [return: bb1, unwind: bb2];
+      }
+  }
+  
