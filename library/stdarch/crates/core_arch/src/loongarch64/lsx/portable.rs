@@ -148,6 +148,10 @@ impl_vvv!("lsx", lsx_vssub_bu, is::simd_saturating_sub, m128i, u8x16);
 impl_vvv!("lsx", lsx_vssub_hu, is::simd_saturating_sub, m128i, u16x8);
 impl_vvv!("lsx", lsx_vssub_wu, is::simd_saturating_sub, m128i, u32x4);
 impl_vvv!("lsx", lsx_vssub_du, is::simd_saturating_sub, m128i, u64x2);
+impl_vvv!("lsx", lsx_vadda_b, ls::simd_adda, m128i, i8x16);
+impl_vvv!("lsx", lsx_vadda_h, ls::simd_adda, m128i, i16x8);
+impl_vvv!("lsx", lsx_vadda_w, ls::simd_adda, m128i, i32x4);
+impl_vvv!("lsx", lsx_vadda_d, ls::simd_adda, m128i, i64x2);
 
 impl_vuv!("lsx", lsx_vslli_b, is::simd_shl, m128i, i8x16);
 impl_vuv!("lsx", lsx_vslli_h, is::simd_shl, m128i, i16x8);

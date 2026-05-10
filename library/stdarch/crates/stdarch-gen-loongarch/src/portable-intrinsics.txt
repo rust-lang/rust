@@ -219,6 +219,10 @@ lsx_vssub_bu
 lsx_vssub_hu
 lsx_vssub_wu
 lsx_vssub_du
+lsx_vadda_b
+lsx_vadda_h
+lsx_vadda_w
+lsx_vadda_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -435,3 +439,7 @@ lasx_xvssub_bu
 lasx_xvssub_hu
 lasx_xvssub_wu
 lasx_xvssub_du
+lasx_xvadda_b
+lasx_xvadda_h
+lasx_xvadda_w
+lasx_xvadda_d

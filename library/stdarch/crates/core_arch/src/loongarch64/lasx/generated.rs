@@ -91,14 +91,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvsat_wu(a: __v8u32, b: u32) -> __v8u32;
     #[link_name = "llvm.loongarch.lasx.xvsat.du"]
     fn __lasx_xvsat_du(a: __v4u64, b: u32) -> __v4u64;
-    #[link_name = "llvm.loongarch.lasx.xvadda.b"]
-    fn __lasx_xvadda_b(a: __v32i8, b: __v32i8) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvadda.h"]
-    fn __lasx_xvadda_h(a: __v16i16, b: __v16i16) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvadda.w"]
-    fn __lasx_xvadda_w(a: __v8i32, b: __v8i32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvadda.d"]
-    fn __lasx_xvadda_d(a: __v4i64, b: __v4i64) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvavg.b"]
     fn __lasx_xvavg_b(a: __v32i8, b: __v32i8) -> __v32i8;
     #[link_name = "llvm.loongarch.lasx.xvavg.h"]
@@ -1443,34 +1435,6 @@ pub fn lasx_xvsat_wu<const IMM5: u32>(a: m256i) -> m256i {
 pub fn lasx_xvsat_du<const IMM6: u32>(a: m256i) -> m256i {
     static_assert_uimm_bits!(IMM6, 6);
     unsafe { transmute(__lasx_xvsat_du(transmute(a), IMM6)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvadda_b(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvadda_b(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvadda_h(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvadda_h(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvadda_w(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvadda_w(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvadda_d(a: m256i, b: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvadda_d(transmute(a), transmute(b))) }
 }
 
 #[inline]
