@@ -36,6 +36,7 @@ use rustc_span::{
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;
+use crate::attr::diagnostic::Directive;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
@@ -3798,6 +3799,8 @@ pub struct Trait {
     pub bounds: GenericBounds,
     #[visitable(extra = AssocCtxt::Trait)]
     pub items: ThinVec<Box<AssocItem>>,
+    #[visitable(ignore)]
+    pub on_unimplemented: Option<Directive>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

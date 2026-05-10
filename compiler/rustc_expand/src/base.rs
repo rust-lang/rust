@@ -409,6 +409,19 @@ pub trait GlobDelegationExpander {
     fn expand(&self, ecx: &mut ExtCtxt<'_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
 }
 
+pub trait AstAnnotate {
+    fn annotate(&self, ecx: &mut ExtCtxt<'_>, attr: &ast::Attribute, item: &mut Annotatable);
+}
+
+impl<F> AstAnnotate for F
+where
+    F: Fn(&mut ExtCtxt<'_>, &ast::Attribute, &mut Annotatable),
+{
+    fn annotate(&self, ecx: &mut ExtCtxt<'_>, attr: &ast::Attribute, item: &mut Annotatable) {
+        self(ecx, attr, item)
+    }
+}
+
 fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stmt; 1]>> {
     expr.map(|e| {
         smallvec![ast::Stmt { id: ast::DUMMY_NODE_ID, span: e.span, kind: ast::StmtKind::Expr(e) }]
@@ -787,6 +800,16 @@ pub enum SyntaxExtensionKind {
     ///
     /// This is for delegated function implementations, and has nothing to do with glob imports.
     GlobDelegation(Arc<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
+
+    /// An AST-based "inert" attribute.
+    ///
+    /// These represent otherwise inert attributes. Instead of creating or modifying items like
+    /// a macro would, they instead attach state to these items which is carried through
+    /// ast/hir lowering and then emitted like an actual inert attribute.
+    InertAttr(
+        /// An expander with signature (&mut AST).
+        Arc<dyn AstAnnotate + sync::DynSync + sync::DynSend>,
+    ),
 }
 
 impl SyntaxExtensionKind {
@@ -857,7 +880,8 @@ impl SyntaxExtension {
             | SyntaxExtensionKind::GlobDelegation(..) => MacroKinds::BANG,
             SyntaxExtensionKind::Attr(..)
             | SyntaxExtensionKind::LegacyAttr(..)
-            | SyntaxExtensionKind::NonMacroAttr => MacroKinds::ATTR,
+            | SyntaxExtensionKind::NonMacroAttr
+            | SyntaxExtensionKind::InertAttr(..) => MacroKinds::ATTR,
             SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
                 MacroKinds::DERIVE
             }
@@ -1180,6 +1204,8 @@ pub trait ResolverExpand {
     /// Mark the scope as having a compile error so that error for lookup in this scope
     /// should be suppressed
     fn mark_scope_with_compile_error(&mut self, parent_node: NodeId);
+
+    fn insert_inert_attr(&mut self, path: &'static [Symbol], kind: SyntaxExtensionKind);
 }
 
 pub trait LintStoreExpand {

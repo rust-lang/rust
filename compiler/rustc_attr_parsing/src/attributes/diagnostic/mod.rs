@@ -112,6 +112,15 @@ impl Mode {
     }
 }
 
+pub fn parse_rustc_on_unimplemented(
+    cx: &mut AcceptContext<'_, '_>,
+    args: &ArgParser,
+) -> Option<Directive> {
+    let items = parse_list(cx, args, Mode::RustcOnUnimplemented)?;
+
+    parse_directive_items(cx, Mode::RustcOnUnimplemented, items.mixed(), true)
+}
+
 fn merge_directives(
     cx: &mut AcceptContext<'_, '_>,
     first: &mut Option<(Span, Directive)>,

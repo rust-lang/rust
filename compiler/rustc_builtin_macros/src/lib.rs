@@ -33,6 +33,7 @@ mod concat_bytes;
 mod define_opaque;
 mod derive;
 mod deriving;
+mod diagnostic;
 mod edition_panic;
 mod eii;
 mod env;
@@ -143,4 +144,9 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     register(sym::contracts_requires, requires);
     let ensures = SyntaxExtensionKind::Attr(Arc::new(contracts::ExpandEnsures));
     register(sym::contracts_ensures, ensures);
+
+    resolver.insert_inert_attr(
+        &[sym::diagnostic, sym::rustc_on_unimplemented],
+        SyntaxExtensionKind::InertAttr(Arc::new(diagnostic::rustc_on_unimplemented::expand)),
+    );
 }

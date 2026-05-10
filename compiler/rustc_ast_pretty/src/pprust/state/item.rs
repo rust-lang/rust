@@ -379,6 +379,7 @@ impl<'a> State<'a> {
                 generics,
                 bounds,
                 items,
+                on_unimplemented,
             }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
@@ -397,6 +398,10 @@ impl<'a> State<'a> {
                 self.word(" ");
                 self.bopen(ib);
                 self.print_inner_attributes(&item.attrs);
+                if on_unimplemented.is_some() {
+                    // FIXME make this nicer
+                    self.word("#[diagnostic::rustc_on_unimplemented(...)]")
+                }
                 for trait_item in items {
                     self.print_assoc_item(trait_item);
                 }

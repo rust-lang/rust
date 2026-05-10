@@ -1178,6 +1178,7 @@ impl<'a> Parser<'a> {
                 generics,
                 bounds,
                 items,
+                on_unimplemented: None,
             })))
         }
     }
