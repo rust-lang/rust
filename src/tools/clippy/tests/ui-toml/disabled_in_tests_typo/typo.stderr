@@ -1,0 +1,5 @@
+warning: unknown lint `unwrap-used`. Did you mean `unwrap_used`?
+         
+
+warning: 1 warning emitted
+

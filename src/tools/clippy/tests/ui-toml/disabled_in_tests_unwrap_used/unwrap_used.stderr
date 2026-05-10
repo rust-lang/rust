@@ -1,0 +1,28 @@
+error: called `.get().unwrap()` on a slice
+  --> tests/ui-toml/disabled_in_tests_unwrap_used/unwrap_used.rs:11:13
+   |
+LL |     let _ = boxed_slice.get(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::get-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::get_unwrap)]`
+help: using `[]` is clearer and more concise
+   |
+LL -     let _ = boxed_slice.get(1).unwrap();
+LL +     let _ = &boxed_slice[1];
+   |
+
+error: called `.get().unwrap()` on a slice
+  --> tests/ui-toml/disabled_in_tests_unwrap_used/unwrap_used.rs:31:17
+   |
+LL |         let _ = Box::new([0]).get(1).unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: using `[]` is clearer and more concise
+   |
+LL -         let _ = Box::new([0]).get(1).unwrap();
+LL +         let _ = &Box::new([0])[1];
+   |
+
+error: aborting due to 2 previous errors
+

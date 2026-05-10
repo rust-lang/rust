@@ -590,6 +590,8 @@ define_Conf! {
     /// Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
     cyclomatic_complexity_threshold: u64 = 25,
+    /// Lints to disable in tests.
+    disabled_in_tests: Vec<String> = Vec::new(),
     /// The list of disallowed fields, written as fully qualified paths.
     ///
     /// **Fields:**
