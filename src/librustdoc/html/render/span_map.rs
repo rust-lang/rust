@@ -124,6 +124,14 @@ impl<'tcx> SpanMapVisitor<'tcx> {
         Some(results)
     }
 
+    fn link_for_def(&self, def_id: DefId) -> LinkFromSrc {
+        if def_id.is_local() {
+            LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+        } else {
+            LinkFromSrc::External(def_id)
+        }
+    }
+
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
     fn handle_path(&mut self, path: &hir::Path<'_>, only_use_last_segment: bool) {
         match path.res {
@@ -131,11 +139,6 @@ impl<'tcx> SpanMapVisitor<'tcx> {
             // Would be nice to support them too alongside the other `DefKind`
             // (such as primitive types!).
             Res::Def(kind, def_id) if kind != DefKind::TyParam => {
-                let link = if def_id.as_local().is_some() {
-                    LinkFromSrc::Local(rustc_span(def_id, self.tcx))
-                } else {
-                    LinkFromSrc::External(def_id)
-                };
                 // In case the path ends with generics, we remove them from the span.
                 let span = if only_use_last_segment
                     && let Some(path_span) = path.segments.last().map(|segment| segment.ident.span)
@@ -156,7 +159,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                         })
                         .unwrap_or(path.span)
                 };
-                self.matches.insert(span.into(), link);
+                self.matches.insert(span.into(), self.link_for_def(def_id));
             }
             Res::Local(_) if let Some(span) = self.tcx.hir_res_span(path.res) => {
                 let path_span = if only_use_last_segment
@@ -239,21 +242,6 @@ impl<'tcx> SpanMapVisitor<'tcx> {
         let new_span = new_span.with_hi(new_span.lo() + BytePos(macro_name.len() as u32));
         self.matches.insert(new_span.into(), link_from_src);
         true
-    }
-
-    fn infer_id(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
-        let Some(typeck_results) = self.maybe_typeck_results() else { return };
-
-        // Interestingly enough, for method calls, we need the whole expression whereas for static
-        // method/function calls, we need the call expression specifically.
-        if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
-            let link = if def_id.as_local().is_some() {
-                LinkFromSrc::Local(rustc_span(def_id, self.tcx))
-            } else {
-                LinkFromSrc::External(def_id)
-            };
-            self.matches.insert(span, link);
-        }
     }
 }
 
@@ -341,23 +329,26 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        match expr.kind {
-            ExprKind::MethodCall(segment, ..) => {
-                self.infer_id(segment.hir_id, Some(expr.hir_id), segment.ident.span.into())
+        let mut handle_type_dependent_def = |hir_id: HirId, span: rustc_span::Span| {
+            // Exprs *have* to exist in a body, so typeck results should always be available.
+            let typeck_results = self.maybe_typeck_results().unwrap();
+            if let Some(def_id) = typeck_results.type_dependent_def_id(hir_id) {
+                self.matches.insert(span.into(), self.link_for_def(def_id));
             }
+        };
+
+        match expr.kind {
+            ExprKind::MethodCall(seg, ..) => handle_type_dependent_def(expr.hir_id, seg.ident.span),
             // FIXME(fmease): We needlessly request `TypeckResults` even if the callee isn't
             //                type-relative. In the majority of cases, it's just gonna be a
             //                `Resolved` path meaning we can end up unnecessarily
             //                `typeck`'ing the body which is super costly!
             //                Moreover, if it actually is a type-relative path, we end up
             //                "resolving" it twice (with slightly different spans).
-            ExprKind::Call(call, ..) => self.infer_id(call.hir_id, None, call.span.into()),
-            _ => {
-                if self.handle_macro(expr.span) {
-                    // We don't want to go deeper into the macro.
-                    return;
-                }
-            }
+            ExprKind::Call(callee, ..) => handle_type_dependent_def(callee.hir_id, callee.span),
+            // We don't want to go deeper into the macro.
+            _ if self.handle_macro(expr.span) => return,
+            _ => {}
         }
         intravisit::walk_expr(self, expr);
     }
