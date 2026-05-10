@@ -1053,6 +1053,15 @@ impl Step for IntrinsicTest {
         cmd.arg("--sample-percentage").arg("10");
         cmd.env("CPPFLAGS", &cppflags);
 
+        if let Some(cargo_dir) = builder.initial_cargo.parent() {
+            let old_path = env::var_os("PATH").unwrap_or_default();
+            let new_path = env::join_paths(
+                iter::once(cargo_dir.to_path_buf()).chain(env::split_paths(&old_path)),
+            )
+            .expect("Could not prepend cargo bin path to PATH");
+            cmd.env("PATH", new_path);
+        }
+
         cmd.delay_failure().run(builder);
     }
 }
