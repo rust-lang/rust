@@ -1323,7 +1323,7 @@ impl<'db> SemanticsImpl<'db> {
                             .map(|(call_id, item)| {
                                 let item_range = item.syntax().text_range();
                                 let loc = call_id.loc(db);
-                                let text_range = match loc.kind {
+                                let text_range = match &loc.kind {
                                     hir_expand::MacroCallKind::Attr {
                                         censored_attr_ids: attr_ids,
                                         ..
@@ -2436,7 +2436,7 @@ impl<'db> SemanticsImpl<'db> {
             AnyImplId::ImplId(id) => id,
             AnyImplId::BuiltinDeriveImplId(id) => return Some(id.loc(self.db).adt.into()),
         };
-        let source = hir_def::src::HasSource::ast_ptr(&id.loc(self.db), self.db);
+        let source = hir_def::src::HasSource::ast_ptr(id.loc(self.db), self.db);
         let mut file_id = source.file_id;
         let adt_ast_id = loop {
             let macro_call = file_id.macro_file()?;

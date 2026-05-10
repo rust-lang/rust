@@ -7467,11 +7467,11 @@ fn body_param_env_from_has_crate<'db>(
 
 // FIXME: We probably don't want to expose this.
 pub trait MacroCallIdExt {
-    fn loc(self, db: &dyn HirDatabase) -> hir_expand::MacroCallLoc;
+    fn loc(self, db: &dyn HirDatabase) -> &hir_expand::MacroCallLoc;
 }
 impl MacroCallIdExt for span::MacroCallId {
     #[inline]
-    fn loc(self, db: &dyn HirDatabase) -> hir_expand::MacroCallLoc {
+    fn loc(self, db: &dyn HirDatabase) -> &hir_expand::MacroCallLoc {
         hir_expand::MacroCallId::from(self).loc(db)
     }
 }

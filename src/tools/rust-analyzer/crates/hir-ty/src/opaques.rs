@@ -132,7 +132,7 @@ pub(crate) fn tait_hidden_types(
     let param_env =
         db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(type_alias)));
 
-    let defining_bodies = tait_defining_bodies(db, &loc);
+    let defining_bodies = tait_defining_bodies(db, loc);
 
     let mut result = ArenaMap::with_capacity(taits_count);
     for defining_body in defining_bodies {
