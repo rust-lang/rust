@@ -400,12 +400,10 @@ pub(crate) fn const_eval_discriminant_variant(
     let body = Body::of(db, def);
     let loc = variant_id.lookup(db);
     if matches!(body[body.root_expr()], Expr::Missing) {
-        let prev_idx = loc.index.checked_sub(1);
+        let prev_idx = loc.index(db).checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
-                1 + db.const_eval_discriminant(
-                    loc.parent.enum_variants(db).variants[prev_idx as usize].0,
-                )?
+                1 + db.const_eval_discriminant(loc.parent.enum_variants(db).variants[prev_idx].0)?
             }
             _ => 0,
         };

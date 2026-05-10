@@ -19,8 +19,9 @@ use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
-    ConstId, EnumId, EnumVariantId, EnumVariantLoc, ExternBlockId, FunctionId, HasModule, ImplId,
-    ItemContainerId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
+    ConstId, EnumId, EnumVariantId, EnumVariantLoc, ExternBlockId, FunctionId, FxIndexMap,
+    HasModule, ImplId, ItemContainerId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
+    UnionId, VariantId,
     attrs::AttrFlags,
     db::DefDatabase,
     expr_store::{
@@ -1055,7 +1056,7 @@ pub struct InactiveEnumVariantCode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariants {
-    pub variants: Box<[(EnumVariantId, Name, FieldsShape)]>,
+    pub variants: FxIndexMap<Name, (EnumVariantId, FieldsShape)>,
 }
 
 #[salsa::tracked]
@@ -1071,23 +1072,24 @@ impl EnumVariants {
 
         let mut diagnostics = ThinVec::new();
         let cfg_options = loc.container.krate(db).cfg_options(db);
-        let mut index = 0;
         let Some(variants) = source.value.variant_list() else {
-            return (EnumVariants { variants: Box::default() }, None);
+            return (EnumVariants { variants: FxIndexMap::default() }, None);
         };
-        let variants = variants
+        let mut variants = variants
             .variants()
             .filter_map(|variant| {
                 let ast_id = ast_id_map.ast_id(&variant);
                 match AttrFlags::is_cfg_enabled_for(&variant, cfg_options) {
                     Ok(()) => {
-                        let enum_variant =
-                            EnumVariantLoc { id: source.with_value(ast_id), parent: e, index }
-                                .intern(db);
-                        index += 1;
                         let name = as_name_opt(variant.name());
+                        let enum_variant = EnumVariantLoc {
+                            id: source.with_value(ast_id),
+                            parent: e,
+                            name: name.clone(),
+                        }
+                        .intern(db);
                         let shape = adt_shape(variant.kind());
-                        Some((enum_variant, name, shape))
+                        Some((name, (enum_variant, shape)))
                     }
                     Err(cfg) => {
                         diagnostics.push(InactiveEnumVariantCode {
@@ -1099,7 +1101,8 @@ impl EnumVariants {
                     }
                 }
             })
-            .collect();
+            .collect::<FxIndexMap<_, _>>();
+        variants.shrink_to_fit();
 
         (EnumVariants { variants }, diagnostics.is_empty().not().then_some(diagnostics))
     }
@@ -1107,26 +1110,28 @@ impl EnumVariants {
 
 impl EnumVariants {
     pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
-        self.variants.iter().find_map(|(v, n, _)| if n == name { Some(*v) } else { None })
+        self.variants.get(name).map(|&(id, _)| id)
     }
 
     pub fn variant_name_by_id(&self, variant_id: EnumVariantId) -> Option<Name> {
         self.variants
             .iter()
-            .find_map(|(id, name, _)| if *id == variant_id { Some(name.clone()) } else { None })
+            .find_map(|(name, (id, _))| if *id == variant_id { Some(name.clone()) } else { None })
     }
 
     // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
     pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
-        self.variants.iter().all(|&(v, _, _)| {
+        self.variants.values().all(|&(v, shape)| {
             // The condition check order is slightly modified from rustc
             // to improve performance by early returning with relatively fast checks
-            let variant = v.fields(db);
-            if !variant.fields().is_empty() {
-                return false;
-            }
+
             // The outer if condition is whether this variant has const ctor or not
-            if !matches!(variant.shape, FieldsShape::Unit) {
+            if !matches!(shape, FieldsShape::Unit) {
+                let variant = v.fields(db);
+                if !variant.fields().is_empty() {
+                    return false;
+                }
+
                 let body = Body::of(db, v.into());
                 // A variant with explicit discriminant
                 if !matches!(body[body.root_expr()], crate::hir::Expr::Missing) {

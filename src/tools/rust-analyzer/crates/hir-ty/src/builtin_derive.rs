@@ -305,7 +305,7 @@ fn simple_trait_predicates<'db>(
             loc.trait_,
         ),
         AdtId::EnumId(id) => {
-            for &(variant_id, _, _) in &id.enum_variants(interner.db).variants {
+            for &(variant_id, _) in id.enum_variants(interner.db).variants.values() {
                 extend_assoc_type_bounds(
                     interner,
                     &mut assoc_type_bounds,

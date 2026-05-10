@@ -990,13 +990,7 @@ fn render_const_scalar_inner<'db>(
                         return f.write_str("<failed-to-detect-variant>");
                     };
                     let loc = var_id.lookup(f.db);
-                    write!(
-                        f,
-                        "{}",
-                        loc.parent.enum_variants(f.db).variants[loc.index as usize]
-                            .1
-                            .display(f.db, f.edition())
-                    )?;
+                    write!(f, "{}", loc.name.display(f.db, f.edition()))?;
                     let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
                         var_id.fields(f.db),
@@ -1362,13 +1356,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     }
                     CallableDefId::EnumVariantId(e) => {
                         let loc = e.lookup(db);
-                        write!(
-                            f,
-                            "{}",
-                            loc.parent.enum_variants(db).variants[loc.index as usize]
-                                .1
-                                .display(db, f.edition())
-                        )?
+                        write!(f, "{}", loc.name.display(db, f.edition()))?
                     }
                 };
                 f.end_location_link();

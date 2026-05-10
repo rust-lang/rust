@@ -100,8 +100,8 @@ fn has_drop_glue_impl<'db>(
                 AdtId::EnumId(id) => id
                     .enum_variants(db)
                     .variants
-                    .iter()
-                    .map(|&(variant, _, _)| {
+                    .values()
+                    .map(|&(variant, _)| {
                         db.field_types(variant.into())
                             .iter()
                             .map(|(_, field_ty)| {

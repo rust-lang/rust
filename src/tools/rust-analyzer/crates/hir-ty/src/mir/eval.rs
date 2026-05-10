@@ -844,7 +844,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                         Variants::Multiple { variants, .. } => {
                             &variants[match f.parent {
                                 hir_def::VariantId::EnumVariantId(it) => {
-                                    RustcEnumVariantIdx(it.lookup(self.db).index as usize)
+                                    RustcEnumVariantIdx(it.index(self.db))
                                 }
                                 _ => {
                                     return Err(MirEvalError::InternalError(
@@ -1837,8 +1837,7 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
                     _ => not_supported!("multi variant layout for non-enums"),
                 };
                 let mut discriminant = self.const_eval_discriminant(enum_variant_id)?;
-                let lookup = enum_variant_id.lookup(self.db);
-                let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
+                let rustc_enum_variant_idx = RustcEnumVariantIdx(enum_variant_id.index(self.db));
                 let variant_layout = variants[rustc_enum_variant_idx].clone();
                 let have_tag = match tag_encoding {
                     TagEncoding::Direct => true,

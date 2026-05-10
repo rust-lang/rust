@@ -608,8 +608,8 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
             hir_def::AdtId::EnumId(id) => id
                 .enum_variants(db)
                 .variants
-                .iter()
-                .flat_map(|&(variant_id, _, _)| field_tys(variant_id.into()))
+                .values()
+                .flat_map(|&(variant_id, _)| field_tys(variant_id.into()))
                 .collect(),
         };
 

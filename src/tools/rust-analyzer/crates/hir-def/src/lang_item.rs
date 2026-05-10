@@ -74,7 +74,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     lang_items.collect_lang_item(db, e);
-                    e.enum_variants(db).variants.iter().for_each(|&(id, _, _)| {
+                    e.enum_variants(db).variants.values().for_each(|&(id, _)| {
                         lang_items.collect_lang_item(db, id);
                     });
                 }

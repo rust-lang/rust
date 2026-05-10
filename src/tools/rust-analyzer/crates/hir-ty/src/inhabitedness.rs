@@ -125,7 +125,7 @@ impl<'a, 'db> UninhabitedFrom<'a, 'db> {
             AdtId::EnumId(e) => {
                 let enum_data = e.enum_variants(self.db());
 
-                for &(variant, _, _) in enum_data.variants.iter() {
+                for &(variant, _) in enum_data.variants.values() {
                     let variant_inhabitedness = self.visit_variant(variant.into(), subst);
                     match variant_inhabitedness {
                         Break(VisiblyUninhabited) => (),
