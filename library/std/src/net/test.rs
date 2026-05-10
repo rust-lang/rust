@@ -7,6 +7,13 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 static PORT: AtomicUsize = AtomicUsize::new(0);
 const BASE_PORT: u16 = 19600;
 
+/// A localhost address whose port will be picked automatically by the OS.
+pub const LOCALHOST_IP4: SocketAddr =
+    SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 0));
+/// A localhost address whose port will be picked automatically by the OS.
+pub const LOCALHOST_IP6: SocketAddr =
+    SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), 0, 0, 0));
+
 pub fn next_test_ip4() -> SocketAddr {
     let port = PORT.fetch_add(1, Ordering::Relaxed) as u16 + BASE_PORT;
     SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))
