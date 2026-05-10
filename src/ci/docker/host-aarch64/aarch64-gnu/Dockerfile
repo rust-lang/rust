@@ -16,10 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config \
   xz-utils \
-  clang \
+  clang-21 \
   lld \
-  && rm -rf /var/lib/apt/lists/* \
-  && ln -sf /usr/bin/clang /usr/local/bin/clang++
+  && rm -rf /var/lib/apt/lists/*
+  
   
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

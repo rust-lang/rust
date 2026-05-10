@@ -18,6 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gdb \
   llvm-21-tools \
   llvm-21-dev \
+  clang-21 \
+  lld \
   libedit-dev \
   libssl-dev \
   pkg-config \
