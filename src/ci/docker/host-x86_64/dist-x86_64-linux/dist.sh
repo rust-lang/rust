@@ -2,15 +2,12 @@
 
 set -eux
 
-python3 ../x.py build --set rust.debug=true opt-dist
-
-./build/$HOSTS/stage1-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
+# TESTING-ONLY CHANGES.
+touch github-summary.md
+python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
-    --include-default-paths \
-    build-manifest \
-    bootstrap \
-    enzyme \
-    rustc_codegen_gcc
+    --set "rust.codegen-backends=['llvm']" \
+    rustc rust-std cargo rust-src
 
 # Use GCC for building GCC components, as it seems to behave badly when built with Clang
 # Only build GCC on full builds, not try builds
