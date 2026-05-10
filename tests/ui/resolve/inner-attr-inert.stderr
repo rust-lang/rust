@@ -1,0 +1,153 @@
+error: an inner attribute is not permitted in this context
+  --> $DIR/inner-attr-inert.rs:120:5
+   |
+LL |       #![clippy::example]
+   |       ^^^^^^^^^^^^^^^^^^^
+...
+LL | / const _: () = {
+LL | |     #![clippy::example]
+LL | |     #![clippy::non_existing]
+LL | | };
+   | |__- the inner attribute doesn't annotate this constant item
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+
+error[E0432]: unresolved import `helper`
+  --> $DIR/inner-attr-inert.rs:69:13
+   |
+LL |         use helper as helper_renamed;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ no `helper` in the root
+
+error[E0432]: unresolved import `rustfmt`
+  --> $DIR/inner-attr-inert.rs:35:9
+   |
+LL |     use rustfmt as rust_fmt;
+   |         ^^^^^^^^^^^^^^^^^^^ no `rustfmt` in the root
+   |
+note: these modules exist but are inaccessible
+  --> $DIR/inner-attr-inert.rs:19:5
+   |
+LL |     mod rustfmt {}
+   |     ^^^^^^^^^^^ `rustfmt_ambig_unresolved::rustfmt`: not accessible
+...
+LL |     mod rustfmt {
+   |     ^^^^^^^^^^^ `rustfmt_ambig::rustfmt`: not accessible
+...
+LL |         () => { mod rustfmt {} };
+   |                 ^^^^^^^^^^^ `rustfmt_ambig_via_macro::rustfmt`: not accessible
+...
+LL |     define!();
+   |     --------- in this macro invocation
+   = note: this error originates in the macro `define` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: cannot find `skip` in `rustfmt`
+  --> $DIR/inner-attr-inert.rs:15:17
+   |
+LL |     #![rustfmt::skip]
+   |                 ^^^^ could not find `skip` in `rustfmt`
+
+error[E0433]: cannot find `skip` in `rustfmt`
+  --> $DIR/inner-attr-inert.rs:77:17
+   |
+LL |     #![rustfmt::skip]
+   |                 ^^^^ could not find `skip` in `rustfmt`
+
+error[E0433]: cannot find `non_existing` in `clippy`
+  --> $DIR/inner-attr-inert.rs:107:16
+   |
+LL |     #![clippy::non_existing]
+   |                ^^^^^^^^^^^^ could not find `non_existing` in `clippy`
+
+error[E0433]: cannot find `non_existing` in `clippy`
+  --> $DIR/inner-attr-inert.rs:115:16
+   |
+LL |     #![clippy::non_existing]
+   |                ^^^^^^^^^^^^ could not find `non_existing` in `clippy`
+
+error[E0433]: cannot find `non_existing` in `clippy`
+  --> $DIR/inner-attr-inert.rs:136:16
+   |
+LL |     #![clippy::non_existing]
+   |                ^^^^^^^^^^^^ could not find `non_existing` in `clippy`
+
+error: cannot find attribute `helper` in this scope
+  --> $DIR/inner-attr-inert.rs:57:16
+   |
+LL |             #![helper]
+   |                ^^^^^^
+   |
+   = note: `helper` is an attribute that can be used by the derive macro `has_helper_attr`, you might be missing a `derive` attribute
+
+error: cannot find attribute `helper` in this scope
+  --> $DIR/inner-attr-inert.rs:61:20
+   |
+LL |                 #![helper]
+   |                    ^^^^^^
+   |
+help: `helper` is an attribute that can be used by the derive macro `has_helper_attr`, you might be missing a `derive` attribute
+   |
+LL +             #[derive(has_helper_attr)]
+LL |             mod inner {
+   |
+
+error: cannot find attribute `clippy` in this scope
+  --> $DIR/inner-attr-inert.rs:130:8
+   |
+LL |     #![clippy]
+   |        ^^^^^^
+
+error[E0659]: `rustfmt` is ambiguous
+  --> $DIR/inner-attr-inert.rs:15:8
+   |
+LL |     #![rustfmt::skip]
+   |        ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `rustfmt` could refer to a tool module
+note: `rustfmt` could also refer to the module defined here
+  --> $DIR/inner-attr-inert.rs:19:5
+   |
+LL |     mod rustfmt {}
+   |     ^^^^^^^^^^^^^^
+   = help: use `self::rustfmt` to refer to this module unambiguously
+
+error[E0659]: `rustfmt` is ambiguous
+  --> $DIR/inner-attr-inert.rs:24:8
+   |
+LL |     #![rustfmt::skip]
+   |        ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `rustfmt` could refer to a tool module
+note: `rustfmt` could also refer to the module defined here
+  --> $DIR/inner-attr-inert.rs:27:5
+   |
+LL | /     mod rustfmt {
+LL | |         pub macro skip() {}
+LL | |     }
+   | |_____^
+   = help: use `self::rustfmt` to refer to this module unambiguously
+
+error[E0659]: `rustfmt` is ambiguous
+  --> $DIR/inner-attr-inert.rs:77:8
+   |
+LL |     #![rustfmt::skip]
+   |        ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+   = note: `rustfmt` could refer to a tool module
+note: `rustfmt` could also refer to the module defined here
+  --> $DIR/inner-attr-inert.rs:82:17
+   |
+LL |         () => { mod rustfmt {} };
+   |                 ^^^^^^^^^^^^^^
+...
+LL |     define!();
+   |     --------- in this macro invocation
+   = help: use `self::rustfmt` to refer to this module unambiguously
+   = note: this error originates in the macro `define` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0432, E0433, E0659.
+For more information about an error, try `rustc --explain E0432`.
