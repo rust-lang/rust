@@ -243,25 +243,35 @@ pub(crate) struct HashableCrateHeader {
 #[derive(StableHash, Debug)]
 pub(crate) struct HashableCrateRoot {
     // FIXME do we need to hash this?
+    // everything_downstream
     pub(crate) header: HashableCrateHeader,
 
     // FIXME do we need to hash this?
+    // everything downstream
     pub(crate) extra_filename: String,
     // FIXME do we need to hash this?
+    // everything_downstream
     pub(crate) stable_crate_id: StableCrateId,
     // FIXME do we need to hash this?
+    // everything_downstream, right?
     pub(crate) required_panic_strategy: Option<PanicStrategy>,
     // FIXME do we need to hash this?
+    // everything_downstream, right?
     pub(crate) panic_in_drop_strategy: PanicStrategy,
     // FIXME do we need to hash this?
+    // macro expansion in downstream crates uses it, only relevant for publicly reachable macros
     pub(crate) edition: Edition,
     // FIXME do we need to hash this?
+    // everything_downstream, there can only be a single one globally
     pub(crate) has_global_allocator: bool,
     // FIXME do we need to hash this?
+    // everything_downstream, there can only be a single one globally
     pub(crate) has_alloc_error_handler: bool,
     // FIXME do we need to hash this?
+    // everything_downstream, there can only be a single one globally
     pub(crate) has_panic_handler: bool,
     // FIXME do we need to hash this?
+    // everything_downstream, there can only be a single one globally
     pub(crate) has_default_lib_allocator: bool,
     // Changing externally implementable items should cause recompiles in all downstream crates.
     // FIXME EiiDecl and EiiImpl contain spans. Should changing the span of these items cause
@@ -269,88 +279,131 @@ pub(crate) struct HashableCrateRoot {
     // FIXME eii-s are collected in `rustc_metadata::eii::collect`. We should probably stable sort
     // that there to make the query result more stable (but sorting might be useless if this
     // should be sensitive to span changes)
+    // everything_downstream, there can only be a single one of each eii globally
     pub(crate) externally_implementable_items: Hashed<LazyArray<EiiMapEncodedKeyValue>>,
 
     // FIXME do we need to hash this?
+    // we only need the everything_downstream hashes from here included in our everything_downstream
     pub(crate) crate_deps: Hashed<LazyArray<CrateDep>>,
     // FIXME do we need to hash this?
+    // lets say everything_downstream, but not sure
     pub(crate) dylib_dependency_formats: Hashed<LazyArray<Option<LinkagePreference>>>,
     // FIXME do we need to hash this?
+    // lets say everything_downstream, but not sure
     pub(crate) lib_features: Hashed<LazyArray<(Symbol, FeatureStability)>>,
     // FIXME do we need to hash this?
+    // lets say everything_downstream, but not sure
     pub(crate) stability_implications: Hashed<LazyArray<(Symbol, Symbol)>>,
     // FIXME do we need to hash this?
+    // everything_downstream, lang items impls are checked for uniqueness globally
     pub(crate) lang_items: Hashed<LazyArray<(DefIndex, LangItem)>>,
     // FIXME do we need to hash this?
+    // everything_downstream, lang items impls are checked for uniqueness globally
     pub(crate) lang_items_missing: Hashed<LazyArray<LangItem>>,
     // FIXME do we need to hash this?
+    // private_hash, only used when we are creating error diagnostics
     pub(crate) stripped_cfg_items: Hashed<LazyArray<StrippedCfgItem<DefIndex>>>,
     // FIXME do we need to hash this?
+    // lets say everything_downstream for now, I think this is mostly used in the std
     pub(crate) diagnostic_items: Hashed<LazyArray<(Symbol, DefIndex)>>,
     // FIXME do we need to hash this?
+    // let say everything_downstream
     pub(crate) native_libraries: Hashed<LazyArray<NativeLib>>,
     // FIXME do we need to hash this?
+    // dont know what this is used for. doc says `extern` blocks
     pub(crate) foreign_modules: Hashed<LazyArray<ForeignModule>>,
     // FIXME do we need to hash this?
+    // the traits defined in this crate. Definitely not needed in everything_downstream as is
+    // maybe we can leak private traits through MIR?
     pub(crate) traits: Hashed<LazyArray<DefIndex>>,
     // FIXME do we need to hash this?
+    // the traits impls in this crate. Definitely not needed in everything_downstream as is
+    // how is it needed?
     pub(crate) impls: Hashed<LazyArray<TraitImpls>>,
     // FIXME do we need to hash this?
+    // what is this used for
     pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
     // FIXME do we need to hash this?
+    // what is this used for, some kind of const eval?
     pub(crate) interpret_alloc_index: Hashed<LazyArray<u64>>,
     // FIXME do we need to hash this?
+    // proc macro, ignored
     pub(crate) proc_macro_data: NoneIfHashed<ProcMacroData>,
 
     // FIXME do we need to hash this?
+    // do it by table
     pub(crate) tables: Hashed<LazyTables>,
     // FIXME do we need to hash this?
+    // likely don't only private. Do debuggers use this when debugging the linked binary? Then this
+    // is private_hash
     pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
 
     // FIXME do we need to hash this?
+    // what is this, the ones marked a `pub`?
     pub(crate) exportable_items: Hashed<LazyArray<DefIndex>>,
     // FIXME do we need to hash this?
+    // what is this extactly, used for diagnostics
     pub(crate) stable_order_of_exportable_impls: Hashed<LazyArray<(DefIndex, usize)>>,
     // FIXME do we need to hash this?
+    // what is this
     pub(crate) exported_non_generic_symbols:
         Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
     // FIXME do we need to hash this?
+    // i think this is used to find upstream_monomorphizations or what
     pub(crate) exported_generic_symbols:
         Hashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>>,
 
     // FIXME do we need to hash this?
+    // some kind of macro expansion stuff?
     pub(crate) syntax_contexts: Hashed<SyntaxContextTable>,
     // FIXME do we need to hash this?
+    // some kind of macro expansion stuff?
     pub(crate) expn_data: Hashed<ExpnDataTable>,
     // FIXME do we need to hash this?
+    // some kind of macro expansion stuff?
     pub(crate) expn_hashes: Hashed<ExpnHashTable>,
 
     // FIXME do we need to hash this?
+    // we stbale hash all localdefids currently to get this. Likely only need the ones that are
+    // somehow reachable
     pub(crate) def_path_hash_map: Hashed<LazyValue<DefPathHashMapRef<'static>>>,
 
     // FIXME do we need to hash this?
+    // used for diagnostics and line info generation in codegen? To map span data to line/column
+    // data
+    // we need this while the spans are encoded like that.
     pub(crate) source_map: Hashed<LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>>,
     // FIXME do we need to hash this?
+    // everything_downstream, prbably not changing much
     pub(crate) target_modifiers: Hashed<LazyArray<TargetModifier>>,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) denied_partial_mitigations: Hashed<LazyArray<DeniedPartialMitigation>>,
 
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) compiler_builtins: bool,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) needs_allocator: bool,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) needs_panic_runtime: bool,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) no_builtins: bool,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) panic_runtime: bool,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) profiler_runtime: bool,
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) symbol_mangling_version: SymbolManglingVersion,
 
     // FIXME do we need to hash this?
+    // everything_downstream?
     pub(crate) specialization_enabled_in: bool,
 }
 
