@@ -7083,7 +7083,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal]]}]]
       - *neon-stable
     safety: safe
     types:
@@ -7111,7 +7111,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {neon_type[2]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -7197,7 +7197,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl]]}]]
       - *neon-stable
     safety: safe
     types:
@@ -7225,7 +7225,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {neon_type[2]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -14186,7 +14186,7 @@ intrinsics:
     safety: safe
     big_endian_inverse: true
     types:
-      - ['vget_high_f64', 'float64x2_t', 'float64x1_t', 'fmov', 'float64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_f64', 'float64x2_t', 'float64x1_t', 'nop', 'float64x1_t([simd_extract!(a, 1)])']
       - ['vget_low_f64', 'float64x2_t', 'float64x1_t', 'nop', 'float64x1_t([simd_extract!(a, 0)])']
     compose:
       - Identifier: ['{type[4]}', UnsafeSymbol]
