@@ -282,32 +282,28 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, segment) => {
-                if let Res::Err = segment.res {
-                    // FIXME: This doesn't work for paths in *types* since HIR ty lowering currently
-                    //        doesn't write back the resolution of type-relative paths. Updating it
-                    //        to do so should be a simple fix.
-                    // FIXME: This obviously doesn't support item signatures / non-bodies. Sadly,
-                    //        rustc currently doesn't keep around that information & thus can't
-                    //        provide an API for it.
-                    //        `ItemCtxt`s would need a place to write back the resolution of type-
-                    //        dependent definitions. Ideally there was some sort of query keyed on
-                    //        the `LocalDefId` of the owning item that returns some table with which
-                    //        we can map the `HirId` to a `DefId`.
-                    //        Of course, we could re-HIR-ty-lower such paths *here* if we were to
-                    //        extend the public API of HIR analysis. However, I strongly advise
-                    //        against it as it would be too much of a hack.
-                    if let Some(typeck_results) = self.maybe_typeck_results() {
-                        let path = hir::Path {
-                            // We change the span to not include parens.
-                            span: segment.ident.span,
-                            res: typeck_results.qpath_res(qpath, id),
-                            // FIXME(fmease): Don't create a path with zero segments!
-                            segments: &[],
-                        };
-                        self.handle_path(&path, false);
-                    }
-                } else {
-                    self.infer_id(segment.hir_id, Some(id), segment.ident.span.into());
+                // FIXME: This doesn't work for paths in *types* since HIR ty lowering currently
+                //        doesn't write back the resolution of type-relative paths. Updating it to
+                //        do so should be a simple fix.
+                // FIXME: This obviously doesn't support item signatures / non-bodies. Sadly, rustc
+                //        currently doesn't keep around that information & thus can't provide an API
+                //        for it.
+                //        `ItemCtxt`s would need a place to write back the resolution of type-
+                //        dependent definitions. Ideally there was some sort of query keyed on the
+                //        `LocalDefId` of the owning item that returns some table with which we can
+                //        map the `HirId` to a `DefId`.
+                //        Of course, we could re-HIR-ty-lower such paths *here* if we were to extend
+                //        the public API of HIR analysis. However, I strongly advise against it as
+                //        it would be too much of a hack.
+                if let Some(typeck_results) = self.maybe_typeck_results() {
+                    let path = hir::Path {
+                        // We change the span to not include parens.
+                        span: segment.ident.span,
+                        res: typeck_results.qpath_res(qpath, id),
+                        // FIXME(fmease): Don't create a path with zero segments!
+                        segments: &[],
+                    };
+                    self.handle_path(&path, false);
                 }
 
                 rustc_ast::visit::try_visit!(self.visit_ty_unambig(qself));
