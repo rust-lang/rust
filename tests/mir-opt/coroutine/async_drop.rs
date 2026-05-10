@@ -1,5 +1,5 @@
 //@ skip-filecheck
-//@ compile-flags: -Zmir-opt-level=0 -Zvalidate-mir=no
+//@ compile-flags: -Zmir-opt-level=0
 //@ needs-unwind
 //@ edition: 2024
 

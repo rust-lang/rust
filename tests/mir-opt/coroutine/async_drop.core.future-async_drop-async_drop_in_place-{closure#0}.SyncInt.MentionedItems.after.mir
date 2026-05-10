@@ -4,9 +4,11 @@ fn async_drop_in_place::{closure#0}(_1: {async fn body of async_drop_in_place<Sy
 yields ()
  {
     let mut _0: ();
+    let mut _3: &mut SyncInt;
 
     bb0: {
-        drop((*(_1.0: &mut SyncInt))) -> [return: bb1, unwind continue];
+        _3 = no_retag copy (_1.0: &mut SyncInt);
+        drop((*_3)) -> [return: bb1, unwind continue];
     }
 
     bb1: {
