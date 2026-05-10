@@ -2934,7 +2934,8 @@ pub const fn type_id<T: ?Sized>() -> crate::any::TypeId;
 #[rustc_intrinsic]
 #[rustc_do_not_const_check]
 pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
-    a.data == b.data
+    // SAFETY: we know `TypeId` is 16 bytes of initialized data.
+    unsafe { crate::mem::transmute::<_, u128>(a) == crate::mem::transmute::<_, u128>(b) }
 }
 
 /// Gets the size of the type represented by this `TypeId`.
