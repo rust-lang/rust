@@ -135,37 +135,26 @@ impl<'tcx> SpanMapVisitor<'tcx> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
     fn handle_path(&mut self, path: &hir::Path<'_>, only_use_last_segment: bool) {
         match path.res {
-            // FIXME: For now, we handle `DefKind` if it's not a `DefKind::TyParam`.
-            // Would be nice to support them too alongside the other `DefKind`
-            // (such as primitive types!).
-            Res::Def(kind, def_id) if kind != DefKind::TyParam => {
+            // FIXME: Properly support type parameters. Note they resolve just fine. The issue is
+            // that our highlighter would then also linkify their *definition site* for some reason
+            // linking them to themselves. Const parameters don't exhibit this issue.
+            Res::Def(DefKind::TyParam, _) => {}
+            Res::Def(_, def_id) => {
+                // The segments can be empty for `use *;` in a non-crate-root scope in Rust 2015.
+                let span = path.segments.last().map_or(path.span, |seg| seg.ident.span);
                 // In case the path ends with generics, we remove them from the span.
-                let span = if only_use_last_segment
-                    && let Some(path_span) = path.segments.last().map(|segment| segment.ident.span)
-                {
-                    path_span
+                let span = if only_use_last_segment {
+                    span
                 } else {
-                    path.segments
-                        .last()
-                        .map(|last| {
-                            // In `use` statements, the included item is not in the path segments.
-                            // However, it doesn't matter because you can't have generics on `use`
-                            // statements.
-                            if path.span.contains(last.ident.span) {
-                                path.span.with_hi(last.ident.span.hi())
-                            } else {
-                                path.span
-                            }
-                        })
-                        .unwrap_or(path.span)
+                    // In `use` statements, the included item is not in the path segments. However,
+                    // it doesn't matter because you can't have generics on `use` statements.
+                    if path.span.contains(span) { path.span.with_hi(span.hi()) } else { path.span }
                 };
                 self.matches.insert(span.into(), self.link_for_def(def_id));
             }
             Res::Local(_) if let Some(span) = self.tcx.hir_res_span(path.res) => {
-                let path_span = if only_use_last_segment
-                    && let Some(path_span) = path.segments.last().map(|segment| segment.ident.span)
-                {
-                    path_span
+                let path_span = if only_use_last_segment {
+                    path.segments.last().unwrap().ident.span
                 } else {
                     path.span
                 };
@@ -176,7 +165,6 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 self.matches
                     .insert(path.span.into(), LinkFromSrc::Primitive(PrimitiveType::from(p)));
             }
-            Res::Err => {}
             _ => {}
         }
     }
@@ -288,8 +276,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                         // We change the span to not include parens.
                         span: segment.ident.span,
                         res: typeck_results.qpath_res(qpath, id),
-                        // FIXME(fmease): Don't create a path with zero segments!
-                        segments: &[],
+                        segments: std::slice::from_ref(segment),
                     };
                     self.handle_path(&path, false);
                 }
