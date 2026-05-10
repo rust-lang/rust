@@ -259,7 +259,7 @@ fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 fn unpack_try<'a>(cx: &LateContext<'_>, mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     while let ExprKind::Call(func, [arg_0]) = expr.kind
         && let ExprKind::Path(qpath) = func.kind
-        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::TryTraitBranch)
+        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::TryBranch)
     {
         expr = arg_0;
     }

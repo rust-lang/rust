@@ -337,7 +337,7 @@ fn parse_iter_usage<'tcx>(
                     ..
                 },
                 [_],
-            ) if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch) => {
+            ) if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryBranch) => {
                 let parent_span = e.span.parent_callsite().unwrap();
                 if parent_span.ctxt() == ctxt {
                     (Some(UnwrapKind::QuestionMark), parent_span)

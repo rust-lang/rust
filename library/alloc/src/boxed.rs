@@ -476,7 +476,7 @@ impl<T> Box<T> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<Box<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<Box<R::Output>>>::Try
     where
         R: Try,
         R::Residual: Residual<Box<R::Output>>,

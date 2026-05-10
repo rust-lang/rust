@@ -723,7 +723,7 @@ impl<T> Arc<T> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(&T) -> R,
-    ) -> <R::Residual as Residual<Arc<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<Arc<R::Output>>>::Try
     where
         R: Try,
         R::Residual: Residual<Arc<R::Output>>,
@@ -4697,7 +4697,7 @@ impl<T> UniqueArc<T, Global> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<UniqueArc<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<UniqueArc<R::Output>>>::Try
     where
         R: Try,
         R::Residual: Residual<UniqueArc<R::Output>>,

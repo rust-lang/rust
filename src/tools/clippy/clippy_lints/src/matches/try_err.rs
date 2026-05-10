@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
     // };
     if let ExprKind::Call(match_fun, [try_arg]) = scrutinee.kind
         && let ExprKind::Path(match_fun_path) = match_fun.kind
-        && cx.tcx.qpath_is_lang_item(match_fun_path, LangItem::TryTraitBranch)
+        && cx.tcx.qpath_is_lang_item(match_fun_path, LangItem::TryBranch)
         && let ExprKind::Call(err_fun, [err_arg]) = try_arg.kind
         && err_fun.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
         && let Some(return_ty) = find_return_type(cx, &expr.kind)

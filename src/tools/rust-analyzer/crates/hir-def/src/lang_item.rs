@@ -456,11 +456,14 @@ language_item_table! { LangItems =>
     SliceLen,                sym::slice_len_fn,        FunctionId;
 
     // Language items from AST lowering
-    TryTraitFromResidual,    sym::from_residual,       FunctionId;
-    TryTraitFromOutput,      sym::from_output,         FunctionId;
-    TryTraitBranch,          sym::branch,              FunctionId;
-    TryTraitFromYeet,        sym::from_yeet,           FunctionId;
-    ResidualIntoTryType,     sym::into_try_type,       FunctionId;
+    TryFromResidual,    sym::from_residual,       FunctionId;
+    TryFromOutput,      sym::from_output,         FunctionId;
+    TryBranch,          sym::branch,              FunctionId;
+    TryFromYeet,        sym::from_yeet,           FunctionId;
+    ResidualIntoTry,    sym::into_try,            FunctionId;
+    // TODO: remove when dropping support for the last stable toolchain using `into_try_type`,
+    //       see https://github.com/rust-lang/rust/pull/155229
+    ResidualIntoTryOld, sym::into_try_type,       FunctionId;
 
     PointerLike,             sym::pointer_like,        TraitId;
 

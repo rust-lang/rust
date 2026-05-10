@@ -136,14 +136,14 @@ pub fn call_kind<'tcx>(
     {
         Some((CallDesugaringKind::ForLoopNext, method_args.type_at(0)))
     } else if fn_call_span.desugaring_kind() == Some(DesugaringKind::QuestionMark) {
-        if tcx.is_lang_item(method_did, LangItem::TryTraitBranch) {
+        if tcx.is_lang_item(method_did, LangItem::TryBranch) {
             Some((CallDesugaringKind::QuestionBranch, method_args.type_at(0)))
-        } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromResidual) {
+        } else if tcx.is_lang_item(method_did, LangItem::TryFromResidual) {
             Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(0)))
         } else {
             None
         }
-    } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromOutput)
+    } else if tcx.is_lang_item(method_did, LangItem::TryFromOutput)
         && fn_call_span.desugaring_kind() == Some(DesugaringKind::TryBlock)
     {
         Some((CallDesugaringKind::TryBlockFromOutput, method_args.type_at(0)))

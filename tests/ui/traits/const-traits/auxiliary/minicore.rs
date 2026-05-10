@@ -133,7 +133,7 @@ pub const trait Drop {
 }
 
 pub const trait Residual<O> {
-    type TryType: [const] Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
+    type Try: [const] Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
 }
 
 const fn size_of<T>() -> usize {

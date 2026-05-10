@@ -48,7 +48,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
                 ExprKind::Call(hir_callee, [_]) => matches!(
                     hir_callee.kind,
                     ExprKind::Path(qpath)
-                    if cx.tcx.qpath_is_lang_item(qpath, rustc_hir::LangItem::TryTraitBranch)
+                    if cx.tcx.qpath_is_lang_item(qpath, rustc_hir::LangItem::TryBranch)
                 ),
                 ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)
