@@ -9,7 +9,7 @@ use std::borrow::Borrow;
 use std::sync::Arc;
 use std::{debug_assert_matches, mem};
 
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -551,9 +551,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // the drop order for the first sub-branch, we lower sub-branches in reverse (#142163).
             let target_block = self.cfg.start_new_block();
             for (pos, sub_branch) in branch.sub_branches.into_iter().rev().with_position() {
-                debug_assert!(pos != Position::Only);
+                debug_assert!(!pos.is_exactly_one());
                 let schedule_drops =
-                    if pos == Position::Last { ScheduleDrops::Yes } else { ScheduleDrops::No };
+                    if pos.is_last() { ScheduleDrops::Yes } else { ScheduleDrops::No };
                 let binding_end = self.bind_and_guard_matched_candidate(
                     sub_branch,
                     fake_borrow_temps,

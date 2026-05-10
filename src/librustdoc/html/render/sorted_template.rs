@@ -3,7 +3,7 @@ use std::fmt::{self, Write as _};
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-use itertools::{Itertools as _, Position};
+use itertools::Itertools as _;
 use serde::{Deserialize, Serialize};
 
 /// Append-only templates for sorted, deduplicated lists of items.
@@ -62,7 +62,7 @@ impl<F: FileFormat> fmt::Display for SortedTemplate<F> {
         write!(f, "{}", self.before)?;
         for (p, fragment) in self.fragments.iter().with_position() {
             let mut f = DeltaWriter { inner: &mut f, delta: 0 };
-            let sep = if matches!(p, Position::First | Position::Only) { "" } else { F::SEPARATOR };
+            let sep = if p.is_first() { "" } else { F::SEPARATOR };
             f.write_str(sep)?;
             f.write_str(fragment)?;
             fragment_lengths.push(f.delta);
@@ -95,7 +95,7 @@ impl<F: FileFormat> FromStr for SortedTemplate<F> {
             let (fragment, rest) =
                 s.split_at_checked(index).ok_or(Error("invalid fragment length: out of bounds"))?;
             s = rest;
-            let sep = if matches!(p, Position::First | Position::Only) { "" } else { F::SEPARATOR };
+            let sep = if p.is_first() { "" } else { F::SEPARATOR };
             let fragment = fragment
                 .strip_prefix(sep)
                 .ok_or(Error("invalid fragment length: expected to find separator here"))?;
