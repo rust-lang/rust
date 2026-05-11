@@ -301,12 +301,12 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         }
         Mir => {
             let mut out = Vec::new();
-            write_mir_pretty(ex.tcx(), None, &mut out).unwrap();
+            write_mir_pretty(ex.tcx(), &mut out).unwrap();
             String::from_utf8(out).unwrap()
         }
         MirCFG => {
             let mut out = Vec::new();
-            write_mir_graphviz(ex.tcx(), None, &mut out).unwrap();
+            write_mir_graphviz(ex.tcx(), &mut out).unwrap();
             String::from_utf8(out).unwrap()
         }
         StableMir => {

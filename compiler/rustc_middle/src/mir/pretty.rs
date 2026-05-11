@@ -312,13 +312,9 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Whole MIR bodies
 
-/// Write out a human-readable textual representation for the given MIR, with the default
-/// [PrettyPrintMirOptions].
-pub fn write_mir_pretty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    single: Option<DefId>,
-    w: &mut dyn io::Write,
-) -> io::Result<()> {
+/// Write out a human-readable textual representation of this crate's MIR,
+/// with the default [`PrettyPrintMirOptions`].
+pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
     let writer = MirWriter::new(tcx);
 
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
@@ -326,7 +322,7 @@ pub fn write_mir_pretty<'tcx>(
     writeln!(w, "// HINT: See also -Z dump-mir for MIR at specific points during compilation.")?;
 
     let mut first = true;
-    for def_id in dump_mir_def_ids(tcx, single) {
+    for &def_id in tcx.mir_keys(()) {
         if first {
             first = false;
         } else {
@@ -360,7 +356,7 @@ pub fn write_mir_pretty<'tcx>(
                 }
                 writeln!(w, ": {} = const {};", ty, Const::Val(val, ty))?;
             } else {
-                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
+                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id.to_def_id()));
                 render_body(w, instance_mir)?;
             }
         }
@@ -696,14 +692,6 @@ fn write_user_type_annotations(
         writeln!(w, "|")?;
     }
     Ok(())
-}
-
-pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
-    if let Some(i) = single {
-        vec![i]
-    } else {
-        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
