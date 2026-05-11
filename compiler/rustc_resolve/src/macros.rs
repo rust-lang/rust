@@ -175,10 +175,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn resolve_dollar_crates(&self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
-            match self.resolve_crate_root(ident).kind {
-                ModuleKind::Def(.., name) if let Some(name) = name => name,
-                _ => kw::Crate,
-            }
+            self.resolve_crate_root(ident).name().unwrap_or(kw::Crate)
         });
     }
 
@@ -193,7 +190,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let output_macro_rules_scope = collect_definitions(self, fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
-        parent_scope.module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
+        let module = parent_scope.module.expect_local();
+        module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
         if let Some(unexpanded_invocations) =
             self.impl_unexpanded_invocations.get_mut(&self.invocation_parent(expansion))
         {
@@ -523,7 +521,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
-        if !target_trait.unexpanded_invocations.borrow().is_empty() {
+        if target_trait.has_unexpanded_invocations() {
             return Err(Indeterminate);
         }
         // FIXME: Instead of waiting try generating all trait methods, and pruning

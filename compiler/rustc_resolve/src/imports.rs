@@ -1790,7 +1790,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Add to module's glob_importers
-        module.glob_importers.borrow_mut_unchecked().push(import);
+        if module.is_local() {
+            module.glob_importers.borrow_mut_unchecked().push(import);
+        }
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.

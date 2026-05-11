@@ -643,10 +643,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(ControlFlow::Break(..)) => return decl,
                 }
             }
-            Scope::ModuleGlobs(module, _)
-                if let ModuleKind::Def(_, def_id, _, _) = module.kind
-                    && !def_id.is_local() =>
-            {
+            Scope::ModuleGlobs(module, _) if !module.is_local() => {
                 // Fast path: external module decoding only creates non-glob declarations.
                 Err(Determined)
             }
@@ -699,9 +696,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
                 Some(decl) => Ok(decl),
-                None => Err(Determinacy::determined(
-                    self.graph_root.unexpanded_invocations.borrow().is_empty(),
-                )),
+                None => Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations())),
             },
             Scope::BuiltinAttrs => match self.builtin_attr_decls.get(&ident.name) {
                 Some(decl) => Ok(*decl),
@@ -714,9 +709,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                 ) {
                     Some(decl) => Ok(decl),
-                    None => Err(Determinacy::determined(
-                        self.graph_root.unexpanded_invocations.borrow().is_empty(),
-                    )),
+                    None => {
+                        Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations()))
+                    }
                 }
             }
             Scope::ExternPreludeFlags => {
@@ -1126,6 +1121,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
         }
 
+        // In extern modules everything is determined from the start.
+        if !module.is_local() {
+            return Err(ControlFlow::Continue(Determined));
+        };
+
         // Check if one of single imports can still define the name, block if it can.
         if self.reborrow().single_import_can_define_name(
             &resolution,
@@ -1139,7 +1139,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Check if one of unexpanded macros can still define the name.
-        if !module.unexpanded_invocations.borrow().is_empty() {
+        if module.has_unexpanded_invocations() {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
@@ -1223,7 +1223,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // scopes we return `Undetermined` with `ControlFlow::Continue`.
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        if !module.unexpanded_invocations.borrow().is_empty() {
+        if module.has_unexpanded_invocations() {
             return Err(ControlFlow::Continue(Undetermined));
         }
 

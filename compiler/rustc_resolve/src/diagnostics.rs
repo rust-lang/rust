@@ -240,7 +240,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return self.report_conflict(ident, ns, new_binding, old_binding);
         }
 
-        let container = match old_binding.parent_module.unwrap().kind {
+        let container = match old_binding.parent_module.unwrap().expect_local().kind {
             // Avoid using TyCtxt::def_kind_descr in the resolver, because it
             // indirectly *calls* the resolver, and would cause a query cycle.
             ModuleKind::Def(kind, def_id, _, _) => kind.descr(def_id),
@@ -2597,7 +2597,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let module = module.to_module();
                         current_module.is_ancestor_of(module) && current_module != module
                     })
-                    .flat_map(|(_, module)| module.kind.name()),
+                    .flat_map(|(_, module)| module.name()),
             )
             .chain(
                 self.extern_module_map
@@ -2607,7 +2607,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let module = module.to_module();
                         current_module.is_ancestor_of(module) && current_module != module
                     })
-                    .flat_map(|(_, module)| module.kind.name()),
+                    .flat_map(|(_, module)| module.name()),
             )
             .filter(|c| !c.to_string().is_empty())
             .collect::<Vec<_>>();
@@ -2631,8 +2631,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> (String, String, Option<Suggestion>) {
         let is_last = failed_segment_idx == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
-        let module_res = match module {
-            Some(ModuleOrUniformRoot::Module(module)) => module.res(),
+        let module_def_id = match module {
+            Some(ModuleOrUniformRoot::Module(module)) => module.opt_def_id(),
             _ => None,
         };
         let scope = match &path[..failed_segment_idx] {
@@ -2647,7 +2647,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let message = format!("cannot find `{ident}` in {scope}");
 
-        if module_res == self.graph_root.res() {
+        if module_def_id == Some(CRATE_DEF_ID.to_def_id()) {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
             candidates
@@ -3145,7 +3145,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if !kinds.contains(MacroKinds::BANG) {
             return None;
         }
-        let module_name = crate_module.kind.name().unwrap_or(kw::Crate);
+        let module_name = crate_module.name().unwrap_or(kw::Crate);
         let import_snippet = match import.kind {
             ImportKind::Single { source, target, .. } if source != target => {
                 format!("{source} as {target}")
@@ -3290,20 +3290,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return cached;
                 }
                 visited.insert(parent_module, false);
-                let m = r.expect_module(parent_module);
                 let mut res = false;
-                for importer in m.glob_importers.borrow().iter() {
-                    if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id() {
-                        if next_parent_module == module
-                            || comes_from_same_module_for_glob(
-                                r,
-                                next_parent_module,
-                                module,
-                                visited,
-                            )
+                let m = r.expect_module(parent_module);
+                if m.is_local() {
+                    for importer in m.glob_importers.borrow().iter() {
+                        if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
                         {
-                            res = true;
-                            break;
+                            if next_parent_module == module
+                                || comes_from_same_module_for_glob(
+                                    r,
+                                    next_parent_module,
+                                    module,
+                                    visited,
+                                )
+                            {
+                                res = true;
+                                break;
+                            }
                         }
                     }
                 }

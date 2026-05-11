@@ -1477,7 +1477,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
-        let parent_scope = ParentScope::module(graph_root.to_module(), resolver.arenas);
+        let parent_scope = ParentScope::module(graph_root, resolver.arenas);
         let start_rib_kind = RibKind::Module(graph_root);
         LateResolutionVisitor {
             r: resolver,

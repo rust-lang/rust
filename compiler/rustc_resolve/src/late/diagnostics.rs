@@ -38,8 +38,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Finalize, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res,
-    Resolver, ScopeSet, Segment, errors, path_names_to_string,
+    Finalize, Module, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res, Resolver,
+    ScopeSet, Segment, errors, path_names_to_string,
 };
 
 /// A field or associated item from self type suggested in case of resolution failure.
@@ -1698,7 +1698,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None, source)
-            && let ModuleKind::Def(DefKind::Trait, ..) = module.kind
+            && module.def_kind() == Some(DefKind::Trait)
             && trait_ref.path.span == span
             && let PathSource::Trait(_) = source
             && let Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) = res
@@ -3014,12 +3014,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn find_module(&self, def_id: DefId) -> Option<(Module<'ra>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
-        let root_did = self.r.graph_root.def_id();
-        let mut worklist = vec![(
-            self.r.graph_root.to_module(),
-            ThinVec::new(),
-            root_did.is_local() || !self.r.tcx.is_doc_hidden(root_did),
-        )];
+        let mut worklist = vec![(self.r.graph_root.to_module(), ThinVec::new(), true)];
 
         while let Some((in_module, path_segments, doc_visible)) = worklist.pop() {
             // abort if the module is already found
