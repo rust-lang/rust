@@ -52,6 +52,9 @@ where
             ty::AliasTermKind::UnevaluatedConst { def_id } => {
                 self.normalize_anon_const(goal, def_id).map_err(Into::into)
             }
+            ty::AliasTermKind::AmbiguousTy { .. } => {
+                unreachable!("`AmbiguousTy` should be eliminated when renormalizing binders")
+            }
         }
     }
 

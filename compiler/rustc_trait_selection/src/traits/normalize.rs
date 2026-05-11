@@ -441,6 +441,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::Projection { .. } => self.normalize_trait_projection(data.into()).expect_type(),
             ty::Inherent { .. } => self.normalize_inherent_projection(data.into()).expect_type(),
             ty::Free { .. } => self.normalize_free_alias(data.into()).expect_type(),
+            ty::Ambiguous { .. } => unreachable!(),
         }
     }
 

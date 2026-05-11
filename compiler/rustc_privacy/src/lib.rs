@@ -243,7 +243,7 @@ where
                     match kind {
                         ty::Inherent { .. } | ty::Projection { .. } => "associated type",
                         ty::Free { .. } => "type alias",
-                        ty::Opaque { .. } => unreachable!(),
+                        ty::Opaque { .. } | ty::Ambiguous { .. } => unreachable!(),
                     },
                     &LazyDefPathStr { def_id, tcx },
                 ));
@@ -308,7 +308,9 @@ where
             | ty::Bound(..)
             | ty::Error(_)
             | ty::CoroutineWitness(..) => {}
-            ty::Placeholder(..) | ty::Infer(..) => {
+            ty::Placeholder(..)
+            | ty::Infer(..)
+            | ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => {
                 bug!("unexpected type: {:?}", ty)
             }
         }

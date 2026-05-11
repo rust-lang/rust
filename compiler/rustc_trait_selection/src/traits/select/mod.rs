@@ -2438,6 +2438,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     })
                 }
             }
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => unreachable!(),
         })
     }
 

@@ -1606,7 +1606,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     if let Some(lhs) = lhs.to_alias_term(self.tcx)
                         && let ty::AliasTermKind::ProjectionTy { .. }
-                        | ty::AliasTermKind::ProjectionConst { .. } = lhs.kind(self.tcx)
+                        | ty::AliasTermKind::ProjectionConst { .. } =
+                            lhs.kind.reveal_ambiguous(lhs.args)
                         && let Some((better_type_err, expected_term)) =
                             derive_better_type_error(lhs, rhs)
                     {
@@ -1616,7 +1617,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         )
                     } else if let Some(rhs) = rhs.to_alias_term(self.tcx)
                         && let ty::AliasTermKind::ProjectionTy { .. }
-                        | ty::AliasTermKind::ProjectionConst { .. } = rhs.kind(self.tcx)
+                        | ty::AliasTermKind::ProjectionConst { .. } =
+                            rhs.kind.reveal_ambiguous(rhs.args)
                         && let Some((better_type_err, expected_term)) =
                             derive_better_type_error(rhs, lhs)
                     {
@@ -1861,7 +1863,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::CoroutineClosure(..) => Some(21),
                 ty::Pat(..) => Some(22),
                 ty::UnsafeBinder(..) => Some(23),
-                ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
+                ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. })
+                | ty::Placeholder(..)
+                | ty::Bound(..)
+                | ty::Infer(..)
+                | ty::Error(_) => None,
             }
         }
 

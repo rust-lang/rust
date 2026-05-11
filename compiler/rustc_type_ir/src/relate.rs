@@ -220,7 +220,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
             )))
         } else {
             let cx = relation.cx();
-            let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
+            let args = if let Some(variances) = cx.opt_alias_variances(a) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
@@ -239,7 +239,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
         if a.def_id() != b.def_id() {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id(), b.def_id())))
         } else {
-            let args = match a.kind(relation.cx()) {
+            let args = match a.kind(relation.cx()).reveal_ambiguous(a.args) {
                 ty::AliasTermKind::OpaqueTy { .. } => relate_args_with_variances(
                     relation,
                     relation.cx().variances_of(a.def_id()),
@@ -255,6 +255,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 | ty::AliasTermKind::ProjectionConst { .. } => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
+                ty::AliasTermKind::AmbiguousTy { .. } => unreachable!(),
             };
             Ok(a.with_args(relation.cx(), args))
         }

@@ -738,6 +738,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 ty::Free { .. } => format!("the type alias `{bound_kind}`"),
                 ty::Opaque { .. } => format!("the opaque type `{bound_kind}`"),
+                ty::Ambiguous { .. } => format!("the ambiguous alias `{bound_kind}`"),
             },
         };
 

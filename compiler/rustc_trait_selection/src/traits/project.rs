@@ -473,6 +473,7 @@ fn normalize_to_error<'a, 'tcx>(
         | ty::AliasTermKind::ProjectionConst { .. } => {
             selcx.infcx.next_const_var(cause.span).into()
         }
+        ty::AliasTermKind::AmbiguousTy { .. } => unreachable!(),
     };
     let mut obligations = PredicateObligations::new();
     obligations.push(Obligation {

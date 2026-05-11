@@ -213,6 +213,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => "opaque type".into(),
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => "ambiguous alias".into(),
         }
     }
 }

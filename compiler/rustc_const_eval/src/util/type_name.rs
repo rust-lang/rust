@@ -45,7 +45,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::UnsafeBinder(_) => self.pretty_print_type(ty),
 
             // Placeholders (all printed as `_` to uniformize them).
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Error(_) => {
                 write!(self, "_")?;
                 Ok(())
             }
@@ -69,6 +69,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
                 bug!("type_name: unexpected inherent projection")
             }
+            ty::Infer(_) | ty::Alias(ty::AliasTy { kind: ty::Ambiguous, .. }) => unreachable!(),
             ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
         }
     }

@@ -863,6 +863,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => unreachable!(),
+
                 ty::CoroutineWitness(..) => {
                     candidates.vec.push(AutoImplCandidate);
                 }

@@ -914,25 +914,18 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Computes the variances for an alias (opaque or RPITIT) that represent
     // its (un)captured regions.
-    pub fn opt_alias_variances(
-        self,
-        kind: impl Into<ty::AliasTermKind<'tcx>>,
-    ) -> Option<&'tcx [ty::Variance]> {
-        match kind.into() {
-            ty::AliasTermKind::ProjectionTy { def_id } => {
+    pub fn opt_alias_variances(self, alias: ty::AliasTy<'tcx>) -> Option<&'tcx [ty::Variance]> {
+        match alias.kind.reveal_ambiguous(alias.args) {
+            ty::Projection { def_id } => {
                 if self.is_impl_trait_in_trait(def_id) {
                     Some(self.variances_of(def_id))
                 } else {
                     None
                 }
             }
-            ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
-            ty::AliasTermKind::InherentTy { .. }
-            | ty::AliasTermKind::InherentConst { .. }
-            | ty::AliasTermKind::FreeTy { .. }
-            | ty::AliasTermKind::FreeConst { .. }
-            | ty::AliasTermKind::UnevaluatedConst { .. }
-            | ty::AliasTermKind::ProjectionConst { .. } => None,
+            ty::Opaque { def_id } => Some(self.variances_of(def_id)),
+            ty::Inherent { .. } | ty::Free { .. } => None,
+            ty::Ambiguous => unreachable!(),
         }
     }
 }

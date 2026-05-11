@@ -819,6 +819,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args, .. }) => {
+                self.pretty_print_type(args.type_at(0))?
+            }
             ty::Alias(
                 ref data @ ty::AliasTy {
                     kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
@@ -3155,7 +3158,7 @@ define_print! {
     }
 
     ty::AliasTerm<'tcx> {
-        match self.kind(p.tcx()) {
+        match self.kind(p.tcx()).reveal_ambiguous(self.args) {
             ty::AliasTermKind::InherentTy {..} | ty::AliasTermKind::InherentConst {..} => p.pretty_print_inherent_projection(*self)?,
             ty::AliasTermKind::ProjectionTy { def_id } => {
                 if !(p.should_print_verbose() || with_reduced_queries())
@@ -3173,6 +3176,7 @@ define_print! {
             | ty::AliasTermKind::ProjectionConst { def_id } => {
                 p.print_def_path(def_id, self.args)?;
             }
+            ty::AliasTermKind::AmbiguousTy { .. } => unreachable!()
         }
     }
 

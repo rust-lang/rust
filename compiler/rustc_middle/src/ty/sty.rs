@@ -482,6 +482,7 @@ impl<'tcx> Ty<'tcx> {
             (ty::Opaque { .. }, DefKind::OpaqueTy)
                 | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
                 | (ty::Free { .. }, DefKind::TyAlias)
+                | (ty::Ambiguous { .. }, DefKind::OpaqueTy | DefKind::AssocTy | DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(alias_ty))
     }

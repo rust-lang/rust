@@ -56,7 +56,7 @@ where
             // either `'static` or a unique outlives region, and if one is
             // found, we just need to prove that that region is still live.
             // If one is not found, then we continue to walk through the alias.
-            ty::Alias(ty::AliasTy { kind, args, .. }) => {
+            ty::Alias(alias @ ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
                 let outlives_bounds: Vec<_> = tcx
@@ -95,7 +95,7 @@ where
                 } else {
                     // Skip lifetime parameters that are not captured, since they do
                     // not need to be live.
-                    let variances = tcx.opt_alias_variances(kind);
+                    let variances = tcx.opt_alias_variances(alias);
 
                     for (idx, s) in args.iter().enumerate() {
                         if variances.map(|variances| variances[idx]) != Some(ty::Bivariant) {
