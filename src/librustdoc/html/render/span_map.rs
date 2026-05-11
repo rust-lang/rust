@@ -84,7 +84,7 @@ pub(crate) fn collect_spans_and_sources(
 ) -> (FxIndexMap<PathBuf, String>, FxHashMap<Span, LinkFromSrc>) {
     if include_sources {
         let mut visitor =
-            SpanMapVisitor { tcx, cached_typeck_results: None, matches: FxHashMap::default() };
+            SpanMapVisitor { tcx, maybe_typeck_results: None, matches: FxHashMap::default() };
 
         if generate_link_to_definition {
             tcx.hir_walk_toplevel_module(&mut visitor);
@@ -98,18 +98,18 @@ pub(crate) fn collect_spans_and_sources(
 
 struct SpanMapVisitor<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) cached_typeck_results: Option<(hir::BodyId, Option<&'tcx ty::TypeckResults<'tcx>>)>,
+    pub(crate) maybe_typeck_results: Option<LazyTypeckResults<'tcx>>,
     pub(crate) matches: FxHashMap<Span, LinkFromSrc>,
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {
-    fn typeck_results(&mut self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
-        let (body_id, cached_typeck_results) = self.cached_typeck_results.as_mut()?;
+    fn maybe_typeck_results(&mut self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
+        let LazyTypeckResults { of: body_id, cache } = self.maybe_typeck_results.as_mut()?;
 
         // FIXME(fmease): Talk about the consequences of typeck'ing here.
         //                And maybe add back this link but meh:
         //                <https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352>.
-        Some(*cached_typeck_results.get_or_insert_with(|| self.tcx.typeck_body(*body_id)))
+        Some(*cache.get_or_insert_with(|| self.tcx.typeck_body(*body_id)))
     }
 
     fn link_for_def(&self, def_id: DefId) -> LinkFromSrc {
@@ -230,9 +230,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) -> Self::Result {
-        let cached_typeck_results = self.cached_typeck_results.replace((body_id, None));
+        let maybe_typeck_results = self.maybe_typeck_results.replace(LazyTypeckResults { of: body_id, cache: None });
         self.visit_body(self.tcx.hir_body(body_id));
-        self.cached_typeck_results = cached_typeck_results;
+        self.maybe_typeck_results = maybe_typeck_results;
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: HirId) {
@@ -246,7 +246,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, segment) => {
-                if let Some(typeck_results) = self.typeck_results() {
+                if let Some(typeck_results) = self.maybe_typeck_results() {
                     let path = hir::Path {
                         // We change the span to not include parens.
                         span: segment.ident.span,
@@ -293,7 +293,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(segment, ..) => {
-                let typeck_results = self.typeck_results().unwrap();
+                let typeck_results = self.maybe_typeck_results().unwrap();
                 if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                     self.matches.insert(segment.ident.span.into(), self.link_for_def(def_id));
                 }
@@ -307,7 +307,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         // FIXME(fmease): Explainer.
-        let cached_typeck_results = self.cached_typeck_results.take();
+        let maybe_typeck_results = self.maybe_typeck_results.take();
 
         match item.kind {
             ItemKind::Static(..)
@@ -331,6 +331,12 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
         intravisit::walk_item(self, item);
 
-        self.cached_typeck_results = cached_typeck_results;
+        self.maybe_typeck_results = maybe_typeck_results;
     }
+}
+
+/// Lazily computed & cached [`ty::TypeckResults`].
+struct LazyTypeckResults<'tcx> {
+    of: hir::BodyId,
+    cache: Option<&'tcx ty::TypeckResults<'tcx>>,
 }
