@@ -108,7 +108,7 @@ declare_features! (
     (accepted, cfg_target_abi, "1.78.0", Some(80970)),
     /// Allows `cfg(target_feature = "...")`.
     (accepted, cfg_target_feature, "1.27.0", Some(29717)),
-    /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
+    /// Allows `cfg(target_has_atomic_primitive_alignment = "...")`.
     (accepted, cfg_target_has_atomic_equal_alignment, "CURRENT_RUSTC_VERSION", Some(93822)),
     /// Allows `cfg(target_vendor = "...")`.
     (accepted, cfg_target_vendor, "1.33.0", Some(29718)),

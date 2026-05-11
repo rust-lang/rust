@@ -64,9 +64,9 @@
     // ^ tested in target_feature.rs
     target_has_atomic = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
-    target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
-    //~^ WARN unexpected `cfg` condition value
     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
+    target_has_atomic_primitive_alignment = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     target_object_format = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
