@@ -69,6 +69,7 @@ use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
+use rustc_hashes::Hash128;
 use rustc_macros::rustc_queries;
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -2005,6 +2006,29 @@ rustc_queries! {
     query upstream_async_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
         desc { "available upstream async-drop-glue for `{:?}`", args }
     }
+
+
+    /// Set of all fingerprints of generic items exported by `cnum`.
+    query exported_generic_symbol_hashes(cnum: CrateNum) -> &'tcx [Hash128] {
+        desc { "getting exported generic symbol hashes for crate `{}`", cnum }
+        separate_provide_extern
+    }
+
+    /// Returns a map from an monomorphized item hash to all crates containing it. As with anything hash-based, there may be collisions.
+    query upstream_monomorphization_hashes(_: ())
+        -> &'tcx FxIndexMap<Hash128, smallvec::SmallVec<[CrateNum; 1]>>
+    {
+        arena_cache
+        desc { "collecting available upstream monomorphization hashes" }
+    }
+
+    /// Returns all crates that contain a reusable monomorphization of an item with `hash`.
+    query upstream_monomorphization_for_hash(hash: Hash128)
+        -> Option<&'tcx smallvec::SmallVec<[CrateNum; 1]>>
+    {
+        desc { "looking up upstream monomorphization candidates by hash" }
+    }
+
 
     /// Returns a list of all `extern` blocks of a crate.
     query foreign_modules(_: CrateNum) -> &'tcx FxIndexMap<DefId, ForeignModule> {
