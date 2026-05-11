@@ -4006,19 +4006,23 @@ impl<T, A: Allocator> Vec<T, A> {
         //      for item in iterator {
         //          self.push(item);
         //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
+        let (lower, _) = iterator.size_hint();
+        self.reserve(lower);
+        while let Err(element) = iterator.try_fold((), |(), element| {
+            if self.len < self.capacity() {
+                unsafe {
+                    let end = self.as_mut_ptr().add(self.len);
+                    ptr::write(end, element);
+                    self.len += 1;
+                }
+                Ok(())
+            } else {
+                Err(element)
             }
-            unsafe {
-                ptr::write(self.as_mut_ptr().add(len), element);
-                // Since next() executes user code which can panic we have to bump the length
-                // after each step.
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
-            }
+        }) {
+            let (lower, _) = iterator.size_hint();
+            self.reserve(lower.saturating_add(1));
+            self.push(element);
         }
     }
 
