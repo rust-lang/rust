@@ -30,6 +30,7 @@ use rustc_metadata::{
     walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
+use rustc_middle::error::DuplicateEiiImpls;
 use rustc_middle::lint::emit_lint_base;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -70,6 +71,73 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     }
 }
 
+fn eii_impl_crate_name(crate_info: &CrateInfo, cnum: CrateNum) -> Symbol {
+    if cnum == LOCAL_CRATE { crate_info.local_crate_name } else { crate_info.crate_name[&cnum] }
+}
+
+fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &CrateInfo) {
+    let Some(eii_linkage) = &crate_info.eii_linkage else {
+        return;
+    };
+
+    // A crate can request multiple linked outputs with overlapping dependency
+    // formats, so report each underlying conflict once.
+    let mut emitted = FxHashSet::default();
+
+    // This needs the dependency formats selected for the final artifact. The
+    // earlier EII pass still handles missing impls and duplicate explicit impls.
+    for dependency_formats in crate_info.dependency_formats.values() {
+        for (eii_index, eii) in eii_linkage.iter().enumerate() {
+            let mut explicit_impls =
+                eii.impls.iter().enumerate().filter(|(_, imp)| !imp.is_default);
+            let Some((explicit_index, explicit_impl)) = explicit_impls.next() else {
+                continue;
+            };
+            // If the explicit impl is already coming from a dylib, that dylib
+            // has already resolved the default-vs-explicit choice.
+            if explicit_impls.next().is_some()
+                || matches!(
+                    dependency_formats.get(explicit_impl.impl_crate),
+                    Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
+                )
+            {
+                continue;
+            }
+
+            let mut finalized_default_impls = eii.impls.iter().enumerate().filter(|(_, imp)| {
+                imp.is_default
+                    && matches!(
+                        dependency_formats.get(imp.impl_crate),
+                        Some(Linkage::Dynamic | Linkage::IncludedFromDylib)
+                    )
+            });
+            let Some((default_index, default_impl)) = finalized_default_impls.next() else {
+                continue;
+            };
+
+            if !emitted.insert((eii_index, explicit_index, default_index)) {
+                continue;
+            }
+
+            let additional_crate_names = finalized_default_impls
+                .map(|(_, imp)| format!("`{}`", eii_impl_crate_name(crate_info, imp.impl_crate)))
+                .collect::<Vec<_>>();
+
+            sess.dcx().emit_err(DuplicateEiiImpls {
+                name: eii.name,
+                first_span: explicit_impl.span,
+                first_crate: eii_impl_crate_name(crate_info, explicit_impl.impl_crate),
+                second_span: default_impl.span,
+                second_crate: eii_impl_crate_name(crate_info, default_impl.impl_crate),
+                help: (),
+                additional_crates: (!additional_crate_names.is_empty()).then_some(()),
+                num_additional_crates: additional_crate_names.len(),
+                additional_crate_names: additional_crate_names.join(", "),
+            });
+        }
+    }
+}
+
 /// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary(
@@ -84,6 +152,7 @@ pub fn link_binary(
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
+    let mut checked_eii_linkage = false;
     for &crate_type in &crate_info.crate_types {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
@@ -109,6 +178,14 @@ pub fn link_binary(
         });
 
         if outputs.outputs.should_link() {
+            if !checked_eii_linkage {
+                sess.time("check_externally_implementable_item_linkage", || {
+                    check_externally_implementable_item_linkage(sess, &crate_info);
+                });
+                sess.dcx().abort_if_errors();
+                checked_eii_linkage = true;
+            }
+
             let output = out_filename(sess, crate_type, outputs, crate_info.local_crate_name);
             let tmpdir = TempDirBuilder::new()
                 .prefix("rustc")
