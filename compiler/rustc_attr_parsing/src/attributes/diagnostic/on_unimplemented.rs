@@ -16,14 +16,18 @@ impl OnUnimplementedParser {
         let span = cx.attr_span;
         self.span = Some(span);
 
-        if !matches!(cx.target, Target::Trait) {
-            cx.emit_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                DiagnosticOnUnimplementedOnlyForTraits,
-                span,
-            );
-            return;
-        }
+        // match cx.target {
+        //     Target::Trait => {}
+        //     Target::Fn => {}
+        //     _ => {
+        //         cx.emit_lint(
+        //             MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+        //             DiagnosticOnUnimplementedOnlyForTraits,
+        //             span,
+        //         );
+        //         return;
+        //     }
+        // }
 
         let Some(items) = parse_list(cx, args, mode) else { return };
 

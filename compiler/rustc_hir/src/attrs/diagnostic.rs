@@ -105,6 +105,20 @@ impl CustomDiagnostic {
 
         self.notes.extend(di.notes.iter().map(|n| n.format(args)))
     }
+
+    pub fn merge(&mut self, other: Self) {
+        if other.message.is_some() {
+            self.message = other.message;
+        }
+        if other.label.is_some() {
+            self.label = other.label;
+        }
+        if other.parent_label.is_some() {
+            self.parent_label = other.parent_label;
+        }
+
+        self.notes.extend(other.notes);
+    }
 }
 
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
@@ -248,6 +262,7 @@ impl Filter {
             FlagOrNv::Flag(b) => options.has_flag(*b),
             FlagOrNv::NameValue(NameValue { name, value }) => {
                 let value = value.format(&options.generic_args);
+                tracing::info!(?value);
                 options.contains(*name, value)
             }
         })
@@ -454,6 +469,7 @@ impl FilterOptions {
         }
     }
     pub fn contains(&self, name: Name, value: String) -> bool {
+        tracing::info!(?name, ?value);
         match name {
             Name::SelfUpper => self.self_types.contains(&value),
             Name::FromDesugaring => self.from_desugaring.is_some_and(|ds| ds.matches(&value)),

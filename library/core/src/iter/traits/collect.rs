@@ -413,6 +413,13 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_on_unimplemented(
+        message = "can't extend `{Self}` with an iterator of `{A}` items",
+        on(
+            all(Self = "alloc::vec::Vec<&str>", A = "alloc::string::String"),
+            note = "you might have meant to extend a `Vec<String>` or pass in an `Iterator<Item = &str>`"
+        )
+    )]
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
 
     /// Extends a collection with exactly one element.

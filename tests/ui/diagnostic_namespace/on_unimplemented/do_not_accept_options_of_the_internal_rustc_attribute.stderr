@@ -144,14 +144,6 @@ LL | #[diagnostic::on_unimplemented = "Message"]
    |
    = help: only `message`, `note` and `label` are allowed as options
 
-warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:22:1
-   |
-LL | #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
-
 error[E0277]: trait has `()` and `i32` as params
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:53:15
    |
@@ -212,6 +204,6 @@ note: required by a bound in `takes_baz`
 LL | fn takes_baz(_: impl Baz) {}
    |                      ^^^ required by this bound in `takes_baz`
 
-error: aborting due to 3 previous errors; 19 warnings emitted
+error: aborting due to 3 previous errors; 18 warnings emitted
 
 For more information about this error, try `rustc --explain E0277`.

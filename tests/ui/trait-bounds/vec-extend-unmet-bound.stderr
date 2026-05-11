@@ -1,0 +1,45 @@
+error[E0277]: can't extend `Vec<&str>` with an iterator of `String` items
+  --> $DIR/vec-extend-unmet-bound.rs:3:7
+   |
+LL |     x.extend([String::from("z")]);
+   |       ^^^^^^ the trait `Extend<String>` is not implemented for `Vec<&str>`
+   |
+   = note: you might have meant to extend a `Vec<String>` or pass in an `Iterator<Item = &str>`
+help: `Vec<T, A>` implements trait `Extend<A>`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Extend<T>`
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Extend<&T>`
+
+error[E0277]: `String` is not an iterator
+  --> $DIR/vec-extend-unmet-bound.rs:8:14
+   |
+LL |     x.extend(String::from("z"));
+   |       ------ ^^^^^^^^^^^^^^^^^ `String` is not an iterator; try calling `.chars()` or `.bytes()`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `String`
+   = note: required for `String` to implement `IntoIterator`
+note: required by a bound in `extend`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+
+error[E0277]: `{integer}` is not an iterator
+  --> $DIR/vec-extend-unmet-bound.rs:15:14
+   |
+LL |     x.extend(1);
+   |       ------ ^ `{integer}` is not an iterator
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `{integer}`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
+   = note: required for `{integer}` to implement `IntoIterator`
+note: required by a bound in `extend`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
