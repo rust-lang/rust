@@ -493,15 +493,16 @@ impl<'tcx> Instance<'tcx> {
     /// couldn't complete due to errors elsewhere - this is distinct
     /// from `Ok(None)` to avoid misleading diagnostics when an error
     /// has already been/will be emitted, for the original cause
-    #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn try_resolve(
+    fn try_resolve_inner(
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
+        mut constness: hir::Constness,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        let def_kind = tcx.def_kind(def_id);
         assert_matches!(
-            tcx.def_kind(def_id),
+            def_kind,
             DefKind::Fn
                 | DefKind::AssocFn
                 | DefKind::Const { .. }
@@ -517,6 +518,10 @@ impl<'tcx> Instance<'tcx> {
             `try_normalize_erasing_regions`."
         );
 
+        if !def_kind.is_assoc() {
+            constness = hir::Constness::NotConst;
+        }
+
         // Rust code can easily create exponentially-long types using only a
         // polynomial recursion depth. Even with the default recursion
         // depth, you can easily get cases that take >2^60 steps to run,
@@ -529,11 +534,36 @@ impl<'tcx> Instance<'tcx> {
             return Ok(None);
         }
 
+        let input = tcx.erase_and_anonymize_regions(typing_env.as_query_input((def_id, args)));
+
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance_raw(
-            tcx.erase_and_anonymize_regions(typing_env.as_query_input((def_id, args))),
-        )
+        tcx.resolve_instance_raw(ty::PseudoCanonicalInput {
+            typing_env: input.typing_env,
+            value: (input.value.0, input.value.1, constness),
+        })
+    }
+
+    /// See `try_resolve_inner`.
+    #[instrument(level = "debug", skip(tcx), ret)]
+    pub fn try_resolve(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        Self::try_resolve_inner(tcx, typing_env, def_id, args, hir::Constness::NotConst)
+    }
+
+    /// See `try_resolve_inner`.
+    #[instrument(level = "debug", skip(tcx), ret)]
+    pub fn try_resolve_for_ctfe(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        Self::try_resolve_inner(tcx, typing_env, def_id, args, hir::Constness::Const)
     }
 
     pub fn expect_resolve(

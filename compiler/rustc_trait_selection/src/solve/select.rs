@@ -8,7 +8,7 @@ use rustc_infer::traits::{
     Selection, SelectionError, SelectionResult, TraitObligation,
 };
 use rustc_macros::extension;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
@@ -25,6 +25,19 @@ impl<'tcx> InferCtxt<'tcx> {
 
         self.visit_proof_tree(
             Goal::new(self.tcx, obligation.param_env, obligation.predicate),
+            &mut Select { span: obligation.cause.span },
+        )
+        .break_value()
+        .unwrap()
+    }
+    fn select_host_effect_predicate_in_new_trait_solver(
+        &self,
+        obligation: &Obligation<'tcx, ty::HostEffectPredicate<'tcx>>,
+    ) -> SelectionResult<'tcx, Selection<'tcx>> {
+        assert!(self.next_trait_solver());
+
+        self.visit_proof_tree(
+            Goal::new(self.tcx, obligation.param_env, ty::Binder::dummy(obligation.predicate)),
             &mut Select { span: obligation.cause.span },
         )
         .break_value()

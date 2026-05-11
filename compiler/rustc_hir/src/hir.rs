@@ -4627,7 +4627,7 @@ impl fmt::Display for Safety {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, StableHash)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, StableHash, Hash)]
 #[derive(Default)]
 pub enum Constness {
     #[default]

@@ -638,6 +638,8 @@ pub trait Machine<'tcx>: Sized {
     fn enter_trace_span(_span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
         ()
     }
+
+    const SHOULD_RESPECT_CONST_BOUNDS_WHEN_RESOLVING_INSTANCES: bool = false;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines

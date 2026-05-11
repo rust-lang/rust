@@ -952,6 +952,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn get_default_alloc_params(&self) -> <Self::Bytes as mir::interpret::AllocBytes>::AllocParams {
     }
+
+    const SHOULD_RESPECT_CONST_BOUNDS_WHEN_RESOLVING_INSTANCES: bool = true;
 }
 
 // Please do not add any code below the above `Machine` trait impl. I (oli-obk) plan more cleanups
