@@ -420,8 +420,8 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
         // (ld is 80-bit extended precision).
         //
-        // musl and pauthtest do not implement the symbols required for f128 math at all.
-        _ if (*target_env == Env::Musl || *target_env == Env::Pauthtest) => false,
+        // musl does not implement the symbols required for f128 math at all.
+        _ if *target_env == Env::Musl => false,
         (Arch::X86_64, _) => false,
         (_, Os::Linux) if target_pointer_width == 64 => true,
         _ => false,

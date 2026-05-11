@@ -165,7 +165,7 @@ index 0564f2e..a8a0d1a 100644
          // clause, and if this is fixed that test in theory can be run on macOS!
          if cfg!(target_vendor = "apple") {
              self.ip()
-+        } else if cfg!(target_env = "pauthtest") {
++        } else if cfg!(target_abi = "pauthtest") {
 +            // NOTE: ip here is an unsigned (raw) pointer, so we must not use
 +            // uw::_Unwind_FindEnclosingFunction.
 +            //

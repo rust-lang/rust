@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Symbol;
-use rustc_target::spec::{Arch, Env};
+use rustc_target::spec::{Arch, CfgAbi};
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
@@ -123,7 +123,9 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
         // Under pointer authentication, function pointers stored in init/fini arrays need special
         // handling.
         let pac_metadata = Some(
-            if cx.sess().target.env == Env::Pauthtest && matches!(is_init_fini, IsInitOrFini::Yes) {
+            if cx.sess().target.cfg_abi == CfgAbi::Pauthtest
+                && matches!(is_init_fini, IsInitOrFini::Yes)
+            {
                 PacMetadata {
                     // Must correspond to ptrauth_key_init_fini_pointer from `ptrauth.h`.
                     key: 0,
@@ -217,7 +219,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 let fn_sig = sig.with(*header);
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
                 // Decide if the initializer needs to be signed
-                if cx.sess().target.env == Env::Pauthtest
+                if cx.sess().target.cfg_abi == CfgAbi::Pauthtest
                     && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
                 {
                     should_sign = true;

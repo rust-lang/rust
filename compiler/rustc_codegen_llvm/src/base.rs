@@ -25,7 +25,7 @@ use rustc_middle::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
-use rustc_target::spec::{Env, SanitizerSet};
+use rustc_target::spec::{CfgAbi, SanitizerSet};
 
 use super::ModuleLlvm;
 use crate::attributes;
@@ -127,7 +127,7 @@ pub(crate) fn compile_codegen_unit(
                 let mut attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
                 // When pointer authentication is enabled, ensure that the ptrauth-* attributes are
                 // also attached to the entry wrapper.
-                if cx.sess().target.env == Env::Pauthtest {
+                if cx.sess().target.cfg_abi == CfgAbi::Pauthtest {
                     for &ptrauth_attr in pauth_fn_attrs() {
                         attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
                     }
@@ -148,14 +148,14 @@ pub(crate) fn compile_codegen_unit(
                 cx.add_objc_module_flags();
             }
 
-            if cx.sess().target.env == Env::Pauthtest {
+            if cx.sess().target.cfg_abi == CfgAbi::Pauthtest {
                 // FIXME(jchlanda): In LLVM/Clang, there are also `aarch64-elf-pauthabi-platform`
                 // and `aarch64-elf-pauthabi-version` module flags. These are emitted into the
                 // PAuth core info section of the resulting ELF, which the linker uses to enforce
                 // binary compatibility.
                 //
                 // We intentionally do not emit these flags now, since only a subset of features
-                // included in pauthtest ABI is currently supported. By default, the absence of
+                // included in clang's pauthtest is currently supported. By default, the absence of
                 // this info is treated as compatible with any binary.
                 //
                 // Please note, that this would cause compatibility issues, specifically runtime
