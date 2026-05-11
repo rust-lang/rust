@@ -1,23 +1,25 @@
 use std::fmt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::LangItem;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def_id::DefIndex;
-use rustc_index::Idx;
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::StableHash;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
+use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::Symbol;
-use rustc_span::def_id::{LOCAL_CRATE, StableCrateId};
+use rustc_span::def_id::{LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
@@ -490,6 +492,55 @@ impl HashableCrateRoot {
             symbol_mangling_version: self.symbol_mangling_version,
 
             specialization_enabled_in: self.specialization_enabled_in,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum RecordMode {
+    All,
+    ReachableAtLevel(Level),
+    None,
+}
+
+impl RecordMode {
+    pub(super) fn through_impl_trait() -> Self {
+        Self::ReachableAtLevel(Level::ReachableThroughImplTrait)
+    }
+}
+
+pub(super) struct LocalDefIdGraphBuilder<'tcx> {
+    pub(super) from: Option<LocalDefId>,
+    pub(super) record_mode: RecordMode,
+    graph: IndexVec<LocalDefId, FxHashSet<LocalDefId>>,
+    effective_visibilities: &'tcx EffectiveVisibilities,
+}
+
+impl<'tcx> LocalDefIdGraphBuilder<'tcx> {
+    pub(super) fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            from: None,
+            record_mode: RecordMode::All,
+            graph: IndexVec::from_elem_n(
+                Default::default(),
+                tcx.definitions_untracked().def_index_count(),
+            ),
+            effective_visibilities: tcx.effective_visibilities(()),
+        }
+    }
+
+    pub(super) fn record(&mut self, to: DefIndex) {
+        let to = LocalDefId { local_def_index: to };
+        match self.record_mode {
+            RecordMode::All => {
+                self.graph[self.from.unwrap()].insert(to);
+            }
+            RecordMode::ReachableAtLevel(level) => {
+                if self.effective_visibilities.is_public_at_level(to, level) {
+                    self.graph[self.from.unwrap()].insert(to);
+                }
+            }
+            RecordMode::None => (),
         }
     }
 }

@@ -42,6 +42,7 @@ use self::public_api_hasher::{
 };
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
+use crate::rmeta::encoder::public_api_hasher::{LocalDefIdGraphBuilder, RecordMode};
 use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
@@ -74,7 +75,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: &'a HygieneEncodeContext,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
-    encoded_crate_nums: Option<IndexVec<CrateNum, bool>>,
+    local_def_id_graph_builder: Option<LocalDefIdGraphBuilder<'tcx>>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -150,18 +151,20 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
             panic!("Attempted to encode non-local CrateNum {crate_num:?} for proc-macro crate");
         }
         self.emit_u32(crate_num.as_u32());
-        if let Some(encoded_crate_nums) = self.encoded_crate_nums.as_mut() {
-            encoded_crate_nums[crate_num] = true;
-        }
     }
 
     fn encode_def_index(&mut self, def_index: DefIndex) {
+        // This is treated as if we are encoding a LocalDefId for now
         self.emit_u32(def_index.as_u32());
+        self.record_encoded_local_def_id(def_index);
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
         def_id.krate.encode(self);
-        def_id.index.encode(self);
+        self.emit_u32(def_id.index.as_u32());
+        if def_id.is_local() {
+            self.record_encoded_local_def_id(def_id.index);
+        }
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
@@ -408,12 +411,20 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {{
-        record!($self.$tables.$table[$def_id] <- $value, $hcx, $value)
+        record!($self.$tables.$table[$def_id] <- $value, $hcx, $value, RecordMode::All)
     }};
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $hashed_value:expr) => {{
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, RecordMode::$mode:tt ) => {{
+        record!($self.$tables.$table[$def_id] <- $value, $hcx, $value, RecordMode::$mode)
+    }};
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $hashed_value:expr ) => {{
+        record!($self.$tables.$table[$def_id] <- $value, $hcx, $hashed_value, RecordMode::All)
+    }};
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $hashed_value:expr, $record_mode:expr) => {{
         {
             let value = $value;
-            let lazy = $self.lazy(value);
+            let lazy = $self.with_record_mode_and_index($record_mode, $def_id.index, |this|
+                this.lazy(value)
+            );
             $self.$tables.$table.set_some_hashed(
                 $def_id.index,
                 lazy,
@@ -428,13 +439,18 @@ macro_rules! record {
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {
-        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v)
+        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v, RecordMode::All)
     };
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr) => {{
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr) => {
+        record_array!($self.$tables.$table[$def_id] <- $value, $hcx, $encode_map, RecordMode::All)
+    };
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr, $record_mode:expr) => {{
         {
             let value = $value;
             let mut hasher = $self.$tables.$table.iter_hasher();
-            let lazy = $self.lazy_array(hasher.inspect_digest(value, $hcx).map($encode_map));
+            let lazy = $self.with_record_mode_and_index($record_mode, $def_id.index, |this|
+                this.lazy_array(hasher.inspect_digest(value, $hcx).map($encode_map))
+            );
             $self.$tables.$table.set_some_hashed(
                 $def_id.index,
                 lazy,
@@ -447,13 +463,18 @@ macro_rules! record_array {
 
 macro_rules! record_defaulted_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident) => {
-        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v)
+        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, |v| v, RecordMode::All)
     };
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr) => {{
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr) => {
+        record_defaulted_array!($self.$tables.$table[$def_id] <- $value, $hcx, $encode_map, RecordMode::All)
+    };
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr, $hcx:ident, $encode_map:expr, $record_mode:expr) => {{
         {
             let value = $value;
             let mut hasher = $self.$tables.$table.iter_hasher();
-            let lazy = $self.lazy_array(hasher.inspect_digest(value, $hcx).map($encode_map));
+            let lazy = $self.with_record_mode_and_index($record_mode, $def_id.index, |this|
+                this.lazy_array(hasher.inspect_digest(value, $hcx).map($encode_map))
+            );
             $self.$tables.$table.set_hashed(
                 $def_id.index,
                 lazy,
@@ -496,6 +517,44 @@ macro_rules! hashed_lazy_array {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+    fn with_record_mode<F, T>(&mut self, mode: RecordMode, f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        if let Some(local_def_id_graph_builder) = self.local_def_id_graph_builder.as_mut() {
+            let old = local_def_id_graph_builder.record_mode;
+            local_def_id_graph_builder.record_mode = mode;
+            let res = f(self);
+            self.local_def_id_graph_builder.as_mut().unwrap().record_mode = old;
+            res
+        } else {
+            f(self)
+        }
+    }
+
+    fn with_record_mode_and_index<F, T>(&mut self, mode: RecordMode, from: DefIndex, f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        if let Some(local_def_id_graph_builder) = self.local_def_id_graph_builder.as_mut() {
+            let old = local_def_id_graph_builder.record_mode;
+            let old_from = local_def_id_graph_builder.from;
+            local_def_id_graph_builder.record_mode = mode;
+            local_def_id_graph_builder.from = Some(LocalDefId { local_def_index: from });
+            let res = f(self);
+            self.local_def_id_graph_builder.as_mut().unwrap().record_mode = old;
+            self.local_def_id_graph_builder.as_mut().unwrap().from = old_from;
+            res
+        } else {
+            f(self)
+        }
+    }
+    fn record_encoded_local_def_id(&mut self, to: DefIndex) {
+        if let Some(local_def_id_graph_builder) = self.local_def_id_graph_builder.as_mut() {
+            local_def_id_graph_builder.record(to);
+        }
+    }
+
     fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
         let pos = position.get();
         let distance = match self.lazy_state {
@@ -1908,10 +1967,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             record_array!(self.tables.module_children_non_reexports[def_id] <-
                 module_children.iter().filter(|child| child.reexport_chain.is_empty())
-                    .map(|child| child.res.def_id()), hcx, |def_id| def_id.index);
+                    .map(|child| child.res.def_id()), hcx, |def_id| def_id.index
+            );
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()), hcx);
+                module_children.iter().filter(|child| !child.reexport_chain.is_empty()), hcx
+            );
 
             let ambig_module_children = tcx
                 .resolutions(())
@@ -2848,8 +2909,7 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
         symbol_index_table: Default::default(),
-        encoded_crate_nums: hash_public_api
-            .then(|| IndexVec::from_elem_n(false, tcx.crates(()).len() + 1)),
+        local_def_id_graph_builder: hash_public_api.then(|| LocalDefIdGraphBuilder::new(tcx)),
     };
 
     // Encode the rustc version string in a predictable location.
