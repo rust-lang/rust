@@ -155,14 +155,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vreplve_w(a: __v4i32, b: i32) -> __v4i32;
     #[link_name = "llvm.loongarch.lsx.vreplve.d"]
     fn __lsx_vreplve_d(a: __v2i64, b: i32) -> __v2i64;
-    #[link_name = "llvm.loongarch.lsx.vreplvei.b"]
-    fn __lsx_vreplvei_b(a: __v16i8, b: u32) -> __v16i8;
-    #[link_name = "llvm.loongarch.lsx.vreplvei.h"]
-    fn __lsx_vreplvei_h(a: __v8i16, b: u32) -> __v8i16;
-    #[link_name = "llvm.loongarch.lsx.vreplvei.w"]
-    fn __lsx_vreplvei_w(a: __v4i32, b: u32) -> __v4i32;
-    #[link_name = "llvm.loongarch.lsx.vreplvei.d"]
-    fn __lsx_vreplvei_d(a: __v2i64, b: u32) -> __v2i64;
     #[link_name = "llvm.loongarch.lsx.vpackev.b"]
     fn __lsx_vpackev_b(a: __v16i8, b: __v16i8) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vpackev.h"]
@@ -1523,42 +1515,6 @@ pub fn lsx_vreplve_w(a: m128i, b: i32) -> m128i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vreplve_d(a: m128i, b: i32) -> m128i {
     unsafe { transmute(__lsx_vreplve_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vreplvei_b<const IMM4: u32>(a: m128i) -> m128i {
-    static_assert_uimm_bits!(IMM4, 4);
-    unsafe { transmute(__lsx_vreplvei_b(transmute(a), IMM4)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vreplvei_h<const IMM3: u32>(a: m128i) -> m128i {
-    static_assert_uimm_bits!(IMM3, 3);
-    unsafe { transmute(__lsx_vreplvei_h(transmute(a), IMM3)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vreplvei_w<const IMM2: u32>(a: m128i) -> m128i {
-    static_assert_uimm_bits!(IMM2, 2);
-    unsafe { transmute(__lsx_vreplvei_w(transmute(a), IMM2)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vreplvei_d<const IMM1: u32>(a: m128i) -> m128i {
-    static_assert_uimm_bits!(IMM1, 1);
-    unsafe { transmute(__lsx_vreplvei_d(transmute(a), IMM1)) }
 }
 
 #[inline]

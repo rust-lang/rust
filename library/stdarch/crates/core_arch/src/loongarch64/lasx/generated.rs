@@ -147,14 +147,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvhsubw_wu_hu(a: __v16u16, b: __v16u16) -> __v8i32;
     #[link_name = "llvm.loongarch.lasx.xvhsubw.du.wu"]
     fn __lasx_xvhsubw_du_wu(a: __v8u32, b: __v8u32) -> __v4i64;
-    #[link_name = "llvm.loongarch.lasx.xvrepl128vei.b"]
-    fn __lasx_xvrepl128vei_b(a: __v32i8, b: u32) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvrepl128vei.h"]
-    fn __lasx_xvrepl128vei_h(a: __v16i16, b: u32) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvrepl128vei.w"]
-    fn __lasx_xvrepl128vei_w(a: __v8i32, b: u32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvrepl128vei.d"]
-    fn __lasx_xvrepl128vei_d(a: __v4i64, b: u32) -> __v4i64;
     #[link_name = "llvm.loongarch.lasx.xvpackev.b"]
     fn __lasx_xvpackev_b(a: __v32i8, b: __v32i8) -> __v32i8;
     #[link_name = "llvm.loongarch.lasx.xvpackev.h"]
@@ -525,16 +517,6 @@ unsafe extern "unadjusted" {
     fn __lasx_xvstx(a: __v32i8, b: *mut i8, c: i64);
     #[link_name = "llvm.loongarch.lasx.xvextl.qu.du"]
     fn __lasx_xvextl_qu_du(a: __v4u64) -> __v4u64;
-    #[link_name = "llvm.loongarch.lasx.xvreplve0.b"]
-    fn __lasx_xvreplve0_b(a: __v32i8) -> __v32i8;
-    #[link_name = "llvm.loongarch.lasx.xvreplve0.h"]
-    fn __lasx_xvreplve0_h(a: __v16i16) -> __v16i16;
-    #[link_name = "llvm.loongarch.lasx.xvreplve0.w"]
-    fn __lasx_xvreplve0_w(a: __v8i32) -> __v8i32;
-    #[link_name = "llvm.loongarch.lasx.xvreplve0.d"]
-    fn __lasx_xvreplve0_d(a: __v4i64) -> __v4i64;
-    #[link_name = "llvm.loongarch.lasx.xvreplve0.q"]
-    fn __lasx_xvreplve0_q(a: __v32i8) -> __v32i8;
     #[link_name = "llvm.loongarch.lasx.vext2xv.h.b"]
     fn __lasx_vext2xv_h_b(a: __v32i8) -> __v16i16;
     #[link_name = "llvm.loongarch.lasx.vext2xv.w.h"]
@@ -1583,42 +1565,6 @@ pub fn lasx_xvhsubw_wu_hu(a: m256i, b: m256i) -> m256i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvhsubw_du_wu(a: m256i, b: m256i) -> m256i {
     unsafe { transmute(__lasx_xvhsubw_du_wu(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrepl128vei_b<const IMM4: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM4, 4);
-    unsafe { transmute(__lasx_xvrepl128vei_b(transmute(a), IMM4)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrepl128vei_h<const IMM3: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM3, 3);
-    unsafe { transmute(__lasx_xvrepl128vei_h(transmute(a), IMM3)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrepl128vei_w<const IMM2: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM2, 2);
-    unsafe { transmute(__lasx_xvrepl128vei_w(transmute(a), IMM2)) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvrepl128vei_d<const IMM1: u32>(a: m256i) -> m256i {
-    static_assert_uimm_bits!(IMM1, 1);
-    unsafe { transmute(__lasx_xvrepl128vei_d(transmute(a), IMM1)) }
 }
 
 #[inline]
@@ -2988,41 +2934,6 @@ pub unsafe fn lasx_xvstx(a: m256i, mem_addr: *mut i8, b: i64) {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lasx_xvextl_qu_du(a: m256i) -> m256i {
     unsafe { transmute(__lasx_xvextl_qu_du(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvreplve0_b(a: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvreplve0_b(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvreplve0_h(a: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvreplve0_h(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvreplve0_w(a: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvreplve0_w(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvreplve0_d(a: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvreplve0_d(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lasx")]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lasx_xvreplve0_q(a: m256i) -> m256i {
-    unsafe { transmute(__lasx_xvreplve0_q(transmute(a))) }
 }
 
 #[inline]
