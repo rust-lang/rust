@@ -6131,7 +6131,7 @@ intrinsics:
           - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
-  - name: "vcmla{type[3]}"
+  - name: "vcmla{neon_type[0].rot180_lane}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
@@ -6143,8 +6143,8 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]', '_rot180_lane_f32']
-      - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]', 'q_rot180_lane_f32']
+      - [float32x2_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
       - Let:
@@ -6153,7 +6153,7 @@ intrinsics:
           - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
-  - name: "vcmla{type[3]}"
+  - name: "vcmla{neon_type[0].rot180_lane}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[0]}"
@@ -6167,10 +6167,8 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]', '_rot180_lane_f16']
-      - [float16x8_t, float16x4_t,
-          '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]', 'q_rot180_lane_f16'
-        ]
+      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
       - Let:
