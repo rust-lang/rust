@@ -103,15 +103,13 @@ struct SpanMapVisitor<'tcx> {
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {
-    fn typeck_results_for(&mut self, owner: hir::OwnerId) -> Option<&'tcx ty::TypeckResults<'tcx>> {
+    fn typeck_results(&mut self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
         let (body_id, cached_typeck_results) = self.cached_typeck_results.as_mut()?;
 
         // FIXME(fmease): Talk about the consequences of typeck'ing here.
         //                And maybe add back this link but meh:
         //                <https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352>.
         Some(*cached_typeck_results.get_or_insert_with(|| self.tcx.typeck_body(*body_id)))
-            // FIXME(fmease): Explainer.
-            .filter(|results| results.hir_owner == owner)
     }
 
     fn link_for_def(&self, def_id: DefId) -> LinkFromSrc {
@@ -248,7 +246,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_qpath(&mut self, qpath: &QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
         match *qpath {
             QPath::TypeRelative(qself, segment) => {
-                if let Some(typeck_results) = self.typeck_results_for(id.owner) {
+                if let Some(typeck_results) = self.typeck_results() {
                     let path = hir::Path {
                         // We change the span to not include parens.
                         span: segment.ident.span,
@@ -295,7 +293,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(segment, ..) => {
-                let typeck_results = self.typeck_results_for(expr.hir_id.owner).unwrap();
+                let typeck_results = self.typeck_results().unwrap();
                 if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                     self.matches.insert(segment.ident.span.into(), self.link_for_def(def_id));
                 }
@@ -308,6 +306,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        // FIXME(fmease): Explainer.
+        let cached_typeck_results = self.cached_typeck_results.take();
+
         match item.kind {
             ItemKind::Static(..)
             | ItemKind::Const(..)
@@ -327,6 +328,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(..) => {}
         }
+
         intravisit::walk_item(self, item);
+
+        self.cached_typeck_results = cached_typeck_results;
     }
 }
