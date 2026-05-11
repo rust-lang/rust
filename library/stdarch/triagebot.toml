@@ -1,7 +1,7 @@
 [assign]
 
 [assign.owners]
-"*" = ["@Amanieu", "@folkertdev", "@sayantn"]
+"*" = ["@Amanieu", "@folkertdev", "@sayantn", "@davidtwco", "@adamgemmell"]
 
 [ping.windows]
 message = """\
