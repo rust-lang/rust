@@ -1170,35 +1170,6 @@ pub(crate) struct EiiWithoutImpl {
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple implementations of `#[{$name}]`")]
-pub(crate) struct DuplicateEiiImpls {
-    pub name: Symbol,
-
-    #[primary_span]
-    #[label("first implemented here in crate `{$first_crate}`")]
-    pub first_span: Span,
-    pub first_crate: Symbol,
-
-    #[label("also implemented here in crate `{$second_crate}`")]
-    pub second_span: Span,
-    pub second_crate: Symbol,
-
-    #[note("in addition to these two, { $num_additional_crates ->
-        [one] another implementation was found in crate {$additional_crate_names}
-        *[other] more implementations were also found in the following crates: {$additional_crate_names}
-    }")]
-    pub additional_crates: Option<()>,
-
-    pub num_additional_crates: usize,
-    pub additional_crate_names: String,
-
-    #[help(
-        "an \"externally implementable item\" can only have a single implementation in the final artifact. When multiple implementations are found, also in different crates, they conflict"
-    )]
-    pub help: (),
-}
-
-#[derive(Diagnostic)]
 #[diag("function doesn't have a default implementation")]
 pub(crate) struct FunctionNotHaveDefaultImplementation {
     #[primary_span]
