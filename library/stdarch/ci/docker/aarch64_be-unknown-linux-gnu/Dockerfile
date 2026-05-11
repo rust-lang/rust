@@ -9,10 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-user \
   make \
   file \
-  clang \
   curl \
   xz-utils \
-  lld
+  wget
 
 ENV TOOLCHAIN="arm-gnu-toolchain-14.3.rel1-x86_64-aarch64_be-none-linux-gnu"
 
@@ -20,6 +19,12 @@ ENV TOOLCHAIN="arm-gnu-toolchain-14.3.rel1-x86_64-aarch64_be-none-linux-gnu"
 RUN curl -L "https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/binrel/${TOOLCHAIN}.tar.xz" -o "${TOOLCHAIN}.tar.xz"
 RUN tar -xvf "${TOOLCHAIN}.tar.xz"
 RUN mkdir /toolchains && mv "./${TOOLCHAIN}" /toolchains
+
+RUN wget https://mirrors.edge.kernel.org/pub/tools/llvm/files/llvm-22.1.4-x86_64.tar.gz -O llvm.tar.xz
+RUN mkdir llvm
+RUN tar -xvf llvm.tar.xz --strip-components=1 -C llvm
+
+ENV PATH="/llvm/bin:$PATH"
 
 ENV AARCH64_BE_TOOLCHAIN="/toolchains/${TOOLCHAIN}"
 ENV AARCH64_BE_LIBC="${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc"

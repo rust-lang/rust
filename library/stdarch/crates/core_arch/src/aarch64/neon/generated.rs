@@ -5516,7 +5516,14 @@ pub fn vcvtaq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtah_s16_f16(a: f16) -> i16 {
-    vcvtah_s32_f16(a) as i16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtas.i16.f16"
+        )]
+        fn _vcvtah_s16_f16(a: f16) -> i16;
+    }
+    unsafe { _vcvtah_s16_f16(a) }
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_s32_f16)"]
@@ -5560,7 +5567,14 @@ pub fn vcvtah_s64_f16(a: f16) -> i64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtah_u16_f16(a: f16) -> u16 {
-    vcvtah_u32_f16(a) as u16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtau.i16.f16"
+        )]
+        fn _vcvtah_u16_f16(a: f16) -> u16;
+    }
+    unsafe { _vcvtah_u16_f16(a) }
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_u32_f16)"]
@@ -6202,7 +6216,14 @@ pub fn vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtmh_s16_f16(a: f16) -> i16 {
-    vcvtmh_s32_f16(a) as i16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtms.i16.f16"
+        )]
+        fn _vcvtmh_s16_f16(a: f16) -> i16;
+    }
+    unsafe { _vcvtmh_s16_f16(a) }
 }
 #[doc = "Floating-point convert to integer, rounding towards minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_s32_f16)"]
@@ -6238,7 +6259,7 @@ pub fn vcvtmh_s64_f16(a: f16) -> i64 {
     }
     unsafe { _vcvtmh_s64_f16(a) }
 }
-#[doc = "Floating-point convert to integer, rounding towards minus infinity"]
+#[doc = "Floating-point convert to unsigned integer, rounding towards minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_u16_f16)"]
 #[inline]
 #[cfg_attr(test, assert_instr(fcvtmu))]
@@ -6246,7 +6267,14 @@ pub fn vcvtmh_s64_f16(a: f16) -> i64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtmh_u16_f16(a: f16) -> u16 {
-    vcvtmh_u32_f16(a) as u16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtmu.i16.f16"
+        )]
+        fn _vcvtmh_u16_f16(a: f16) -> u16;
+    }
+    unsafe { _vcvtmh_u16_f16(a) }
 }
 #[doc = "Floating-point convert to unsigned integer, rounding towards minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_u32_f16)"]
@@ -6550,7 +6578,14 @@ pub fn vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtnh_s16_f16(a: f16) -> i16 {
-    vcvtnh_s32_f16(a) as i16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtns.i16.f16"
+        )]
+        fn _vcvtnh_s16_f16(a: f16) -> i16;
+    }
+    unsafe { _vcvtnh_s16_f16(a) }
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_s32_f16)"]
@@ -6594,7 +6629,14 @@ pub fn vcvtnh_s64_f16(a: f16) -> i64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtnh_u16_f16(a: f16) -> u16 {
-    vcvtnh_u32_f16(a) as u16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtnu.i16.f16"
+        )]
+        fn _vcvtnh_u16_f16(a: f16) -> u16;
+    }
+    unsafe { _vcvtnh_u16_f16(a) }
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_u32_f16)"]
@@ -6898,7 +6940,14 @@ pub fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtph_s16_f16(a: f16) -> i16 {
-    vcvtph_s32_f16(a) as i16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtps.i16.f16"
+        )]
+        fn _vcvtph_s16_f16(a: f16) -> i16;
+    }
+    unsafe { _vcvtph_s16_f16(a) }
 }
 #[doc = "Floating-point convert to integer, rounding to plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_s32_f16)"]
@@ -6942,7 +6991,14 @@ pub fn vcvtph_s64_f16(a: f16) -> i64 {
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtph_u16_f16(a: f16) -> u16 {
-    vcvtph_u32_f16(a) as u16
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtpu.i16.f16"
+        )]
+        fn _vcvtph_u16_f16(a: f16) -> u16;
+    }
+    unsafe { _vcvtph_u16_f16(a) }
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_u32_f16)"]
