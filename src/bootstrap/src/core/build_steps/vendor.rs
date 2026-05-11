@@ -46,10 +46,13 @@ pub(crate) struct Vendor {
     /// Determines whether vendored dependencies use versioned directories.
     pub(crate) versioned_dirs: bool,
     /// The root directory of the source code.
+    ///
+    /// Vendored dependencies will be stored in <root_dir>/vendor and
+    /// <root_dir>/library/vendor unless overridden by `output_dir`.
     pub(crate) root_dir: PathBuf,
     /// The root directory for storing vendored dependencies in <output_dir>/vendor
     /// and <output_dir>/library/vendor.
-    pub(crate) output_dir: PathBuf,
+    pub(crate) output_dir: Option<PathBuf>,
     /// Only vendor crates necessary by the library workspace.
     pub(crate) only_library_workspace: bool,
 }
@@ -71,7 +74,7 @@ impl Step for Vendor {
             sync_args: run.builder.config.cmd.vendor_sync_args(),
             versioned_dirs: run.builder.config.cmd.vendor_versioned_dirs(),
             root_dir: run.builder.src.clone(),
-            output_dir: run.builder.src.clone(),
+            output_dir: None,
             only_library_workspace: false,
         });
     }
@@ -81,7 +84,7 @@ impl Step for Vendor {
     /// This function runs `cargo vendor` and ensures all required submodules
     /// are initialized before vendoring begins.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let _guard = builder.group(&format!("Vendoring sources to {:?}", self.output_dir));
+        let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
         let config = if self.only_library_workspace {
             String::new()
@@ -116,7 +119,11 @@ impl Step for Vendor {
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.env("RUSTC", &builder.initial_rustc);
 
-            cmd.current_dir(&self.root_dir).arg(self.output_dir.join(VENDOR_DIR));
+            cmd.current_dir(&self.root_dir);
+            match &self.output_dir {
+                None => cmd.arg(VENDOR_DIR),
+                Some(output_dir) => cmd.arg(output_dir.join(VENDOR_DIR)),
+            };
 
             cmd.run_capture_stdout(builder).stdout()
         };
@@ -133,8 +140,11 @@ impl Step for Vendor {
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.env("RUSTC", &builder.initial_rustc);
 
-        cmd.current_dir(self.root_dir.join("library"))
-            .arg(self.output_dir.join("library").join(VENDOR_DIR));
+        cmd.current_dir(self.root_dir.join("library"));
+        match &self.output_dir {
+            None => cmd.arg(VENDOR_DIR),
+            Some(output_dir) => cmd.arg(output_dir.join("library").join(VENDOR_DIR)),
+        };
 
         let config_library = cmd.run_capture_stdout(builder).stdout();
 

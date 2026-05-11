@@ -275,7 +275,7 @@ impl Step for GenerateCopyright {
                 sync_args: Vec::new(),
                 versioned_dirs: true,
                 root_dir: builder.src.clone(),
-                output_dir: cache_dir.clone(),
+                output_dir: Some(cache_dir.clone()),
                 only_library_workspace: false,
             });
             cache_dir.join(VENDOR_DIR)

@@ -1216,7 +1216,7 @@ impl Step for Src {
             sync_args: vec![],
             versioned_dirs: true,
             root_dir: dst_src.clone(),
-            output_dir: dst_src.clone(),
+            output_dir: None,
             only_library_workspace: true,
         });
 
@@ -1389,7 +1389,7 @@ fn prepare_source_tarball<'a>(
             sync_args: pkgs_for_pgo_training.collect(),
             versioned_dirs: true,
             root_dir: plain_dst_src.into(),
-            output_dir: plain_dst_src.into(),
+            output_dir: None,
             only_library_workspace: false,
         });
 
