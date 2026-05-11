@@ -296,15 +296,14 @@ fn run_passes_inner<'tcx>(
 
             if is_optimization_stage(body, phase_change, optimizations)
                 && let Some(limit) = &tcx.sess.opts.unstable_opts.mir_opt_bisect_limit
-            {
-                if limited_by_opt_bisect(
+                && limited_by_opt_bisect(
                     tcx,
                     tcx.def_path_debug_str(body.source.def_id()),
                     *limit,
                     *pass,
-                ) {
-                    continue;
-                }
+                )
+            {
+                continue;
             }
 
             let dumper = if pass.is_mir_dump_enabled()
