@@ -609,7 +609,8 @@ impl CStore {
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
-        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
+        let unhashed = metadata.get_root_unhashed();
+        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_crate_hash());
         let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
@@ -662,6 +663,7 @@ impl CStore {
             tcx,
             metadata,
             crate_root,
+            unhashed,
             raw_proc_macros,
             cnum,
             cnum_map,
@@ -877,10 +879,11 @@ impl CStore {
         // against a hash, we could load a crate which has the same hash
         // as an already loaded crate. If this is the case prevent
         // duplicates by just using the first crate.
-        let root = library.metadata.get_root();
+        let root_name = library.metadata.get_root().name();
+        let root_hash = library.metadata.get_crate_hash();
         let mut result = LoadResult::Loaded(library);
         for (cnum, data) in self.iter_crate_data() {
-            if data.name() == root.name() && root.hash() == data.hash() {
+            if data.name() == root_name && data.hash() == root_hash {
                 assert!(locator.hash.is_none());
                 info!("load success, going to previous cnum: {}", cnum);
                 result = LoadResult::Previous(cnum);
