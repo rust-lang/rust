@@ -7,6 +7,6 @@
 #[no_mangle]
 #[inline(never)]
 pub fn call_return_address_intrinsic() -> *const () {
-    // CHECK: call ptr @llvm.returnaddress(i32 0)
+    // CHECK: call ptr @llvm.returnaddress{{(.p0)?}}(i32 0)
     core::intrinsics::return_address()
 }

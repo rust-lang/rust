@@ -860,7 +860,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => {
                         let ty = self.type_ix(32);
                         let val = self.const_int(ty, 0);
-                        self.call_intrinsic("llvm.returnaddress", &[], &[val])
+
+                        let type_params: &[&'ll Type] = if llvm_version < (23, 0, 0) {
+                            &[]
+                        } else {
+                            &[self.type_ptr()]
+                        };
+
+                        self.call_intrinsic("llvm.returnaddress", type_params, &[val])
                     }
                 }
             }
