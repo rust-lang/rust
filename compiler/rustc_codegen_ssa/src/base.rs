@@ -1,7 +1,7 @@
-use std::cmp;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use std::{cmp, iter};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
@@ -9,17 +9,17 @@ use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
     AllocatorTy,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::{DebuggerVisualizerType, OptimizeAttr};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::attrs::{DebuggerVisualizerType, EiiDecl, EiiImpl, OptimizeAttr};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
-use rustc_middle::middle::dependency_format::Dependencies;
+use rustc_middle::middle::dependency_format::{Dependencies, Linkage};
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
@@ -50,7 +50,8 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
-    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, ModuleCodegen, errors, meth, mir,
+    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, EiiLinkageImplInfo, EiiLinkageInfo,
+    ModuleCodegen, errors, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -897,6 +898,63 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
         && !tcx.should_codegen_locally(instance)
 }
 
+fn collect_eii_linkage(tcx: TyCtxt<'_>) -> Vec<EiiLinkageInfo> {
+    #[derive(Debug)]
+    struct FoundImpl {
+        imp: EiiImpl,
+        impl_crate: CrateNum,
+    }
+
+    #[derive(Debug)]
+    struct FoundEii {
+        decl: EiiDecl,
+        impls: FxIndexMap<DefId, FoundImpl>,
+    }
+
+    let mut eiis = FxIndexMap::<DefId, FoundEii>::default();
+
+    for &cnum in tcx.crates(()).iter().chain(iter::once(&LOCAL_CRATE)) {
+        for (did, (decl, impls)) in tcx.externally_implementable_items(cnum) {
+            eiis.entry(*did)
+                .or_insert_with(|| FoundEii { decl: *decl, impls: Default::default() })
+                .impls
+                .extend(
+                    impls
+                        .into_iter()
+                        .map(|(did, imp)| (*did, FoundImpl { imp: *imp, impl_crate: cnum })),
+                );
+        }
+    }
+
+    eiis.into_iter()
+        .filter_map(|(_, FoundEii { decl, impls })| {
+            let explicit_impl_count = impls.values().filter(|imp| !imp.imp.is_default).count();
+            let has_default_impl = impls.values().any(|imp| imp.imp.is_default);
+            // Only this case needs the link-time check. Missing impls and
+            // duplicate explicit impls are handled in `rustc_passes`.
+            (explicit_impl_count == 1 && has_default_impl).then(|| EiiLinkageInfo {
+                name: decl.name.name,
+                impls: impls
+                    .into_iter()
+                    .map(|(impl_did, FoundImpl { imp, impl_crate })| EiiLinkageImplInfo {
+                        span: tcx.def_span(impl_did),
+                        impl_crate,
+                        is_default: imp.is_default,
+                    })
+                    .collect(),
+            })
+        })
+        .collect()
+}
+
+fn eii_linkage_needed(dependency_formats: &Dependencies) -> bool {
+    dependency_formats.values().any(|formats| {
+        formats
+            .iter()
+            .any(|&linkage| matches!(linkage, Linkage::Dynamic | Linkage::IncludedFromDylib))
+    })
+}
+
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> CrateInfo {
         let crate_types = tcx.crate_types().to_vec();
@@ -908,6 +966,13 @@ impl CrateInfo {
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let windows_subsystem = find_attr!(tcx, crate, WindowsSubsystem(kind) => *kind);
+        let dependency_formats = Arc::clone(tcx.dependency_formats(()));
+        let eii_linkage = if eii_linkage_needed(&dependency_formats) {
+            let eii_linkage = collect_eii_linkage(tcx);
+            (!eii_linkage.is_empty()).then_some(eii_linkage)
+        } else {
+            None
+        };
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the
@@ -952,7 +1017,8 @@ impl CrateInfo {
             crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
             used_crate_source: UnordMap::with_capacity(n_crates),
-            dependency_formats: Arc::clone(tcx.dependency_formats(())),
+            dependency_formats,
+            eii_linkage,
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
             lint_level_specs: CodegenLintLevelSpecs::from_tcx(tcx),
