@@ -9,13 +9,12 @@ pub static A: i32 = {
     while i < 10 {
         i += 1;
         a += 1;
-        //~^ WARN value assigned to `a` is never read
     }
     i
 };
 
 pub const B: u32 = {
-    let mut b = 1; //~ WARN value assigned to `b` is never read
+    let mut b = 1;
     b += 1; //~ WARN value assigned to `b` is never read
     b = 42;
     b

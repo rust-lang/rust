@@ -12,8 +12,8 @@ use rustc_middle::mir::visit::{
 use rustc_middle::mir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
+use rustc_mir_dataflow::fmt::{DebugWithAdapter, DebugWithContext};
+use rustc_mir_dataflow::{Analysis, Backward, JoinSemiLattice, ResultsCursor};
 use rustc_session::lint;
 use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -136,7 +136,6 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
     checked_places.record_debuginfo(&body.var_debug_info);
 
     let self_assignment = find_self_assignments(&checked_places, body);
-
     let mut live =
         MaybeLivePlaces { tcx, capture_kind, checked_places: &checked_places, self_assignment }
             .iterate_to_fixpoint(tcx, body, None)
@@ -680,8 +679,9 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
         for (bb, bb_data) in traversal::postorder(body) {
             cursor.seek_to_block_end(bb);
-            let live = cursor.get();
-            ever_live.union(live);
+            let live_domain = cursor.get();
+            ever_live.union(&live_domain.use_live);
+            let live = live_domain.assignments();
 
             let terminator = bb_data.terminator();
             match &terminator.kind {
@@ -718,8 +718,9 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
                 let location = Location { block: bb, statement_index };
                 cursor.seek_before_primary_effect(location);
-                let live = cursor.get();
-                ever_live.union(live);
+                let live_domain = cursor.get();
+                ever_live.union(&live_domain.use_live);
+                let live = live_domain.assignments();
                 match &statement.kind {
                     StatementKind::Assign((place, _)) => {
                         check_place(
@@ -756,8 +757,8 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
         // Check liveness of function arguments on entry.
         {
             cursor.seek_to_block_start(START_BLOCK);
-            let live = cursor.get();
-            ever_live.union(live);
+            let live_domain = cursor.get();
+            ever_live.union(&live_domain.use_live);
 
             // Verify that arguments and captured values are useful.
             for (index, place) in checked_places.iter() {
@@ -778,7 +779,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 let access = Access {
                     kind,
                     location: Location::START,
-                    live: live.contains(index),
+                    live: live_domain.use_live.contains(index),
                     is_direct: true,
                 };
                 assignments[index].insert(source_info, access);
@@ -1232,30 +1233,117 @@ pub struct MaybeLivePlaces<'a, 'tcx> {
     self_assignment: FxHashSet<Location>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaybeLivePlacesDomain {
+    /// Places whose current value may still be observed by an ordinary user-visible use.
+    ///
+    /// This drives `unused_variables`. In the following example, the read of `a` performed by
+    /// `a += 1` is only needed to compute the new assigned value, so it does not make `a` live in
+    /// this domain:
+    ///
+    /// ```text
+    /// let mut a = 0;
+    /// a += 1;
+    /// ```
+    ///
+    /// If there is no later ordinary use of `a`, the final assignment can still be reported as
+    /// unused.
+    use_live: DenseBitSet<PlaceIndex>,
+
+    /// Places whose current value may still be read by a later assignment.
+    ///
+    /// This drives `unused_assignments`. It differs from `use_live` for self-assignments, where a
+    /// later assignment reads the old value without counting as an ordinary use. For example:
+    ///
+    /// ```text
+    /// let mut a = 0;
+    /// if cond {
+    ///     a = 1;
+    /// } else {
+    ///     a = 2;
+    /// }
+    /// a += 1;
+    /// ```
+    ///
+    /// The old-value read in `a += 1` makes both branch assignments live in this domain, even
+    /// though it does not make them live in `use_live`.
+    ///
+    /// `None` means there are no self-assignments in this body, so assignment-read liveness is the
+    /// same as ordinary use liveness and we avoid allocating a second bitset.
+    assignment_live: Option<DenseBitSet<PlaceIndex>>,
+}
+
+impl MaybeLivePlacesDomain {
+    fn new_empty(len: usize, track_assignments_separately: bool) -> Self {
+        Self {
+            use_live: DenseBitSet::new_empty(len),
+            assignment_live: track_assignments_separately.then(|| DenseBitSet::new_empty(len)),
+        }
+    }
+
+    fn assignments(&self) -> &DenseBitSet<PlaceIndex> {
+        // Without self-assignments, assignment-read liveness is identical to ordinary use
+        // liveness. Reuse `use_live` in that common case.
+        self.assignment_live.as_ref().unwrap_or(&self.use_live)
+    }
+}
+
+impl JoinSemiLattice for MaybeLivePlacesDomain {
+    fn join(&mut self, other: &Self) -> bool {
+        let use_changed = self.use_live.union(&other.use_live);
+        let assignment_changed = match (&mut self.assignment_live, &other.assignment_live) {
+            (Some(this), Some(other)) => this.union(other),
+            (None, None) => false,
+            _ => bug!("assignment-read liveness should be enabled consistently"),
+        };
+
+        use_changed | assignment_changed
+    }
+}
+
+impl DebugWithContext<MaybeLivePlaces<'_, '_>> for MaybeLivePlacesDomain {
+    fn fmt_with(
+        &self,
+        ctxt: &MaybeLivePlaces<'_, '_>,
+        f: &mut std::fmt::Formatter<'_>,
+    ) -> std::fmt::Result {
+        let mut debug = f.debug_struct("MaybeLivePlacesDomain");
+        debug.field("used_live", &DebugWithAdapter { this: &self.use_live, ctxt });
+        if let Some(assign_live) = &self.assignment_live {
+            debug.field("assignment_live", &DebugWithAdapter { this: assign_live, ctxt });
+        }
+        debug.finish()
+    }
+}
+
 impl<'tcx> MaybeLivePlaces<'_, 'tcx> {
     fn transfer_function<'a>(
         &'a self,
-        trans: &'a mut DenseBitSet<PlaceIndex>,
+        trans: &'a mut MaybeLivePlacesDomain,
     ) -> TransferFunction<'a, 'tcx> {
         TransferFunction {
             tcx: self.tcx,
             checked_places: &self.checked_places,
             capture_kind: self.capture_kind,
-            trans,
+            places: trans,
             self_assignment: &self.self_assignment,
+            mode: TransferMode::Both,
         }
     }
 }
 
 impl<'tcx> Analysis<'tcx> for MaybeLivePlaces<'_, 'tcx> {
-    type Domain = DenseBitSet<PlaceIndex>;
+    type Domain = MaybeLivePlacesDomain;
     type Direction = Backward;
 
     const NAME: &'static str = "liveness-lint";
 
     fn bottom_value(&self, _: &Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        DenseBitSet::new_empty(self.checked_places.len())
+        MaybeLivePlacesDomain::new_empty(
+            self.checked_places.len(),
+            !self.self_assignment.is_empty(),
+        )
     }
 
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
@@ -1294,9 +1382,52 @@ impl<'tcx> Analysis<'tcx> for MaybeLivePlaces<'_, 'tcx> {
 struct TransferFunction<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     checked_places: &'a PlaceSet<'tcx>,
-    trans: &'a mut DenseBitSet<PlaceIndex>,
+    places: &'a mut MaybeLivePlacesDomain,
     capture_kind: CaptureKind,
     self_assignment: &'a FxHashSet<Location>,
+    mode: TransferMode,
+}
+
+#[derive(Copy, Clone)]
+enum TransferMode {
+    Used,
+    Assignments,
+    Both,
+}
+
+impl<'tcx> TransferFunction<'_, 'tcx> {
+    fn with_mode<R>(&mut self, mode: TransferMode, f: impl FnOnce(&mut Self) -> R) -> R {
+        let old_mode = self.mode;
+        self.mode = mode;
+        let result = f(self);
+        self.mode = old_mode;
+        result
+    }
+
+    fn update_place(&mut self, index: PlaceIndex, def_use: DefUse) {
+        match def_use {
+            DefUse::Def => {
+                if matches!(self.mode, TransferMode::Used | TransferMode::Both) {
+                    self.places.use_live.remove(index);
+                }
+                if matches!(self.mode, TransferMode::Assignments | TransferMode::Both)
+                    && let Some(assignments) = &mut self.places.assignment_live
+                {
+                    assignments.remove(index);
+                }
+            }
+            DefUse::Use => {
+                if matches!(self.mode, TransferMode::Used | TransferMode::Both) {
+                    self.places.use_live.insert(index);
+                }
+                if matches!(self.mode, TransferMode::Assignments | TransferMode::Both)
+                    && let Some(assignments) = &mut self.places.assignment_live
+                {
+                    assignments.insert(index);
+                }
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
@@ -1312,6 +1443,14 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
             StatementKind::Assign((ref dest, ref rvalue))
                 if self.self_assignment.contains(&location) =>
             {
+                // A read done only to compute the next value of a self-assignment does not make the
+                // variable used, but it does make the previous assignment read. Apply the ordinary
+                // transfer to the assignment-liveness bits, then the restricted transfer to the
+                // user-visible "used" bits.
+                self.with_mode(TransferMode::Assignments, |this| {
+                    this.visit_assign(dest, rvalue, location);
+                });
+
                 if let Rvalue::BinaryOp(
                     BinOp::AddWithOverflow | BinOp::SubWithOverflow | BinOp::MulWithOverflow,
                     (_, rhs),
@@ -1320,23 +1459,29 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
                     // We are computing the binary operation:
                     // - the LHS will be assigned, so we don't read it;
                     // - the RHS still needs to be read.
-                    self.visit_operand(rhs, location);
-                    self.visit_place(
-                        dest,
-                        PlaceContext::MutatingUse(MutatingUseContext::Store),
-                        location,
-                    );
+                    self.with_mode(TransferMode::Used, |this| {
+                        this.visit_operand(rhs, location);
+                        this.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location,
+                        );
+                    });
                 } else if let Rvalue::BinaryOp(_, (_, rhs)) = rvalue {
                     // We are computing the binary operation:
                     // - the LHS is being updated, so we don't read it;
                     // - the RHS still needs to be read.
-                    self.visit_operand(rhs, location);
+                    self.with_mode(TransferMode::Used, |this| {
+                        this.visit_operand(rhs, location);
+                    });
                 } else {
                     // This is the second part of a checked self-assignment,
                     // we are assigning the result.
                     // We do not consider the write to the destination as a `def`.
                     // `self_assignment` must be false if the assignment is indirect.
-                    self.visit_rvalue(rvalue, location);
+                    self.with_mode(TransferMode::Used, |this| {
+                        this.visit_rvalue(rvalue, location);
+                    });
                 }
             }
             _ => self.super_statement(statement, location),
@@ -1358,7 +1503,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
                     if place.local == ty::CAPTURE_STRUCT_LOCAL
                         && place.projection.last() == Some(&PlaceElem::Deref)
                     {
-                        self.trans.insert(index);
+                        self.update_place(index, DefUse::Use);
                     }
                 }
             }
@@ -1408,10 +1553,10 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
 
             match DefUse::for_place(extra_projections, context) {
                 Some(DefUse::Def) => {
-                    self.trans.remove(index);
+                    self.update_place(index, DefUse::Def);
                 }
                 Some(DefUse::Use) => {
-                    self.trans.insert(index);
+                    self.update_place(index, DefUse::Use);
                 }
                 None => {}
             }
@@ -1425,10 +1570,10 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_, 'tcx> {
             debug_assert_eq!(_proj, &[]);
             match DefUse::for_place(&[], context) {
                 Some(DefUse::Def) => {
-                    self.trans.remove(index);
+                    self.update_place(index, DefUse::Def);
                 }
                 Some(DefUse::Use) => {
-                    self.trans.insert(index);
+                    self.update_place(index, DefUse::Use);
                 }
                 _ => {}
             }

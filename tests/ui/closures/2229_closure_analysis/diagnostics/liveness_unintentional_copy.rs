@@ -36,10 +36,8 @@ pub fn unintentional_copy_two() {
     (1..10).for_each(move |x| {
         sum.b += x;
         //~^ WARN value captured by `sum.b` is never read
-        //~| WARN value assigned to `sum.b` is never read
         a += x;
         //~^ WARN value captured by `a` is never read
-        //~| WARN value assigned to `a` is never read
     });
 }
 

@@ -26,9 +26,7 @@ pub fn f() {
     // Read and written to, but never actually used.
     (move || {
         c.x += 1; //~  WARN value captured by `c.x` is never read
-                  //~| WARN value assigned to `c.x` is never read
         a += 1; //~  WARN value captured by `a` is never read
-                //~| WARN value assigned to `a` is never read
     })();
 
     (move || {

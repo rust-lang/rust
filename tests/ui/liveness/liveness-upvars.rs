@@ -21,7 +21,6 @@ pub fn unintentional_copy_two() {
     (1..10).for_each(move |x| {
         sum += x;
         //~^ WARN value captured by `sum` is never read
-        //~| WARN value assigned to `sum` is never read
     });
     dbg!(sum);
 }
@@ -43,7 +42,6 @@ pub fn f() {
     let _ = move || {
         c += 1;
         //~^ WARN value captured by `c` is never read
-        //~|  WARN value assigned to `c` is never read
     };
     let _ = async move {
         c += 1;

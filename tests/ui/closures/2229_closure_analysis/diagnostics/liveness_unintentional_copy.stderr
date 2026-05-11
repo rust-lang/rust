@@ -58,29 +58,13 @@ LL |         sum.b += x;
    |
    = help: did you mean to capture by reference instead?
 
-warning: value assigned to `sum.b` is never read
-  --> $DIR/liveness_unintentional_copy.rs:37:9
-   |
-LL |         sum.b += x;
-   |         ^^^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
-
 warning: value captured by `a` is never read
-  --> $DIR/liveness_unintentional_copy.rs:40:9
+  --> $DIR/liveness_unintentional_copy.rs:39:9
    |
 LL |         a += x;
    |         ^
    |
    = help: did you mean to capture by reference instead?
-
-warning: value assigned to `a` is never read
-  --> $DIR/liveness_unintentional_copy.rs:40:9
-   |
-LL |         a += x;
-   |         ^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
 
 warning: unused variable: `a`
   --> $DIR/liveness_unintentional_copy.rs:32:9
@@ -94,5 +78,5 @@ warning: unused variable: `sum`
 LL |     let mut sum = MyStruct { a: 1, b: 0 };
    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sum`
 
-warning: 12 warnings emitted
+warning: 10 warnings emitted
 

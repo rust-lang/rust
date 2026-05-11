@@ -1,5 +1,5 @@
 warning: value assigned to `c.x` is never read
-  --> $DIR/liveness.rs:46:9
+  --> $DIR/liveness.rs:44:9
    |
 LL |         c.x += 1;
    |         ^^^^^^^^
@@ -13,7 +13,7 @@ LL | #![warn(unused)]
    = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
 
 warning: value assigned to `a` is never read
-  --> $DIR/liveness.rs:48:9
+  --> $DIR/liveness.rs:46:9
    |
 LL |         a += 1;
    |         ^^^^^^
@@ -28,29 +28,13 @@ LL |         c.x += 1;
    |
    = help: did you mean to capture by reference instead?
 
-warning: value assigned to `c.x` is never read
-  --> $DIR/liveness.rs:28:9
-   |
-LL |         c.x += 1;
-   |         ^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
-
 warning: value captured by `a` is never read
-  --> $DIR/liveness.rs:30:9
+  --> $DIR/liveness.rs:29:9
    |
 LL |         a += 1;
    |         ^
    |
    = help: did you mean to capture by reference instead?
-
-warning: value assigned to `a` is never read
-  --> $DIR/liveness.rs:30:9
-   |
-LL |         a += 1;
-   |         ^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
 
 warning: value captured by `c.x` is never read
   --> $DIR/liveness.rs:20:9
@@ -69,7 +53,7 @@ LL |         a = 1;
    = help: did you mean to capture by reference instead?
 
 warning: value captured by `e.x` is never read
-  --> $DIR/liveness.rs:74:13
+  --> $DIR/liveness.rs:72:13
    |
 LL |             e.x = Some("e1");
    |             ^^^
@@ -77,7 +61,7 @@ LL |             e.x = Some("e1");
    = help: did you mean to capture by reference instead?
 
 warning: value assigned to `e.x` is never read
-  --> $DIR/liveness.rs:74:13
+  --> $DIR/liveness.rs:72:13
    |
 LL |             e.x = Some("e1");
    |             ^^^^^^^^^^^^^^^^ this value is reassigned later and never used
@@ -86,7 +70,7 @@ LL |             e.x = Some("e2");
    |             ---------------- `e.x` is overwritten here before the previous value is read
 
 warning: value assigned to `e.x` is never read
-  --> $DIR/liveness.rs:76:13
+  --> $DIR/liveness.rs:74:13
    |
 LL |             e.x = Some("e2");
    |             ^^^^^^^^^^^^^^^^
@@ -94,7 +78,7 @@ LL |             e.x = Some("e2");
    = help: maybe it is overwritten before being read?
 
 warning: value captured by `b` is never read
-  --> $DIR/liveness.rs:77:13
+  --> $DIR/liveness.rs:75:13
    |
 LL |             b = Some("e1");
    |             ^
@@ -102,7 +86,7 @@ LL |             b = Some("e1");
    = help: did you mean to capture by reference instead?
 
 warning: value assigned to `b` is never read
-  --> $DIR/liveness.rs:77:13
+  --> $DIR/liveness.rs:75:13
    |
 LL |             b = Some("e1");
    |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
@@ -111,7 +95,7 @@ LL |             b = Some("e2");
    |             -------------- `b` is overwritten here before the previous value is read
 
 warning: value assigned to `b` is never read
-  --> $DIR/liveness.rs:79:13
+  --> $DIR/liveness.rs:77:13
    |
 LL |             b = Some("e2");
    |             ^^^^^^^^^^^^^^
@@ -119,7 +103,7 @@ LL |             b = Some("e2");
    = help: maybe it is overwritten before being read?
 
 warning: value assigned to `d.x` is never read
-  --> $DIR/liveness.rs:68:13
+  --> $DIR/liveness.rs:66:13
    |
 LL |             d.x = Some("d1");
    |             ^^^^^^^^^^^^^^^^ this value is reassigned later and never used
@@ -127,12 +111,12 @@ LL |             d.x = Some("d2");
    |             ---------------- `d.x` is overwritten here before the previous value is read
 
 warning: value assigned to `a` is never read
-  --> $DIR/liveness.rs:70:13
+  --> $DIR/liveness.rs:68:13
    |
 LL |             a = Some("d1");
    |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
 LL |             a = Some("d2");
    |             -------------- `a` is overwritten here before the previous value is read
 
-warning: 16 warnings emitted
+warning: 14 warnings emitted
 
