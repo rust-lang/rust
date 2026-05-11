@@ -29,16 +29,8 @@ pub(crate) fn codegen(
         let lto_mode = module.module_llvm.lto_mode;
         let lto_supported = module.module_llvm.lto_supported;
 
-        let bc_out = cgcx.output_filenames.temp_path_for_cgu(
-            OutputType::Bitcode,
-            &module.name,
-            cgcx.invocation_temp.as_deref(),
-        );
-        let obj_out = cgcx.output_filenames.temp_path_for_cgu(
-            OutputType::Object,
-            &module.name,
-            cgcx.invocation_temp.as_deref(),
-        );
+        let bc_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Bitcode, &module.name);
+        let obj_out = cgcx.output_filenames.temp_path_for_cgu(OutputType::Object, &module.name);
 
         if config.bitcode_needed() {
             let _timer =
@@ -82,22 +74,15 @@ pub(crate) fn codegen(
         }
 
         if config.emit_ir {
-            let out = cgcx.output_filenames.temp_path_for_cgu(
-                OutputType::LlvmAssembly,
-                &module.name,
-                cgcx.invocation_temp.as_deref(),
-            );
+            let out =
+                cgcx.output_filenames.temp_path_for_cgu(OutputType::LlvmAssembly, &module.name);
             std::fs::write(out, "").expect("write file");
         }
 
         if config.emit_asm {
             let _timer =
                 prof.generic_activity_with_arg("GCC_module_codegen_emit_asm", &*module.name);
-            let path = cgcx.output_filenames.temp_path_for_cgu(
-                OutputType::Assembly,
-                &module.name,
-                cgcx.invocation_temp.as_deref(),
-            );
+            let path = cgcx.output_filenames.temp_path_for_cgu(OutputType::Assembly, &module.name);
             context.compile_to_file(OutputKind::Assembler, path.to_str().expect("path to str"));
         }
 
@@ -215,7 +200,6 @@ pub(crate) fn codegen(
         config.emit_asm,
         config.emit_ir,
         &cgcx.output_filenames,
-        cgcx.invocation_temp.as_deref(),
     )
 }
 

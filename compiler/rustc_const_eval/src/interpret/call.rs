@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{LangItem, find_attr};
+use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, Unnormalized, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
@@ -81,7 +81,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> TyAndLayout<'tcx> {
         match layout.ty.kind() {
             ty::Adt(adt_def, _) if adt_def.repr().transparent() && may_unfold(*adt_def) => {
-                assert!(!adt_def.is_enum());
+                assert_matches!(layout.variants, rustc_abi::Variants::Single { .. });
                 // Find the non-1-ZST field, and recurse.
                 let (_, field) = layout.non_1zst_field(self).unwrap();
                 self.unfold_transparent(field, may_unfold)
@@ -278,7 +278,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         callee_arg: &mir::Place<'tcx>,
         callee_ty: Ty<'tcx>,
         already_live: bool,
-        is_drop_in_place: bool,
     ) -> InterpResult<'tcx>
     where
         'tcx: 'x,
@@ -323,16 +322,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.storage_live_dyn(local, meta)?;
         }
         // Now we can finally actually evaluate the callee place.
-        let mut callee_arg = self.eval_place(*callee_arg)?;
-        // drop_in_place has a signature which says that the first argument is `*mut T`
-        // but really it's `&mut T`. This is where we handle that terrible hack in
-        // the MIR semantics.
-        // FIXME(#154274): remove this hack.
-        if is_drop_in_place && callee_arg_idx == 0 {
-            let pointee_ty = callee_arg.layout.ty.builtin_deref(true).unwrap();
-            let mutref_ty = Ty::new_mut_ref(*self.tcx, self.tcx.lifetimes.re_erased, pointee_ty);
-            callee_arg = callee_arg.transmute(self.layout_of(mutref_ty)?, self)?;
-        }
+        let callee_arg = self.eval_place(*callee_arg)?;
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
@@ -464,12 +454,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Determine whether there is a special VaList argument. This is always the
         // last argument, and since arguments start at index 1 that's `arg_count`.
         let va_list_arg = callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
-        // Part of the hack for #154274, see `pass_argument`.
-        let is_drop_in_place = {
-            let def_id = body.source.def_id();
-            self.tcx.is_lang_item(def_id, LangItem::DropInPlace)
-                || self.tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
-        };
 
         // During argument passing, we want retagging with protectors.
         M::with_retag_mode(self, RetagMode::FnEntry, |ecx| {
@@ -532,7 +516,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             &dest,
                             field_ty,
                             /* already_live */ true,
-                            is_drop_in_place,
                         )?;
                     }
                 } else {
@@ -545,7 +528,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         &dest,
                         ty,
                         /* already_live */ false,
-                        is_drop_in_place,
                     )?;
                 }
             }
@@ -913,19 +895,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => {
                 debug_assert_eq!(
                     instance,
-                    ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+                    ty::Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
                 );
                 place
             }
         };
+
         let instance = {
-            let _trace =
-                enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
-            ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+            let _trace = enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
+            ty::Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
         };
         let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 
-        let arg = self.mplace_to_imm_ptr(&place, None)?;
+        let ref_ty = Ty::new_mut_ref(self.tcx.tcx, self.tcx.lifetimes.re_erased, place.layout.ty);
+        let arg = self.mplace_to_imm_ptr(&place, Some(ref_ty))?;
+
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.init_fn_call(

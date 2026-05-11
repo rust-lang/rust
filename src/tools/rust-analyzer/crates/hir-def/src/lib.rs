@@ -15,6 +15,7 @@ extern crate rustc_parse_format;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_parse_format as rustc_parse_format;
 
+pub extern crate ra_ap_rustc_abi as layout;
 pub extern crate ra_ap_rustc_abi as rustc_abi;
 
 pub mod db;
@@ -48,7 +49,6 @@ pub mod import_map;
 pub mod visibility;
 
 use intern::Interned;
-pub use rustc_abi as layout;
 use rustc_abi::ExternAbi;
 use thin_vec::ThinVec;
 

@@ -12,7 +12,7 @@ use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
@@ -237,7 +237,7 @@ impl<'tcx> TyCtxt<'tcx> {
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
         define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> Hashes {
-        if !self.needs_crate_hash() {
+        if !self.needs_hir_hash() {
             return Hashes { opt_hash_including_bodies: None, attrs_hash: None };
         }
 
@@ -300,8 +300,8 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Expr(parent_expr) => {
                 match parent_expr.kind {
                     // Addr-of, field projections, and LHS of assignment don't constitute reads.
-                    // Assignment does call `drop_in_place`, though, but its safety
-                    // requirements are not the same.
+                    // Assignment does call `drop_glue`, though, but its safety requirements are
+                    // not the same.
                     ExprKind::AddrOf(..) | ExprKind::Field(..) => false,
 
                     // Place-preserving expressions only constitute reads if their

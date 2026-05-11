@@ -1449,7 +1449,7 @@ fn generate_functions(intrinsics: &[IntrinsicInfo]) -> String {
         output.push_str(&format!("/// Execution Slots: {}\n", info.exec_slots));
 
         // Generate attributes
-        output.push_str("#[inline(always)]\n");
+        output.push_str("#[inline]\n");
         output.push_str(&format!(
             "#[cfg_attr(target_arch = \"hexagon\", target_feature(enable = \"hvxv{}\"))]\n",
             info.min_arch
@@ -1532,7 +1532,7 @@ fn generate_functions(intrinsics: &[IntrinsicInfo]) -> String {
             }
 
             // Generate attributes
-            output.push_str("#[inline(always)]\n");
+            output.push_str("#[inline]\n");
             output.push_str(&format!(
                 "#[cfg_attr(target_arch = \"hexagon\", target_feature(enable = \"hvxv{}\"))]\n",
                 info.min_arch

@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use crate::{DebruijnIndex, TypeFlags};

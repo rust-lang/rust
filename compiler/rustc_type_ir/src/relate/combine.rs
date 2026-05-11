@@ -131,7 +131,7 @@ where
         (ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
         | (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
             assert!(!infcx.next_trait_solver());
-            match infcx.typing_mode() {
+            match infcx.typing_mode_raw().assert_not_erased() {
                 // During coherence, opaque types should be treated as *possibly*
                 // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible

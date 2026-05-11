@@ -1305,8 +1305,6 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
-
     let codegen = tcx.sess.time("codegen_crate", || {
         if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
             // Skip crate items and just output metadata in -Z no-codegen mode.
@@ -1315,7 +1313,7 @@ pub(crate) fn start_codegen<'tcx>(
             // Linker::link will skip join_codegen in case of a CodegenResults Any value.
             Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
-            codegen_backend.codegen_crate(tcx, &crate_info)
+            codegen_backend.codegen_crate(tcx)
         }
     });
 
@@ -1326,6 +1324,8 @@ pub(crate) fn start_codegen<'tcx>(
     if tcx.sess.opts.unstable_opts.print_type_sizes {
         tcx.sess.code_stats.print_type_sizes();
     }
+
+    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
 
     (codegen, crate_info, metadata)
 }

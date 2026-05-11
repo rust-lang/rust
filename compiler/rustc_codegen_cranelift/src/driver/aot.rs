@@ -14,7 +14,7 @@ use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -150,7 +150,6 @@ fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
 
 fn emit_cgu(
     output_filenames: &OutputFilenames,
-    invocation_temp: Option<&str>,
     prof: &SelfProfilerRef,
     name: String,
     module: UnwindModule<ObjectModule>,
@@ -166,7 +165,6 @@ fn emit_cgu(
 
     let module_regular = emit_module(
         output_filenames,
-        invocation_temp,
         prof,
         product.object,
         ModuleKind::Regular,
@@ -192,7 +190,6 @@ fn emit_cgu(
 
 fn emit_module(
     output_filenames: &OutputFilenames,
-    invocation_temp: Option<&str>,
     prof: &SelfProfilerRef,
     mut object: cranelift_object::object::write::Object<'_>,
     kind: ModuleKind,
@@ -211,7 +208,7 @@ fn emit_module(
         object.set_section_data(comment_section, producer, 1);
     }
 
-    let tmp_file = output_filenames.temp_path_for_cgu(OutputType::Object, &name, invocation_temp);
+    let tmp_file = output_filenames.temp_path_for_cgu(OutputType::Object, &name);
     let file = match File::create(&tmp_file) {
         Ok(file) => file,
         Err(err) => return Err(format!("error creating object file: {}", err)),
@@ -251,11 +248,8 @@ fn reuse_workproduct_for_cgu(
     cgu: &CodegenUnit<'_>,
 ) -> Result<ModuleCodegenResult, String> {
     let work_product = cgu.previous_work_product(tcx);
-    let obj_out_regular = tcx.output_filenames(()).temp_path_for_cgu(
-        OutputType::Object,
-        cgu.name().as_str(),
-        tcx.sess.invocation_temp.as_deref(),
-    );
+    let obj_out_regular =
+        tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, cgu.name().as_str());
     let source_file_regular = rustc_incremental::in_incr_comp_dir_sess(
         tcx.sess,
         work_product.saved_files.get("o").expect("no saved object file in work product"),
@@ -394,7 +388,6 @@ fn module_codegen(
     let producer = crate::debuginfo::producer(tcx.sess);
 
     let profiler = tcx.prof.clone();
-    let invocation_temp = tcx.sess.invocation_temp.clone();
     let output_filenames = tcx.output_filenames(()).clone();
     let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
 
@@ -421,19 +414,13 @@ fn module_codegen(
 
         let global_asm_object_file =
             profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
-                crate::global_asm::compile_global_asm(
-                    &global_asm_config,
-                    &cgu_name,
-                    global_asm,
-                    invocation_temp.as_deref(),
-                )
+                crate::global_asm::compile_global_asm(&global_asm_config, &cgu_name, global_asm)
             })?;
 
         let codegen_result =
             profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
                     &global_asm_config.output_filenames,
-                    invocation_temp.as_deref(),
                     &profiler,
                     cgu_name,
                     module,
@@ -456,7 +443,6 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
 
         match emit_module(
             tcx.output_filenames(()),
-            tcx.sess.invocation_temp.as_deref(),
             &tcx.sess.prof,
             product.object,
             ModuleKind::Allocator,

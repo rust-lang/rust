@@ -214,6 +214,12 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     passes: u32,
 ) -> std::io::Result<()> {
     let intrinsic_name = &intrinsic.name;
+    let passes = passes + 1
+        - intrinsic
+            .arguments
+            .iter()
+            .filter(|&arg| !arg.has_constraint())
+            .count() as u32;
 
     // Each function (and each specialization) has its own type. Erase that type with a cast.
     let mut coerce = String::from("unsafe fn(");

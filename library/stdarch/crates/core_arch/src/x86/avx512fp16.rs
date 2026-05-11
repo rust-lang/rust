@@ -695,34 +695,6 @@ pub const fn _mm512_zextph128_ph512(a: __m128h) -> __m512h {
     }
 }
 
-macro_rules! cmp_asm { // FIXME: use LLVM intrinsics
-    ($mask_type: ty, $reg: ident, $a: expr, $b: expr) => {{
-        let dst: $mask_type;
-        asm!(
-            "vcmpph {k}, {a}, {b}, {imm8}",
-            k = lateout(kreg) dst,
-            a = in($reg) $a,
-            b = in($reg) $b,
-            imm8 = const IMM5,
-            options(pure, nomem, nostack)
-        );
-        dst
-    }};
-    ($mask_type: ty, $mask: expr, $reg: ident, $a: expr, $b: expr) => {{
-        let dst: $mask_type;
-        asm!(
-            "vcmpph {k} {{ {mask} }}, {a}, {b}, {imm8}",
-            k = lateout(kreg) dst,
-            mask = in(kreg) $mask,
-            a = in($reg) $a,
-            b = in($reg) $b,
-            imm8 = const IMM5,
-            options(pure, nomem, nostack)
-        );
-        dst
-    }};
-}
-
 /// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
 /// operand specified by imm8, and store the results in mask vector k.
 ///
@@ -732,10 +704,7 @@ macro_rules! cmp_asm { // FIXME: use LLVM intrinsics
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_cmp_ph_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
-    unsafe {
-        static_assert_uimm_bits!(IMM5, 5);
-        cmp_asm!(__mmask8, xmm_reg, a, b)
-    }
+    _mm_mask_cmp_ph_mask::<IMM5>(!0, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
@@ -750,7 +719,7 @@ pub fn _mm_cmp_ph_mask<const IMM5: i32>(a: __m128h, b: __m128h) -> __mmask8 {
 pub fn _mm_mask_cmp_ph_mask<const IMM5: i32>(k1: __mmask8, a: __m128h, b: __m128h) -> __mmask8 {
     unsafe {
         static_assert_uimm_bits!(IMM5, 5);
-        cmp_asm!(__mmask8, k1, xmm_reg, a, b)
+        vcmpph_128(a, b, IMM5, k1)
     }
 }
 
@@ -763,10 +732,7 @@ pub fn _mm_mask_cmp_ph_mask<const IMM5: i32>(k1: __mmask8, a: __m128h, b: __m128
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_cmp_ph_mask<const IMM5: i32>(a: __m256h, b: __m256h) -> __mmask16 {
-    unsafe {
-        static_assert_uimm_bits!(IMM5, 5);
-        cmp_asm!(__mmask16, ymm_reg, a, b)
-    }
+    _mm256_mask_cmp_ph_mask::<IMM5>(!0, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
@@ -785,7 +751,7 @@ pub fn _mm256_mask_cmp_ph_mask<const IMM5: i32>(
 ) -> __mmask16 {
     unsafe {
         static_assert_uimm_bits!(IMM5, 5);
-        cmp_asm!(__mmask16, k1, ymm_reg, a, b)
+        vcmpph_256(a, b, IMM5, k1)
     }
 }
 
@@ -798,10 +764,7 @@ pub fn _mm256_mask_cmp_ph_mask<const IMM5: i32>(
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_cmp_ph_mask<const IMM5: i32>(a: __m512h, b: __m512h) -> __mmask32 {
-    unsafe {
-        static_assert_uimm_bits!(IMM5, 5);
-        cmp_asm!(__mmask32, zmm_reg, a, b)
-    }
+    _mm512_mask_cmp_ph_mask::<IMM5>(!0, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
@@ -818,10 +781,7 @@ pub fn _mm512_mask_cmp_ph_mask<const IMM5: i32>(
     a: __m512h,
     b: __m512h,
 ) -> __mmask32 {
-    unsafe {
-        static_assert_uimm_bits!(IMM5, 5);
-        cmp_asm!(__mmask32, k1, zmm_reg, a, b)
-    }
+    _mm512_mask_cmp_round_ph_mask::<IMM5, _MM_FROUND_CUR_DIRECTION>(k1, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
@@ -838,24 +798,7 @@ pub fn _mm512_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
     a: __m512h,
     b: __m512h,
 ) -> __mmask32 {
-    unsafe {
-        static_assert_uimm_bits!(IMM5, 5);
-        static_assert_sae!(SAE);
-        if SAE == _MM_FROUND_NO_EXC {
-            let dst: __mmask32;
-            asm!(
-                "vcmpph {k}, {a}, {b}, {{sae}}, {imm8}",
-                k = lateout(kreg) dst,
-                a = in(zmm_reg) a,
-                b = in(zmm_reg) b,
-                imm8 = const IMM5,
-                options(pure, nomem, nostack)
-            );
-            dst
-        } else {
-            cmp_asm!(__mmask32, zmm_reg, a, b)
-        }
-    }
+    _mm512_mask_cmp_round_ph_mask::<IMM5, SAE>(!0, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b based on the comparison
@@ -877,21 +820,7 @@ pub fn _mm512_mask_cmp_round_ph_mask<const IMM5: i32, const SAE: i32>(
     unsafe {
         static_assert_uimm_bits!(IMM5, 5);
         static_assert_sae!(SAE);
-        if SAE == _MM_FROUND_NO_EXC {
-            let dst: __mmask32;
-            asm!(
-                "vcmpph {k} {{{k1}}}, {a}, {b}, {{sae}}, {imm8}",
-                k = lateout(kreg) dst,
-                k1 = in(kreg) k1,
-                a = in(zmm_reg) a,
-                b = in(zmm_reg) b,
-                imm8 = const IMM5,
-                options(pure, nomem, nostack)
-            );
-            dst
-        } else {
-            cmp_asm!(__mmask32, k1, zmm_reg, a, b)
-        }
+        vcmpph_512(a, b, IMM5, k1, SAE)
     }
 }
 
@@ -11538,32 +11467,6 @@ pub fn _mm512_reduce_max_ph(a: __m512h) -> f16 {
     }
 }
 
-macro_rules! fpclass_asm { // FIXME: use LLVM intrinsics
-    ($mask_type: ty, $reg: ident, $a: expr) => {{
-        let dst: $mask_type;
-        asm!(
-            "vfpclassph {k}, {src}, {imm8}",
-            k = lateout(kreg) dst,
-            src = in($reg) $a,
-            imm8 = const IMM8,
-            options(pure, nomem, nostack)
-        );
-        dst
-    }};
-    ($mask_type: ty, $mask: expr, $reg: ident, $a: expr) => {{
-        let dst: $mask_type;
-        asm!(
-            "vfpclassph {k} {{ {mask} }}, {src}, {imm8}",
-            k = lateout(kreg) dst,
-            mask = in(kreg) $mask,
-            src = in($reg) $a,
-            imm8 = const IMM8,
-            options(pure, nomem, nostack)
-        );
-        dst
-    }};
-}
-
 /// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
 /// by imm8, and store the results in mask vector k.
 /// imm can be a combination of:
@@ -11586,7 +11489,7 @@ macro_rules! fpclass_asm { // FIXME: use LLVM intrinsics
 pub fn _mm_fpclass_ph_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
-        fpclass_asm!(__mmask8, xmm_reg, a)
+        vfpclassph_128(a, IMM8)
     }
 }
 
@@ -11611,10 +11514,7 @@ pub fn _mm_fpclass_ph_mask<const IMM8: i32>(a: __m128h) -> __mmask8 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __mmask8 {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        fpclass_asm!(__mmask8, k1, xmm_reg, a)
-    }
+    _mm_fpclass_ph_mask::<IMM8>(a) & k1
 }
 
 /// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
@@ -11639,7 +11539,7 @@ pub fn _mm_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask8, a: __m128h) -> __
 pub fn _mm256_fpclass_ph_mask<const IMM8: i32>(a: __m256h) -> __mmask16 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
-        fpclass_asm!(__mmask16, ymm_reg, a)
+        vfpclassph_256(a, IMM8)
     }
 }
 
@@ -11664,10 +11564,7 @@ pub fn _mm256_fpclass_ph_mask<const IMM8: i32>(a: __m256h) -> __mmask16 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm256_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask16, a: __m256h) -> __mmask16 {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        fpclass_asm!(__mmask16, k1, ymm_reg, a)
-    }
+    _mm256_fpclass_ph_mask::<IMM8>(a) & k1
 }
 
 /// Test packed half-precision (16-bit) floating-point elements in a for special categories specified
@@ -11692,7 +11589,7 @@ pub fn _mm256_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask16, a: __m256h) -
 pub fn _mm512_fpclass_ph_mask<const IMM8: i32>(a: __m512h) -> __mmask32 {
     unsafe {
         static_assert_uimm_bits!(IMM8, 8);
-        fpclass_asm!(__mmask32, zmm_reg, a)
+        vfpclassph_512(a, IMM8)
     }
 }
 
@@ -11717,10 +11614,7 @@ pub fn _mm512_fpclass_ph_mask<const IMM8: i32>(a: __m512h) -> __mmask32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "stdarch_x86_avx512fp16", since = "1.94.0")]
 pub fn _mm512_mask_fpclass_ph_mask<const IMM8: i32>(k1: __mmask32, a: __m512h) -> __mmask32 {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        fpclass_asm!(__mmask32, k1, zmm_reg, a)
-    }
+    _mm512_fpclass_ph_mask::<IMM8>(a) & k1
 }
 
 /// Test the lower half-precision (16-bit) floating-point element in a for special categories specified
@@ -16571,11 +16465,18 @@ pub const fn _mm_cvtsi16_si128(a: i16) -> __m128i {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
+    #[link_name = "llvm.x86.avx512fp16.mask.cmp.ph.128"]
+    fn vcmpph_128(a: __m128h, b: __m128h, imm5: i32, mask: __mmask8) -> __mmask8;
+    #[link_name = "llvm.x86.avx512fp16.mask.cmp.ph.256"]
+    fn vcmpph_256(a: __m256h, b: __m256h, imm5: i32, mask: __mmask16) -> __mmask16;
+    #[link_name = "llvm.x86.avx512fp16.mask.cmp.ph.512"]
+    fn vcmpph_512(a: __m512h, b: __m512h, imm5: i32, mask: __mmask32, sae: i32) -> __mmask32;
+
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.sh"]
-    fn vcmpsh(a: __m128h, b: __m128h, imm8: i32, mask: __mmask8, sae: i32) -> __mmask8;
+    fn vcmpsh(a: __m128h, b: __m128h, imm5: i32, mask: __mmask8, sae: i32) -> __mmask8;
     #[link_name = "llvm.x86.avx512fp16.vcomi.sh"]
-    fn vcomish(a: __m128h, b: __m128h, imm8: i32, sae: i32) -> i32;
+    fn vcomish(a: __m128h, b: __m128h, imm5: i32, sae: i32) -> i32;
 
     #[link_name = "llvm.x86.avx512fp16.add.ph.512"]
     fn vaddph(a: __m512h, b: __m512h, rounding: i32) -> __m512h;
@@ -16757,6 +16658,13 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.reduce.sh"]
     fn vreducesh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8, imm8: i32, sae: i32)
     -> __m128h;
+
+    #[link_name = "llvm.x86.avx512fp16.fpclass.ph.128"]
+    fn vfpclassph_128(a: __m128h, imm8: i32) -> __mmask8;
+    #[link_name = "llvm.x86.avx512fp16.fpclass.ph.256"]
+    fn vfpclassph_256(a: __m256h, imm8: i32) -> __mmask16;
+    #[link_name = "llvm.x86.avx512fp16.fpclass.ph.512"]
+    fn vfpclassph_512(a: __m512h, imm8: i32) -> __mmask32;
 
     #[link_name = "llvm.x86.avx512fp16.mask.fpclass.sh"]
     fn vfpclasssh(a: __m128h, imm8: i32, k: __mmask8) -> __mmask8;

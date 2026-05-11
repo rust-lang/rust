@@ -701,7 +701,7 @@ pub(crate) fn codegen_drop<'tcx>(
     unwind: UnwindAction,
 ) {
     let ty = drop_place.layout().ty;
-    let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
+    let drop_instance = Instance::resolve_drop_glue(fx.tcx, ty);
     let ret_block = fx.get_block(target);
 
     // AsyncDropGlueCtorShim can't be here
@@ -734,7 +734,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 fx.bcx.switch_to_block(continued);
 
                 // FIXME(eddyb) perhaps move some of this logic into
-                // `Instance::resolve_drop_in_place`?
+                // `Instance::resolve_drop_glue`?
                 let virtual_drop = Instance {
                     def: ty::InstanceKind::Virtual(drop_instance.def_id(), 0),
                     args: drop_instance.args,

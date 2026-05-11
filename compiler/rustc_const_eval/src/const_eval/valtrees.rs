@@ -237,7 +237,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     cid: GlobalId<'tcx>,
 ) -> EvalToValTreeResult<'tcx> {
     if cfg!(debug_assertions) {
-        match typing_env.typing_mode() {
+        match typing_env.typing_mode().assert_not_erased() {
             ty::TypingMode::PostAnalysis => {}
             ty::TypingMode::Coherence
             | ty::TypingMode::Analysis { .. }

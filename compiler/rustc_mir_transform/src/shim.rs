@@ -324,7 +324,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
-    // The first argument (index 0), but local 1 (after the return place).
     let dropee_ptr = Place::from(Local::arg(0));
 
     if ty.is_some() {

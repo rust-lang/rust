@@ -18,8 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
-use crate::concurrency::blocking_io::InterestReceiver;
-use crate::shims::tls;
+use crate::shims::{Epoll, EpollEvalContextExt, FileDescriptionRef, tls};
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -108,7 +107,7 @@ pub enum BlockReason {
     /// Blocked on an InitOnce.
     InitOnce,
     /// Blocked on epoll.
-    Epoll,
+    Epoll { epfd: FileDescriptionRef<Epoll> },
     /// Blocked on eventfd.
     Eventfd,
     /// Blocked on virtual socket.
@@ -779,7 +778,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             .filter(|(_id, thread)| thread.state.is_enabled());
         // Pick a new thread, and switch to it.
         let new_thread = if thread_manager.fixed_scheduling {
-            threads_iter.next()
+            let next = threads_iter.next();
+            drop(threads_iter);
+            next
         } else {
             threads_iter.choose(rng)
         };
@@ -800,48 +801,56 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         if thread_manager.threads[thread_manager.active_thread].state.is_enabled() {
             return interp_ok(SchedulingAction::ExecuteStep);
         }
+
         // We have not found a thread to execute.
-        if thread_manager.threads.iter().all(|thread| thread.state.is_terminated()) {
+        let threads = &this.machine.threads.threads;
+
+        if threads.iter().all(|thread| thread.state.is_terminated()) {
             unreachable!("all threads terminated without the main thread terminating?!");
         } else if let Some(sleep_time) = potential_sleep_time {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
             interp_ok(SchedulingAction::SleepAndWaitForIo(Some(sleep_time)))
-        } else if thread_manager
-            .threads
-            .iter()
-            .any(|thread| thread.state.is_blocked_on(&BlockReason::IO))
-        {
-            // At least one thread is blocked on host I/O but doesn't
-            // have a timeout set. Hence, we sleep indefinitely in the
-            // hope that eventually an I/O event for this thread happens.
+        } else if threads.iter().any(|thread| this.is_thread_blocked_on_host(thread)) {
+            // At least one thread doesn't have a timeout set, and is blocked on host I/O or is waiting on an
+            // epoll instance which contains a host source interest. Hence, we sleep indefinitely in the
+            // hope that eventually an I/O event happens.
             interp_ok(SchedulingAction::SleepAndWaitForIo(None))
         } else {
             throw_machine_stop!(TerminationInfo::GlobalDeadlock);
         }
     }
 
+    /// Check whether the provided thread is currently blocked on host I/O.
+    /// This means, it's either blocked on an I/O operation directly or it's
+    /// blocked on an epoll instance which contains a host source interest.
+    fn is_thread_blocked_on_host(&self, thread: &Thread<'tcx>) -> bool {
+        let this = self.eval_context_ref();
+        match &thread.state {
+            ThreadState::Blocked { reason: BlockReason::IO, .. } => true,
+            ThreadState::Blocked { reason: BlockReason::Epoll { epfd }, .. } =>
+                this.has_epoll_host_interests(epfd),
+            _ => false,
+        }
+    }
+
     /// Poll for I/O events until either an I/O event happened or the timeout expired.
     /// The different timeout values are described in [`BlockingIoManager::poll`].
+    ///
+    /// Unblocks all threads which are blocked on I/O and whose I/O interests
+    /// are currently fulfilled.
     fn poll_and_unblock(&mut self, timeout: Option<Duration>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let ready = match this.machine.blocking_io.poll(timeout) {
-            Ok(ready) => ready,
+        match BlockingIoManager::poll(this, timeout)? {
+            Ok(_) => interp_ok(()),
             // We can ignore errors originating from interrupts; that's just a spurious wakeup.
-            Err(e) if e.kind() == io::ErrorKind::Interrupted => return interp_ok(()),
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => interp_ok(()),
             // For other errors we panic. On Linux and BSD hosts this should only be
             // reachable when a system resource error (e.g. ENOMEM or ENOSPC) occurred.
             Err(e) => panic!("unexpected error while polling: {e}"),
-        };
-
-        ready.into_iter().try_for_each(|(receiver, _source)| {
-            match receiver {
-                InterestReceiver::UnblockThread(thread_id) =>
-                    this.unblock_thread(thread_id, BlockReason::IO),
-            }
-        })
+        }
     }
 
     /// Find all threads with expired timeouts, unblock them and execute their timeout callbacks.

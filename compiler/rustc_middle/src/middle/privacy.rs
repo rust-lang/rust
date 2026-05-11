@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind};
 use rustc_macros::StableHash;
@@ -226,13 +226,13 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         &mut self,
         id: Id,
         max_vis: Option<Visibility>,
-        lazy_private_vis: impl FnOnce() -> Visibility,
+        private_vis: Visibility,
         inherited_effective_vis: EffectiveVisibility,
         level: Level,
         tcx: TyCtxt<'_>,
     ) -> bool {
         let mut changed = false;
-        let current_effective_vis = self.effective_vis_or_private(id, lazy_private_vis);
+        let current_effective_vis = self.effective_vis_or_private(id, || private_vis);
 
         let mut inherited_effective_vis_at_prev_level = *inherited_effective_vis.at_level(level);
         let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;

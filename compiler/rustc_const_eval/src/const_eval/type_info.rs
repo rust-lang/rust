@@ -2,7 +2,7 @@ mod adt;
 
 use std::borrow::Cow;
 
-use rustc_abi::{ExternAbi, FieldIdx, VariantIdx};
+use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_ast::Mutability;
 use rustc_hir::LangItem;
 use rustc_middle::span_bug;
@@ -12,27 +12,11 @@ use rustc_span::{Symbol, sym};
 
 use crate::const_eval::CompileTimeMachine;
 use crate::interpret::{
-    CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, MemoryKind, Projectable, Scalar,
-    Writeable, interp_ok,
+    CtfeProvenance, Immediate, InterpCx, InterpResult, MPlaceTy, MemoryKind, Scalar, Writeable,
+    interp_ok,
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
-    /// Equivalent to `project_downcast`, but identifies the variant by name instead of index.
-    fn downcast<'a>(
-        &self,
-        place: &(impl Writeable<'tcx, CtfeProvenance> + 'a),
-        name: Symbol,
-    ) -> InterpResult<'tcx, (VariantIdx, impl Writeable<'tcx, CtfeProvenance> + 'a)> {
-        let variants = place.layout().ty.ty_adt_def().unwrap().variants();
-        let variant_idx = variants
-            .iter_enumerated()
-            .find(|(_idx, var)| var.name == name)
-            .unwrap_or_else(|| panic!("got {name} but expected one of {variants:#?}"))
-            .0;
-
-        interp_ok((variant_idx, self.project_downcast(place, variant_idx)?))
-    }
-
     // A general method to write an array to a static slice place.
     fn allocate_fill_and_write_slice_ptr(
         &mut self,
@@ -83,7 +67,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     let variant_index = match ty.kind() {
                         ty::Tuple(fields) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::Tuple)?;
+                                self.project_downcast_named(&field_dest, sym::Tuple)?;
                             // project to the single tuple variant field of `type_info::Tuple` struct type
                             let tuple_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             assert_eq!(
@@ -102,7 +86,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         }
                         ty::Array(ty, len) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::Array)?;
+                                self.project_downcast_named(&field_dest, sym::Array)?;
                             let array_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
                             self.write_array_type_info(array_place, *ty, *len)?;
@@ -111,7 +95,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         }
                         ty::Slice(ty) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::Slice)?;
+                                self.project_downcast_named(&field_dest, sym::Slice)?;
                             let slice_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
                             self.write_slice_type_info(slice_place, *ty)?;
@@ -123,16 +107,17 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         }
                         ty::Bool => {
                             let (variant, _variant_place) =
-                                self.downcast(&field_dest, sym::Bool)?;
+                                self.project_downcast_named(&field_dest, sym::Bool)?;
                             variant
                         }
                         ty::Char => {
                             let (variant, _variant_place) =
-                                self.downcast(&field_dest, sym::Char)?;
+                                self.project_downcast_named(&field_dest, sym::Char)?;
                             variant
                         }
                         ty::Int(int_ty) => {
-                            let (variant, variant_place) = self.downcast(&field_dest, sym::Int)?;
+                            let (variant, variant_place) =
+                                self.project_downcast_named(&field_dest, sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_int_type_info(
                                 place,
@@ -142,7 +127,8 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                             variant
                         }
                         ty::Uint(uint_ty) => {
-                            let (variant, variant_place) = self.downcast(&field_dest, sym::Int)?;
+                            let (variant, variant_place) =
+                                self.project_downcast_named(&field_dest, sym::Int)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_int_type_info(
                                 place,
@@ -153,18 +139,19 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         }
                         ty::Float(float_ty) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::Float)?;
+                                self.project_downcast_named(&field_dest, sym::Float)?;
                             let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_float_type_info(place, float_ty.bit_width())?;
                             variant
                         }
                         ty::Str => {
-                            let (variant, _variant_place) = self.downcast(&field_dest, sym::Str)?;
+                            let (variant, _variant_place) =
+                                self.project_downcast_named(&field_dest, sym::Str)?;
                             variant
                         }
                         ty::Ref(_, ty, mutability) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::Reference)?;
+                                self.project_downcast_named(&field_dest, sym::Reference)?;
                             let reference_place =
                                 self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_reference_type_info(reference_place, *ty, *mutability)?;
@@ -173,7 +160,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         }
                         ty::RawPtr(ty, mutability) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::Pointer)?;
+                                self.project_downcast_named(&field_dest, sym::Pointer)?;
                             let pointer_place =
                                 self.project_field(&variant_place, FieldIdx::ZERO)?;
 
@@ -183,14 +170,14 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         }
                         ty::Dynamic(predicates, region) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::DynTrait)?;
+                                self.project_downcast_named(&field_dest, sym::DynTrait)?;
                             let dyn_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                             self.write_dyn_trait_type_info(dyn_place, *predicates, *region)?;
                             variant
                         }
                         ty::FnPtr(sig, fn_header) => {
                             let (variant, variant_place) =
-                                self.downcast(&field_dest, sym::FnPtr)?;
+                                self.project_downcast_named(&field_dest, sym::FnPtr)?;
                             let fn_ptr_place =
                                 self.project_field(&variant_place, FieldIdx::ZERO)?;
 
@@ -214,26 +201,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Bound(..)
                         | ty::Placeholder(_)
                         | ty::Infer(..)
-                        | ty::Error(_) => self.downcast(&field_dest, sym::Other)?.0,
+                        | ty::Error(_) => self.project_downcast_named(&field_dest, sym::Other)?.0,
                     };
                     self.write_discriminant(variant_index, &field_dest)?
-                }
-                sym::size => {
-                    let layout = self.layout_of(ty)?;
-                    let variant_index = if layout.is_sized() {
-                        let (variant, variant_place) = self.downcast(&field_dest, sym::Some)?;
-                        let size_field_place =
-                            self.project_field(&variant_place, FieldIdx::ZERO)?;
-                        self.write_scalar(
-                            ScalarInt::try_from_target_usize(layout.size.bytes(), self.tcx.tcx)
-                                .unwrap(),
-                            &size_field_place,
-                        )?;
-                        variant
-                    } else {
-                        self.downcast(&field_dest, sym::None)?.0
-                    };
-                    self.write_discriminant(variant_index, &field_dest)?;
                 }
                 other => span_bug!(self.tcx.span, "unknown `Type` field {other}"),
             }
@@ -433,16 +403,17 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::abi => match fn_sig_kind.abi() {
                     ExternAbi::C { .. } => {
                         let (rust_variant, _rust_place) =
-                            self.downcast(&field_place, sym::ExternC)?;
+                            self.project_downcast_named(&field_place, sym::ExternC)?;
                         self.write_discriminant(rust_variant, &field_place)?;
                     }
                     ExternAbi::Rust => {
                         let (rust_variant, _rust_place) =
-                            self.downcast(&field_place, sym::ExternRust)?;
+                            self.project_downcast_named(&field_place, sym::ExternRust)?;
                         self.write_discriminant(rust_variant, &field_place)?;
                     }
                     other_abi => {
-                        let (variant, variant_place) = self.downcast(&field_place, sym::Named)?;
+                        let (variant, variant_place) =
+                            self.project_downcast_named(&field_place, sym::Named)?;
                         let str_place = self.allocate_str_dedup(other_abi.as_str())?;
                         let str_ref = self.mplace_to_imm_ptr(&str_place, None)?;
                         let payload = self.project_field(&variant_place, FieldIdx::ZERO)?;

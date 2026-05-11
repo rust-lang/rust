@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]

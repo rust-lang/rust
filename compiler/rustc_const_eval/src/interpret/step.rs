@@ -230,6 +230,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 })?;
             }
 
+            Reborrow(_, _, place) => {
+                let op = self.eval_place_to_op(place, Some(dest.layout))?;
+                self.copy_op(&op, &dest)?;
+            }
+
             RawPtr(kind, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
@@ -593,8 +598,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let place = self.eval_place(place)?;
                 let instance = {
                     let _trace =
-                        enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
-                    Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+                        enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
+                    Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
                 };
                 if let ty::InstanceKind::DropGlue(_, None) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue

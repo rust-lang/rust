@@ -31,25 +31,6 @@ macro_rules! check {
     };
 }
 
-#[cfg(windows)]
-macro_rules! error {
-    ($e:expr, $s:expr) => {
-        match $e {
-            Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
-            Err(ref err) => {
-                assert!(err.raw_os_error() == Some($s), "`{}` did not have a code of `{}`", err, $s)
-            }
-        }
-    };
-}
-
-#[cfg(unix)]
-macro_rules! error {
-    ($e:expr, $s:expr) => {
-        error_contains!($e, $s)
-    };
-}
-
 macro_rules! error_contains {
     ($e:expr, $s:expr) => {
         match $e {
@@ -105,14 +86,8 @@ fn file_test_io_smoke_test() {
 fn invalid_path_raises() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_that_does_not_exist.txt");
-    let result = File::open(filename);
-
-    #[cfg(all(unix, not(target_os = "vxworks")))]
-    error!(result, "No such file or directory");
-    #[cfg(target_os = "vxworks")]
-    error!(result, "no such file or directory");
-    #[cfg(windows)]
-    error!(result, 2); // ERROR_FILE_NOT_FOUND
+    let err = File::open(filename).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
 }
 
 #[test]
@@ -120,14 +95,8 @@ fn file_test_iounlinking_invalid_path_should_raise_condition() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_another_file_that_does_not_exist.txt");
 
-    let result = fs::remove_file(filename);
-
-    #[cfg(all(unix, not(target_os = "vxworks")))]
-    error!(result, "No such file or directory");
-    #[cfg(target_os = "vxworks")]
-    error!(result, "no such file or directory");
-    #[cfg(windows)]
-    error!(result, 2); // ERROR_FILE_NOT_FOUND
+    let err = fs::remove_file(filename).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
 }
 
 #[test]
@@ -939,12 +908,8 @@ fn recursive_rmdir_of_file_fails() {
     let tmpdir = tmpdir();
     let canary = tmpdir.join("do_not_delete");
     check!(check!(File::create(&canary)).write(b"foo"));
-    let result = fs::remove_dir_all(&canary);
-    #[cfg(unix)]
-    error!(result, "Not a directory");
-    #[cfg(windows)]
-    error!(result, 267); // ERROR_DIRECTORY - The directory name is invalid.
-    assert!(result.is_err());
+    let err = fs::remove_dir_all(&canary).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotADirectory);
     assert!(canary.exists());
 }
 
@@ -1404,6 +1369,7 @@ fn open_flavors() {
     let mut ra = OO::new();
     ra.read(true).append(true);
 
+    // This error string is set by std itself so we are not at the whim of the OS here.
     let invalid_options = "creating or truncating a file requires write or append access";
 
     // Test various combinations of creation modes and access modes.
@@ -2148,7 +2114,6 @@ fn test_hidden_file_truncation() {
 
 // See https://github.com/rust-lang/rust/pull/131072 for more details about why
 // these two tests are disabled under Windows 7 here.
-#[cfg(windows)]
 #[test]
 #[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_file_over_open_file() {
@@ -2174,10 +2139,9 @@ fn test_rename_file_over_open_file() {
 }
 
 #[test]
-#[cfg(windows)]
 #[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_directory_to_non_empty_directory() {
-    // Renaming a directory over a non-empty existing directory should fail on Windows.
+    // Renaming a directory over a non-empty existing directory should fail.
     let tmpdir: TempDir = tmpdir();
 
     let source_path = tmpdir.join("source_directory");
@@ -2188,7 +2152,8 @@ fn test_rename_directory_to_non_empty_directory() {
 
     fs::write(target_path.join("target_file.txt"), b"target hello world").unwrap();
 
-    error!(fs::rename(source_path, target_path), 145); // ERROR_DIR_NOT_EMPTY
+    let err = fs::rename(source_path, target_path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::DirectoryNotEmpty);
 }
 
 #[test]

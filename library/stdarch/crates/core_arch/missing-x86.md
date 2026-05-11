@@ -44,22 +44,6 @@
 </p></details>
 
 
-<details><summary>["AVX512_VP2INTERSECT", "AVX512F"]</summary><p>
-
-  * [ ] [`_mm512_2intersect_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_2intersect_epi32)
-  * [ ] [`_mm512_2intersect_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_2intersect_epi64)
-</p></details>
-
-
-<details><summary>["AVX512_VP2INTERSECT", "AVX512VL"]</summary><p>
-
-  * [ ] [`_mm256_2intersect_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_2intersect_epi32)
-  * [ ] [`_mm256_2intersect_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_2intersect_epi64)
-  * [ ] [`_mm_2intersect_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_2intersect_epi32)
-  * [ ] [`_mm_2intersect_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_2intersect_epi64)
-</p></details>
-
-
 <details><summary>["CET_SS"]</summary><p>
 
   * [ ] [`_clrssbsy`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_clrssbsy)

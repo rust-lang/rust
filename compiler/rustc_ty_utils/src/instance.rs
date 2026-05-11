@@ -35,7 +35,7 @@ fn resolve_instance_raw<'tcx>(
         let def = if tcx.intrinsic(def_id).is_some() {
             debug!(" => intrinsic");
             ty::InstanceKind::Intrinsic(def_id)
-        } else if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
+        } else if tcx.is_lang_item(def_id, LangItem::DropGlue) {
             let ty = args.type_at(0);
 
             if ty.needs_drop(tcx, typing_env) {
@@ -155,7 +155,7 @@ fn resolve_associated_item<'tcx>(
                 // and the obligation is monomorphic, otherwise passes such as
                 // transmute checking and polymorphic MIR optimizations could
                 // get a result which isn't correct for all monomorphizations.
-                match typing_env.typing_mode() {
+                match typing_env.typing_mode().assert_not_erased() {
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Analysis { .. }
                     | ty::TypingMode::Borrowck { .. }

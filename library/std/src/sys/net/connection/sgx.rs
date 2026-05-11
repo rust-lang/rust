@@ -219,6 +219,14 @@ impl TcpStream {
         sgx_ineffective(None)
     }
 
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        sgx_ineffective(())
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        sgx_ineffective(false)
+    }
+
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
         sgx_ineffective(())
     }

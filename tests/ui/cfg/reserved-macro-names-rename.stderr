@@ -1,0 +1,39 @@
+error: name `cfg` is reserved in attribute namespace
+  --> $DIR/reserved-macro-names-rename.rs:7:19
+   |
+LL |     use ignore as cfg;
+   |                   ^^^
+
+error: name `cfg` is reserved in attribute namespace
+  --> $DIR/reserved-macro-names-rename.rs:12:21
+   |
+LL |     use cfg_attr as cfg;
+   |                     ^^^
+
+error: name `cfg_attr` is reserved in attribute namespace
+  --> $DIR/reserved-macro-names-rename.rs:22:19
+   |
+LL |     use inline as cfg_attr;
+   |                   ^^^^^^^^
+
+error[E0432]: unresolved import `not_found`
+  --> $DIR/reserved-macro-names-rename.rs:27:9
+   |
+LL |     use not_found as cfg; // trigger "unresolved import", not "cfg reserved".
+   |         ^^^^^^^^^^^^^^^^ no external crate `not_found`
+
+error[E0659]: `cfg` is ambiguous
+  --> $DIR/reserved-macro-names-rename.rs:17:9
+   |
+LL |     use cfg as cfg;
+   |         ^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `cfg` could refer to a built-in attribute
+note: `cfg` could also refer to a macro from prelude
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0432, E0659.
+For more information about an error, try `rustc --explain E0432`.

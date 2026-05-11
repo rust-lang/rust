@@ -43,7 +43,7 @@ impl CombineAttributeParser for ReprParser {
         }
 
         for param in list.mixed() {
-            if let Some(_) = param.lit() {
+            if let Some(_) = param.as_lit() {
                 cx.emit_err(session_diagnostics::ReprIdent { span: cx.attr_span });
                 continue;
             }
@@ -212,7 +212,7 @@ fn parse_repr_align(
         return None;
     };
 
-    let Some(lit) = align.lit() else {
+    let Some(lit) = align.as_lit() else {
         match align_kind {
             Packed => {
                 cx.emit_err(session_diagnostics::IncorrectReprFormatPackedExpectInteger {
@@ -285,33 +285,29 @@ impl RustcAlignParser {
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
     fn parse(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
-        match args {
-            ArgParser::NoArgs | ArgParser::NameValue(_) => {
-                let attr_span = cx.attr_span;
-                cx.adcx().expected_list(attr_span, args);
-            }
-            ArgParser::List(list) => {
-                let Some(align) = cx.expect_single(list) else {
-                    return;
-                };
+        let Some(list) = cx.expect_list(args, cx.attr_span) else {
+            return;
+        };
 
-                let Some(lit) = align.lit() else {
-                    cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
-                        span: align.span(),
-                    });
+        let Some(align) = cx.expect_single(list) else {
+            return;
+        };
 
-                    return;
-                };
+        let Some(lit) = align.as_lit() else {
+            cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
+                span: align.span(),
+            });
 
-                match parse_alignment(&lit.kind, cx) {
-                    Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
-                    Err(message) => {
-                        cx.emit_err(session_diagnostics::InvalidAlignmentValue {
-                            span: lit.span,
-                            error_part: message,
-                        });
-                    }
-                }
+            return;
+        };
+
+        match parse_alignment(&lit.kind, cx) {
+            Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
+            Err(message) => {
+                cx.emit_err(session_diagnostics::InvalidAlignmentValue {
+                    span: lit.span,
+                    error_part: message,
+                });
             }
         }
     }

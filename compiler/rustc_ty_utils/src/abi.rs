@@ -319,21 +319,12 @@ fn fn_abi_of_instance_raw<'tcx>(
 }
 
 /// Returns argument attributes for a scalar argument.
-///
-/// `drop_target_pointee`, if set, causes pointer-typed scalars to be treated like mutable
-/// references to the given type. This is used to special-case the argument of `ptr::drop_in_place`,
-/// interpreting it as `&mut T` instead of `*mut T`, for the purposes of attributes (which is valid
-/// as per its safety contract). If `drop_target_pointee` is set, `offset` must be 0 and `layout.ty`
-/// must be a pointer to the given type. Note that for wide pointers this function is called twice
-/// -- once for the data pointer and once for the vtable pointer. `drop_target_pointee` must only
-/// be set for the data pointer.
 fn arg_attrs_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx>,
     scalar: Scalar,
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
-    drop_target_pointee: Option<Ty<'tcx>>,
     determined_fn_def_id: Option<DefId>,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
@@ -352,25 +343,14 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     // Only pointer types handled below.
     let Scalar::Initialized { value: Pointer(_), valid_range } = scalar else { return attrs };
 
-    // Set `nonnull` if the validity range excludes zero, or for the argument to `drop_in_place`,
-    // which must be nonnull per its documented safety requirements.
-    if !valid_range.contains(0) || drop_target_pointee.is_some() {
+    // Set `nonnull` if the validity range excludes zero.
+    if !valid_range.contains(0) {
         attrs.set(ArgAttribute::NonNull);
     }
 
     let tcx = cx.tcx();
 
-    let drop_target_pointee_info = drop_target_pointee.and_then(|pointee| {
-        assert_eq!(pointee, layout.ty.builtin_deref(true).unwrap());
-        assert_eq!(offset, Size::ZERO);
-        // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-        let mutref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, pointee);
-        let layout = cx.layout_of(mutref).unwrap();
-        layout.pointee_info_at(&cx, offset)
-    });
-
-    if let Some(pointee) = drop_target_pointee_info.or_else(|| layout.pointee_info_at(&cx, offset))
-    {
+    if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
         if pointee.align > Align::ONE {
             attrs.pointee_align =
                 Some(pointee.align.min(cx.tcx().sess.target.max_reliable_alignment()));
@@ -584,25 +564,10 @@ fn fn_abi_new_uncached<'tcx>(
         extra_args
     };
 
-    // For some functions we treat their first argument as-if it was a mutable reference
-    // even if it is a raw pointer. This is a terrible hack since it becomes effectively
-    // part of the MIR semantics that every MIR consumer needs to be aware of.
-    // Do not add more functions here! Instead, put the actually intended type in the signature.
-    // FIXME(#154274): remove this hack.
-    let is_drop_in_place = determined_fn_def_id.is_some_and(|def_id| {
-        tcx.is_lang_item(def_id, LangItem::DropInPlace)
-            || tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
-    });
-
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
-        let is_drop_target = is_drop_in_place && arg_idx == Some(0);
-        let drop_target_pointee = is_drop_target.then(|| match ty.kind() {
-            ty::RawPtr(ty, _) => *ty,
-            _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
-        });
 
         let layout = cx.layout_of(ty).map_err(|err| &*tcx.arena.alloc(FnAbiError::Layout(*err)))?;
         let layout = if is_virtual_call && arg_idx == Some(0) {
@@ -615,17 +580,7 @@ fn fn_abi_new_uncached<'tcx>(
         };
 
         Ok(ArgAbi::new(cx, layout, |scalar, offset| {
-            arg_attrs_for_rust_scalar(
-                *cx,
-                scalar,
-                layout,
-                offset,
-                is_return,
-                // Only set `drop_target_pointee` for the data part of a wide pointer.
-                // See `arg_attrs_for_rust_scalar` docs for more information.
-                drop_target_pointee.filter(|_| offset == Size::ZERO),
-                determined_fn_def_id,
-            )
+            arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, determined_fn_def_id)
         }))
     };
 

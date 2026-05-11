@@ -23,7 +23,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
-use rustc_data_structures::stable_hasher::StableHash;
+use rustc_data_structures::stable_hash::StableHash;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
@@ -52,7 +52,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
 use crate::metadata::ModChild;
@@ -104,6 +104,10 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
 impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
     fn generic_const_exprs(self) -> bool {
         self.generic_const_exprs()
+    }
+
+    fn generic_const_args(self) -> bool {
+        self.generic_const_args()
     }
 
     fn coroutine_clone(self) -> bool {
@@ -623,23 +627,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
         self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
-
-        let node = hir::OwnerNode::Synthetic;
-        let bodies = Default::default();
-        let attrs = hir::AttributeMap::EMPTY;
-
-        let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
-        let node = node.into();
-        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
-            opt_hash_including_bodies,
-            nodes: IndexVec::from_elem_n(
-                hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
-                1,
-            ),
-            bodies,
-        })));
-        self.feed_owner_id().hir_attr_map(attrs);
+        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes::synthetic())));
+        self.feed_owner_id().hir_attr_map(hir::AttributeMap::EMPTY);
     }
 }
 
@@ -1127,12 +1116,12 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn needs_crate_hash(self) -> bool {
-        // Why is the crate hash needed for these configurations?
+    pub fn needs_hir_hash(self) -> bool {
+        // Why is the hir hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in
         //   `rustc_query_impl::execution::execute_job`.
         // - incremental: for query lookups.
-        // - needs_metadata: for putting into crate metadata.
+        // - needs_metadata: it is included in the crate metadata through the crate_hash query
         // - instrument_coverage: for putting into coverage data (see
         //   `hash_mir_source`).
         // - metrics_dir: metrics use the strict version hash in the filenames
@@ -1400,11 +1389,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub fn with_stable_hashing_context<R>(
-        self,
-        f: impl FnOnce(StableHashingContext<'_>) -> R,
-    ) -> R {
-        f(StableHashingContext::new(self.sess, &self.untracked))
+    pub fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashState<'_>) -> R) -> R {
+        f(StableHashState::new(self.sess, &self.untracked))
     }
 
     #[inline]
@@ -2655,6 +2641,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
         self.sess.opts.unstable_opts.next_solver.coherence
+    }
+
+    pub fn disable_trait_solver_fast_paths(self) -> bool {
+        self.sess.opts.unstable_opts.disable_fast_paths
     }
 
     #[allow(rustc::bad_opt_access)]

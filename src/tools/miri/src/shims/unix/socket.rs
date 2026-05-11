@@ -1,10 +1,10 @@
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, RefMut};
+use std::io;
 use std::io::Read;
-use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4};
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
-use std::{io, iter};
 
-use mio::Interest;
 use mio::event::Source;
 use mio::net::{TcpListener, TcpStream};
 use rustc_abi::Size;
@@ -12,9 +12,10 @@ use rustc_const_eval::interpret::{InterpResult, interp_ok};
 use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
 
-use crate::concurrency::blocking_io::InterestReceiver;
 use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
+use crate::shims::unix::linux_like::epoll::{EpollReadiness, EvalContextExt as _};
+use crate::shims::unix::socket_address::EvalContextExt as _;
 use crate::*;
 
 #[derive(Debug, PartialEq)]
@@ -56,6 +57,10 @@ struct Socket {
     state: RefCell<SocketState>,
     /// Whether this fd is non-blocking or not.
     is_non_block: Cell<bool>,
+    /// The current blocking I/O readiness of the file description.
+    io_readiness: RefCell<BlockingIoSourceReadiness>,
+    /// [`Some`] when the socket had an async error which has not yet been fetched via `SO_ERROR`.
+    error: RefCell<Option<io::Error>>,
 }
 
 impl FileDescription for Socket {
@@ -65,11 +70,20 @@ impl FileDescription for Socket {
 
     fn destroy<'tcx>(
         self,
-        _self_id: FdId,
+        self_id: FdId,
         communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, std::io::Result<()>> {
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "cannot have `Socket` with isolation enabled!");
+
+        if matches!(
+            &*self.state.borrow(),
+            SocketState::Listening(_) | SocketState::Connecting(_) | SocketState::Connected(_)
+        ) {
+            // There exists an associated host socket so we need to deregister it
+            // from the blocking I/O manager.
+            ecx.machine.blocking_io.deregister(self_id, self)
+        };
 
         interp_ok(Ok(()))
     }
@@ -112,8 +126,7 @@ impl FileDescription for Socket {
                     } else {
                         // The socket is in blocking mode and thus the read call should block
                         // until we can read some bytes from the socket.
-                        this.block_for_recv(socket, ptr, len, /* should_peek */ false, finish);
-                        interp_ok(())
+                        this.block_for_recv(socket, ptr, len, /* should_peek */ false, finish)
                     }
                 }
             ),
@@ -158,8 +171,7 @@ impl FileDescription for Socket {
                     } else {
                         // The socket is in blocking mode and thus the write call should block
                         // until we can write some bytes into the socket.
-                        this.block_for_send(socket, ptr, len, finish);
-                        interp_ok(())
+                        this.block_for_send(socket, ptr, len, finish)
                     }
                 }
             ),
@@ -167,12 +179,10 @@ impl FileDescription for Socket {
     }
 
     fn short_fd_operations(&self) -> bool {
-        // Linux de-facto guarantees (or at least, applications like tokio assume [1, 2]) that
-        // when a read/write on a streaming socket comes back short, the kernel buffer is
-        // empty/full. SO we can't do short reads/writes here.
-        //
-        // [1]: https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L182
-        // [2]: https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L240
+        // Linux guarantees that when a read/write on a streaming socket comes back short,
+        // the kernel buffer is empty/full:
+        // See <https://man7.org/linux/man-pages/man7/epoll.7.html> in Q&A section.
+        // So we can't do short reads/writes here.
         false
     }
 
@@ -251,6 +261,10 @@ impl UnixFileDescription for Socket {
 
         throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
+
+    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadiness> {
+        interp_ok(EpollReadiness::from(&*self.io_readiness.borrow()))
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -328,6 +342,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             family,
             state: RefCell::new(SocketState::Initial),
             is_non_block: Cell::new(is_sock_nonblock),
+            io_readiness: RefCell::new(BlockingIoSourceReadiness::empty()),
+            error: RefCell::new(None),
         });
 
         interp_ok(Scalar::from_i32(fds.insert(fd)))
@@ -342,7 +358,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let socket = this.read_scalar(socket)?.to_i32()?;
-        let address = match this.socket_address(address, address_len, "bind")? {
+        let address = match this.read_socket_address(address, address_len, "bind")? {
             Ok(addr) => addr,
             Err(e) => return this.set_last_error_and_return_i32(e),
         };
@@ -425,7 +441,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match *state {
             SocketState::Bound(socket_addr) =>
                 match TcpListener::bind(socket_addr) {
-                    Ok(listener) => *state = SocketState::Listening(listener),
+                    Ok(listener) => {
+                        *state = SocketState::Listening(listener);
+                        drop(state);
+                        // Register the socket to the blocking I/O manager because
+                        // we now have an associated host socket.
+                        this.machine.blocking_io.register(socket);
+                    }
                     Err(e) => return this.set_last_error_and_return_i32(e),
                 },
             SocketState::Initial => {
@@ -537,8 +559,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 address_len_ptr,
                 is_client_sock_nonblock,
                 dest.clone(),
-            );
-            interp_ok(())
+            )
         }
     }
 
@@ -553,7 +574,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let socket = this.read_scalar(socket)?.to_i32()?;
-        let address = match this.socket_address(address, address_len, "connect")? {
+        let address = match this.read_socket_address(address, address_len, "connect")? {
             Ok(address) => address,
             Err(e) => return this.set_last_error_and_return(e, dest),
         };
@@ -591,7 +612,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // don't return an error after receiving an [`Interest::WRITEABLE`]
         // event on the stream.
         match TcpStream::connect(address) {
-            Ok(stream) => *socket.state.borrow_mut() = SocketState::Connecting(stream),
+            Ok(stream) => {
+                *socket.state.borrow_mut() = SocketState::Connecting(stream);
+                // Register the socket to the blocking I/O manager because
+                // we now have an associated host socket.
+                this.machine.blocking_io.register(socket.clone());
+            }
             Err(e) => return this.set_last_error_and_return(e, dest),
         };
 
@@ -730,8 +756,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     Err(e) => this.set_last_error_and_return(e, &dest)
                                 }
                             }),
-                        );
-                        interp_ok(())
+                        )
                     }
                 }
             ),
@@ -853,8 +878,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                     Err(e) => this.set_last_error_and_return(e, &dest)
                                 }
                             }),
-                        );
-                        interp_ok(())
+                        )
                     }
                 }
             ),
@@ -930,6 +954,152 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
     }
 
+    fn getsockopt(
+        &mut self,
+        socket: &OpTy<'tcx>,
+        level: &OpTy<'tcx>,
+        option_name: &OpTy<'tcx>,
+        option_value: &OpTy<'tcx>,
+        option_len: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let socket = this.read_scalar(socket)?.to_i32()?;
+        let level = this.read_scalar(level)?.to_i32()?;
+        let option_name = this.read_scalar(option_name)?.to_i32()?;
+        // These two pointers are used to return the value: `len_ptr` initially stores how much space
+        // is available. If the actual value fits into that space, it is written to
+        // `value_ptr` and `len_ptr` is updated to represent how many bytes
+        // were actually written. If the value does not fit, it is silently truncated.
+        // Also see <https://pubs.opengroup.org/onlinepubs/9799919799/functions/getsockopt.html>.
+        let option_value_ptr = this.read_pointer(option_value)?;
+        let option_len_ptr = this.read_pointer(option_len)?;
+
+        // Get the file handle
+        let Some(fd) = this.machine.fds.get(socket) else {
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+        };
+
+        let Some(socket) = fd.downcast::<Socket>() else {
+            // Man page specifies to return ENOTSOCK if `fd` is not a socket.
+            return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
+        };
+
+        if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
+            // This socket option returns a value and thus we need to return EFAULT
+            // when either the value or the length pointers are null pointers.
+            return this.set_last_error_and_return_i32(LibcError("EFAULT"));
+        }
+
+        let socklen_layout = this.libc_ty_layout("socklen_t");
+        let option_len_ptr_mplace = this.ptr_to_mplace(option_len_ptr, socklen_layout);
+        let option_len: usize = this
+            .read_scalar(&option_len_ptr_mplace)?
+            .to_int(socklen_layout.size)?
+            .try_into()
+            .unwrap();
+
+        // We need a temporary buffer as `option_value_ptr` might not point to a large enough
+        // buffer, in which case we have to truncate.
+        let value_buffer = if level == this.eval_libc_i32("SOL_SOCKET") {
+            let opt_so_error = this.eval_libc_i32("SO_ERROR");
+
+            if option_name == opt_so_error {
+                // Because `TcpStream::take_error()` and `TcpListener::take_error()` consume the latest async
+                // error, we know that our stored `socket.error` is outdated when `TcpStream::take_error()`/
+                // `TcpListener::take_error()` returns `Ok(Some(...))`.
+                // If they return `Ok(None)`, then we fall back to the stored `socket.error`.
+                let error = match &*socket.state.borrow() {
+                    SocketState::Initial | SocketState::Bound(_) => socket.error.take(),
+                    SocketState::Listening(listener) =>
+                        listener.take_error().unwrap_or(socket.error.take()),
+                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
+                        stream.take_error().unwrap_or(socket.error.take()),
+                };
+                // Clear our own stored error -- it was either `take`n above or it is outdated.
+                socket.error.replace(None);
+
+                // We know there is no longer an async error and thus we need to update the
+                // I/O and epoll readiness of the socket.
+                socket.io_readiness.borrow_mut().error = false;
+                this.update_epoll_active_events(socket, /* force_edge */ false)?;
+
+                let return_value = match error {
+                    Some(err) => this.io_error_to_errnum(err)?.to_i32()?,
+                    // If there is no error, we write 0 into the option value buffer.
+                    None => 0,
+                };
+
+                // Allocate new buffer on the stack with the `i32` layout.
+                let value_buffer = this.allocate(this.machine.layouts.i32, MemoryKind::Stack)?;
+                this.write_int(return_value, &value_buffer)?;
+                value_buffer
+            } else {
+                throw_unsup_format!(
+                    "getsockopt: option {option_name:#x} is unsupported for level SOL_SOCKET",
+                );
+            }
+        } else if level == this.eval_libc_i32("IPPROTO_IP") {
+            let opt_ip_ttl = this.eval_libc_i32("IP_TTL");
+
+            if option_name == opt_ip_ttl {
+                let ttl = match &*socket.state.borrow() {
+                    SocketState::Initial | SocketState::Bound(_) =>
+                        throw_unsup_format!(
+                            "getsockopt: reading option IP_TTL on level IPPROTO_IP is only supported \
+                            on connected and listening sockets"
+                        ),
+                    SocketState::Listening(listener) => listener.ttl(),
+                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
+                        stream.ttl(),
+                };
+
+                let ttl = match ttl {
+                    Ok(ttl) => ttl,
+                    Err(e) => return this.set_last_error_and_return_i32(e),
+                };
+
+                // Allocate new buffer on the stack with the `u32` layout.
+                let value_buffer = this.allocate(this.machine.layouts.u32, MemoryKind::Stack)?;
+                this.write_int(ttl, &value_buffer)?;
+                value_buffer
+            } else {
+                throw_unsup_format!(
+                    "getsockopt: option {option_name:#x} is unsupported for level IPPROTO_IP",
+                );
+            }
+        } else {
+            throw_unsup_format!(
+                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET is allowed"
+            )
+        };
+
+        // Truncated size of the output value.
+        let output_value_len = value_buffer.layout.size.min(Size::from_bytes(option_len));
+        // Copy the truncated value into the buffer pointed to by `option_value_ptr`.
+        this.mem_copy(
+            value_buffer.ptr(),
+            option_value_ptr,
+            // Truncate the value to fit the provided buffer.
+            output_value_len,
+            // The buffers are guaranteed to not overlap since the `value_buffer`
+            // was just newly allocated on the stack.
+            true,
+        )?;
+        // Deallocate the value buffer as it was only needed to store the value and
+        // copy it into the buffer pointed to by `option_value_ptr`.
+        this.deallocate_ptr(value_buffer.ptr(), None, MemoryKind::Stack)?;
+
+        // On output, the length pointer contains the amount of bytes written -- not the size
+        // of the value before truncation.
+        this.write_scalar(
+            Scalar::from_uint(output_value_len.bytes(), socklen_layout.size),
+            &option_len_ptr_mplace,
+        )?;
+
+        interp_ok(Scalar::from_i32(0))
+    }
+
     fn getsockname(
         &mut self,
         socket: &OpTy<'tcx>,
@@ -975,15 +1145,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Ok(address) => address,
                     Err(e) => return this.set_last_error_and_return_i32(e),
                 },
+            SocketState::Connecting(stream) | SocketState::Connected(stream) => {
+                if cfg!(windows) && matches!(&*state, SocketState::Connecting(_)) {
+                    // FIXME: On Windows hosts `TcpStream::local_addr` returns `0.0.0.0:0` whilst
+                    // the socket is connecting:
+                    // <https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-getsockname#remarks>
+                    // This is problematic because UNIX targets could expect a real local address even
+                    // for a connecting non-blocking socket.
+
+                    static DEDUP: AtomicBool = AtomicBool::new(false);
+                    if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                        this.emit_diagnostic(NonHaltingDiagnostic::ConnectingSocketGetsockname);
+                    }
+                }
+                match stream.local_addr() {
+                    Ok(address) => address,
+                    Err(e) => return this.set_last_error_and_return_i32(e),
+                }
+            }
             // For non-bound sockets the POSIX manual says the returned address is unspecified.
             // Often this is 0.0.0.0:0 and thus we set it to this value.
-            _ => SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0)),
+            SocketState::Initial => SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0)),
         };
 
-        match this.write_socket_address(&address, address_ptr, address_len_ptr, "getsockname")? {
-            Ok(_) => interp_ok(Scalar::from_i32(0)),
-            Err(e) => this.set_last_error_and_return_i32(e),
-        }
+        this.write_socket_address(&address, address_ptr, address_len_ptr, "getsockname")
+            .map(|_| Scalar::from_i32(0))
     }
 
     fn getpeername(
@@ -1040,15 +1226,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Err(e) => return this.set_last_error_and_return(e, &dest),
                     };
 
-                    match this.write_socket_address(
+                    this.write_socket_address(
                         &address,
                         address_ptr,
                         address_len_ptr,
                         "getpeername",
-                    )? {
-                        Ok(_) => this.write_scalar(Scalar::from_i32(0), &dest),
-                        Err(e) => this.set_last_error_and_return(e, &dest),
-                    }
+                    )?;
+                   this.write_scalar(Scalar::from_i32(0), &dest)
                 }
             ),
         )
@@ -1099,274 +1283,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Attempt to turn an address and length operand into a standard library socket address.
-    ///
-    /// Returns an IO error should the address length not match the address family length.
-    fn socket_address(
-        &self,
-        address: &OpTy<'tcx>,
-        address_len: &OpTy<'tcx>,
-        foreign_name: &'static str,
-    ) -> InterpResult<'tcx, Result<SocketAddr, IoError>> {
-        let this = self.eval_context_ref();
-
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        // We only support address lengths which can be stored in a u64 since the
-        // size of a layout is also stored in a u64.
-        let address_len: u64 =
-            this.read_scalar(address_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
-
-        // Initially, treat address as generic sockaddr just to extract the family field.
-        let sockaddr_layout = this.libc_ty_layout("sockaddr");
-        if address_len < sockaddr_layout.size.bytes() {
-            // Address length should be at least as big as the generic sockaddr
-            return interp_ok(Err(LibcError("EINVAL")));
-        }
-        let address = this.deref_pointer_as(address, sockaddr_layout)?;
-
-        let family_field = this.project_field_named(&address, "sa_family")?;
-        let family_layout = this.libc_ty_layout("sa_family_t");
-        let family = this.read_scalar(&family_field)?.to_int(family_layout.size)?;
-
-        // Depending on the family, decide whether it's IPv4 or IPv6 and use specialized layout
-        // to extract address and port.
-        let socket_addr = if family == this.eval_libc_i32("AF_INET").into() {
-            let sockaddr_in_layout = this.libc_ty_layout("sockaddr_in");
-            if address_len != sockaddr_in_layout.size.bytes() {
-                // Address length should be exactly the length of an IPv4 address.
-                return interp_ok(Err(LibcError("EINVAL")));
-            }
-            let address = address.transmute(sockaddr_in_layout, this)?;
-
-            let port_field = this.project_field_named(&address, "sin_port")?;
-            // Read bytes and treat them as big endian since port is stored in network byte order.
-            let port_bytes: [u8; 2] = this
-                .read_bytes_ptr_strip_provenance(port_field.ptr(), Size::from_bytes(2))?
-                .try_into()
-                .unwrap();
-            let port = u16::from_be_bytes(port_bytes);
-
-            let addr_field = this.project_field_named(&address, "sin_addr")?;
-            let s_addr_field = this.project_field_named(&addr_field, "s_addr")?;
-            // Read bytes and treat them as big endian since address is stored in network byte order.
-            let addr_bytes: [u8; 4] = this
-                .read_bytes_ptr_strip_provenance(s_addr_field.ptr(), Size::from_bytes(4))?
-                .try_into()
-                .unwrap();
-            let addr_bits = u32::from_be_bytes(addr_bytes);
-
-            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::from_bits(addr_bits), port))
-        } else if family == this.eval_libc_i32("AF_INET6").into() {
-            let sockaddr_in6_layout = this.libc_ty_layout("sockaddr_in6");
-            if address_len != sockaddr_in6_layout.size.bytes() {
-                // Address length should be exactly the length of an IPv6 address.
-                return interp_ok(Err(LibcError("EINVAL")));
-            }
-            // We cannot transmute since the `sockaddr_in6` layout is bigger than the `sockaddr` layout.
-            let address = address.offset(Size::ZERO, sockaddr_in6_layout, this)?;
-
-            let port_field = this.project_field_named(&address, "sin6_port")?;
-            // Read bytes and treat them as big endian since port is stored in network byte order.
-            let port_bytes: [u8; 2] = this
-                .read_bytes_ptr_strip_provenance(port_field.ptr(), Size::from_bytes(2))?
-                .try_into()
-                .unwrap();
-            let port = u16::from_be_bytes(port_bytes);
-
-            let addr_field = this.project_field_named(&address, "sin6_addr")?;
-            let s_addr_field = this
-                .project_field_named(&addr_field, "s6_addr")?
-                .transmute(this.machine.layouts.u128, this)?;
-            // Read bytes and treat them as big endian since address is stored in network byte order.
-            let addr_bytes: [u8; 16] = this
-                .read_bytes_ptr_strip_provenance(s_addr_field.ptr(), Size::from_bytes(16))?
-                .try_into()
-                .unwrap();
-            let addr_bits = u128::from_be_bytes(addr_bytes);
-
-            let flowinfo_field = this.project_field_named(&address, "sin6_flowinfo")?;
-            // flowinfo doesn't get the big endian treatment as this field is stored in native byte order
-            // and not in network byte order.
-            let flowinfo = this.read_scalar(&flowinfo_field)?.to_u32()?;
-
-            let scope_id_field = this.project_field_named(&address, "sin6_scope_id")?;
-            // scope_id doesn't get the big endian treatment as this field is stored in native byte order
-            // and not in network byte order.
-            let scope_id = this.read_scalar(&scope_id_field)?.to_u32()?;
-
-            SocketAddr::V6(SocketAddrV6::new(
-                Ipv6Addr::from_bits(addr_bits),
-                port,
-                flowinfo,
-                scope_id,
-            ))
-        } else {
-            // Socket of other types shouldn't be created in a first place and
-            // thus also no address family of another type should be supported.
-            throw_unsup_format!(
-                "{foreign_name}: address family {family:#x} is unsupported, \
-                only AF_INET and AF_INET6 are allowed"
-            );
-        };
-
-        interp_ok(Ok(socket_addr))
-    }
-
-    /// Attempt to write a standard library socket address into a pointer.
-    ///
-    /// The `address_len_ptr` parameter serves both as input and output parameter.
-    /// On input, it points to the size of the buffer `address_ptr` points to, and
-    /// on output it points to the non-truncated size of the written address in the
-    /// buffer pointed to by `address_ptr`.
-    ///
-    /// If the address buffer doesn't fit the whole address, the address is truncated to not
-    /// overflow the buffer.
-    fn write_socket_address(
-        &mut self,
-        address: &SocketAddr,
-        address_ptr: Pointer,
-        address_len_ptr: Pointer,
-        foreign_name: &'static str,
-    ) -> InterpResult<'tcx, Result<(), IoError>> {
-        let this = self.eval_context_mut();
-
-        if address_ptr == Pointer::null() || address_len_ptr == Pointer::null() {
-            // The POSIX man page doesn't account for the cases where the `address_ptr` or
-            // `address_len_ptr` could be null pointers. Thus, this behavior is undefined!
-            throw_ub_format!(
-                "{foreign_name}: writing a socket address but the address or the length pointer is a null pointer"
-            )
-        }
-
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let address_buffer_len_place = this.ptr_to_mplace(address_len_ptr, socklen_layout);
-        // We only support buffer lengths which can be stored in a u64 since the
-        // size of a layout in bytes is also stored in a u64.
-        let address_buffer_len: u64 = this
-            .read_scalar(&address_buffer_len_place)?
-            .to_int(socklen_layout.size)?
-            .try_into()
-            .unwrap();
-
-        let (address_buffer, address_layout) = match address {
-            SocketAddr::V4(address) => {
-                // IPv4 address bytes; already stored in network byte order.
-                let address_bytes = address.ip().octets();
-                // Port needs to be manually turned into network byte order.
-                let port = address.port().to_be();
-
-                let sockaddr_in_layout = this.libc_ty_layout("sockaddr_in");
-                // Allocate new buffer on the stack with the `sockaddr_in` layout.
-                // We need a temporary buffer as `address_ptr` might not point to a large enough
-                // buffer, in which case we have to truncate.
-                let address_buffer = this.allocate(sockaddr_in_layout, MemoryKind::Stack)?;
-                // Zero the whole buffer as some libc targets have additional fields which we fill
-                // with zero bytes (just like the standard library does it).
-                this.write_bytes_ptr(
-                    address_buffer.ptr(),
-                    iter::repeat_n(0, address_buffer.layout.size.bytes_usize()),
-                )?;
-
-                let sin_family_field = this.project_field_named(&address_buffer, "sin_family")?;
-                // We cannot simply write the `AF_INET` scalar into the `sin_family_field` because on most
-                // systems the field has a layout of 16-bit whilst the scalar has a size of 32-bit.
-                // Since the `AF_INET` constant is chosen such that it can safely be converted into
-                // a 16-bit integer, we use the following logic to get a scalar of the right size.
-                let af_inet = this.eval_libc("AF_INET");
-                let address_family =
-                    Scalar::from_int(af_inet.to_int(af_inet.size())?, sin_family_field.layout.size);
-                this.write_scalar(address_family, &sin_family_field)?;
-
-                let sin_port_field = this.project_field_named(&address_buffer, "sin_port")?;
-                // Write the port in target native endianness bytes as we already converted it
-                // to big endian above.
-                this.write_bytes_ptr(sin_port_field.ptr(), port.to_ne_bytes())?;
-
-                let sin_addr_field = this.project_field_named(&address_buffer, "sin_addr")?;
-                let s_addr_field = this.project_field_named(&sin_addr_field, "s_addr")?;
-                this.write_bytes_ptr(s_addr_field.ptr(), address_bytes)?;
-
-                (address_buffer, sockaddr_in_layout)
-            }
-            SocketAddr::V6(address) => {
-                // IPv6 address bytes; already stored in network byte order.
-                let address_bytes = address.ip().octets();
-                // Port needs to be manually turned into network byte order.
-                let port = address.port().to_be();
-                // Flowinfo is stored in native byte order.
-                let flowinfo = address.flowinfo();
-                // Scope id is stored in native byte order.
-                let scope_id = address.scope_id();
-
-                let sockaddr_in6_layout = this.libc_ty_layout("sockaddr_in6");
-                // Allocate new buffer on the stack with the `sockaddr_in6` layout.
-                // We need a temporary buffer as `address_ptr` might not point to a large enough
-                // buffer, in which case we have to truncate.
-                let address_buffer = this.allocate(sockaddr_in6_layout, MemoryKind::Stack)?;
-                // Zero the whole buffer as some libc targets have additional fields which we fill
-                // with zero bytes (just like the standard library does it).
-                this.write_bytes_ptr(
-                    address_buffer.ptr(),
-                    iter::repeat_n(0, address_buffer.layout.size.bytes_usize()),
-                )?;
-
-                let sin6_family_field = this.project_field_named(&address_buffer, "sin6_family")?;
-                // We cannot simply write the `AF_INET6` scalar into the `sin6_family_field` because on most
-                // systems the field has a layout of 16-bit whilst the scalar has a size of 32-bit.
-                // Since the `AF_INET6` constant is chosen such that it can safely be converted into
-                // a 16-bit integer, we use the following logic to get a scalar of the right size.
-                let af_inet6 = this.eval_libc("AF_INET6");
-                let address_family = Scalar::from_int(
-                    af_inet6.to_int(af_inet6.size())?,
-                    sin6_family_field.layout.size,
-                );
-                this.write_scalar(address_family, &sin6_family_field)?;
-
-                let sin6_port_field = this.project_field_named(&address_buffer, "sin6_port")?;
-                // Write the port in target native endianness bytes as we already converted it
-                // to big endian above.
-                this.write_bytes_ptr(sin6_port_field.ptr(), port.to_ne_bytes())?;
-
-                let sin6_flowinfo_field =
-                    this.project_field_named(&address_buffer, "sin6_flowinfo")?;
-                this.write_scalar(Scalar::from_u32(flowinfo), &sin6_flowinfo_field)?;
-
-                let sin6_scope_id_field =
-                    this.project_field_named(&address_buffer, "sin6_scope_id")?;
-                this.write_scalar(Scalar::from_u32(scope_id), &sin6_scope_id_field)?;
-
-                let sin6_addr_field = this.project_field_named(&address_buffer, "sin6_addr")?;
-                let s6_addr_field = this.project_field_named(&sin6_addr_field, "s6_addr")?;
-                this.write_bytes_ptr(s6_addr_field.ptr(), address_bytes)?;
-
-                (address_buffer, sockaddr_in6_layout)
-            }
-        };
-
-        // Copy the truncated address into the pointer pointed to by `address_ptr`.
-        this.mem_copy(
-            address_buffer.ptr(),
-            address_ptr,
-            // Truncate the address to fit the provided buffer.
-            address_layout.size.min(Size::from_bytes(address_buffer_len)),
-            // The buffers are guaranteed to not overlap since the `address_buffer`
-            // was just newly allocated on the stack.
-            true,
-        )?;
-        // Deallocate the address buffer as it was only needed to construct the address and
-        // copy it into the buffer pointed to by `address_ptr`.
-        this.deallocate_ptr(address_buffer.ptr(), None, MemoryKind::Stack)?;
-        // Size of the non-truncated address.
-        let address_len = address_layout.size.bytes();
-
-        this.write_scalar(
-            Scalar::from_uint(address_len, socklen_layout.size),
-            &address_buffer_len_place,
-        )?;
-
-        interp_ok(Ok(()))
-    }
-
     /// Block the thread until there's an incoming connection or an error occurred.
     ///
     /// This recursively calls itself should the operation still block for some reason.
@@ -1380,11 +1296,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         address_len_ptr: Pointer,
         is_client_sock_nonblock: bool,
         dest: MPlaceTy<'tcx>,
-    ) {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.block_thread_for_io(
             socket.clone(),
-            Interest::READABLE,
+            BlockingIoInterest::Read,
             None,
             callback!(@capture<'tcx> {
                 address_ptr: Pointer,
@@ -1394,6 +1310,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 dest: MPlaceTy<'tcx>,
             } |this, kind: UnblockKind| {
                 assert_eq!(kind, UnblockKind::Ready);
+
+                // Remove the blocking I/O interest for unblocking this thread.
+                this.machine.blocking_io.remove_blocked_thread(socket.id(), this.machine.threads.active_thread());
 
                 match this.try_non_block_accept(&socket, address_ptr, address_len_ptr, is_client_sock_nonblock)? {
                     Ok(sockfd) => {
@@ -1405,13 +1324,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     },
                     Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
                         // We need to block the thread again as it would still block.
-                        this.block_for_accept(socket, address_ptr, address_len_ptr, is_client_sock_nonblock, dest);
-                        interp_ok(())
+                        this.block_for_accept(socket, address_ptr, address_len_ptr, is_client_sock_nonblock, dest)
                     }
                     Err(e) => this.set_last_error_and_return(e, &dest),
                 }
             }),
-        );
+        )
     }
 
     /// Attempt to accept an incoming connection on the listening socket in a
@@ -1437,6 +1355,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let (stream, addr) = match listener.accept() {
             Ok(peer) => peer,
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                // We know that the source is not readable so we need to update its readiness.
+                socket.io_readiness.borrow_mut().readable = false;
+                this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+
+                return interp_ok(Err(IoError::HostError(e)));
+            }
             Err(e) => return interp_ok(Err(IoError::HostError(e))),
         };
 
@@ -1449,18 +1374,19 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We only attempt a write if the address pointer is not a null pointer.
             // If the address pointer is a null pointer the user isn't interested in the
             // address and we don't need to write anything.
-            if let Err(e) =
-                this.write_socket_address(&addr, address_ptr, address_len_ptr, "accept4")?
-            {
-                return interp_ok(Err(e));
-            };
+            this.write_socket_address(&addr, address_ptr, address_len_ptr, "accept4")?;
         }
 
         let fd = this.machine.fds.new_ref(Socket {
             family,
             state: RefCell::new(SocketState::Connected(stream)),
             is_non_block: Cell::new(is_client_sock_nonblock),
+            io_readiness: RefCell::new(BlockingIoSourceReadiness::empty()),
+            error: RefCell::new(None),
         });
+        // Register the socket to the blocking I/O manager because
+        // there is an associated host socket.
+        this.machine.blocking_io.register(fd.clone());
         let sockfd = this.machine.fds.insert(fd);
         interp_ok(Ok(sockfd))
     }
@@ -1478,11 +1404,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         buffer_ptr: Pointer,
         length: usize,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-    ) {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.block_thread_for_io(
             socket.clone(),
-            Interest::WRITABLE,
+            BlockingIoInterest::Write,
             None,
             callback!(@capture<'tcx> {
                 socket: FileDescriptionRef<Socket>,
@@ -1492,15 +1418,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             } |this, kind: UnblockKind| {
                 assert_eq!(kind, UnblockKind::Ready);
 
+                // Remove the blocking I/O interest for unblocking this thread.
+                this.machine.blocking_io.remove_blocked_thread(socket.id(), this.machine.threads.active_thread());
+
                 match this.try_non_block_send(&socket, buffer_ptr, length)? {
                     Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
-                        this.block_for_send(socket, buffer_ptr, length, finish);
-                        interp_ok(())
+                        // We need to block the thread again as it would still block.
+                        this.block_for_send(socket, buffer_ptr, length, finish)
                     },
                     result => finish.call(this, result)
                 }
             }),
-        );
+        )
     }
 
     /// Attempt to send bytes into the connected socket in a non-blocking manner.
@@ -1524,19 +1453,16 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: When the host does a short write, we should emit an epoll edge -- at least for targets for which tokio assumes no short writes:
         // <https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L240>
         match result {
-            Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::NotConnected => {
+            Err(IoError::HostError(e))
+                if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
+            {
+                // We know that the source is not writable so we need to update it's readiness.
+                socket.io_readiness.borrow_mut().writable = false;
+                this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+
                 // On Windows hosts, `send` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
-            }
-            Err(IoError::HostError(e))
-                if cfg!(windows)
-                    && matches!(e.raw_os_error(), Some(/* WSAESHUTDOWN error code */ 10058)) =>
-            {
-                // FIXME: This is a temporary workaround for handling WSAESHUTDOWN errors
-                // on Windows. A discussion on how those errors should be handled can be found here:
-                // <https://rust-lang.zulipchat.com/#narrow/channel/219381-t-libs/topic/WSAESHUTDOWN.20error.20on.20Windows/near/591883531>
-                interp_ok(Err(IoError::HostError(io::ErrorKind::BrokenPipe.into())))
             }
             result => interp_ok(result),
         }
@@ -1556,11 +1482,11 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         length: usize,
         should_peek: bool,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-    ) {
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.block_thread_for_io(
             socket.clone(),
-            Interest::READABLE,
+            BlockingIoInterest::Read,
             None,
             callback!(@capture<'tcx> {
                 socket: FileDescriptionRef<Socket>,
@@ -1571,16 +1497,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             } |this, kind: UnblockKind| {
                 assert_eq!(kind, UnblockKind::Ready);
 
+                // Remove the blocking I/O interest for unblocking this thread.
+                this.machine.blocking_io.remove_blocked_thread(socket.id(), this.machine.threads.active_thread());
+
                 match this.try_non_block_recv(&socket, buffer_ptr, length, should_peek)? {
                     Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
                         // We need to block the thread again as it would still block.
-                        this.block_for_recv(socket, buffer_ptr, length, should_peek, finish);
-                        interp_ok(())
+                        this.block_for_recv(socket, buffer_ptr, length, should_peek, finish)
                     },
                     result => finish.call(this, result)
                 }
             }),
-        );
+        )
     }
 
     /// Attempt to receive bytes from the connected socket in a non-blocking manner.
@@ -1611,7 +1539,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: When the host does a short read, we should emit an epoll edge -- at least for targets for which tokio assumes no short reads:
         // <https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L182>
         match result {
-            Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::NotConnected => {
+            Err(IoError::HostError(e))
+                if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
+            {
+                // We know that the source is not readable so we need to update it's readiness.
+                socket.io_readiness.borrow_mut().readable = false;
+                this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+
                 // On Windows hosts, `recv` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
@@ -1666,7 +1600,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.block_thread_for_io(
             socket.clone(),
-            Interest::WRITABLE,
+            BlockingIoInterest::Write,
             timeout,
             callback!(
                 @capture<'tcx> {
@@ -1675,11 +1609,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     foreign_name: &'static str,
                     action: DynMachineCallback<'tcx, Result<(), ()>>,
                 } |this, kind: UnblockKind| {
+                    // Remove the blocking I/O interest for unblocking this thread.
+                    this.machine.blocking_io.remove_blocked_thread(socket.id(), this.machine.threads.active_thread());
+
                     if UnblockKind::TimedOut == kind {
                         // We can only time out when `should_wait` is false.
                         // This then means that the socket is not yet connected.
                         assert!(!should_wait);
-                        this.machine.blocking_io.deregister(socket.id(), InterestReceiver::UnblockThread(this.active_thread()));
                         return action.call(this, Err(()))
                     }
 
@@ -1705,17 +1641,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     };
 
                     // Manually check whether there were any errors since calling `connect`.
-                    if let Ok(Some(_)) = stream.take_error() {
+                    if let Ok(Some(err)) = stream.take_error() {
                         // There was an error during connecting and thus we
                         // return ENOTCONN. It's the program's responsibility
                         // to read SO_ERROR itself.
-                        //
+
+                        // Store the error such that we can return it when
+                        // `getsockopt(SOL_SOCKET, SO_ERROR, ...)` is called on the socket.
+                        socket.error.replace(Some(err));
+
                         // Go back to initial state since the only way of getting into the
                         // `Connecting` state is from the `Initial` state and at this point
                         // we know that the connection won't be established anymore.
-                        //
-                        // FIXME: We're currently just dropping the error information. Eventually
-                        // we'll have to store it so that it can be recovered by the user.
                         *state = SocketState::Initial;
                         drop(state);
                         return action.call(this, Err(()))
@@ -1752,9 +1689,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     action.call(this, Ok(()))
                 }
             ),
-        );
-
-        interp_ok(())
+        )
     }
 }
 
@@ -1764,7 +1699,7 @@ impl VisitProvenance for FileDescriptionRef<Socket> {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
-impl WithSource for Socket {
+impl SourceFileDescription for Socket {
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()> {
         let mut state = self.state.borrow_mut();
         match &mut *state {
@@ -1773,5 +1708,9 @@ impl WithSource for Socket {
             // We never try adding a socket which is not backed by a real socket to the poll registry.
             _ => unreachable!(),
         }
+    }
+
+    fn get_readiness_mut(&self) -> RefMut<'_, BlockingIoSourceReadiness> {
+        self.io_readiness.borrow_mut()
     }
 }

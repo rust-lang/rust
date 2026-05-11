@@ -22,6 +22,7 @@ pub static CRATES: &[&str] = &[
     "fnv",
     "foldhash",
     "generic-array",
+    "glob",
     "hashbrown",
     "heck",
     "ident_case",

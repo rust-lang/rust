@@ -28,12 +28,12 @@ use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[link_name = "llvm.x86.avx512.mask.vpshufbitqmb.512"]
-    fn bitshuffle_512(data: i8x64, indices: i8x64, mask: __mmask64) -> __mmask64;
-    #[link_name = "llvm.x86.avx512.mask.vpshufbitqmb.256"]
-    fn bitshuffle_256(data: i8x32, indices: i8x32, mask: __mmask32) -> __mmask32;
-    #[link_name = "llvm.x86.avx512.mask.vpshufbitqmb.128"]
-    fn bitshuffle_128(data: i8x16, indices: i8x16, mask: __mmask16) -> __mmask16;
+    #[link_name = "llvm.x86.avx512.vpshufbitqmb.512"]
+    fn bitshuffle_512(data: i8x64, indices: i8x64) -> __mmask64;
+    #[link_name = "llvm.x86.avx512.vpshufbitqmb.256"]
+    fn bitshuffle_256(data: i8x32, indices: i8x32) -> __mmask32;
+    #[link_name = "llvm.x86.avx512.vpshufbitqmb.128"]
+    fn bitshuffle_128(data: i8x16, indices: i8x16) -> __mmask16;
 }
 
 /// For each packed 16-bit integer maps the value to the number of logical 1 bits.
@@ -370,7 +370,7 @@ pub const fn _mm_mask_popcnt_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __m
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 {
-    unsafe { bitshuffle_512(b.as_i8x64(), c.as_i8x64(), !0) }
+    unsafe { bitshuffle_512(b.as_i8x64(), c.as_i8x64()) }
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -386,7 +386,7 @@ pub fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m512i) -> __mmask64 {
-    unsafe { bitshuffle_512(b.as_i8x64(), c.as_i8x64(), k) }
+    _mm512_bitshuffle_epi64_mask(b, c) & k
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -399,7 +399,7 @@ pub fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m512i) -
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 {
-    unsafe { bitshuffle_256(b.as_i8x32(), c.as_i8x32(), !0) }
+    unsafe { bitshuffle_256(b.as_i8x32(), c.as_i8x32()) }
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -415,7 +415,7 @@ pub fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m256i) -> __mmask32 {
-    unsafe { bitshuffle_256(b.as_i8x32(), c.as_i8x32(), k) }
+    _mm256_bitshuffle_epi64_mask(b, c) & k
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -428,7 +428,7 @@ pub fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m256i) -
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
-    unsafe { bitshuffle_128(b.as_i8x16(), c.as_i8x16(), !0) }
+    unsafe { bitshuffle_128(b.as_i8x16(), c.as_i8x16()) }
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
@@ -444,7 +444,7 @@ pub fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpshufbitqmb))]
 pub fn _mm_mask_bitshuffle_epi64_mask(k: __mmask16, b: __m128i, c: __m128i) -> __mmask16 {
-    unsafe { bitshuffle_128(b.as_i8x16(), c.as_i8x16(), k) }
+    _mm_bitshuffle_epi64_mask(b, c) & k
 }
 
 #[cfg(test)]

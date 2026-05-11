@@ -8,7 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::debug;
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
@@ -877,7 +877,8 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
             // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
             // If the computed size for the field and the enum are different, the nonnull optimization isn't
             // being applied (and we've got a problem somewhere).
-            let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
+            let compute_size_skeleton =
+                |t| SizeSkeleton::compute(t, tcx, typing_env, DUMMY_SP).ok();
             if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
                 bug!("improper_ctypes: Option nonnull optimization not applied?");
             }

@@ -806,6 +806,7 @@ pub enum UnsafetyComment {
     NonTemporal,
     Neon,
     NoProvenance(String),
+    PointerWrite(String),
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -873,6 +874,10 @@ impl fmt::Display for UnsafetyComment {
                 "Addresses passed in `{arg}` lack provenance, so this is similar to using a \
                 `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane \
                 before  using it."
+            ),
+            Self::PointerWrite(arg) => write!(
+                f,
+                "The pointer in `{arg}` must satisfy the requirements of [`core::ptr::write`]."
             ),
             Self::UnpredictableOnFault => write!(
                 f,
@@ -1186,9 +1191,10 @@ impl Intrinsic {
                      * re-assigning each tuple however those generated calls do
                      * not make the parent function return. So we add the return
                      * value here */
-                    variant
-                        .big_endian_compose
-                        .push(create_symbol_identifier(&ret_val_name));
+                    variant.big_endian_compose.push(create_symbol_identifier(
+                        &ret_val_name,
+                        IdentifierType::Symbol,
+                    ));
                 }
             }
         }
@@ -1735,7 +1741,7 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
         );
     }
 
-    tokens.append_all(quote! { #[inline(always)] });
+    tokens.append_all(quote! { #[inline] });
 
     match endianness {
         Endianness::Little => tokens.append_all(quote! { #[cfg(target_endian = "little")] }),

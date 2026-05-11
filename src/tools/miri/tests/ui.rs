@@ -267,8 +267,6 @@ regexes! {
     "<[0-9]+="                       => "<TAG=",
     // normalize width of Tree Borrows diagnostic borders (which otherwise leak borrow tag info)
     "(─{50})─+"                      => "$1",
-    // erase generics in backtraces
-    "([0-9]+: .*)::<.*>"             => "$1",
     // erase long hexadecimals
     r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
     // erase specific alignments

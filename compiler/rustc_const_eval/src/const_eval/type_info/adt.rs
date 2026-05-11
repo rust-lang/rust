@@ -22,7 +22,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         let (adt_ty, adt_def) = adt;
         let variant_idx = match adt_def.adt_kind() {
             AdtKind::Struct => {
-                let (variant, variant_place) = self.downcast(place, sym::Struct)?;
+                let (variant, variant_place) = self.project_downcast_named(place, sym::Struct)?;
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_struct_type_info(
                     place,
@@ -32,7 +32,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 variant
             }
             AdtKind::Union => {
-                let (variant, variant_place) = self.downcast(place, sym::Union)?;
+                let (variant, variant_place) = self.project_downcast_named(place, sym::Union)?;
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_union_type_info(
                     place,
@@ -42,7 +42,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 variant
             }
             AdtKind::Enum => {
-                let (variant, variant_place) = self.downcast(place, sym::Enum)?;
+                let (variant, variant_place) = self.project_downcast_named(place, sym::Enum)?;
                 let place = self.project_field(&variant_place, FieldIdx::ZERO)?;
                 self.write_enum_type_info(place, adt, generics)?;
                 variant
@@ -219,13 +219,13 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         _region: Region<'tcx>,
         place: MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let (variant_idx, _) = self.downcast(&place, sym::Lifetime)?;
+        let (variant_idx, _) = self.project_downcast_named(&place, sym::Lifetime)?;
         self.write_discriminant(variant_idx, &place)?;
         interp_ok(())
     }
 
     fn write_generic_type(&mut self, ty: Ty<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
-        let (variant_idx, variant_place) = self.downcast(&place, sym::Type)?;
+        let (variant_idx, variant_place) = self.project_downcast_named(&place, sym::Type)?;
         let generic_type_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
         for (field_idx, field_def) in generic_type_place
@@ -251,7 +251,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     fn write_generic_const(&mut self, c: Const<'tcx>, place: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         let ConstKind::Value(c) = c.kind() else { bug!("expected a computed const, got {c:?}") };
 
-        let (variant_idx, variant_place) = self.downcast(&place, sym::Const)?;
+        let (variant_idx, variant_place) = self.project_downcast_named(&place, sym::Const)?;
         let const_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
 
         for (field_idx, field_def) in const_place

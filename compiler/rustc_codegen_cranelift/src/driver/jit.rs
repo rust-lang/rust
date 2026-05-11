@@ -33,14 +33,15 @@ fn create_jit_module(
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, crate_info: &CrateInfo, jit_args: Vec<String>) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, target_cpu: String, jit_args: Vec<String>) -> ! {
     if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
     let output_filenames = tcx.output_filenames(());
+    let crate_info = CrateInfo::new(tcx, target_cpu);
     let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
-    let (mut jit_module, mut debug_context) = create_jit_module(tcx, crate_info);
+    let (mut jit_module, mut debug_context) = create_jit_module(tcx, &crate_info);
     let mut cached_context = Context::new();
 
     let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;

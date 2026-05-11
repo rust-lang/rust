@@ -160,7 +160,7 @@ impl From<Ident> for LifetimeSyntax {
 // platforms where the alignment is already sufficient.
 #[repr(align(4))]
 pub struct Lifetime {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
 
     /// Either a named lifetime definition (e.g. `'a`, `'static`) or an
@@ -369,7 +369,7 @@ impl Path<'_> {
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     pub ident: Ident,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub res: Res,
 
@@ -440,7 +440,7 @@ impl<'hir> ConstItemRhs<'hir> {
 #[derive(Clone, Copy, Debug, StableHash)]
 #[repr(C)]
 pub struct ConstArg<'hir, Unambig = ()> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: ConstArgKind<'hir, Unambig>,
     pub span: Span,
@@ -538,7 +538,7 @@ pub struct ConstArgArrayExpr<'hir> {
 
 #[derive(Clone, Copy, Debug, StableHash)]
 pub struct InferArg {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
 }
@@ -829,7 +829,7 @@ pub enum GenericParamKind<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct GenericParam<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub name: ParamName,
@@ -1093,7 +1093,7 @@ impl<'hir> Generics<'hir> {
 /// A single predicate in a where-clause.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct WherePredicate<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: &'hir WherePredicateKind<'hir>,
@@ -1340,7 +1340,7 @@ impl AttributeExt for Attribute {
 
     #[inline]
     fn value_str(&self) -> Option<Symbol> {
-        self.value_lit().and_then(|x| x.value_str())
+        self.value_lit().and_then(|x| x.value_as_str())
     }
 
     #[inline]
@@ -1595,6 +1595,20 @@ impl<'tcx> OwnerNodes<'tcx> {
         // Indexing must ensure it is an OwnerNode.
         self.nodes[ItemLocalId::ZERO].node.as_owner().unwrap()
     }
+
+    /// Return an instance of `OwnerNodes` suitable for definitions that have no corresponding AST.
+    pub fn synthetic() -> OwnerNodes<'tcx> {
+        OwnerNodes {
+            // There is no reason to bother computing a hash for a synthetic body.
+            // Just use a constant value.
+            opt_hash_including_bodies: Some(Fingerprint::ZERO),
+            nodes: IndexVec::from_elem_n(
+                ParentedNode { parent: ItemLocalId::INVALID, node: OwnerNode::Synthetic.into() },
+                1,
+            ),
+            bodies: SortedMap::new(),
+        }
+    }
 }
 
 impl fmt::Debug for OwnerNodes<'_> {
@@ -1636,7 +1650,7 @@ pub struct OwnerInfo<'hir> {
     ///
     /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
     ///          should only be accessed in `eval_always` queries.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub delayed_lints: Steal<DelayedLints>,
 }
 
@@ -1710,7 +1724,7 @@ pub struct Block<'hir> {
     /// An expression at the end of the block
     /// without a semicolon, if any.
     pub expr: Option<&'hir Expr<'hir>>,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -1740,7 +1754,7 @@ pub struct TyFieldPath {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TyPat<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: TyPatKind<'hir>,
     pub span: Span,
@@ -1748,7 +1762,7 @@ pub struct TyPat<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Pat<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
@@ -1896,7 +1910,7 @@ impl<'hir> Pat<'hir> {
 /// except `is_shorthand` is true.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct PatField<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     /// The identifier for the field.
     pub ident: Ident,
@@ -1952,7 +1966,7 @@ impl fmt::Debug for DotDotPos {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct PatExpr<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: PatExprKind<'hir>,
@@ -2060,7 +2074,7 @@ pub enum PatKind<'hir> {
 /// A statement.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Stmt<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
     pub span: Span,
@@ -2094,7 +2108,7 @@ pub struct LetStmt<'hir> {
     pub init: Option<&'hir Expr<'hir>>,
     /// Else block for a `let...else` binding.
     pub els: Option<&'hir Block<'hir>>,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
@@ -2107,7 +2121,7 @@ pub struct LetStmt<'hir> {
 /// `<pat> (if <guard>) => <body>`.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Arm<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     /// If this pattern and the optional guard matches, then `body` is evaluated.
@@ -2136,7 +2150,7 @@ pub struct LetExpr<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct ExprField<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub expr: &'hir Expr<'hir>,
@@ -2410,7 +2424,7 @@ pub type Lit = Spanned<LitKind>;
 /// `const N: usize = { ... }` with `tcx.hir_opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, Debug, StableHash)]
 pub struct AnonConst {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -2420,7 +2434,7 @@ pub struct AnonConst {
 /// An inline constant expression `const { something }`.
 #[derive(Copy, Clone, Debug, StableHash)]
 pub struct ConstBlock {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub body: BodyId,
@@ -2436,7 +2450,7 @@ pub struct ConstBlock {
 /// [rust lang reference]: https://doc.rust-lang.org/reference/expressions.html
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Expr<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
     pub span: Span,
@@ -3352,7 +3366,7 @@ pub enum ImplItemKind<'hir> {
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct AssocItemConstraint<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
@@ -3432,7 +3446,7 @@ pub enum AmbigArg {}
 #[derive(Debug, Clone, Copy, StableHash)]
 #[repr(C)]
 pub struct Ty<'hir, Unambig = ()> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub kind: TyKind<'hir, Unambig>,
@@ -3678,7 +3692,7 @@ pub struct UnsafeBinderTy<'hir> {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct OpaqueTy<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub bounds: GenericBounds<'hir>,
@@ -3718,7 +3732,7 @@ impl PreciseCapturingArg<'_> {
 /// since resolve_bound_vars operates on `Lifetime`s.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct PreciseCapturingNonLifetimeArg {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
     pub res: Res,
@@ -3918,7 +3932,7 @@ impl InlineAsm<'_> {
 /// Represents a parameter in a function header.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Param<'hir> {
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
     pub ty_span: Span,
@@ -4219,7 +4233,7 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
@@ -4259,7 +4273,7 @@ pub enum UseKind {
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_ref_id: HirId,
 }
 
@@ -4295,7 +4309,7 @@ pub struct FieldDef<'hir> {
     pub span: Span,
     pub vis_span: Span,
     pub ident: Ident,
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
@@ -4320,11 +4334,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], #[stable_hasher(ignore)] HirId, LocalDefId),
+    Tuple(&'hir [FieldDef<'hir>], #[stable_hash(ignore)] HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(#[stable_hasher(ignore)] HirId, LocalDefId),
+    Unit(#[stable_hash(ignore)] HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {

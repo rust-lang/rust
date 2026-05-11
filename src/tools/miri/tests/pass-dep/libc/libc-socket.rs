@@ -41,6 +41,7 @@ fn main() {
     test_getsockname_ipv4();
     test_getsockname_ipv4_random_port();
     test_getsockname_ipv4_unbound();
+    test_getsockname_ipv4_connect();
     test_getsockname_ipv6();
 
     test_getpeername_ipv4();
@@ -49,6 +50,8 @@ fn main() {
     test_shutdown();
     test_shutdown_readable_after_write_close();
     test_shutdown_writable_after_read_close();
+
+    test_getsockopt_truncate();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -268,12 +271,12 @@ fn test_send_peek_recv() {
 
         // Write the bytes into the stream.
         unsafe {
-            errno_result(libc_utils::write_all_generic(
+            libc_utils::write_all_generic(
                 TEST_BYTES.as_ptr().cast(),
                 TEST_BYTES.len(),
                 libc_utils::NoRetry,
                 |buf, count| libc::send(peerfd, buf, count, 0),
-            ))
+            )
             .unwrap()
         };
     });
@@ -300,12 +303,12 @@ fn test_send_peek_recv() {
 
     let mut buffer = [0; TEST_BYTES.len()];
     unsafe {
-        errno_result(libc_utils::read_all_generic(
+        libc_utils::read_exact_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
             libc_utils::NoRetry,
             |buf, count| libc::recv(client_sockfd, buf, count, 0),
-        ))
+        )
         .unwrap()
     };
     assert_eq!(&buffer, TEST_BYTES);
@@ -327,24 +330,13 @@ fn test_write_read() {
         let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
 
         // Write some bytes into the stream.
-        let bytes_written = unsafe {
-            errno_result(libc_utils::write_all(
-                peerfd,
-                TEST_BYTES.as_ptr().cast(),
-                TEST_BYTES.len(),
-            ))
-            .unwrap()
-        };
-        assert_eq!(bytes_written as usize, TEST_BYTES.len());
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let mut buffer = [0; TEST_BYTES.len()];
-    unsafe {
-        errno_result(libc_utils::read_all(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
-            .unwrap()
-    };
+    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
@@ -425,6 +417,34 @@ fn test_getsockname_ipv4_unbound() {
     assert_eq!(addr.sin_family, sock_addr.sin_family);
     assert_eq!(addr.sin_port, sock_addr.sin_port);
     assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+}
+
+/// Test the `getsockname` syscall on a connected IPv4 socket.
+fn test_getsockname_ipv4_connect() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
+        libc::getsockname(client_sockfd, storage, len)
+    })
+    .unwrap();
+
+    // We want to ensure that the local address is not the unspecified address.
+    // Because the bound address could be of any local interface, we cannot
+    // test for localhost.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    assert_ne!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+    assert!(sock_addr.sin_port > 0);
+
+    server_thread.join().unwrap();
 }
 
 /// Test the `getsockname` syscall on an IPv6 socket which is bound.
@@ -610,4 +630,54 @@ fn test_shutdown_writable_after_read_close() {
     }
 
     server_thread.join().unwrap();
+}
+
+/// Test that the value gets silently truncated when a too small
+/// length is provided and that the length gets reduced when the value
+/// is smaller than the provided length.
+fn test_getsockopt_truncate() {
+    let (sockfd, _) = net::make_listener_ipv4().unwrap();
+
+    // The actual TTL with a correctly sized buffer.
+    let ttl = net::getsockopt::<libc::c_uint>(sockfd, libc::IPPROTO_IP, libc::IP_TTL).unwrap();
+
+    let mut option_value = std::mem::MaybeUninit::<u32>::zeroed();
+    // The actual length is 4 bytes.
+    let mut short_option_len = 2 as libc::socklen_t;
+
+    errno_result(unsafe {
+        libc::getsockopt(
+            sockfd,
+            libc::IPPROTO_IP,
+            libc::IP_TTL,
+            option_value.as_mut_ptr().cast(),
+            &mut short_option_len,
+        )
+    })
+    .unwrap();
+    // Ensure that the size wasn't changed.
+    assert_eq!(short_option_len, 2);
+    let short_ttl = unsafe { option_value.assume_init() };
+
+    // Assert that the value was silently truncated.
+    assert_eq!(short_ttl.to_ne_bytes()[0..2], ttl.to_ne_bytes()[0..2]);
+
+    let mut option_value = std::mem::MaybeUninit::<u32>::zeroed();
+    // The actual length is 4 bytes.
+    let mut long_option_len = 6 as libc::socklen_t;
+
+    errno_result(unsafe {
+        libc::getsockopt(
+            sockfd,
+            libc::IPPROTO_IP,
+            libc::IP_TTL,
+            option_value.as_mut_ptr().cast(),
+            &mut long_option_len,
+        )
+    })
+    .unwrap();
+    // Ensure that the size was shortened to the actual length.
+    assert_eq!(long_option_len, 4);
+    let long_ttl = unsafe { option_value.assume_init() };
+    assert_eq!(long_ttl, ttl);
 }

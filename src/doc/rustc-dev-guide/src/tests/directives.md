@@ -148,7 +148,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
 - When particular debugger versions are matched: `ignore-gdb-version`
 - When the [parallel frontend] is enabled: `ignore-parallel-frontend`
-- Specific [compare modes]: `compare-mode-polonius`, `compare-mode-chalk`,
+- Specific [compare modes]: `compare-mode-polonius`,
+  `compare-mode-next-solver`, `compare-mode-next-solver-coherence`,
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 - The two different test modes used by coverage tests:
   `ignore-coverage-map`, `ignore-coverage-run`

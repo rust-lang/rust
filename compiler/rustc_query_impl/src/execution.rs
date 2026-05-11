@@ -294,7 +294,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     // re-executing the query since `try_start` only checks that the query is not currently
     // executing, but another thread may have already completed the query and stores it result
     // in the query cache.
-    if tcx.sess.threads() > 1 {
+    if tcx.sess.threads().is_some() {
         if let Some((value, index)) = query.cache.lookup(&key) {
             tcx.prof.query_cache_hit(index.into());
             return (value, Some(index));

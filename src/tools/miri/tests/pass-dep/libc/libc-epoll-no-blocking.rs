@@ -56,10 +56,10 @@ fn test_epoll_socketpair() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
-    // Write to fd[0]
-    write_all_from_slice(fds[0], b"abcde").unwrap();
+    // Write to fds[0]
+    write_all(fds[0], b"abcde").unwrap();
 
-    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
+    // Register fds[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
     epoll_ctl_add(epfd, fds[1], EPOLLIN | EPOLLOUT | EPOLLET | EPOLLRDHUP).unwrap();
 
     // Check result from epoll_wait.
@@ -68,10 +68,10 @@ fn test_epoll_socketpair() {
     // Check that this is indeed using "ET" (edge-trigger) semantics: a second epoll should return nothing.
     check_epoll_wait_noblock::<8>(epfd, &[]);
 
-    // Write some more to fd[0].
-    write_all_from_slice(fds[0], b"abcde").unwrap();
+    // Write some more to fds[0].
+    write_all(fds[0], b"abcde").unwrap();
 
-    // This did not change the readiness of fd[1], so we should get no event.
+    // This did not change the readiness of fds[1], so we should get no event.
     // However, Linux seems to always deliver spurious events to the peer on each write,
     // so we match that.
     check_epoll_wait_noblock::<8>(epfd, &[Ev { data: fds[1], events: EPOLLIN | EPOLLOUT }]);
@@ -98,7 +98,7 @@ fn test_epoll_ctl_mod() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
-    // Register fd[1] with EPOLLIN|EPOLLET, and data of "0".
+    // Register fds[1] with EPOLLIN|EPOLLET, and data of "0".
     epoll_ctl(epfd, EPOLL_CTL_ADD, fds[1], Ev { events: EPOLLIN | EPOLLET, data: 0 }).unwrap();
 
     // Check result from epoll_wait. No notification would be returned.
@@ -112,8 +112,8 @@ fn test_epoll_ctl_mod() {
 
     // Write to fds[1] and read from fds[0] to make the notification ready again
     // (relying on there always being an event when the buffer gets emptied).
-    write_all_from_slice(fds[1], "abc".as_bytes()).unwrap();
-    read_all_into_array::<3>(fds[0]).unwrap();
+    write_all(fds[1], "abc".as_bytes()).unwrap();
+    read_exact_array::<3>(fds[0]).unwrap();
 
     // Now that the event is already ready, change the "data" value.
     epoll_ctl(epfd, EPOLL_CTL_MOD, fds[1], Ev { events: EPOLLOUT | EPOLLET, data: 2 }).unwrap();
@@ -136,12 +136,10 @@ fn test_epoll_ctl_del() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
-    // Write to fd[0]
-    let data = b"abcde".as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    // Write to fds[0]
+    libc_utils::write_all(fds[0], b"abcde").unwrap();
 
-    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET
+    // Register fds[1] with EPOLLIN|EPOLLOUT|EPOLLET
     let mut ev = libc::epoll_event {
         events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as u32,
         u64: u64::try_from(fds[1]).unwrap(),
@@ -168,9 +166,7 @@ fn test_two_epoll_instance() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     // Write to the socketpair.
-    let data = b"abcde".as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    libc_utils::write_all(fds[0], b"abcde").unwrap();
 
     // Register one side of the socketpair with EPOLLIN | EPOLLOUT | EPOLLET.
     epoll_ctl_add(epfd1, fds[1], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
@@ -208,9 +204,7 @@ fn test_two_same_fd_in_same_epoll_instance() {
     assert_eq!(res, 0);
 
     // Write to the socketpair.
-    let data = b"abcde".as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    libc_utils::write_all(fds[0], b"abcde").unwrap();
 
     // Two notification should be received.
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
@@ -227,7 +221,7 @@ fn test_epoll_eventfd() {
     let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
     // Write 1 to the eventfd instance.
-    libc_utils::write_all_from_slice(fd, &1_u64.to_ne_bytes()).unwrap();
+    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
 
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -241,14 +235,14 @@ fn test_epoll_eventfd() {
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
     // Write 0 to the eventfd.
-    libc_utils::write_all_from_slice(fd, &0_u64.to_ne_bytes()).unwrap();
+    libc_utils::write_all(fd, &0_u64.to_ne_bytes()).unwrap();
 
     // This does not change the status, so we should get no event.
     // However, Linux performs a spurious wakeup.
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
     // Read from the eventfd.
-    libc_utils::read_all_into_array::<8>(fd).unwrap();
+    libc_utils::read_exact_array::<8>(fd).unwrap();
 
     // This consumes the event, so the read status is gone. However, deactivation
     // does not trigger an event.
@@ -257,9 +251,7 @@ fn test_epoll_eventfd() {
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
     // Write the maximum possible value.
-    let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
-    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    libc_utils::write_all(fd, &(u64::MAX - 1).to_ne_bytes()).unwrap();
 
     // This reactivates reads, therefore triggering an event. Writing is no longer possible.
     let expected_event = u32::try_from(libc::EPOLLIN).unwrap();
@@ -282,9 +274,7 @@ fn test_epoll_socketpair_both_sides() {
     // Write to fds[1].
     // (We do the write after the register here, unlike in `test_epoll_socketpair`, to ensure
     // we cover both orders in which this could be done.)
-    let data = b"abcde".as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    libc_utils::write_all(fds[1], b"abcde").unwrap();
 
     // Two notification should be received.
     let expected_event0 = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
@@ -297,10 +287,7 @@ fn test_epoll_socketpair_both_sides() {
     );
 
     // Read from fds[0].
-    let mut buf: [u8; 5] = [0; 5];
-    let res =
-        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-    assert_eq!(res, 5);
+    let buf = libc_utils::read_exact_array::<5>(fds[0]).unwrap();
     assert_eq!(buf, *b"abcde");
 
     // The state of fds[1] does not change (was writable, is writable).
@@ -323,9 +310,7 @@ fn test_closed_fd() {
     epoll_ctl_add(epfd, fd, libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Write to the eventfd instance.
-    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
 
     // Close the eventfd.
     errno_check(unsafe { libc::close(fd) });
@@ -363,10 +348,7 @@ fn test_not_fully_closed_fd() {
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)]);
 
     // Write to the eventfd instance to produce notification.
-    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res =
-        unsafe { libc_utils::write_all(newfd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    libc_utils::write_all(newfd, &1_u64.to_ne_bytes()).unwrap();
 
     // Close the dupped fd.
     errno_check(unsafe { libc::close(newfd) });
@@ -383,9 +365,7 @@ fn test_event_overwrite() {
         errno_result(unsafe { libc::eventfd(0, libc::EFD_NONBLOCK | libc::EFD_CLOEXEC) }).unwrap();
 
     // Write to the eventfd instance.
-    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
 
     // Create an epoll instance.
     let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
@@ -435,9 +415,7 @@ fn test_socketpair_read() {
 
     // Write a bunch of data bytes to fds[1].
     let data = [42u8; 1024];
-    let res =
-        unsafe { libc_utils::write_all(fds[1], data.as_ptr() as *const libc::c_void, data.len()) };
-    assert_eq!(res, data.len() as isize);
+    libc_utils::write_all(fds[1], &data).unwrap();
 
     // Two notification should be received.
     let expected_event0 = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
@@ -451,9 +429,7 @@ fn test_socketpair_read() {
 
     // Read some of the data from fds[0].
     let mut buf = [0; 512];
-    let res =
-        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-    assert_eq!(res, buf.len() as isize);
+    libc_utils::read_exact(fds[0], &mut buf).unwrap();
 
     // fds[1] did not change, it is still writable, so we get no event.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -462,9 +438,7 @@ fn test_socketpair_read() {
 
     // Read until the buffer is empty.
     let rest = data.len() - buf.len();
-    let res =
-        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), rest as libc::size_t) };
-    assert_eq!(res, rest as isize);
+    libc_utils::read_exact(fds[0], &mut buf[..rest]).unwrap();
 
     // Now we get a notification that fds[1] can be written. This is spurious since it
     // could already be written before, but Linux seems to always emit a notification for
@@ -481,7 +455,7 @@ fn test_no_notification_for_unregister_flag() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
-    // Register fd[0] with EPOLLOUT|EPOLLET.
+    // Register fds[0] with EPOLLOUT|EPOLLET.
     let mut ev = libc::epoll_event {
         events: (libc::EPOLLOUT | libc::EPOLLET).cast_unsigned(),
         u64: u64::try_from(fds[0]).unwrap(),
@@ -489,12 +463,8 @@ fn test_no_notification_for_unregister_flag() {
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
     assert_eq!(res, 0);
 
-    // Write to fd[1].
-    let data = b"abcde".as_ptr();
-    let res: i32 = unsafe {
-        libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
-    };
-    assert_eq!(res, 5);
+    // Write to fds[1].
+    libc_utils::write_all(fds[1], b"abcde").unwrap();
 
     // Check result from epoll_wait. Since we didn't register EPOLLIN flag, the notification won't
     // contain EPOLLIN even though fds[0] is now readable.
@@ -523,16 +493,14 @@ fn test_socketpair_epollerr() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
-    // Write to fd[0]
-    let data = b"abcde".as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    // Write to fds[0]
+    libc_utils::write_all(fds[0], b"abcde").unwrap();
 
     // Close fds[1].
     // EPOLLERR will be triggered if we close peer fd that still has data in its read buffer.
     errno_check(unsafe { libc::close(fds[1]) });
 
-    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
+    // Register fds[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
     epoll_ctl_add(epfd, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP)
         .unwrap();
 
@@ -671,9 +639,7 @@ fn test_issue_3858() {
     errno_check(unsafe { libc::close(epfd) });
 
     // Write to the eventfd instance.
-    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    libc_utils::write_all(fd, &1_u64.to_ne_bytes()).unwrap();
 }
 
 /// Ensure that if a socket becomes un-writable, we don't see it any more.
@@ -694,10 +660,9 @@ fn test_issue_4374() {
     // Fill up fds[0] so that it is not writable any more.
     let zeros = [0u8; 512];
     loop {
-        let res = unsafe {
-            libc_utils::write_all(fds[0], zeros.as_ptr() as *const libc::c_void, zeros.len())
-        };
-        if res < 0 {
+        let res = libc_utils::write_all(fds[0], &zeros);
+        if let Err(err) = res {
+            assert_eq!(err.kind(), std::io::ErrorKind::WouldBlock);
             break;
         }
     }
@@ -719,19 +684,13 @@ fn test_issue_4374_reads() {
     assert_eq!(unsafe { libc::fcntl(fds[1], libc::F_SETFL, libc::O_NONBLOCK) }, 0);
 
     // Write to fds[1] so that fds[0] becomes readable.
-    let data = b"abcde".as_ptr();
-    let res: i32 = unsafe {
-        libc_utils::write_all(fds[1], data as *const libc::c_void, 5).try_into().unwrap()
-    };
-    assert_eq!(res, 5);
+    libc_utils::write_all(fds[1], b"abcde").unwrap();
 
     // Register fds[0] with epoll while it is readable.
     epoll_ctl_add(epfd0, fds[0], libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET).unwrap();
 
     // Read fds[0] so it is no longer readable.
-    let mut buf = [0u8; 512];
-    let res = unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr() as *mut libc::c_void, 5) };
-    assert_eq!(res, 5);
+    libc_utils::read_exact_array::<5>(fds[0]).unwrap();
 
     // We should now still see a notification, but only about it being writable.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();

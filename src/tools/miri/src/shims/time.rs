@@ -247,6 +247,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
+
         this.write_scalar(
             Scalar::from_i64(qpc),
             &this.deref_pointer_as(lpPerformanceCount_op, this.machine.layouts.i64)?,

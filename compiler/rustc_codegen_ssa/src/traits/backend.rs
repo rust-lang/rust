@@ -92,6 +92,14 @@ pub trait CodegenBackend {
         false
     }
 
+    /// Value printed by `--print=backend-has-mnemonic:...`.
+    ///
+    /// Used by compiletest to determine whether tests involving `asm!()` should
+    /// be executed or skipped.
+    fn has_mnemonic(&self, _sess: &Session, _mnemonic: &str) -> bool {
+        false
+    }
+
     /// The metadata loader used to load rlib and dylib metadata.
     ///
     /// Alternative codegen backends may want to use different rlib or dylib formats than the
@@ -104,7 +112,7 @@ pub trait CodegenBackend {
 
     fn target_cpu(&self, sess: &Session) -> String;
 
-    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, crate_info: &CrateInfo) -> Box<dyn Any>;
+    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any>;
 
     /// This is called on the returned `Box<dyn Any>` from [`codegen_crate`](Self::codegen_crate)
     ///
@@ -116,6 +124,7 @@ pub trait CodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
+        crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>);
 
     fn print_pass_timings(&self) {}

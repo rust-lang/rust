@@ -480,10 +480,6 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
     match req.kind {
         PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
         PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
-        PrintKind::BackendHasMnemonic => {
-            let mnemonic = req.arg.as_deref().expect("BackendHasMnemonic requires arg");
-            print_target_has_mnemonic(tm.raw(), mnemonic, out)
-        }
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }
@@ -746,9 +742,9 @@ pub(crate) fn tune_cpu(sess: &Session) -> Option<&str> {
     Some(handle_native(name))
 }
 
-fn print_target_has_mnemonic(tm: &llvm::TargetMachine, mnemonic: &str, out: &mut String) {
-    use std::fmt::Write;
+pub(crate) fn target_has_mnemonic(sess: &Session, mnemonic: &str) -> bool {
+    require_inited();
+    let tm = create_informational_target_machine(sess, false);
     let cstr = SmallCStr::new(mnemonic);
-    let has_mnemonic = unsafe { llvm::LLVMRustTargetHasMnemonic(tm, cstr.as_ptr()) };
-    writeln!(out, "{}", has_mnemonic).unwrap();
+    unsafe { llvm::LLVMRustTargetHasMnemonic(tm.raw(), cstr.as_ptr()) }
 }

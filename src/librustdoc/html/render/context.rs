@@ -23,7 +23,7 @@ use super::{AllTypes, LinkFromSrc, StylePath, collect_spans_and_sources, scrape_
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, ExternalCrate};
-use crate::config::{ModuleSorting, RenderOptions, ShouldMerge};
+use crate::config::{EmitType, ModuleSorting, RenderOptions, ShouldMerge};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -481,7 +481,6 @@ impl<'tcx> Context<'tcx> {
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
-        let emit_crate = options.should_emit_crate();
         let RenderOptions {
             output,
             external_html,
@@ -495,6 +494,7 @@ impl<'tcx> Context<'tcx> {
             static_root_path,
             generate_redirect_map,
             show_type_layout,
+            emit,
             generate_link_to_definition,
             call_locations,
             no_emit_shared,
@@ -605,7 +605,7 @@ impl<'tcx> Context<'tcx> {
             info: ContextInfo::new(include_sources),
         };
 
-        if emit_crate {
+        if emit.contains(&EmitType::HtmlNonStaticFiles) {
             sources::render(&mut cx, &krate)?;
         }
 
@@ -619,11 +619,10 @@ impl<'tcx> Context<'tcx> {
 
 /// Generates the documentation for `crate` into the directory `dst`
 impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
-    fn descr() -> &'static str {
-        "html"
-    }
-
+    const DESCR: &'static str = "html";
     const RUN_ON_MODULE: bool = true;
+    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::HtmlNonStaticFiles;
+
     type ModuleData = ContextInfo;
 
     fn save_module_data(&mut self) -> Self::ModuleData {

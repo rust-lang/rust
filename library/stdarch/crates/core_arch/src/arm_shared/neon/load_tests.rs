@@ -190,6 +190,24 @@ fn test_vld1q_p64() {
     assert_eq!(r, e)
 }
 
+#[cfg(not(target_arch = "arm64ec"))]
+#[simd_test(enable = "neon,fp16")]
+fn test_vld1_f16() {
+    let a: [f16; 5] = [0., 1., 2., 3., 4.];
+    let e = f16x4::new(1., 2., 3., 4.);
+    let r = unsafe { f16x4::from(vld1_f16(a[1..].as_ptr())) };
+    assert_eq!(r, e)
+}
+
+#[cfg(not(target_arch = "arm64ec"))]
+#[simd_test(enable = "neon,fp16")]
+fn test_vld1q_f16() {
+    let a: [f16; 9] = [0., 1., 2., 3., 4., 5., 6., 7., 8.];
+    let e = f16x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
+    let r = unsafe { f16x8::from(vld1q_f16(a[1..].as_ptr())) };
+    assert_eq!(r, e)
+}
+
 #[simd_test(enable = "neon")]
 fn test_vld1_f32() {
     let a: [f32; 3] = [0., 1., 2.];

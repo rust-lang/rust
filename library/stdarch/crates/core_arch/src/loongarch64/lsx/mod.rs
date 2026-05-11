@@ -17,5 +17,12 @@ mod generated;
 pub use self::generated::*;
 
 #[rustfmt::skip]
+mod portable;
+
+#[rustfmt::skip]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub use self::portable::*;
+
+#[rustfmt::skip]
 #[cfg(test)]
 mod tests;

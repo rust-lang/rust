@@ -32,12 +32,14 @@ pub fn errno_check<T: From<i8> + Ord + fmt::Debug>(ret: T) {
 }
 
 /// Invoke the `read` function until `buf` is full. `retry` contols the behavior on EAGAIN.
-pub unsafe fn read_all_generic(
+/// Panics if we get EOF before the buffer is filled.
+#[track_caller]
+pub unsafe fn read_exact_generic(
     buf: *mut libc::c_void,
     count: libc::size_t,
     retry: Retry,
     read: impl Fn(*mut libc::c_void, libc::size_t) -> libc::ssize_t,
-) -> libc::ssize_t {
+) -> io::Result<()> {
     assert!(count > 0);
     let mut read_so_far = 0;
     while read_so_far < count {
@@ -50,58 +52,42 @@ pub unsafe fn read_all_generic(
                     continue;
                 }
             }
-            return res;
+            return Err(io::Error::last_os_error());
         }
         if res == 0 {
-            // EOF
-            break;
+            // We expected more data but got EOF.
+            panic!(
+                "could not fill buffer with {count} bytes: EOF received after {read_so_far} bytes"
+            );
         }
         read_so_far += res as libc::size_t;
     }
-    return read_so_far as libc::ssize_t;
-}
-
-/// Read from `fd` until `buf` is full. Abort on first error.
-pub unsafe fn read_all(
-    fd: libc::c_int,
-    buf: *mut libc::c_void,
-    count: libc::size_t,
-) -> libc::ssize_t {
-    read_all_generic(buf, count, NoRetry, |buf, count| libc::read(fd, buf, count))
+    Ok(())
 }
 
 /// Try to fill the given slice by reading from `fd`. Panic if that many bytes could not be read.
 #[track_caller]
-pub fn read_all_into_slice(fd: libc::c_int, buf: &mut [u8]) -> io::Result<()> {
-    let res = errno_result(unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
-    assert_eq!(res as usize, buf.len());
-    Ok(())
+pub fn read_exact(fd: libc::c_int, buf: &mut [u8]) -> io::Result<()> {
+    unsafe {
+        read_exact_generic(buf.as_mut_ptr().cast(), buf.len(), NoRetry, |buf, count| {
+            libc::read(fd, buf, count)
+        })
+    }
 }
 
 /// Read exactly `N` bytes from `fd`. Error if that many bytes could not be read.
 #[track_caller]
-pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> io::Result<[u8; N]> {
+pub fn read_exact_array<const N: usize>(fd: libc::c_int) -> io::Result<[u8; N]> {
     let mut buf = [0; N];
-    read_all_into_slice(fd, &mut buf)?;
+    read_exact(fd, &mut buf)?;
     Ok(buf)
 }
 
 /// Do a single read from `fd` and return the part of the buffer that was written into,
 /// and the rest.
 #[track_caller]
-pub fn read_into_slice(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &mut [u8])> {
+pub fn read_split_slice(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &mut [u8])> {
     let res = errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
-    Ok(buf.split_at_mut(res as usize))
-}
-
-/// Read from `fd` until we get EOF and return the part of the buffer that was written into,
-/// and the rest.
-#[track_caller]
-pub fn read_until_eof_into_slice(
-    fd: libc::c_int,
-    buf: &mut [u8],
-) -> io::Result<(&mut [u8], &mut [u8])> {
-    let res = errno_result(unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) })?;
     Ok(buf.split_at_mut(res as usize))
 }
 
@@ -111,7 +97,7 @@ pub unsafe fn write_all_generic(
     count: libc::size_t,
     retry: Retry,
     write: impl Fn(*const libc::c_void, libc::size_t) -> libc::ssize_t,
-) -> libc::ssize_t {
+) -> io::Result<()> {
     assert!(count > 0);
     let mut written_so_far = 0;
     while written_so_far < count {
@@ -124,29 +110,22 @@ pub unsafe fn write_all_generic(
                     continue;
                 }
             }
-            return res;
+            return Err(io::Error::last_os_error());
         }
         // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
         written_so_far += res as libc::size_t;
     }
-    return written_so_far as libc::ssize_t;
-}
-
-/// Write to `fd` until `buf` is fully written. Abort on first error.
-pub unsafe fn write_all(
-    fd: libc::c_int,
-    buf: *const libc::c_void,
-    count: libc::size_t,
-) -> libc::ssize_t {
-    write_all_generic(buf, count, NoRetry, |buf, count| libc::write(fd, buf, count))
+    return Ok(());
 }
 
 /// Write the entire `buf` to `fd`. Panic if not all bytes could be written.
 #[track_caller]
-pub fn write_all_from_slice(fd: libc::c_int, buf: &[u8]) -> io::Result<()> {
-    let res = errno_result(unsafe { write_all(fd, buf.as_ptr().cast(), buf.len()) })?;
-    assert_eq!(res as usize, buf.len());
-    Ok(())
+pub fn write_all(fd: libc::c_int, buf: &[u8]) -> io::Result<()> {
+    unsafe {
+        write_all_generic(buf.as_ptr().cast(), buf.len(), NoRetry, |buf, count| {
+            libc::write(fd, buf, count)
+        })
+    }
 }
 
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "illumos"))]
@@ -155,7 +134,7 @@ pub mod epoll {
     use libc::c_int;
     pub use libc::{EPOLL_CTL_ADD, EPOLL_CTL_DEL, EPOLL_CTL_MOD};
     // Re-export some constants we need a lot for this.
-    pub use libc::{EPOLLET, EPOLLHUP, EPOLLIN, EPOLLOUT, EPOLLRDHUP};
+    pub use libc::{EPOLLERR, EPOLLET, EPOLLHUP, EPOLLIN, EPOLLOUT, EPOLLRDHUP};
 
     use super::*;
 
@@ -203,6 +182,30 @@ pub mod epoll {
     #[track_caller]
     pub fn check_epoll_wait_noblock<const N: usize>(epfd: i32, expected: &[Ev]) {
         check_epoll_wait::<N>(epfd, expected, 0);
+    }
+
+    /// Query the current epoll readiness of a file descriptor.
+    /// This is done by creating a new epoll instance, adding the
+    /// fd to the epoll interests and then performing a zero-timeout
+    /// wait.
+    pub fn current_epoll_readiness<const N: usize>(fd: i32, interests: i32) -> c_int {
+        let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+        // Add fd with all possible interests to epoll instance.
+        epoll_ctl_add(epfd, fd, interests).unwrap();
+
+        let mut array: [libc::epoll_event; N] = [libc::epoll_event { events: 0, u64: 0 }; N];
+        let num = errno_result(unsafe {
+            // Use zero-timeout to just query without waiting.
+            libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), 0)
+        })
+        .expect("epoll_wait returned an error");
+
+        let mut readiness = 0;
+        let events = &mut array[..num.try_into().unwrap()];
+        events.iter().for_each(|e| {
+            readiness |= e.events.cast_signed();
+        });
+        readiness
     }
 }
 
@@ -362,6 +365,35 @@ pub mod net {
             )
         })?;
         Ok(())
+    }
+
+    /// Get a socket option. It's the caller's responsibility that `T` is
+    /// associated with the given socket option.
+    ///
+    /// This function is directly copied from the standard library implementation
+    /// for sockets on UNIX targets.
+    pub fn getsockopt<T: Copy>(
+        sockfd: libc::c_int,
+        level: libc::c_int,
+        option_name: libc::c_int,
+    ) -> io::Result<T> {
+        let mut option_value = std::mem::MaybeUninit::<T>::zeroed();
+        let mut option_len = size_of::<T>() as libc::socklen_t;
+        let provided_len = option_len;
+
+        errno_result(unsafe {
+            libc::getsockopt(
+                sockfd,
+                level,
+                option_name,
+                option_value.as_mut_ptr().cast(),
+                &mut option_len,
+            )
+        })?;
+        // Ensure that there was no truncation.
+        assert!(option_len == provided_len);
+
+        Ok(unsafe { option_value.assume_init() })
     }
 
     /// Wraps a call to a platform function that returns an IPv4 socket address.

@@ -9,16 +9,20 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diagnostic, MultiSpan, pluralize, struct_span_code_err};
+use rustc_errors::{
+    Applicability, BufferedEarlyLint, Diagnostic, MultiSpan, pluralize, struct_span_code_err,
+};
+use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def::{self, DefKind, PartialRes};
-use rustc_hir::def_id::{DefId, LocalDefIdMap};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::errors::feature_err;
+use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
     PUB_USE_OF_PRIVATE_EXTERN_CRATE, REDUNDANT_IMPORTS, UNUSED_IMPORTS,
@@ -87,17 +91,20 @@ pub(crate) enum ImportKind<'ra> {
         /// If this is the import for `foo::bar::a`, we would have the ID of the `UseTree`
         /// for `a` in this field.
         id: NodeId,
+        def_id: LocalDefId,
     },
     Glob {
         // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
         max_vis: CmCell<Option<Visibility>>,
         id: NodeId,
+        def_id: LocalDefId,
     },
     ExternCrate {
         source: Option<Symbol>,
         target: Ident,
         id: NodeId,
+        def_id: LocalDefId,
     },
     MacroUse {
         /// A field has been added indicating whether it should be reported as a lint,
@@ -113,7 +120,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ImportKind::*;
         match self {
-            Single { source, target, decls, nested, id, .. } => f
+            Single { source, target, decls, nested, id, def_id } => f
                 .debug_struct("Single")
                 .field("source", source)
                 .field("target", target)
@@ -124,15 +131,20 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 )
                 .field("nested", nested)
                 .field("id", id)
+                .field("def_id", def_id)
                 .finish(),
-            Glob { max_vis, id } => {
-                f.debug_struct("Glob").field("max_vis", max_vis).field("id", id).finish()
-            }
-            ExternCrate { source, target, id } => f
+            Glob { max_vis, id, def_id } => f
+                .debug_struct("Glob")
+                .field("max_vis", max_vis)
+                .field("id", id)
+                .field("def_id", def_id)
+                .finish(),
+            ExternCrate { source, target, id, def_id } => f
                 .debug_struct("ExternCrate")
                 .field("source", source)
                 .field("target", target)
                 .field("id", id)
+                .field("def_id", def_id)
                 .finish(),
             MacroUse { warn_private } => {
                 f.debug_struct("MacroUse").field("warn_private", warn_private).finish()
@@ -257,12 +269,20 @@ impl<'ra> ImportData<'ra> {
         }
     }
 
-    pub(crate) fn simplify(&self, r: &Resolver<'_, '_>) -> Reexport {
-        let to_def_id = |id| r.local_def_id(id).to_def_id();
+    pub(crate) fn def_id(&self) -> Option<LocalDefId> {
         match self.kind {
-            ImportKind::Single { id, .. } => Reexport::Single(to_def_id(id)),
-            ImportKind::Glob { id, .. } => Reexport::Glob(to_def_id(id)),
-            ImportKind::ExternCrate { id, .. } => Reexport::ExternCrate(to_def_id(id)),
+            ImportKind::Single { def_id, .. }
+            | ImportKind::Glob { def_id, .. }
+            | ImportKind::ExternCrate { def_id, .. } => Some(def_id),
+            ImportKind::MacroUse { .. } | ImportKind::MacroExport => None,
+        }
+    }
+
+    pub(crate) fn simplify(&self) -> Reexport {
+        match self.kind {
+            ImportKind::Single { def_id, .. } => Reexport::Single(def_id.to_def_id()),
+            ImportKind::Glob { def_id, .. } => Reexport::Glob(def_id.to_def_id()),
+            ImportKind::ExternCrate { def_id, .. } => Reexport::ExternCrate(def_id.to_def_id()),
             ImportKind::MacroUse { .. } => Reexport::MacroUse,
             ImportKind::MacroExport => Reexport::MacroExport,
         }
@@ -273,6 +293,8 @@ impl<'ra> ImportData<'ra> {
             vis: self.vis,
             nearest_parent_mod: self.parent_scope.module.nearest_parent_mod().expect_local(),
             is_single: matches!(self.kind, ImportKind::Single { .. }),
+            priv_macro_use: matches!(self.kind, ImportKind::MacroUse { warn_private: true }),
+            span: self.span,
         }
     }
 }
@@ -335,13 +357,16 @@ struct UnresolvedImportError {
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
 // are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(import: ImportSummary, decl: Decl<'_>) -> Option<NodeId> {
+fn pub_use_of_private_extern_crate_hack(
+    import: ImportSummary,
+    decl: Decl<'_>,
+) -> Option<LocalDefId> {
     match (import.is_single, decl.kind) {
         (true, DeclKind::Import { import: decl_import, .. })
-            if let ImportKind::ExternCrate { id, .. } = decl_import.kind
+            if let ImportKind::ExternCrate { def_id, .. } = decl_import.kind
                 && import.vis.is_public() =>
         {
-            Some(id)
+            Some(def_id)
         }
         _ => None,
     }
@@ -381,9 +406,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Visibility {
         assert!(import.vis.is_accessible_from(import.nearest_parent_mod, self.tcx));
         let decl_vis = if min { decl.min_vis() } else { decl.vis() };
-        if decl_vis.partial_cmp(import.vis, self.tcx) == Some(Ordering::Less)
+        let ord = decl_vis.partial_cmp(import.vis, self.tcx);
+        let extern_crate_hack = pub_use_of_private_extern_crate_hack(import, decl).is_some();
+        if ord == Some(Ordering::Less)
             && decl_vis.is_accessible_from(import.nearest_parent_mod, self.tcx)
-            && pub_use_of_private_extern_crate_hack(import, decl).is_none()
+            && !extern_crate_hack
         {
             // Imported declaration is less visible than the import, but is still visible
             // from the current module, use the declaration's visibility.
@@ -391,12 +418,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         } else {
             // Good case - imported declaration is more visible than the import, or the same,
             // use the import's visibility.
+            //
             // Bad case - imported declaration is too private for the current module.
             // It doesn't matter what visibility we choose here (except in the `PRIVATE_MACRO_USE`
-            // and `PUB_USE_OF_PRIVATE_EXTERN_CRATE` cases), because either some error will be
-            // reported, or the import declaration will be thrown away (unfortunately cannot use
-            // delayed bug here for this reason).
+            // and `PUB_USE_OF_PRIVATE_EXTERN_CRATE` cases), because an error will be reported.
             // Use import visibility to keep the all declaration visibilities in a module ordered.
+            if !min
+                && matches!(ord, None | Some(Ordering::Less))
+                && !extern_crate_hack
+                && !import.priv_macro_use
+            {
+                let msg = format!("cannot extend visibility from {decl_vis:?} to {:?}", import.vis);
+                self.dcx().span_delayed_bug(import.span, msg);
+            }
             import.vis
         }
     }
@@ -784,6 +818,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let resolution = resolution.borrow();
                 let Some(binding) = resolution.best_decl() else { continue };
 
+                // Report "cannot reexport" errors for exotic cases involving macros 2.0
+                // privacy bending or invariant-breaking code under deprecation lints.
+                for decl in [resolution.non_glob_decl, resolution.glob_decl] {
+                    if let Some(decl) = decl
+                        && let DeclKind::Import { source_decl, import } = decl.kind
+                    {
+                        // The source entity is too private to be reexported
+                        // with the given import declaration's visibility.
+                        let ord = source_decl.vis().partial_cmp(decl.vis(), self.tcx);
+                        if matches!(ord, None | Some(Ordering::Less)) {
+                            let ident = match import.kind {
+                                ImportKind::Single { source, .. } => source,
+                                _ => key.ident.orig(resolution.orig_ident_span),
+                            };
+                            if let Some(lint) =
+                                self.report_cannot_reexport(import, source_decl, ident, key.ns)
+                            {
+                                self.lint_buffer.add_early_lint(lint);
+                            }
+                        }
+                    }
+                }
+
                 if let DeclKind::Import { import, .. } = binding.kind
                     && let Some(amb_binding) = binding.ambiguity.get()
                     && binding.res() != Res::Err
@@ -808,8 +865,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     if binding.res() != Res::Err
                         && glob_decl.res() != Res::Err
                         && let DeclKind::Import { import: glob_import, .. } = glob_decl.kind
-                        && let Some(glob_import_id) = glob_import.id()
-                        && let glob_import_def_id = self.local_def_id(glob_import_id)
+                        && let Some(glob_import_def_id) = glob_import.def_id()
                         && self.effective_visibilities.is_exported(glob_import_def_id)
                         && glob_decl.vis().is_public()
                         && !binding.vis().is_public()
@@ -838,7 +894,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 if let DeclKind::Import { import, .. } = binding.kind
                     && let Some(binding_id) = import.id()
-                    && let import_def_id = self.local_def_id(binding_id)
+                    && let import_def_id = import.def_id().unwrap()
                     && self.effective_visibilities.is_exported(import_def_id)
                     && let Res::Def(reexported_kind, reexported_def_id) = binding.res()
                     && !matches!(reexported_kind, DefKind::Ctor(..))
@@ -1230,7 +1286,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let (ident, target, bindings, import_id) = match import.kind {
             ImportKind::Single { source, target, ref decls, id, .. } => (source, target, decls, id),
-            ImportKind::Glob { ref max_vis, id } => {
+            ImportKind::Glob { ref max_vis, id, def_id } => {
                 if import.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
@@ -1257,7 +1313,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if let Some(max_vis) = max_vis.get()
                     && import.vis.greater_than(max_vis, self.tcx)
                 {
-                    let def_id = self.local_def_id(id);
                     self.lint_buffer.buffer_lint(
                         UNUSED_IMPORTS,
                         id,
@@ -1515,76 +1570,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut reexport_error = None;
         let mut any_successful_reexport = false;
-        let mut crate_private_reexport = false;
         self.per_ns(|this, ns| {
-            let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) else {
+            let Some(binding) = bindings[ns].get().decl() else {
                 return;
             };
 
             if import.vis.greater_than(binding.vis(), this.tcx) {
-                reexport_error = Some((ns, binding));
-                if let Visibility::Restricted(binding_def_id) = binding.vis()
-                    && binding_def_id.is_top_level_module()
-                {
-                    crate_private_reexport = true;
-                }
+                // In isolation, a declaration like this is not an error, but if *all* 1-3
+                // declarations introduced by the import are more private than the import item's
+                // nominal visibility, then it's an error.
+                reexport_error = Some((ns, binding.import_source()));
             } else {
                 any_successful_reexport = true;
             }
         });
 
-        // All namespaces must be re-exported with extra visibility for an error to occur.
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
-            if let Some(extern_crate_id) =
-                pub_use_of_private_extern_crate_hack(import.summary(), binding)
-            {
-                let extern_crate_sp = self.tcx.source_span(self.local_def_id(extern_crate_id));
-                self.lint_buffer.buffer_lint(
-                    PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-                    import_id,
-                    import.span,
-                    crate::errors::PrivateExternCrateReexport {
-                        ident,
-                        sugg: extern_crate_sp.shrink_to_lo(),
-                    },
-                );
-            } else if ns == TypeNS {
-                let err = if crate_private_reexport {
-                    self.dcx()
-                        .create_err(CannotBeReexportedCratePublicNS { span: import.span, ident })
-                } else {
-                    self.dcx().create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
-                };
-                err.emit();
-            } else {
-                let mut err = if crate_private_reexport {
-                    self.dcx()
-                        .create_err(CannotBeReexportedCratePublic { span: import.span, ident })
-                } else {
-                    self.dcx().create_err(CannotBeReexportedPrivate { span: import.span, ident })
-                };
-
-                match binding.kind {
-                        DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
-                            // exclude decl_macro
-                            if self.get_macro_by_def_id(def_id).macro_rules =>
-                        {
-                            err.subdiagnostic( ConsiderAddingMacroExport {
-                                span: binding.span,
-                            });
-                            err.subdiagnostic( ConsiderMarkingAsPubCrate {
-                                vis_span: import.vis_span,
-                            });
-                        }
-                        _ => {
-                            err.subdiagnostic( ConsiderMarkingAsPub {
-                                span: import.span,
-                                ident,
-                            });
-                        }
-                    }
-                err.emit();
+            if let Some(lint) = self.report_cannot_reexport(import, binding, ident, ns) {
+                self.lint_buffer.add_early_lint(lint);
             }
         }
 
@@ -1613,9 +1617,66 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         None
     }
 
+    fn report_cannot_reexport(
+        &self,
+        import: Import<'ra>,
+        decl: Decl<'ra>,
+        ident: Ident,
+        ns: Namespace,
+    ) -> Option<BufferedEarlyLint> {
+        let crate_private_reexport = match decl.vis() {
+            Visibility::Restricted(def_id) if def_id.is_top_level_module() => true,
+            _ => false,
+        };
+
+        if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import.summary(), decl)
+        {
+            let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
+            let sugg = self.tcx.source_span(extern_crate_id).shrink_to_lo();
+            let diagnostic = crate::errors::PrivateExternCrateReexport { ident, sugg };
+            return Some(BufferedEarlyLint {
+                lint_id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
+                node_id: id,
+                span: Some(import.span.into()),
+                diagnostic: diagnostic.into(),
+            });
+        } else if ns == TypeNS {
+            let err = if crate_private_reexport {
+                self.dcx().create_err(CannotBeReexportedCratePublicNS { span: import.span, ident })
+            } else {
+                self.dcx().create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
+            };
+            err.emit();
+        } else {
+            let mut err = if crate_private_reexport {
+                self.dcx().create_err(CannotBeReexportedCratePublic { span: import.span, ident })
+            } else {
+                self.dcx().create_err(CannotBeReexportedPrivate { span: import.span, ident })
+            };
+
+            match decl.kind {
+                // exclude decl_macro
+                DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
+                    if let SyntaxExtensionKind::MacroRules(mr) =
+                        &self.get_macro_by_def_id(def_id).kind
+                        && mr.is_macro_rules() =>
+                {
+                    err.subdiagnostic(ConsiderAddingMacroExport { span: decl.span });
+                    err.subdiagnostic(ConsiderMarkingAsPubCrate { vis_span: import.vis_span });
+                }
+                _ => {
+                    err.subdiagnostic(ConsiderMarkingAsPub { span: import.span, ident });
+                }
+            }
+            err.emit();
+        }
+
+        None
+    }
+
     pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'ra>) -> bool {
         // This function is only called for single imports.
-        let ImportKind::Single { source, target, ref decls, id, .. } = import.kind else {
+        let ImportKind::Single { source, target, ref decls, id, def_id, .. } = import.kind else {
             unreachable!()
         };
 
@@ -1634,7 +1695,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Skip if the import is public or was used through non scope-based resolution,
         // e.g. through a module-relative path.
         if self.import_use_map.get(&import) == Some(&Used::Other)
-            || self.effective_visibilities.is_exported(self.local_def_id(id))
+            || self.effective_visibilities.is_exported(def_id)
         {
             return false;
         }
@@ -1788,23 +1849,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut children = Vec::new();
         let mut ambig_children = Vec::new();
 
-        module.to_module().for_each_child(self, |this, ident, orig_ident_span, _, binding| {
+        module.to_module().for_each_child(self, |_this, ident, orig_ident_span, _, binding| {
             let res = binding.res().expect_non_local();
             if res != def::Res::Err {
                 let ident = ident.orig(orig_ident_span);
                 let child =
                     |reexport_chain| ModChild { ident, res, vis: binding.vis(), reexport_chain };
                 if let Some((ambig_binding1, ambig_binding2)) = binding.descent_to_ambiguity() {
-                    let main = child(ambig_binding1.reexport_chain(this));
+                    let main = child(ambig_binding1.reexport_chain());
                     let second = ModChild {
                         ident,
                         res: ambig_binding2.res().expect_non_local(),
                         vis: ambig_binding2.vis(),
-                        reexport_chain: ambig_binding2.reexport_chain(this),
+                        reexport_chain: ambig_binding2.reexport_chain(),
                     };
                     ambig_children.push(AmbigModChild { main, second })
                 } else {
-                    children.push(child(binding.reexport_chain(this)));
+                    children.push(child(binding.reexport_chain()));
                 }
             }
         });

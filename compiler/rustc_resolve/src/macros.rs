@@ -43,7 +43,7 @@ use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
     BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
-    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
+    InvocationParent, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
     ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
@@ -335,11 +335,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        Ok(ext)
+        Ok(Arc::clone(ext))
     }
 
     fn record_macro_rule_usage(&mut self, id: NodeId, rule_i: usize) {
-        if let Some(rules) = self.unused_macro_rules.get_mut(&id) {
+        if let Some((_, rules)) = self.unused_macro_rules.get_mut(&id) {
             rules.remove(rule_i);
         }
     }
@@ -356,13 +356,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             self.unused_macro_rules.swap_remove(&node_id);
         }
 
-        for (&node_id, unused_arms) in self.unused_macro_rules.iter() {
+        for (&node_id, (def_id, unused_arms)) in self.unused_macro_rules.iter() {
             if unused_arms.is_empty() {
                 continue;
             }
-            let def_id = self.local_def_id(node_id);
-            let m = &self.local_macro_map[&def_id];
-            let SyntaxExtensionKind::MacroRules(ref m) = m.ext.kind else {
+            let ext = self.local_macro_map[&def_id];
+            let SyntaxExtensionKind::MacroRules(ref m) = ext.kind else {
                 continue;
             };
             for arm_i in unused_arms.iter() {
@@ -405,7 +404,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let parent_scope = self.invocation_parent_scopes[&expn_id];
         for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
             if resolution.exts.is_none() {
-                resolution.exts = Some(
+                resolution.exts = Some(Arc::clone(
                     match self.cm().resolve_derive_macro_path(
                         &resolution.path,
                         &parent_scope,
@@ -432,7 +431,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                             return Err(Indeterminate);
                         }
                     },
-                );
+                ));
             }
         }
         // Sort helpers in a stable way independent from the derive resolution order.
@@ -574,7 +573,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         deleg_impl: Option<(LocalDefId, Span)>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
-    ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
+    ) -> Result<(&'ra Arc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
             path,
             kind,
@@ -766,7 +765,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         force: bool,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<&'r Arc<SyntaxExtension>>, Res), Determinacy> {
         self.resolve_macro_or_delegation_path(
             path,
             MacroKind::Derive,
@@ -789,7 +788,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
         ignore_import: Option<Import<'ra>>,
         suggestion_span: Option<Span>,
-    ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<&'ra Arc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
 
@@ -873,7 +872,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some((impl_def_id, star_span)) => match res {
                 Res::Def(DefKind::Trait, def_id) => {
                     let edition = self.tcx.sess.edition();
-                    Some(Arc::new(SyntaxExtension::glob_delegation(
+                    Some(self.arenas.alloc_macro(SyntaxExtension::glob_delegation(
                         def_id,
                         impl_def_id,
                         star_span,
@@ -882,7 +881,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 _ => None,
             },
-            None => self.get_macro(res).map(|macro_data| Arc::clone(&macro_data.ext)),
+            None => self.get_macro(res),
         };
         Ok((ext, res))
     }
@@ -1185,7 +1184,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.get_mut().record_use(ident, fallback_binding, Used::Other);
             } else {
                 let location = match parent_scope.module.kind {
-                    ModuleKind::Def(kind, def_id, name) => {
+                    ModuleKind::Def(kind, def_id, _, name) => {
                         if let Some(name) = name {
                             format!("{} `{name}`", kind.descr(def_id))
                         } else {
@@ -1212,7 +1211,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if name == sym::cfg || name == sym::cfg_attr {
-            let macro_kinds = self.get_macro(res).map(|macro_data| macro_data.ext.macro_kinds());
+            let macro_kinds = res.macro_kinds();
             if macro_kinds.is_some() && sub_namespace_match(macro_kinds, Some(MacroKind::Attr)) {
                 self.dcx().emit_err(errors::NameReservedInAttributeNamespace { span, ident: name });
             }
@@ -1230,8 +1229,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
         node_id: NodeId,
         edition: Edition,
-    ) -> MacroData {
-        let (mut ext, mut nrules) = compile_declarative_macro(
+    ) -> SyntaxExtension {
+        let mut ext = compile_declarative_macro(
             self.tcx.sess,
             self.tcx.features(),
             macro_def,
@@ -1248,13 +1247,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
                 ext.kind = builtin_ext_kind.clone();
-                nrules = 0;
             } else {
                 self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName { span, ident });
             }
         }
 
-        MacroData { ext: Arc::new(ext), nrules, macro_rules: macro_def.macro_rules }
+        ext
     }
 
     fn path_accessible(

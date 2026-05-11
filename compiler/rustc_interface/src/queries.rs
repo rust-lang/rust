@@ -36,7 +36,7 @@ impl Linker {
         Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: Arc::clone(tcx.output_filenames(())),
-            crate_hash: if tcx.needs_crate_hash() {
+            crate_hash: if tcx.sess.opts.incremental.is_some() {
                 Some(tcx.crate_hash(LOCAL_CRATE))
             } else {
                 None
@@ -53,9 +53,12 @@ impl Linker {
                 // This was a check only build
                 Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
 
-                Err(ongoing_codegen) => {
-                    codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
-                }
+                Err(ongoing_codegen) => codegen_backend.join_codegen(
+                    ongoing_codegen,
+                    sess,
+                    &self.output_filenames,
+                    &self.crate_info,
+                ),
             }
         });
 

@@ -79,7 +79,7 @@ fn main() {
     thread::yield_now();
 
     // Create two events at once.
-    libc_utils::write_all_from_slice(fd1, &0_u64.to_ne_bytes()).unwrap();
+    libc_utils::write_all(fd1, &0_u64.to_ne_bytes()).unwrap();
 
     thread1.join().unwrap();
     thread2.join().unwrap();

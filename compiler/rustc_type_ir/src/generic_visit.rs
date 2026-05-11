@@ -212,6 +212,7 @@ trivial_impls!(
     rustc_hash::FxBuildHasher,
     crate::TypeFlags,
     crate::solve::GoalSource,
+    crate::solve::VisibleForLeakCheck,
     rustc_abi::ExternAbi,
 );
 

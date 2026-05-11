@@ -14,10 +14,7 @@ impl SingleAttributeParser for PathParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(path) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let path = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::Path(path))
     }

@@ -243,7 +243,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
         // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
         if cfg!(debug_assertions) {
-            match typing_env.typing_mode() {
+            match typing_env.typing_mode().assert_not_erased() {
                 TypingMode::PostAnalysis => {}
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }

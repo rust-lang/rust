@@ -1,4 +1,12 @@
+#![feature(duration_constructors, thread_sleep_until)]
 use std::time::{Duration, Instant};
+
+fn test_underflow() {
+    // The time 1 day before the program started should be representable.
+    // (This used to underflow on Windows.)
+    let now = Instant::now();
+    let _earlier = now - Duration::from_days(1);
+}
 
 fn test_sleep() {
     // We sleep a *long* time here -- but the clock is virtual so the test should still pass quickly.
@@ -6,6 +14,14 @@ fn test_sleep() {
     std::thread::sleep(Duration::from_secs(3600));
     let after = Instant::now();
     assert!((after - before).as_secs() >= 3600);
+}
+
+fn test_sleep_until() {
+    let before = Instant::now();
+    let hunderd_millis_after_start = before + Duration::from_millis(100);
+    std::thread::sleep_until(hunderd_millis_after_start);
+    let after = Instant::now();
+    assert!((after - before).as_millis() >= 100);
 }
 
 /// Ensure that time passes even if we don't sleep (but just work).
@@ -48,8 +64,10 @@ fn test_deterministic() {
 }
 
 fn main() {
+    test_underflow();
     test_time_passes();
     test_block_for_one_second();
     test_sleep();
+    test_sleep_until();
     test_deterministic();
 }

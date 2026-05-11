@@ -3,8 +3,8 @@ use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Integer, NumScalableVectors, Primitive,
-    Size, WrappingRange,
+    AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, Integer,
+    NumScalableVectors, Primitive, Size, WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -23,6 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
+use rustc_session::errors::feature_err;
 use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
@@ -288,6 +289,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
             sym::va_arg => {
+                let target = &self.cx.tcx.sess.target;
+                let stability = target.supports_c_variadic_definitions();
+                if let CVariadicStatus::Unstable { feature } = stability
+                    && !self.tcx.features().enabled(feature)
+                {
+                    let msg =
+                        format!("C-variadic function definitions on this target are unstable");
+                    feature_err(&*self.sess(), feature, span, msg).emit();
+                }
+
                 let BackendRepr::Scalar(scalar) = result.layout.backend_repr else {
                     bug!("the va_arg intrinsic does not support non-scalar types")
                 };
@@ -835,6 +846,22 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     // If there was an error, just skip this invocation... we'll abort compilation
                     // anyway, but we can keep codegen'ing to find more errors.
                     Err(()) => return Ok(()),
+                }
+            }
+
+            sym::return_address => {
+                match self.sess().target.arch {
+                    // Expand this list as needed
+                    | Arch::Wasm32
+                    | Arch::Wasm64 => {
+                        let ty = self.type_ptr();
+                        self.const_null(ty)
+                    }
+                    _ => {
+                        let ty = self.type_ix(32);
+                        let val = self.const_int(ty, 0);
+                        self.call_intrinsic("llvm.returnaddress", &[], &[val])
+                    }
                 }
             }
 
@@ -2075,7 +2102,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_splat {
-        let (_out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
+        let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);
 
         require!(
             args[0].layout.ty == out_ty,
@@ -2094,7 +2121,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         // `shufflevector <N x elem> v0, <N x elem> poison, <N x i32> zeroinitializer`
         // The masks is all zeros, so this splats lane 0 (which has our element in it).
-        let splat = bx.shuffle_vector(v0, poison_vec, bx.const_null(llret_ty));
+        let mask_ty = bx.type_vector(bx.type_i32(), out_len);
+        let splat = bx.shuffle_vector(v0, poison_vec, bx.const_null(mask_ty));
 
         return Ok(splat);
     }

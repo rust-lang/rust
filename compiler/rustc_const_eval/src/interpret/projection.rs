@@ -14,6 +14,7 @@ use rustc_abi::{self as abi, FieldIdx, Size, VariantIdx};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, mir, span_bug, ty};
+use rustc_span::Symbol;
 use tracing::{debug, instrument};
 
 use super::{
@@ -225,6 +226,22 @@ where
 
         // This cannot be `transmute` as variants *can* have a smaller size than the entire enum.
         base.offset(Size::ZERO, layout, self)
+    }
+
+    /// Equivalent to `project_downcast`, but identifies the variant by name instead of index.
+    pub fn project_downcast_named<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        base: &P,
+        name: Symbol,
+    ) -> InterpResult<'tcx, (VariantIdx, P)> {
+        let variants = base.layout().ty.ty_adt_def().unwrap().variants();
+        let variant_idx = variants
+            .iter_enumerated()
+            .find(|(_idx, var)| var.name == name)
+            .unwrap_or_else(|| panic!("got {name} but expected one of {variants:#?}"))
+            .0;
+
+        interp_ok((variant_idx, self.project_downcast(base, variant_idx)?))
     }
 
     /// Compute the offset and field layout for accessing the given index.

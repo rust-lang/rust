@@ -98,7 +98,7 @@ pub enum TypeKind {
 //            for now we content ourselves with providing a no-op StableHash
 //            implementation for CGUs.
 mod temp_stable_hash_impls {
-    use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+    use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
     use crate::ModuleCodegen;
 

@@ -950,7 +950,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // and the obligation is monomorphic, otherwise passes such as
                             // transmute checking and polymorphic MIR optimizations could
                             // get a result which isn't correct for all monomorphizations.
-                            match selcx.infcx.typing_mode() {
+                            match selcx.typing_mode() {
                                 TypingMode::Coherence
                                 | TypingMode::Analysis { .. }
                                 | TypingMode::Borrowck { .. }

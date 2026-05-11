@@ -1,4 +1,4 @@
-//@ignore-target: windows # No libc socket on Windows
+//@ignore-target: windows # No socket support on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::io::{ErrorKind, Read, Write};
@@ -15,6 +15,7 @@ fn main() {
     test_peek();
     test_peer_addr();
     test_shutdown();
+    test_sockopt_ttl();
 }
 
 fn test_create_ipv4_listener() {
@@ -151,4 +152,12 @@ fn test_shutdown() {
     assert_eq!(stream_other_clone.read(&mut byte).unwrap(), 0);
 
     let _stream = handle.join().unwrap();
+}
+
+/// Test setting and reading the TTL socket option.
+fn test_sockopt_ttl() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.ttl().unwrap();
+
+    // TODO: Once we support setting the TTL we should also test it here.
 }

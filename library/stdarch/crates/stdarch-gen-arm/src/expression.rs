@@ -23,6 +23,7 @@ use crate::{
 pub enum IdentifierType {
     Variable,
     Symbol,
+    UnsafeSymbol,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +66,11 @@ impl FnCall {
     }
 
     pub fn is_expected_call(&self, fn_call_name: &str) -> bool {
-        if let Expression::Identifier(fn_name, IdentifierType::Symbol) = self.0.as_ref() {
+        if let Expression::Identifier(
+            fn_name,
+            IdentifierType::Symbol | IdentifierType::UnsafeSymbol,
+        ) = self.0.as_ref()
+        {
             fn_name.to_string() == fn_call_name
         } else {
             false
@@ -298,13 +303,15 @@ impl Expression {
         match self {
             // The call will need to be unsafe, but the declaration does not.
             Self::LLVMLink(..) => false,
-            // Identifiers, literals and type names are never unsafe.
-            Self::Identifier(..) => false,
+            // literals and type names are never unsafe.
             Self::IntConstant(..) => false,
             Self::FloatConstant(..) => false,
             Self::BoolConstant(..) => false,
             Self::Type(..) => false,
             Self::ConvertConst(..) => false,
+            // Only unsafe `Symbol` identifiers are unsafe
+            Self::Identifier(_, IdentifierType::UnsafeSymbol) => true,
+            Self::Identifier(..) => false,
             // Nested structures that aren't inherently unsafe, but could contain other expressions
             // that might be.
             Self::Assign(_var, exp) => exp.requires_unsafe_wrapper(ctx_fn),

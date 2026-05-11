@@ -22,6 +22,7 @@ impl Drop for Bomb {
 pub fn vec_for_each_doesnt_drop(v: vec::Vec<(usize, Option<Bomb>)>) -> usize {
     // CHECK-NOT: panic
     // CHECK-NOT: drop_in_place
+    // CHECK-NOT: drop_glue
     // CHECK-NOT: Bomb$u20$as$u20$core..ops..drop..Drop
     let mut last = 0;
     v.into_iter().for_each(|(x, bomb)| {
@@ -41,7 +42,7 @@ pub fn vec_for_each_doesnt_drop(v: vec::Vec<(usize, Option<Bomb>)>) -> usize {
 // CHECK-LABEL: @vec_for_loop
 #[no_mangle]
 pub fn vec_for_loop(v: vec::Vec<(usize, Option<Bomb>)>) -> usize {
-    // CHECK: drop_in_place
+    // CHECK: drop_glue
     let mut last = 0;
     for (x, bomb) in v {
         last = x;

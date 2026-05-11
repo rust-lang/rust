@@ -1029,7 +1029,8 @@ impl VClockAlloc {
                 | MiriMemoryKind::C
                 | MiriMemoryKind::WinHeap
                 | MiriMemoryKind::WinLocal
-                | MiriMemoryKind::Mmap,
+                | MiriMemoryKind::Mmap
+                | MiriMemoryKind::SocketAddress,
             )
             | MemoryKind::Stack => {
                 let (alloc_index, clocks) = global.active_thread_state(thread_mgr);

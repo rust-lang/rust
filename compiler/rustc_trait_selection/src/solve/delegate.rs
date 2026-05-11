@@ -9,13 +9,13 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
-use rustc_infer::traits::solve::Goal;
+use rustc_infer::traits::solve::{FetchEligibleAssocItemResponse, Goal};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt, TypingMode,
 };
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, Span};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
@@ -34,6 +34,15 @@ impl<'tcx> Deref for SolverDelegate<'tcx> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<'tcx> SolverDelegate<'tcx> {
+    fn known_no_opaque_types_in_storage(&self) -> bool {
+        self.inner.borrow_mut().opaque_types().is_empty()
+            // in erased mode, observing that opaques are empty aren't enough to give a result
+            // here, so let's try the slow path instead.
+            && !self.typing_mode_raw().is_erased_not_coherence()
     }
 }
 
@@ -64,51 +73,60 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
     ) -> Option<Certainty> {
-        if let Some(trait_pred) = goal.predicate.as_trait_clause() {
-            if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
+        let pred = goal.predicate.kind();
+        match pred.skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
+                let trait_pred = pred.rebind(trait_pred);
+
+                if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
                 // We don't do this fast path when opaques are defined since we may
                 // eventually use opaques to incompletely guide inference via ty var
                 // self types.
                 // FIXME: Properly consider opaques here.
-                && self.inner.borrow_mut().opaque_types().is_empty()
-            {
-                return Some(Certainty::AMBIGUOUS);
-            }
-
-            if trait_pred.polarity() == ty::PredicatePolarity::Positive {
-                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                    Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
-                        let predicate = self.resolve_vars_if_possible(goal.predicate);
-                        if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
-                            return Some(Certainty::Yes);
+                && self.known_no_opaque_types_in_storage()
+                {
+                    Some(Certainty::AMBIGUOUS)
+                } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
+                    match self.0.tcx.as_lang_item(trait_pred.def_id()) {
+                        Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
+                            let predicate = self.resolve_vars_if_possible(goal.predicate);
+                            if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                                return Some(Certainty::Yes);
+                            } else {
+                                None
+                            }
                         }
-                    }
-                    Some(LangItem::Copy | LangItem::Clone) => {
-                        let self_ty =
-                            self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
-                        // Unlike `Sized` traits, which always prefer the built-in impl,
-                        // `Copy`/`Clone` may be shadowed by a param-env candidate which
-                        // could force a lifetime error or guide inference. While that's
-                        // not generally desirable, it is observable, so for now let's
-                        // ignore this fast path for types that have regions or infer.
-                        if !self_ty
-                            .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
-                            && self_ty.is_trivially_pure_clone_copy()
-                        {
-                            return Some(Certainty::Yes);
+                        Some(LangItem::Copy | LangItem::Clone) => {
+                            let self_ty =
+                                self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
+                            // Unlike `Sized` traits, which always prefer the built-in impl,
+                            // `Copy`/`Clone` may be shadowed by a param-env candidate which
+                            // could force a lifetime error or guide inference. While that's
+                            // not generally desirable, it is observable, so for now let's
+                            // ignore this fast path for types that have regions or infer.
+                            if !self_ty
+                                .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
+                                && self_ty.is_trivially_pure_clone_copy()
+                            {
+                                return Some(Certainty::Yes);
+                            } else {
+                                None
+                            }
                         }
+                        _ => None,
                     }
-                    _ => {}
+                } else {
+                    None
                 }
             }
-        }
-
-        let pred = goal.predicate.kind();
-        match pred.no_bound_vars()? {
             ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
                 Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
+                if outlives.has_escaping_bound_vars() {
+                    return None;
+                }
+
                 self.0.sub_regions(
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
@@ -118,6 +136,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 Some(Certainty::Yes)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
+                if outlives.has_escaping_bound_vars() {
+                    return None;
+                }
+
                 self.0.register_type_outlives_constraint(
                     outlives.0,
                     outlives.1,
@@ -128,6 +150,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
             | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                if a.has_escaping_bound_vars() || b.has_escaping_bound_vars() {
+                    return None;
+                }
+
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
@@ -137,6 +163,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => {
+                if ct.has_escaping_bound_vars() {
+                    return None;
+                }
+
                 if self.shallow_resolve_const(ct).is_ct_infer() {
                     Some(Certainty::AMBIGUOUS)
                 } else {
@@ -144,6 +174,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                if arg.has_escaping_bound_vars() {
+                    return None;
+                }
+
                 let arg = self.shallow_resolve_term(arg);
                 if arg.is_trivially_wf(self.tcx) {
                     Some(Certainty::Yes)
@@ -277,8 +311,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goal_trait_ref: ty::TraitRef<'tcx>,
         trait_assoc_def_id: DefId,
         impl_def_id: DefId,
-    ) -> Result<Option<DefId>, ErrorGuaranteed> {
-        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)?;
+    ) -> FetchEligibleAssocItemResponse<'tcx> {
+        let node_item =
+            match specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id) {
+                Ok(i) => i,
+                Err(guar) => return FetchEligibleAssocItemResponse::Err(guar),
+            };
+
+        let typing_mode = self.typing_mode_raw();
 
         let eligible = if node_item.is_final() {
             // Non-specializable items are always projectable.
@@ -288,7 +328,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             // and the obligation is monomorphic, otherwise passes such as
             // transmute checking and polymorphic MIR optimizations could
             // get a result which isn't correct for all monomorphizations.
-            match self.typing_mode() {
+            match typing_mode {
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
@@ -297,11 +337,20 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
                     !poly_trait_ref.still_further_specializable()
                 }
+                TypingMode::ErasedNotCoherence(MayBeErased) => {
+                    return FetchEligibleAssocItemResponse::NotFoundBecauseErased;
+                }
             }
         };
 
         // FIXME: Check for defaultness here may cause diagnostics problems.
-        if eligible { Ok(Some(node_item.item.def_id)) } else { Ok(None) }
+        if eligible {
+            FetchEligibleAssocItemResponse::Found(node_item.item.def_id)
+        } else {
+            // We know it's not erased since then we'd have returned in the match above,
+            // or node_item.final() was true and eligible is always true.
+            FetchEligibleAssocItemResponse::NotFound(typing_mode.assert_not_erased())
+        }
     }
 
     // FIXME: This actually should destructure the `Result` we get from transmutability and

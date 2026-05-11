@@ -1,8 +1,14 @@
 # Not supported by qemu (will throw illegal instruction)
-vamax_f16
-vamaxq_f16
 vamin_f16
 vaminq_f16
+vamin_f32
+vaminq_f32
+vaminq_f64
+vamax_f16
+vamaxq_f16
+vamax_f32
+vamaxq_f32
+vamaxq_f64
 vscale_f16
 vscale_f32
 vscaleq_f16
@@ -37,39 +43,6 @@ vluti2q_laneq_s8
 vluti2q_laneq_u16
 vluti2q_laneq_u8
 vluti2q_lane_u8
-
-# Not implemented in stdarch yet
-vbfdot_f32
-vbfdot_lane_f32
-vbfdot_laneq_f32
-vbfdotq_f32
-vbfdotq_lane_f32
-vbfdotq_laneq_f32
-vbfmlalbq_f32
-vbfmlalbq_lane_f32
-vbfmlalbq_laneq_f32
-vbfmlaltq_f32
-vbfmlaltq_lane_f32
-vbfmlaltq_laneq_f32
-vbfmmlaq_f32
-
-
-# Implemented in stdarch, but missing in Clang.
-vrnd32xq_f64
-vrnd32zq_f64
-vrnd64xq_f64
-vrnd64zq_f64
-vamin_f32
-vaminq_f32
-vaminq_f64
-vamax_f32
-vamaxq_f32
-vamaxq_f64
-# LLVM select error, and missing in Clang.
-vrnd32x_f64
-vrnd32z_f64
-vrnd64x_f64
-vrnd64z_f64
 vluti4q_lane_f16_x2
 vluti4q_lane_p16_x2
 vluti4q_lane_p8
@@ -85,5 +58,27 @@ vluti4q_laneq_s8
 vluti4q_laneq_u16_x2
 vluti4q_laneq_u8
 
-# Broken in Clang
+# Not implemented in stdarch yet
+vcvtad_s32_f64
+vcvtad_u32_f64
+vcvtd_s32_f64
+vcvtd_u32_f64
+vcvtmd_s32_f64
+vcvtmd_u32_f64
+vcvtnd_s32_f64
+vcvtnd_u32_f64
+vcvtpd_s32_f64
+vcvtpd_u32_f64
+vcvts_s64_f32
+vcvts_u64_f32
+vcvtas_s64_f32
+vcvtas_u64_f32
+vcvtms_s64_f32
+vcvtms_u64_f32
+vcvtns_s64_f32
+vcvtns_u64_f32
+vcvtps_s64_f32
+vcvtps_u64_f32
+
+# Broken in Clang (fixed in https://github.com/llvm/llvm-project/pull/156029)
 vcvth_s16_f16

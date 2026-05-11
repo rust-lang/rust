@@ -2787,7 +2787,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().expr_ty(receiver);
+        let self_ty = self.typeck_results.borrow().expr_ty_opt(receiver)?;
         let name = method_path.ident.name;
         let is_as_ref_able = match self_ty.peel_refs().kind() {
             ty::Adt(def, _) => {

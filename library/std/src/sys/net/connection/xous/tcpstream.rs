@@ -353,6 +353,14 @@ impl TcpStream {
         unimpl!();
     }
 
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        unimpl!();
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        unimpl!();
+    }
+
     pub fn set_nodelay(&self, enabled: bool) -> io::Result<()> {
         crate::os::xous::ffi::blocking_scalar(
             services::net_server(),

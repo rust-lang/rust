@@ -4,14 +4,17 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
+use rustc_ast_ir::visit::VisitorResult;
 use rustc_index::bit_set::DenseBitSet;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
-use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
+use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
+use crate::solve::{
+    AccessedOpaques, CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect,
+};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -54,6 +57,38 @@ pub trait Interner:
     type AdtId: SpecificDefId<Self>;
     type ImplId: SpecificDefId<Self>;
     type UnevaluatedConstId: SpecificDefId<Self>;
+    type TraitAssocTyId: SpecificDefId<Self>
+        + Into<Self::TraitAssocTermId>
+        + TryFrom<Self::TraitAssocTermId>;
+    type TraitAssocConstId: SpecificDefId<Self>
+        + Into<Self::TraitAssocTermId>
+        + Into<Self::UnevaluatedConstId>
+        + TryFrom<Self::TraitAssocTermId>;
+    type TraitAssocTermId: SpecificDefId<Self>;
+    type OpaqueTyId: SpecificDefId<Self, Self::LocalOpaqueTyId>;
+    type LocalOpaqueTyId: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Into<Self::OpaqueTyId>
+        + Into<Self::LocalDefId>
+        + Into<Self::DefId>
+        + TypeFoldable<Self>;
+    type FreeTyAliasId: SpecificDefId<Self> + Into<Self::FreeTermAliasId>;
+    type FreeConstAliasId: SpecificDefId<Self>
+        + Into<Self::UnevaluatedConstId>
+        + Into<Self::FreeTermAliasId>;
+    type FreeTermAliasId: SpecificDefId<Self>;
+    type ImplOrTraitAssocTyId: SpecificDefId<Self> + Into<Self::ImplOrTraitAssocTermId>;
+    type ImplOrTraitAssocConstId: SpecificDefId<Self>
+        + Into<Self::UnevaluatedConstId>
+        + Into<Self::ImplOrTraitAssocTermId>;
+    type ImplOrTraitAssocTermId: SpecificDefId<Self>;
+    type InherentAssocTyId: SpecificDefId<Self> + Into<Self::InherentAssocTermId>;
+    type InherentAssocConstId: SpecificDefId<Self>
+        + Into<Self::UnevaluatedConstId>
+        + Into<Self::InherentAssocTermId>;
+    type InherentAssocTermId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -201,8 +236,11 @@ pub trait Interner:
     ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
-    fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
-    -> ty::EarlyBinder<Self, Self::Ty>;
+    fn type_of_opaque_hir_typeck(
+        self,
+        def_id: Self::LocalOpaqueTyId,
+    ) -> ty::EarlyBinder<Self, Self::Ty>;
+    fn is_type_const(self, def_id: Self::DefId) -> bool;
     fn const_of_item(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Const>;
     fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
@@ -216,7 +254,7 @@ pub trait Interner:
 
     fn trait_ref_and_own_args_for_alias(
         self,
-        def_id: Self::DefId,
+        def_id: Self::TraitAssocTermId,
         args: Self::GenericArgs,
     ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
 
@@ -240,7 +278,12 @@ pub trait Interner:
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::Ty, Self::Tys>;
 
-    fn parent(self, def_id: Self::DefId) -> Self::DefId;
+    fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId;
+
+    /// This can be an impl, or a trait if this is a defaulted term.
+    fn impl_or_trait_assoc_term_parent(self, def_id: Self::ImplOrTraitAssocTermId) -> Self::DefId;
+
+    fn inherent_alias_term_parent(self, def_id: Self::InherentAssocTermId) -> Self::ImplId;
 
     fn recursion_limit(self) -> usize;
 
@@ -322,13 +365,20 @@ pub trait Interner:
 
     fn has_target_features(self, def_id: Self::FunctionId) -> bool;
 
-    fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId;
+    fn require_projection_lang_item(
+        self,
+        lang_item: SolverProjectionLangItem,
+    ) -> Self::TraitAssocTyId;
 
     fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> Self::TraitId;
 
     fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> Self::AdtId;
 
-    fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool;
+    fn is_projection_lang_item(
+        self,
+        def_id: Self::TraitAssocTyId,
+        lang_item: SolverProjectionLangItem,
+    ) -> bool;
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
 
@@ -338,7 +388,10 @@ pub trait Interner:
 
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
 
-    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem>;
+    fn as_projection_lang_item(
+        self,
+        def_id: Self::TraitAssocTyId,
+    ) -> Option<SolverProjectionLangItem>;
 
     fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem>;
 
@@ -349,15 +402,19 @@ pub trait Interner:
         def_id: Self::TraitId,
     ) -> impl IntoIterator<Item = Self::DefId>;
 
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        f: impl FnMut(Self::ImplId),
-    );
-    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, f: impl FnMut(Self::ImplId));
+        f: impl FnMut(Self::ImplId) -> R,
+    ) -> R;
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: Self::TraitId,
+        f: impl FnMut(Self::ImplId) -> R,
+    ) -> R;
 
-    fn has_item_definition(self, def_id: Self::DefId) -> bool;
+    fn has_item_definition(self, def_id: Self::ImplOrTraitAssocTermId) -> bool;
 
     fn impl_specializes(self, impl_def_id: Self::ImplId, victim_def_id: Self::ImplId) -> bool;
 
@@ -557,7 +614,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 
 impl<I: Interner> search_graph::Cx for I {
     type Input = CanonicalInput<I>;
-    type Result = QueryResult<I>;
+    type Result = (QueryResult<I>, AccessedOpaques<I>);
     type AmbiguityInfo = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;

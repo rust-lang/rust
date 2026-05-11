@@ -11,11 +11,11 @@ LL |             AllocInit::Uninitialized => alloc.allocate(layout),
                at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
            1: alloc::raw_vec::RawVecInner::with_capacity_in
                at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-           2: alloc::raw_vec::RawVec::with_capacity_in
+           2: alloc::raw_vec::RawVec::<u8>::with_capacity_in
                at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
-           3: std::vec::Vec::with_capacity_in
+           3: std::vec::Vec::<u8>::with_capacity_in
                at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
-           4: std::vec::Vec::with_capacity
+           4: std::vec::Vec::<u8>::with_capacity
                at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
            5: miri_start
                at tests/genmc/fail/simple/alloc_large.rs:LL:CC

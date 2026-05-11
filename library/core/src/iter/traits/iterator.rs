@@ -226,13 +226,11 @@ pub const trait Iterator {
         Self: Sized + [const] Destruct,
         Self::Item: [const] Destruct,
     {
-        // FIXME(const-hack): revert this to a const closure
-        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-        #[rustc_inherit_overflow_checks]
-        const fn plus_one<T: [const] Destruct>(accum: usize, _elem: T) -> usize {
-            accum + 1
-        }
-        self.fold(0, plus_one)
+        self.fold(
+            0,
+            #[rustc_inherit_overflow_checks]
+            const |accum, _elem| accum + 1,
+        )
     }
 
     /// Consumes the iterator, returning the last element.

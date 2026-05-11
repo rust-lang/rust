@@ -60,16 +60,7 @@ impl SingleAttributeParser for ShouldPanicParser {
         Some(AttributeKind::ShouldPanic {
             reason: match args {
                 ArgParser::NoArgs => None,
-                ArgParser::NameValue(name_value) => {
-                    let Some(str_value) = name_value.value_as_str() else {
-                        cx.adcx().expected_string_literal(
-                            name_value.value_span,
-                            Some(name_value.value_as_lit()),
-                        );
-                        return None;
-                    };
-                    Some(str_value)
-                }
+                ArgParser::NameValue(name_value) => cx.expect_string_literal(name_value),
                 ArgParser::List(list) => {
                     let single = cx.expect_single(list)?;
                     let (ident, arg) =
@@ -78,11 +69,7 @@ impl SingleAttributeParser for ShouldPanicParser {
                         cx.adcx().expected_specific_argument_strings(list.span, &[sym::expected]);
                         return None;
                     }
-                    let Some(expected) = arg.value_as_str() else {
-                        cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-                        return None;
-                    };
-                    Some(expected)
+                    cx.expect_string_literal(arg)
                 }
             },
         })
@@ -103,10 +90,7 @@ impl SingleAttributeParser for ReexportTestHarnessMainParser {
             Some(sym::reexport_test_harness_main),
         )?;
 
-        let Some(name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let name = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::ReexportTestHarnessMain(name))
     }
@@ -211,11 +195,7 @@ impl SingleAttributeParser for RustcTestMarkerParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let name_value = cx.expect_name_value(args, cx.attr_span, Some(sym::rustc_test_marker))?;
-
-        let Some(value_str) = name_value.value_as_str() else {
-            cx.adcx().expected_string_literal(name_value.value_span, None);
-            return None;
-        };
+        let value_str = cx.expect_string_literal(name_value)?;
 
         if value_str.as_str().trim().is_empty() {
             cx.adcx().expected_non_empty_string_literal(name_value.value_span);

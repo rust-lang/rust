@@ -626,7 +626,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
 
             let callee_path = this.arena.alloc(this.mk_expr(hir::ExprKind::Path(path), span));
-            let args = if let Some(box block) = delegation.body.as_ref() {
+            let args = if let Some(block) = delegation.body.as_ref() {
                 this.arena.alloc_slice(&[this.lower_target_expr(block)])
             } else {
                 &mut []

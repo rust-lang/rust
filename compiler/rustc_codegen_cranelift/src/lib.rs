@@ -200,6 +200,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         println!("Cranelift version: {}", cranelift_codegen::VERSION);
     }
 
+    fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
+        // All Cranelift supported targets support ret except for s390x
+        mnemonic == "ret" && sess.target.arch != Arch::S390x
+    }
+
     fn target_cpu(&self, sess: &Session) -> String {
         // FIXME handle `-Ctarget-cpu=native`
         match sess.opts.cg.target_cpu {
@@ -209,12 +214,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
         .to_owned()
     }
 
-    fn codegen_crate(&self, tcx: TyCtxt<'_>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+    fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.get().unwrap();
         if config.jit_mode {
             #[cfg(feature = "jit")]
-            driver::jit::run_jit(tcx, _crate_info, config.jit_args.clone());
+            driver::jit::run_jit(tcx, self.target_cpu(tcx.sess), config.jit_args.clone());
 
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
@@ -228,6 +233,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
+        _crate_info: &CrateInfo,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
     }

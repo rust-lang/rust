@@ -686,11 +686,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
     methods
 }
 
-pub fn codegen_crate<B: ExtraBackendMethods>(
-    backend: B,
-    tcx: TyCtxt<'_>,
-    crate_info: &CrateInfo,
-) -> OngoingCodegen<B> {
+pub fn codegen_crate<B: ExtraBackendMethods>(backend: B, tcx: TyCtxt<'_>) -> OngoingCodegen<B> {
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(errors::CpuRequired);
@@ -734,7 +730,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         None
     };
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, crate_info, allocator_module);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, allocator_module);
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization
@@ -780,14 +776,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let mut pre_compiled_cgus = if tcx.sess.threads() > 1 {
+    let mut pre_compiled_cgus = if let Some(threads) = tcx.sess.threads() {
         tcx.sess.time("compile_first_CGU_batch", || {
             // Try to find one CGU to compile per thread.
             let cgus: Vec<_> = cgu_reuse
                 .iter()
                 .enumerate()
                 .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                .take(tcx.sess.threads())
+                .take(threads)
                 .collect();
 
             // Compile the found CGUs in parallel.
@@ -959,6 +955,8 @@ impl CrateInfo {
             natvis_debugger_visualizers: Default::default(),
             lint_levels: CodegenLintLevels::from_tcx(tcx),
             metadata_symbol: exported_symbols::metadata_symbol_name(tcx),
+            each_linked_rlib_file_for_lto: Default::default(),
+            exported_symbols_for_lto: Default::default(),
         };
 
         info.native_libraries.reserve(n_crates);
@@ -1043,6 +1041,25 @@ impl CrateInfo {
                     linked_symbols.extend(symbols);
                 });
         }
+
+        let mut each_linked_rlib_for_lto = Vec::new();
+        let mut each_linked_rlib_file_for_lto = Vec::new();
+        if tcx.sess.lto() != config::Lto::No && tcx.sess.lto() != config::Lto::ThinLocal {
+            drop(crate::back::link::each_linked_rlib(&info, None, &mut |cnum, path| {
+                if crate::back::link::ignored_for_lto(tcx.sess, &info, cnum) {
+                    return;
+                }
+
+                each_linked_rlib_for_lto.push(cnum);
+                each_linked_rlib_file_for_lto.push(path.to_path_buf());
+            }));
+        }
+        info.each_linked_rlib_file_for_lto = each_linked_rlib_file_for_lto;
+
+        // FIXME move to -Zlink-only half such that each_linked_rlib_file_for_lto can be moved there too
+        // Compute the set of symbols we need to retain when doing LTO (if we need to)
+        info.exported_symbols_for_lto =
+            crate::back::lto::exported_symbols_for_lto(tcx, &each_linked_rlib_for_lto);
 
         let embed_visualizers = tcx.crate_types().iter().any(|&crate_type| match crate_type {
             CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {

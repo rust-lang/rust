@@ -354,7 +354,6 @@ where
             let ty::Adt(adt_def, adt_args) = pin_obj_ty.kind() else {
                 bug!();
             };
-            let obj_ptr_ty = Ty::new_mut_ptr(tcx, drop_ty);
             let unwrap_ty = adt_def.non_enum_variant().fields[FieldIdx::ZERO].ty(tcx, adt_args);
             let obj_ref_place = Place::from(self.new_temp(unwrap_ty));
             call_statements.push(self.assign(
@@ -365,11 +364,7 @@ where
                 ),
             ));
 
-            let obj_ptr_place = Place::from(self.new_temp(obj_ptr_ty));
-
-            let addr = Rvalue::RawPtr(RawPtrKind::Mut, tcx.mk_place_deref(obj_ref_place));
-            call_statements.push(self.assign(obj_ptr_place, addr));
-            obj_ptr_place
+            obj_ref_place
         };
         call_statements
             .push(Statement::new(self.source_info, StatementKind::StorageLive(fut.local)));
@@ -547,7 +542,7 @@ where
                 let subpath = self.elaborator.field_subpath(variant_path, field_idx);
                 let tcx = self.tcx();
 
-                match self.elaborator.typing_env().typing_mode() {
+                match self.elaborator.typing_env().typing_mode().assert_not_erased() {
                     ty::TypingMode::PostAnalysis => {}
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Analysis { .. }

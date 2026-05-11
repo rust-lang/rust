@@ -17,10 +17,7 @@ impl SingleAttributeParser for CrateNameParser {
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let n = cx.expect_name_value(args, cx.attr_span, None)?;
 
-        let Some(name) = n.value_as_str() else {
-            cx.adcx().expected_string_literal(n.value_span, Some(n.value_as_lit()));
-            return None;
-        };
+        let name = cx.expect_string_literal(n)?;
 
         Some(AttributeKind::CrateName { name, name_span: n.value_span, attr_span: cx.attr_span })
     }
@@ -44,10 +41,7 @@ impl CombineAttributeParser for CrateTypeParser {
     ) -> impl IntoIterator<Item = Self::Item> {
         let n = cx.expect_name_value(args, cx.attr_span, None)?;
 
-        let Some(crate_type) = n.value_as_str() else {
-            cx.adcx().expected_string_literal(n.value_span, Some(n.value_as_lit()));
-            return None;
-        };
+        let crate_type = cx.expect_string_literal(n)?;
 
         let Ok(crate_type) = crate_type.try_into() else {
             // We don't error on invalid `#![crate_type]` when not applied to a crate

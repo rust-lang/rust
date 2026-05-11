@@ -10,6 +10,7 @@ use crate::util;
 /// they are dropped from an aligned address.
 ///
 /// For example, if we have something like
+///
 /// ```ignore (illustrative)
 /// #[repr(packed)]
 /// struct Foo {
@@ -20,9 +21,8 @@ use crate::util;
 /// let foo = ...;
 /// ```
 ///
-/// We want to call `drop_in_place::<Vec<u8>>` on `data` from an aligned
-/// address. This means we can't simply drop `foo.data` directly, because
-/// its address is not aligned.
+/// We want to call `drop_glue::<Vec<u8>>` with a reference to `data`, which must be aligned.
+/// This means we can't simply drop `foo.data` directly, because its address is not aligned.
 ///
 /// Instead, we move `foo.data` to a local and drop that:
 /// ```ignore (illustrative)

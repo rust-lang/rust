@@ -21,6 +21,7 @@ use rustc_target::spec::Arch;
 use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
+use super::rmeta_link::{self, RmetaLink};
 use crate::common;
 // Public for ArchiveBuilderBuilder::extract_bundled_libs
 pub use crate::errors::ExtractBundledLibsError;
@@ -313,7 +314,7 @@ pub trait ArchiveBuilder {
     fn add_archive(
         &mut self,
         archive: &Path,
-        skip: Box<dyn FnMut(&str) -> bool + 'static>,
+        skip: Option<Box<dyn FnMut(&str, Option<&RmetaLink>) -> bool + 'static>>,
     ) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
@@ -445,7 +446,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
     fn add_archive(
         &mut self,
         archive_path: &Path,
-        mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
+        mut skip: Option<Box<dyn FnMut(&str, Option<&RmetaLink>) -> bool + 'static>>,
     ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
         if self.sess.target.llvm_target.contains("-apple-macosx")
@@ -461,6 +462,8 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        let metadata_link =
+            skip.as_ref().and_then(|_| rmeta_link::read(&archive, &archive_map, &archive_path));
         let archive_index = self.src_archives.len();
 
         if let Some(expected_kind) =
@@ -480,7 +483,8 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             let file_name = String::from_utf8(entry.name().to_vec())
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-            if !skip(&file_name) {
+            let drop = skip.as_mut().is_some_and(|f| f(&file_name, metadata_link.as_ref()));
+            if !drop {
                 if entry.is_thin() {
                     let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
                     self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));

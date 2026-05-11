@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 #![feature(generic_const_items, min_generic_const_args, generic_const_args)]
 #![expect(incomplete_features)]
 

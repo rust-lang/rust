@@ -1464,14 +1464,6 @@ impl<'a> Linker for WasmLd<'a> {
         for (sym, _) in symbols {
             self.link_args(&["--export", sym]);
         }
-
-        // LLD will hide these otherwise-internal symbols since it only exports
-        // symbols explicitly passed via the `--export` flags above and hides all
-        // others. Various bits and pieces of wasm32-unknown-unknown tooling use
-        // this, so be sure these symbols make their way out of the linker as well.
-        if matches!(self.sess.target.os, Os::Unknown | Os::None) {
-            self.link_args(&["--export=__heap_base", "--export=__data_end"]);
-        }
     }
 
     fn windows_subsystem(&mut self, _subsystem: WindowsSubsystemKind) {}

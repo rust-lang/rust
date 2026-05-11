@@ -362,6 +362,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
+            "chmod" => {
+                let [path, mode] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*const _, libc::mode_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.chmod(path, mode)?;
+                this.write_scalar(result, dest)?;
+            }
+            "fchmod" => {
+                let [fd, mode] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::mode_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.fchmod(fd, mode)?;
+                this.write_scalar(result, dest)?;
+            }
             "rename" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [oldpath, newpath] = this.check_shim_sig(
@@ -536,7 +556,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
-            // Unnamed sockets and pipes
+            // Sockets and pipes
             "socketpair" => {
                 let [domain, type_, protocol, sv] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32, *mut _) -> i32),
@@ -661,6 +681,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.setsockopt(socket, level, option_name, option_value, option_len)?;
                 this.write_scalar(result, dest)?;
             }
+            "getsockopt" => {
+                let [socket, level, option_name, option_value, option_len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i32, *mut _, *mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result =
+                    this.getsockopt(socket, level, option_name, option_value, option_len)?;
+                this.write_scalar(result, dest)?;
+            }
             "getsockname" => {
                 let [socket, address, address_len] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *mut _, *mut _) -> i32),
@@ -689,6 +720,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let result = this.shutdown(sockfd, how)?;
                 this.write_scalar(result, dest)?;
+            }
+            "getaddrinfo" => {
+                let [node, service, hints, res] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*const _, *const _, *const _, *mut _) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.getaddrinfo(node, service, hints, res)?;
+                this.write_scalar(result, dest)?;
+            }
+            "freeaddrinfo" => {
+                let [res] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*mut _) -> ()),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                this.freeaddrinfo(res)?;
             }
 
             // Time

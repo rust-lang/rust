@@ -202,8 +202,10 @@ pub enum MiriMemoryKind {
     /// Memory for thread-local statics.
     /// This memory may leak.
     Tls,
-    /// Memory mapped directly by the program
+    /// Memory mapped directly by the program.
     Mmap,
+    /// Memory allocated for `getaddrinfo` result.
+    SocketAddress,
 }
 
 impl From<MiriMemoryKind> for MemoryKind {
@@ -219,7 +221,7 @@ impl MayLeak for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust | Miri | C | WinHeap | WinLocal | Runtime => false,
-            Machine | Global | ExternStatic | Tls | Mmap => true,
+            Machine | Global | ExternStatic | Tls | Mmap | SocketAddress => true,
         }
     }
 }
@@ -232,7 +234,7 @@ impl MiriMemoryKind {
             // Heap allocations are fine since the `Allocation` is created immediately.
             Rust | Miri | C | WinHeap | WinLocal | Mmap => true,
             // Everything else is unclear, let's not show potentially confusing spans.
-            Machine | Global | ExternStatic | Tls | Runtime => false,
+            Machine | Global | ExternStatic | Tls | Runtime | SocketAddress => false,
         }
     }
 }
@@ -252,6 +254,7 @@ impl fmt::Display for MiriMemoryKind {
             ExternStatic => write!(f, "extern static"),
             Tls => write!(f, "thread-local static"),
             Mmap => write!(f, "mmap"),
+            SocketAddress => write!(f, "socket address"),
         }
     }
 }

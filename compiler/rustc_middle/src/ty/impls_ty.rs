@@ -6,12 +6,11 @@ use std::ptr;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{
-    HashingControls, StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
+use rustc_data_structures::stable_hash::{
+    StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use tracing::trace;
 
-use crate::middle::region;
 use crate::{mir, ty};
 
 impl<'tcx, H, T> StableHash for &'tcx ty::list::RawList<H, T>
@@ -23,12 +22,12 @@ where
         // without it, compiling `diesel-2.2.10` can be 74% slower, and compiling
         // `deeply-nested-multi` can be ~4,000x slower(!)
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(*const (), HashingControls), Fingerprint>> =
+            static CACHE: RefCell<FxHashMap<(*const (), StableHashControls), Fingerprint>> =
                 RefCell::new(Default::default());
         }
 
         let hash = CACHE.with(|cache| {
-            let key = (ptr::from_ref(*self).cast::<()>(), hcx.hashing_controls());
+            let key = (ptr::from_ref(*self).cast::<()>(), hcx.stable_hash_controls());
             if let Some(&hash) = cache.borrow().get(&key) {
                 return hash;
             }
@@ -42,20 +41,6 @@ where
         });
 
         hash.stable_hash(hcx, hasher);
-    }
-}
-
-impl<'tcx, H, T> ToStableHashKey for &'tcx ty::list::RawList<H, T>
-where
-    T: StableHash,
-{
-    type KeyType = Fingerprint;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx) -> Fingerprint {
-        let mut hasher = StableHasher::new();
-        self.stable_hash(hcx, &mut hasher);
-        hasher.finish()
     }
 }
 
@@ -79,14 +64,5 @@ impl StableHash for mir::interpret::AllocId {
 impl StableHash for mir::interpret::CtfeProvenance {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.into_parts().stable_hash(hcx, hasher);
-    }
-}
-
-impl ToStableHashKey for region::Scope {
-    type KeyType = region::Scope;
-
-    #[inline]
-    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> region::Scope {
-        *self
     }
 }

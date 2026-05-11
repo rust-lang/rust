@@ -802,7 +802,9 @@ fn print_crate_info(
                 println_info!("{}", calling_conventions.join("\n"));
             }
             BackendHasMnemonic => {
-                codegen_backend.print(req, &mut crate_info, sess);
+                let has_mnemonic: bool =
+                    codegen_backend.has_mnemonic(sess, req.arg.as_ref().unwrap());
+                println_info!("{has_mnemonic}");
             }
             BackendHasZstd => {
                 let has_zstd: bool = codegen_backend.has_zstd();

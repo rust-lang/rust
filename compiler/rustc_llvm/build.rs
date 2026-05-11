@@ -273,6 +273,15 @@ fn main() {
         cfg.flag(&*flag);
     }
 
+    // Remap ci-llvm include paths in debug info for reproducible builds.
+    if let Some(maps) = tracked_env_var_os("RUSTC_DEBUGINFO_MAP")
+        && let Some(maps_str) = maps.to_str()
+    {
+        for map in maps_str.split('\t') {
+            cfg.flag_if_supported(&format!("-ffile-prefix-map={map}"));
+        }
+    }
+
     for component in &components {
         let mut flag = String::from("LLVM_COMPONENT_");
         flag.push_str(&component.to_uppercase());

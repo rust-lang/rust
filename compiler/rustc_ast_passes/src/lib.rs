@@ -3,7 +3,7 @@
 //! by `rustc_ast_lowering`.
 
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 // tidy-alphabetical-end

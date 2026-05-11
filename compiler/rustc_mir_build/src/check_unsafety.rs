@@ -397,7 +397,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::If { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::LogicalOp { .. }
-            | ExprKind::Use { .. } => {
+            | ExprKind::Use { .. }
+            | ExprKind::Reborrow { .. } => {
                 // We don't need to save the old value and restore it
                 // because all the place expressions can't have more
                 // than one child.
@@ -460,6 +461,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             expr.span,
                             CallToFunctionWith { function: func_did, missing, build_enabled },
                         );
+                    }
+                    if let Some(trait_did) = self.tcx.trait_of_assoc(func_did)
+                        && self.tcx.is_lang_item(trait_did, hir::LangItem::Drop)
+                    {
+                        self.requires_unsafe(expr.span, CallDropExplicitly(func_did));
                     }
                 }
             }
@@ -661,6 +667,8 @@ enum UnsafeOpKind {
         build_enabled: Vec<Symbol>,
     },
     UnsafeBinderCast,
+    /// Calling `Drop::drop` or `Drop::pin_drop` explicitly.
+    CallDropExplicitly(DefId),
 }
 
 use UnsafeOpKind::*;
@@ -829,6 +837,9 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
+            CallDropExplicitly(_) => {
+                span_bug!(span, "`Drop::drop` or `Drop::pin_drop` should not be called explicitly")
+            }
         }
     }
 
@@ -1033,6 +1044,13 @@ impl UnsafeOpKind {
             }
             UnsafeBinderCast => {
                 dcx.emit_err(UnsafeBinderCastRequiresUnsafe { span, unsafe_not_inherited_note });
+            }
+            CallDropExplicitly(did) => {
+                dcx.emit_err(CallDropExplicitlyRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                    function: tcx.def_path_str(*did),
+                });
             }
         }
     }

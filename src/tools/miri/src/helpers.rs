@@ -905,8 +905,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let frame_crate = this.tcx.def_path(instance.def_id()).krate;
         let crate_name = this.tcx.crate_name(frame_crate);
         let crate_name = crate_name.as_str();
-        // On miri-test-libstd, the name of the crate is different.
-        crate_name == "std" || crate_name == "std_miri_test"
+        crate_name == "std"
     }
 
     /// Mark a machine allocation that was just created as immutable.

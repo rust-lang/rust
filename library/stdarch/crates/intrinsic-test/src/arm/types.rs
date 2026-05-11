@@ -7,11 +7,10 @@ impl IntrinsicTypeDefinition for ArmIntrinsicType {
     /// Gets a string containing the typename for this type in C format.
     fn c_type(&self) -> String {
         let prefix = self.kind.c_prefix();
-        let const_prefix = if self.constant { "const " } else { "" };
 
         if let (Some(bit_len), simd_len, vec_len) = (self.bit_len, self.simd_len, self.vec_len) {
             match (simd_len, vec_len) {
-                (None, None) => format!("{const_prefix}{prefix}{bit_len}_t"),
+                (None, None) => format!("{prefix}{bit_len}_t"),
                 (Some(simd), None) => format!("{prefix}{bit_len}x{simd}_t"),
                 (Some(simd), Some(vec)) => format!("{prefix}{bit_len}x{simd}x{vec}_t"),
                 (None, Some(_)) => todo!("{self:#?}"), // Likely an invalid case

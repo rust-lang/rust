@@ -468,6 +468,14 @@ impl TcpStream {
         self.inner.linger()
     }
 
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        self.inner.set_keepalive(keepalive)
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        self.inner.keepalive()
+    }
+
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         self.inner.set_nodelay(nodelay)
     }

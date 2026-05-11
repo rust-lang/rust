@@ -38,23 +38,18 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
 }
 
 impl Resolver<'_, '_> {
-    fn nearest_normal_mod(&self, def_id: LocalDefId) -> LocalDefId {
-        self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
-    }
-
-    fn private_vis_import(&self, decl: Decl<'_>) -> Visibility {
-        let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
+    fn private_vis_decl(&self, decl: Decl<'_>) -> Visibility {
         Visibility::Restricted(
-            import
-                .id()
-                .map(|id| self.nearest_normal_mod(self.local_def_id(id)))
-                .unwrap_or(CRATE_DEF_ID),
+            decl.parent_module.map_or(CRATE_DEF_ID, |m| m.nearest_parent_mod().expect_local()),
         )
     }
 
     fn private_vis_def(&self, def_id: LocalDefId) -> Visibility {
-        // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
-        let normal_mod_id = self.nearest_normal_mod(def_id);
+        // For mod items `normal_mod_id` will be equal to `def_id`, but we actually need its parent.
+        let normal_mod_id = self
+            .get_nearest_non_block_module(def_id.to_def_id())
+            .nearest_parent_mod()
+            .expect_local();
         if normal_mod_id == def_id {
             Visibility::Restricted(self.tcx.local_parent(def_id))
         } else {
@@ -96,8 +91,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         // is the maximum value among visibilities of declarations corresponding to that def id.
         for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
             let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
-            if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
+            if let Some(def_id) = import.def_id() {
+                r.effective_visibilities.update_eff_vis(def_id, eff_vis, r.tcx)
             }
             if decl.ambiguity.get().is_some() && eff_vis.is_public_at_level(Level::Reexported) {
                 exported_ambiguities.insert(*decl);
@@ -120,14 +115,19 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             // Set the given effective visibility level to `Level::Direct` and
             // sets the rest of the `use` chain to `Level::Reexported` until
             // we hit the actual exported item.
+            let priv_vis = |this: &Self, parent_id, decl| match parent_id {
+                ParentId::Def(_) => this.current_private_vis,
+                ParentId::Import(_) => this.r.private_vis_decl(decl),
+            };
             let mut parent_id = ParentId::Def(module_id);
             while let DeclKind::Import { source_decl, .. } = decl.kind {
-                self.update_import(decl, parent_id);
+                self.update_import(decl, parent_id, priv_vis(self, parent_id, decl));
                 parent_id = ParentId::Import(decl);
                 decl = source_decl;
             }
             if let Some(def_id) = decl.res().opt_def_id().and_then(|id| id.as_local()) {
-                self.update_def(def_id, decl.vis().expect_local(), parent_id);
+                let priv_vis = priv_vis(self, parent_id, decl);
+                self.update_def(def_id, decl.vis().expect_local(), parent_id, priv_vis);
             }
         }
     }
@@ -141,50 +141,46 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
                 .effective_vis_or_private(def_id, || self.r.private_vis_def(def_id)),
             ParentId::Import(binding) => self
                 .import_effective_visibilities
-                .effective_vis_or_private(binding, || self.r.private_vis_import(binding)),
+                .effective_vis_or_private(binding, || self.r.private_vis_decl(binding)),
         }
     }
 
     /// All effective visibilities for a node are larger or equal than private visibility
     /// for that node (see `check_invariants` in middle/privacy.rs).
     /// So if either parent or nominal visibility is the same as private visibility, then
-    /// `min(parent_vis, nominal_vis) <= private_vis`, and the update logic is guaranteed
+    /// `min(parent_vis, nominal_vis) <= priv_vis`, and the update logic is guaranteed
     /// to not update anything and we can skip it.
-    ///
-    /// We are checking this condition only if the correct value of private visibility is
-    /// cheaply available, otherwise it doesn't make sense performance-wise.
-    ///
-    /// `None` is returned if the update can be skipped,
-    /// and cheap private visibility is returned otherwise.
     fn may_update(
         &self,
         nominal_vis: Visibility,
         parent_id: ParentId<'_>,
-    ) -> Option<Option<Visibility>> {
-        match parent_id {
-            ParentId::Def(def_id) => (nominal_vis != self.current_private_vis
-                && self.r.tcx.local_visibility(def_id) != self.current_private_vis)
-                .then_some(Some(self.current_private_vis)),
-            ParentId::Import(_) => Some(None),
-        }
+        priv_vis: Visibility,
+    ) -> bool {
+        nominal_vis != priv_vis
+            && match parent_id {
+                ParentId::Def(def_id) => self.r.tcx.local_visibility(def_id),
+                ParentId::Import(decl) => decl.vis().expect_local(),
+            } != priv_vis
     }
 
-    fn update_import(&mut self, decl: Decl<'ra>, parent_id: ParentId<'ra>) {
+    fn update_import(&mut self, decl: Decl<'ra>, parent_id: ParentId<'ra>, priv_vis: Visibility) {
         let nominal_vis = decl.vis().expect_local();
-        let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
+        if !self.may_update(nominal_vis, parent_id, priv_vis) {
+            return;
+        };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;
         self.changed |= self.import_effective_visibilities.update(
             decl,
             Some(nominal_vis),
-            || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_import(decl)),
+            priv_vis,
             inherited_eff_vis,
             parent_id.level(),
             tcx,
         );
         if let Some(max_vis_decl) = decl.ambiguity_vis_max.get() {
             // Avoid the most visible import in an ambiguous glob set being reported as unused.
-            self.update_import(max_vis_decl, parent_id);
+            self.update_import(max_vis_decl, parent_id, priv_vis);
         }
     }
 
@@ -193,14 +189,17 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         def_id: LocalDefId,
         nominal_vis: Visibility,
         parent_id: ParentId<'ra>,
+        priv_vis: Visibility,
     ) {
-        let Some(cheap_private_vis) = self.may_update(nominal_vis, parent_id) else { return };
+        if !self.may_update(nominal_vis, parent_id, priv_vis) {
+            return;
+        };
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         let tcx = self.r.tcx;
         self.changed |= self.def_effective_visibilities.update(
             def_id,
             Some(nominal_vis),
-            || cheap_private_vis.unwrap_or_else(|| self.r.private_vis_def(def_id)),
+            priv_vis,
             inherited_eff_vis,
             parent_id.level(),
             tcx,
@@ -208,7 +207,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     }
 
     fn update_field(&mut self, def_id: LocalDefId, parent_id: LocalDefId) {
-        self.update_def(def_id, self.r.tcx.local_visibility(def_id), ParentId::Def(parent_id));
+        let nominal_vis = self.r.tcx.local_visibility(def_id);
+        self.update_def(def_id, nominal_vis, ParentId::Def(parent_id), self.current_private_vis);
     }
 }
 

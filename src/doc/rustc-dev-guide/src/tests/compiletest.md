@@ -832,13 +832,14 @@ check for any problems that might arise.
 To run the tests in a different mode, you need to pass the `--compare-mode` CLI flag:
 
 ```bash
-./x test tests/ui --compare-mode=chalk
+./x test tests/ui --compare-mode=next-solver
 ```
 
 The possible compare modes are:
 
-- `polonius` — Runs with Polonius with `-Zpolonius`.
-- `chalk` — Runs with Chalk with `-Zchalk`.
+- `polonius` — Runs with Polonius with `-Zpolonius=next`.
+- `next-solver` — Runs with the next trait solver with `-Znext-solver`.
+- `next-solver-coherence` — Runs coherence with the next trait solver with `-Znext-solver=coherence`.
 - `split-dwarf` — Runs with unpacked split-DWARF with `-Csplit-debuginfo=unpacked`.
 - `split-dwarf-single` — Runs with packed split-DWARF with `-Csplit-debuginfo=packed`.
 

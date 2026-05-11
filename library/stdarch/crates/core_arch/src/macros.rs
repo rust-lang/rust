@@ -42,7 +42,7 @@ macro_rules! static_assert_uimm_bits {
                     stringify!($imm),
                     " doesn't fit in ",
                     stringify!($bits),
-                    " bits",
+                    " bits (unsigned)",
                 )
             )
         }
@@ -58,7 +58,7 @@ macro_rules! static_assert_simm_bits {
                 stringify!($imm),
                 " doesn't fit in ",
                 stringify!($bits),
-                " bits",
+                " bits (signed)",
             )
         )
     };

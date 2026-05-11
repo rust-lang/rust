@@ -2,7 +2,7 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
-use crate::intrinsics::{type_id, type_of};
+use crate::intrinsics::{self, type_id, type_of};
 use crate::marker::PointeeSized;
 use crate::ptr::DynMetadata;
 
@@ -14,8 +14,6 @@ use crate::ptr::DynMetadata;
 pub struct Type {
     /// Per-type information
     pub kind: TypeKind,
-    /// Size of the type. `None` if it is unsized
-    pub size: Option<usize>,
 }
 
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
@@ -359,4 +357,23 @@ pub enum Abi {
 
     /// C-calling convention
     ExternC,
+}
+
+impl TypeId {
+    /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    /// use std::any::TypeId;
+    ///
+    /// assert_eq!(const { TypeId::of::<u32>().size() }, Some(4));
+    /// assert_eq!(const { TypeId::of::<[u8; 16]>().size() }, Some(16));
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    pub const fn size(self) -> Option<usize> {
+        intrinsics::size_of_type_id(self)
+    }
 }

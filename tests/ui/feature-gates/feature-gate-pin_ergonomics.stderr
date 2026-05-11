@@ -19,7 +19,17 @@ LL |     fn foo_sugar_const(&pin const self) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:17:14
+  --> $DIR/feature-gate-pin_ergonomics.rs:16:18
+   |
+LL |     fn pin_drop(&pin mut self) {}
+   |                  ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:23:14
    |
 LL |     let _y: &pin mut Foo = x;
    |              ^^^
@@ -29,7 +39,7 @@ LL |     let _y: &pin mut Foo = x;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:21:14
+  --> $DIR/feature-gate-pin_ergonomics.rs:27:14
    |
 LL |     let _y: &pin const Foo = x;
    |              ^^^
@@ -39,7 +49,7 @@ LL |     let _y: &pin const Foo = x;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:24:18
+  --> $DIR/feature-gate-pin_ergonomics.rs:30:18
    |
 LL | fn foo_sugar(_: &pin mut Foo) {}
    |                  ^^^
@@ -49,7 +59,7 @@ LL | fn foo_sugar(_: &pin mut Foo) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:36:18
+  --> $DIR/feature-gate-pin_ergonomics.rs:42:18
    |
 LL | fn baz_sugar(_: &pin const Foo) {}
    |                  ^^^
@@ -59,7 +69,7 @@ LL | fn baz_sugar(_: &pin const Foo) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:39:31
+  --> $DIR/feature-gate-pin_ergonomics.rs:45:31
    |
 LL |     let mut x: Pin<&mut _> = &pin mut Foo;
    |                               ^^^
@@ -69,7 +79,7 @@ LL |     let mut x: Pin<&mut _> = &pin mut Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:44:23
+  --> $DIR/feature-gate-pin_ergonomics.rs:50:23
    |
 LL |     let x: Pin<&_> = &pin const Foo;
    |                       ^^^
@@ -79,7 +89,7 @@ LL |     let x: Pin<&_> = &pin const Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:51:6
+  --> $DIR/feature-gate-pin_ergonomics.rs:57:6
    |
 LL |     &pin mut x: &pin mut i32,
    |      ^^^
@@ -89,7 +99,7 @@ LL |     &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:51:18
+  --> $DIR/feature-gate-pin_ergonomics.rs:57:18
    |
 LL |     &pin mut x: &pin mut i32,
    |                  ^^^
@@ -99,7 +109,7 @@ LL |     &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:54:6
+  --> $DIR/feature-gate-pin_ergonomics.rs:60:6
    |
 LL |     &pin const y: &'a pin const i32,
    |      ^^^
@@ -109,7 +119,7 @@ LL |     &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:54:23
+  --> $DIR/feature-gate-pin_ergonomics.rs:60:23
    |
 LL |     &pin const y: &'a pin const i32,
    |                       ^^^
@@ -119,7 +129,7 @@ LL |     &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:57:9
+  --> $DIR/feature-gate-pin_ergonomics.rs:63:9
    |
 LL |     ref pin mut z: i32,
    |         ^^^
@@ -129,7 +139,7 @@ LL |     ref pin mut z: i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:58:9
+  --> $DIR/feature-gate-pin_ergonomics.rs:64:9
    |
 LL |     ref pin const w: i32,
    |         ^^^
@@ -139,7 +149,7 @@ LL |     ref pin const w: i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:70:23
+  --> $DIR/feature-gate-pin_ergonomics.rs:76:23
    |
 LL |         fn foo_sugar(&pin mut self) {}
    |                       ^^^
@@ -149,7 +159,7 @@ LL |         fn foo_sugar(&pin mut self) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:71:29
+  --> $DIR/feature-gate-pin_ergonomics.rs:77:29
    |
 LL |         fn foo_sugar_const(&pin const self) {}
    |                             ^^^
@@ -159,7 +169,17 @@ LL |         fn foo_sugar_const(&pin const self) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:77:18
+  --> $DIR/feature-gate-pin_ergonomics.rs:81:22
+   |
+LL |         fn pin_drop(&pin mut self) {}
+   |                      ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:87:18
    |
 LL |         let _y: &pin mut Foo = x;
    |                  ^^^
@@ -169,7 +189,7 @@ LL |         let _y: &pin mut Foo = x;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:80:22
+  --> $DIR/feature-gate-pin_ergonomics.rs:90:22
    |
 LL |     fn foo_sugar(_: &pin mut Foo) {}
    |                      ^^^
@@ -179,7 +199,7 @@ LL |     fn foo_sugar(_: &pin mut Foo) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:92:22
+  --> $DIR/feature-gate-pin_ergonomics.rs:102:22
    |
 LL |     fn baz_sugar(_: &pin const Foo) {}
    |                      ^^^
@@ -189,7 +209,7 @@ LL |     fn baz_sugar(_: &pin const Foo) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:95:35
+  --> $DIR/feature-gate-pin_ergonomics.rs:105:35
    |
 LL |         let mut x: Pin<&mut _> = &pin mut Foo;
    |                                   ^^^
@@ -199,7 +219,7 @@ LL |         let mut x: Pin<&mut _> = &pin mut Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:100:27
+  --> $DIR/feature-gate-pin_ergonomics.rs:110:27
    |
 LL |         let x: Pin<&_> = &pin const Foo;
    |                           ^^^
@@ -209,7 +229,7 @@ LL |         let x: Pin<&_> = &pin const Foo;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:107:10
+  --> $DIR/feature-gate-pin_ergonomics.rs:117:10
    |
 LL |         &pin mut x: &pin mut i32,
    |          ^^^
@@ -219,7 +239,7 @@ LL |         &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:107:22
+  --> $DIR/feature-gate-pin_ergonomics.rs:117:22
    |
 LL |         &pin mut x: &pin mut i32,
    |                      ^^^
@@ -229,7 +249,7 @@ LL |         &pin mut x: &pin mut i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:110:10
+  --> $DIR/feature-gate-pin_ergonomics.rs:120:10
    |
 LL |         &pin const y: &'a pin const i32,
    |          ^^^
@@ -239,7 +259,7 @@ LL |         &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:110:27
+  --> $DIR/feature-gate-pin_ergonomics.rs:120:27
    |
 LL |         &pin const y: &'a pin const i32,
    |                           ^^^
@@ -249,7 +269,7 @@ LL |         &pin const y: &'a pin const i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:113:13
+  --> $DIR/feature-gate-pin_ergonomics.rs:123:13
    |
 LL |         ref pin mut z: i32,
    |             ^^^
@@ -259,7 +279,7 @@ LL |         ref pin mut z: i32,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: pinned reference syntax is experimental
-  --> $DIR/feature-gate-pin_ergonomics.rs:114:13
+  --> $DIR/feature-gate-pin_ergonomics.rs:124:13
    |
 LL |         ref pin const w: i32,
    |             ^^^
@@ -278,8 +298,26 @@ LL | #[pin_v2]
    = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: use of unstable library feature `pin_ergonomics`
+  --> $DIR/feature-gate-pin_ergonomics.rs:16:5
+   |
+LL |     fn pin_drop(&pin mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/feature-gate-pin_ergonomics.rs:14:1
+   |
+LL | impl Drop for Foo {
+   | ^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+   |
+   = help: implement the missing item: `fn drop(&mut self) { todo!() }`
+
 error[E0382]: use of moved value: `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:28:9
+  --> $DIR/feature-gate-pin_ergonomics.rs:34:9
    |
 LL | fn bar(x: Pin<&mut Foo>) {
    |        - move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
@@ -289,7 +327,7 @@ LL |     foo(x);
    |         ^ value used here after move
    |
 note: consider changing this parameter type in function `foo` to borrow instead if owning the value isn't necessary
-  --> $DIR/feature-gate-pin_ergonomics.rs:14:15
+  --> $DIR/feature-gate-pin_ergonomics.rs:20:15
    |
 LL | fn foo(mut x: Pin<&mut Foo>) {
    |    ---        ^^^^^^^^^^^^^ this parameter takes ownership of the value
@@ -297,7 +335,7 @@ LL | fn foo(mut x: Pin<&mut Foo>) {
    |    in this function
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/feature-gate-pin_ergonomics.rs:33:5
+  --> $DIR/feature-gate-pin_ergonomics.rs:39:5
    |
 LL | fn baz(mut x: Pin<&mut Foo>) {
    |        ----- move occurs because `x` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
@@ -316,7 +354,7 @@ help: consider reborrowing the `Pin` instead of moving it
 LL |     x.as_mut().foo();
    |      +++++++++
 
-error: aborting due to 30 previous errors
+error: aborting due to 34 previous errors
 
-Some errors have detailed explanations: E0382, E0658.
-For more information about an error, try `rustc --explain E0382`.
+Some errors have detailed explanations: E0046, E0382, E0658.
+For more information about an error, try `rustc --explain E0046`.

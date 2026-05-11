@@ -562,7 +562,7 @@ intrinsics:
     assert_instr: []
     compose:
       - LLVMLink:
-          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          name: llvm.vector.insert.{sve_type}.{neon_type}
           arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
       - Let:
           - op
@@ -657,7 +657,7 @@ intrinsics:
     assert_instr: []
     compose:
       - LLVMLink:
-          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          name: llvm.vector.insert.{sve_type}.{neon_type}
           arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
       - Let:
           - op
@@ -713,7 +713,7 @@ intrinsics:
     assert_instr: []
     compose:
       - LLVMLink:
-          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          name: llvm.vector.insert.{sve_type}.{neon_type}
           arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
       - Let:
           - op
@@ -755,7 +755,7 @@ intrinsics:
     assert_instr: []
     compose:
       - LLVMLink:
-          name: llvm.experimental.vector.insert.{sve_type}.{neon_type}
+          name: llvm.vector.insert.{sve_type}.{neon_type}
           arguments: ["op0: {sve_type}", "op1: {neon_type}", "idx: i64"]
       - Let:
           - op
@@ -1210,7 +1210,7 @@ intrinsics:
     types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [rev]
     compose:
-      - LLVMLink: { name: "rev.{sve_type}" }
+      - LLVMLink: { name: "llvm.vector.reverse.{sve_type}" }
 
   - name: svrev_{type}
     attr: [*sve-unstable]
@@ -1220,7 +1220,7 @@ intrinsics:
     types: [b8, b16, b32, b64]
     assert_instr: [rev]
     compose:
-      - LLVMLink: { name: "rev.{sve_type}" }
+      - LLVMLink: { name: "llvm.vector.reverse.{sve_type}" }
 
   - name: svrevb[_{type}]{_mxz}
     attr: [*sve-unstable]

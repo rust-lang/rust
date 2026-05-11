@@ -73,14 +73,14 @@ fn check_transmute<'tcx>(
     to: Ty<'tcx>,
     hir_id: HirId,
 ) {
-    let span = || tcx.hir_span(hir_id);
+    let span = tcx.hir_span(hir_id);
     let normalize = |ty| {
         if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
             ty
         } else {
             Ty::new_error_with_message(
                 tcx,
-                span(),
+                span,
                 format!("tried to normalize non-wf type {ty:#?} in check_transmute"),
             )
         }
@@ -95,8 +95,8 @@ fn check_transmute<'tcx>(
         return;
     }
 
-    let sk_from = SizeSkeleton::compute(from, tcx, typing_env);
-    let sk_to = SizeSkeleton::compute(to, tcx, typing_env);
+    let sk_from = SizeSkeleton::compute(from, tcx, typing_env, span);
+    let sk_to = SizeSkeleton::compute(to, tcx, typing_env, span);
     trace!(?sk_from, ?sk_to);
 
     // Check for same size using the skeletons.
@@ -114,7 +114,7 @@ fn check_transmute<'tcx>(
             && let SizeSkeleton::Known(size_to, _) = sk_to
             && size_to == Pointer(tcx.data_layout.instruction_address_space).size(&tcx)
         {
-            struct_span_code_err!(tcx.sess.dcx(), span(), E0591, "can't transmute zero-sized type")
+            struct_span_code_err!(tcx.sess.dcx(), span, E0591, "can't transmute zero-sized type")
                 .with_note(format!("source type: {from}"))
                 .with_note(format!("target type: {to}"))
                 .with_help("cast with `as` to a pointer instead")
@@ -125,7 +125,7 @@ fn check_transmute<'tcx>(
 
     let mut err = struct_span_code_err!(
         tcx.sess.dcx(),
-        span(),
+        span,
         E0512,
         "cannot transmute between types of different sizes, or dependently-sized types"
     );

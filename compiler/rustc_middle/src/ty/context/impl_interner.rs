@@ -1,5 +1,6 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
+use std::ops::ControlFlow;
 use std::{debug_assert_matches, fmt};
 
 use rustc_errors::ErrorGuaranteed;
@@ -8,8 +9,10 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
-use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, Unnormalized, search_graph};
+use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::{
+    CollectAndApply, Interner, TypeFoldable, Unnormalized, VisitorResult, search_graph,
+};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
@@ -39,6 +42,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtId = DefId;
     type ImplId = DefId;
     type UnevaluatedConstId = DefId;
+    type TraitAssocTyId = DefId;
+    type TraitAssocConstId = DefId;
+    type TraitAssocTermId = DefId;
+    type OpaqueTyId = DefId;
+    type LocalOpaqueTyId = LocalDefId;
+    type FreeTyAliasId = DefId;
+    type FreeConstAliasId = DefId;
+    type FreeTermAliasId = DefId;
+    type ImplOrTraitAssocTyId = DefId;
+    type ImplOrTraitAssocConstId = DefId;
+    type ImplOrTraitAssocTermId = DefId;
+    type InherentAssocTyId = DefId;
+    type InherentAssocConstId = DefId;
+    type InherentAssocTermId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -172,6 +189,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of_opaque_hir_typeck(def_id)
     }
+    fn is_type_const(self, def_id: DefId) -> bool {
+        self.is_type_const(def_id)
+    }
     fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
         self.const_of_item(def_id)
     }
@@ -285,7 +305,15 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_type_list_from_iter(args)
     }
 
-    fn parent(self, def_id: DefId) -> DefId {
+    fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId {
+        self.parent(def_id)
+    }
+
+    fn impl_or_trait_assoc_term_parent(self, def_id: Self::ImplOrTraitAssocTyId) -> DefId {
+        self.parent(def_id)
+    }
+
+    fn inherent_alias_term_parent(self, def_id: Self::InherentAssocTermId) -> Self::ImplId {
         self.parent(def_id)
     }
 
@@ -443,7 +471,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
 
-    fn require_lang_item(self, lang_item: SolverLangItem) -> DefId {
+    fn require_projection_lang_item(self, lang_item: SolverProjectionLangItem) -> DefId {
         self.require_lang_item(solver_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
@@ -455,7 +483,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.require_lang_item(solver_adt_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
-    fn is_lang_item(self, def_id: DefId, lang_item: SolverLangItem) -> bool {
+    fn is_projection_lang_item(self, def_id: DefId, lang_item: SolverProjectionLangItem) -> bool {
         self.is_lang_item(def_id, solver_lang_item_to_lang_item(lang_item))
     }
 
@@ -475,7 +503,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_sizedness_trait(def_id)
     }
 
-    fn as_lang_item(self, def_id: DefId) -> Option<SolverLangItem> {
+    fn as_projection_lang_item(self, def_id: DefId) -> Option<SolverProjectionLangItem> {
         lang_item_to_solver_lang_item(self.lang_items().from_def_id(def_id)?)
     }
 
@@ -497,20 +525,31 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     // This implementation is a bit different from `TyCtxt::for_each_relevant_impl`,
     // since we want to skip over blanket impls for non-rigid aliases, and also we
     // only want to consider types that *actually* unify with float/int vars.
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        mut f: impl FnMut(DefId),
-    ) {
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
+        macro_rules! ret {
+            ($e: expr) => {
+                match $e.branch() {
+                    ControlFlow::Break(b) => return R::from_residual(b),
+                    ControlFlow::Continue(()) => {}
+                }
+            };
+        }
+
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
-                    f(impl_def_id);
+                    ret!(f(impl_def_id))
                 }
             }
+
+            R::output()
         };
 
         match self_ty.kind() {
@@ -541,7 +580,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
                 ) {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -570,7 +609,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -585,7 +624,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 ];
 
                 for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -609,11 +648,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         #[allow(rustc::usage_of_type_ir_traits)]
         self.for_each_blanket_impl(trait_def_id, f)
     }
-    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: DefId,
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
         let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
-            f(impl_def_id);
+            match f(impl_def_id).branch() {
+                ControlFlow::Break(b) => return R::from_residual(b),
+                ControlFlow::Continue(()) => {}
+            }
         }
+
+        R::output()
     }
 
     fn has_item_definition(self, def_id: DefId) -> bool {
@@ -754,7 +802,7 @@ macro_rules! bidirectional_lang_item_map {
 }
 
 bidirectional_lang_item_map! {
-    SolverLangItem, fn lang_item_to_solver_lang_item, fn solver_lang_item_to_lang_item;
+    SolverProjectionLangItem, fn lang_item_to_solver_lang_item, fn solver_lang_item_to_lang_item;
 
 // tidy-alphabetical-start
     AsyncFnKindUpvars,
@@ -763,7 +811,6 @@ bidirectional_lang_item_map! {
     CallRefFuture,
     CoroutineReturn,
     CoroutineYield,
-    DynMetadata,
     FieldBase,
     FieldType,
     FutureOutput,
@@ -775,6 +822,7 @@ bidirectional_lang_item_map! {
     SolverAdtLangItem, fn lang_item_to_solver_adt_lang_item, fn solver_adt_lang_item_to_lang_item;
 
 // tidy-alphabetical-start
+    DynMetadata,
     Option,
     Poll,
 // tidy-alphabetical-end
@@ -788,7 +836,6 @@ bidirectional_lang_item_map! {
     AsyncFnKindHelper,
     AsyncFnMut,
     AsyncFnOnce,
-    AsyncFnOnceOutput,
     AsyncIterator,
     BikeshedGuaranteedNoDrop,
     Clone,

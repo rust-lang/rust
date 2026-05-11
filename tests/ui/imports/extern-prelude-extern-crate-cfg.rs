@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 //@ compile-flags:--cfg my_feature --check-cfg=cfg(my_feature)
 
 #![no_std]

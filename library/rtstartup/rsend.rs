@@ -27,12 +27,10 @@ auto trait Freeze {}
 
 impl<T: PointeeSized> Copy for *mut T {}
 
-#[lang = "drop_in_place"]
+#[cfg_attr(not(bootstrap), lang = "drop_glue")]
+#[cfg_attr(bootstrap, lang = "drop_in_place")]
 #[inline]
-#[allow(unconditional_recursion)]
-pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
-    drop_in_place(to_drop);
-}
+pub unsafe fn drop_glue<T: PointeeSized>(_to_drop: &mut T) {}
 
 #[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
 pub mod eh_frames {

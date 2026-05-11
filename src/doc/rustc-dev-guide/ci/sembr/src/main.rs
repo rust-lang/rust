@@ -45,14 +45,16 @@ fn main() -> Result<()> {
                 continue;
             }
             let old = fs::read_to_string(&path)?;
-            let new = lengthen_lines(&comply(&old), cli.line_length_limit);
+            let new = comply(&old);
             if new == old {
                 compliant.push(path.clone());
-            } else if cli.overwrite {
-                fs::write(&path, new)?;
-                made_compliant.push(path.clone());
             } else {
-                not_compliant.push(path.clone());
+                if cli.overwrite {
+                    fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+                    made_compliant.push(path.clone());
+                } else {
+                    not_compliant.push(path.clone());
+                }
             }
         }
     }

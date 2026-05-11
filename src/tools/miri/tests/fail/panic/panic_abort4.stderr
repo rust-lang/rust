@@ -20,7 +20,7 @@ LL |     crate::process::abort();
                at RUSTLIB/std/src/panicking.rs:LL:CC
            4: std::panicking::panic_handler::{closure#0}
                at RUSTLIB/std/src/panicking.rs:LL:CC
-           5: std::sys::backtrace::__rust_end_short_backtrace
+           5: std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>
                at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
            6: std::panicking::panic_handler
                at RUSTLIB/std/src/panicking.rs:LL:CC

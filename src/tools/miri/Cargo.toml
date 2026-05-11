@@ -1,5 +1,4 @@
 [package]
-authors = ["Miri Team"]
 description = "An experimental interpreter for Rust MIR (core driver)."
 license = "MIT OR Apache-2.0"
 name = "miri"

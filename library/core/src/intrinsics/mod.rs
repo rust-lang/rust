@@ -2937,6 +2937,15 @@ pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
     a.data == b.data
 }
 
+/// Gets the size of the type represented by this `TypeId`.
+///
+/// The stabilized version of this intrinsic is [`core::any::TypeId::size`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+pub const fn size_of_type_id(_id: crate::any::TypeId) -> Option<usize> {
+    panic!("`Type::size` can only be called at compile-time")
+}
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and
@@ -3588,4 +3597,17 @@ pub const fn va_copy<'f>(src: &VaList<'f>) -> VaList<'f> {
 #[rustc_nounwind]
 pub const unsafe fn va_end(ap: &mut VaList<'_>) {
     /* deliberately does nothing */
+}
+
+/// Returns the return address of the caller function (after inlining) in a best-effort manner or a null pointer if it is not supported on the current backend.
+/// Returning an accurate value is a quality-of-implementation concern, but no hard guarantees are
+/// made about the return value: formally, the intrinsic non-deterministically returns
+/// an arbitrary pointer without provenance.
+///
+/// Note that unlike most intrinsics, this is safe to call. This is because it only finds the return address of the immediate caller, which is guaranteed to be possible.
+/// Other forms of the corresponding gcc or llvm intrinsic (which can have wildly unpredictable results or even crash at runtime) are not exposed.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn return_address() -> *const () {
+    core::ptr::null()
 }

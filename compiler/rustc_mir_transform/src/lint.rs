@@ -96,6 +96,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                     | Rvalue::UnaryOp(..)
                     | Rvalue::BinaryOp(..)
                     | Rvalue::Ref(..)
+                    | Rvalue::Reborrow(..)
                     | Rvalue::RawPtr(..)
                     | Rvalue::Discriminant(..) => false,
                 };

@@ -1,3 +1,4 @@
+use core::fmt;
 use std::hash::{Hash, Hasher};
 
 use derive_where::derive_where;
@@ -10,6 +11,26 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::VisibleForLeakCheck;
 use crate::{self as ty, Interner, TyVid};
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for super::CantBeErased {}
+    impl Sealed for super::MayBeErased {}
+}
+pub trait TypingModeErasedStatus: private::Sealed + Clone + Copy + Hash + fmt::Debug {}
+
+#[derive(Clone, Copy, Hash, Debug)]
+pub enum CantBeErased {}
+#[derive(Clone, Copy, Hash, Debug)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct MayBeErased;
+
+impl TypingModeErasedStatus for CantBeErased {}
+impl TypingModeErasedStatus for MayBeErased {}
 
 /// The current typing mode of an inference context. We unfortunately have some
 /// slightly different typing rules depending on the current context. See the
@@ -42,8 +63,7 @@ use crate::{self as ty, Interner, TyVid};
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-#[cfg_attr(feature = "nightly", rustc_must_match_exhaustively)]
-pub enum TypingMode<I: Interner> {
+pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us
     /// to be complete: we must never fail to prove something which may actually
@@ -108,6 +128,20 @@ pub enum TypingMode<I: Interner> {
     /// always run in `PostAnalysis` mode, even when used during analysis. This exposes
     /// some information about the underlying type to users, but not the type itself.
     PostAnalysis,
+
+    /// The typing modes above (except coherence) only differ in how they handle
+    ///
+    /// - Generators
+    /// - Opaque types
+    /// - Specialization (in `PostAnalysis`)
+    ///
+    /// We replace all of them with this `TypingMode` in the first attempt at canonicalization.
+    /// If, during that attempt, we try to access information about opaques or generators
+    /// we bail out, setting a field on `EvalCtxt` that indicates the canonicalization must be
+    /// rerun in the original typing mode.
+    ///
+    /// `TypingMode::Coherence` is not replaced by this and is always kept as-is.
+    ErasedNotCoherence(S),
 }
 
 /// We want to highly discourage using equality checks on typing modes.
@@ -120,7 +154,7 @@ pub enum TypingMode<I: Interner> {
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-pub struct TypingModeEqWrapper<I: Interner>(pub TypingMode<I>);
+pub struct TypingModeEqWrapper<I: Interner>(pub TypingMode<I, MayBeErased>);
 
 impl<I: Interner> Hash for TypingModeEqWrapper<I> {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -146,11 +180,16 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
             ) => l == r,
             (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
             (
+                TypingMode::ErasedNotCoherence(MayBeErased),
+                TypingMode::ErasedNotCoherence(MayBeErased),
+            ) => true,
+            (
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis,
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(MayBeErased),
                 _,
             ) => false,
         }
@@ -159,7 +198,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
 
 impl<I: Interner> Eq for TypingModeEqWrapper<I> {}
 
-impl<I: Interner> TypingMode<I> {
+impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
     /// There are a bunch of places in the compiler where we single out `Coherence`,
     /// and alter behavior. We'd like to *always* match on `TypingMode` exhaustively,
     /// but not having this method leads to a bunch of noisy code.
@@ -171,10 +210,54 @@ impl<I: Interner> TypingMode<I> {
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => false,
+            | TypingMode::PostAnalysis
+            | TypingMode::ErasedNotCoherence(_) => false,
         }
     }
 
+    /// There are a bunch of places in the trait solver where we single out `Coherence`,
+    /// and alter behavior. We'd like to *always* match on `TypingMode` exhaustively,
+    /// but not having this method leads to a bunch of noisy code.
+    ///
+    /// See also the documentation on [`TypingMode`] about exhaustive matching.
+    pub fn is_erased_not_coherence(&self) -> bool {
+        match self {
+            TypingMode::ErasedNotCoherence(_) => true,
+            TypingMode::Coherence
+            | TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => false,
+        }
+    }
+}
+
+impl<I: Interner> TypingMode<I, MayBeErased> {
+    /// Only call this when you're sure you're outside the next trait solver!
+    /// That means either not in the trait solver, or in code that is old-solver only.
+    ///
+    /// See the comment on `InferCtxt::typing_mode_raw`
+    pub fn assert_not_erased(self) -> TypingMode<I, CantBeErased> {
+        match self {
+            TypingMode::Coherence => TypingMode::Coherence,
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                TypingMode::Analysis { defining_opaque_types_and_generators }
+            }
+            TypingMode::Borrowck { defining_opaque_types } => {
+                TypingMode::Borrowck { defining_opaque_types }
+            }
+            TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
+                TypingMode::PostBorrowckAnalysis { defined_opaque_types }
+            }
+            TypingMode::PostAnalysis => TypingMode::PostAnalysis,
+            TypingMode::ErasedNotCoherence(MayBeErased) => panic!(
+                "Called `assert_not_erased` from a place that can be called by the trait solver in `TypingMode::ErasedNotCoherence`. `TypingMode` is `ErasedNotCoherence` in a place where that should be impossible"
+            ),
+        }
+    }
+}
+
+impl<I: Interner> TypingMode<I, CantBeErased> {
     /// Analysis outside of a body does not define any opaque types.
     pub fn non_body_analysis() -> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types_and_generators: Default::default() }
@@ -217,6 +300,24 @@ impl<I: Interner> TypingMode<I> {
     }
 }
 
+impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErased> {
+    fn from(value: TypingMode<I, CantBeErased>) -> Self {
+        match value {
+            TypingMode::Coherence => TypingMode::Coherence,
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                TypingMode::Analysis { defining_opaque_types_and_generators }
+            }
+            TypingMode::Borrowck { defining_opaque_types } => {
+                TypingMode::Borrowck { defining_opaque_types }
+            }
+            TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
+                TypingMode::PostBorrowckAnalysis { defined_opaque_types }
+            }
+            TypingMode::PostAnalysis => TypingMode::PostAnalysis,
+        }
+    }
+}
+
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_infer_ctxt_like")]
 pub trait InferCtxtLike: Sized {
     type Interner: Interner;
@@ -230,7 +331,9 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
-    fn typing_mode(&self) -> TypingMode<Self::Interner>;
+    fn disable_trait_solver_fast_paths(&self) -> bool;
+
+    fn typing_mode_raw(&self) -> TypingMode<Self::Interner>;
 
     fn universe(&self) -> ty::UniverseIndex;
     fn create_next_universe(&self) -> ty::UniverseIndex;
@@ -406,7 +509,7 @@ where
     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
 
-    match infcx.typing_mode() {
+    match infcx.typing_mode_raw().assert_not_erased() {
         TypingMode::Coherence
         | TypingMode::Analysis { .. }
         | TypingMode::Borrowck { .. }

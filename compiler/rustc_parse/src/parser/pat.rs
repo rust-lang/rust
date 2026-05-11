@@ -920,7 +920,7 @@ impl<'a> Parser<'a> {
             // The user probably mistook `...` for a rest pattern `..`.
             self.dcx().emit_err(DotDotDotRestPattern {
                 span: lo,
-                suggestion: Some(lo.with_lo(lo.hi() - BytePos(1))),
+                suggestion: Some(lo),
                 var_args: None,
             });
             PatKind::Rest
