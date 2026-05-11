@@ -223,8 +223,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let isize_type = usize_type;
         let bool_type = context.new_type::<bool>();
 
-        let mut functions = FxHashMap::default();
         let builtins = ["abort"];
+        let mut functions =
+            FxHashMap::with_capacity_and_hasher(builtins.len(), Default::default());
 
         for builtin in builtins.iter() {
             functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
