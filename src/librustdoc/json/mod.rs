@@ -32,7 +32,9 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
+use crate::formats::item_type::ItemType;
 use crate::json::conversions::IntoJson;
+use crate::passes::collect_intra_doc_links::UrlFragment;
 use crate::{clean, try_err};
 
 pub(crate) struct JsonRenderer<'tcx> {
@@ -103,6 +105,84 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    fn paths(&self) -> FxHashMap<types::Id, types::ItemSummary> {
+        let mut paths = self
+            .cache
+            .paths
+            .iter()
+            .chain(&self.cache.external_paths)
+            .map(|(&k, &(ref path, kind))| {
+                (
+                    self.id_from_item_default(k.into()),
+                    types::ItemSummary {
+                        crate_id: k.krate.as_u32(),
+                        path: path.iter().map(|s| s.to_string()).collect(),
+                        kind: kind.into_json(self),
+                    },
+                )
+            })
+            .collect();
+
+        self.add_intra_doc_link_paths(&mut paths);
+        paths
+    }
+
+    #[allow(rustc::potential_query_instability)]
+    fn add_intra_doc_link_paths(&self, paths: &mut FxHashMap<types::Id, types::ItemSummary>) {
+        // The link target IDs were already interned when the `links` maps were emitted.
+        // This only fills missing summaries in `paths`, where JSON object order is not meaningful.
+        for link in self.cache.intra_doc_links.values().flatten() {
+            let Some(UrlFragment::Item(item_id)) = link.fragment.as_ref() else {
+                continue;
+            };
+            let item_id = *item_id;
+            let id = self.id_from_item_default(item_id.into());
+
+            if paths.contains_key(&id) || item_id.is_local() && !self.index.contains_key(&id) {
+                continue;
+            }
+
+            let Some(path) = self.path_for_link_target(link.page_id, item_id) else {
+                continue;
+            };
+            let kind = ItemType::from_def_id(item_id, self.tcx);
+            paths.insert(
+                id,
+                types::ItemSummary {
+                    crate_id: item_id.krate.as_u32(),
+                    path,
+                    kind: kind.into_json(self),
+                },
+            );
+        }
+    }
+
+    fn path_for_link_target(&self, page_id: DefId, item_id: DefId) -> Option<Vec<String>> {
+        self.path_from_cached_parent(item_id).or_else(|| {
+            let mut path = self.path_from_cached_parent(page_id)?;
+            path.push(self.tcx.opt_item_name(item_id)?.to_string());
+            Some(path)
+        })
+    }
+
+    fn path_from_cached_parent(&self, item_id: DefId) -> Option<Vec<String>> {
+        let mut suffix = Vec::new();
+        let mut current = item_id;
+
+        loop {
+            if let Some((path, _)) =
+                self.cache.paths.get(&current).or_else(|| self.cache.external_paths.get(&current))
+            {
+                let mut path = path.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+                path.extend(suffix.into_iter().rev());
+                return Some(path);
+            }
+
+            suffix.push(self.tcx.opt_item_name(current)?.to_string());
+            current = self.tcx.opt_parent(current)?;
+        }
     }
 }
 
@@ -248,26 +328,12 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let target = conversions::target(sess);
 
         debug!("Constructing Output");
+        let paths = self.paths();
         let output_crate = types::Crate {
             root: self.id_from_item_default(e.def_id().into()),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
-            paths: self
-                .cache
-                .paths
-                .iter()
-                .chain(&self.cache.external_paths)
-                .map(|(&k, &(ref path, kind))| {
-                    (
-                        self.id_from_item_default(k.into()),
-                        types::ItemSummary {
-                            crate_id: k.krate.as_u32(),
-                            path: path.iter().map(|s| s.to_string()).collect(),
-                            kind: kind.into_json(&self),
-                        },
-                    )
-                })
-                .collect(),
+            paths,
             external_crates: self
                 .cache
                 .extern_locations
