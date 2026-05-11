@@ -40,6 +40,8 @@ enum CaptureKind {
 struct Access {
     /// Describe the current access.
     kind: AccessKind,
+    /// MIR location where this access happens.
+    location: Location,
     /// Is the accessed place is live at the current statement?
     /// When we encounter multiple statements at the same location, we only increase the liveness,
     /// in order to avoid false positives.
@@ -648,26 +650,30 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             &checked_places.places,
         );
 
-        let mut check_place =
-            |place: Place<'tcx>, kind, source_info: SourceInfo, live: &DenseBitSet<PlaceIndex>| {
-                if let Some((index, extra_projections)) = checked_places.get(place.as_ref()) {
-                    if !is_indirect(extra_projections) {
-                        let is_direct = extra_projections.is_empty();
-                        match assignments[index].entry(source_info) {
-                            IndexEntry::Vacant(v) => {
-                                let access = Access { kind, live: live.contains(index), is_direct };
-                                v.insert(access);
-                            }
-                            IndexEntry::Occupied(mut o) => {
-                                // There were already a sighting. Mark this statement as live if it
-                                // was, to avoid false positives.
-                                o.get_mut().live |= live.contains(index);
-                                o.get_mut().is_direct &= is_direct;
-                            }
+        let mut check_place = |place: Place<'tcx>,
+                               kind,
+                               source_info: SourceInfo,
+                               location: Location,
+                               live: &DenseBitSet<PlaceIndex>| {
+            if let Some((index, extra_projections)) = checked_places.get(place.as_ref()) {
+                if !is_indirect(extra_projections) {
+                    let is_direct = extra_projections.is_empty();
+                    match assignments[index].entry(source_info) {
+                        IndexEntry::Vacant(v) => {
+                            let access =
+                                Access { kind, location, live: live.contains(index), is_direct };
+                            v.insert(access);
+                        }
+                        IndexEntry::Occupied(mut o) => {
+                            // There were already a sighting. Mark this statement as live if it
+                            // was, to avoid false positives.
+                            o.get_mut().live |= live.contains(index);
+                            o.get_mut().is_direct &= is_direct;
                         }
                     }
                 }
-            };
+            }
+        };
 
         let mut record_drop = |place: Place<'tcx>| {
             if let Some((index, &[])) = checked_places.get(place.as_ref()) {
@@ -684,7 +690,13 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             match &terminator.kind {
                 TerminatorKind::Call { destination: place, .. }
                 | TerminatorKind::Yield { resume_arg: place, .. } => {
-                    check_place(*place, AccessKind::Assign, terminator.source_info, live);
+                    check_place(
+                        *place,
+                        AccessKind::Assign,
+                        terminator.source_info,
+                        body.terminator_loc(bb),
+                        live,
+                    );
                     record_drop(*place)
                 }
                 TerminatorKind::Drop { place, .. } => record_drop(*place),
@@ -693,7 +705,13 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                         if let InlineAsmOperand::Out { place: Some(place), .. }
                         | InlineAsmOperand::InOut { out_place: Some(place), .. } = operand
                         {
-                            check_place(*place, AccessKind::Assign, terminator.source_info, live);
+                            check_place(
+                                *place,
+                                AccessKind::Assign,
+                                terminator.source_info,
+                                body.terminator_loc(bb),
+                                live,
+                            );
                         }
                     }
                 }
@@ -701,13 +719,20 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             }
 
             for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
-                cursor.seek_before_primary_effect(Location { block: bb, statement_index });
+                let location = Location { block: bb, statement_index };
+                cursor.seek_before_primary_effect(location);
                 let live = cursor.get();
                 ever_live.union(live);
                 match &statement.kind {
                     StatementKind::Assign(box (place, _))
                     | StatementKind::SetDiscriminant { box place, .. } => {
-                        check_place(*place, AccessKind::Assign, statement.source_info, live);
+                        check_place(
+                            *place,
+                            AccessKind::Assign,
+                            statement.source_info,
+                            location,
+                            live,
+                        );
                     }
                     StatementKind::Retag(_, _)
                     | StatementKind::StorageLive(_)
@@ -746,7 +771,12 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     continue;
                 };
                 let source_info = body.local_decls[place.local].source_info;
-                let access = Access { kind, live: live.contains(index), is_direct: true };
+                let access = Access {
+                    kind,
+                    location: Location::START,
+                    live: live.contains(index),
+                    is_direct: true,
+                };
                 assignments[index].insert(source_info, access);
             }
         }
@@ -1099,31 +1129,34 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 continue;
             }
 
-            let mut next_direct_assign = None;
+            let mut next_direct_assignments: Vec<(Span, Location)> = Vec::new();
             let mut dead_statements = Vec::with_capacity(statements.len());
 
-            for (source_info, Access { live, kind, is_direct }) in statements.into_iter() {
-                let overwrite = match (kind, is_direct, next_direct_assign) {
-                    (AccessKind::Assign, true, Some(overwrite_span)) => {
-                        Some(errors::UnusedAssignOverwrite {
+            for (source_info, Access { live, kind, is_direct, location }) in statements.into_iter()
+            {
+                let direct_assignment = kind == AccessKind::Assign && is_direct;
+                let should_report = !live && (is_direct || !is_maybe_drop_guard);
+
+                let overwrite = if should_report && direct_assignment {
+                    next_direct_assignments
+                        .iter()
+                        .rfind(|(_, overwrite_location)| {
+                            location.is_predecessor_of(*overwrite_location, self.body)
+                        })
+                        .map(|&(overwrite_span, _)| errors::UnusedAssignOverwrite {
                             assigned_span: source_info.span,
                             overwrite_span,
                             name,
                         })
-                    }
-                    _ => None,
+                } else {
+                    None
                 };
 
-                if kind == AccessKind::Assign && is_direct {
-                    next_direct_assign = Some(source_info.span);
+                if direct_assignment {
+                    next_direct_assignments.push((source_info.span, location));
                 }
 
-                if live {
-                    continue;
-                }
-                // If this place was dropped and has non-trivial drop,
-                // skip reporting field assignments.
-                if !is_direct && is_maybe_drop_guard {
+                if !should_report {
                     continue;
                 }
                 dead_statements.push((source_info, kind, is_direct, overwrite));
