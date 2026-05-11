@@ -739,10 +739,23 @@ ul.block, .block li, .block ul {
 	display: block;
 	padding: 0.25rem; /* 4px */
 	margin-right: 0.25rem;
+	background-clip: border-box;
 	/* extend click target to far edge of screen (mile wide bar) */
 	border-left: solid var(--sidebar-elems-left-padding) transparent;
 	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
-	background-clip: border-box;
+}
+
+.sidebar li {
+	margin-left: calc(-0.25rem - var(--sidebar-elems-left-padding));
+	padding-left: calc(0.25rem + var(--sidebar-elems-left-padding));
+}
+.sidebar li:hover  {
+	background-color: var(--sidebar-current-link-background-color);
+}
+.sidebar li a {
+	padding-left: 0;
+	border-left: 0;
+	margin-left: 0;
 }
 
 .hide-toc #rustdoc-toc, .hide-toc .in-crate {
