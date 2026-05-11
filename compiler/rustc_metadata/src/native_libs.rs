@@ -197,7 +197,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
     }
     collector.process_command_line();
     for lib in &mut collector.libs {
-        if tcx.sess.target.env == Env::Pauthtest {
+        if tcx.sess.target.cfg_abi == CfgAbi::Pauthtest {
             if let NativeLibKind::Static { .. } = lib.kind {
                 if !tcx.sess.opts.unstable_opts.ui_testing {
                     let diag = if lib.foreign_module.is_none() {

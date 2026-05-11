@@ -9,7 +9,9 @@ use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{Arch, Env, FramePointer, SanitizerSet, StackProbeType, StackProtector};
+use rustc_target::spec::{
+    Arch, CfgAbi, FramePointer, SanitizerSet, StackProbeType, StackProtector,
+};
 use smallvec::SmallVec;
 
 use crate::common::pauth_fn_attrs;
@@ -609,7 +611,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         }
     }
 
-    if sess.target.env == Env::Pauthtest {
+    if sess.target.cfg_abi == CfgAbi::Pauthtest {
         for &ptrauth_attr in pauth_fn_attrs() {
             to_add.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
         }

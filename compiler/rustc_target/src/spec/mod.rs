@@ -2042,7 +2042,6 @@ crate::target_spec_enum! {
         P1 = "p1",
         P2 = "p2",
         P3 = "p3",
-        Pauthtest = "pauthtest",
         Uclibc = "uclibc",
         V5 = "v5",
         Unspecified = "",
@@ -2073,6 +2072,7 @@ crate::target_spec_enum! {
         Ilp32e = "ilp32e",
         Llvm = "llvm",
         MacAbi = "macabi",
+        Pauthtest = "pauthtest",
         Sim = "sim",
         SoftFloat = "softfloat",
         Spe = "spe",
@@ -3408,6 +3408,7 @@ impl Target {
                             CfgAbi::Ilp32
                                 | CfgAbi::Llvm
                                 | CfgAbi::MacAbi
+                                | CfgAbi::Pauthtest
                                 | CfgAbi::Sim
                                 | CfgAbi::Uwp
                                 | CfgAbi::Unspecified

@@ -29,9 +29,9 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, Env, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
-    TargetTuple, TlsModel, apple,
+    Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
+    SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility,
+    Target, TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
@@ -1221,7 +1221,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Using static linking is prohibited on pauthtest target
-    if sess.crt_static(None) && sess.target.env == Env::Pauthtest {
+    if sess.crt_static(None) && sess.target.cfg_abi == CfgAbi::Pauthtest {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticPointerAuth);
     }
 

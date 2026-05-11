@@ -28,7 +28,7 @@ use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::{Arch, Env};
+use rustc_target::spec::{Arch, CfgAbi};
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -1706,7 +1706,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
         hir::Safety::Unsafe,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
-    if cx.sess().target.env == Env::Pauthtest {
+    if cx.sess().target.cfg_abi == CfgAbi::Pauthtest {
         let attrs: Vec<&Attribute> =
             pauth_fn_attrs().iter().map(|name| llvm::CreateAttrString(cx.llcx, name)).collect();
         let (_ty, rust_try_fn) = rust_try;
