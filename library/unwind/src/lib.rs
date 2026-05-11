@@ -56,7 +56,12 @@ cfg_select! {
     }
 }
 
-#[cfg(target_env = "musl")]
+// For pauthtest the only supported unwinding mechanism is provided by libunwind.
+#[cfg(target_abi = "pauthtest")]
+#[link(name = "unwind")]
+unsafe extern "C" {}
+
+#[cfg(all(target_env = "musl", not(target_abi = "pauthtest")))]
 cfg_select! {
     all(feature = "llvm-libunwind", feature = "system-llvm-libunwind") => {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
@@ -93,11 +98,6 @@ cfg_select! {
         // Fallback: should not happen since hexagon defaults to llvm-libunwind
     }
 }
-
-// For pauthtest the only supported unwinding mechanism is provided by libunwind.
-#[cfg(target_env = "pauthtest")]
-#[link(name = "unwind")]
-unsafe extern "C" {}
 
 // This is the same as musl except that we default to using the system libunwind
 // instead of libgcc.

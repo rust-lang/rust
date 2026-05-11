@@ -409,15 +409,9 @@ mod imp {
 
         unsafe {
             // this way someone on any unix-y OS can check that all these compile
-            if cfg!(all(
-                target_os = "linux",
-                not(any(target_env = "musl", target_env = "pauthtest"))
-            )) {
+            if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
                 install_main_guard_linux(page_size)
-            } else if cfg!(all(
-                target_os = "linux",
-                any(target_env = "musl", target_env = "pauthtest")
-            )) {
+            } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 install_main_guard_linux_musl(page_size)
             } else if cfg!(target_os = "freebsd") {
                 #[cfg(not(target_os = "freebsd"))]
@@ -594,10 +588,7 @@ mod imp {
             let mut guardsize = 0;
             assert_eq!(libc::pthread_attr_getguardsize(attr.as_ptr(), &mut guardsize), 0);
             if guardsize == 0 {
-                if cfg!(all(
-                    target_os = "linux",
-                    any(target_env = "musl", target_env = "pauthtest")
-                )) {
+                if cfg!(all(target_os = "linux", target_env = "musl")) {
                     // musl versions before 1.1.19 always reported guard
                     // size obtained from pthread_attr_get_np as zero.
                     // Use page size as a fallback.
@@ -613,10 +604,7 @@ mod imp {
             let stackaddr = stackptr.addr();
             ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd", target_os = "hurd")) {
                 Some(stackaddr - guardsize..stackaddr)
-            } else if cfg!(all(
-                target_os = "linux",
-                any(target_env = "musl", target_env = "pauthtest")
-            )) {
+            } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", any(target_env = "gnu", target_env = "uclibc")))
             {
