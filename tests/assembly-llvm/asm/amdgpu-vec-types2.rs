@@ -34,9 +34,6 @@ pub struct i32x4([i32; 4]);
 pub struct f32x4([f32; 4]);
 
 #[repr(simd)]
-pub struct f64x4([f64; 4]);
-
-#[repr(simd)]
 pub struct i32x9([i32; 9]);
 #[repr(simd)]
 pub struct f32x9([f32; 9]);
@@ -72,7 +69,7 @@ macro_rules! impl_copy {
 }
 
 impl_copy!(
-    i32x4 f32x4 f64x4 i32x9 f32x9 i32x11 f32x11 i32x12 f32x12 i16x32 f16x32
+    i32x4 f32x4 i32x9 f32x9 i32x11 f32x11 i32x12 f32x12 i16x32 f16x32
     i32x16 f32x16 f32x32
 );
 
@@ -125,14 +122,6 @@ macro_rules! check_reg {
         }
     };
 }
-
-// gfx942-LABEL: vgpr_f64x4:
-// gfx942: #ASMSTART
-// gfx942: v_mfma_f64_16x16x4_f64 v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}
-// gfx942: #ASMEND
-#[cfg(gfx942)]
-check!(vgpr_f64x4 f64x4 vgpr256 x: f64 vgpr64, y: f64 vgpr64, z: f64x4 vgpr256,
-    "v_mfma_f64_16x16x4_f64");
 
 // gfx1030-LABEL: vgpr_i32x9:
 // gfx1030: #ASMSTART
@@ -201,14 +190,6 @@ check!(vgpr_f32x16 f32x16 vgpr512 x: f32x4 vgpr128, y: f32x4 vgpr128, z: f16x32 
 #[cfg(gfx942)]
 check!(vgpr_f32x32 f32x32 vgpr1024 x: f32 vgpr32, y: f32 vgpr32, "v_mfma_f32_32x32x1_2b_f32",
     ", v[0:31]");
-
-// gfx942-LABEL: v0_f64x4:
-// gfx942: #ASMSTART
-// gfx942: v_mfma_f64_16x16x4_f64 v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}}
-// gfx942: #ASMEND
-#[cfg(gfx942)]
-check_reg!(v0_f64x4 f64x4 "v[0:7]" x: f64 "v[8:9]", y: f64 "v[10:11]", z: f64x4 "v[16:23]",
-    "v_mfma_f64_16x16x4_f64");
 
 // gfx1030-LABEL: v0_i32x9:
 // gfx1030: #ASMSTART

@@ -19,7 +19,7 @@ use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
     PartialEq,
     PartialOrd,
     Hash,
-    rustc_macros::HashStable_Generic
+    rustc_macros::StableHash
 )]
 #[allow(non_camel_case_types)]
 pub enum AmdgpuInlineAsmRegClass {
@@ -69,10 +69,15 @@ impl AmdgpuInlineAsmRegClass {
         }
     }
 
+    /// Return size of the register class in bits
+    fn bits(self) -> u16 {
+        let (Self::Sgpr(i) | Self::Vgpr(i)) = self;
+        i
+    }
+
     /// Return size of the register class in bytes
     fn bytes(self) -> u16 {
-        let (Self::Sgpr(i) | Self::Vgpr(i)) = self;
-        i / 8
+        self.bits() / 8
     }
 
     /// Returns the name or `None` if this is not a valid register class
@@ -188,54 +193,44 @@ impl AmdgpuInlineAsmRegClass {
         None
     }
 
-    pub fn supported_types(
-        self,
-        _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
-        match self {
-            Self::Vgpr(16) => types! { _: I16, F16; },
-            Self::Sgpr(32) | Self::Vgpr(32) => types! { _: I16, I32, F16, F32,
-                VecI16(32 / 16),
-                VecF16(32 / 16);
-            },
-            Self::Sgpr(64) | Self::Vgpr(64) => types! {
-                _: I64, F64, VecI16(64 / 16), VecI32(64 / 32),
-                VecF16(64 / 16), VecF32(64 / 32);
-            },
-            Self::Sgpr(96) | Self::Vgpr(96) => types! { _: VecI32(96 / 32), VecF32(96 / 32); },
-            Self::Sgpr(128) | Self::Vgpr(128) => types! { _: I128,
-                VecI16(128 / 16), VecI32(128 / 32), VecI64(128 / 64),
-                VecF16(128 / 16), VecF32(128 / 32), VecF64(128 / 64);
-            },
-            Self::Vgpr(160) => types! { _: VecI32(160 / 32), VecF32(160 / 32); },
-            Self::Vgpr(192) => types! { _:
-                VecI32(192 / 32), VecI64(192 / 64),
-                VecF32(192 / 32), VecF64(192 / 64);
-            },
-            Self::Vgpr(224) => types! { _: VecI32(224 / 32), VecF32(224 / 32); },
-            Self::Sgpr(256) => types! { _:
-                VecI16(256 / 16), VecI32(256 / 32), VecI64(256 / 64),
-                VecF16(256 / 16), VecF32(256 / 32), VecF64(256 / 64);
-            },
-            Self::Vgpr(256) => types! { _:
-                VecI16(256 / 16), VecI32(256 / 32),
-                VecF16(256 / 16), VecF32(256 / 32), VecF64(256 / 64);
-            },
-            Self::Vgpr(288) => types! { _: VecI32(288 / 32), VecF32(288 / 32); },
-            Self::Vgpr(320) => types! { _: VecI32(320 / 32), VecF32(320 / 32); },
-            Self::Vgpr(352) => types! { _: VecI32(352 / 32), VecF32(352 / 32); },
-            Self::Vgpr(384) => types! { _: VecI32(384 / 32), VecF32(384 / 32); },
-            Self::Sgpr(512) => types! { _:
-                VecI16(512 / 16), VecI32(512 / 32), VecI64(512 / 64),
-                VecF16(512 / 16), VecF32(512 / 32), VecF64(512 / 64);
-            },
-            Self::Vgpr(512) => types! { _:
-                VecI16(512 / 16), VecI32(512 / 32),
-                VecF16(512 / 16), VecF32(512 / 32);
-            },
-            Self::Vgpr(1024) => types! { _: VecF32(1024 / 32); },
-            _ => panic!("Invalid amdgpu register class"),
+    pub fn supported_types(self, _arch: InlineAsmArch) -> Vec<(InlineAsmType, Option<Symbol>)> {
+        use InlineAsmType::*;
+        let mut types = Vec::new();
+        let mut add_types = |ts: &[_]| {
+            for t in ts {
+                types.push((*t, None))
+            }
+        };
+        let bits = self.bits() as u64;
+
+        // Primitive types
+        match bits {
+            16 => add_types(&[I16, F16]),
+            // Many 16-bit instructions take 32-bit registers, so allow 16-bit values
+            32 => add_types(&[I16, F16, I32, F32]),
+            64 => add_types(&[I64, F64]),
+            128 => add_types(&[I128]),
+            _ => {}
         }
+
+        // Vector types
+        if bits == 1024 {
+            add_types(&[VecF32(1024 / 32)]);
+        } else {
+            if bits > 16 && bits.is_power_of_two() {
+                // 32, 64, 128, 256, 512
+                add_types(&[VecI16(bits / 16), VecF16(bits / 16)]);
+            }
+            if bits > 32 {
+                // 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 512
+                add_types(&[VecI32(bits / 32), VecF32(bits / 32)]);
+            }
+        }
+
+        // The LLVM backend supports more vector types, but these are rather uncommon
+        // and not systematic, so we only list common types here.
+
+        types
     }
 
     /// The number of supported registers in this class.
@@ -282,7 +277,7 @@ impl AmdgpuInlineAsmRegClass {
     PartialEq,
     PartialOrd,
     Hash,
-    rustc_macros::HashStable_Generic
+    rustc_macros::StableHash
 )]
 enum AmdgpuRegStart {
     /// Low 16-bit of the register at this index
@@ -303,7 +298,7 @@ enum AmdgpuRegStart {
     PartialEq,
     PartialOrd,
     Hash,
-    rustc_macros::HashStable_Generic
+    rustc_macros::StableHash
 )]
 #[allow(non_camel_case_types)]
 pub struct AmdgpuInlineAsmReg {
