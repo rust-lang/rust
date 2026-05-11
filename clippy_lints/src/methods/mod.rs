@@ -4267,7 +4267,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub UNNECESSARY_GET_THEN_CHECK,
-    suspicious,
+    complexity,
     "calling `.get().is_some()` or `.get().is_none()` instead of `.contains()` or `.contains_key()`"
 }
 
