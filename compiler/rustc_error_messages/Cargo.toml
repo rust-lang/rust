@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 fluent-bundle = "0.16"
-icu_list = { version = "2.0", default-features = false, features = ["alloc"] }
-icu_locale = { version = "2.0", default-features = false }
+icu_list = { version = "2.2", default-features = false, features = ["alloc"] }
+icu_locale = { version = "2.2", default-features = false }
 intl-memoizer = "0.5.1"
 rustc_baked_icu_data = { path = "../rustc_baked_icu_data" }
 rustc_data_structures = { path = "../rustc_data_structures" }
