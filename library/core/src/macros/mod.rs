@@ -882,6 +882,14 @@ macro_rules! todo {
     };
 }
 
+/// TODO(offload): add docs
+#[macro_export]
+#[unstable(feature = "gpu_offload", issue = "131513")]
+#[allow_internal_unstable(core_intrinsics)]
+macro_rules! offload {
+    () => {};
+}
+
 /// Definitions of built-in macros.
 ///
 /// Most of the macro properties (stability, visibility, etc.) are taken from the source code here,
