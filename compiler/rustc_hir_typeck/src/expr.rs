@@ -20,7 +20,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{ConstContext, ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
@@ -44,8 +44,8 @@ use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
     FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn,
-    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
-    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    NoFieldOnVariant, QuestionMarkInConst, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
+    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -862,12 +862,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            self.emit_return_outside_of_fn_body(expr, ReturnLikeStatementKind::Return);
+            let expectation = if let Some(desugar_kind) = expr.span.desugaring_kind()
+                && desugar_kind == DesugaringKind::QuestionMark
+                && let Some(ccx) = self.tcx.hir_body_const_context(self.body_id)
+                && matches!(ccx, ConstContext::Const { .. } | ConstContext::Static(_))
+            {
+                let guaranteed = self
+                    .tcx
+                    .dcx()
+                    .emit_err(QuestionMarkInConst { span: expr.span, keyword: ccx.keyword_name() });
+                // Suppresses incorrect and unnecessary "E0283: type annotations needed"
+                ExpectHasType(Ty::new_error(self.tcx, guaranteed))
+            } else {
+                self.emit_return_outside_of_fn_body(expr, ReturnLikeStatementKind::Return);
+                NoExpectation
+            };
 
             if let Some(e) = expr_opt {
                 // We still have to type-check `e` (issue #86188), but calling
                 // `check_return_expr` only works inside fn bodies.
-                self.check_expr(e);
+                self.check_expr_with_expectation(e, expectation);
             }
         } else if let Some(e) = expr_opt {
             if self.ret_coercion_span.get().is_none() {
@@ -986,7 +1000,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// `expr` is the `return` (`become`) "statement", `kind` is the kind of the statement
     /// either `Return` or `Become`.
-    fn emit_return_outside_of_fn_body(&self, expr: &hir::Expr<'_>, kind: ReturnLikeStatementKind) {
+    fn emit_return_outside_of_fn_body(
+        &self,
+        expr: &hir::Expr<'_>,
+        kind: ReturnLikeStatementKind,
+    ) -> ErrorGuaranteed {
         let mut err = ReturnStmtOutsideOfFnBody {
             span: expr.span,
             encl_body_span: None,
@@ -1027,7 +1045,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.encl_fn_span = Some(*encl_fn_span);
         }
 
-        self.dcx().emit_err(err);
+        self.dcx().emit_err(err)
     }
 
     fn point_at_return_for_opaque_ty_error(
