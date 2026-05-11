@@ -724,7 +724,7 @@ impl<'a> CrateLocator<'a> {
             return None;
         }
 
-        let hash = header.hash;
+        let hash = metadata.get_crate_hash();
         if let Some(expected_hash) = self.hash {
             if hash != expected_hash {
                 info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
