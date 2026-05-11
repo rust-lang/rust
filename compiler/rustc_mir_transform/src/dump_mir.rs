@@ -25,11 +25,11 @@ pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
     match tcx.output_filenames(()).path(OutputType::Mir) {
         OutFileName::Stdout => {
             let mut f = io::stdout();
-            write_mir_pretty(tcx, None, &mut f)?;
+            write_mir_pretty(tcx, &mut f)?;
         }
         OutFileName::Real(path) => {
             let mut f = File::create_buffered(&path)?;
-            write_mir_pretty(tcx, None, &mut f)?;
+            write_mir_pretty(tcx, &mut f)?;
             if tcx.sess.opts.json_artifact_notifications {
                 tcx.dcx().emit_artifact_notification(&path, "mir");
             }

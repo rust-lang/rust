@@ -2073,7 +2073,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Even if this returns `true`, constness may still be unstable!
     #[inline]
-    pub fn is_const_fn(self, def_id: DefId) -> bool {
+    pub fn is_const_fn(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        let def_id = def_id.into_query_key();
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
