@@ -5914,14 +5914,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x4_t, '']
+      - [float32x4_t, float32x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].laneq_nox}"
@@ -5938,14 +5937,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x8_t, '']
+      - [float16x8_t, float16x8_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot90_laneq}"
@@ -5960,14 +5958,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x4_t, '']
+      - [float32x4_t, float32x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot90_laneq}"
@@ -5984,14 +5981,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x8_t, '']
+      - [float16x8_t, float16x8_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot90_lane}"
@@ -6006,14 +6002,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x2_t, '']
+      - [float32x4_t, float32x2_t, 'q']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpret_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot90_lane}"
@@ -6030,14 +6025,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x4_t, '']
+      - [float16x8_t, float16x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpret_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
 
   - name: "vcmla{neon_type.rot180}"
@@ -6095,14 +6089,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x4_t, '']
+      - [float32x4_t, float32x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot180_laneq}"
@@ -6119,16 +6112,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x8_t,
-        '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]'
-        ]
+      - [float16x4_t, float16x8_t, '']
+      - [float16x8_t, float16x8_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot180_lane}"
@@ -6143,14 +6133,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x2_t, '']
+      - [float32x4_t, float32x2_t, 'q']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpret_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot180_lane}"
@@ -6167,14 +6156,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x4_t, '']
+      - [float16x8_t, float16x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpret_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot270_laneq}"
@@ -6189,14 +6177,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x4_t, '']
+      - [float32x4_t, float32x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot270_laneq}"
@@ -6213,14 +6200,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x8_t, '']
+      - [float16x8_t, float16x8_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpretq_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_laneq_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].lane_nox}"
@@ -6235,14 +6221,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x2_t, '']
+      - [float32x4_t, float32x2_t, 'q']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpret_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
 
 
@@ -6260,14 +6245,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x4_t, '']
+      - [float16x8_t, float16x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let:
-          - c
-          - "{neon_type[0]}"
-          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - Let: [c, {FnCall: [vreinterpret_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot270_lane}"
@@ -6282,11 +6266,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float32x2_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float32x2_t, float32x2_t, '']
+      - [float32x4_t, float32x2_t, 'q']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
-      - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]}]
+      - Let: [c, {FnCall: [vreinterpret_u64_f32, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u64', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f32_u64', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
 
   - name: "vcmla{neon_type[0].rot270_lane}"
@@ -6303,11 +6289,13 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
-      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x4_t, float16x4_t, '']
+      - [float16x8_t, float16x4_t, 'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
-      - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]}]
+      - Let: [c, {FnCall: [vreinterpret_u32_f16, [c]]}]
+      - Let: [c, {FnCall: ['vdup{type[2]}_lane_u32', [c], [LANE]]}]
+      - Let: [c, {FnCall: ['vreinterpret{type[2]}_f16_u32', [c]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
 
   - name: "vmax{neon_type.no}"

@@ -3001,19 +3001,10 @@ pub fn vcmla_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdup_lane_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_lane_f16)"]
@@ -3030,23 +3021,10 @@ pub fn vcmlaq_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdupq_lane_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_lane_f32)"]
@@ -3061,10 +3039,10 @@ pub fn vcmla_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x2_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdup_lane_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_lane_f32)"]
@@ -3079,19 +3057,10 @@ pub fn vcmlaq_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x4_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdupq_lane_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_laneq_f16)"]
@@ -3108,19 +3077,10 @@ pub fn vcmla_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdup_laneq_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_laneq_f16)"]
@@ -3137,23 +3097,10 @@ pub fn vcmlaq_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdupq_laneq_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_laneq_f32)"]
@@ -3168,10 +3115,10 @@ pub fn vcmla_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdup_laneq_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_laneq_f32)"]
@@ -3186,19 +3133,10 @@ pub fn vcmlaq_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdupq_laneq_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_f16)"]
@@ -3299,19 +3237,10 @@ pub fn vcmla_rot180_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_rot180_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdup_lane_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_rot180_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_lane_f16)"]
@@ -3328,23 +3257,10 @@ pub fn vcmlaq_rot180_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot180_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdupq_lane_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_rot180_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_lane_f32)"]
@@ -3359,10 +3275,10 @@ pub fn vcmla_rot180_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x2_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_rot180_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdup_lane_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_rot180_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_lane_f32)"]
@@ -3377,19 +3293,10 @@ pub fn vcmlaq_rot180_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x4_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot180_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdupq_lane_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_rot180_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_laneq_f16)"]
@@ -3406,19 +3313,10 @@ pub fn vcmla_rot180_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_rot180_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdup_laneq_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_rot180_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_laneq_f16)"]
@@ -3435,23 +3333,10 @@ pub fn vcmlaq_rot180_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot180_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdupq_laneq_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_rot180_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_laneq_f32)"]
@@ -3466,10 +3351,10 @@ pub fn vcmla_rot180_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_rot180_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdup_laneq_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_rot180_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_laneq_f32)"]
@@ -3484,19 +3369,10 @@ pub fn vcmlaq_rot180_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot180_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdupq_laneq_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_rot180_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_f16)"]
@@ -3597,19 +3473,10 @@ pub fn vcmla_rot270_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_rot270_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdup_lane_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_rot270_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_lane_f16)"]
@@ -3626,23 +3493,10 @@ pub fn vcmlaq_rot270_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot270_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdupq_lane_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_rot270_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_lane_f32)"]
@@ -3657,10 +3511,10 @@ pub fn vcmla_rot270_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x2_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_rot270_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdup_lane_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_rot270_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_lane_f32)"]
@@ -3675,19 +3529,10 @@ pub fn vcmlaq_rot270_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x4_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot270_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdupq_lane_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_rot270_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_laneq_f16)"]
@@ -3704,19 +3549,10 @@ pub fn vcmla_rot270_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_rot270_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdup_laneq_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_rot270_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_laneq_f16)"]
@@ -3733,23 +3569,10 @@ pub fn vcmlaq_rot270_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot270_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdupq_laneq_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_rot270_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_laneq_f32)"]
@@ -3764,10 +3587,10 @@ pub fn vcmla_rot270_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_rot270_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdup_laneq_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_rot270_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_laneq_f32)"]
@@ -3782,19 +3605,10 @@ pub fn vcmlaq_rot270_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot270_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdupq_laneq_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_rot270_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_f16)"]
@@ -3895,19 +3709,10 @@ pub fn vcmla_rot90_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_rot90_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdup_lane_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_rot90_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_lane_f16)"]
@@ -3924,23 +3729,10 @@ pub fn vcmlaq_rot90_lane_f16<const LANE: i32>(
     c: float16x4_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot90_f16(a, b, c)
-    }
+    let c = vreinterpret_u32_f16(c);
+    let c = vdupq_lane_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_rot90_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_lane_f32)"]
@@ -3955,10 +3747,10 @@ pub fn vcmla_rot90_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x2_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_rot90_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdup_lane_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_rot90_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_lane_f32)"]
@@ -3973,19 +3765,10 @@ pub fn vcmlaq_rot90_lane_f32<const LANE: i32>(
     c: float32x2_t,
 ) -> float32x4_t {
     static_assert!(LANE == 0);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot90_f32(a, b, c)
-    }
+    let c = vreinterpret_u64_f32(c);
+    let c = vdupq_lane_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_rot90_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_laneq_f16)"]
@@ -4002,19 +3785,10 @@ pub fn vcmla_rot90_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmla_rot90_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdup_laneq_u32::<LANE>(c);
+    let c = vreinterpret_f16_u32(c);
+    vcmla_rot90_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_laneq_f16)"]
@@ -4031,23 +3805,10 @@ pub fn vcmlaq_rot90_laneq_f16<const LANE: i32>(
     c: float16x8_t,
 ) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    unsafe {
-        let c: float16x8_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot90_f16(a, b, c)
-    }
+    let c = vreinterpretq_u32_f16(c);
+    let c = vdupq_laneq_u32::<LANE>(c);
+    let c = vreinterpretq_f16_u32(c);
+    vcmlaq_rot90_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_laneq_f32)"]
@@ -4062,10 +3823,10 @@ pub fn vcmla_rot90_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x2_t = simd_shuffle!(c, c, [2 * LANE as u32, 2 * LANE as u32 + 1]);
-        vcmla_rot90_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdup_laneq_u64::<LANE>(c);
+    let c = vreinterpret_f32_u64(c);
+    vcmla_rot90_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_laneq_f32)"]
@@ -4080,19 +3841,10 @@ pub fn vcmlaq_rot90_laneq_f32<const LANE: i32>(
     c: float32x4_t,
 ) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    unsafe {
-        let c: float32x4_t = simd_shuffle!(
-            c,
-            c,
-            [
-                2 * LANE as u32,
-                2 * LANE as u32 + 1,
-                2 * LANE as u32,
-                2 * LANE as u32 + 1
-            ]
-        );
-        vcmlaq_rot90_f32(a, b, c)
-    }
+    let c = vreinterpretq_u64_f32(c);
+    let c = vdupq_laneq_u64::<LANE>(c);
+    let c = vreinterpretq_f32_u64(c);
+    vcmlaq_rot90_f32(a, b, c)
 }
 #[doc = "Join two smaller vectors into a single larger vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcombine_f64)"]
