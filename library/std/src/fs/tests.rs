@@ -1,10 +1,7 @@
 use rand::RngCore;
 
-#[cfg(not(miri))]
 use super::Dir;
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError};
-#[cfg(not(miri))]
-use crate::io;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -20,7 +17,7 @@ use crate::path::Path;
 use crate::sync::Arc;
 use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
-use crate::{assert_matches, env, str, thread};
+use crate::{assert_matches, env, io, str, thread};
 
 macro_rules! check {
     ($e:expr) => {
@@ -2496,7 +2493,7 @@ fn test_fs_set_times_nofollow() {
 
 #[test]
 // FIXME: libc calls fail on miri
-#[cfg(not(miri))]
+#[cfg_attr(miri, ignore)]
 fn test_dir_smoke_test() {
     let tmpdir = tmpdir();
     let dir = Dir::open(tmpdir.path());
@@ -2505,7 +2502,7 @@ fn test_dir_smoke_test() {
 
 #[test]
 // FIXME: libc calls fail on miri
-#[cfg(not(miri))]
+#[cfg_attr(miri, ignore)]
 fn test_dir_read_file() {
     let tmpdir = tmpdir();
     let mut f = check!(File::create(tmpdir.join("foo.txt")));
