@@ -6,6 +6,7 @@
 
 mod conversions;
 mod ids;
+mod implied_bounds;
 mod import_finder;
 
 use std::cell::RefCell;
@@ -350,7 +351,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 80);
     static_assert_size!(GenericArgs, 104);
     static_assert_size!(GenericBound, 72);
-    static_assert_size!(GenericParamDef, 136);
+    static_assert_size!(GenericParamDef, 160);
     static_assert_size!(Impl, 304);
     static_assert_size!(ItemSummary, 32);
     static_assert_size!(PolyTrait, 64);
