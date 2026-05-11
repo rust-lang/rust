@@ -501,14 +501,19 @@ fn parse_path(psess: &ParseSess, path_str: &str) -> Result<Path, ()> {
             return Err(());
         }
     };
-    parser
-        .parse_path(PathStyle::Type)
-        .inspect(|p| {
-            p.segments.iter().for_each(|s| {
-                assert!(s.args.is_none(), "path must have no generics, but has {:?}", s.args)
-            })
-        })
-        .map_err(|err| err.cancel())
+    let path = parser.parse_path(PathStyle::Type).map_err(|e| e.cancel())?;
+    for s in &path.segments {
+        if let Some(args) = &s.args {
+            // FIXME: angle-bracketed args are stripped earlier, but we don't handle parenthesized
+            //        --> what should we do here?
+            assert!(
+                !args.is_angle_bracketed(),
+                "path must have no angle-bracketed generics, but has {args:?}"
+            );
+            return Err(());
+        }
+    }
+    Ok(path)
 }
 
 /// Given a primitive type, try to resolve an associated item.
