@@ -27,7 +27,7 @@ use rustc_errors::{
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
+use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{AssocTag, DelegationInfo, Visibility};
 use rustc_middle::{bug, span_bug};
@@ -4780,8 +4780,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
                     let item_name = path.last().unwrap().ident;
-                    let traits = self.traits_in_scope(item_name, ns);
-                    self.r.trait_map.insert(node_id, traits);
+                    self.record_traits_in_scope(node_id, item_name);
                 }
 
                 if PrimTy::from_name(path[0].ident.name).is_some() {
@@ -5382,13 +5381,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 // we need to add any trait methods we find that match the
                 // field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.traits_in_scope(ident, ValueNS);
-                self.r.trait_map.insert(expr.id, traits);
+                self.record_traits_in_scope(expr.id, ident);
             }
             ExprKind::MethodCall(ref call) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
-                let traits = self.traits_in_scope(call.seg.ident, ValueNS);
-                self.r.trait_map.insert(expr.id, traits);
+                self.record_traits_in_scope(expr.id, call.seg.ident);
             }
             _ => {
                 // Nothing to do.
@@ -5396,13 +5393,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn traits_in_scope(&mut self, ident: Ident, ns: Namespace) -> &'tcx [TraitCandidate<'tcx>] {
-        self.r.traits_in_scope(
+    fn record_traits_in_scope(&mut self, node_id: NodeId, ident: Ident) {
+        let traits = self.r.traits_in_scope(
             self.current_trait_ref.as_ref().map(|(module, _)| *module),
             &self.parent_scope,
             ident.span,
-            Some((ident.name, ns)),
-        )
+            Some((ident.name, ValueNS)),
+        );
+        self.r.trait_map.insert(node_id, traits);
     }
 
     fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> Option<Res> {
