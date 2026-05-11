@@ -1,0 +1,22 @@
+// MIR for `eq_ipv6` after PreCodegen
+
+fn eq_ipv6(_1: &[u16; 8], _2: &[u16; 8]) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    let mut _3: u128;
+    let mut _4: u128;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &[u16; 8]>::eq) {
+        scope 2 (inlined array::equality::<impl PartialEq for [u16; 8]>::eq) {
+            scope 3 (inlined <u16 as array::equality::SpecArrayEq<u16, 8>>::spec_eq) {
+            }
+        }
+    }
+
+    bb0: {
+        _3 = copy (*_1) as u128 (Transmute);
+        _4 = copy (*_2) as u128 (Transmute);
+        _0 = Eq(move _3, move _4);
+        return;
+    }
+}
