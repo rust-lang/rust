@@ -1665,9 +1665,11 @@ impl Enum {
 
     /// The type of the enum variant bodies.
     pub fn variant_body_ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let interner = DbInterner::new_no_crate(db);
+        let krate = self.id.lookup(db).container.krate(db);
+        let interner = DbInterner::new_with(db, krate);
         Type::new_for_crate(
-            self.id.lookup(db).container.krate(db),
+            db,
+            krate,
             match EnumSignature::variant_body_type(db, self.id) {
                 layout::IntegerType::Pointer(sign) => match sign {
                     true => Ty::new_int(interner, rustc_type_ir::IntTy::Isize),
@@ -2267,8 +2269,11 @@ impl DefWithBody {
                         mir::MirSpan::Unknown => continue,
                     };
                     acc.push(
-                        MovedOutOfRef { ty: Type::new_for_crate(krate, moof.ty.as_ref()), span }
-                            .into(),
+                        MovedOutOfRef {
+                            ty: Type::new_for_crate(db, krate, moof.ty.as_ref()),
+                            span,
+                        }
+                        .into(),
                     )
                 }
                 let mol = &borrowck_result.mutability_of_locals;
@@ -3485,7 +3490,7 @@ impl BuiltinType {
     pub fn ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
         let core = Crate::core(db).map(|core| core.id).unwrap_or_else(|| all_crates(db)[0]);
         let interner = DbInterner::new_no_crate(db);
-        Type::new_for_crate(core, Ty::from_builtin_type(interner, self.inner))
+        Type::new_for_crate(db, core, Ty::from_builtin_type(interner, self.inner))
     }
 
     pub fn name(self) -> Name {
@@ -5534,8 +5539,13 @@ impl<'db> Type<'db> {
         Type { env: environment, ty }
     }
 
-    pub(crate) fn new_for_crate(krate: base_db::Crate, ty: Ty<'db>) -> Self {
-        Type { env: empty_param_env(krate), ty }
+    pub(crate) fn new_for_crate(
+        db: &'db dyn HirDatabase,
+        krate: base_db::Crate,
+        ty: Ty<'db>,
+    ) -> Self {
+        let interner = DbInterner::new_with(db, krate);
+        Type { env: ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate }, ty }
     }
 
     fn new(db: &'db dyn HirDatabase, lexical_env: impl HasResolver, ty: Ty<'db>) -> Self {
@@ -5588,15 +5598,18 @@ impl<'db> Type<'db> {
         Type::new(db, def, ty.instantiate(interner, args).skip_norm_wip())
     }
 
-    pub fn new_slice(ty: Self) -> Self {
-        let interner = DbInterner::conjure();
+    pub fn new_slice(db: &'db dyn HirDatabase, ty: Self) -> Self {
+        let interner = DbInterner::new_no_crate(db);
         Type { env: ty.env, ty: Ty::new_slice(interner, ty.ty) }
     }
 
-    pub fn new_tuple(krate: base_db::Crate, tys: &[Self]) -> Self {
+    pub fn new_tuple(db: &'db dyn HirDatabase, krate: base_db::Crate, tys: &[Self]) -> Self {
         let tys = tys.iter().map(|it| it.ty);
-        let interner = DbInterner::conjure();
-        Type { env: empty_param_env(krate), ty: Ty::new_tup_from_iter(interner, tys) }
+        let interner = DbInterner::new_with(db, krate);
+        Type {
+            env: ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate },
+            ty: Ty::new_tup_from_iter(interner, tys),
+        }
     }
 
     pub fn is_unit(&self) -> bool {
@@ -5708,8 +5721,8 @@ impl<'db> Type<'db> {
         Some((self.derived(ty), m))
     }
 
-    pub fn add_reference(&self, mutability: Mutability) -> Self {
-        let interner = DbInterner::conjure();
+    pub fn add_reference(&self, db: &'db dyn HirDatabase, mutability: Mutability) -> Self {
+        let interner = DbInterner::new_no_crate(db);
         let ty_mutability = match mutability {
             Mutability::Shared => hir_ty::next_solver::Mutability::Not,
             Mutability::Mut => hir_ty::next_solver::Mutability::Mut,
@@ -6012,9 +6025,9 @@ impl<'db> Type<'db> {
         }
     }
 
-    pub fn fingerprint_for_trait_impl(&self) -> Option<SimplifiedType> {
+    pub fn fingerprint_for_trait_impl(&self, db: &'db dyn HirDatabase) -> Option<SimplifiedType> {
         fast_reject::simplify_type(
-            DbInterner::conjure(),
+            DbInterner::new_no_crate(db),
             self.ty,
             fast_reject::TreatParams::AsRigid,
         )
@@ -7430,9 +7443,10 @@ fn param_env_from_resolver<'db>(
     resolver: &Resolver<'_>,
 ) -> ParamEnvAndCrate<'db> {
     ParamEnvAndCrate {
-        param_env: resolver
-            .generic_def()
-            .map_or_else(ParamEnv::empty, |generic_def| db.trait_environment(generic_def.into())),
+        param_env: resolver.generic_def().map_or_else(
+            || ParamEnv::empty(DbInterner::new_no_crate(db)),
+            |generic_def| db.trait_environment(generic_def.into()),
+        ),
         krate: resolver.krate(),
     }
 }
@@ -7449,10 +7463,6 @@ fn body_param_env_from_has_crate<'db>(
     id: impl hir_def::HasModule + Into<ExpressionStoreOwnerId> + Copy,
 ) -> ParamEnvAndCrate<'db> {
     ParamEnvAndCrate { param_env: db.trait_environment(id.into()), krate: id.krate(db) }
-}
-
-fn empty_param_env<'db>(krate: base_db::Crate) -> ParamEnvAndCrate<'db> {
-    ParamEnvAndCrate { param_env: ParamEnv::empty(), krate }
 }
 
 // FIXME: We probably don't want to expose this.

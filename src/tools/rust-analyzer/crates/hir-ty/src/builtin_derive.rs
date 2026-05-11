@@ -193,7 +193,7 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
             else {
                 // Malformed derive.
                 return GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
-                    Clauses::default().store(),
+                    Clauses::empty(interner).store(),
                 ));
             };
             let duplicated_bounds =

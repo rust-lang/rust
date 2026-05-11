@@ -841,8 +841,8 @@ pub(crate) fn convert_reference_type<'db>(
 }
 
 fn could_deref_to_target(ty: &hir::Type<'_>, target: &hir::Type<'_>, db: &dyn HirDatabase) -> bool {
-    let ty_ref = ty.add_reference(hir::Mutability::Shared);
-    let target_ref = target.add_reference(hir::Mutability::Shared);
+    let ty_ref = ty.add_reference(db, hir::Mutability::Shared);
+    let target_ref = target.add_reference(db, hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 
@@ -870,7 +870,7 @@ fn handle_as_ref_slice(
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
-    let slice_type = hir::Type::new_slice(type_argument);
+    let slice_type = hir::Type::new_slice(db, type_argument);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&slice_type)).then_some((
         ReferenceConversionType::AsRefSlice,

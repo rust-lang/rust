@@ -2438,8 +2438,8 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 };
                 let args =
                     path_ctx.substs_from_path_segment(it.into(), true, None, false, node.into());
+                let interner = path_ctx.interner();
                 drop(ctx);
-                let interner = DbInterner::conjure();
                 let ty = self.db.ty(it.into()).instantiate(interner, args).skip_norm_wip();
                 let ty = self.insert_type_vars(ty);
 

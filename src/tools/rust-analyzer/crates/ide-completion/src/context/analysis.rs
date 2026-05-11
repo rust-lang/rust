@@ -641,7 +641,7 @@ fn expected_type_and_name<'db>(
             }
             for _ in refs_level..0 {
                 cov_mark::hit!(expected_type_fn_param_deref);
-                ty = ty.add_reference(hir::Mutability::Shared);
+                ty = ty.add_reference(sema.db, hir::Mutability::Shared);
             }
             ty
         }
