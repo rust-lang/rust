@@ -25,11 +25,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// let foo: String = String::new();
+    /// let foo: u64 = u64::MAX;
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let foo = String::new();
+    /// let foo = u64::MAX;
     /// ```
     #[clippy::version = "1.72.0"]
     pub REDUNDANT_TYPE_ANNOTATIONS,

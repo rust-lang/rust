@@ -4,7 +4,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |     T: Z<'a, u16>,
    |        ^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |     type W = str;
    |              ^^^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
@@ -38,7 +38,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |     T: Z<'a, u16>,
    |        ^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
@@ -56,7 +56,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |         <T::W>::clone(x);
    |          ^^^^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z::W`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
@@ -73,7 +73,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |         <T::W>::clone(x);
    |         ^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
@@ -90,7 +90,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |         <T::W>::clone(x);
    |         ^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
@@ -107,7 +107,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |     1u16.h("abc");
    |          ^ the trait `Clone` is not implemented for `str`
    |
-help: the trait `Clone` is implemented for `String`
+help: the trait `Clone` is implemented for `String<A>`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 note: required by a bound in `Z::h`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35

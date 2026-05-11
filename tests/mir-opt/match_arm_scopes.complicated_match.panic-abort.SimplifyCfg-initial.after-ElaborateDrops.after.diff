@@ -9,8 +9,8 @@
       let mut _4: &bool;
       let _5: bool;
       let _6: &bool;
-      let _7: std::string::String;
-      let _8: &std::string::String;
+      let _7: std::string::generic::String;
+      let _8: &std::string::generic::String;
       let mut _9: bool;
       let mut _10: bool;
       let mut _11: !;
@@ -18,7 +18,7 @@
       let mut _13: bool;
       let mut _14: !;
       let _15: bool;
-      let _16: std::string::String;
+      let _16: std::string::generic::String;
       scope 1 {
           debug a => _5;
           debug a => _6;
@@ -62,7 +62,7 @@
           StorageLive(_15);
           _15 = copy (_2.1: bool);
           StorageLive(_16);
-          _16 = move (_2.2: std::string::String);
+          _16 = move (_2.2: std::string::generic::String);
 -         goto -> bb20;
 +         goto -> bb17;
       }
@@ -72,7 +72,7 @@
           StorageLive(_15);
           _15 = copy (_2.1: bool);
           StorageLive(_16);
-          _16 = move (_2.2: std::string::String);
+          _16 = move (_2.2: std::string::generic::String);
 -         goto -> bb20;
 +         goto -> bb17;
       }
@@ -82,7 +82,7 @@
           StorageLive(_6);
           _6 = &(_2.0: bool);
           StorageLive(_8);
-          _8 = &(_2.2: std::string::String);
+          _8 = &(_2.2: std::string::generic::String);
 -         _3 = &fake shallow (_2.0: bool);
 -         _4 = &fake shallow (_2.1: bool);
           StorageLive(_9);
@@ -97,7 +97,7 @@
           StorageLive(_6);
           _6 = &(_2.1: bool);
           StorageLive(_8);
-          _8 = &(_2.2: std::string::String);
+          _8 = &(_2.2: std::string::generic::String);
 -         _3 = &fake shallow (_2.0: bool);
 -         _4 = &fake shallow (_2.1: bool);
           StorageLive(_12);
@@ -141,7 +141,7 @@
           StorageLive(_5);
           _5 = copy (_2.0: bool);
           StorageLive(_7);
-          _7 = move (_2.2: std::string::String);
+          _7 = move (_2.2: std::string::generic::String);
 -         goto -> bb10;
 +         goto -> bb7;
       }
@@ -183,7 +183,7 @@
           StorageLive(_5);
           _5 = copy (_2.1: bool);
           StorageLive(_7);
-          _7 = move (_2.2: std::string::String);
+          _7 = move (_2.2: std::string::generic::String);
 -         goto -> bb10;
 +         goto -> bb7;
       }

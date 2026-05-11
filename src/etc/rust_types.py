@@ -39,7 +39,7 @@ class RustType(Enum):
     StdPathBuf = 31
 
 
-STD_STRING_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)String$")
+STD_STRING_REGEX = re.compile(r"^(alloc::([a-z_]+::)+)String<.+>$")
 STD_STR_REGEX = re.compile(r"^&(mut )?str$")
 STD_SLICE_REGEX = re.compile(r"^&(mut )?\[.+\]$")
 STD_OS_STRING_REGEX = re.compile(r"^(std::ffi::([a-z_]+::)+)OsString$")

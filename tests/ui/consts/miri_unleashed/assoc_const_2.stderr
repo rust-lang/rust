@@ -2,7 +2,7 @@ error[E0080]: attempt to divide `100_u32` by zero
   --> $DIR/assoc_const_2.rs:11:20
    |
 LL |     const F: u32 = 100 / U::X;
-   |                    ^^^^^^^^^^ evaluation of `<std::string::String as Bar<std::string::String>>::F` failed here
+   |                    ^^^^^^^^^^ evaluation of `<std::string::generic::String as Bar<std::string::generic::String>>::F` failed here
 
 note: erroneous constant encountered
   --> $DIR/assoc_const_2.rs:28:13

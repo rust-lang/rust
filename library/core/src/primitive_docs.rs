@@ -186,7 +186,7 @@ mod prim_bool {}
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
-/// [`String`]: ../std/string/struct.String.html
+/// [`String`]: ../std/string/type.String.html
 /// [`FromStr`]: str::FromStr
 ///
 /// # `!` and traits
@@ -407,7 +407,7 @@ impl ! {}
 /// assert_eq!(5, s.len() * size_of::<u8>());
 /// ```
 ///
-/// [`String`]: ../std/string/struct.String.html
+/// [`String`]: ../std/string/type.String.html
 ///
 /// As always, remember that a human intuition for 'character' might not map to
 /// Unicode's definitions. For example, despite looking similar, the 'é'

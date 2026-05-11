@@ -1007,7 +1007,7 @@ The `on` filter accepts `all`, `any` and `not` predicates similar to the `cfg` a
 
 ```rust,ignore
 #[rustc_on_unimplemented(on(
-    all(Self = "&str", T = "alloc::string::String"),
+    all(Self = "&str", T = "alloc::string::generic::String<A>"),
     note = "you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
 ))]
 pub trait From<T>: Sized {

@@ -19,7 +19,7 @@ error: trait bound str: std::marker::Sized does not depend on any type or lifeti
 LL |     str: Sized,
    |          ^^^^^
 
-error: trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
+error: trait bound std::string::generic::String: std::ops::Neg does not depend on any type or lifetime parameters
   --> tests/ui/crashes/ice-3969.rs:41:13
    |
 LL |     String: ::std::ops::Neg<Output = String>,

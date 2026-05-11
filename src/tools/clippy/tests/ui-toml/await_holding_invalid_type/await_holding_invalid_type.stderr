@@ -1,4 +1,4 @@
-error: holding a disallowed type across an await point `std::string::String`
+error: holding a disallowed type across an await point `std::string::generic::String`
   --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:6:9
    |
 LL |     let _x = String::from("hello");
@@ -14,7 +14,7 @@ error: holding a disallowed type across an await point `std::net::Ipv4Addr`
 LL |     let x = Ipv4Addr::new(127, 0, 0, 1);
    |         ^
 
-error: holding a disallowed type across an await point `std::string::String`
+error: holding a disallowed type across an await point `std::string::generic::String`
   --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:36:13
    |
 LL |         let _x = String::from("hi!");

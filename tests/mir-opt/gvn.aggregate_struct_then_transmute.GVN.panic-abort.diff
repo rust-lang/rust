@@ -12,10 +12,10 @@
       let mut _7: u16;
       let mut _8: MyId;
       let mut _10: u16;
-      let mut _11: std::marker::PhantomData<std::string::String>;
+      let mut _11: std::marker::PhantomData<std::string::generic::String>;
       let _12: ();
       let mut _13: u16;
-      let mut _14: TypedId<std::string::String>;
+      let mut _14: TypedId<std::string::generic::String>;
       let mut _16: u16;
       let _17: ();
       let mut _18: u16;
@@ -54,7 +54,7 @@
       let mut _58: *const i32;
       scope 1 {
           debug a => _3;
-          let _9: TypedId<std::string::String>;
+          let _9: TypedId<std::string::generic::String>;
           scope 2 {
               debug b => _9;
               let _15: std::result::Result<Never, u16>;

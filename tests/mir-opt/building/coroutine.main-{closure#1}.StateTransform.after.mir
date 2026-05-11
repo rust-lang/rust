@@ -2,7 +2,7 @@
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
         _s0: CoroutineSavedTy {
-            ty: std::string::String,
+            ty: std::string::generic::String<std::alloc::Global>,
             source_info: SourceInfo {
                 span: $DIR/coroutine.rs:25:6: 25:9 (#0),
                 scope: scope[0],
@@ -23,19 +23,19 @@
 } */
 
 fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
-    debug arg => (((*_18) as variant#4).0: std::string::String);
-    let mut _0: std::ops::CoroutineState<(&str, std::string::String, &std::panic::Location<'_>), ()>;
-    let _3: std::string::String;
-    let mut _4: (&str, std::string::String, &std::panic::Location<'_>);
-    let mut _5: std::string::String;
-    let mut _6: &std::string::String;
+    debug arg => (((*_18) as variant#4).0: std::string::generic::String);
+    let mut _0: std::ops::CoroutineState<(&str, std::string::generic::String, &std::panic::Location<'_>), ()>;
+    let _3: std::string::generic::String;
+    let mut _4: (&str, std::string::generic::String, &std::panic::Location<'_>);
+    let mut _5: std::string::generic::String;
+    let mut _6: &std::string::generic::String;
     let mut _7: &std::panic::Location<'_>;
-    let _8: std::string::String;
-    let mut _9: (&str, std::string::String, &std::panic::Location<'_>);
+    let _8: std::string::generic::String;
+    let mut _9: (&str, std::string::generic::String, &std::panic::Location<'_>);
     let mut _10: &str;
     let _11: &str;
-    let mut _12: std::string::String;
-    let mut _13: &std::string::String;
+    let mut _12: std::string::generic::String;
+    let mut _13: &std::string::generic::String;
     let mut _14: &std::panic::Location<'_>;
     let _15: &std::panic::Location<'_>;
     let mut _16: ();
@@ -49,12 +49,12 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
     }
 
     bb1: {
-        (((*_18) as variant#4).0: std::string::String) = move _2;
+        (((*_18) as variant#4).0: std::string::generic::String) = move _2;
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
-        _6 = &(((*_18) as variant#4).0: std::string::String);
+        _6 = &(((*_18) as variant#4).0: std::string::generic::String);
         _5 = <String as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
     }
 
@@ -98,7 +98,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         _10 = &(*_11);
         StorageLive(_12);
         StorageLive(_13);
-        _13 = &(((*_18) as variant#4).0: std::string::String);
+        _13 = &(((*_18) as variant#4).0: std::string::generic::String);
         _12 = <String as Clone>::clone(move _13) -> [return: bb8, unwind unreachable];
     }
 
@@ -142,7 +142,7 @@ fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:25:5: 25:18}>, _2
         StorageDead(_11);
         StorageDead(_8);
         _16 = const ();
-        drop((((*_18) as variant#4).0: std::string::String)) -> [return: bb14, unwind unreachable];
+        drop((((*_18) as variant#4).0: std::string::generic::String)) -> [return: bb14, unwind unreachable];
     }
 
     bb14: {

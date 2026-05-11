@@ -34,7 +34,6 @@ LL |         .map_err(|_| ())?;
              From<&String>
              From<&mut str>
              From<&str>
-             From<Box<str>>
              From<Cow<'_, str>>
              From<char>
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`

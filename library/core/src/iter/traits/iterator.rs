@@ -2067,7 +2067,7 @@ pub const trait Iterator {
     /// ```
     ///
     /// [`iter`]: Iterator::next
-    /// [`String`]: ../../std/string/struct.String.html
+    /// [`String`]: ../../std/string/type.String.html
     /// [`char`]: type@char
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
