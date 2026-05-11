@@ -16,7 +16,8 @@ RUN wget https://mirrors.edge.kernel.org/pub/tools/llvm/files/llvm-22.1.4-x86_64
 RUN mkdir llvm
 RUN tar -xvf llvm.tar.xz --strip-components=1 -C llvm
 
-ENV PATH="/llvm/bin:$PATH"
+ENV CLANG_PATH="/llvm/bin/clang"
+ENV GCC_PATH="gcc"
 
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="/intel-sde/sde64 \
             -cpuid-in /checkout/ci/docker/x86_64-unknown-linux-gnu/cpuid.def \

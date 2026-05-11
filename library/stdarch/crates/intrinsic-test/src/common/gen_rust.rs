@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 use crate::common::argument::ArgumentList;
+use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 
@@ -314,8 +315,18 @@ pub fn write_build_rs(
     w: &mut impl std::io::Write,
     i: usize,
     arch_flags: &[&str],
+    cli_options: &ProcessedCli,
 ) -> std::io::Result<()> {
-    const COMMON_FLAGS: &[&str] = &["-ffp-contract=off", "-ffp-model=strict", "-Wno-narrowing"];
+    const COMMON_FLAGS: &[&str] = &["-ffp-contract=off", "-Wno-narrowing"];
+    const CLANG_FLAGS: &[&str] = &["-ffp-model=strict"];
+    const GCC_FLAGS: &[&str] = &[
+        "-flax-vector-conversions",
+        "-fno-fast-math",
+        "-frounding-math",
+        "-fexcess-precision=standard",
+        "-ftrapping-math",
+        "-fsignaling-nans",
+    ];
 
     write!(
         w,
@@ -329,7 +340,16 @@ pub fn write_build_rs(
         i = i
     )?;
 
-    for flag in COMMON_FLAGS.iter().chain(arch_flags) {
+    let compiler_specific_flags = match cli_options.cc_arg_style {
+        CcArgStyle::Gcc => GCC_FLAGS,
+        CcArgStyle::Clang => CLANG_FLAGS,
+    };
+
+    for flag in COMMON_FLAGS
+        .iter()
+        .chain(compiler_specific_flags)
+        .chain(arch_flags)
+    {
         writeln!(w, "\"{flag}\",")?;
     }
 

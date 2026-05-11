@@ -281,10 +281,13 @@ jobs:
           - armv7-unknown-linux-gnueabihf
           - x86_64-unknown-linux-gnu
         profile: [dev, release]
+        cc: [clang, gcc]
         include:
           - target: aarch64_be-unknown-linux-gnu
             build_std: true
-
+        exclude:
+          - target: armv7-unknown-linux-gnueabihf
+            cc: gcc
     steps:
     - uses: actions/checkout@v6
     - name: Install Rust
@@ -301,7 +304,7 @@ jobs:
 
     # Configure some env vars based on matrix configuration
     - run: echo "PROFILE=${{ matrix.profile }}" >> $GITHUB_ENV
-    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }}
+    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }} ${{ matrix.cc }}
       if: ${{ !startsWith(matrix.target, 'thumb') }}
       env:
         TARGET: ${{ matrix.target }}

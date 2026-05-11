@@ -30,7 +30,7 @@ pub trait SupportedArchitectureTest {
 
     fn intrinsics(&self) -> &[Intrinsic<Self::IntrinsicImpl>];
 
-    fn create(cli_options: ProcessedCli) -> Self;
+    fn create(cli_options: &ProcessedCli) -> Self;
 
     const NOTICE: &str;
 
@@ -39,7 +39,7 @@ pub trait SupportedArchitectureTest {
     const PLATFORM_RUST_CFGS: &str;
     const PLATFORM_RUST_DEFINITIONS: &str;
 
-    fn arch_flags(&self) -> Vec<&str>;
+    fn arch_flags(&self, cli_options: &ProcessedCli) -> Vec<&str>;
 
     fn generate_c_file(&self) {
         let (max_chunk_size, _chunk_count) = manual_chunk(self.intrinsics().len());
@@ -57,8 +57,8 @@ pub trait SupportedArchitectureTest {
             .unwrap();
     }
 
-    fn generate_rust_file(&self) {
-        let arch_flags = self.arch_flags();
+    fn generate_rust_file(&self, cli_options: &ProcessedCli) {
+        let arch_flags = self.arch_flags(cli_options);
 
         std::fs::create_dir_all("rust_programs").unwrap();
 
@@ -97,7 +97,7 @@ pub trait SupportedArchitectureTest {
                 trace!("generating `{build_rs_filename}`");
                 let mut file = File::create(&build_rs_filename).unwrap();
 
-                write_build_rs(&mut file, i, &arch_flags).unwrap();
+                write_build_rs(&mut file, i, &arch_flags, &cli_options).unwrap();
                 run_rustfmt(&build_rs_filename);
 
                 Ok(())

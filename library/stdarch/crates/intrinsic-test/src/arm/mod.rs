@@ -5,7 +5,7 @@ mod json_parser;
 mod types;
 
 use crate::common::SupportedArchitectureTest;
-use crate::common::cli::ProcessedCli;
+use crate::common::cli::{CcArgStyle, ProcessedCli};
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use intrinsic::ArmIntrinsicType;
@@ -29,11 +29,15 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
     const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
 
-    fn arch_flags(&self) -> Vec<&str> {
-        vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"]
+    fn arch_flags(&self, cli_options: &ProcessedCli) -> Vec<&str> {
+        // GCC uses an extra `-` in the arch name
+        match cli_options.cc_arg_style {
+            CcArgStyle::Clang => vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"],
+            CcArgStyle::Gcc => vec!["-march=armv8.6-a+crypto+crc+dotprod+fp16+sha3+sm4"],
+        }
     }
 
-    fn create(cli_options: ProcessedCli) -> Self {
+    fn create(cli_options: &ProcessedCli) -> Self {
         let a32 = cli_options.target.starts_with("armv7");
         let mut intrinsics =
             get_neon_intrinsics(&cli_options.filename).expect("Error parsing input file");
