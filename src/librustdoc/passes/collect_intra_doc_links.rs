@@ -363,11 +363,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             });
         }
 
-        if let Ok(path) = parse_path(&self.psess, path_str) {
-            let candidates =
-                self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
-            if !candidates.is_empty() {
-                return Ok(candidates.into_iter().map(|(res, did)| (res, Some(did))).collect());
+        if path_str.contains("::") {
+            if let Ok(path) = parse_path(&self.psess, path_str) {
+                let candidates =
+                    self.resolve_type_relative_path(&path, ns, disambiguator, item_id, module_id);
+                if !candidates.is_empty() {
+                    return Ok(candidates.into_iter().map(|(res, did)| (res, Some(did))).collect());
+                }
             }
         }
 
