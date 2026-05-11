@@ -103,13 +103,9 @@ fn add_or_fix_reference(
         let expr = ctx.sema.original_ast_node(expr)?;
         let expr_without_ref = RefExpr::cast(expr.syntax().clone())?.expr()?;
 
-        let file_id = expr_ptr.file_id.original_file(ctx.db());
-        let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.db()));
-        let editor = builder.make_editor(expr.syntax());
-        let make = editor.make();
-        let new_expr = make.expr_ref(expr_without_ref, true);
-        builder.replace_ast(expr, new_expr);
-        let source_change = builder.finish();
+        let pos = expr_without_ref.syntax().text_range().start();
+        let edit = TextEdit::insert(pos, expected_mutability.as_keyword_for_ref().to_owned());
+        let source_change = SourceChange::from_text_edit(range.file_id, edit);
         acc.push(fix(
             "make_reference_mutable",
             "Make reference mutable",
