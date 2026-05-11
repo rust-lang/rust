@@ -159,6 +159,11 @@ struct LoweringContext<'a, 'hir> {
 
     delayed_lints: Vec<DelayedLint>,
 
+    /// Stack of `move(...)` collection states. A plain closure body pushes
+    /// `Some`, so `move(...)` expressions can record the generated locals they
+    /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
+    move_expr_bindings: Vec<Option<expr::MoveExprState<'hir>>>,
+
     attribute_parser: AttributeParser<'hir>,
 }
 
@@ -216,6 +221,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
+            move_expr_bindings: Vec::new(),
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),

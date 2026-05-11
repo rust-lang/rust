@@ -1594,6 +1594,7 @@ impl Expr {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
+            | ExprKind::Move(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
@@ -1763,6 +1764,8 @@ pub enum ExprKind {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, Box<Expr>),
+    /// A `move(expr)` expression.
+    Move(Box<Expr>, Span),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).

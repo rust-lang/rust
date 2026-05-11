@@ -1696,6 +1696,14 @@ pub struct Closure<'hir> {
     /// The span of the argument block `|...|`
     pub fn_arg_span: Option<Span>,
     pub kind: ClosureKind,
+    pub explicit_captures: &'hir [ExplicitCapture],
+}
+
+/// A HIR local that must be captured by value even if ordinary closure capture
+/// analysis would infer a weaker capture kind from its uses in the body.
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct ExplicitCapture {
+    pub var_hir_id: HirId,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, StableHash, Encodable, Decodable)]
