@@ -1,13 +1,15 @@
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 
 use crate::patch::MirPatch;
+use crate::util;
 
 pub(super) struct Subtyper;
 
 struct SubTypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     patcher: MirPatch<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
 }
@@ -38,6 +40,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
         rval_ty = self.tcx.erase_and_anonymize_regions(rval_ty);
         place_ty = self.tcx.erase_and_anonymize_regions(place_ty);
         if place_ty != rval_ty {
+            if !util::sub_types(self.tcx, self.typing_env, rval_ty, place_ty) {
+                return;
+            }
+
             let temp = self
                 .patcher
                 .new_temp(rval_ty, self.local_decls[place.as_ref().local].source_info.span);
@@ -57,7 +63,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
 impl<'tcx> crate::MirPass<'tcx> for Subtyper {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let patch = MirPatch::new(body);
-        let mut checker = SubTypeChecker { tcx, patcher: patch, local_decls: &body.local_decls };
+        let typing_env = body.typing_env(tcx);
+        let mut checker =
+            SubTypeChecker { tcx, typing_env, patcher: patch, local_decls: &body.local_decls };
 
         for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
             checker.visit_basic_block_data(bb, data);
