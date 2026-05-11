@@ -1,7 +1,7 @@
 use std::{assert_matches, fmt};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hash::{StableHasher, StableHash};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
 use rustc_hir as hir;
@@ -225,24 +225,24 @@ impl<'tcx> Instance<'tcx> {
 
         match self.def {
             InstanceKind::Item(_)
-             | InstanceKind::DropGlue(_, Some(_))
-             | InstanceKind::AsyncDropGlueCtorShim(_, _) => {
-                 let hash: Hash128 = tcx.with_stable_hashing_context(|mut hcx| {
-                     let mut hasher = StableHasher::new();
-                     self.stable_hash(&mut hcx, &mut hasher);
-                     hasher.finish()
-                 });
-                 let candidates = tcx.upstream_monomorphization_for_hash(hash)?;
-                 // Candidates are sorted by StableCrateId. First verified match wins.
-                 for &cnum in candidates.iter() {
-                     for (sym, _) in tcx.exported_generic_symbols(cnum).iter() {
-                         if sym.to_instance(tcx).as_ref() == Some(self) {
-                             return Some(cnum);
-                         }
-                     }
-                 }
-                 None
-             }
+            | InstanceKind::DropGlue(_, Some(_))
+            | InstanceKind::AsyncDropGlueCtorShim(_, _) => {
+                let hash: Hash128 = tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    self.stable_hash(&mut hcx, &mut hasher);
+                    hasher.finish()
+                });
+                let candidates = tcx.upstream_monomorphization_for_hash(hash)?;
+                // Candidates are sorted by StableCrateId. First verified match wins.
+                for &cnum in candidates.iter() {
+                    for (sym, _) in tcx.exported_generic_symbols(cnum).iter() {
+                        if sym.to_instance(tcx).as_ref() == Some(self) {
+                            return Some(cnum);
+                        }
+                    }
+                }
+                None
+            }
             InstanceKind::AsyncDropGlue(_, _) => None,
             InstanceKind::FutureDropPollShim(_, _, _) => None,
 

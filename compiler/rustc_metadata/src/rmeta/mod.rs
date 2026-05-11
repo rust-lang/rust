@@ -279,7 +279,7 @@ pub(crate) struct CrateRoot {
     stable_order_of_exportable_impls: LazyArray<(DefIndex, usize)>,
     exported_non_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
     exported_generic_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
-   exported_generic_symbol_hashes: LazyValue<ExportedSymbolHashTableRef>,
+    exported_generic_symbol_hashes: LazyValue<ExportedSymbolHashTableRef>,
 
     syntax_contexts: SyntaxContextTable,
     expn_data: ExpnDataTable,

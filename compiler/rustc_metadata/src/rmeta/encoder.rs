@@ -772,7 +772,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 stable_order_of_exportable_impls,
                 exported_non_generic_symbols,
                 exported_generic_symbols,
-                 exported_generic_symbol_hashes,
+                exported_generic_symbol_hashes,
                 interpret_alloc_index,
                 tables,
                 syntax_contexts,
@@ -2273,7 +2273,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         self.lazy_array(exported_symbols.iter().cloned())
     }
-
 
     fn encode_exported_generic_symbol_hashes(
         &mut self,
