@@ -341,7 +341,8 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) debugger_visualizers: Hashed<LazyArray<DebuggerVisualizerFile>>,
 
     // FIXME do we need to hash this?
-    // what is this, the ones marked a `pub`?
+    // this is used to do symbol mangling in downstream crates. We should only include ones that
+    // are somehow reachable.
     pub(crate) exportable_items: Hashed<LazyArray<DefIndex>>,
     // FIXME do we need to hash this?
     // what is this extactly, used for diagnostics
