@@ -3,7 +3,9 @@
 mod borrowed_buf;
 mod cursor;
 mod error;
+mod impls;
 mod io_slice;
+mod size_hint;
 mod util;
 
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
@@ -25,6 +27,7 @@ pub use self::{
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
     error::{Custom, CustomOwner, OsFunctions},
+    size_hint::SizeHint,
     util::{chain, take},
 };
 
