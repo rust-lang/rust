@@ -17,4 +17,4 @@ pub use core::io::{
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use core::io::{OsFunctions, chain, take};
+pub use core::io::{IoHandle, OsFunctions, chain, take};
