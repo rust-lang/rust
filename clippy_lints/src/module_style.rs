@@ -137,9 +137,9 @@ impl EarlyLintPass for ModStyle {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if cx.builder.lint_level(MOD_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level(SELF_NAMED_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level(INLINE_MODULES).level == Level::Allow
+        if cx.builder.lint_level_spec(MOD_MODULE_FILES).level == Level::Allow
+            && cx.builder.lint_level_spec(SELF_NAMED_MODULE_FILES).level == Level::Allow
+            && cx.builder.lint_level_spec(INLINE_MODULES).level == Level::Allow
         {
             return;
         }
@@ -192,9 +192,9 @@ impl EarlyLintPass for ModStyle {
     }
 
     fn check_item_post(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if cx.builder.lint_level(MOD_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level(SELF_NAMED_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level(INLINE_MODULES).level == Level::Allow
+        if cx.builder.lint_level_spec(MOD_MODULE_FILES).level == Level::Allow
+            && cx.builder.lint_level_spec(SELF_NAMED_MODULE_FILES).level == Level::Allow
+            && cx.builder.lint_level_spec(INLINE_MODULES).level == Level::Allow
         {
             return;
         }

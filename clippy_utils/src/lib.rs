@@ -104,7 +104,7 @@ use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::lint::LevelAndSource;
+use rustc_middle::lint::LevelSpec;
 use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind, PointerCoercion};
 use rustc_middle::ty::layout::IntegerExt;
@@ -1660,7 +1660,7 @@ pub fn fulfill_or_allowed(cx: &LateContext<'_>, lint: &'static Lint, ids: impl I
     let mut suppress_lint = false;
 
     for id in ids {
-        let LevelAndSource { level, lint_id, .. } = cx.tcx.lint_level_at_node(lint, id);
+        let LevelSpec { level, lint_id, .. } = cx.tcx.lint_level_spec_at_node(lint, id);
         if let Some(expectation) = lint_id {
             cx.fulfill_expectation(expectation);
         }
@@ -1682,7 +1682,7 @@ pub fn fulfill_or_allowed(cx: &LateContext<'_>, lint: &'static Lint, ids: impl I
 /// make sure to use `span_lint_hir` functions to emit the lint. This ensures that
 /// expectations at the checked nodes will be fulfilled.
 pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
-    cx.tcx.lint_level_at_node(lint, id).level == Level::Allow
+    cx.tcx.lint_level_spec_at_node(lint, id).level == Level::Allow
 }
 
 pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
