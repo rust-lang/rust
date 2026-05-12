@@ -51,9 +51,9 @@ use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
-    LateDecl, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
-    PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
-    VisResolutionError, errors as errs, path_names_to_string,
+    LateDecl, MacroRulesScope, Module, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
+    Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
+    errors as errs, path_names_to_string,
 };
 
 /// A vector of spans and replacements, a message and applicability.
@@ -240,11 +240,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return self.report_conflict(ident, ns, new_binding, old_binding);
         }
 
-        let container = match old_binding.parent_module.unwrap().expect_local().kind {
+        let container = match old_binding.parent_module.unwrap().expect_local().def() {
             // Avoid using TyCtxt::def_kind_descr in the resolver, because it
             // indirectly *calls* the resolver, and would cause a query cycle.
-            ModuleKind::Def(kind, def_id, _, _) => kind.descr(def_id),
-            ModuleKind::Block => "block",
+            Some((def_kind, def_id)) => def_kind.descr(def_id),
+            None => "block",
         };
 
         let (name, span) =
@@ -1765,7 +1765,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         if ident.name == kw::Default
-            && let ModuleKind::Def(DefKind::Enum, def_id, _, _) = parent_scope.module.kind
+            && let Some((DefKind::Enum, def_id)) = parent_scope.module.def()
         {
             let span = self.def_span(def_id);
             let source_map = self.tcx.sess.source_map();
@@ -1893,19 +1893,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                      missing a `derive` attribute",
                 ident.name,
             );
-            let sugg_span =
-                if let ModuleKind::Def(DefKind::Enum, id, _, _) = parent_scope.module.kind {
-                    let span = self.def_span(id);
-                    if span.from_expansion() {
-                        None
-                    } else {
-                        // For enum variants sugg_span is empty but we can get the enum's Span.
-                        Some(span.shrink_to_lo())
-                    }
+            let sugg_span = if let Some((DefKind::Enum, id)) = parent_scope.module.def() {
+                let span = self.def_span(id);
+                if span.from_expansion() {
+                    None
                 } else {
-                    // For items this `Span` will be populated, everything else it'll be None.
-                    sugg_span
-                };
+                    // For enum variants sugg_span is empty but we can get the enum's Span.
+                    Some(span.shrink_to_lo())
+                }
+            } else {
+                // For items this `Span` will be populated, everything else it'll be None.
+                sugg_span
+            };
             match sugg_span {
                 Some(span) => {
                     err.span_suggestion_verbose(
