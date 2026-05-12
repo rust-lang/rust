@@ -297,11 +297,14 @@
 #[cfg(test)]
 mod tests;
 
+use alloc_crate::io::OsFunctions;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
 #[doc(hidden)]
 #[unstable(feature = "io_const_error_internals", issue = "none")]
 pub use alloc_crate::io::SimpleMessage;
+#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
+pub use alloc_crate::io::WriterPanicked;
 #[unstable(feature = "io_const_error", issue = "133448")]
 pub use alloc_crate::io::const_error;
 #[stable(feature = "io_read_to_string", since = "1.65.0")]
@@ -310,22 +313,19 @@ pub use alloc_crate::io::read_to_string;
 pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::io::{
-    BufRead, Bytes, Chain, Cursor, Empty, Error, ErrorKind, Lines, Read, Repeat, Result, Seek,
-    SeekFrom, Sink, Split, Take, Write, empty, repeat, sink,
+    BufRead, BufReader, BufWriter, Bytes, Chain, Cursor, Empty, Error, ErrorKind, IntoInnerError,
+    LineWriter, Lines, Read, Repeat, Result, Seek, SeekFrom, Sink, Split, Take, Write, empty,
+    repeat, sink,
 };
 #[allow(unused_imports, reason = "only used by certain target configurations")]
 pub(crate) use alloc_crate::io::{DEFAULT_BUF_SIZE, default_read_buf};
 pub(crate) use alloc_crate::io::{
-    IoHandle, SpecReadByte, append_to_string, default_read_buf_exact, default_read_exact,
-    default_read_to_end, default_read_to_string, default_read_vectored, default_write_vectored,
-    stream_len_default, uninlined_slow_read_byte,
+    IoHandle, SpecReadByte, default_read_to_end, default_read_to_string, default_read_vectored,
+    default_write_vectored, stream_len_default,
 };
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
-use alloc_crate::io::{OsFunctions, SizeHint};
 
-#[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
-pub use self::buffered::WriterPanicked;
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
@@ -339,7 +339,6 @@ pub use self::stdio::{_eprint, _print};
 pub use self::stdio::{set_output_capture, try_set_output_capture};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
-    buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
     copy::copy,
     stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
 };

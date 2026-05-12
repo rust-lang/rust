@@ -1,12 +1,14 @@
 mod buffer;
 
-use buffer::Buffer;
+pub(super) use buffer::Buffer;
 
 use crate::fmt;
 use crate::io::{
     self, BorrowedCursor, BufRead, DEFAULT_BUF_SIZE, IoSliceMut, Read, Seek, SeekFrom, SizeHint,
     SpecReadByte, uninlined_slow_read_byte,
 };
+use crate::string::String;
+use crate::vec::Vec;
 
 /// The `BufReader<R>` struct adds buffering to any reader.
 ///
@@ -27,8 +29,8 @@ use crate::io::{
 /// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
 ///
-/// [`TcpStream::read`]: crate::net::TcpStream::read
-/// [`TcpStream`]: crate::net::TcpStream
+/// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -70,16 +72,21 @@ impl<R: Read> BufReader<R> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: R) -> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    pub(crate) fn try_new_buffer() -> io::Result<Buffer> {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn try_new_buffer() -> io::Result<Buffer> {
         Buffer::try_with_capacity(DEFAULT_BUF_SIZE)
     }
 
-    pub(crate) fn with_buffer(inner: R, buf: Buffer) -> Self {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn with_buffer(inner: R, buf: Buffer) -> Self {
         Self { inner, buf }
     }
 
@@ -99,6 +106,7 @@ impl<R: Read> BufReader<R> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         BufReader { inner, buf: Buffer::with_capacity(capacity) }
@@ -280,14 +288,17 @@ impl<R: ?Sized> BufReader<R> {
 
     /// Invalidates all data in the internal buffer.
     #[inline]
-    pub(in crate::io) fn discard_buffer(&mut self) {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn discard_buffer(&mut self) {
         self.buf.discard_buffer()
     }
 }
 
 // This is only used by a test which asserts that the initialization-tracking is correct.
-#[cfg(test)]
 impl<R: ?Sized> BufReader<R> {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     #[allow(missing_docs)]
     pub fn initialized(&self) -> bool {
         self.buf.initialized()
@@ -413,7 +424,28 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let inner_buf = self.buffer();
         buf.try_reserve(inner_buf.len())?;
-        buf.extend_from_slice(inner_buf);
+
+        cfg_select! {
+            no_global_oom_handling => {
+                // SAFETY:
+                // * inner_buf and buf are non-overlapping
+                // * buf[..len] is already initialized
+                // * buf[len..len + count] is initialized by copy_nonoverlapping
+                // * len + count is within the capacity of buf based on the reservation completed above
+                unsafe {
+                    let count = inner_buf.len();
+                    let len = buf.len();
+                    let src = inner_buf.as_ptr();
+                    let dst = buf.as_mut_ptr().add(len);
+                    core::ptr::copy_nonoverlapping(src, dst, count);
+                    buf.set_len(len + count);
+                }
+            }
+            _ => {
+                buf.extend_from_slice(inner_buf);
+            }
+        }
+
         let nread = inner_buf.len();
         self.discard_buffer();
         Ok(nread + self.inner.read_to_end(buf)?)
@@ -445,7 +477,31 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
             let mut bytes = Vec::new();
             self.read_to_end(&mut bytes)?;
             let string = crate::str::from_utf8(&bytes).map_err(|_| io::Error::INVALID_UTF8)?;
-            *buf += string;
+
+            cfg_select! {
+                no_global_oom_handling => {
+                    // SAFETY:
+                    // * string and buf are non-overlapping
+                    // * buf[..len] is already initialized
+                    // * buf[len..len + count] is initialized by copy_nonoverlapping
+                    // * len + count is within the capacity of buf based on the reservation completed above
+                    // * buf is appended with valid UTF-8 data and is initially valid UTF-8, therefore
+                    //   it is valid UTF-8 at all times.
+                    unsafe {
+                        let buf = buf.as_mut_vec();
+                        let count = string.len();
+                        let len = buf.len();
+                        let src = string.as_ptr();
+                        let dst = buf.as_mut_ptr().add(len);
+                        core::ptr::copy_nonoverlapping(src, dst, count);
+                        buf.set_len(len + count);
+                    }
+                }
+                _ => {
+                    *buf += string;
+                }
+            }
+
             Ok(string.len())
         }
     }
