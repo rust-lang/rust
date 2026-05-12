@@ -297,7 +297,6 @@
 #[cfg(test)]
 mod tests;
 
-use alloc_crate::io::OsFunctions;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
 #[doc(hidden)]
@@ -325,15 +324,16 @@ pub(crate) use alloc_crate::io::{
 };
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
+use alloc_crate::io::{OsFunctions, generic_copy};
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
-pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "print_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
+pub(crate) use self::stdio::{attempt_print_to_stderr, cleanup};
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_output_capture, try_set_output_capture};
@@ -344,7 +344,7 @@ pub use self::{
 };
 
 mod buffered;
-pub(crate) mod copy;
+mod copy;
 mod cursor;
 mod error;
 mod impls;
@@ -352,5 +352,3 @@ mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;
-
-pub(crate) use stdio::cleanup;
