@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/36936
+
 //@ run-pass
 // check that casts are not being treated as lexprs.
 

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/22312
+
 use std::ops::Index;
 
 pub trait Array2D: Index<usize> + Sized {

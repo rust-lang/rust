@@ -1,5 +1,5 @@
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/issue-45730.rs:3:28
+  --> $DIR/ambiguous-raw-pointer-cast-errors.rs:5:28
    |
 LL |     let x: *const _ = 0 as _;
    |                            ^ needs more type information
@@ -7,7 +7,7 @@ LL |     let x: *const _ = 0 as _;
    = note: the type information given here is insufficient to check whether the pointer cast is valid
 
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/issue-45730.rs:5:28
+  --> $DIR/ambiguous-raw-pointer-cast-errors.rs:7:28
    |
 LL |     let x: *const _ = 0 as *const _;
    |                            ^^^^^^^^ needs more type information
@@ -15,7 +15,7 @@ LL |     let x: *const _ = 0 as *const _;
    = note: the type information given here is insufficient to check whether the pointer cast is valid
 
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/issue-45730.rs:8:44
+  --> $DIR/ambiguous-raw-pointer-cast-errors.rs:10:44
    |
 LL |     let x = 0 as *const i32 as *const _ as *mut _;
    |                                            ^^^^^^ needs more type information

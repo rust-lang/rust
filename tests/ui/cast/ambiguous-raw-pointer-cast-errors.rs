@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/45730
+
 use std::fmt;
 fn main() {
     let x: *const _ = 0 as _; //~ ERROR cannot cast

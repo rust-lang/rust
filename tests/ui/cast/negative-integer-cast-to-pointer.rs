@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/43291
+
 //@ run-pass
 pub fn main() {
     assert_eq!(!0usize as *const (), foo(0, 1));

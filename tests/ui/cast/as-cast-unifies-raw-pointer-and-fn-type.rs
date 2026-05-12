@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/23699
+
 //@ run-pass
 #![allow(unused_variables)]
 fn gimme_a_raw_pointer<T>(_: *const T) { }

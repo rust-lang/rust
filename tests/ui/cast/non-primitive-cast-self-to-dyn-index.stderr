@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `Self` as `&dyn Index<usize, Output = <Self as Index<usize>>::Output>`
-  --> $DIR/issue-22312.rs:11:24
+  --> $DIR/non-primitive-cast-self-to-dyn-index.rs:13:24
    |
 LL |         let indexer = &(*self as &dyn Index<usize, Output = <Self as Index<usize>>::Output>);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
