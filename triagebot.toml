@@ -8,9 +8,9 @@
 [relabel]
 allow-unauthenticated = [
     "C-*",
+    "S-*",
     "needs-triage",
     "regression-*",
-    "S-*",
 ]
 
 # ------------------------------------------------------------------------------
@@ -40,7 +40,6 @@ exclude_labels = [
     "P-*",
     "requires-nightly",
 ]
-
 
 [autolabel."A-CI"]
 trigger_files = [
