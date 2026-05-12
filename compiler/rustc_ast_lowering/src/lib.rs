@@ -950,11 +950,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         node_id: NodeId,
         res: LifetimeRes,
         source: hir::GenericParamSource,
-    ) -> Option<hir::GenericParam<'hir>> {
+    ) -> hir::GenericParam<'hir> {
         let (name, kind) = match res {
-            LifetimeRes::Param { .. } => {
-                (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
-            }
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
@@ -967,7 +964,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
             }
-            LifetimeRes::Static { .. } | LifetimeRes::Error(..) => return None,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
                 res, ident, ident.span
@@ -975,7 +971,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let hir_id = self.lower_node_id(node_id);
         let def_id = self.local_def_id(node_id);
-        Some(hir::GenericParam {
+        hir::GenericParam {
             hir_id,
             def_id,
             name,
@@ -984,7 +980,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: hir::GenericParamKind::Lifetime { kind },
             colon_span: None,
             source,
-        })
+        }
     }
 
     /// Lowers a lifetime binder that defines `generic_params`, returning the corresponding HIR
@@ -1005,7 +1001,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
             .iter()
-            .filter_map(|&(ident, node_id, res)| {
+            .map(|&(ident, node_id, res)| {
                 self.lifetime_res_to_generic_param(
                     ident,
                     node_id,
