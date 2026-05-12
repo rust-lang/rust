@@ -153,7 +153,7 @@ struct RcWithId<T: ?Sized> {
 #[derive(CoercePointee)]
 //~^ ERROR implementing `CoerceUnsized` does not allow multiple fields to be coerced
 struct MoreThanOneField<T: ?Sized> {
-    //~^ ERROR transparent struct needs at most one field with non-trivial size or alignment, but has 2
+    //~^ ERROR transparent struct needs at most one non-trivial field, but has 2
     inner1: Box<T>,
     inner2: Box<T>,
 }
