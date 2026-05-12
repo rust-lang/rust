@@ -46,7 +46,8 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
 use rustc_infer::traits::{
-    MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
+    IfChainCoerceCause, MatchExpressionArmCause, Obligation, PredicateObligation,
+    PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
@@ -1863,6 +1864,38 @@ impl<'tcx> CoerceMany<'tcx> {
                                 then_ty,
                                 else_ty,
                                 [then_span, else_span].into_iter(),
+                            );
+                        }
+                    }
+                    ObligationCauseCode::IfChainCoerce(box IfChainCoerceCause {
+                        source_branch_expr_id: prev_branch_expr_id,
+                        source_branch_ty: prev_branch_ty,
+                        source_branch_span: prev_branch_span,
+                        target_branch_expr_id: branch_expr_id,
+                        target_branch_ty: branch_ty,
+                        target_branch_span: branch_span,
+                        tail_defines_return_position_impl_trait: Some(rpit_def_id),
+                        ..
+                    }) => {
+                        err = fcx.err_ctxt().report_mismatched_types(
+                            cause,
+                            fcx.param_env,
+                            expected,
+                            found,
+                            coercion_error,
+                        );
+                        let prev_expr_span =
+                            fcx.tcx.hir_node(prev_branch_expr_id).expect_expr().span;
+                        let branch_expr_span = fcx.tcx.hir_node(branch_expr_id).expect_expr().span;
+                        // Don't suggest wrapping whole block in `Box::new`.
+                        if prev_branch_span != prev_expr_span && branch_span != branch_expr_span {
+                            self.suggest_boxing_tail_for_return_position_impl_trait(
+                                fcx,
+                                &mut err,
+                                rpit_def_id,
+                                prev_branch_ty,
+                                branch_ty,
+                                [prev_branch_span, branch_span].into_iter(),
                             );
                         }
                     }
