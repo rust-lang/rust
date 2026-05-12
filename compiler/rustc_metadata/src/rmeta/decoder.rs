@@ -89,6 +89,20 @@ pub(crate) type TargetModifiers = Vec<TargetModifier>;
 /// crate.
 pub(crate) type DeniedPartialMitigations = Vec<DeniedPartialMitigation>;
 
+enum TraitImplsMap {
+    DefIndex(FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>),
+    DefPathHash(FxIndexMap<(u32, Hash64), LazyArray<(DefIndex, Option<SimplifiedType>)>>),
+}
+
+impl TraitImplsMap {
+    fn is_empty(&self) -> bool {
+        match self {
+            TraitImplsMap::DefIndex(m) => m.is_empty(),
+            TraitImplsMap::DefPathHash(m) => m.is_empty(),
+        }
+    }
+}
+
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     blob: MetadataBlob,
@@ -99,7 +113,7 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
+    trait_impls: TraitImplsMap,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
@@ -1440,13 +1454,6 @@ impl CrateMetadata {
         self.root.traits.decode((self, tcx)).map(move |index| self.local_def_id(index))
     }
 
-    /// Decodes all trait impls in the crate (for rustdoc).
-    fn get_trait_impls(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
-        self.trait_impls.values().flat_map(move |impls| {
-            impls.decode((self, tcx)).map(move |(impl_index, _)| self.local_def_id(impl_index))
-        })
-    }
-
     fn get_incoherent_impls<'tcx>(&self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
         if let Some(impls) = self.incoherent_impls.get(&simp) {
             tcx.arena.alloc_from_iter(impls.decode((self, tcx)).map(|idx| self.local_def_id(idx)))
@@ -1470,8 +1477,12 @@ impl CrateMetadata {
             Some(def_id) => (def_id.krate.as_u32(), def_id.index),
             None => return &[],
         };
-
-        if let Some(impls) = self.trait_impls.get(&key) {
+        if let Some(impls) = match &self.trait_impls {
+            TraitImplsMap::DefIndex(trait_impls) => trait_impls.get(&key),
+            TraitImplsMap::DefPathHash(trait_impls) => {
+                trait_impls.get(&(key.0, tcx.def_path_hash(trait_def_id).local_hash()))
+            }
+        } {
             tcx.arena.alloc_from_iter(
                 impls
                     .decode((self, tcx))
@@ -1910,13 +1921,22 @@ impl CrateMetadata {
         private_dep: bool,
         host_hash: Option<Svh>,
     ) -> CrateMetadata {
-        let trait_impls = root
-            .impls
-            .decode(&blob)
-            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
-            .collect();
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
+        let trait_impls = match &root.impls {
+            EncodedTraitImpls::DefIndex(trait_impls) => TraitImplsMap::DefIndex(
+                trait_impls
+                    .decode(&blob)
+                    .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
+                    .collect(),
+            ),
+            EncodedTraitImpls::DefPathHash(trait_impls) => TraitImplsMap::DefPathHash(
+                trait_impls
+                    .decode(&blob)
+                    .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
+                    .collect(),
+            ),
+        };
 
         // Pre-decode the DefPathHash->DefIndex table. This is a cheap operation
         // that does not copy any data. It just does some data verification.

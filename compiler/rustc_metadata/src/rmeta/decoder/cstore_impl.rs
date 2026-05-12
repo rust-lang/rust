@@ -26,6 +26,7 @@ use rustc_span::{Span, Symbol, kw};
 use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
+use crate::rmeta::decoder::TraitImplsMap;
 use crate::rmeta::table::IsDefault;
 use crate::{eii, foreign_modules, native_libs};
 
@@ -394,7 +395,25 @@ provide! { tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits(tcx)) }
-    trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls(tcx)) }
+    trait_impls_in_crate => {
+        // Decodes all trait impls in the crate (for rustdoc).
+        match &cdata.trait_impls {
+            TraitImplsMap::DefIndex(m) => {
+                tcx.arena.alloc_from_iter(m.values().flat_map(move |impls| {
+                    impls
+                        .decode((cdata, tcx))
+                        .map(move |(impl_index, _)| cdata.local_def_id(impl_index))
+                }))
+            }
+            TraitImplsMap::DefPathHash(m) => {
+                tcx.arena.alloc_from_iter(m.values().flat_map(move |impls| {
+                    impls
+                        .decode((cdata, tcx))
+                        .map(move |(impl_index, _)| cdata.local_def_id(impl_index))
+                }))
+            }
+        }
+    }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 

@@ -6,6 +6,7 @@ use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
@@ -49,10 +50,36 @@ use crate::rmeta::*;
 
 pub(super) mod public_api_hasher;
 
-pub(super) trait MetadataEncoder {
+pub(super) trait MetadataEncoder: Sized {
     type EncodedDefIndex: for<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx, Self>>;
     fn encoded_def_index(tcx: TyCtxt<'_>, def_id: DefId) -> Self::EncodedDefIndex;
     fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h>;
+    fn encode_trait_impls<'h>(
+        ecx: &mut EncodeContext<'_, '_, Self>,
+        trait_impls_map: &FxIndexMap<DefId, Vec<(LocalDefId, Option<SimplifiedType>)>>,
+        hcx: &mut impl PublicApiHashState<'h>,
+    ) -> Hashed<EncodedTraitImpls>
+    where
+        TraitImpls<Self::EncodedDefIndex>:
+            for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<Self::EncodedDefIndex>>,
+        EncodedTraitImpls: From<LazyArray<TraitImpls<Self::EncodedDefIndex>>>,
+    {
+        let mut hasher = PublicApiHasher::default();
+        let trait_impls: Vec<_> = trait_impls_map
+            .iter()
+            .map(|(&trait_id, impls)| {
+                hasher.digest(trait_id, hcx);
+                hasher.digest(impls, hcx);
+                TraitImpls {
+                    trait_id: (trait_id.krate.as_u32(), Self::encoded_def_index(ecx.tcx, trait_id)),
+                    impls: ecx.lazy_array(impls.iter().map(|(id, ty)| (id.local_def_index, *ty))),
+                }
+            })
+            .collect();
+        let encoded_trait_impls: LazyArray<TraitImpls<Self::EncodedDefIndex>> =
+            ecx.lazy_array(trait_impls).into();
+        Hashed { value: encoded_trait_impls.into(), hash: hasher.finish(hcx) }
+    }
 }
 
 struct DefPathHashDefIdEncoder;
@@ -757,7 +784,12 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
     fn encode_crate_root<'h>(
         &mut self,
         hcx: &mut impl PublicApiHashState<'h>,
-    ) -> (LazyValue<CrateRoot>, CrateHashes) {
+    ) -> (LazyValue<CrateRoot>, CrateHashes)
+    where
+        TraitImpls<M::EncodedDefIndex>:
+            for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefIndex>>,
+        EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefIndex>>>,
+    {
         let tcx = self.tcx;
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
@@ -2465,8 +2497,22 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
     fn encode_impls<'h>(
         &mut self,
         hcx: &mut impl PublicApiHashState<'h>,
-    ) -> Hashed<LazyArray<TraitImpls>> {
-        empty_proc_macro!(self);
+    ) -> Hashed<EncodedTraitImpls>
+    where
+        TraitImpls<M::EncodedDefIndex>:
+            for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefIndex>>,
+        EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefIndex>>>,
+    {
+        if self.is_proc_macro {
+            return if hcx.enabled() {
+                Hashed {
+                    value: EncodedTraitImpls::DefPathHash(Default::default()),
+                    hash: Some(Fingerprint::ZERO),
+                }
+            } else {
+                Hashed { value: EncodedTraitImpls::DefIndex(Default::default()), hash: None }
+            };
+        }
         let tcx = self.tcx;
         let mut trait_impls_map: FxIndexMap<DefId, Vec<(LocalDefId, Option<SimplifiedType>)>> =
             FxIndexMap::default();
@@ -2519,20 +2565,7 @@ impl<'a, 'tcx, M: MetadataEncoder> EncodeContext<'a, 'tcx, M> {
             }
         }
 
-        let mut hasher = PublicApiHasher::default();
-        let trait_impls: Vec<_> = trait_impls_map
-            .iter()
-            .map(|(trait_def_id, impls)| {
-                hasher.digest(trait_def_id, hcx);
-                hasher.digest(impls, hcx);
-                TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy_array(impls.iter().map(|(id, ty)| (id.local_def_index, *ty))),
-                }
-            })
-            .collect();
-
-        Hashed { value: self.lazy_array(trait_impls), hash: hasher.finish(hcx) }
+        M::encode_trait_impls(self, &trait_impls_map, hcx)
     }
 
     #[instrument(level = "debug", skip(self, hcx))]
@@ -2759,7 +2792,11 @@ fn encode_crate_root<'tcx, 'h, M: MetadataEncoder>(
     path: &Path,
     hcx: StableHashState<'h>,
     hashes: &mut CrateHashes,
-) {
+) where
+    TraitImpls<M::EncodedDefIndex>:
+        for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefIndex>>,
+    EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefIndex>>>,
+{
     with_encode_metadata_header::<M>(tcx, path, |ecx| {
         // Encode all the entries and extra information in the crate,
         // culminating in the `CrateRoot` which points to all of it.
