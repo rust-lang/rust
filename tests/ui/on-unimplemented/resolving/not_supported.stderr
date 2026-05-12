@@ -1,0 +1,46 @@
+error: `#[diagnostic::rustc_on_unimplemented]` is only supported on trait definitions
+  --> $DIR/not_supported.rs:5:1
+   |
+LL | pub struct Struct;
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0232]: expected an identifier inside this `on`-clause
+  --> $DIR/not_supported.rs:17:48
+   |
+LL | #[diagnostic::rustc_on_unimplemented(on(Self = "module::Baz", message = "Foo"))]
+   |                                                ^^^^^^^^^^^^^ expected an identifier here, not `module::Baz`
+
+error[E0232]: expected an identifier inside this `on`-clause
+  --> $DIR/not_supported.rs:25:48
+   |
+LL | #[diagnostic::rustc_on_unimplemented(on(Self = "Buz<u8>", message = "Foo"))]
+   |                                                ^^^^^^^^^ expected an identifier here, not `Buz<u8>`
+
+error: `#[diagnostic::rustc_on_unimplemented]` is only supported on trait definitions
+  --> $DIR/not_supported.rs:42:1
+   |
+LL | produce_trait!(X);
+   | ^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find type `IDontExist` in this scope
+  --> $DIR/not_supported.rs:8:48
+   |
+LL | #[diagnostic::rustc_on_unimplemented(on(Self = "IDontExist", message = "Foo"))]
+   |                                                ^^^^^^^^^^^^ not found in this scope
+
+error: cannot find type `IDontExist`
+  --> $DIR/not_supported.rs:8:48
+   |
+LL | #[diagnostic::rustc_on_unimplemented(on(Self = "IDontExist", message = "Foo"))]
+   |                                                ^^^^^^^^^^^^
+
+error: `u8` refers to a builtin type, not a struct, enum or union
+  --> $DIR/not_supported.rs:29:48
+   |
+LL | #[diagnostic::rustc_on_unimplemented(on(Self = "u8", message = "Foo"))]
+   |                                                ^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0232, E0425.
+For more information about an error, try `rustc --explain E0232`.

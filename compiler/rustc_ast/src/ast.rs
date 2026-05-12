@@ -3799,7 +3799,6 @@ pub struct Trait {
     pub bounds: GenericBounds,
     #[visitable(extra = AssocCtxt::Trait)]
     pub items: ThinVec<Box<AssocItem>>,
-    #[visitable(ignore)]
     pub on_unimplemented: Option<Directive>,
 }
 

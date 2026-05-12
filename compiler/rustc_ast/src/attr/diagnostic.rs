@@ -1,21 +1,27 @@
 //! Contains the data structures used by the diagnostic attribute family.
-use std::fmt;
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 
-use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
+use rustc_span::def_id::DefId;
 use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 
-#[derive(Clone, Default, Debug, StableHash, Encodable, Decodable)]
+use crate::{NodeId, Path};
+
+#[derive(Clone, Default, Debug, StableHash, Encodable, Decodable, Walkable)]
 pub struct Directive {
     pub is_rustc_attr: bool,
     /// This is never nested more than once, i.e. the directives in this
     /// thinvec have no filters of their own.
     pub filters: ThinVec<(Filter, Directive)>,
+    #[visitable(ignore)]
     pub message: Option<(Span, FormatString)>,
+    #[visitable(ignore)]
     pub label: Option<(Span, FormatString)>,
+    #[visitable(ignore)]
     pub notes: ThinVec<FormatString>,
+    #[visitable(ignore)]
     pub parent_label: Option<FormatString>,
 }
 
@@ -44,6 +50,16 @@ impl Directive {
 
         if let Some(parent_label) = &self.parent_label {
             parent_label.visit_params(visit);
+        }
+    }
+
+    pub fn resolve_predicates(&mut self, resolve: &mut impl FnMut(NodeId, &Path) -> Option<DefId>) {
+        for (Filter { pred, .. }, nested_dir) in &mut self.filters {
+            debug_assert!(
+                nested_dir.filters.is_empty(),
+                "can't have filters beyond the root directive"
+            );
+            pred.resolve_predicates(resolve);
         }
     }
 
@@ -234,18 +250,30 @@ pub enum FormatArg {
 }
 
 /// Represents the `on` filter in `#[rustc_on_unimplemented]`.
-#[derive(Clone, Debug, StableHash, Encodable, Decodable)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, Walkable)]
 pub struct Filter {
     pub span: Span,
     pub pred: Predicate,
 }
+
 impl Filter {
     pub fn matches_predicate(&self, options: &FilterOptions) -> bool {
         self.pred.eval(&mut |p| match p {
             FlagOrNv::Flag(b) => options.has_flag(*b),
-            FlagOrNv::NameValue(NameValue { name, value }) => {
+            FlagOrNv::NameValue(NameValue::String { name, value }) => {
                 let value = value.format(&options.generic_args);
                 options.contains(*name, value)
+            }
+            FlagOrNv::NameValue(NameValue::Path { .. }) => {
+                unreachable!("should have been removed during ast lowering")
+            }
+            FlagOrNv::NameValue(NameValue::DefId { name, def_id }) => {
+                if let Some(def_id) = def_id {
+                    options.contains_defid(*name, *def_id)
+                } else {
+                    // we've already errored during ast lowering
+                    false
+                }
             }
         })
     }
@@ -259,10 +287,10 @@ impl Filter {
 ///
 /// It is similar to the predicate in the `cfg` attribute,
 /// and may contain nested predicates.
-#[derive(Clone, Debug, StableHash, Encodable, Decodable)]
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, Walkable)]
 pub enum Predicate {
     /// A condition like `on(crate_local)`.
-    Flag(Flag),
+    Flag(#[visitable(ignore)] Flag),
     /// A match, like `on(Rhs = "Whatever")`.
     Match(NameValue),
     /// Negation, like `on(not($pred))`.
@@ -294,6 +322,41 @@ impl Predicate {
             }
         }
     }
+
+    pub fn visit_predicates(&self, visit: &mut impl FnMut(NodeId, &Path)) {
+        match self {
+            Predicate::Flag(_) | Predicate::Match(NameValue::String { .. }) => {}
+            Predicate::Match(NameValue::Path { name: _, value, id }) => {
+                visit(*id, value);
+            }
+            Predicate::Match(NameValue::DefId { .. }) => {
+                unreachable!()
+            }
+            Predicate::Not(not) => not.visit_predicates(visit),
+            Predicate::All(preds) | Predicate::Any(preds) => {
+                preds.iter().for_each(|pred| pred.visit_predicates(visit))
+            }
+        }
+    }
+
+    pub fn resolve_predicates(&mut self, resolve: &mut impl FnMut(NodeId, &Path) -> Option<DefId>) {
+        match self {
+            Predicate::Flag(_) | Predicate::Match(NameValue::String { .. }) => {}
+            Predicate::Match(NameValue::Path { name, value, id }) => {
+                let def_id = resolve(*id, value);
+                *self = Predicate::Match(NameValue::DefId { name: *name, def_id });
+            }
+            Predicate::Match(NameValue::DefId { .. }) => {
+                if cfg!(debug_assertions) {
+                    unreachable!("predicate was resolved twice")
+                }
+            }
+            Predicate::Not(not) => not.resolve_predicates(resolve),
+            Predicate::All(preds) | Predicate::Any(preds) => {
+                preds.iter_mut().for_each(|pred| pred.resolve_predicates(resolve))
+            }
+        }
+    }
 }
 
 /// Represents a `MetaWord` in an `on`-filter.
@@ -312,21 +375,39 @@ pub enum Flag {
 /// A `MetaNameValueStr` in an `on`-filter.
 ///
 /// For example, `#[rustc_on_unimplemented(on(name = "value", message = "hello"))]`.
-#[derive(Clone, Debug, StableHash, Encodable, Decodable)]
-pub struct NameValue {
-    pub name: Name,
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, Walkable)]
+pub enum NameValue {
     /// Something like `"&str"` or `"alloc::string::String"`,
     /// in which case it just contains a single string piece.
     /// But if it is something like `"&[{A}]"` then it must be formatted later.
-    pub value: FilterFormatString,
+    String {
+        #[visitable(ignore)]
+        name: Name,
+        #[visitable(ignore)]
+        value: FilterFormatString,
+    },
+    Path {
+        #[visitable(ignore)]
+        name: Name,
+        id: NodeId,
+        value: Path,
+    },
+    DefId {
+        #[visitable(ignore)]
+        name: Name,
+        #[visitable(ignore)]
+        def_id: Option<DefId>,
+    },
 }
 
 impl NameValue {
     pub fn visit_params(&self, span: Span, visit: &mut impl FnMut(Symbol, Span)) {
-        if let Name::GenericArg(arg) = self.name {
-            visit(arg, span);
+        if let NameValue::String { name, value } = self {
+            if let Name::GenericArg(arg) = name {
+                visit(*arg, span);
+            }
+            value.visit_params(span, visit);
         }
-        self.value.visit_params(span, visit);
     }
 }
 
@@ -357,14 +438,14 @@ pub struct FilterFormatString {
 }
 
 impl FilterFormatString {
-    fn format(&self, generic_args: &[(Symbol, String)]) -> String {
+    fn format(&self, generic_args: &[(Symbol, String, Option<DefId>)]) -> String {
         let mut ret = String::new();
 
         for piece in &self.pieces {
             match piece {
                 LitOrArg::Lit(s) => ret.push_str(s.as_str()),
-                LitOrArg::Arg(s) => match generic_args.iter().find(|(k, _)| k == s) {
-                    Some((_, val)) => ret.push_str(val),
+                LitOrArg::Arg(s) => match generic_args.iter().find(|(k, _, _)| k == s) {
+                    Some((_, val, _)) => ret.push_str(val),
                     None => {
                         let _ = std::fmt::write(&mut ret, format_args!("{{{s}}}"));
                     }
@@ -416,21 +497,21 @@ pub enum LitOrArg {
 ///
 /// ```rust,ignore (just an example)
 /// FilterOptions {
-///     self_types: ["u32", "{integral}"],
+///     self_types: [("u32", None), ("{integral}", None), ("Type", Some(<defid>))],
 ///     from_desugaring: Some("QuestionMark"),
 ///     cause: None,
 ///     crate_local: false,
 ///     direct: true,
-///     generic_args: [("Self","u32"),
-///         ("R", "core::option::Option<core::convert::Infallible>"),
-///         ("R", "core::option::Option<T>" ),
+///     generic_args: [("Self","u32", <defid>),
+///         ("R", "core::option::Option<core::convert::Infallible>", Some(<defid>)),
+///         ("R", "core::option::Option<T>", Some(<defid>)),
 ///     ],
 /// }
 /// ```
 #[derive(Debug)]
 pub struct FilterOptions {
     /// All the self types that may apply.
-    pub self_types: Vec<String>,
+    pub self_types: Vec<(String, Option<DefId>)>,
     // The kind of compiler desugaring.
     pub from_desugaring: Option<DesugaringKind>,
     /// Match on a variant of rustc_infer's `ObligationCauseCode`.
@@ -439,23 +520,45 @@ pub struct FilterOptions {
     /// Is the obligation "directly" user-specified, rather than derived?
     pub direct: bool,
     // A list of the generic arguments and their reified types.
-    pub generic_args: Vec<(Symbol, String)>,
+    pub generic_args: Vec<(Symbol, String, Option<DefId>)>,
 }
 
 impl FilterOptions {
-    pub fn has_flag(&self, name: Flag) -> bool {
+    fn has_flag(&self, name: Flag) -> bool {
         match name {
             Flag::CrateLocal => self.crate_local,
             Flag::Direct => self.direct,
             Flag::FromDesugaring => self.from_desugaring.is_some(),
         }
     }
-    pub fn contains(&self, name: Name, value: String) -> bool {
+    fn contains(&self, name: Name, value: String) -> bool {
         match name {
-            Name::SelfUpper => self.self_types.contains(&value),
+            Name::SelfUpper => {
+                self.self_types.iter().any(|(type_name, _this_def_id)| *type_name == value)
+            }
             Name::FromDesugaring => self.from_desugaring.is_some_and(|ds| ds.matches(&value)),
             Name::Cause => self.cause == Some(value),
-            Name::GenericArg(arg) => self.generic_args.contains(&(arg, value)),
+            Name::GenericArg(generic) => self
+                .generic_args
+                .iter()
+                .any(|(this_name, typename, _)| *this_name == generic && *typename == value),
+        }
+    }
+
+    fn contains_defid(&self, name: Name, def_id: DefId) -> bool {
+        match name {
+            Name::SelfUpper => {
+                self.self_types.iter().any(|(_type_name, this_def_id)| *this_def_id == Some(def_id))
+            }
+
+            Name::GenericArg(generic) => {
+                self.generic_args.iter().any(|(this_name, _type_name, this_def_id)| {
+                    *this_name == generic && *this_def_id == Some(def_id)
+                })
+            }
+            Name::FromDesugaring | Name::Cause => {
+                unreachable!("these can only refer to strings and are never resolved")
+            }
         }
     }
 }

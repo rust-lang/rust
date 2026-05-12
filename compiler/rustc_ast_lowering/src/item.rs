@@ -1,13 +1,17 @@
+use std::convert::identity;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
+use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{
-    self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
+    self as hir, AttrPath, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target,
+    find_attr,
 };
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
@@ -205,6 +209,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn lower_on_unimplemented(&mut self, directive: &Directive) -> Directive {
+        let mut directive = directive.clone();
+        directive.resolve_predicates(&mut |id, path| {
+            let path = AttrPath::from_ast(path, identity);
+            let res = self.get_partial_res(id);
+            let Some(res) = res else {
+                self.dcx().span_err(path.span, format!("cannot find type `{path}`"));
+                return None;
+            };
+            let res = if let Some(res) = res.full_res()
+                && !matches!(res, Res::Err)
+            {
+                res
+            } else {
+                self.dcx().span_err(path.span, format!("cannot find type `{path}`"));
+                return None;
+            };
+            let Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, def_id) = res else {
+                let article = res.article();
+                let descr = res.descr();
+                self.dcx().span_err(
+                    path.span,
+                    format!("`{path}` refers to {article} {descr}, not a struct, enum or union"),
+                );
+                return None;
+            };
+
+            Some(def_id)
+        });
+        directive
+    }
+
     fn generate_extra_attrs_for_item_kind(
         &mut self,
         id: NodeId,
@@ -226,9 +262,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .map(|decl| vec![hir::Attribute::Parsed(AttributeKind::EiiDeclaration(decl))])
                 .unwrap_or_default(),
             ItemKind::Trait(Trait { on_unimplemented: Some(ou), .. }) => {
-                // FIXME Lower here
+                let new_ou = self.lower_on_unimplemented(ou);
                 vec![hir::Attribute::Parsed(AttributeKind::OnUnimplemented {
-                    directive: Some(Box::new(ou.clone())),
+                    directive: Some(Box::new(new_ou)),
                 })]
             }
             ItemKind::ExternCrate(..)
