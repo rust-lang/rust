@@ -7,8 +7,15 @@
 
 [relabel]
 allow-unauthenticated = [
+    "A-*",
+    "B-*",
     "C-*",
+    "E-*",
+    "F-*",
+    "I-*",
     "S-*",
+    "SO-*",
+    "UO-*",
     "needs-triage",
     "regression-*",
 ]
