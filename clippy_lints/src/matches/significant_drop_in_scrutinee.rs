@@ -204,7 +204,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                 // if some field has significant drop,
                 adt.all_fields()
                     .map(|field| field.ty(self.cx.tcx, args))
-                    .any(|ty| self.has_sig_drop_attr_impl(ty))
+                    .any(|ty| self.has_sig_drop_attr_impl(ty.skip_norm_wip()))
                     // or if there is no generic lifetime and..
                     // (to avoid false positive on `Ref<'a, MutexGuard<Foo>>`)
                     || (args

@@ -182,7 +182,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         match ty.kind() {
             rustc_middle::ty::Adt(a, b) => {
                 for f in a.all_fields() {
-                    let ty = f.ty(self.cx.tcx, b);
+                    let ty = f.ty(self.cx.tcx, b).skip_norm_wip();
                     if self.has_sig_drop_attr(ty, depth) {
                         return true;
                     }
