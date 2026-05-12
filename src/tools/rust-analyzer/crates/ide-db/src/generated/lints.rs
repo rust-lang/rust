@@ -384,13 +384,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "elided_lifetimes_in_associated_constant",
-        description: r##"elided lifetimes cannot be used in associated constants in impls"##,
-        default_severity: Severity::Error,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "elided_lifetimes_in_paths",
         description: r##"hidden lifetime parameters in types are deprecated"##,
         default_severity: Severity::Allow,
@@ -1844,7 +1837,6 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "coherence_leak_check",
             "conflicting_repr_hints",
             "const_evaluatable_unchecked",
-            "elided_lifetimes_in_associated_constant",
             "float_literal_f32_fallback",
             "forbidden_lint_groups",
             "ill_formed_attribute_input",

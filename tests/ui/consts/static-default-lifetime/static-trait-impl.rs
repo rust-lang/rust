@@ -1,5 +1,3 @@
-#![deny(elided_lifetimes_in_associated_constant)]
-
 trait Bar<'a> {
     const STATIC: &'a str;
 }
@@ -7,9 +5,7 @@ trait Bar<'a> {
 struct A;
 impl Bar<'_> for A {
     const STATIC: &str = "";
-    //~^ ERROR `&` without an explicit lifetime name cannot be used here
-    //~| WARN this was previously accepted by the compiler but is being phased out
-    //~| ERROR lifetime parameters or bounds on associated constant `STATIC` do not match the trait declaration
+    //~^ ERROR missing lifetime specifier
 }
 
 struct B;
