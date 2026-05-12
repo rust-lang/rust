@@ -2548,7 +2548,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 hasher.digest(trait_def_id, hcx);
                 hasher.digest(impls, hcx);
                 TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
+                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index.as_u32()),
                     impls: self.lazy_array(impls.iter().map(|(id, ty)| (id.local_def_index, *ty))),
                 }
             })

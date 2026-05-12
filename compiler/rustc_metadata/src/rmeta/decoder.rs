@@ -98,7 +98,7 @@ pub(crate) struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxIndexMap<(u32, DefIndex), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
+    trait_impls: FxIndexMap<(u32, u32), LazyArray<(DefIndex, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
@@ -1447,7 +1447,7 @@ impl CrateMetadata {
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
         let key = match self.reverse_translate_def_id(trait_def_id) {
-            Some(def_id) => (def_id.krate.as_u32(), def_id.index),
+            Some(def_id) => (def_id.krate.as_u32(), def_id.index.as_u32()),
             None => return &[],
         };
 
