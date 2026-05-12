@@ -209,7 +209,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         second: exp_span.shrink_to_hi(),
                     })
                 }
-                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                     prior_non_diverging_arms,
                     ..
                 }) => {
@@ -248,7 +248,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
-                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                     prior_non_diverging_arms,
                     ..
                 }) => Some({

@@ -90,7 +90,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::StatementKind::*;
 
         match &stmt.kind {
-            Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
+            Assign((place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
 
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
@@ -111,11 +111,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
-            Intrinsic(box intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
+            Intrinsic(intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
 
             // Evaluate the place expression, without reading from it.
-            PlaceMention(box place) => {
-                let _ = self.eval_place(*place)?;
+            PlaceMention(place) => {
+                let _ = self.eval_place(**place)?;
             }
 
             // This exists purely to guide borrowck lifetime inference, and does not have
@@ -179,7 +179,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
 
-            BinaryOp(bin_op, box (ref left, ref right)) => {
+            BinaryOp(bin_op, (ref left, ref right)) => {
                 let layout = util::binop_left_homogeneous(bin_op).then_some(dest.layout);
                 let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
                 let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
@@ -197,7 +197,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*result, &dest)?;
             }
 
-            Aggregate(box ref kind, ref operands) => {
+            Aggregate(ref kind, ref operands) => {
                 self.write_aggregate(kind, operands, &dest)?;
             }
 

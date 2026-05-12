@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(never_type)]

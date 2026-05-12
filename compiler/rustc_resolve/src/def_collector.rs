@@ -257,7 +257,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         let (ident, def_kind) = match fi.kind {
-            ForeignItemKind::Static(box StaticItem {
+            ForeignItemKind::Static(StaticItem {
                 ident,
                 ty: _,
                 mutability,
@@ -273,8 +273,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                 (ident, DefKind::Static { safety, mutability, nested: false })
             }
-            ForeignItemKind::Fn(box Fn { ident, .. }) => (ident, DefKind::Fn),
-            ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => (ident, DefKind::ForeignTy),
+            ForeignItemKind::Fn(Fn { ident, .. }) => (ident, DefKind::Fn),
+            ForeignItemKind::TyAlias(TyAlias { ident, .. }) => (ident, DefKind::ForeignTy),
             ForeignItemKind::MacCall(_) => {
                 self.visit_invoc_in_module(fi.id);
                 self.visit_macro_invoc(fi.id);
@@ -344,18 +344,18 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let (ident, def_kind, ns) = match &i.kind {
-            AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => {
+            AssocItemKind::Fn(Fn { ident, .. })
+            | AssocItemKind::Delegation(Delegation { ident, .. }) => {
                 (*ident, DefKind::AssocFn, ValueNS)
             }
-            AssocItemKind::Const(box ConstItem { ident, rhs_kind, .. }) => (
+            AssocItemKind::Const(ConstItem { ident, rhs_kind, .. }) => (
                 *ident,
                 DefKind::AssocConst {
                     is_type_const: matches!(rhs_kind, ConstItemRhsKind::TypeConst { .. }),
                 },
                 ValueNS,
             ),
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
+            AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
             AssocItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
                 self.visit_assoc_item_mac_call(i, ctxt);

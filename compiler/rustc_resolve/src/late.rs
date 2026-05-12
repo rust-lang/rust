@@ -1045,7 +1045,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         self.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
         let def_kind = self.r.local_def_kind(foreign_item.id);
         match foreign_item.kind {
-            ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
+            ForeignItemKind::TyAlias(TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
@@ -1055,7 +1055,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     |this| visit::walk_item(this, foreign_item),
                 );
             }
-            ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
+            ForeignItemKind::Fn(Fn { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
@@ -2817,7 +2817,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         let def_kind = self.r.local_def_kind(item.id);
         match &item.kind {
-            ItemKind::TyAlias(box TyAlias { generics, .. }) => {
+            ItemKind::TyAlias(TyAlias { generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
@@ -2828,7 +2828,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
+            ItemKind::Fn(Fn { generics, define_opaque, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
@@ -2859,7 +2859,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.diag_metadata.current_impl_items = None;
             }
 
-            ItemKind::Trait(box Trait { generics, bounds, items, impl_restriction, .. }) => {
+            ItemKind::Trait(Trait { generics, bounds, items, impl_restriction, .. }) => {
                 // resolve paths for `impl` restrictions
                 self.resolve_impl_restriction_path(impl_restriction);
 
@@ -2881,7 +2881,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::TraitAlias(box TraitAlias { generics, bounds, .. }) => {
+            ItemKind::TraitAlias(TraitAlias { generics, bounds, .. }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -2921,13 +2921,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.parent_scope.module = orig_module;
             }
 
-            ItemKind::Static(box ast::StaticItem {
-                ident,
-                ty,
-                expr,
-                define_opaque,
-                eii_impls,
-                ..
+            ItemKind::Static(ast::StaticItem {
+                ident, ty, expr, define_opaque, eii_impls, ..
             }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
@@ -2943,7 +2938,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_eii(&eii_impls);
             }
 
-            ItemKind::Const(box ast::ConstItem {
+            ItemKind::Const(ast::ConstItem {
                 ident,
                 generics,
                 ty,
@@ -3341,7 +3336,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         for item in trait_items {
             self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
             match &item.kind {
-                AssocItemKind::Const(box ast::ConstItem {
+                AssocItemKind::Const(ast::ConstItem {
                     generics,
                     ty,
                     rhs_kind,
@@ -3393,7 +3388,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                     self.resolve_define_opaques(define_opaque);
                 }
-                AssocItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
+                AssocItemKind::Fn(Fn { generics, define_opaque, .. }) => {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
 
                     self.resolve_define_opaques(define_opaque);
@@ -3408,7 +3403,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         |this| this.resolve_delegation(delegation, item.id, false),
                     );
                 }
-                AssocItemKind::Type(box TyAlias { generics, .. }) => self
+                AssocItemKind::Type(TyAlias { generics, .. }) => self
                     .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
                         walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
                     }),
@@ -3559,7 +3554,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let prev = self.diag_metadata.current_impl_item.take();
         self.diag_metadata.current_impl_item = Some(&item);
         match &item.kind {
-            AssocItemKind::Const(box ast::ConstItem {
+            AssocItemKind::Const(ast::ConstItem {
                 ident,
                 generics,
                 ty,
@@ -3640,7 +3635,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
                 self.resolve_define_opaques(define_opaque);
             }
-            AssocItemKind::Fn(box Fn { ident, generics, define_opaque, .. }) => {
+            AssocItemKind::Fn(Fn { ident, generics, define_opaque, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Fn");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
@@ -3668,7 +3663,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 self.resolve_define_opaques(define_opaque);
             }
-            AssocItemKind::Type(box TyAlias { ident, generics, .. }) => {
+            AssocItemKind::Type(TyAlias { ident, generics, .. }) => {
                 self.diag_metadata.in_non_gat_assoc_type = Some(generics.params.is_empty());
                 debug!("resolve_implementation AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
@@ -3698,7 +3693,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
                 self.diag_metadata.in_non_gat_assoc_type = None;
             }
-            AssocItemKind::Delegation(box delegation) => {
+            AssocItemKind::Delegation(delegation) => {
                 debug!("resolve_implementation AssocItemKind::Delegation");
                 self.with_generic_param_rib(
                     &[],
@@ -5253,7 +5248,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, .. }) => {
+            ExprKind::MethodCall(MethodCall { ref seg, ref receiver, ref args, .. }) => {
                 self.resolve_expr(receiver, Some(expr));
                 for arg in args {
                     self.resolve_expr(arg, None);
@@ -5285,7 +5280,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 visit::walk_expr(self, expr);
             }
             // For closures, RibKind::FnOrCoroutine is added in visit_fn
-            ExprKind::Closure(box ast::Closure {
+            ExprKind::Closure(ast::Closure {
                 binder: ClosureBinder::For { ref generic_params, span },
                 ..
             }) => {
@@ -5585,16 +5580,16 @@ fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> 
 impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
-            ItemKind::TyAlias(box TyAlias { generics, .. })
-            | ItemKind::Const(box ConstItem { generics, .. })
-            | ItemKind::Fn(box Fn { generics, .. })
+            ItemKind::TyAlias(TyAlias { generics, .. })
+            | ItemKind::Const(ConstItem { generics, .. })
+            | ItemKind::Fn(Fn { generics, .. })
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
             | ItemKind::Impl(Impl { generics, .. })
-            | ItemKind::Trait(box Trait { generics, .. })
-            | ItemKind::TraitAlias(box TraitAlias { generics, .. }) => {
-                if let ItemKind::Fn(box Fn { sig, .. }) = &item.kind {
+            | ItemKind::Trait(Trait { generics, .. })
+            | ItemKind::TraitAlias(TraitAlias { generics, .. }) => {
+                if let ItemKind::Fn(Fn { sig, .. }) = &item.kind {
                     self.collect_fn_info(&sig.decl, item.id);
                 }
 
@@ -5609,7 +5604,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 
             ItemKind::ForeignMod(ForeignMod { items, .. }) => {
                 for foreign_item in items {
-                    if let ForeignItemKind::Fn(box Fn { sig, .. }) = &foreign_item.kind {
+                    if let ForeignItemKind::Fn(Fn { sig, .. }) = &foreign_item.kind {
                         self.collect_fn_info(&sig.decl, foreign_item.id);
                     }
                 }
@@ -5635,11 +5630,11 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
     }
 
     fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
-        if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
+        if let AssocItemKind::Fn(Fn { sig, .. }) = &item.kind {
             self.collect_fn_info(&sig.decl, item.id);
         }
 
-        if let AssocItemKind::Type(box ast::TyAlias { generics, .. }) = &item.kind {
+        if let AssocItemKind::Type(ast::TyAlias { generics, .. }) = &item.kind {
             let def_id = self.r.local_def_id(item.id);
             if let Some(suggestion) = required_generic_args_suggestion(generics) {
                 self.r.item_required_generic_args_suggestions.insert(def_id, suggestion);

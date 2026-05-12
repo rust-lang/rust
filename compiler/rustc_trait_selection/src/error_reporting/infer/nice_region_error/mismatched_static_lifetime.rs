@@ -28,7 +28,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         if !sub.is_static() {
             return None;
         }
-        let SubregionOrigin::Subtype(box TypeTrace { ref cause, .. }) = origin else {
+        let SubregionOrigin::Subtype(TypeTrace { ref cause, .. }) = origin else {
             return None;
         };
         // If we added a "points at argument expression" obligation, we remove it here, we care

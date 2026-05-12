@@ -692,7 +692,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            SelectionError::SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: terr @ TypeError::CyclicTy(_),
@@ -702,7 +702,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 expected_trait_ref,
                 terr,
             ),
-            SelectionError::SignatureMismatch(box SignatureMismatchData {
+            SelectionError::SignatureMismatch(SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: _,

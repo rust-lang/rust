@@ -310,10 +310,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         sup: Region<'tcx>,
     ) -> Diag<'a> {
         let mut err = match origin {
-            SubregionOrigin::Subtype(box trace) => {
+            SubregionOrigin::Subtype(trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(
-                    trace,
+                    *trace,
                     self.tcx.param_env(generic_param_scope),
                     terr,
                 );
@@ -646,7 +646,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // I can't think how to do better than this right now. -nikomatsakis
         debug!(?placeholder_origin, ?sub, ?sup, "report_placeholder_failure");
         match placeholder_origin {
-            SubregionOrigin::Subtype(box ref trace)
+            SubregionOrigin::Subtype(ref trace)
                 if matches!(
                     &trace.cause.code().peel_derives(),
                     ObligationCauseCode::WhereClause(..)
@@ -676,10 +676,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     )
                 }
             }
-            SubregionOrigin::Subtype(box trace) => {
+            SubregionOrigin::Subtype(trace) => {
                 let terr = TypeError::RegionsPlaceholderMismatch;
                 return self.report_and_explain_type_error(
-                    trace,
+                    *trace,
                     self.tcx.param_env(generic_param_scope),
                     terr,
                 );

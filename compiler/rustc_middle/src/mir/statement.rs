@@ -77,7 +77,7 @@ impl<'tcx> StatementKind<'tcx> {
 
     pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
         match self {
-            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+            StatementKind::Assign((place, Rvalue::Ref(_, _, ref_place)))
                 if let Some(local) = place.as_local() =>
             {
                 Some(StmtDebugInfo::AssignRef(local, *ref_place))
@@ -817,7 +817,7 @@ impl<'tcx> Rvalue<'tcx> {
                 Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())
             }
             Rvalue::Cast(.., ty) => ty,
-            Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(op, (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)

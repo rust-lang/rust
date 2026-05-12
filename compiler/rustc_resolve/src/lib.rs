@@ -9,11 +9,11 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![feature(arbitrary_self_types)]
-#![feature(box_patterns)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(control_flow_into_value)]
 #![feature(default_field_values)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(rustc_attrs)]
 #![feature(trim_prefix_suffix)]

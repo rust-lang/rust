@@ -4009,12 +4009,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             Some(LocalDecl {
                 local_info:
                     ClearCrossCrate::Set(
-                        box LocalInfo::User(BindingForm::Var(VarBindingForm {
+                        LocalInfo::User(BindingForm::Var(VarBindingForm {
                             opt_match_place: None,
                             ..
                         }))
-                        | box LocalInfo::StaticRef { .. }
-                        | box LocalInfo::Boring,
+                        | LocalInfo::StaticRef { .. }
+                        | LocalInfo::Boring,
                     ),
                 ..
             })
@@ -4185,7 +4185,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'tcx> {
             fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
                 match statement {
-                    Statement { kind: StatementKind::FakeRead(box (cause, place)), .. }
+                    Statement { kind: StatementKind::FakeRead((cause, place)), .. }
                         if *place == self.place =>
                     {
                         self.cause = Some(*cause);
@@ -4243,7 +4243,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // and it'll make sense.
         let location = borrow.reserve_location;
         debug!("annotate_argument_and_return_for_borrow: location={:?}", location);
-        if let Some(Statement { kind: StatementKind::Assign(box (reservation, _)), .. }) =
+        if let Some(Statement { kind: StatementKind::Assign((reservation, _)), .. }) =
             &self.body[location.block].statements.get(location.statement_index)
         {
             debug!("annotate_argument_and_return_for_borrow: reservation={:?}", reservation);
@@ -4261,7 +4261,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt
                 );
-                if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+                if let StatementKind::Assign((place, rvalue)) = &stmt.kind
                     && let Some(assigned_to) = place.as_local()
                 {
                     debug!(
@@ -4270,7 +4270,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         assigned_to, rvalue
                     );
                     // Check if our `target` was captured by a closure.
-                    if let Rvalue::Aggregate(box AggregateKind::Closure(def_id, args), operands) =
+                    if let Rvalue::Aggregate(AggregateKind::Closure(def_id, args), operands) =
                         rvalue
                     {
                         let def_id = def_id.expect_local();
