@@ -1,6 +1,7 @@
 //! Traits, helpers, and type definitions for core I/O functionality.
 
 mod buf_read;
+mod buffered;
 mod cursor;
 mod error;
 mod impls;
@@ -31,6 +32,7 @@ pub use core::io::{
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use self::{
     buf_read::BufRead,
+    buffered::{BufReader, BufWriter, IntoInnerError, LineWriter, WriterPanicked},
     read::{Read, read_to_string},
     util::{Bytes, Lines, Split},
 };

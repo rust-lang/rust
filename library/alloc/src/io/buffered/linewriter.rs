@@ -84,6 +84,7 @@ impl<W: Write> LineWriter<W> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> LineWriter<W> {
         // Lines typically aren't that long, don't use a giant buffer
@@ -105,6 +106,7 @@ impl<W: Write> LineWriter<W> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: W) -> LineWriter<W> {
         LineWriter { inner: BufWriter::with_capacity(capacity, inner) }
