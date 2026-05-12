@@ -1,44 +1,26 @@
-error: `'_` cannot be used here
-  --> $DIR/assoc-const-elided-lifetime.rs:10:20
+error[E0106]: missing lifetime specifier
+  --> $DIR/assoc-const-elided-lifetime.rs:8:20
    |
 LL |     const FOO: Foo<'_> = Foo { x: PhantomData::<&()> };
-   |                    ^^
+   |                    ^^ expected named lifetime parameter
    |
-note: cannot automatically infer `'static` because of other lifetimes in scope
-  --> $DIR/assoc-const-elided-lifetime.rs:9:6
-   |
-LL | impl<'a> Foo<'a> {
-   |      ^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
-note: the lint level is defined here
-  --> $DIR/assoc-const-elided-lifetime.rs:1:9
-   |
-LL | #![deny(elided_lifetimes_in_associated_constant)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: use the `'static` lifetime
+help: consider using the `'a` lifetime
    |
 LL -     const FOO: Foo<'_> = Foo { x: PhantomData::<&()> };
-LL +     const FOO: Foo<'static> = Foo { x: PhantomData::<&()> };
+LL +     const FOO: Foo<'a> = Foo { x: PhantomData::<&()> };
    |
 
-error: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/assoc-const-elided-lifetime.rs:14:16
+error[E0106]: missing lifetime specifier
+  --> $DIR/assoc-const-elided-lifetime.rs:11:16
    |
 LL |     const BAR: &() = &();
-   |                ^
+   |                ^ expected named lifetime parameter
    |
-note: cannot automatically infer `'static` because of other lifetimes in scope
-  --> $DIR/assoc-const-elided-lifetime.rs:9:6
+help: consider using the `'a` lifetime
    |
-LL | impl<'a> Foo<'a> {
-   |      ^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #115010 <https://github.com/rust-lang/rust/issues/115010>
-help: use the `'static` lifetime
-   |
-LL |     const BAR: &'static () = &();
-   |                 +++++++
+LL |     const BAR: &'a () = &();
+   |                 ++
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0106`.
