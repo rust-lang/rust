@@ -1430,7 +1430,8 @@ fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior
         .find_map(ast::Use::cast)
         .unwrap();
 
-    let result = try_merge_imports(&use0, &use1, mb);
+    let editor = SyntaxEditor::new(use0.syntax().ancestors().last().unwrap()).0;
+    let result = try_merge_imports(&editor, &use0, &use1, mb);
     assert_eq!(result.map(|u| u.to_string()), None);
 }
 
@@ -1495,7 +1496,8 @@ fn check_merge(ra_fixture0: &str, ra_fixture1: &str, last: &str, mb: MergeBehavi
         .find_map(ast::Use::cast)
         .unwrap();
 
-    let result = try_merge_imports(&use0, &use1, mb);
+    let editor = SyntaxEditor::new(use0.syntax().ancestors().last().unwrap()).0;
+    let result = try_merge_imports(&editor, &use0, &use1, mb);
     assert_eq!(result.map(|u| u.to_string().trim().to_owned()), Some(last.trim().to_owned()));
 }
 
@@ -1525,7 +1527,8 @@ fn merge_gated_imports_with_different_values() {
         .find_map(ast::Use::cast)
         .unwrap();
 
-    let result = try_merge_imports(&use0, &use1, MergeBehavior::Crate);
+    let editor = SyntaxEditor::new(use0.syntax().ancestors().last().unwrap()).0;
+    let result = try_merge_imports(&editor, &use0, &use1, MergeBehavior::Crate);
     assert_eq!(result, None);
 }
 
