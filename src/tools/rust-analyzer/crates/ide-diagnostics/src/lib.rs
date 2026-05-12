@@ -47,6 +47,7 @@ mod handlers {
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod invalid_lhs_of_assignment;
+    pub(crate) mod invalid_range_pat_type;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
     pub(crate) mod mismatched_arg_count;
@@ -519,6 +520,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::ElidedLifetimesInPath(d) => handlers::elided_lifetimes_in_path::elided_lifetimes_in_path(&ctx, &d),
             AnyDiagnostic::GenericDefaultRefersToSelf(d) => handlers::generic_default_refers_to_self::generic_default_refers_to_self(&ctx, &d),
             AnyDiagnostic::InvalidLhsOfAssignment(d) => handlers::invalid_lhs_of_assignment::invalid_lhs_of_assignment(&ctx, &d),
+            AnyDiagnostic::InvalidRangePatType(d) => handlers::invalid_range_pat_type::invalid_range_pat_type(&ctx, &d),
             AnyDiagnostic::TypeMustBeKnown(d) => handlers::type_must_be_known::type_must_be_known(&ctx, &d),
             AnyDiagnostic::PatternArgInExternFn(d) => handlers::pattern_arg_in_extern_fn::pattern_arg_in_extern_fn(&ctx, &d),
             AnyDiagnostic::UnionExprMustHaveExactlyOneField(d) => handlers::union_expr_must_have_exactly_one_field::union_expr_must_have_exactly_one_field(&ctx, &d),

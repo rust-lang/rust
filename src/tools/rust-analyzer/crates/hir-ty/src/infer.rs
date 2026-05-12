@@ -302,6 +302,10 @@ pub enum InferenceDiagnostic {
         pat: PatId,
         found: StoredTy,
     },
+    InvalidRangePatType {
+        #[type_visitable(ignore)]
+        pat: PatId,
+    },
     DuplicateField {
         #[type_visitable(ignore)]
         field: ExprOrPatId,
