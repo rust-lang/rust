@@ -120,6 +120,8 @@ const itemTypes = Object.freeze({
     traitalias: 25,
     generic: 26,
     attribute: 27,
+    decl_macro_attribute: 28,
+    decl_macro_derive: 29,
 });
 const itemTypesName = Array.from(Object.keys(itemTypes));
 
@@ -1660,7 +1662,7 @@ class DocSearch {
             associatedItemDisambiguatorOrExternCrateUrl: raw.length === 8 ? null : raw[8],
             forceMacroHref: false,
         };
-        if (item.ty === 28 || item.ty === 29) {
+        if (item.ty === itemTypes.decl_macro_attribute || item.ty === itemTypes.decl_macro_derive) {
             // "proc attribute" is 23, "proc derive" is 24 whereas "decl macro attribute" is 28 and
             // "decl macro derive" is 29, so 5 of difference to go from the latter to the former.
             item.ty -= 5;
@@ -4823,6 +4825,8 @@ const longItemTypes = [
     "trait alias",
     "",
     "attribute",
+    "", // decl macro attribute, never used as is
+    "", // decl macro derive, never used as is
 ];
 // @ts-expect-error
 let currentResults;

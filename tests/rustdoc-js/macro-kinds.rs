@@ -26,3 +26,9 @@ macro_rules! macro3 {
 macro_rules! macro4 {
     derive() () => {};
 }
+
+#[macro_export]
+macro_rules! macro5 {
+    attr() () => {};
+    derive() () => {};
+}
