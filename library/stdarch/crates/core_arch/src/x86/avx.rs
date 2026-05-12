@@ -1097,6 +1097,9 @@ pub const fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
 
 /// Zeroes the contents of all XMM or YMM registers.
 ///
+/// This operation is purely a performance hint for the CPU and has no effect on the Abstract
+/// Machine state.
+///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zeroall)
 #[inline]
 #[target_feature(enable = "avx")]
@@ -1108,6 +1111,9 @@ pub fn _mm256_zeroall() {
 
 /// Zeroes the upper 128 bits of all YMM registers;
 /// the lower 128-bits of the registers are unmodified.
+///
+/// This operation is purely a performance hint for the CPU and has no effect on the Abstract
+/// Machine state.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zeroupper)
 #[inline]
@@ -4007,13 +4013,11 @@ mod tests {
     }
 
     #[simd_test(enable = "avx")]
-    #[cfg_attr(miri, ignore)] // Register-level operation not supported by Miri
     fn test_mm256_zeroall() {
         _mm256_zeroall();
     }
 
     #[simd_test(enable = "avx")]
-    #[cfg_attr(miri, ignore)] // Register-level operation not supported by Miri
     fn test_mm256_zeroupper() {
         _mm256_zeroupper();
     }
