@@ -20,6 +20,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::StableHash;
 use rustc_data_structures::svh::Svh;
+use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds};
@@ -311,7 +312,7 @@ pub(crate) struct CrateRoot {
     native_libraries: LazyArray<NativeLib>,
     foreign_modules: LazyArray<ForeignModule>,
     traits: LazyArray<LocalDefId>,
-    impls: LazyArray<TraitImpls>,
+    impls: EncodedTraitImpls,
     incoherent_impls: LazyArray<IncoherentImpls>,
     interpret_alloc_index: LazyArray<u64>,
     proc_macro_data: Option<ProcMacroData>,
@@ -613,6 +614,10 @@ pub(crate) mod remapped_def_id {
         pub(crate) fn decompose(&self) -> (u32, u32) {
             (self.krate, self.index)
         }
+
+        pub(crate) fn krate(&self) -> u32 {
+            self.krate
+        }
     }
 }
 
@@ -629,10 +634,28 @@ pub(crate) struct CrateDep {
     pub is_private: bool,
 }
 
-#[derive(MetadataEncodable, LazyDecodable)]
-pub(crate) struct TraitImpls {
-    trait_id: RemappedRawDefId,
+#[derive(MetadataEncodable, LazyDecodable, Default)]
+struct TraitImpls<DefIdRepr> {
+    trait_id: DefIdRepr,
     impls: LazyArray<(LocalDefId, Option<SimplifiedType>)>,
+}
+
+#[derive(MetadataEncodable, LazyDecodable)]
+enum EncodedTraitImpls {
+    DefIndex(LazyArray<TraitImpls<RemappedRawDefId>>),
+    DefPathHash(LazyArray<TraitImpls<(u32, Hash64)>>),
+}
+
+impl From<LazyArray<TraitImpls<RemappedRawDefId>>> for EncodedTraitImpls {
+    fn from(value: LazyArray<TraitImpls<RemappedRawDefId>>) -> Self {
+        Self::DefIndex(value)
+    }
+}
+
+impl From<LazyArray<TraitImpls<(u32, Hash64)>>> for EncodedTraitImpls {
+    fn from(value: LazyArray<TraitImpls<(u32, Hash64)>>) -> Self {
+        Self::DefPathHash(value)
+    }
 }
 
 #[derive(MetadataEncodable, LazyDecodable)]

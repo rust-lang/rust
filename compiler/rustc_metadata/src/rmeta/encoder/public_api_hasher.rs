@@ -23,9 +23,9 @@ use tracing::debug;
 use super::{CrateDep, CrateHeader, CrateRoot, TargetTuple};
 use crate::rmeta::table::TableIdx;
 use crate::rmeta::{
-    DefPathHashMapRef, EiiMapEncodedKeyValue, EncodeContext, EncodeFrom, ExpnDataTable,
-    ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue, MetadataEncoder,
-    OnDiskSourceFileIdx, ProcMacroData, SyntaxContextTable, TraitImpls,
+    DefPathHashMapRef, EiiMapEncodedKeyValue, EncodeContext, EncodeFrom, EncodedTraitImpls,
+    ExpnDataTable, ExpnHashTable, IncoherentImpls, LazyArray, LazyTable, LazyTables, LazyValue,
+    MetadataEncoder, OnDiskSourceFileIdx, ProcMacroData, SyntaxContextTable,
 };
 
 #[derive(Default)]
@@ -268,8 +268,21 @@ pub(crate) struct HashableCrateRoot {
     pub(crate) foreign_modules: Hashed<LazyArray<ForeignModule>>,
     // FIXME do we need to hash this?
     pub(crate) traits: Hashed<LazyArray<LocalDefId>>,
-    // FIXME do we need to hash this?
-    pub(crate) impls: Hashed<LazyArray<TraitImpls>>,
+    // the traits impls in this crate. Definitely not needed in everything_downstream as is
+    // how is it needed?
+    //
+    // this is exposed as a full query with `trait_impls_of_crate`. Which is only used in
+    // rustc_public. Otherwise the `implementations_of_trait` is the only other consumer of this
+    // field. `implementations_of_trait` works as a map. You need to provide a trait DefId to get
+    // its impls, so this should be intergrated into the IndexGraph.
+    //
+    // When a trait is local:
+    //      if it isn't reachable, the impls can should be left out from the hash
+    // When a trait is from another crate:
+    //      even if this crate does not reexport that trait, a downstream dependency can import it
+    //      from another crate, then invoke its methods. So all of those impls must be included, but
+    //      only the ones that can be applied to publicly reachable types
+    pub(crate) impls: Hashed<EncodedTraitImpls>,
     // FIXME do we need to hash this?
     pub(crate) incoherent_impls: Hashed<LazyArray<IncoherentImpls>>,
     // FIXME do we need to hash this?
