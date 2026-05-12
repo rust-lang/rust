@@ -39,7 +39,7 @@ LL | |         y
 LL | |     })()
    | |_____^ returning this value requires that `'1` must outlive `'2`
    |
-   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+   = note: closure implements `AsyncFnMut`, so references to captured variables can't escape the closure
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:13:5
@@ -88,7 +88,7 @@ LL | |         y
 LL | |     })()
    | |_____^ returning this value requires that `'1` must outlive `'2`
    |
-   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+   = note: closure implements `AsyncFnMut`, so references to captured variables can't escape the closure
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:23:5
