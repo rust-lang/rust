@@ -2,6 +2,7 @@
 
 mod buf_read;
 mod buffered;
+mod copy;
 mod cursor;
 mod error;
 mod impls;
@@ -39,6 +40,7 @@ pub use self::{
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
+    copy::generic_copy,
     read::{
         DEFAULT_BUF_SIZE, append_to_string, default_read_buf, default_read_buf_exact,
         default_read_exact, default_read_to_end, default_read_to_string, default_read_vectored,
