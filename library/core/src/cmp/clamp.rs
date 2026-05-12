@@ -67,7 +67,7 @@ macro impl_for_float($t:ty) {
     #[rustc_const_unstable(feature = "clamp_bounds", issue = "147781")]
     impl const ClampBounds<$t> for RangeFrom<$t> {
         fn clamp(self, value: $t) -> $t {
-            assert!(!self.start.is_nan(), "min was NaN");
+            assert!(!self.start.is_nan(), "start was NaN");
             value.max(self.start)
         }
     }
@@ -76,7 +76,7 @@ macro impl_for_float($t:ty) {
     #[rustc_const_unstable(feature = "clamp_bounds", issue = "147781")]
     impl const ClampBounds<$t> for RangeToInclusive<$t> {
         fn clamp(self, value: $t) -> $t {
-            assert!(!self.end.is_nan(), "max was NaN");
+            assert!(!self.end.is_nan(), "end was NaN");
             value.min(self.end)
         }
     }
@@ -86,6 +86,7 @@ macro impl_for_float($t:ty) {
     impl const ClampBounds<$t> for RangeInclusive<$t> {
         fn clamp(self, value: $t) -> $t {
             let (start, end) = self.into_inner();
+            assert!(start <= end, "start > end, or either was NaN");
             value.clamp(start, end)
         }
     }
