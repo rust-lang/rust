@@ -1,6 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/31299>
 //@ run-pass
-// Regression test for #31299. This was generating an overflow error
-// because of eager normalization:
+// This was generating an overflow error because of eager normalization:
 //
 // proving `M: Sized` requires
 // - proving `PtrBack<Vec<M>>: Sized` requires

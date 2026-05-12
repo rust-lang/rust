@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/50811>
 //@ run-pass
 #![feature(test)]
 #![allow(invalid_nan_comparisons)]
