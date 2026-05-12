@@ -1606,6 +1606,13 @@ rustc_queries! {
         desc { "computing candidate for `{}`", key.value }
     }
 
+    query codegen_select_candidate_for_ctfe(
+        key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>
+    ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
+        cache_on_disk
+        desc { "computing const candidate for `{}`", key.value }
+    }
+
     /// Return all `impl` blocks in the current crate.
     query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
         desc { "finding local trait impls" }

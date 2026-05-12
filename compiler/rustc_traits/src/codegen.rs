@@ -8,6 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, PseudoCanonicalInput, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
+use rustc_trait_selection::solve::InferCtxtSelectExt as _;
 use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
     SelectionError,
@@ -21,11 +22,15 @@ use tracing::debug;
 /// obligations *could be* resolved if we wanted to.
 ///
 /// This also expects that `trait_ref` is fully normalized.
-pub(crate) fn codegen_select_candidate<'tcx>(
+///
+/// When `use_const` is set, we assume the new trait solver is enabled and use
+/// `HostEffectPredicate` with `constness` set to `Const`.
+pub(crate) fn codegen_select_candidate_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>,
+    typing_env: ty::TypingEnv<'tcx>,
+    trait_ref: ty::TraitRef<'tcx>,
+    use_const: bool,
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
-    let PseudoCanonicalInput { typing_env, value: trait_ref } = key;
     // We expect the input to be fully normalized.
     tcx.debug_assert_fully_normalized(typing_env, trait_ref);
 
@@ -35,14 +40,26 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     let mut selcx = SelectionContext::new(&infcx);
 
     let obligation_cause = ObligationCause::dummy();
-    let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
-    let selection = match selcx.select(&obligation) {
+    let selection = if use_const {
+        let host_predicate =
+            ty::HostEffectPredicate { trait_ref, constness: ty::BoundConstness::Const };
+        let obligation = Obligation::new(tcx, obligation_cause, param_env, host_predicate);
+
+        infcx.select_host_effect_predicate_in_new_trait_solver(&obligation)
+    } else {
+        let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
+        selcx.select(&obligation)
+    };
+
+    let selection = match selection {
         Ok(Some(selection)) => selection,
         Ok(None) => return Err(CodegenObligationError::Ambiguity),
         Err(SelectionError::Unimplemented) => return Err(CodegenObligationError::Unimplemented),
         Err(e) => {
-            bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
+            bug!(
+                "Encountered error `{e:?}` selecting `{trait_ref:?}` during codegen (use_const: {use_const})"
+            )
         }
     };
 
@@ -90,4 +107,18 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     }
 
     Ok(&*tcx.arena.alloc(impl_source))
+}
+
+pub(crate) fn codegen_select_candidate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>,
+) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
+    codegen_select_candidate_inner(tcx, key.typing_env, key.value, false)
+}
+
+pub(crate) fn codegen_select_candidate_for_ctfe<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>,
+) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
+    codegen_select_candidate_inner(tcx, key.typing_env, key.value, true)
 }

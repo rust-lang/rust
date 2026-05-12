@@ -2,9 +2,6 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Constness, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{
-    ImplSource, Obligation, ObligationCause, ScrubbedTraitError, SelectionError,
-};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
@@ -13,9 +10,7 @@ use rustc_middle::ty::{
     Unnormalized,
 };
 use rustc_span::sym;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
-use rustc_trait_selection::solve::InferCtxtSelectExt as _;
-use rustc_trait_selection::traits::{self, ObligationCtxt};
+use rustc_trait_selection::traits;
 use tracing::debug;
 use traits::translate_args;
 
@@ -119,81 +114,23 @@ fn resolve_associated_item<'tcx>(
     let trait_ref = ty::TraitRef::from_assoc(tcx, trait_id, rcvr_args);
 
     let input = typing_env.as_query_input(trait_ref);
-    let vtbl = if constness == Constness::Const && tcx.next_trait_solver_globally() {
-        let (infcx, param_env) =
-            tcx.infer_ctxt().ignoring_regions().build_with_typing_env(typing_env);
+    let candidate = if constness == Constness::Const && tcx.next_trait_solver_globally() {
+        tcx.codegen_select_candidate_for_ctfe(input)
+    } else {
+        tcx.codegen_select_candidate(input)
+    };
 
-        let obligation_cause = ObligationCause::dummy();
-        let host_predicate =
-            ty::HostEffectPredicate { trait_ref, constness: ty::BoundConstness::Const };
-        let obligation = Obligation::new(tcx, obligation_cause, param_env, host_predicate);
-
-        let selection = match infcx.select_host_effect_predicate_in_new_trait_solver(&obligation) {
-            Ok(Some(selection)) => selection,
-            Ok(None) => return Ok(None),
-            Err(SelectionError::Unimplemented) => return Ok(None),
-            Err(e) => {
-                bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, host_predicate)
-            }
-        };
-
-        debug!(?selection);
-
-        // Currently, we use a fulfillment context to completely resolve
-        // all nested obligations. This is because they can inform the
-        // inference of the impl's type parameters.
-        let ocx = ObligationCtxt::new(&infcx);
-        let impl_source = selection.map(|obligation| {
-            ocx.register_obligation(obligation);
-        });
-
-        // In principle, we only need to do this so long as `impl_source`
-        // contains unbound type parameters. It could be a slight
-        // optimization to stop iterating early.
-        let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if !errors.is_empty() {
-            // `rustc_monomorphize::collector` assumes there are no type errors.
-            // Cycle errors are the only post-monomorphization errors possible; emit them now so
-            // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
-            for err in errors {
-                if let ScrubbedTraitError::Cycle(cycle) = err {
-                    infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
-                }
-            }
+    let impl_src = match candidate {
+        Ok(impl_src) => impl_src,
+        Err(CodegenObligationError::Ambiguity | CodegenObligationError::Unimplemented) => {
             return Ok(None);
         }
-
-        let impl_source = infcx.resolve_vars_if_possible(impl_source);
-        let impl_source = tcx.erase_and_anonymize_regions(impl_source);
-        if impl_source.has_non_region_infer() {
-            // Unused generic types or consts on an impl get replaced with inference vars,
-            // but never resolved, causing the return value of a query to contain inference
-            // vars. We do not have a concept for this and will in fact ICE in stable hashing
-            // of the return value. So bail out instead.
-            let guar = match impl_source {
-                ImplSource::UserDefined(impl_) => tcx.dcx().span_delayed_bug(
-                    tcx.def_span(impl_.impl_def_id),
-                    "this impl has unconstrained generic parameters",
-                ),
-                _ => unreachable!(),
-            };
-            return Err(guar);
-        }
-
-        &*tcx.arena.alloc(impl_source)
-    } else {
-        match tcx.codegen_select_candidate(input) {
-            Ok(vtbl) => vtbl,
-            Err(CodegenObligationError::Ambiguity | CodegenObligationError::Unimplemented) => {
-                return Ok(None);
-            }
-            Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
-        }
+        Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
     };
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
-    Ok(match vtbl {
+    Ok(match impl_src {
         traits::ImplSource::UserDefined(impl_data) => {
             debug!(
                 "resolving ImplSource::UserDefined: {:?}, {:?}, {:?}, {:?}",

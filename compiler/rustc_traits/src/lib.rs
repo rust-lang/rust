@@ -25,5 +25,6 @@ pub fn provide(p: &mut Providers) {
     normalize_erasing_regions::provide(p);
     type_op::provide(p);
     p.codegen_select_candidate = codegen::codegen_select_candidate;
+    p.codegen_select_candidate_for_ctfe = codegen::codegen_select_candidate_for_ctfe;
     p.coroutine_hidden_types = coroutine_witnesses::coroutine_hidden_types;
 }

@@ -161,6 +161,10 @@ pub trait Machine<'tcx>: Sized {
     /// already been checked before.
     const ALL_CONSTS_ARE_PRECHECKED: bool = true;
 
+    /// Should we resolve instances as if we are in a const context? This means specialized impls whose
+    /// `T: [const] Trait` bounds that are not satisfied will not be selected.
+    const SHOULD_RESPECT_CONST_BOUNDS_WHEN_RESOLVING_INSTANCES: bool = false;
+
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'tcx, Self>) -> bool;
 
@@ -638,8 +642,6 @@ pub trait Machine<'tcx>: Sized {
     fn enter_trace_span(_span: impl FnOnce() -> tracing::Span) -> impl EnteredTraceSpan {
         ()
     }
-
-    const SHOULD_RESPECT_CONST_BOUNDS_WHEN_RESOLVING_INSTANCES: bool = false;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
