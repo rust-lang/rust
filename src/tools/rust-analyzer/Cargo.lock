@@ -1939,7 +1939,6 @@ dependencies = [
 name = "profile"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
  "libc",
  "perf-event",
  "tikv-jemalloc-ctl",
