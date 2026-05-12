@@ -27,8 +27,6 @@ pub use core::io::{
     slice_write_vectored, stream_len_default, take,
 };
 
-#[unstable(feature = "alloc_io", issue = "154046")]
-pub use self::{read::Read, util::Bytes};
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
@@ -37,4 +35,9 @@ pub use self::{
         default_read_exact, default_read_to_end, default_read_to_string, default_read_vectored,
     },
     util::{SpecReadByte, bytes, uninlined_slow_read_byte},
+};
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub use self::{
+    read::{Read, read_to_string},
+    util::Bytes,
 };
