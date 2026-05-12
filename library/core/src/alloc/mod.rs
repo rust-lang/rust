@@ -172,6 +172,22 @@ pub const unsafe trait Allocator {
     /// [*fit*]: #memory-fitting
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
+    /// Deallocates the memory referenced by `ptr`.
+    ///
+    /// # Safety
+    ///
+    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator, and
+    /// * `layout` must [*fit*] that block of memory, and
+    /// * `layout.size()` must be greater than zero.
+    ///
+    /// [*currently allocated*]: #currently-allocated-memory
+    /// [*fit*]: #memory-fitting
+    #[inline]
+    unsafe fn deallocate_nonzero_size(&self, ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY: all conditions must be upheld by the caller
+        unsafe { self.deallocate(ptr, layout) }
+    }
+
     /// Attempts to extend the memory block.
     ///
     /// Returns a new [`NonNull<[u8]>`][NonNull] containing a pointer and the actual size of the allocated
