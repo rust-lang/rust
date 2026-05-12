@@ -3,7 +3,8 @@ use rustc_errors::{Applicability, msg};
 use rustc_feature::template;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
-    AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
+    AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocAttributeSyntax, DocInline,
+    HideOrShow,
 };
 use rustc_session::errors::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
@@ -571,6 +572,42 @@ impl DocParser {
                         }
                     }
                 }
+            }
+            Some(sym::syntax) => {
+                if !cx.features().rustdoc_texmath() {
+                    feature_err(
+                        cx.sess(),
+                        sym::rustdoc_texmath,
+                        path.span(),
+                        msg!("the `#[doc(syntax)]` attribute is unstable"),
+                    )
+                    .emit();
+                }
+                let span = args.span().unwrap_or(path.span());
+                let tex_math_dollars = if let Some(v) = args.as_name_value()
+                    && let Some(syntax) = v.value_as_str()
+                {
+                    match syntax.as_str() {
+                        "+tex_math_dollars" => true,
+                        "-tex_math_dollars" => false,
+                        _ => {
+                            cx.emit_lint(
+                                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                                MalformedDoc,
+                                span,
+                            );
+                            false
+                        }
+                    }
+                } else {
+                    cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                        MalformedDoc,
+                        span,
+                    );
+                    false
+                };
+                self.attribute.syntax = Some(DocAttributeSyntax { tex_math_dollars, span });
             }
             Some(sym::spotlight) => {
                 let span = path.span();

@@ -1,0 +1,32 @@
+error: unknown command "\f"
+  --> $DIR/doxygen-syntax.rs:6:28
+   |
+LL | //! The distance between \f$(x_1,y_1)\f$ and \f$(x_2,y_2)\f$ is
+   |                          --^^^^^^^^^^^^^
+   |                          |
+   |                          help: formulas do not require `\f`: `$(x_1,y_1)$`
+   |
+note: the lint level is defined here
+  --> $DIR/doxygen-syntax.rs:4:9
+   |
+LL | #![deny(rustdoc::invalid_math)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: unknown command "\f"
+  --> $DIR/doxygen-syntax.rs:6:48
+   |
+LL | //! The distance between \f$(x_1,y_1)\f$ and \f$(x_2,y_2)\f$ is
+   |                                              --^^^^^^^^^^^^^
+   |                                              |
+   |                                              help: formulas do not require `\f`: `$(x_2,y_2)$`
+
+error: unknown command "\f"
+  --> $DIR/doxygen-syntax.rs:11:7
+   |
+LL | //! \f$\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}\f$.
+   |     --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     help: formulas do not require `\f`: `$\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}$`
+
+error: aborting due to 3 previous errors
+

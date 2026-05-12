@@ -62,7 +62,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
-use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
+use rustc_hir::attrs::{DocAttributeSyntax, EiiDecl, EiiImpl, StrippedCfgItem};
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
@@ -1511,6 +1511,11 @@ rustc_queries! {
     /// Determines whether an item is annotated with `#[doc(notable_trait)]`.
     query is_doc_notable_trait(def_id: DefId) -> bool {
         desc { "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
+    }
+
+    /// Return the math syntax configuration for this crates' doc attribute, or `Unspecified` if there is none.
+    query doc_attribute_syntax(def_id: DefId) -> Option<&'tcx DocAttributeSyntax> {
+        desc { "looking up math syntax for crate {}", tcx.def_path_str(def_id) }
     }
 
     /// Returns the attributes on the item at `def_id`.

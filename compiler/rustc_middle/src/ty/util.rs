@@ -9,6 +9,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
+use rustc_hir::attrs::DocAttributeSyntax;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::limit::Limit;
@@ -1689,6 +1690,21 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some())
 }
 
+/// Get doc attribute math syntax declaration, if any.
+pub fn doc_attribute_syntax(tcx: TyCtxt<'_>, mut def_id: DefId) -> Option<&'_ DocAttributeSyntax> {
+    loop {
+        let attr = find_attr!(
+            tcx,
+            def_id,
+            Doc(doc) if doc.syntax.is_some() => doc.syntax.as_ref().unwrap()
+        );
+        if attr.is_some() {
+            return attr;
+        }
+        def_id = tcx.opt_parent(def_id)?;
+    }
+}
+
 /// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).
 ///
 /// We double check the feature gate here because whether a function may be defined as an intrinsic causes
@@ -1717,6 +1733,7 @@ pub fn provide(providers: &mut Providers) {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,
+        doc_attribute_syntax,
         intrinsic_raw,
         ..*providers
     }

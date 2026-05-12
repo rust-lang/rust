@@ -14,6 +14,7 @@ use rustc_ast::token::DocFragmentKind;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
+use rustc_hir::attrs::DocAttributeSyntax;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
@@ -248,12 +249,17 @@ pub fn prepare_to_doc_link_resolution(
 }
 
 /// Options for rendering Markdown in the main body of documentation.
-pub fn main_body_opts() -> Options {
+pub fn main_body_opts(doc_syntax: Option<&DocAttributeSyntax>) -> Options {
     Options::ENABLE_TABLES
         | Options::ENABLE_FOOTNOTES
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_SMART_PUNCTUATION
+        | (if let Some(DocAttributeSyntax { tex_math_dollars: true, .. }) = doc_syntax {
+            Options::ENABLE_MATH
+        } else {
+            Options::empty()
+        })
 }
 
 fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<Symbol, MalformedGenerics> {
@@ -404,16 +410,20 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
         | LinkType::Shortcut
         | LinkType::ShortcutUnknown => true,
         LinkType::Autolink | LinkType::Email => false,
+        LinkType::WikiLink { has_pothole: _ } => unreachable!("wikilinks aren't used in rustdoc"),
     }
 }
 
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
-pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<str>> {
+pub(crate) fn attrs_to_preprocessed_links(
+    tcx: TyCtxt<'_>,
+    attrs: &[ast::Attribute],
+) -> Vec<Box<str>> {
     let (doc_fragments, other_attrs) =
         attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), false);
-    let mut doc =
-        prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap_or_default();
+    let (def_id, mut doc) =
+        prepare_to_doc_link_resolution(&doc_fragments).into_iter().next().unwrap_or_default();
 
     for attr in other_attrs {
         if let Some(note) = attr.deprecation_note() {
@@ -422,16 +432,16 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<s
         }
     }
 
-    parse_links(&doc)
+    parse_links(&doc, def_id.and_then(|def_id| tcx.doc_attribute_syntax(def_id)))
 }
 
 /// Similar version of `markdown_links` from rustdoc.
 /// This will collect destination links and display text if exists.
-fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
+fn parse_links<'md>(doc: &'md str, doc_syntax: Option<&DocAttributeSyntax>) -> Vec<Box<str>> {
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
     let mut event_iter = Parser::new_with_broken_link_callback(
         doc,
-        main_body_opts(),
+        main_body_opts(doc_syntax),
         Some(&mut broken_link_callback),
     );
     let mut links = Vec::new();

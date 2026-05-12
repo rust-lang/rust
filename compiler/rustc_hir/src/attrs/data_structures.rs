@@ -558,6 +558,34 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+
+    // #[doc(syntax="-tex_math_dollars")] // disable
+    // #[doc(syntax="+tex_math_dollars")] // enable
+    pub syntax: Option<DocAttributeSyntax>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, StableHash, Decodable, Encodable)]
+pub struct DocAttributeSyntax {
+    pub tex_math_dollars: bool,
+    pub span: Span,
+}
+
+impl PrintAttribute for DocAttributeSyntax {
+    fn should_render(&self) -> bool {
+        true
+    }
+    fn print_attribute(&self, p: &mut rustc_ast_pretty::pp::Printer) {
+        match self {
+            DocAttributeSyntax { tex_math_dollars, span: _ } => {
+                p.word("syntax");
+                p.word("=");
+                p.word(format!(
+                    r#""{}tex_math_dollars""#,
+                    if *tex_math_dollars { "+" } else { "-" }
+                ));
+            }
+        }
+    }
 }
 
 impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
@@ -585,6 +613,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
             rust_logo,
             test_attrs,
             no_crate_inject,
+            syntax,
         } = self;
         rustc_serialize::Encodable::<E>::encode(first_span, encoder);
         rustc_serialize::Encodable::<E>::encode(aliases, encoder);
@@ -615,6 +644,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
         rustc_serialize::Encodable::<E>::encode(rust_logo, encoder);
         rustc_serialize::Encodable::<E>::encode(test_attrs, encoder);
         rustc_serialize::Encodable::<E>::encode(no_crate_inject, encoder);
+        rustc_serialize::Encodable::<E>::encode(syntax, encoder);
     }
 }
 

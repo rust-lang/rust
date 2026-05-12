@@ -10,3 +10,11 @@ The font files were generated with these commands:
 pyftsubset NanumBarunGothic.ttf \
 --unicodes=U+AC00-D7AF:U+1100-11FF,U+3130-318F,U+A960-A97F,U+D7B0-D7FF \
 --output-file=NanumBarunGothic.ttf.woff2 --flavor=woff2
+
+-------------------------------------------------------------------------------
+
+The "Modified Noto Sans Math" file comes
+from <https://github.com/tmke8/math-core-fonts>. Some of the glyphs are swapped
+and repositioned to work around bugs in browser MathML implementations.
+The original version of the font can be found
+at <https://github.com/firamath/firamath>.

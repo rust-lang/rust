@@ -1069,6 +1069,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // already checked in attr_parsing
             no_crate_inject: _,
             attribute,
+            syntax: _,
         } = attr;
 
         for (alias, span) in aliases {
