@@ -1,8 +1,10 @@
+use core::mem::{self, ManuallyDrop};
+use core::{error, fmt, ptr};
+
 use crate::io::{
     self, DEFAULT_BUF_SIZE, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write,
 };
-use crate::mem::{self, ManuallyDrop};
-use crate::{error, fmt, ptr};
+use crate::vec::Vec;
 
 /// Wraps a writer and buffers its output.
 ///
@@ -60,8 +62,9 @@ use crate::{error, fmt, ptr};
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
 ///
-/// [`TcpStream::write`]: crate::net::TcpStream::write
-/// [`TcpStream`]: crate::net::TcpStream
+// FIXME(#74481): Hard-links required to link from `alloc` to `std`
+/// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 /// [`flush`]: BufWriter::flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: ?Sized + Write> {
@@ -87,20 +90,26 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
+    /// # #[expect(unused_mut)]
     /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    pub(crate) fn try_new_buffer() -> io::Result<Vec<u8>> {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn try_new_buffer() -> io::Result<Vec<u8>> {
         Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
             io::const_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
         })
     }
 
-    pub(crate) fn with_buffer(inner: W, buf: Vec<u8>) -> Self {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn with_buffer(inner: W, buf: Vec<u8>) -> Self {
         Self { inner, buf, panicked: false }
     }
 
@@ -115,8 +124,10 @@ impl<W: Write> BufWriter<W> {
     /// use std::net::TcpStream;
     ///
     /// let stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+    /// # #[expect(unused_mut)]
     /// let mut buffer = BufWriter::with_capacity(100, stream);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: W) -> BufWriter<W> {
         BufWriter { inner, buf: Vec::with_capacity(capacity), panicked: false }
@@ -136,6 +147,7 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
+    /// # #[expect(unused_mut)]
     /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
     ///
     /// // unwrap the TcpStream and flush the buffer
@@ -192,7 +204,9 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// "successfully written" (by returning nonzero success values from
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
-    pub(in crate::io) fn flush_buf(&mut self) -> io::Result<()> {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn flush_buf(&mut self) -> io::Result<()> {
         // SAFETY: `<BufWriter as BufferedWriterSpec>::copy_from` assumes that
         // this will not de-initialize any elements of `self.buf`'s spare
         // capacity.
@@ -287,6 +301,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
+    /// # #[expect(unused_mut)]
     /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
     ///
     /// // we can use reference just like buffer
@@ -343,7 +358,9 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// That the buffer is a `Vec` is an implementation detail.
     /// Callers should not modify the capacity as there currently is no public API to do so
     /// and thus any capacity changes would be unexpected by the user.
-    pub(in crate::io) fn buffer_mut(&mut self) -> &mut Vec<u8> {
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn buffer_mut(&mut self) -> &mut Vec<u8> {
         &mut self.buf
     }
 

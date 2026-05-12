@@ -9,10 +9,13 @@
 //! that user code which wants to do reads from a `BufReader` via `buffer` + `consume` can do so
 //! without encountering any runtime bounds checks.
 
-use crate::cmp;
-use crate::io::{self, BorrowedBuf, ErrorKind, Read};
-use crate::mem::MaybeUninit;
+use core::cmp;
+use core::mem::MaybeUninit;
 
+use crate::boxed::Box;
+use crate::io::{self, BorrowedBuf, ErrorKind, Read};
+
+#[expect(missing_debug_implementations)]
 pub struct Buffer {
     // The buffer.
     buf: Box<[MaybeUninit<u8>]>,
@@ -29,12 +32,15 @@ pub struct Buffer {
 }
 
 impl Buffer {
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         let buf = Box::new_uninit_slice(capacity);
         Self { buf, pos: 0, filled: 0, initialized: false }
     }
 
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     #[inline]
     pub fn try_with_capacity(capacity: usize) -> io::Result<Self> {
         match Box::try_new_uninit_slice(capacity) {
@@ -68,7 +74,8 @@ impl Buffer {
     }
 
     // This is only used by a test which asserts that the initialization-tracking is correct.
-    #[cfg(test)]
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub fn initialized(&self) -> bool {
         self.initialized
     }
