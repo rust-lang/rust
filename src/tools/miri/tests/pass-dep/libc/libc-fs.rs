@@ -3,7 +3,7 @@
 
 use std::ffi::{CStr, CString, OsString};
 use std::fs::{File, canonicalize, create_dir, remove_dir, remove_file};
-use std::io::{Error, ErrorKind, Write};
+use std::io::{Error, ErrorKind, Read, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
@@ -22,6 +22,7 @@ fn main() {
     test_dup_stdout_stderr();
     test_canonicalize_too_long();
     test_rename();
+    test_linkat();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
@@ -1146,4 +1147,38 @@ fn test_pwrite() {
 
     // The write should start at the provided byte offset.
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+fn test_linkat() {
+    let source = utils::prepare_with_content("miri_test_libc_linkat_source.txt", b"hello");
+    let link = utils::prepare("miri_test_libc_linkat_link.txt");
+
+    let c_source = CString::new(source.as_os_str().as_bytes()).expect("CString::new failed");
+    let c_link = CString::new(link.as_os_str().as_bytes()).expect("CString::new failed");
+
+    // Call linkat
+    unsafe {
+        libc_utils::errno_check(libc::linkat(
+            libc::AT_FDCWD,
+            c_source.as_ptr(),
+            libc::AT_FDCWD,
+            c_link.as_ptr(),
+            0,
+        ));
+    }
+
+    // Verify that the hard link works
+    // Modifications to one are visible through the other
+    let mut file = std::fs::File::create(&source).unwrap();
+    file.write_all(b"hello world").unwrap();
+    drop(file);
+
+    let mut file = std::fs::File::open(&link).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(contents, b"hello world");
+
+    // Cleanup
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }

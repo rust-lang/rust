@@ -34,6 +34,8 @@ fn main() {
     test_file_set_len();
     test_file_sync();
     test_rename();
+    #[cfg(all(unix, not(target_os = "android")))]
+    test_hard_link();
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
         test_directory();
@@ -510,4 +512,27 @@ fn test_preadv_pwritev() {
     let mut written_bytes = vec![0u8; bytes_written];
     f.read_exact(&mut written_bytes).unwrap();
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
+}
+
+#[cfg(unix)]
+// We do not support the link syscall on Android
+#[cfg(all(unix, not(target_os = "android")))]
+fn test_hard_link() {
+    use std::os::unix::fs::MetadataExt;
+    let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
+    let link = utils::prepare("miri_test_fs_hard_link_link.txt");
+
+    fs::hard_link(&source, &link).unwrap();
+
+    // Verify both files have same inode
+    let source_meta = std::fs::metadata(&source).unwrap();
+    let link_meta = std::fs::metadata(&link).unwrap();
+    assert_eq!(source_meta.ino(), link_meta.ino());
+
+    // Test error: link already exists
+    assert_eq!(ErrorKind::AlreadyExists, fs::hard_link(&source, &link).unwrap_err().kind());
+
+    // Cleanup after test
+    remove_file(&source).unwrap();
+    remove_file(&link).unwrap();
 }
