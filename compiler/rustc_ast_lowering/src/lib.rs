@@ -55,7 +55,7 @@ use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
-    LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
+    LifetimeSyntax, MissingLifetimeKind, ParamName, Target, TraitCandidate, find_attr,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -310,7 +310,7 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     ///
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, LifetimeRes)] {
+    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 
@@ -948,36 +948,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         ident: Ident,
         node_id: NodeId,
-        res: LifetimeRes,
+        kind: MissingLifetimeKind,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = match res {
-            LifetimeRes::Fresh { param, kind, .. } => {
-                // Late resolution delegates to us the creation of the `LocalDefId`.
-                let _def_id = self.create_def(
-                    param,
-                    Some(kw::UnderscoreLifetime),
-                    DefKind::LifetimeParam,
-                    ident.span,
-                );
-                debug!(?_def_id);
+        // Late resolution delegates to us the creation of the `LocalDefId`.
+        let _def_id = self.create_def(
+            node_id,
+            Some(kw::UnderscoreLifetime),
+            DefKind::LifetimeParam,
+            ident.span,
+        );
+        debug!(?_def_id);
 
-                (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
-            }
-            res => panic!(
-                "Unexpected lifetime resolution {:?} for {:?} at {:?}",
-                res, ident, ident.span
-            ),
-        };
         let hir_id = self.lower_node_id(node_id);
         let def_id = self.local_def_id(node_id);
         hir::GenericParam {
             hir_id,
             def_id,
-            name,
+            name: hir::ParamName::Fresh,
             span: self.lower_span(ident.span),
             pure_wrt_drop: false,
-            kind: hir::GenericParamKind::Lifetime { kind },
+            kind: hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided(kind) },
             colon_span: None,
             source,
         }

@@ -2151,7 +2151,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .extra_lifetime_params_map
             .entry(binder)
             .or_insert_with(Vec::new)
-            .push((ident, param, res));
+            .push((ident, param, kind));
         res
     }
 
