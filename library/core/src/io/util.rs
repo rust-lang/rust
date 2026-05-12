@@ -1,4 +1,5 @@
-use crate::fmt;
+use crate::io::SizeHint;
+use crate::{cmp, fmt};
 
 /// `Empty` ignores any data written via [`Write`], and will always be empty
 /// (returning zero bytes) when read via [`Read`].
@@ -12,6 +13,15 @@ use crate::fmt;
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Empty;
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl SizeHint for Empty {
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        Some(0)
+    }
+}
 
 /// Creates a value that is always at EOF for reads, and ignores all data written.
 ///
@@ -61,6 +71,20 @@ pub struct Repeat {
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub byte: u8,
+}
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl SizeHint for Repeat {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        usize::MAX
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        None
+    }
 }
 
 /// Creates an instance of a reader that infinitely repeats one byte.
@@ -143,6 +167,23 @@ pub struct Chain<T, U> {
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub done_first: bool,
+}
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl<T, U> SizeHint for Chain<T, U> {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
+            (Some(first), Some(second)) => first.checked_add(second),
+            _ => None,
+        }
+    }
 }
 
 impl<T, U> Chain<T, U> {
@@ -251,6 +292,23 @@ pub struct Take<T> {
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub limit: u64,
+}
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl<T> SizeHint for Take<T> {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        cmp::min(SizeHint::lower_bound(&self.inner) as u64, self.limit) as usize
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        match SizeHint::upper_bound(&self.inner) {
+            Some(upper_bound) => Some(cmp::min(upper_bound as u64, self.limit) as usize),
+            None => self.limit.try_into().ok(),
+        }
+    }
 }
 
 impl<T> Take<T> {

@@ -1,6 +1,7 @@
 //! Traits, helpers, and type definitions for core I/O functionality.
 
 mod error;
+mod impls;
 
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
@@ -17,4 +18,4 @@ pub use core::io::{
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use core::io::{IoHandle, OsFunctions, chain, take};
+pub use core::io::{IoHandle, OsFunctions, SizeHint, chain, take};

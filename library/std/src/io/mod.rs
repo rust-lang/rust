@@ -300,7 +300,6 @@ mod tests;
 use core::slice::memchr;
 
 pub(crate) use alloc_crate::io::IoHandle;
-use alloc_crate::io::OsFunctions;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
 #[doc(hidden)]
@@ -316,6 +315,7 @@ pub use alloc_crate::io::{
 };
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
+use alloc_crate::io::{OsFunctions, SizeHint};
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
@@ -2472,21 +2472,6 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     // split between the two parts of the chain
 }
 
-impl<T, U> SizeHint for Chain<T, U> {
-    #[inline]
-    fn lower_bound(&self) -> usize {
-        SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
-    }
-
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
-            (Some(first), Some(second)) => first.checked_add(second),
-            _ => None,
-        }
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Read> Read for Take<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -2578,21 +2563,6 @@ impl<T: BufRead> BufRead for Take<T> {
         let amt = cmp::min(amt as u64, self.limit) as usize;
         self.limit -= amt as u64;
         self.inner.consume(amt);
-    }
-}
-
-impl<T> SizeHint for Take<T> {
-    #[inline]
-    fn lower_bound(&self) -> usize {
-        cmp::min(SizeHint::lower_bound(&self.inner) as u64, self.limit) as usize
-    }
-
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        match SizeHint::upper_bound(&self.inner) {
-            Some(upper_bound) => Some(cmp::min(upper_bound as u64, self.limit) as usize),
-            None => self.limit.try_into().ok(),
-        }
     }
 }
 
@@ -2702,64 +2672,6 @@ fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
 #[inline(never)]
 fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
     inlined_slow_read_byte(reader)
-}
-
-trait SizeHint {
-    fn lower_bound(&self) -> usize;
-
-    fn upper_bound(&self) -> Option<usize>;
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.lower_bound(), self.upper_bound())
-    }
-}
-
-impl<T: ?Sized> SizeHint for T {
-    #[inline]
-    default fn lower_bound(&self) -> usize {
-        0
-    }
-
-    #[inline]
-    default fn upper_bound(&self) -> Option<usize> {
-        None
-    }
-}
-
-impl<T> SizeHint for &mut T {
-    #[inline]
-    fn lower_bound(&self) -> usize {
-        SizeHint::lower_bound(*self)
-    }
-
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        SizeHint::upper_bound(*self)
-    }
-}
-
-impl<T> SizeHint for Box<T> {
-    #[inline]
-    fn lower_bound(&self) -> usize {
-        SizeHint::lower_bound(&**self)
-    }
-
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        SizeHint::upper_bound(&**self)
-    }
-}
-
-impl SizeHint for &[u8] {
-    #[inline]
-    fn lower_bound(&self) -> usize {
-        self.len()
-    }
-
-    #[inline]
-    fn upper_bound(&self) -> Option<usize> {
-        Some(self.len())
-    }
 }
 
 /// An iterator over the contents of an instance of `BufRead` split on a
