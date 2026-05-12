@@ -1751,7 +1751,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             self.record_lifetime_use(
                 lifetime.id,
                 LifetimeRes::Static,
-                LifetimeElisionCandidate::Named,
+                LifetimeElisionCandidate::Ignore,
             );
             return;
         }
@@ -1764,7 +1764,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         while let Some(rib) = lifetime_rib_iter.next() {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
-                self.record_lifetime_use(lifetime.id, res, LifetimeElisionCandidate::Named);
+                self.record_lifetime_use(lifetime.id, res, LifetimeElisionCandidate::Ignore);
 
                 if let LifetimeRes::Param { param, binder } = res {
                     match self.lifetime_uses.entry(param) {
@@ -2236,7 +2236,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.record_lifetime_use(
                         id,
                         LifetimeRes::Infer,
-                        LifetimeElisionCandidate::Named,
+                        LifetimeElisionCandidate::Ignore,
                     );
                 }
                 continue;
@@ -2305,7 +2305,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             self.record_lifetime_use(
                                 id,
                                 res,
-                                replace(&mut candidate, LifetimeElisionCandidate::Named),
+                                replace(&mut candidate, LifetimeElisionCandidate::Ignore),
                             );
                         }
                         break;
@@ -2529,9 +2529,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     });
                     all_candidates.extend(candidates.into_iter().filter_map(|(_, candidate)| {
                         match candidate {
-                            LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {
-                                None
-                            }
+                            LifetimeElisionCandidate::Ignore => None,
                             LifetimeElisionCandidate::Missing(missing) => Some(missing),
                         }
                     }));
