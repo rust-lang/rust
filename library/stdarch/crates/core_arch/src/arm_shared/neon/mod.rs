@@ -5248,11 +5248,10 @@ mod tests {
         };
     }
 
-    // Most of these are implemented with builtins, which miri can't handle
     macro_rules! lane_wide_store_load_roundtrip_neon {
         ($( $name:ident $args:tt);* $(;)?) => {
             $(
-                #[cfg_attr(miri, ignore)]
+                #[cfg_attr(miri, ignore)] // uses unsupported vendor intrinsics
                 #[simd_test(enable = "neon")]
                 unsafe fn $name() {
                     lane_wide_store_load_roundtrip! $args;
@@ -5264,7 +5263,7 @@ mod tests {
     macro_rules! lane_wide_store_load_roundtrip_fp16 {
         ($( $name:ident $args:tt);* $(;)?) => {
             $(
-                #[cfg_attr(miri, ignore)]
+                #[cfg_attr(miri, ignore)] // uses unsupported vendor intrinsics
                 #[simd_test(enable = "neon,fp16")]
                 #[cfg(not(target_arch = "arm64ec"))]
                 unsafe fn $name() {
