@@ -843,7 +843,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::InvalidRangePatType { pat });
             return self.types.types.error;
         }
 

@@ -115,6 +115,7 @@ diagnostics![AnyDiagnostic<'db> ->
     InvalidCast<'db>,
     InvalidDeriveTarget,
     InvalidLhsOfAssignment,
+    InvalidRangePatType,
     MacroDefError,
     MacroError,
     MacroExpansionParseError,
@@ -301,6 +302,11 @@ pub struct MismatchedArrayPatLen {
 pub struct ExpectedArrayOrSlicePat<'db> {
     pub pat: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct InvalidRangePatType {
+    pub pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
@@ -787,6 +793,10 @@ impl<'db> AnyDiagnostic<'db> {
             InferenceDiagnostic::ExpectedArrayOrSlicePat { pat, found } => {
                 let pat = pat_syntax(*pat)?.map(Into::into);
                 ExpectedArrayOrSlicePat { pat, found: Type::new(db, def, found.as_ref()) }.into()
+            }
+            &InferenceDiagnostic::InvalidRangePatType { pat } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                InvalidRangePatType { pat }.into()
             }
             &InferenceDiagnostic::DuplicateField { field: expr, variant } => {
                 let expr_or_pat = match expr {
