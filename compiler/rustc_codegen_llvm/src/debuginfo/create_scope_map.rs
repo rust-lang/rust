@@ -40,7 +40,8 @@ pub(crate) fn compute_mir_scopes<'ll, 'tcx>(
         None
     };
     let mut instantiated = DenseBitSet::new_empty(mir.source_scopes.len());
-    let mut discriminators = FxHashMap::default();
+    let mut discriminators =
+        FxHashMap::with_capacity_and_hasher(mir.source_scopes.len(), Default::default());
     // Instantiate all scopes.
     for scope in mir.source_scopes.indices() {
         make_mir_scope(
