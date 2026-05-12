@@ -1062,6 +1062,15 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
         tcx.dcx().delayed_bug("attempt to codegen `#[rustc_force_inline]` item");
     }
 
+    // It is not possible to manually call `Drop::drop` and `Drop::pin_drop`, so we can
+    // skip codegen for mentioned associated items of the `Drop` trait, and only codegen
+    // `drop` or `pin_drop` depending on which was implemented.
+    if let Some(trait_id) = tcx.trait_of_assoc(def_id)
+        && tcx.is_lang_item(trait_id, LangItem::Drop)
+    {
+        return false;
+    }
+
     if def_id.is_local() {
         // Local items cannot be referred to locally without monomorphizing them locally.
         return true;

@@ -10,7 +10,6 @@ struct StructWithDrop {
 
 impl Drop for StructWithDrop {
     //~ MONO_ITEM fn <StructWithDrop as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <StructWithDrop as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 
@@ -25,7 +24,6 @@ enum EnumWithDrop {
 
 impl Drop for EnumWithDrop {
     //~ MONO_ITEM fn <EnumWithDrop as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <EnumWithDrop as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 
@@ -36,7 +34,6 @@ enum EnumNoDrop {
 // We should be able to monomorphize drops for struct with lifetimes.
 impl<'a> Drop for StructWithDropAndLt<'a> {
     //~ MONO_ITEM fn <StructWithDropAndLt<'_> as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <StructWithDropAndLt<'_> as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 
@@ -55,6 +52,5 @@ struct StructWithLtAndPredicate<'a: 'a> {
 // We should be able to monomorphize drops for struct with lifetimes.
 impl<'a> Drop for StructWithLtAndPredicate<'a> {
     //~ MONO_ITEM fn <StructWithLtAndPredicate<'_> as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <StructWithLtAndPredicate<'_> as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }

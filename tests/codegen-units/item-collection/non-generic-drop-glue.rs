@@ -11,7 +11,6 @@ struct StructWithDrop {
 
 impl Drop for StructWithDrop {
     //~ MONO_ITEM fn <StructWithDrop as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <StructWithDrop as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 
@@ -26,7 +25,6 @@ enum EnumWithDrop {
 
 impl Drop for EnumWithDrop {
     //~ MONO_ITEM fn <EnumWithDrop as std::ops::Drop>::drop
-    //~ MONO_ITEM fn <EnumWithDrop as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 
