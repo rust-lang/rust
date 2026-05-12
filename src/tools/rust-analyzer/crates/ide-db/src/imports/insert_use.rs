@@ -17,7 +17,7 @@ use crate::{
     RootDatabase,
     imports::merge_imports::{
         MergeBehavior, NormalizationStyle, common_prefix, eq_attrs, eq_visibility,
-        try_merge_imports, use_tree_cmp,
+        try_merge_imports, use_tree_cmp, wrap_in_tree_list,
     },
 };
 
@@ -251,7 +251,7 @@ fn insert_use_with_alias_option_with_editor(
     let mut use_tree = make.use_tree(path, None, alias, false);
     if mb == Some(MergeBehavior::One)
         && use_tree.path().is_some()
-        && let Some(wrapped) = use_tree.wrap_in_tree_list_with_editor()
+        && let Some(wrapped) = wrap_in_tree_list(&use_tree, make)
     {
         use_tree = wrapped;
     }
@@ -263,7 +263,7 @@ fn insert_use_with_alias_option_with_editor(
         for existing_use in
             scope.as_syntax_node().children().filter_map(ast::Use::cast).filter(filter)
         {
-            if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
+            if let Some(merged) = try_merge_imports(syntax_editor, &existing_use, &use_item, mb) {
                 syntax_editor.replace(existing_use.syntax(), merged.syntax());
                 return;
             }
