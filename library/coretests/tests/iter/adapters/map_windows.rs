@@ -143,6 +143,87 @@ mod drop_checks {
         check::<5>(5, 1);
         check::<5>(5, 4);
     }
+
+    /// Regression test for <https://github.com/rust-lang/rust/issues/156501>.
+    ///
+    /// `Buffer::clone` used to construct the destination `Buffer` with
+    /// `start = self.start` *before* writing into its `MaybeUninit` storage.
+    /// If `<[T; N] as Clone>::clone` panicked partway through, unwinding
+    /// would drop the partially-constructed `Buffer`, and `Buffer::drop`
+    /// would treat `start..start + N` as initialized and call
+    /// `ptr::drop_in_place` on uninitialized memory.
+    #[test]
+    fn no_drop_of_uninit_on_clone_panic() {
+        /// A `DropCheck`-style element that panics on the `panic_on`-th
+        /// invocation of `Clone::clone` (1-indexed). Successful clones
+        /// register a new live element on `info` so `check_drops` catches
+        /// any double-drop or leak.
+        struct ClonePanicker<'a> {
+            info: &'a DropInfo,
+            clone_count: &'a AtomicUsize,
+            panic_on: usize,
+            was_dropped: bool,
+        }
+
+        impl<'a> ClonePanicker<'a> {
+            fn new(info: &'a DropInfo, clone_count: &'a AtomicUsize, panic_on: usize) -> Self {
+                info.alive_count.fetch_add(1, SeqCst);
+                Self { info, clone_count, panic_on, was_dropped: false }
+            }
+        }
+
+        impl<'a> Clone for ClonePanicker<'a> {
+            fn clone(&self) -> Self {
+                let n = self.clone_count.fetch_add(1, SeqCst) + 1;
+                if n == self.panic_on {
+                    panic!("intentional panic from ClonePanicker::clone");
+                }
+                Self::new(self.info, self.clone_count, self.panic_on)
+            }
+        }
+
+        impl Drop for ClonePanicker<'_> {
+            fn drop(&mut self) {
+                if self.was_dropped {
+                    self.info.dropped_twice.store(true, SeqCst);
+                }
+                self.was_dropped = true;
+                self.info.alive_count.fetch_sub(1, SeqCst);
+            }
+        }
+
+        #[track_caller]
+        fn run<const N: usize>(panic_on: usize) {
+            check_drops(|info| {
+                let clone_count = AtomicUsize::new(0);
+                let mut iter = (0..N)
+                    .map(|_| ClonePanicker::new(info, &clone_count, panic_on))
+                    .map_windows(|_: &[_; N]| ());
+
+                // Advance once so `inner.buffer` is `Some(Buffer<_, N>)`.
+                iter.next();
+
+                // Cloning panics partway through the window clone. The
+                // partially-constructed internal `Buffer` must not be
+                // dropped over uninitialized slots, and no element of
+                // `iter` may be dropped twice.
+                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let _clone = iter.clone();
+                }));
+            });
+        }
+
+        // Panic at each position within the window, for several window sizes.
+        run::<1>(1);
+
+        run::<2>(1);
+        run::<2>(2);
+
+        run::<4>(1);
+        run::<4>(2);
+        run::<4>(3);
+        run::<4>(4);
+    }
 }
 
 #[test]
