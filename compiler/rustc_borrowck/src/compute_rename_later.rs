@@ -1,15 +1,20 @@
 // TODO: add description later
 
 use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::infer::{TyCtxtInferExt, canonical};
+use rustc_infer::infer::{TyCtxtInferExt, TypeOutlivesConstraint, canonical};
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::sym;
 use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::compute_implied_outlives_bounds_inner;
+use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::{
+    compute_implied_outlives_bounds_inner_new, implied_bounds_from_components,
+};
+use smallvec::smallvec;
 
 use crate::hir::def::DefKind;
+use crate::ty::outlives::push_outlives_components;
 use crate::ty::solve::NoSolution;
 use crate::ty::{CanonicalVarValues, GenericArg, GenericArgKind, GenericArgs, Region};
 use crate::universal_regions::{
@@ -68,7 +73,7 @@ fn compute_outlives_bounds_rename<'tcx>(
 
     for ty in unnormalized_input_output_tys {
         debug!("the ty for input and output are {:?}", ty);
-        debug!("the kind of type is {:?}", ty.kind());
+
         // Replace erased regions with fresh region variables.
         let ty = fold_regions(tcx, ty, |re, _dbi| match re.kind() {
             ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(span)),
@@ -77,8 +82,7 @@ fn compute_outlives_bounds_rename<'tcx>(
 
         // We add implied bounds from both the unnormalized and normalized ty.
         // See issue #87748
-        if let Ok(bounds) = compute_implied_outlives_bounds_inner(&ocx, param_env, ty, span, false)
-        {
+        if let Ok(bounds) = compute_implied_outlives_bounds_inner_new(&ocx, param_env, ty, span) {
             outlives_bounds.extend(bounds);
         }
 
@@ -113,7 +117,7 @@ fn compute_outlives_bounds_rename<'tcx>(
         // Both &Self::Bar and &() are WF
         if ty != norm_ty {
             if let Ok(bounds) =
-                compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false)
+                compute_implied_outlives_bounds_inner_new(&ocx, param_env, norm_ty, span)
             {
                 outlives_bounds.extend(bounds);
             }
@@ -124,7 +128,6 @@ fn compute_outlives_bounds_rename<'tcx>(
     }
 
     // Add implied bounds from impl header.
-    //
     // We don't use `assumed_wf_types` to source the entire set of implied bounds for
     // a few reasons:
     // - `DefiningTy` for closure has the `&'env Self` type while `assumed_wf_types` doesn't
@@ -150,12 +153,30 @@ fn compute_outlives_bounds_rename<'tcx>(
             // We currently add implied bounds from the normalized ty only.
             // This is more conservative and matches wfcheck behavior.
             if let Ok(bounds) =
-                compute_implied_outlives_bounds_inner(&ocx, param_env, norm_ty, span, false)
+                compute_implied_outlives_bounds_inner_new(&ocx, param_env, norm_ty, span)
             {
                 outlives_bounds.extend(bounds);
             }
         }
     }
+    // Take outlives constraints from fn sig for bevy.
+    // Previously, we only collect outlives obligations for `ParamSet<T>` or
+    // `&ParamSet<T>`, now we collect outlives obligations for the entire function
+    // signature.
+    if !tcx.sess.opts.unstable_opts.no_implied_bounds_compat
+        && tcx.crate_name(mir_def.to_def_id().krate) == sym::bevy_ecs
+    {
+        debug!("bevy hack is used");
+
+        for TypeOutlivesConstraint { sup_type, sub_region, .. } in
+            infcx.clone_registered_region_obligations()
+        {
+            let mut components = smallvec![];
+            push_outlives_components(tcx, sup_type, &mut components);
+            outlives_bounds.extend(implied_bounds_from_components(sub_region, components));
+        }
+    }
+
     // TODO: clean up all these messy bunch together
 
     // Get early bound params.

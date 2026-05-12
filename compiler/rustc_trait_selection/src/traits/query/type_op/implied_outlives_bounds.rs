@@ -166,6 +166,105 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
     Ok(outlives_bounds)
 }
 
+// TODO: Find a way to deduplicate this later.
+// We need this because the new query "compute_rename_later" will wind up generating new
+// region constraint due to normalization, and hits the assert of region obligation needs
+// to be empty when this function is called.
+// TODO: handle the region constraint from function signature.
+pub fn compute_implied_outlives_bounds_inner_new<'tcx>(
+    ocx: &ObligationCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    span: Span,
+) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
+    // FIXME: This doesn't seem right. All call sites already normalize `ty`:
+    // - `Ty`s from the `DefiningTy` in Borrowck: we have to normalize in the caller
+    //      in order to get implied bounds involving any unconstrained region vars
+    //      created as part of normalizing the sig. See #136547
+    // - `Ty`s from impl headers in Borrowck and in Non-Borrowck contexts: we have
+    //      to normalize in the caller as computing implied bounds from unnormalized
+    //      types would be unsound. See #100989
+    //
+    // We must normalize the type so we can compute the right outlives components.
+    // for example, if we have some constrained param type like `T: Trait<Out = U>`,
+    // and we know that `&'a T::Out` is WF, then we want to imply `U: 'a`.
+    let normalized_ty = ocx
+        .deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty)
+        .map_err(|_| NoSolution)?;
+
+    // Sometimes when we ask what it takes for T: WF, we get back that
+    // U: WF is required; in that case, we push U onto this stack and
+    // process it next. Because the resulting predicates aren't always
+    // guaranteed to be a subset of the original type, so we need to store the
+    // WF args we've computed in a set.
+    let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
+    let mut wf_args = vec![ty.into(), normalized_ty.into()];
+
+    let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
+
+    while let Some(arg) = wf_args.pop() {
+        if !checked_wf_args.insert(arg) {
+            continue;
+        }
+
+        // From the full set of obligations, just filter down to the region relationships.
+        for obligation in
+            wf::unnormalized_obligations(ocx.infcx, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
+                .into_iter()
+                .flatten()
+        {
+            let pred = ocx
+                .deeply_normalize(
+                    &ObligationCause::dummy_with_span(span),
+                    param_env,
+                    obligation.predicate,
+                )
+                .map_err(|_| NoSolution)?;
+            let Some(pred) = pred.kind().no_bound_vars() else {
+                continue;
+            };
+            match pred {
+                // FIXME(generic_const_parameter_types): Make sure that `<'a, 'b, const N: &'a &'b u32>`
+                // is sound if we ever support that
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
+                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
+                | ty::PredicateKind::DynCompatible(..)
+                | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::NormalizesTo(..)
+                | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
+                | ty::PredicateKind::AliasRelate(..) => {}
+
+                // We need to search through *all* WellFormed predicates
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    wf_args.push(term);
+                }
+
+                // We need to register region relationships
+                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
+                    ty::OutlivesPredicate(r_a, r_b),
+                )) => outlives_bounds.push(OutlivesBound::RegionSubRegion(r_b, r_a)),
+
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+                    ty_a,
+                    r_b,
+                ))) => {
+                    let mut components = smallvec![];
+                    push_outlives_components(ocx.infcx.tcx, ty_a, &mut components);
+                    outlives_bounds.extend(implied_bounds_from_components(r_b, components))
+                }
+            }
+        }
+    }
+
+    Ok(outlives_bounds)
+}
+
 struct ContainsBevyParamSet<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -195,7 +294,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsBevyParamSet<'tcx> {
 /// this down to determine what relationships would have to hold for
 /// `T: 'a` to hold. We get to assume that the caller has validated
 /// those relationships.
-fn implied_bounds_from_components<'tcx>(
+pub fn implied_bounds_from_components<'tcx>(
     sub_region: ty::Region<'tcx>,
     sup_components: SmallVec<[Component<TyCtxt<'tcx>>; 4]>,
 ) -> Vec<OutlivesBound<'tcx>> {
