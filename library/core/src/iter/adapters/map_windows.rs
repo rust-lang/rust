@@ -194,24 +194,19 @@ impl<T, const N: usize> Buffer<T, N> {
 
 impl<T: Clone, const N: usize> Clone for Buffer<T, N> {
     fn clone(&self) -> Self {
-        // Clone the active window into a stack-local `[T; N]` *before*
-        // constructing the destination `Buffer`. `<[T; N] as Clone>::clone`
-        // is itself panic-safe: if cloning the k-th element panics, it drops
-        // the k-1 already-cloned elements in the temporary and propagates
-        // the unwind. At that point no `Buffer` has been built, so our
-        // `Drop` impl never runs over uninitialized slots.
-        let cloned = self.as_array_ref().clone();
+        // Clone the active window into a stack-local first: if `T::clone`
+        // panics partway through, no `Buffer` has been constructed yet, so
+        // `Buffer::drop` cannot run over uninitialized slots.
+        let array = self.as_array_ref().clone();
 
-        // Only after the clone succeeds do we construct the destination
-        // `Buffer` and move the array into its `MaybeUninit` storage.
-        // `MaybeUninit::write` cannot panic, so the invariant
-        // `self.buffer[self.start..self.start + N]` is initialized holds
-        // for the entire lifetime of `buffer`.
+        // From here through `MaybeUninit::write` below, `buffer` exists with
+        // its `Drop` armed over `[start..start + N]` uninitialized slots.
+        // This is sound only because no panic-capable code runs in between.
         let mut buffer = Buffer {
             buffer: [[const { MaybeUninit::uninit() }; N], [const { MaybeUninit::uninit() }; N]],
             start: self.start,
         };
-        buffer.as_uninit_array_mut().write(cloned);
+        buffer.as_uninit_array_mut().write(array);
         buffer
     }
 }
