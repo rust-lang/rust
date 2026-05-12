@@ -580,6 +580,8 @@ impl<R: ?Sized + Seek> Seek for BufReader<R> {
     }
 }
 
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl<T: ?Sized> SizeHint for BufReader<T> {
     #[inline]
     fn lower_bound(&self) -> usize {
