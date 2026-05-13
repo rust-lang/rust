@@ -176,8 +176,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.variances_of(def_id)
     }
 
-    fn opt_alias_variances(self, alias: ty::AliasTy<'tcx>) -> Option<&'tcx [ty::Variance]> {
-        self.opt_alias_variances(alias)
+    fn opt_alias_variances(
+        self,
+        kind: impl Into<ty::AliasTermKind<'tcx>>,
+    ) -> Option<&'tcx [ty::Variance]> {
+        self.opt_alias_variances(kind)
     }
 
     fn type_of(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {

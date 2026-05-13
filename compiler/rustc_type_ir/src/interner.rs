@@ -225,7 +225,10 @@ pub trait Interner:
     type VariancesOf: Copy + Debug + SliceLike<Item = ty::Variance>;
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
-    fn opt_alias_variances(self, alias: ty::AliasTy<Self>) -> Option<Self::VariancesOf>;
+    fn opt_alias_variances(
+        self,
+        kind: impl Into<ty::AliasTermKind<Self>>,
+    ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
     fn type_of_opaque_hir_typeck(
