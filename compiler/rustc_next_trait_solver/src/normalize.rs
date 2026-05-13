@@ -1,6 +1,9 @@
+use std::fmt::Debug;
+use std::marker::PhantomData;
+
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::{Goal, NoSolutionOrRerunNonErased};
+use rustc_type_ir::solve::Goal;
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, InferConst, InferCtxtLike, InferTy, Interner,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -14,7 +17,7 @@ use crate::placeholder::{BoundVarReplacer, PlaceholderReplacer};
 ///
 /// Note that for ambiguous alias which contains escaping bound vars,
 /// we just return the original alias and don't collect the ambiguous goal.
-pub struct NormalizationFolder<'a, Infcx, I, F>
+pub struct NormalizationFolder<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -23,6 +26,7 @@ where
     universes: Vec<Option<UniverseIndex>>,
     stalled_goals: Vec<Goal<I, I::Predicate>>,
     normalize: F,
+    _error: PhantomData<E>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -109,13 +113,12 @@ enum NeedRenormalization {
     No,
 }
 
-impl<'a, Infcx, I, F> NormalizationFolder<'a, Infcx, I, F>
+impl<'a, Infcx, I, F, E> NormalizationFolder<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(
-        I::Term,
-    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
+    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), E>,
+    E: Debug,
 {
     pub fn new(
         infcx: &'a Infcx,
@@ -123,7 +126,7 @@ where
         stalled_goals: Vec<Goal<I, I::Predicate>>,
         normalize: F,
     ) -> Self {
-        Self { infcx, universes, stalled_goals, normalize }
+        Self { infcx, universes, stalled_goals, normalize, _error: PhantomData }
     }
 
     pub fn stalled_goals(self) -> Vec<Goal<I, I::Predicate>> {
@@ -134,7 +137,7 @@ where
         &mut self,
         alias_term: I::Term,
         has_escaping: HasEscapingBoundVars,
-    ) -> Result<(I::Term, NeedRenormalization), NoSolutionOrRerunNonErased> {
+    ) -> Result<(I::Term, NeedRenormalization), E> {
         let current_universe = self.infcx.universe();
         self.infcx.create_next_universe();
 
@@ -162,15 +165,14 @@ where
     }
 }
 
-impl<'a, Infcx, I, F> FallibleTypeFolder<I> for NormalizationFolder<'a, Infcx, I, F>
+impl<'a, Infcx, I, F, E> FallibleTypeFolder<I> for NormalizationFolder<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(
-        I::Term,
-    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
+    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), E>,
+    E: Debug,
 {
-    type Error = NoSolutionOrRerunNonErased;
+    type Error = E;
 
     fn cx(&self) -> I {
         self.infcx.cx()
@@ -274,7 +276,7 @@ where
 }
 
 // Only handle ambiguous alias in the outmost instantiated binder.
-pub struct BinderRenormalizer<'a, Infcx, I, F>
+pub struct BinderRenormalizer<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
@@ -282,28 +284,25 @@ where
     infcx: &'a Infcx,
     stalled_goals: Vec<Goal<I, I::Predicate>>,
     normalize: F,
+    _error: PhantomData<E>,
 }
 
-impl<'a, Infcx, I, F> BinderRenormalizer<'a, Infcx, I, F>
+impl<'a, Infcx, I, F, E> BinderRenormalizer<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(
-        I::Term,
-    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
+    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), E>,
+    E: Debug,
 {
     pub fn new(infcx: &'a Infcx, stalled_goals: Vec<Goal<I, I::Predicate>>, normalize: F) -> Self {
-        Self { infcx, stalled_goals, normalize }
+        Self { infcx, stalled_goals, normalize, _error: PhantomData }
     }
 
     pub fn stalled_goals(self) -> Vec<Goal<I, I::Predicate>> {
         self.stalled_goals
     }
 
-    fn normalize_alias_term(
-        &mut self,
-        alias_term: I::Term,
-    ) -> Result<I::Term, NoSolutionOrRerunNonErased> {
+    fn normalize_alias_term(&mut self, alias_term: I::Term) -> Result<I::Term, E> {
         let (normalized, ambig_goal) = (self.normalize)(alias_term)?;
 
         self.stalled_goals.extend(ambig_goal);
@@ -311,15 +310,14 @@ where
     }
 }
 
-impl<'a, Infcx, I, F> FallibleTypeFolder<I> for BinderRenormalizer<'a, Infcx, I, F>
+impl<'a, Infcx, I, F, E> FallibleTypeFolder<I> for BinderRenormalizer<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    F: FnMut(
-        I::Term,
-    ) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), NoSolutionOrRerunNonErased>,
+    F: FnMut(I::Term) -> Result<(I::Term, Option<Goal<I, I::Predicate>>), E>,
+    E: Debug,
 {
-    type Error = NoSolutionOrRerunNonErased;
+    type Error = E;
 
     fn cx(&self) -> I {
         self.infcx.cx()

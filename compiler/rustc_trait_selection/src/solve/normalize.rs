@@ -1,6 +1,6 @@
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
-use rustc_infer::traits::solve::{Goal, NoSolutionOrRerunNonErased};
+use rustc_infer::traits::solve::{Goal, NoSolution};
 use rustc_infer::traits::{
     FromSolverError, Normalized, Obligation, PredicateObligations, TraitEngine,
 };
@@ -50,7 +50,7 @@ where
     let value = value.skip_normalization();
     let value = infcx.resolve_vars_if_possible(value);
     let original_value = value.clone();
-    let normalize_term = |alias_term| -> Result<_, NoSolutionOrRerunNonErased> {
+    let normalize_term = |alias_term| -> Result<_, NoSolution> {
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         let infer_term = delegate.next_term_var_of_kind(alias_term, at.cause.span);
         let predicate = ty::PredicateKind::AliasRelate(

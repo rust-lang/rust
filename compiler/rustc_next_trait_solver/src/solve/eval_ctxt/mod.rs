@@ -1773,7 +1773,7 @@ where
         // To drop the mutable borrow of self early.
         let (normalized, stalled_goals) = {
             let infcx = self.delegate.deref();
-            let normalize_term = |alias_term| {
+            let normalize_term = |alias_term| -> Result<_, NoSolutionOrRerunNonErased> {
                 let delegate = self.delegate;
                 let infer_term = self.next_term_infer_of_kind(alias_term);
                 let predicate = ty::PredicateKind::AliasRelate(
