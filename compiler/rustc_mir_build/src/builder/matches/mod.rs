@@ -1208,7 +1208,7 @@ struct Ascription<'tcx> {
 /// and helps [`TestKind::Switch`] and [`TestKind::SwitchInt`] know what target
 /// values to use.
 ///
-/// Created by [`MatchPairTree::for_pattern`], and then inspected primarily by:
+/// Created by [`MatchPairTree`], and then inspected primarily by:
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
 /// - [`Builder::choose_bucket_for_candidate`] (to see how the test interacts with a match pair)
 ///
