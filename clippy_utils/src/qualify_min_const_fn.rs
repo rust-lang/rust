@@ -193,7 +193,7 @@ fn check_rvalue<'tcx>(
             "transmute can attempt to turn pointers into integers, so is unstable in const fn".into(),
         )),
         // binops are fine on integers
-        Rvalue::BinaryOp(_, box (lhs, rhs)) => {
+        Rvalue::BinaryOp(_, (lhs, rhs)) => {
             check_operand(cx, lhs, span, body, msrv)?;
             check_operand(cx, rhs, span, body, msrv)?;
             let ty = lhs.ty(body, cx.tcx);
@@ -235,18 +235,18 @@ fn check_statement<'tcx>(
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
-        StatementKind::Assign(box (place, rval)) => {
+        StatementKind::Assign((place, rval)) => {
             check_place(cx, *place, span, body, msrv)?;
             check_rvalue(cx, body, def_id, rval, span, msrv)
         },
 
-        StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
+        StatementKind::FakeRead((_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(cx, **place, span, body, msrv),
 
-        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
+        StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 
-        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+        StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
             rustc_middle::mir::CopyNonOverlapping { dst, src, count },
         )) => {
             check_operand(cx, dst, span, body, msrv)?;

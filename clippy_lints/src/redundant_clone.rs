@@ -285,7 +285,7 @@ fn find_stmt_assigns_to<'tcx>(
     bb: mir::BasicBlock,
 ) -> Option<(mir::Local, CannotMoveOut)> {
     let rvalue = mir.basic_blocks[bb].statements.iter().rev().find_map(|stmt| {
-        if let mir::StatementKind::Assign(box (mir::Place { local, .. }, v)) = &stmt.kind {
+        if let mir::StatementKind::Assign((mir::Place { local, .. }, v)) = &stmt.kind {
             return if *local == to_local { Some(v) } else { None };
         }
 

@@ -74,7 +74,7 @@ impl EarlyLintPass for DoubleParens {
             // ^^^^^^^^^ expr
             //      ^^^  arg
             //       ^   inner
-            ExprKind::Call(_, args) | ExprKind::MethodCall(box MethodCall { args, .. })
+            ExprKind::Call(_, args) | ExprKind::MethodCall(MethodCall { args, .. })
                 if let [arg] = &**args
                     && let ExprKind::Paren(inner) = &arg.kind
                     && expr.span.eq_ctxt(arg.span)
