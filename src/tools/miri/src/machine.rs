@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::{fmt, process};
 
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::expand::allocator::{self, SpecialAllocatorMethod};
@@ -17,7 +17,7 @@ use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
-use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_log::tracing;
 use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
@@ -573,6 +573,8 @@ pub struct MiriMachine<'tcx> {
 
     /// Mapping extern static names to their pointer.
     pub(crate) extern_statics: FxHashMap<Symbol, StrictPointer>,
+    /// A pointer to the allocation we provide for non-existent weak symbols.
+    pub(crate) missing_weak_symbol: Option<StrictPointer>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
@@ -742,6 +744,7 @@ impl<'tcx> MiriMachine<'tcx> {
             .expect("Couldn't create poll instance");
         let alloc_addresses =
             RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr, tcx));
+
         MiriMachine {
             tcx,
             borrow_tracker,
@@ -770,6 +773,7 @@ impl<'tcx> MiriMachine<'tcx> {
             backtrace_style: config.backtrace_style,
             user_relevant_crates,
             extern_statics: FxHashMap::default(),
+            missing_weak_symbol: None,
             rng: RefCell::new(rng),
             allocator: (!config.native_lib.is_empty())
                 .then(|| Rc::new(RefCell::new(crate::alloc::isolated_alloc::IsolatedAlloc::new()))),
@@ -1014,6 +1018,7 @@ impl VisitProvenance for MiriMachine<'_> {
             argv,
             cmd_line,
             extern_statics,
+            missing_weak_symbol,
             dirs,
             borrow_tracker,
             data_race,
@@ -1077,6 +1082,7 @@ impl VisitProvenance for MiriMachine<'_> {
         argc.visit_provenance(visit);
         argv.visit_provenance(visit);
         cmd_line.visit_provenance(visit);
+        missing_weak_symbol.visit_provenance(visit);
         for ptr in extern_statics.values() {
             ptr.visit_provenance(visit);
         }
@@ -1376,6 +1382,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         def_id: DefId,
     ) -> InterpResult<'tcx, StrictPointer> {
         let link_name = Symbol::intern(ecx.tcx.symbol_name(Instance::mono(*ecx.tcx, def_id)).name);
+        let def_ty = ecx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+        let extern_decl_layout =
+            ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
+
         if let Some(&ptr) = ecx.machine.extern_statics.get(&link_name) {
             // Various parts of the engine rely on `get_alloc_info` for size and alignment
             // information. That uses the type information of this static.
@@ -1384,9 +1394,6 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 panic!("extern_statics cannot contain wildcards")
             };
             let info = ecx.get_alloc_info(alloc_id);
-            let def_ty = ecx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
-            let extern_decl_layout =
-                ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
             if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {
                 throw_unsup_format!(
                     "extern static `{link_name}` has been declared as `{krate}::{name}` \
@@ -1402,8 +1409,26 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 )
             }
             interp_ok(ptr)
+        } else if ecx.tcx.codegen_fn_attrs(def_id).import_linkage == Some(Linkage::ExternalWeak) {
+            // Symbols with weak linkage default to null if they are not defined. However we can't
+            // create new allocations here. On the plus side we know rustc rejects non-ptr-sized
+            // weak statics so we can just use a single global "null" allocation for all of them.
+            // The memory we are assigning this address to is anyway somewhat "fake", it's an
+            // indirection introduced by how Rust represents external symbols with linkage (see
+            // <https://github.com/rust-lang/rust/issues/156468>). So we can just specify that such
+            // memory does not have unique addresses, despite being technically a `static`.
+            assert_eq!(
+                extern_decl_layout.size,
+                ecx.tcx.data_layout.pointer_size(),
+                "non-pointer-sized weak static"
+            );
+            interp_ok(
+                ecx.machine
+                    .missing_weak_symbol
+                    .expect("`missing_weak_symbol` should have been initialized"),
+            )
         } else {
-            throw_unsup_format!("extern static `{link_name}` is not supported by Miri",)
+            throw_unsup_format!("extern static `{link_name}` is not supported by Miri")
         }
     }
 

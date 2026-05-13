@@ -235,6 +235,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.GetCurrentProcessId()?;
                 this.write_scalar(result, dest)?;
             }
+            "GetTempPathW" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [bufferlength, buffer] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u32, *mut _) -> u32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                let result = this.GetTempPathW(bufferlength, buffer)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // File related shims
             "NtWriteFile" => {

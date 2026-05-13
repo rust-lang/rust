@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use std::{cmp, iter};
 
-use rand::RngCore;
+use rand::Rng;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_hir::def::{DefKind, Namespace};

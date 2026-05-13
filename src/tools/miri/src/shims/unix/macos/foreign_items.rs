@@ -328,6 +328,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
             }
 
+            // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
+            // These shims are enabled only when the caller is in the standard library.
+            "confstr" => {
+                let [_key, _buf, _buflen] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                // We just pretend that no configuration key exists, and return EINVAL.
+                this.set_last_error(LibcError("EINVAL"))?;
+                this.write_null(dest)?;
+            }
+
             _ => return interp_ok(EmulateItemResult::NotSupported),
         };
 

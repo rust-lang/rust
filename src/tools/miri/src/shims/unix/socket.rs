@@ -606,11 +606,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ),
         }
 
-        // Mio returns a potentially unconnected stream.
-        // We can be ensured that the connection is established when
-        // [`TcpStream::take_err`] and [`TcpStream::peer_addr`] both
-        // don't return an error after receiving an [`Interest::WRITEABLE`]
-        // event on the stream.
+        // This begins establishing the connection, but does not block until the stream is fully connected.
+        // We deal with that below.
         match TcpStream::connect(address) {
             Ok(stream) => {
                 *socket.state.borrow_mut() = SocketState::Connecting(stream);
@@ -1262,22 +1259,45 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("ENOTCONN"));
         };
 
-        let shut_rd = this.eval_libc_i32("SHUT_RD");
-        let shut_wr = this.eval_libc_i32("SHUT_WR");
-        let shut_rdwr = this.eval_libc_i32("SHUT_RDWR");
+        let is_read_shutdown = how == this.eval_libc_i32("SHUT_RD");
+        let is_write_shutdown = how == this.eval_libc_i32("SHUT_WR");
+        let is_read_write_shutdown = how == this.eval_libc_i32("SHUT_RDWR");
 
         let how = match () {
-            _ if how == shut_rd => Shutdown::Read,
-            _ if how == shut_wr => Shutdown::Write,
-            _ if how == shut_rdwr => Shutdown::Both,
+            _ if is_read_shutdown => Shutdown::Read,
+            _ if is_write_shutdown => Shutdown::Write,
+            _ if is_read_write_shutdown => Shutdown::Both,
             // An invalid value was passed to `how`.
             _ => return this.set_last_error_and_return_i32(LibcError("EINVAL")),
         };
 
-        match stream.shutdown(how) {
-            Ok(_) => interp_ok(Scalar::from_i32(0)),
-            Err(e) => this.set_last_error_and_return_i32(e),
-        }
+        if let Err(e) = stream.shutdown(how) {
+            return this.set_last_error_and_return_i32(e);
+        };
+
+        drop(state);
+
+        // Because we map cross platform mio readiness to epoll readiness and
+        // the different platforms don't treat `shutdown` the same way, we set
+        // the readiness after a `shutdown` manually to achieve more consistent
+        // epoll readiness. Otherwise we do not generate enough epoll events
+        // on partial shutdowns on Windows hosts.
+        let mut readiness = socket.io_readiness.borrow_mut();
+        // Closing the read end of a socket causes an EPOLLRDHUP event.
+        readiness.read_closed |= is_read_shutdown || is_read_write_shutdown;
+        // Only shutting down the write end doesn't cause an EPOLLHUP event
+        // and thus we won't set the `write_closed` readiness for it here.
+        readiness.write_closed |= is_read_write_shutdown;
+        // The Linux kernel also sets EPOLLIN when both ends of a socket are closed:
+        // <https://github.com/torvalds/linux/blob/HEAD/net/ipv4/tcp.c#L584-L588>
+        readiness.readable |= is_read_write_shutdown;
+
+        drop(readiness);
+
+        // Update the epoll readiness for the socket.
+        this.update_epoll_active_events(socket, /* force_edge */ false)?;
+
+        interp_ok(Scalar::from_i32(0))
     }
 }
 
@@ -1450,8 +1470,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This is a *non-blocking* write.
         let result = this.write_to_host(stream, length, buffer_ptr)?;
-        // FIXME: When the host does a short write, we should emit an epoll edge -- at least for targets for which tokio assumes no short writes:
-        // <https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L240>
         match result {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
@@ -1463,6 +1481,45 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // On Windows hosts, `send` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
+            }
+            Ok(bytes_written) if bytes_written < length => {
+                // We had a short write. On Unix hosts using the `epoll` and `kqueue` backends, a
+                // short write means that the write buffer is full. We update the readiness
+                // accordingly, which means that next time we see "writable" we will report an epoll
+                // edge. Some applications (e.g. tokio) rely on this behavior; see
+                // <https://github.com/tokio-rs/tokio/blob/HEAD/tokio/src/io/poll_evented.rs#L244-L264>.
+                if cfg!(any(
+                    // epoll
+                    target_os = "android",
+                    target_os = "illumos",
+                    target_os = "linux",
+                    target_os = "redox",
+                    // kqueue
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "ios",
+                    target_os = "macos",
+                    target_os = "netbsd",
+                    target_os = "openbsd",
+                    target_os = "tvos",
+                    target_os = "visionos",
+                    target_os = "watchos",
+                )) {
+                    socket.io_readiness.borrow_mut().writable = false;
+                    this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                } else {
+                    // On hosts which don't use the `epoll` or `kqueue` backends, a short write
+                    // doesn't imply a full write buffer. However, the target we are emulating might
+                    // guarantee this behavior. To prevent applications from being stuck on such
+                    // targets waiting on a new readiness event, we emit a new edge which still
+                    // contains a writable readiness. This should trick the applications into trying
+                    // another write which would then return EWOULDBLOCK should it really be full.
+                    // This results in an unrealistic execution but we don't have another way of
+                    // finding out whether the write buffer is full. The "default case" of linux
+                    // host and linux target isn't affected by this.
+                    this.update_epoll_active_events(socket.clone(), /* force_edge */ true)?;
+                }
+                interp_ok(result)
             }
             result => interp_ok(result),
         }
@@ -1536,8 +1593,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             length,
             buffer_ptr,
         )?;
-        // FIXME: When the host does a short read, we should emit an epoll edge -- at least for targets for which tokio assumes no short reads:
-        // <https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L182>
         match result {
             Err(IoError::HostError(e))
                 if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::WouldBlock) =>
@@ -1549,6 +1604,47 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // On Windows hosts, `recv` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
+            }
+            Ok(bytes_read) if bytes_read < length && bytes_read > 0 => {
+                // We had a short read. (Note that reading 0 bytes is guaranteed to indicate EOF,
+                // and can never happen spuriously, so we have to exclude that case.) On Unix hosts
+                // using the `epoll` and `kqueue` backends, a short read means that the read buffer
+                // is empty. We update the readiness accordingly, which means that next time we see
+                // "readable" we will report an epoll edge. Some applications (e.g. tokio) rely on
+                // this behavior; see
+                // <https://github.com/tokio-rs/tokio/blob/HEAD/tokio/src/io/poll_evented.rs#L190-L210>
+                if cfg!(any(
+                    // epoll
+                    target_os = "android",
+                    target_os = "illumos",
+                    target_os = "linux",
+                    target_os = "redox",
+                    // kqueue
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "ios",
+                    target_os = "macos",
+                    target_os = "netbsd",
+                    target_os = "openbsd",
+                    target_os = "tvos",
+                    target_os = "visionos",
+                    target_os = "watchos",
+                )) {
+                    socket.io_readiness.borrow_mut().readable = false;
+                    this.update_epoll_active_events(socket.clone(), /* force_edge */ false)?;
+                } else {
+                    // On hosts which don't use the `epoll` or `kqueue` backends, a short read
+                    // doesn't imply an empty read buffer. However, the target we are emulating
+                    // might guarantee this behavior. To prevent applications from being stuck on
+                    // such targets waiting on a new readiness event, we emit a new edge which still
+                    // contains a readable readiness. This should trick the applications into trying
+                    // another read which would then return EWOULDBLOCK should it really be empty.
+                    // This results in an unrealistic execution but we don't have another way of
+                    // finding out whether the read buffer is empty. The "default case" of linux
+                    // host and linux target isn't affected by this.
+                    this.update_epoll_active_events(socket.clone(), /* force_edge */ true)?;
+                }
+                interp_ok(result)
             }
             result => interp_ok(result),
         }
@@ -1658,24 +1754,20 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return action.call(this, Err(()))
                     }
 
-                    // There was no error during connecting. We still need to ensure that
-                    // the wakeup wasn't spurious. We do this by attempting to read the
-                    // peer address of the socket (following the advice given by mio):
+                    // There was no error during connecting. Mio advises also reading the peer address
+                    // to ensure that socket is actually connected and that it wasn't a spurious wake-up:
                     // <https://docs.rs/mio/latest/mio/net/struct.TcpStream.html#notes>
-
-                    match stream.peer_addr() {
-                        Ok(_) => { /* fall-through to below */},
-                        Err(e) if matches!(e.kind(), io::ErrorKind::NotConnected | io::ErrorKind::InProgress) => {
-                            // We received a spurious wakeup from the OS. This should be considered an OS bug:
-                            // <https://github.com/tokio-rs/mio/issues/1942#issuecomment-4169378308>
-                            panic!("{foreign_name}: received writable event from OS but socket is not yet connected")
-                        },
-                        Err(_) => {
-                            // For all other errors the socket is connected. Since we're not interested in the
-                            // peer address and only want to know whether the socket is connected, we can ignore
-                            // the error and continue.
-                        }
-                    }
+                    //
+                    // Attempting to read the peer address would introduce an edge-case where the
+                    // write end of the socket could already be shutdown before it received a
+                    // writable event. When we then call [`TcpStream::peer_addr`] we receive an
+                    // error. This would need extra state for storing whether the write end was
+                    // manually closed using `shutdown`.
+                    // Also, tokio doesn't read the peer address and everything seems to be fine,
+                    // so we don't do that either:
+                    // <https://github.com/tokio-rs/mio/issues/1942#issuecomment-4162607761>
+                    // In other words, we are assuming that there will be no spurious
+                    // wakeups while establishing the connection.
 
                     // The connection is established.
 
