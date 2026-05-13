@@ -4,6 +4,7 @@
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::thread;
+use std::time::Duration;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
@@ -17,6 +18,8 @@ fn main() {
     test_shutdown();
     test_sockopt_ttl();
     test_sockopt_nodelay();
+    test_sockopt_read_timeout();
+    test_sockopt_write_timeout();
 }
 
 fn test_create_ipv4_listener() {
@@ -166,4 +169,57 @@ fn test_sockopt_nodelay() {
     assert_eq!(stream.nodelay().unwrap(), true);
     stream.set_nodelay(false).unwrap();
     assert_eq!(stream.nodelay().unwrap(), false);
+}
+
+/// Test setting and reading the SNDTIMEO socket option.
+/// This also tests that a read won't block indefinitely
+/// when the read timeout is set to [`Some`] duration.
+fn test_sockopt_read_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let mut stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    // By default, reads on blocking sockets should block indefinitely.
+    assert_eq!(stream.read_timeout().unwrap(), None);
+
+    let short_read_timeout = Some(Duration::from_millis(10));
+    stream.set_read_timeout(short_read_timeout).unwrap();
+    assert_eq!(stream.read_timeout().unwrap(), short_read_timeout);
+
+    let mut buffer = [0u8; 128];
+    // This should not block indefinitely and instead return EAGAIN/EWOULDBLOCK.
+    let err = stream.read(&mut buffer).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+}
+
+/// Test setting and reading the RCVTIMEO socket option.
+/// This also tests that a write won't block indefinitely when
+/// the write timeout is set to [`Some`] duration.
+fn test_sockopt_write_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+
+    let mut stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
+    // By default, writes on blocking sockets should block indefinitely.
+    assert_eq!(stream.write_timeout().unwrap(), None);
+
+    let short_write_timeout = Some(Duration::from_millis(10));
+    stream.set_write_timeout(short_write_timeout).unwrap();
+    assert_eq!(stream.write_timeout().unwrap(), short_write_timeout);
+
+    let fill_buffer = [1u8; 1024];
+    loop {
+        match stream.write_all(&fill_buffer) {
+            Ok(_) => { /* continue to fill up buffer */ }
+            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket,
+            // we know it's because of the write timeout exceeding because the write
+            // buffer is full.
+            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
 }

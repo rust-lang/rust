@@ -7,7 +7,7 @@ mod libc_utils;
 mod utils;
 
 use std::io::ErrorKind;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{ptr, thread};
 
 use libc_utils::*;
@@ -55,6 +55,9 @@ fn main() {
     test_shutdown_writable_after_read_close();
 
     test_getsockopt_truncate();
+
+    test_sockopt_sndtimeo();
+    test_sockopt_rcvtimeo();
 }
 
 /// Test creating a socket and then closing it afterwards.
@@ -758,4 +761,96 @@ fn test_getsockopt_truncate() {
     assert_eq!(long_option_len, 4);
     let long_ttl = unsafe { option_value.assume_init() };
     assert_eq!(long_ttl, ttl);
+}
+
+/// Test setting and getting the SO_SNDTIMEO socket option.
+/// Also test that writes don't block indefinitely when we
+/// have a nonzero timeout.
+fn test_sockopt_sndtimeo() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .unwrap();
+    // By default, no write timeout should be set.
+    assert_eq!(timeout.tv_sec, 0);
+    assert_eq!(timeout.tv_usec, 0);
+
+    // A 50 millisecond timeout.
+    let short_timeout = libc::timeval { tv_sec: 0, tv_usec: 50_000 };
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO, short_timeout).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .unwrap();
+    // We should now read the same value as we wrote above.
+    assert_eq!(timeout.tv_sec, short_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, short_timeout.tv_usec);
+
+    let buffer = [1u8; 32_000];
+    loop {
+        let before = Instant::now();
+        let result = unsafe {
+            errno_result(libc::write(client_sockfd, buffer.as_ptr().cast(), buffer.len()))
+        };
+        match result {
+            Ok(_) => { /* continue to fill up buffer */ }
+            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket, we know
+            // it's because of the write timeout exceeding because the write buffer
+            // is full.
+            Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                // The last write should return an EAGAIN/EWOULDBLOCK after ~50ms instead
+                // of blocking indefinitely.
+                assert!(Instant::now().duration_since(before) >= Duration::from_millis(50));
+                break;
+            }
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+}
+
+/// Test setting and getting the SO_RCVTIMEO socket option.
+/// Also test that reads don't block indefinitely when we
+/// have a nonzero timeout.
+fn test_sockopt_rcvtimeo() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .unwrap();
+    // By default, no read timeout should be set.
+    assert_eq!(timeout.tv_sec, 0);
+    assert_eq!(timeout.tv_usec, 0);
+
+    // A 50 millisecond timeout.
+    let short_timeout = libc::timeval { tv_sec: 0, tv_usec: 50_000 };
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO, short_timeout).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .unwrap();
+    // We should now read the same value as we wrote above.
+    assert_eq!(timeout.tv_sec, short_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, short_timeout.tv_usec);
+
+    let mut buffer = [0u8; 16];
+    // The read should return an EAGAIN/EWOULDBLOCK after ~10ms instead of blocking indefinitely.
+    let before = Instant::now();
+    let err = unsafe {
+        errno_result(libc::read(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+    // Ensure that we blocked for at least 50 milliseconds.
+    assert!(Instant::now().duration_since(before) >= Duration::from_millis(50))
 }

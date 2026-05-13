@@ -1,6 +1,5 @@
 use std::num::NonZero;
 use std::sync::Mutex;
-use std::time::Duration;
 use std::{cmp, iter};
 
 use rand::Rng;
@@ -712,31 +711,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let value_place = this.deref_pointer_and_offset(op, offset, base_layout, value_layout)?;
         this.write_scalar(value, &value_place)
-    }
-
-    /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`
-    /// if the value in the `timespec` struct is invalid. Some libc functions will return
-    /// `EINVAL` in this case.
-    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
-        let this = self.eval_context_mut();
-        let seconds_place = this.project_field(tp, FieldIdx::ZERO)?;
-        let seconds_scalar = this.read_scalar(&seconds_place)?;
-        let seconds = seconds_scalar.to_target_isize(this)?;
-        let nanoseconds_place = this.project_field(tp, FieldIdx::ONE)?;
-        let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
-        let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
-
-        interp_ok(try {
-            // tv_sec must be non-negative.
-            let seconds: u64 = seconds.try_into().ok()?;
-            // tv_nsec must be non-negative.
-            let nanoseconds: u32 = nanoseconds.try_into().ok()?;
-            if nanoseconds >= 1_000_000_000 {
-                // tv_nsec must not be greater than 999,999,999.
-                None?
-            }
-            Duration::new(seconds, nanoseconds)
-        })
     }
 
     /// Read bytes from a byte slice.
