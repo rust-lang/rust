@@ -101,8 +101,9 @@ pub(super) fn check<'tcx>(
                 if let ExprKind::Binary(ref op, left, right) = end.kind
                     && op.node == BinOpKind::Add
                 {
-                    let start_equal_left = SpanlessEq::new(cx).eq_expr(start, left);
-                    let start_equal_right = SpanlessEq::new(cx).eq_expr(start, right);
+                    let ctxt = start.span.ctxt();
+                    let start_equal_left = SpanlessEq::new(cx).eq_expr(ctxt, start, left);
+                    let start_equal_right = SpanlessEq::new(cx).eq_expr(ctxt, start, right);
 
                     if start_equal_left {
                         take_expr = right;

@@ -89,9 +89,10 @@ pub(super) fn check<'tcx>(
             }
         };
 
+        let ctxt = expr.span.ctxt();
         let mut found = false;
         let found_multiple = for_each_expr_without_closures(e, |e| {
-            if eq_expr_value(cx, assignee, e) {
+            if eq_expr_value(cx, ctxt, assignee, e) {
                 if found {
                     return ControlFlow::Break(());
                 }
@@ -103,12 +104,12 @@ pub(super) fn check<'tcx>(
 
         if found && !found_multiple {
             // a = a op b
-            if eq_expr_value(cx, assignee, l) {
+            if eq_expr_value(cx, ctxt, assignee, l) {
                 lint(assignee, r);
             }
             // a = b commutative_op a
             // Limited to primitive type as these ops are know to be commutative
-            if eq_expr_value(cx, assignee, r) && cx.typeck_results().expr_ty(assignee).is_primitive_ty() {
+            if eq_expr_value(cx, ctxt, assignee, r) && cx.typeck_results().expr_ty(assignee).is_primitive_ty() {
                 match op.node {
                     hir::BinOpKind::Add
                     | hir::BinOpKind::Mul

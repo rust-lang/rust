@@ -469,19 +469,23 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Opti
 /// this method will return a tuple, composed of a `Vec`
 /// containing the `Expr`s for `v[0], v[0].a, v[0].a.b, v[0].a.b[x]`
 /// and an `Expr` for root of them, `v`
-fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'a Expr<'hir>) {
+fn projection_stack<'a, 'hir>(
+    mut e: &'a Expr<'hir>,
+    ctxt: SyntaxContext,
+) -> Option<(Vec<&'a Expr<'hir>>, &'a Expr<'hir>)> {
     let mut result = vec![];
     let root = loop {
         match e.kind {
-            ExprKind::Index(ep, _, _) | ExprKind::Field(ep, _) => {
+            ExprKind::Index(ep, _, _) | ExprKind::Field(ep, _) if e.span.ctxt() == ctxt => {
                 result.push(e);
                 e = ep;
             },
+            ExprKind::Index(..) | ExprKind::Field(..) => return None,
             _ => break e,
         }
     };
     result.reverse();
-    (result, root)
+    Some((result, root))
 }
 
 /// Gets the mutability of the custom deref adjustment, if any.
@@ -499,10 +503,14 @@ pub fn expr_custom_deref_adjustment(cx: &LateContext<'_>, e: &Expr<'_>) -> Optio
 
 /// Checks if two expressions can be mutably borrowed simultaneously
 /// and they aren't dependent on borrowing same thing twice
-pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -> bool {
-    let (s1, r1) = projection_stack(e1);
-    let (s2, r2) = projection_stack(e2);
-    if !eq_expr_value(cx, r1, r2) {
+pub fn can_mut_borrow_both(cx: &LateContext<'_>, ctxt: SyntaxContext, e1: &Expr<'_>, e2: &Expr<'_>) -> bool {
+    let Some((s1, r1)) = projection_stack(e1, ctxt) else {
+        return false;
+    };
+    let Some((s2, r2)) = projection_stack(e2, ctxt) else {
+        return false;
+    };
+    if !eq_expr_value(cx, ctxt, r1, r2) {
         return true;
     }
     if expr_custom_deref_adjustment(cx, r1).is_some() || expr_custom_deref_adjustment(cx, r2).is_some() {
@@ -518,11 +526,6 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
             (ExprKind::Field(_, i1), ExprKind::Field(_, i2)) => {
                 if i1 != i2 {
                     return true;
-                }
-            },
-            (ExprKind::Index(_, i1, _), ExprKind::Index(_, i2, _)) => {
-                if !eq_expr_value(cx, i1, i2) {
-                    return false;
                 }
             },
             _ => return false,
@@ -1744,13 +1747,7 @@ pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool
 pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir_parent_owner_iter(id)
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
-        .any(|(id, _)| {
-            find_attr!(
-                tcx,
-                id.def_id,
-                AutomaticallyDerived
-            )
-        })
+        .any(|(id, _)| find_attr!(tcx, id.def_id, AutomaticallyDerived))
 }
 
 /// Checks if the given `DefId` matches the `libc` item.
