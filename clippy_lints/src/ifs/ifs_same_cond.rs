@@ -4,6 +4,7 @@ use clippy_utils::ty::InteriorMut;
 use clippy_utils::{SpanlessEq, eq_expr_value, find_binding_init, hash_expr, search_same};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
+use rustc_span::SyntaxContext;
 
 use super::IFS_SAME_COND;
 
@@ -34,10 +35,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, conds: &[&Expr<'_>], interior_
                 if method_caller_is_mutable(cx, caller, interior_mut) {
                     false
                 } else {
-                    SpanlessEq::new(cx).eq_expr(lhs, rhs)
+                    SpanlessEq::new(cx).eq_expr(SyntaxContext::root(), lhs, rhs)
                 }
             } else {
-                eq_expr_value(cx, lhs, rhs)
+                eq_expr_value(cx, SyntaxContext::root(), lhs, rhs)
             }
         },
     ) {

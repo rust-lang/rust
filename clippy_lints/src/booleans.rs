@@ -297,8 +297,9 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
             return Err("contains never type".to_owned());
         }
 
+        let ctxt = e.span.ctxt();
         for (n, expr) in self.terminals.iter().enumerate() {
-            if eq_expr_value(self.cx, e, expr) {
+            if eq_expr_value(self.cx, ctxt, e, expr) {
                 #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
@@ -307,8 +308,8 @@ impl<'v> Hir2Qmm<'_, '_, 'v> {
                 && implements_ord(self.cx, e_lhs)
                 && let ExprKind::Binary(expr_binop, expr_lhs, expr_rhs) = &expr.kind
                 && negate(e_binop.node) == Some(expr_binop.node)
-                && eq_expr_value(self.cx, e_lhs, expr_lhs)
-                && eq_expr_value(self.cx, e_rhs, expr_rhs)
+                && eq_expr_value(self.cx, ctxt, e_lhs, expr_lhs)
+                && eq_expr_value(self.cx, ctxt, e_rhs, expr_rhs)
             {
                 #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));

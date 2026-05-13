@@ -13,7 +13,7 @@ use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExp
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, TypeckResults};
-use rustc_span::{ByteSymbol, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ByteSymbol, ErrorGuaranteed, Span, Symbol, SyntaxContext};
 
 use super::MATCH_SAME_ARMS;
 
@@ -87,7 +87,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
 
             SpanlessEq::new(cx)
                 .expr_fallback(eq_fallback)
-                .eq_expr(expr_a, expr_b)
+                .eq_expr(SyntaxContext::root(), expr_a, expr_b)
                 // these checks could be removed to allow unused bindings
                 && bindings_eq(lhs.pat, local_map.keys().copied().collect())
                 && bindings_eq(rhs.pat, local_map.values().copied().collect())

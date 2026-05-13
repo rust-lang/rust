@@ -299,7 +299,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
         let by_ref = !cx.type_is_copy_modulo_regions(caller_ty)
             && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
         let sugg = if let Some(else_inner) = r#else {
-            if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
+            if eq_expr_value(cx, expr.span.ctxt(), caller, peel_blocks(else_inner)) {
                 format!("Some({receiver_str}?)")
             } else {
                 return;
@@ -537,7 +537,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         && let is_option_early_return = is_early_return(sym::Option, cx, &if_block)
         && (is_option_early_return || is_early_return(sym::Result, cx, &if_block))
         && if_else
-            .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
+            .map(|e| eq_expr_value(cx, expr.span.ctxt(), let_expr, peel_blocks(e)))
             .is_none_or(|e| !e)
     {
         if !is_copy(cx, caller_ty)
