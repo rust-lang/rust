@@ -696,36 +696,40 @@ impl<'a> Components<'a> {
     ///   return `None`.
     #[inline]
     fn consume_first_component(&mut self, dir_front: bool) -> Option<Component<'a>> {
-        if let Some(first_comp) = self.first_comp {
-            // Our first
-            self.first_comp = None;
-            if !matches!(first_comp, FirstComponent::RelativePath) {
+        match self.first_comp {
+            Some(FirstComponent::AbsolutePath) => {
+                self.first_comp = None;
                 if dir_front {
                     self.advance_through_trailing_sep_front();
                 }
-                if first_comp == FirstComponent::AbsolutePath {
-                    return Some(Component::RootDir);
-                } else {
-                    // Our front has the length of our Prefix component encoded at the start,
-                    // so this slice is guaranteed to contain the Prefix component if it's
-                    // unconsumed.
-                    let subslice =
-                        unsafe { OsStr::from_encoded_bytes_unchecked(&self.path[0..self.front]) };
-                    // This prefix is guaranteed to be made since we confirmed
-                    // our first component is a Prefix
-                    let prefix = parse_prefix(subslice).unwrap();
-                    return Some(Component::Prefix(PrefixComponent {
-                        raw: subslice,
-                        parsed: prefix,
-                    }));
+                return Some(Component::RootDir);
+            }
+            Some(FirstComponent::Prefix) => {
+                self.first_comp = None;
+                if dir_front {
+                    self.advance_through_trailing_sep_front();
                 }
-            } else {
+
+                // SAFETY: Our front has the length of our Prefix component encoded at the start,
+                // so this slice is guaranteed to contain the Prefix component if it's
+                // unconsumed.
+                let subslice =
+                    unsafe { OsStr::from_encoded_bytes_unchecked(&self.path[0..self.front]) };
+                // This prefix is guaranteed to be made since we confirmed
+                // our first component is a Prefix
+                let prefix = parse_prefix(subslice).unwrap();
+
+                Some(Component::Prefix(PrefixComponent { raw: subslice, parsed: prefix }))
+            }
+            Some(FirstComponent::RelativePath) => {
+                self.first_comp = None;
                 if dir_front {
                     return self.parse_next_component();
                 }
+                None
             }
+            None => None,
         }
-        None
     }
 
     /// Normalizes away trailing separators and current directory ('.') components
@@ -863,22 +867,6 @@ impl<'a> Components<'a> {
         }
     }
 
-    /// Parse a u8 slice into an OsStr, which is encoded into a `Component`
-    #[inline]
-    fn parse_single_component(&self, slice: &'a [u8]) -> Option<Component<'a>> {
-        match slice {
-            [] => return None,
-            [b'.'] => Some(Component::CurDir),
-            [b'.', b'.'] => Some(Component::ParentDir),
-            _ => {
-                // SAFETY: Our sliced path is guaranteed to capture the entire component
-                // due to delimiting on ascii separators from front and back.
-                let path_osstr = unsafe { OsStr::from_encoded_bytes_unchecked(slice) };
-                Some(Component::Normal(path_osstr))
-            }
-        }
-    }
-
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
     ///
     /// # Examples
@@ -903,6 +891,16 @@ impl<'a> Components<'a> {
                     }
                 }
                 FirstComponent::Prefix => {
+                    // We don't want to trim away separators from a Prefix
+                    // component
+                    if self.front == self.back {
+                        // SAFETY: If the first component is not consumed, then
+                        // front index encodes the whole length of the Prefix
+                        // component
+                        return unsafe { Path::from_u8_slice(&self.path[..self.front]) };
+                    }
+                    // SAFETY: Our back index is guaranteed to delimit at an ascii
+                    // separator byte, so this should present a valid path
                     return unsafe {
                         Path::from_u8_slice(&self.path[..self.back]).trim_trailing_sep()
                     };
@@ -915,6 +913,26 @@ impl<'a> Components<'a> {
         // where front is a byte after an ascii separator and back is at an ascii
         // separator, so this will always produce a valid path.
         unsafe { Path::from_u8_slice(&self.path[self.front..self.back]).trim_trailing_sep() }
+    }
+
+    /// Parse a u8 slice into an OsStr, which is encoded into a `Component`
+    #[inline]
+    fn parse_single_component(&self, slice: &'a [u8]) -> Option<Component<'a>> {
+        match slice {
+            [] => return None,
+            [b'.'] => Some(Component::CurDir),
+            [b'.', b'.'] => Some(Component::ParentDir),
+            _ => {
+                let root_slice = [MAIN_SEPARATOR as u8];
+                if slice == root_slice {
+                    return Some(Component::RootDir);
+                }
+                // SAFETY: Our sliced path is guaranteed to capture the entire component
+                // due to delimiting on ascii separators from front and back.
+                let path_osstr = unsafe { OsStr::from_encoded_bytes_unchecked(slice) };
+                Some(Component::Normal(path_osstr))
+            }
+        }
     }
 
     /// Parses the next component in `Components<'_>` from the left
@@ -1065,14 +1083,10 @@ impl<'a> Iterator for Components<'a> {
     fn next(&mut self) -> Option<Component<'a>> {
         // We reach this case when we no longer have anymore paths
         // to consume (return `None`), or if our front idx was initially
-        // equal to back idx (e.g. if we had `C:`, `.`, `/`)
-        if self.front >= self.back {
+        // equal to back idx (e.g. if we had `C:`, `.`, `/`), or if we
+        // had a front component initially
+        if self.front >= self.back || self.first_comp.is_some() {
             return self.consume_first_component(true);
-        }
-
-        // Consume our first component if we haven't already.
-        if let Some(comp) = self.consume_first_component(true) {
-            return Some(comp);
         }
 
         self.parse_next_component()
@@ -1083,8 +1097,8 @@ impl<'a> Iterator for Components<'a> {
 impl<'a> DoubleEndedIterator for Components<'a> {
     fn next_back(&mut self) -> Option<Component<'a>> {
         // We reach here when we no longer have anymore paths
-        // to consume, we're dealing with relative paths and
-        // need to output "", or we need to output Prefix component
+        // to consume, or we need to output Prefix component
+        // (anything else falls through this conditional)
         if self.back <= self.front {
             return self.consume_first_component(false);
         }
@@ -1107,9 +1121,22 @@ impl<'a> PartialEq for Components<'a> {
             && self.front == other.front
             && self.back == other.back
         {
-            // possible future improvement: this could bail out earlier if there were a
-            // reverse memcmp/bcmp comparing back to front
-            if self.path == other.path {
+            // If either `self` or `other` have a prefix (indicated by `first_comp`)
+            // we need to start at index 0 (because prefix length is encoded in
+            // `front`)
+            let path = if matches!(self.first_comp, Some(FirstComponent::Prefix)) {
+                &self.path[..self.back]
+            } else {
+                &self.path[self.front..self.back]
+            };
+
+            let other_path = if matches!(other.first_comp, Some(FirstComponent::Prefix)) {
+                &other.path[..other.back]
+            } else {
+                &other.path[other.front..other.back]
+            };
+
+            if path == other_path {
                 return true;
             }
         }
