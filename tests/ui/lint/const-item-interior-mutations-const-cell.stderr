@@ -8,7 +8,7 @@ LL |     let _ = LazyCell::force(&A);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
    = note: `#[warn(const_item_interior_mutations)]` on by default
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
@@ -26,7 +26,7 @@ LL |     let _ = A.set(10);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: OnceCell<i32> = OnceCell::new();
@@ -43,7 +43,7 @@ LL |     let _ = A.try_insert(20);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: OnceCell<i32> = OnceCell::new();
@@ -60,7 +60,7 @@ LL |     let _ = A.get_or_init(|| 30);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: OnceCell<i32> = OnceCell::new();
@@ -77,7 +77,7 @@ LL |     let _ = A.get_or_try_init(|| Ok::<_, ()>(40));
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: OnceCell<i32> = OnceCell::new();
@@ -94,7 +94,7 @@ LL |     let _ = A.set(1);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: Cell<i32> = Cell::new(0);
@@ -111,7 +111,7 @@ LL |     let _ = A.swap(&A);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: Cell<i32> = Cell::new(0);
@@ -128,7 +128,7 @@ LL |     let _ = A.replace(2);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: Cell<i32> = Cell::new(0);
@@ -145,7 +145,7 @@ LL |     let _ = A.get();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: Cell<i32> = Cell::new(0);
@@ -162,7 +162,7 @@ LL |     let _ = A.update(|x| x + 1);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: Cell<i32> = Cell::new(0);
@@ -179,7 +179,7 @@ LL |     let _ = A.replace(1);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -196,7 +196,7 @@ LL |     let _ = A.replace_with(|x| *x + 2);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -213,7 +213,7 @@ LL |     let _ = A.swap(&A);
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -230,7 +230,7 @@ LL |     let _ = A.borrow();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -247,7 +247,7 @@ LL |     let _ = A.try_borrow();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -264,7 +264,7 @@ LL |     let _ = A.borrow_mut();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -281,7 +281,7 @@ LL |     let _ = A.try_borrow_mut();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: RefCell<i32> = RefCell::new(0);
@@ -298,7 +298,7 @@ LL |     let _ = unsafe { A.replace(1) };
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
@@ -315,7 +315,7 @@ LL |     let _ = A.get();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
@@ -332,7 +332,7 @@ LL |         let _ = A.as_ref_unchecked();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
@@ -349,7 +349,7 @@ LL |         let _ = A.as_mut_unchecked();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
@@ -366,7 +366,7 @@ LL |     let _ = A.get();
    |
    = note: each usage of a `const` item creates a new temporary
    = note: only the temporaries and never the original `const A` will be modified
-   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
 help: for a shared instance of `A`, consider making it a `static` item instead
    |
 LL -     const A: SyncUnsafeCell<i32> = SyncUnsafeCell::new(0);
