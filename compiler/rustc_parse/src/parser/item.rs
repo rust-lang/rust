@@ -9,7 +9,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
+use rustc_errors::{Applicability, MultiSpan, PResult, StashKey, msg, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
@@ -1997,7 +1997,8 @@ impl<'a> Parser<'a> {
             VariantData::Struct { fields, recovered }
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenParen {
-            let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
+            let tuple = self.parse_tuple_struct_body()?;
+            let body = VariantData::Tuple(tuple, DUMMY_NODE_ID);
             generics.where_clause = self.parse_where_clause()?;
             self.expect_semi()?;
             body
@@ -2095,76 +2096,127 @@ impl<'a> Parser<'a> {
             Safety::Default
         }
     }
-
     pub(super) fn parse_tuple_struct_body(&mut self) -> PResult<'a, ThinVec<FieldDef>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
-        self.parse_paren_comma_seq(|p| {
-            let attrs = p.parse_outer_attributes()?;
-            p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
-                let mut snapshot = None;
-                if p.is_vcs_conflict_marker(&TokenKind::Shl, &TokenKind::Lt) {
-                    // Account for `<<<<<<<` diff markers. We can't proactively error here because
-                    // that can be a valid type start, so we snapshot and reparse only we've
-                    // encountered another parse error.
-                    snapshot = Some(p.create_snapshot_for_diagnostic());
-                }
-                let lo = p.token.span;
-                let vis = match p.parse_visibility(FollowedByType::Yes) {
-                    Ok(vis) => vis,
-                    Err(err) => {
-                        if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_vcs_conflict_marker();
-                        }
-                        return Err(err);
-                    }
-                };
-                // Unsafe fields are not supported in tuple structs, as doing so would result in a
-                // parsing ambiguity for `struct X(unsafe fn())`.
-                let ty = match p.parse_ty() {
-                    Ok(ty) => ty,
-                    Err(err) => {
-                        if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_vcs_conflict_marker();
-                        }
-                        return Err(err);
-                    }
-                };
-                let mut default = None;
-                if p.token == token::Eq {
-                    let mut snapshot = p.create_snapshot_for_diagnostic();
-                    snapshot.bump();
-                    match snapshot.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst) {
-                        Ok(const_expr) => {
-                            let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
-                            p.psess.gated_spans.gate(sym::default_field_values, sp);
-                            p.restore_snapshot(snapshot);
-                            default = Some(const_expr);
-                        }
-                        Err(err) => {
-                            err.cancel();
-                        }
-                    }
-                }
+        let openparen_span = self.token.span;
+        // used when the user add name fields in the tuple struct
+        let mut name_field_error = None;
+        let mut name_fields_span = MultiSpan::new();
 
-                Ok((
-                    FieldDef {
-                        span: lo.to(ty.span),
-                        vis,
-                        safety: Safety::Default,
-                        ident: None,
-                        id: DUMMY_NODE_ID,
-                        ty,
-                        default,
-                        attrs,
-                        is_placeholder: false,
-                    },
-                    Trailing::from(p.token == token::Comma),
-                    UsePreAttrPos::No,
-                ))
+        let ret = self
+            .parse_paren_comma_seq(|p| {
+                let attrs = p.parse_outer_attributes()?;
+                p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
+                    let mut snapshot = None;
+                    if p.is_vcs_conflict_marker(&TokenKind::Shl, &TokenKind::Lt) {
+                        // Account for `<<<<<<<` diff markers. We can't proactively error here because
+                        // that can be a valid type start, so we snapshot and reparse only we've
+                        // encountered another parse error.
+                        snapshot = Some(p.create_snapshot_for_diagnostic());
+                    }
+                    let lo = p.token.span;
+                    let vis = match p.parse_visibility(FollowedByType::Yes) {
+                        Ok(vis) => vis,
+                        Err(err) => {
+                            if let Some(ref mut snapshot) = snapshot {
+                                snapshot.recover_vcs_conflict_marker();
+                            }
+                            return Err(err);
+                        }
+                    };
+                    let might_be_namefield =
+                        p.token.is_ident() && p.look_ahead(1, |tok| tok == &token::Colon);
+                    // Unsafe fields are not supported in tuple structs, as doing so would result in a
+                    // parsing ambiguity for `struct X(unsafe fn())`.
+                    let mut ty = p.parse_ty().or_else(|diag| {
+                        if let Some(ref mut snapshot) = snapshot {
+                            snapshot.recover_vcs_conflict_marker();
+                        }
+                        return Err(diag);
+                    })?;
+
+                    // The type parse stopped at a colon, it might because the user add a name field
+                    if might_be_namefield && p.token == token::Colon {
+                        let mut snapshot = p.create_snapshot_for_diagnostic();
+                        snapshot.bump();
+                        match snapshot.parse_ty() {
+                            Ok(t) => {
+                                if name_field_error.is_none() {
+                                    let err = p.dcx().struct_span_err(
+                                        p.token.span,
+                                        "field names are not allowed in tuple structs",
+                                    );
+                                    name_field_error = Some(err);
+                                }
+                                let name_span = ty.span.to(t.span.shrink_to_lo());
+                                name_fields_span.push_span_label(name_span, "");
+                                p.restore_snapshot(snapshot);
+                                ty = t;
+                            }
+                            Err(e) => e.cancel(),
+                        }
+                    }
+                    let mut default = None;
+                    if p.token == token::Eq {
+                        let mut snapshot = p.create_snapshot_for_diagnostic();
+                        snapshot.bump();
+                        match snapshot.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst) {
+                            Ok(const_expr) => {
+                                let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
+                                p.psess.gated_spans.gate(sym::default_field_values, sp);
+                                p.restore_snapshot(snapshot);
+                                default = Some(const_expr);
+                            }
+                            Err(err) => {
+                                err.cancel();
+                            }
+                        }
+                    }
+
+                    Ok((
+                        FieldDef {
+                            span: lo.to(ty.span),
+                            vis,
+                            safety: Safety::Default,
+                            ident: None,
+                            id: DUMMY_NODE_ID,
+                            ty,
+                            default,
+                            attrs,
+                            is_placeholder: false,
+                        },
+                        Trailing::from(p.token == token::Comma),
+                        UsePreAttrPos::No,
+                    ))
+                })
             })
-        })
-        .map(|(r, _)| r)
+            .map(|(r, _)| r);
+        if let Some(mut name_field_error) = name_field_error {
+            if ret.is_err() {
+                // make sure we reach at the end of the struct
+                self.eat_to_tokens(&[exp!(CloseParen)]);
+                self.bump();
+            }
+            name_field_error.span_help(
+                name_fields_span,
+                "if you wanted to create a tuple struct, remove field names:",
+            );
+            let mut suggestions =
+                vec![(openparen_span, "{".to_string()), (self.prev_token.span, "}".to_string())];
+            // check if there's a semicolon at the end of this tuple struct
+            // if so, remove it in the suggestion
+            if self.token == token::Semi {
+                suggestions.push((self.token.span, "".to_string()));
+            }
+            name_field_error.multipart_suggestion(
+                "if you wanted to create a regular struct, use curly braces:",
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
+            name_field_error.emit();
+        }
+        ret
     }
 
     /// Parses an element of a struct declaration.
