@@ -129,6 +129,7 @@ diagnostics![AnyDiagnostic<'db> ->
     NeedMut,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
+    NonExhaustiveRecordPat,
     NoSuchField,
     MismatchedArrayPatLen,
     DuplicateField,
@@ -404,6 +405,12 @@ pub struct NonExhaustiveLet {
 #[derive(Debug)]
 pub struct NonExhaustiveRecordExpr {
     pub expr: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
+pub struct NonExhaustiveRecordPat {
+    pub pat: InFile<ExprOrPatPtr>,
+    pub variant: Variant,
 }
 
 #[derive(Debug)]
@@ -881,6 +888,10 @@ impl<'db> AnyDiagnostic<'db> {
             }
             &InferenceDiagnostic::NonExhaustiveRecordExpr { expr } => {
                 NonExhaustiveRecordExpr { expr: expr_syntax(expr)? }.into()
+            }
+            &InferenceDiagnostic::NonExhaustiveRecordPat { pat, variant } => {
+                let pat = pat_syntax(pat)?.map(Into::into);
+                NonExhaustiveRecordPat { pat, variant: variant.into() }.into()
             }
             &InferenceDiagnostic::FunctionalRecordUpdateOnNonStruct { base_expr } => {
                 FunctionalRecordUpdateOnNonStruct { base_expr: expr_syntax(base_expr)? }.into()

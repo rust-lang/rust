@@ -365,6 +365,12 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         expr: ExprId,
     },
+    NonExhaustiveRecordPat {
+        #[type_visitable(ignore)]
+        pat: PatId,
+        #[type_visitable(ignore)]
+        variant: VariantId,
+    },
     FunctionalRecordUpdateOnNonStruct {
         #[type_visitable(ignore)]
         base_expr: ExprId,

@@ -1155,7 +1155,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
     fn check_record_pat_fields(
         &mut self,
         adt_ty: Ty<'db>,
-        _pat: PatId,
+        pat: PatId,
         variant: VariantId,
         fields: &[RecordFieldPat],
         has_rest_pat: bool,
@@ -1233,7 +1233,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects";
         // Require `..` if struct has non_exhaustive attribute.
         let non_exhaustive = self.has_applicable_non_exhaustive(variant.into());
         if non_exhaustive && !has_rest_pat {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::NonExhaustiveRecordPat { pat, variant });
         }
 
         // Report an error if an incorrect number of fields was specified.
