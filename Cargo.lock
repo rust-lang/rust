@@ -5948,9 +5948,9 @@ checksum = "2896d95c02a80c6d6a5d6e953d479f5ddf2dfdb6a244441010e373ac0fb88971"
 
 [[package]]
 name = "ui_test"
-version = "0.30.4"
+version = "0.30.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada249620d81f010b9a1472b63a5077ac7c722dd0f4bacf6528b313d0b8c15d8"
+checksum = "980133b75aa9a95dc94feaf629d92d22c1172186f1fa1266b91f5b91414cf9a5"
 dependencies = [
  "annotate-snippets 0.11.5",
  "anyhow",

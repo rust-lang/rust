@@ -15,7 +15,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -157,9 +157,11 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     .filter_map(get_trait_info_from_bound)
                     .for_each(|(trait_item_res, trait_item_segments, span)| {
                         if let Some(self_segments) = self_bounds_map.get(&trait_item_res)
-                            && SpanlessEq::new(cx)
-                                .paths_by_resolution()
-                                .eq_path_segments(self_segments, trait_item_segments)
+                            && SpanlessEq::new(cx).paths_by_resolution().eq_path_segments(
+                                SyntaxContext::root(),
+                                self_segments,
+                                trait_item_segments,
+                            )
                         {
                             span_lint_and_help(
                                 cx,
@@ -252,7 +254,7 @@ impl TraitBounds {
         impl PartialEq for SpanlessTy<'_, '_> {
             fn eq(&self, other: &Self) -> bool {
                 let mut eq = SpanlessEq::new(self.cx);
-                eq.inter_expr().eq_ty(self.ty, other.ty)
+                eq.inter_expr(SyntaxContext::root()).eq_ty(self.ty, other.ty)
             }
         }
         impl Hash for SpanlessTy<'_, '_> {
@@ -382,9 +384,11 @@ struct ComparableTraitRef<'a, 'tcx> {
 impl PartialEq for ComparableTraitRef<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
         SpanlessEq::eq_modifiers(self.modifiers, other.modifiers)
-            && SpanlessEq::new(self.cx)
-                .paths_by_resolution()
-                .eq_path(self.trait_ref.path, other.trait_ref.path)
+            && SpanlessEq::new(self.cx).paths_by_resolution().eq_path(
+                SyntaxContext::root(),
+                self.trait_ref.path,
+                other.trait_ref.path,
+            )
     }
 }
 impl Eq for ComparableTraitRef<'_, '_> {}

@@ -168,6 +168,7 @@ mod inherent_impl;
 mod inherent_to_string;
 mod init_numbered_fields;
 mod inline_fn_without_body;
+mod inline_trait_bounds;
 mod int_plus_one;
 mod item_name_repetitions;
 mod items_after_statements;
@@ -518,6 +519,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers)),
         Box::new(|| Box::new(cfg_not_test::CfgNotTest)),
         Box::new(|| Box::new(empty_line_after::EmptyLineAfter::new())),
+        Box::new(|| Box::new(inline_trait_bounds::InlineTraitBounds)),
         // add early passes here, used by `cargo dev new_lint`
     ];
     store.early_passes.extend(early_lints);

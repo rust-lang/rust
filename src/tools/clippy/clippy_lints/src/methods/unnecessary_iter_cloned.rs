@@ -66,7 +66,7 @@ pub fn check_for_loop_iter(
                 for_each_expr_without_closures(block, |e| {
                     match e.kind {
                         ExprKind::Assign(assignee, _, _) | ExprKind::AssignOp(_, assignee, _) => {
-                            change |= !can_mut_borrow_both(cx, caller, assignee);
+                            change |= !can_mut_borrow_both(cx, body.span.ctxt(), caller, assignee);
                         },
                         _ => {},
                     }

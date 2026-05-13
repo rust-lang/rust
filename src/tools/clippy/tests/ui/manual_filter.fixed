@@ -2,6 +2,7 @@
 #![allow(
     unused_variables,
     clippy::question_mark,
+    clippy::some_filter,
     clippy::useless_vec,
     clippy::nonminimal_bool
 )]
