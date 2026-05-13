@@ -187,6 +187,9 @@ pub trait Interner:
     /// (in theory) only happen when concurrent.
     fn assert_evaluation_is_concurrent(&self);
 
+    /// Forwarded from `search_graph::Cx::solver_event`. Defaults to a no-op.
+    fn solver_event(self, _label: &'static str) {}
+
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
     type GenericsOf: GenericsOf<Self>;
@@ -580,5 +583,9 @@ impl<I: Interner> search_graph::Cx for I {
     }
     fn assert_evaluation_is_concurrent(&self) {
         self.assert_evaluation_is_concurrent()
+    }
+
+    fn solver_event(self, label: &'static str) {
+        I::solver_event(self, label)
     }
 }

@@ -55,6 +55,10 @@ pub trait Cx: Copy {
     fn with_global_cache<R>(self, f: impl FnOnce(&mut GlobalCache<Self>) -> R) -> R;
 
     fn assert_evaluation_is_concurrent(&self);
+
+    /// Record a solver event for `-Zself-profile`. Defaults to a no-op so
+    /// non-rustc implementors (e.g. the search-graph fuzzer) need no changes.
+    fn solver_event(self, _label: &'static str) {}
 }
 
 pub trait Delegate: Sized {
@@ -777,7 +781,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         // - A
         //     - BA cycle
         //     - CB :x:
-        if let Some(result) = self.lookup_provisional_cache(input, step_kind_from_parent) {
+        if let Some(result) = self.lookup_provisional_cache(cx, input, step_kind_from_parent) {
             return result;
         }
 
@@ -809,6 +813,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             debug_assert!(validate_cache.is_none(), "global cache and cycle on stack: {input:?}");
             return result;
         }
+
+        cx.solver_event("search_graph::evaluate_goal");
 
         // Unfortunate, it looks like we actually have to compute this goal.
         self.stack.push(StackEntry {
@@ -896,6 +902,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         debug!("encountered stack overflow");
+        cx.solver_event("search_graph::handle_overflow");
         D::stack_overflow_result(cx, input)
     }
 
@@ -1079,6 +1086,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
 
     fn lookup_provisional_cache(
         &mut self,
+        cx: X,
         input: X::Input,
         step_kind_from_parent: PathKind,
     ) -> Option<X::Result> {
@@ -1122,6 +1130,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     UpdateParentGoalCtxt::ProvisionalCacheHit,
                 );
                 debug!(?head_index, ?path_from_head, "provisional cache hit");
+                cx.solver_event("search_graph::provisional_cache_hit");
                 return Some(result);
             }
         }
@@ -1246,6 +1255,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             );
 
             debug!(?required_depth, "global cache hit");
+            cx.solver_event("search_graph::global_cache_hit");
             Some(result)
         })
     }
@@ -1265,6 +1275,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         // in case we're in the first fixpoint iteration for this goal.
         let path_kind = Self::cycle_path_kind(&self.stack, step_kind_from_parent, head_index);
         debug!(?path_kind, "encountered cycle with depth {head_index:?}");
+        cx.solver_event("search_graph::cycle_on_stack");
         let mut usages = HeadUsages::default();
         usages.add_usage(path_kind);
         let head = CycleHead { paths_to_head: step_kind_from_parent.into(), usages };

@@ -143,6 +143,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         // See trait-system-refactor-initiative#234.
     }
 
+    fn solver_event(self, label: &'static str) {
+        let _guard = self.sess.prof.generic_activity(label);
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
