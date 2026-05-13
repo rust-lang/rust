@@ -17,9 +17,10 @@ use syntax::{
     ast::{
         self, HasVisibility,
         edit::{AstNodeEdit, IndentLevel},
-        make,
+        syntax_factory::SyntaxFactory,
     },
-    match_ast, ted,
+    match_ast,
+    syntax_editor::{Position, SyntaxEditor},
 };
 
 use crate::{AssistContext, Assists};
