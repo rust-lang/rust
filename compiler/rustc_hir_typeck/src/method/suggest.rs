@@ -1903,10 +1903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (FxIndexSet::default(), FxIndexSet::default(), Vec::new())
                     });
                     entry.0.insert(cause_span);
-                    entry.1.insert((
-                        cause_span,
-                        cause_msg,
-                    ));
+                    entry.1.insert((cause_span, cause_msg));
                     entry.2.push(p);
                     skip_list.insert(p);
                     manually_impl = true;
@@ -1918,16 +1915,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span: item_span,
                     ..
                 })) => {
-                    let sized_pred =
-                        unsatisfied_predicates.iter().any(|(pred, _, _)| {
-                            match pred.kind().skip_binder() {
-                                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                                    self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
-                                        && pred.polarity == ty::PredicatePolarity::Positive
-                                }
-                                _ => false,
+                    let sized_pred = unsatisfied_predicates.iter().any(|(pred, _, _)| {
+                        match pred.kind().skip_binder() {
+                            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
+                                self.tcx.is_lang_item(pred.def_id(), LangItem::Sized)
+                                    && pred.polarity == ty::PredicatePolarity::Positive
                             }
-                        });
+                            _ => false,
+                        }
+                    });
                     for param in generics.params {
                         if param.span == cause_span && sized_pred {
                             let (sp, sugg) = match param.colon_span {
@@ -1954,7 +1950,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.2.push(p);
                     if cause_span != *item_span {
                         entry.0.insert(cause_span);
-                        entry.1.insert((cause_span, "unsatisfied trait bound introduced here".to_string()));
+                        entry.1.insert((
+                            cause_span,
+                            "unsatisfied trait bound introduced here".to_string(),
+                        ));
                     } else {
                         if let Some(of_trait) = of_trait {
                             entry.0.insert(of_trait.trait_ref.path.span);
@@ -1967,7 +1966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.1.insert((self_ty.span, String::new()));
                 }
                 Some(Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait { is_auto:  rustc_ast::ast::IsAuto::Yes, .. },
+                    kind: hir::ItemKind::Trait { is_auto: rustc_ast::ast::IsAuto::Yes, .. },
                     span: item_span,
                     ..
                 })) => {
@@ -1994,7 +1993,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                     entry.0.insert(cause_span);
                     entry.1.insert((ident.span, String::new()));
-                    entry.1.insert((cause_span, "unsatisfied trait bound introduced here".to_string()));
+                    entry.1.insert((
+                        cause_span,
+                        "unsatisfied trait bound introduced here".to_string(),
+                    ));
                     entry.2.push(p);
                 }
                 _ => {

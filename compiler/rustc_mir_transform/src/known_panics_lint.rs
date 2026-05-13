@@ -955,7 +955,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }
             MutatingUse(MutatingUseContext::Projection)
-            | NonMutatingUse(NonMutatingUseContext::Projection) => bug!("visit_place should not pass {context:?} for {local:?}"),
+            | NonMutatingUse(NonMutatingUseContext::Projection) => {
+                bug!("visit_place should not pass {context:?} for {local:?}")
+            }
         }
     }
 }

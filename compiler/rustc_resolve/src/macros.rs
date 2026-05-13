@@ -1273,8 +1273,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PathResult::NonModule(..) |
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
-                    self.dcx()
-                        .emit_err(errors::CfgAccessibleUnsure { span });
+                    self.dcx().emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.

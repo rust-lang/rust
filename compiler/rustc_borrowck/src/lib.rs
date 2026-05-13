@@ -833,19 +833,21 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
-                )
-            }
+                ),
+            },
             // Only relevant for mir typeck
-            StatementKind::AscribeUserType(..)
+            StatementKind::AscribeUserType(..) => {}
             // Only relevant for liveness and unsafeck
-            | StatementKind::PlaceMention(..)
+            StatementKind::PlaceMention(..) => {}
             // Doesn't have any language semantics
-            | StatementKind::Coverage(..)
+            StatementKind::Coverage(..) => {}
             // These do not actually affect borrowck
-            | StatementKind::ConstEvalCounter
-            | StatementKind::StorageLive(..) => {}
+            StatementKind::ConstEvalCounter | StatementKind::StorageLive(..) => {}
             // This does not affect borrowck
-            StatementKind::BackwardIncompatibleDropHint { place, reason: BackwardIncompatibleDropReason::Edition2024 } => {
+            StatementKind::BackwardIncompatibleDropHint {
+                place,
+                reason: BackwardIncompatibleDropReason::Edition2024,
+            } => {
                 self.check_backward_incompatible_drop(location, **place, state);
             }
             StatementKind::StorageDead(local) => {
@@ -857,8 +859,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                     state,
                 );
             }
-            StatementKind::Nop
-            | StatementKind::SetDiscriminant { .. } => {
+            StatementKind::Nop | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
         }
@@ -2243,10 +2244,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
                 ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
-                // assigning to (P->variant) is okay if assigning to `P` is okay
-                //
-                // FIXME: is this true even if P is an adt with a dtor?
-                { }
+                    // assigning to (P->variant) is okay if assigning to `P` is okay
+                    //
+                    // FIXME: is this true even if P is an adt with a dtor?
+                    {}
 
                 ProjectionElem::UnwrapUnsafeBinder(_) => {
                     check_parent_of_field(self, location, place_base, span, state);
@@ -2255,8 +2256,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // assigning to (*P) requires P to be initialized
                 ProjectionElem::Deref => {
                     self.check_if_full_path_is_moved(
-                        location, InitializationRequiringAction::Use,
-                        (place_base, span), state);
+                        location,
+                        InitializationRequiringAction::Use,
+                        (place_base, span),
+                        state,
+                    );
                     // (base initialized; no need to
                     // recur further)
                     break;
@@ -2275,8 +2279,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     match base_ty.kind() {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
-                                location, InitializationRequiringAction::Assignment,
-                                (place_base, span), state);
+                                location,
+                                InitializationRequiringAction::Assignment,
+                                (place_base, span),
+                                state,
+                            );
 
                             // (base initialized; no need to
                             // recur further)
