@@ -2114,6 +2114,9 @@ unsafe extern "C" {
     /// Prints the statistics collected by `-Zprint-codegen-stats`.
     pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
+    /// Save the statistics collected by `-Zprint-codegen-stats-json`
+    pub(crate) fn LLVMRustPrintStatisticsJSON(OutStr: &RustString);
+
     pub(crate) fn LLVMRustInlineAsmVerify(
         Ty: &Type,
         Constraints: *const c_uchar, // See "PTR_LEN_STR".

@@ -2546,6 +2546,9 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::print_codegen_stats` instead of this field")]
     print_codegen_stats: bool = (false, parse_bool, [UNTRACKED],
         "print codegen statistics (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_stats_json` instead of this field")]
+    print_codegen_stats_json: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "print codegen statistics in JSON to a file (default: no)"),
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: bool = (false, parse_bool, [UNTRACKED],
