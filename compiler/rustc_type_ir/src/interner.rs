@@ -4,6 +4,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
+use rustc_ast_ir::visit::VisitorResult;
 use rustc_index::bit_set::DenseBitSet;
 
 use crate::fold::TypeFoldable;
@@ -95,12 +96,7 @@ pub trait Interner:
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
-    type BoundVarKinds: Copy
-        + Debug
-        + Hash
-        + Eq
-        + SliceLike<Item = ty::BoundVariableKind<Self>>
-        + Default;
+    type BoundVarKinds: BoundVarKinds<Self>;
 
     type PredefinedOpaques: Copy
         + Debug
@@ -289,6 +285,8 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
+    fn assumptions_on_binders(self) -> bool;
+
     fn coroutine_hidden_types(
         self,
         def_id: Self::CoroutineId,
@@ -401,13 +399,17 @@ pub trait Interner:
         def_id: Self::TraitId,
     ) -> impl IntoIterator<Item = Self::DefId>;
 
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        f: impl FnMut(Self::ImplId),
-    );
-    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, f: impl FnMut(Self::ImplId));
+        f: impl FnMut(Self::ImplId) -> R,
+    ) -> R;
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: Self::TraitId,
+        f: impl FnMut(Self::ImplId) -> R,
+    ) -> R;
 
     fn has_item_definition(self, def_id: Self::ImplOrTraitAssocTermId) -> bool;
 

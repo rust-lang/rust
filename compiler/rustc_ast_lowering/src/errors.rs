@@ -137,6 +137,13 @@ pub(crate) struct ClosureCannotBeStatic {
 }
 
 #[derive(Diagnostic)]
+#[diag("`move(expr)` is only supported in plain closures")]
+pub(crate) struct MoveExprOnlyInPlainClosures {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("functional record updates are not allowed in destructuring assignments")]
 pub(crate) struct FunctionalRecordUpdateDestructuringAssignment {
     #[primary_span]

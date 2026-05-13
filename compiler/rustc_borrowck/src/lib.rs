@@ -2,8 +2,8 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(box_patterns)]
 #![feature(default_field_values)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -803,12 +803,12 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
         self.check_activations(location, span, state);
 
         match &stmt.kind {
-            StatementKind::Assign(box (lhs, rhs)) => {
+            StatementKind::Assign((lhs, rhs)) => {
                 self.consume_rvalue(location, (rhs, span), state);
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), state);
             }
-            StatementKind::FakeRead(box (_, place)) => {
+            StatementKind::FakeRead((_, place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
@@ -826,7 +826,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                     state,
                 );
             }
-            StatementKind::Intrinsic(box kind) => match kind {
+            StatementKind::Intrinsic(kind) => match kind {
                 NonDivergingIntrinsic::Assume(op) => {
                     self.consume_operand(location, (op, span), state);
                 }
@@ -1602,7 +1602,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (operand1, operand2)) => {
+            Rvalue::BinaryOp(_bin_op, (operand1, operand2)) => {
                 self.consume_operand(location, (operand1, span), state);
                 self.consume_operand(location, (operand2, span), state);
             }
@@ -1725,7 +1725,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
                         match stmt.kind {
-                            StatementKind::Assign(box (
+                            StatementKind::Assign((
                                 _,
                                 Rvalue::Ref(_, _, source)
                                 | Rvalue::Use(Operand::Copy(source) | Operand::Move(source), _),

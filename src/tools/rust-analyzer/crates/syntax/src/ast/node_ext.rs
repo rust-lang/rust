@@ -16,7 +16,7 @@ use crate::{
         self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
         HasTypeBounds, SyntaxNode, support,
     },
-    ted,
+    syntax_editor::SyntaxEditor,
 };
 
 use super::{GenericParam, RangeItem, RangeOp};
@@ -454,11 +454,12 @@ impl ast::UseTreeList {
     }
 
     /// Remove the unnecessary braces in current `UseTreeList`
-    pub fn remove_unnecessary_braces(mut self) {
+    pub fn remove_unnecessary_braces(mut self, editor: &SyntaxEditor) {
         // Returns true iff there is a single subtree and it is not the self keyword. The braces in
         // `use x::{self};` are necessary and so we should not remove them.
         let has_single_subtree_that_is_not_self = |u: &ast::UseTreeList| {
-            if let Some((single_subtree,)) = u.use_trees().collect_tuple() {
+            let use_trees = u.use_trees().filter(|use_tree| !editor.deleted(use_tree.syntax()));
+            if let Some((single_subtree,)) = use_trees.collect_tuple() {
                 // We have a single subtree, check whether it is self.
 
                 let is_self = single_subtree.path().as_ref().is_some_and(|path| {
@@ -476,12 +477,12 @@ impl ast::UseTreeList {
         let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
             if has_single_subtree_that_is_not_self(u) {
                 if let Some(a) = u.l_curly_token() {
-                    ted::remove(a)
+                    editor.delete(a)
                 }
                 if let Some(a) = u.r_curly_token() {
-                    ted::remove(a)
+                    editor.delete(a)
                 }
-                u.comma().for_each(ted::remove);
+                u.comma().for_each(|u| editor.delete(u));
             }
         };
 

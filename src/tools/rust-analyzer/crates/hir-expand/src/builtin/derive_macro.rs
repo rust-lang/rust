@@ -25,7 +25,6 @@ use syntax::{
         HasName, HasTypeBounds, make,
     },
     syntax_editor::{GetOrCreateWhereClause, SyntaxEditor},
-    ted,
 };
 
 macro_rules! register_builtin {
@@ -1007,7 +1006,8 @@ fn coerce_pointee_expand(
             return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);
         }
     };
-    let adt = adt.clone_for_update();
+    let (editor, adt) = SyntaxEditor::with_ast_node(&adt);
+    let make = editor.make();
     let ast::Adt::Struct(strukt) = &adt else {
         return ExpandResult::new(
             tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
@@ -1078,7 +1078,7 @@ fn coerce_pointee_expand(
                 if is_pointee {
                     // Remove the `#[pointee]` attribute so it won't be present in the generated
                     // impls (where we cannot resolve it).
-                    ted::remove(attr.syntax());
+                    editor.delete(attr.syntax());
                 }
                 is_pointee
             })
@@ -1181,25 +1181,28 @@ fn coerce_pointee_expand(
                 // If the target type is the pointee, duplicate the bound as whole.
                 // Otherwise, duplicate only bounds that mention the pointee.
                 let is_pointee = param_name.text() == pointee_param_name.text();
-                let new_bounds = bounds
-                    .bounds()
-                    .map(|bound| bound.clone_subtree().clone_for_update())
-                    .filter(|bound| {
-                        bound.ty().is_some_and(|ty| {
-                            substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM)
-                                || is_pointee
-                        })
-                    });
+                let new_bounds = bounds.bounds().filter_map(|bound| {
+                    let new_bound = substitute_type_bound(
+                        bound.clone(),
+                        &pointee_param_name.text(),
+                        ADDED_PARAM,
+                    );
+
+                    if is_pointee {
+                        return new_bound.or(Some(bound));
+                    }
+                    new_bound
+                });
+
                 let new_bounds_target = if is_pointee {
-                    make::name_ref(ADDED_PARAM)
+                    make.name_ref(ADDED_PARAM)
                 } else {
-                    make::name_ref(&param_name.text())
+                    make.name_ref(&param_name.text())
                 };
-                new_predicates.push(make::where_pred(
-                    Either::Right(make::ty_path(make::path_from_segments(
-                        [make::path_segment(new_bounds_target)],
-                        false,
-                    ))),
+                new_predicates.push(make.where_pred(
+                    Either::Right(
+                        make.ty_path_from_segments([make.path_segment(new_bounds_target)], false),
+                    ),
                     new_bounds,
                 ));
             }
@@ -1232,37 +1235,19 @@ fn coerce_pointee_expand(
         // We should also write a few new `where` bounds from `#[pointee] T` to `__S`
         // as well as any bound that indirectly involves the `#[pointee] T` type.
         for predicate in strukt.where_clause().into_iter().flat_map(|wc| wc.predicates()) {
-            let predicate = predicate.clone_subtree().clone_for_update();
             let Some(pred_target) = predicate.ty() else { continue };
 
             // If the target type references the pointee, duplicate the bound as whole.
             // Otherwise, duplicate only bounds that mention the pointee.
-            if substitute_type_in_bound(
-                pred_target.clone(),
-                &pointee_param_name.text(),
-                ADDED_PARAM,
-            ) {
-                if let Some(bounds) = predicate.type_bound_list() {
-                    for bound in bounds.bounds() {
-                        if let Some(ty) = bound.ty() {
-                            substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM);
-                        }
-                    }
-                }
-
-                new_predicates.push(predicate);
+            if let Some(predicate_with_substituted_target) =
+                substitute_where_pred(&predicate, &pointee_param_name.text(), ADDED_PARAM)
+            {
+                new_predicates.push(predicate_with_substituted_target);
             } else if let Some(bounds) = predicate.type_bound_list() {
-                let new_bounds = bounds
-                    .bounds()
-                    .map(|bound| bound.clone_subtree().clone_for_update())
-                    .filter(|bound| {
-                        bound.ty().is_some_and(|ty| {
-                            substitute_type_in_bound(ty, &pointee_param_name.text(), ADDED_PARAM)
-                        })
-                    });
-                new_predicates.push(
-                    make::where_pred(Either::Right(pred_target), new_bounds).clone_for_update(),
-                );
+                let new_bounds = bounds.bounds().filter_map(|bound| {
+                    substitute_type_bound(bound, &pointee_param_name.text(), ADDED_PARAM)
+                });
+                new_predicates.push(make.where_pred(Either::Right(pred_target), new_bounds));
             }
         }
     }
@@ -1271,34 +1256,33 @@ fn coerce_pointee_expand(
         // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
         //
         // Find the `#[pointee]` parameter and add an `Unsize<__S>` bound to it.
-        new_predicates.push(make::where_pred(
-            Either::Right(make::ty_path(make::path_from_segments(
-                [make::path_segment(make::name_ref(&pointee_param_name.text()))],
-                false,
-            ))),
-            [make::type_bound(make::ty_path(make::path_from_segments(
-                [
-                    make::path_segment(make::name_ref("core")),
-                    make::path_segment(make::name_ref("marker")),
-                    make::generic_ty_path_segment(
-                        make::name_ref("Unsize"),
-                        [make::type_arg(make::ty_path(make::path_from_segments(
-                            [make::path_segment(make::name_ref(ADDED_PARAM))],
-                            false,
-                        )))
-                        .into()],
+        new_predicates.push(
+            make.where_pred(
+                Either::Right(make.ty_path_from_segments(
+                    [make.path_segment(make.name_ref(&pointee_param_name.text()))],
+                    false,
+                )),
+                [make.type_bound(
+                    make.ty_path_from_segments(
+                        [
+                            make.path_segment(make.name_ref("core")),
+                            make.path_segment(make.name_ref("marker")),
+                            make.generic_ty_path_segment(
+                                make.name_ref("Unsize"),
+                                [make
+                                    .type_arg(make.ty_path_from_segments(
+                                        [make.path_segment(make.name_ref(ADDED_PARAM))],
+                                        false,
+                                    ))
+                                    .into()],
+                            ),
+                        ],
+                        true,
                     ),
-                ],
-                true,
-            )))],
-        ));
+                )],
+            ),
+        );
     }
-
-    let (editor, strukt) = SyntaxEditor::with_ast_node(strukt);
-    strukt.get_or_create_where_clause(&editor, new_predicates.into_iter());
-    let edit = editor.finish();
-    let strukt = ast::Struct::cast(edit.new_root().clone()).unwrap();
-    let adt = ast::Adt::Struct(strukt.clone());
 
     let self_for_traits = {
         // Replace the `#[pointee]` with `__S`.
@@ -1310,36 +1294,37 @@ fn coerce_pointee_expand(
             .filter_map(|param| {
                 Some(match param {
                     ast::GenericParam::ConstParam(param) => {
-                        ast::GenericArg::ConstArg(make::expr_const_value(&param.name()?.text()))
+                        ast::GenericArg::ConstArg(make.expr_const_value(&param.name()?.text()))
                     }
                     ast::GenericParam::LifetimeParam(param) => {
-                        make::lifetime_arg(param.lifetime()?).into()
+                        make.lifetime_arg(param.lifetime()?).into()
                     }
                     ast::GenericParam::TypeParam(param) => {
                         let name = if pointee_param_idx == type_param_idx {
-                            make::name_ref(ADDED_PARAM)
+                            make.name_ref(ADDED_PARAM)
                         } else {
-                            make::name_ref(&param.name()?.text())
+                            make.name_ref(&param.name()?.text())
                         };
                         type_param_idx += 1;
-                        make::type_arg(make::ty_path(make::path_from_segments(
-                            [make::path_segment(name)],
-                            false,
-                        )))
-                        .into()
+                        make.type_arg(make.ty_path_from_segments([make.path_segment(name)], false))
+                            .into()
                     }
                 })
             });
 
-        make::path_from_segments(
-            [make::generic_ty_path_segment(
-                make::name_ref(&struct_name.text()),
+        make.path_from_segments(
+            [make.generic_ty_path_segment(
+                make.name_ref(&struct_name.text()),
                 self_params_for_traits,
             )],
             false,
         )
-        .clone_for_update()
     };
+
+    strukt.get_or_create_where_clause(&editor, new_predicates.into_iter());
+    let edit = editor.finish();
+    let strukt = ast::Struct::cast(edit.new_root().clone()).unwrap();
+    let adt = ast::Adt::Struct(strukt.clone());
 
     let mut span_map = span::SpanMap::empty();
     // One span for them all.
@@ -1403,37 +1388,84 @@ fn coerce_pointee_expand(
     }
 
     /// Returns true if any substitution was performed.
-    fn substitute_type_in_bound(ty: ast::Type, param_name: &str, replacement: &str) -> bool {
-        return match ty {
-            ast::Type::ArrayType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
+    fn substitute_type_bound(
+        bound: ast::TypeBound,
+        param_name: &str,
+        replacement: &str,
+    ) -> Option<ast::TypeBound> {
+        let (editor, bound) = SyntaxEditor::with_ast_node(&bound);
+        let substituted = bound
+            .ty()
+            .is_some_and(|ty| substitute_type_in_bound(&editor, ty, param_name, replacement));
+        if !substituted {
+            return None;
+        }
+
+        let edit = editor.finish();
+        Some(ast::TypeBound::cast(edit.new_root().clone()).unwrap())
+    }
+
+    fn substitute_where_pred(
+        predicate: &ast::WherePred,
+        param_name: &str,
+        replacement: &str,
+    ) -> Option<ast::WherePred> {
+        let (editor, predicate) = SyntaxEditor::with_ast_node(predicate);
+        let substituted = predicate
+            .ty()
+            .is_some_and(|ty| substitute_type_in_bound(&editor, ty, param_name, replacement));
+        if substituted && let Some(bounds) = predicate.type_bound_list() {
+            for bound in bounds.bounds() {
+                if let Some(ty) = bound.ty() {
+                    substitute_type_in_bound(&editor, ty, param_name, replacement);
+                }
             }
-            ast::Type::DynTraitType(ty) => go_bounds(ty.type_bound_list(), param_name, replacement),
+        }
+        if !substituted {
+            return None;
+        }
+
+        let edit = editor.finish();
+        Some(ast::WherePred::cast(edit.new_root().clone()).unwrap())
+    }
+
+    fn substitute_type_in_bound(
+        editor: &SyntaxEditor,
+        ty: ast::Type,
+        param_name: &str,
+        replacement: &str,
+    ) -> bool {
+        return match ty {
+            ast::Type::ArrayType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::DynTraitType(ty) => {
+                go_bounds(editor, ty.type_bound_list(), param_name, replacement)
+            }
             ast::Type::FnPtrType(ty) => any_long(
                 ty.param_list()
                     .into_iter()
                     .flat_map(|params| params.params().filter_map(|param| param.ty()))
                     .chain(ty.ret_type().and_then(|it| it.ty())),
-                |ty| substitute_type_in_bound(ty, param_name, replacement),
+                |ty| substitute_type_in_bound(editor, ty, param_name, replacement),
             ),
-            ast::Type::ForType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
+            ast::Type::ForType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
             ast::Type::ImplTraitType(ty) => {
-                go_bounds(ty.type_bound_list(), param_name, replacement)
+                go_bounds(editor, ty.type_bound_list(), param_name, replacement)
             }
-            ast::Type::ParenType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
+            ast::Type::ParenType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
             ast::Type::PathType(ty) => ty.path().is_some_and(|path| {
                 if path.as_single_name_ref().is_some_and(|name| name.text() == param_name) {
-                    ted::replace(
+                    editor.replace(
                         path.syntax(),
                         make::path_from_segments(
                             [make::path_segment(make::name_ref(replacement))],
                             false,
                         )
-                        .clone_for_update()
                         .syntax(),
                     );
                     return true;
@@ -1447,34 +1479,35 @@ fn coerce_pointee_expand(
                             ast::GenericArg::TypeArg(ty) => ty.ty(),
                             _ => None,
                         }),
-                    |ty| substitute_type_in_bound(ty, param_name, replacement),
+                    |ty| substitute_type_in_bound(editor, ty, param_name, replacement),
                 )
             }),
-            ast::Type::PtrType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
-            ast::Type::RefType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
-            ast::Type::SliceType(ty) => {
-                ty.ty().is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
-            ast::Type::TupleType(ty) => {
-                any_long(ty.fields(), |ty| substitute_type_in_bound(ty, param_name, replacement))
-            }
+            ast::Type::PtrType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::RefType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::SliceType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
+            ast::Type::TupleType(ty) => any_long(ty.fields(), |ty| {
+                substitute_type_in_bound(editor, ty, param_name, replacement)
+            }),
             ast::Type::InferType(_) | ast::Type::MacroType(_) | ast::Type::NeverType(_) => false,
         };
 
         fn go_bounds(
+            editor: &SyntaxEditor,
             bounds: Option<ast::TypeBoundList>,
             param_name: &str,
             replacement: &str,
         ) -> bool {
             bounds.is_some_and(|bounds| {
                 any_long(bounds.bounds(), |bound| {
-                    bound
-                        .ty()
-                        .is_some_and(|ty| substitute_type_in_bound(ty, param_name, replacement))
+                    bound.ty().is_some_and(|ty| {
+                        substitute_type_in_bound(editor, ty, param_name, replacement)
+                    })
                 })
             })
         }

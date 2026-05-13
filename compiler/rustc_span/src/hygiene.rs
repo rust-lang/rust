@@ -30,7 +30,7 @@ use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{
+use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
@@ -1487,7 +1487,7 @@ pub fn raw_encode_syntax_context(
 fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) -> ExpnHash {
     // This disambiguator should not have been set yet.
     assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
-    hcx.assert_default_hashing_controls("ExpnData (disambiguator)");
+    hcx.assert_default_stable_hash_controls("ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut hcx);
 
     let disambiguator = HygieneData::with(|data| {
@@ -1537,7 +1537,7 @@ impl StableHash for SyntaxContext {
 
 impl StableHash for ExpnId {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        hcx.assert_default_hashing_controls("ExpnId");
+        hcx.assert_default_stable_hash_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
             Fingerprint::ZERO

@@ -2805,7 +2805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let variant = &def.non_enum_variant();
                     tcx.find_field_index(item_name, variant).map(|index| {
                         let field = &variant.fields[index];
-                        let field_ty = field.ty(tcx, args);
+                        let field_ty = field.ty(tcx, args).skip_norm_wip();
                         (field, field_ty)
                     })
                 }
@@ -3270,7 +3270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let [field] = &variant.fields.raw[..] else {
                             return None;
                         };
-                        let field_ty = field.ty(tcx, args);
+                        let field_ty = field.ty(tcx, args).skip_norm_wip();
 
                         // Skip `_`, since that'll just lead to ambiguity.
                         if self.resolve_vars_if_possible(field_ty).is_ty_var() {
@@ -3305,7 +3305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match &matching_variants[..] {
                     [(_, field, pick)] => {
-                        let self_ty = field.ty(tcx, args);
+                        let self_ty = field.ty(tcx, args).skip_norm_wip();
                         err.span_note(
                             tcx.def_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),

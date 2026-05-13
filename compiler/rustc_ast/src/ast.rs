@@ -25,7 +25,7 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, StableHash, Walkable};
@@ -1594,6 +1594,7 @@ impl Expr {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
+            | ExprKind::Move(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
@@ -1763,6 +1764,8 @@ pub enum ExprKind {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, Box<Expr>),
+    /// A `move(expr)` expression.
+    Move(Box<Expr>, Span),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
@@ -3862,6 +3865,19 @@ pub struct Fn {
     /// This means, there was an EII declared somewhere and this function is the
     /// implementation that should be run when the declaration is called.
     pub eii_impls: ThinVec<EiiImpl>,
+}
+
+impl Fn {
+    pub fn is_pin_drop_sugar(&self) -> bool {
+        self.ident.name == sym::drop
+            && self
+                .sig
+                .decl
+                .inputs
+                .first()
+                .and_then(|param| param.to_self())
+                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

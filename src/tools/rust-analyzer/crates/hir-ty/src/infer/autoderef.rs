@@ -5,7 +5,7 @@ use std::iter;
 use rustc_ast_ir::Mutability;
 
 use crate::{
-    Adjust, Adjustment, OverloadedDeref,
+    Adjust, Adjustment, OverloadedDeref, Span,
     autoderef::{Autoderef, AutoderefCtx, AutoderefKind, GeneralAutoderef},
     infer::unify::InferenceTable,
     next_solver::{
@@ -15,12 +15,16 @@ use crate::{
 };
 
 impl<'db> InferenceTable<'db> {
-    pub(crate) fn autoderef(&self, base_ty: Ty<'db>) -> Autoderef<'_, 'db, usize> {
-        Autoderef::new(&self.infer_ctxt, self.param_env, base_ty)
+    pub(crate) fn autoderef(&self, base_ty: Ty<'db>, span: Span) -> Autoderef<'_, 'db, usize> {
+        Autoderef::new(&self.infer_ctxt, self.param_env, base_ty, span)
     }
 
-    pub(crate) fn autoderef_with_tracking(&self, base_ty: Ty<'db>) -> Autoderef<'_, 'db> {
-        Autoderef::new_with_tracking(&self.infer_ctxt, self.param_env, base_ty)
+    pub(crate) fn autoderef_with_tracking(
+        &self,
+        base_ty: Ty<'db>,
+        span: Span,
+    ) -> Autoderef<'_, 'db> {
+        Autoderef::new_with_tracking(&self.infer_ctxt, self.param_env, base_ty, span)
     }
 }
 

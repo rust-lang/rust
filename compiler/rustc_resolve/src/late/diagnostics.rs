@@ -38,8 +38,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Finalize, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res,
-    Resolver, ScopeSet, Segment, errors, path_names_to_string,
+    Finalize, Module, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res, Resolver,
+    ScopeSet, Segment, errors, path_names_to_string,
 };
 
 /// A field or associated item from self type suggested in case of resolution failure.
@@ -322,9 +322,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let Some(assoc) = self.diag_metadata.current_impl_item
         {
             let generics = match &assoc.kind {
-                AssocItemKind::Const(box ast::ConstItem { generics, .. })
-                | AssocItemKind::Fn(box ast::Fn { generics, .. })
-                | AssocItemKind::Type(box ast::TyAlias { generics, .. }) => Some(generics),
+                AssocItemKind::Const(ast::ConstItem { generics, .. })
+                | AssocItemKind::Fn(ast::Fn { generics, .. })
+                | AssocItemKind::Type(ast::TyAlias { generics, .. }) => Some(generics),
                 AssocItemKind::Delegation(..)
                 | AssocItemKind::MacCall(..)
                 | AssocItemKind::DelegationMac(..) => None,
@@ -1698,7 +1698,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None, source)
-            && let ModuleKind::Def(DefKind::Trait, ..) = module.kind
+            && module.def_kind() == Some(DefKind::Trait)
             && trait_ref.path.span == span
             && let PathSource::Trait(_) = source
             && let Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) = res
@@ -2073,9 +2073,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
             let (lhs_span, rhs_span) = match &expr.kind {
                 ExprKind::Field(base, ident) => (base.span, ident.span),
-                ExprKind::MethodCall(box MethodCall { receiver, span, .. }) => {
-                    (receiver.span, *span)
-                }
+                ExprKind::MethodCall(MethodCall { receiver, span, .. }) => (receiver.span, *span),
                 _ => return false,
             };
 
@@ -2767,7 +2765,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
-                        ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) if sig.decl.has_self() => {
+                        ast::AssocItemKind::Fn(ast::Fn { sig, .. }) if sig.decl.has_self() => {
                             AssocSuggestion::MethodWithSelf { called }
                         }
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
@@ -3014,12 +3012,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn find_module(&self, def_id: DefId) -> Option<(Module<'ra>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
-        let root_did = self.r.graph_root.def_id();
-        let mut worklist = vec![(
-            self.r.graph_root.to_module(),
-            ThinVec::new(),
-            root_did.is_local() || !self.r.tcx.is_doc_hidden(root_did),
-        )];
+        let mut worklist = vec![(self.r.graph_root.to_module(), ThinVec::new(), true)];
 
         while let Some((in_module, path_segments, doc_visible)) = worklist.pop() {
             // abort if the module is already found
@@ -3108,7 +3101,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 ExprKind::Call(..) => (None, true),
                 // `Type.Foo(a, b)`, suggest replacing `.` -> `::` if variant `Foo` exists and is a tuple variant,
                 // otherwise suggest adding a variant after `Type`.
-                ExprKind::MethodCall(box MethodCall {
+                ExprKind::MethodCall(MethodCall {
                     receiver,
                     span,
                     seg: PathSegment { ident, .. },

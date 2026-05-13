@@ -1,8 +1,9 @@
+use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{EvalCtxt, Goal, QueryResult};
+use crate::solve::{EvalCtxt, Goal};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -14,7 +15,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
         def_id: I::UnevaluatedConstId,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let uv = goal.predicate.alias.expect_ct(self.cx());
         self.evaluate_const_and_instantiate_normalizes_to_term(goal, uv)
     }

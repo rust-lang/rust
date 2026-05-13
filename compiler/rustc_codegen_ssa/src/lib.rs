@@ -1,5 +1,5 @@
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(negative_impls)]
 #![feature(string_from_utf8_lossy_owned)]

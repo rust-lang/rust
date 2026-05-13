@@ -78,7 +78,7 @@ fn check_borrowck(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         }
 
         for body in bodies {
-            let _ = db.borrowck(body);
+            let _ = db.borrowck(body.into());
         }
     })
 }

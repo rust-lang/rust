@@ -2,9 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Display;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stable_hasher::{
-    StableCompare, StableHash, StableHashCtxt, StableHasher,
-};
+use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::HirId;
 use rustc_macros::{Decodable, Encodable, StableHash};

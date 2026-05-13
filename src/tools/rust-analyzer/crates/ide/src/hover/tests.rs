@@ -3392,7 +3392,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             ```
 
             ```rust
-            pub unsafe fn foo(bar: i32, ...) -> i32
+            pub unsafe extern "C" fn foo(bar: i32, ...) -> i32
             ```
         "#]],
     );
@@ -5972,9 +5972,8 @@ const FOO$0: f64 = 1.0f64;
 fn hover_const_eval_floating_point() {
     check(
         r#"
-extern "rust-intrinsic" {
-    pub fn expf64(x: f64) -> f64;
-}
+#[rustc_intrinsic]
+pub fn expf64(x: f64) -> f64;
 
 const FOO$0: f64 = expf64(1.2);
 "#,
@@ -7152,6 +7151,7 @@ fn f() { let expr = [1, 2, $03$0, 4] }
 fn hover_range_functions() {
     check_hover_range(
         r#"
+//- minicore: unsize, coerce_unsized
 fn f<T>(a: &[T]) { }
 fn b() { $0f$0(&[1, 2, 3, 4, 5]); }
 "#,
@@ -9197,7 +9197,7 @@ extern "C" {
             ```
 
             ```rust
-            unsafe fn fun()
+            unsafe extern "C" fn fun()
             ```
         "#]],
     );

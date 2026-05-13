@@ -27,7 +27,7 @@ use Edit::*;
 // ```
 // use std::{fmt::Formatter, io};
 // ```
-pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (target, edits) = if ctx.has_empty_selection() {
         // Merge a neighbor
         cov_mark::hit!(merge_with_use_item_neighbors);

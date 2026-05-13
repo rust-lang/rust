@@ -478,11 +478,11 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             ObligationCauseCode::FunctionArg { parent_code, .. } => Some(parent_code),
             ObligationCauseCode::BuiltinDerived(derived)
             | ObligationCauseCode::WellFormedDerived(derived)
-            | ObligationCauseCode::ImplDerived(box ImplDerivedCause { derived, .. }) => {
+            | ObligationCauseCode::ImplDerived(ImplDerivedCause { derived, .. }) => {
                 Some(&derived.parent_code)
             }
             ObligationCauseCode::BuiltinDerivedHost(derived)
-            | ObligationCauseCode::ImplDerivedHost(box ImplDerivedHostCause { derived, .. }) => {
+            | ObligationCauseCode::ImplDerivedHost(ImplDerivedHostCause { derived, .. }) => {
                 Some(&derived.parent_code)
             }
             _ => None,
@@ -509,7 +509,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             ObligationCauseCode::FunctionArg { parent_code, .. } => Some((parent_code, None)),
             ObligationCauseCode::BuiltinDerived(derived)
             | ObligationCauseCode::WellFormedDerived(derived)
-            | ObligationCauseCode::ImplDerived(box ImplDerivedCause { derived, .. }) => {
+            | ObligationCauseCode::ImplDerived(ImplDerivedCause { derived, .. }) => {
                 Some((&derived.parent_code, Some(derived.parent_trait_pred)))
             }
             _ => None,

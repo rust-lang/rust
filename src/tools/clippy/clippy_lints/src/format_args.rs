@@ -844,7 +844,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
                         self.has_pointer_debug(
-                            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(f.ty(tcx, args))),
+                            tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)),
                             depth,
                         )
                     });

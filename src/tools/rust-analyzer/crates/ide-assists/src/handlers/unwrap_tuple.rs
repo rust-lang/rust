@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     let bar = "Bar";
 // }
 // ```
-pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let let_kw = ctx.find_token_syntax_at_offset(T![let])?;
     let let_stmt = let_kw.parent().and_then(Either::<ast::LetStmt, ast::LetExpr>::cast)?;
     let mut indent_level = let_stmt.indent_level();

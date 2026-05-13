@@ -2022,7 +2022,8 @@ fn resolution_failure(
                 )
             };
             // ignore duplicates
-            let mut variants_seen = SmallVec::<[_; 3]>::new();
+            let mut variants_seen =
+                SmallVec::<[_; const { mem::variant_count::<ResolutionFailure<'_>>() }]>::new();
             for mut failure in kinds {
                 let variant = mem::discriminant(&failure);
                 if variants_seen.contains(&variant) {
@@ -2044,17 +2045,37 @@ fn resolution_failure(
 
                     // Check if _any_ parent of the path gets resolved.
                     // If so, report it and say the first which failed; if not, say the first path segment didn't resolve.
+                    // Also check if `path_str` is an invalid path.
+
+                    // Examples of `path_str` that are invalid:
+                    // - "std::::path", during splitting this would yield an empty segment
+                    // - "std:::path", this would eventually yield "std:"
+                    let mut path_is_invalid = false;
+                    let is_invalid_segment =
+                        |segment: &str| segment.is_empty() || segment.contains(':');
+
                     let mut name = path_str;
                     'outer: loop {
                         // FIXME(jynelson): this might conflict with my `Self` fix in #76467
                         let Some((start, end)) = name.rsplit_once("::") else {
+                            // `name` is now the first path segment, which didn't resolve.
                             // avoid bug that marked [Quux::Z] as missing Z, not Quux
+                            if is_invalid_segment(name) {
+                                path_is_invalid = true;
+                                break;
+                            }
                             if partial_res.is_none() {
                                 *unresolved = name.into();
+                                // If `partial_res` somehow had a value, we preserve the original `unresolved`.
                             }
                             break;
                         };
-                        name = start;
+                        if is_invalid_segment(end) {
+                            // If any segment is invalid, stop and say so, instead of saying
+                            // "no item named ...", which would look nonsensical.
+                            path_is_invalid = true;
+                            break;
+                        }
                         for ns in [TypeNS, ValueNS, MacroNS] {
                             if let Ok(v_res) =
                                 collector.resolve(start, ns, None, item_id, module_id)
@@ -2067,7 +2088,13 @@ fn resolution_failure(
                                 }
                             }
                         }
-                        *unresolved = end.into();
+                        if start.is_empty() && partial_res.is_none() {
+                            // `start` being empty means `path_str` was written like "::path::to::item".
+                            // In this case, `end` is the first path segment that we should report.
+                            *unresolved = end.into();
+                            break;
+                        }
+                        name = start;
                     }
 
                     let last_found_module = match *partial_res {
@@ -2077,7 +2104,9 @@ fn resolution_failure(
                     };
                     // See if this was a module: `[path]` or `[std::io::nope]`
                     if let Some(module) = last_found_module {
-                        let note = if partial_res.is_some() {
+                        let note = if path_is_invalid {
+                            "invalid path separator".into()
+                        } else if partial_res.is_some() {
                             // Part of the link resolved; e.g. `std::io::nonexistent`
                             let module_name = tcx.item_name(module);
                             format!("no item named `{unresolved}` in module `{module_name}`")
@@ -2311,7 +2340,7 @@ fn report_malformed_generics(
                     );
                     "fully-qualified syntax is unsupported"
                 }
-                MalformedGenerics::InvalidPathSeparator => "has invalid path separator",
+                MalformedGenerics::InvalidPathSeparator => "invalid path separator",
                 MalformedGenerics::TooManyAngleBrackets => "too many angle brackets",
                 MalformedGenerics::EmptyAngleBrackets => "empty angle brackets",
             };

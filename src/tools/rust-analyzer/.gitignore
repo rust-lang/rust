@@ -1,4 +1,5 @@
 target/
+vendor/
 /dist/
 **/*.rs.bk
 **/*.rs.pending-snap

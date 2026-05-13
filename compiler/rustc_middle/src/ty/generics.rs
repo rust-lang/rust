@@ -121,7 +121,7 @@ pub struct Generics {
     pub own_params: Vec<GenericParamDef>,
 
     /// Reverse map to the `index` field of each `GenericParamDef`.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,

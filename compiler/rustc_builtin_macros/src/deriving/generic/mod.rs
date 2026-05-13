@@ -1027,7 +1027,7 @@ impl<'a> MethodDef<'a> {
 
             match ty {
                 // Selflike (`&Self`) arguments only occur in non-static methods.
-                Ref(box Self_, _) if !self.is_static() => selflike_args.push(arg_expr),
+                Ref(Self_, _) if !self.is_static() => selflike_args.push(arg_expr),
                 Self_ => cx.dcx().span_bug(span, "`Self` in non-return position"),
                 _ => nonselflike_args.push(arg_expr),
             }

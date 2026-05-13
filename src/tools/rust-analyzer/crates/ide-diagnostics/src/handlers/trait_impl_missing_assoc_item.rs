@@ -8,7 +8,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 //
 // Diagnoses missing trait items in a trait impl.
 pub(crate) fn trait_impl_missing_assoc_item(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::TraitImplMissingAssocItems,
 ) -> Diagnostic {
     let missing = d.missing.iter().format_with(", ", |(name, item), f| {

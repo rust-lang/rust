@@ -35,15 +35,15 @@ use crate::{
 };
 /// Interface for data and methods required for items rendering.
 #[derive(Debug, Clone)]
-pub(crate) struct RenderContext<'a> {
-    completion: &'a CompletionContext<'a>,
+pub(crate) struct RenderContext<'a, 'db> {
+    completion: &'a CompletionContext<'a, 'db>,
     is_private_editable: bool,
     import_to_add: Option<LocatedImport>,
     doc_aliases: Vec<SmolStr>,
 }
 
-impl<'a> RenderContext<'a> {
-    pub(crate) fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
+impl<'a, 'db> RenderContext<'a, 'db> {
+    pub(crate) fn new(completion: &'a CompletionContext<'a, 'db>) -> RenderContext<'a, 'db> {
         RenderContext {
             completion,
             is_private_editable: false,
@@ -120,6 +120,15 @@ impl<'a> RenderContext<'a> {
                 })
     }
 
+    /// Whether an enum variant should be rendered as deprecated.
+    ///
+    /// A variant inherits deprecation from its parent enum, matching rustc's
+    /// behavior where `#[deprecated]` on an enum applies to its variants.
+    fn is_variant_deprecated(&self, variant: hir::EnumVariant) -> bool {
+        let db = self.db();
+        variant.attrs(db).is_deprecated() || variant.parent_enum(db).attrs(db).is_deprecated()
+    }
+
     // FIXME: remove this
     fn docs(&self, def: impl HasDocs) -> Option<Documentation<'a>> {
         def.docs(self.db())
@@ -127,7 +136,7 @@ impl<'a> RenderContext<'a> {
 }
 
 pub(crate) fn render_field(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     dot_access: &DotAccess<'_>,
     receiver: Option<SmolStr>,
     field: hir::Field,
@@ -204,7 +213,7 @@ fn field_with_receiver(receiver: Option<&str>, field_name: &str) -> SmolStr {
 }
 
 pub(crate) fn render_tuple_field(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     receiver: Option<SmolStr>,
     field: usize,
     ty: &hir::Type<'_>,
@@ -226,7 +235,7 @@ pub(crate) fn render_tuple_field(
 
 pub(crate) fn render_type_inference(
     ty_string: String,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
 ) -> CompletionItem {
     let mut builder = CompletionItem::new(
@@ -245,7 +254,7 @@ pub(crate) fn render_type_inference(
 }
 
 pub(crate) fn render_path_resolution(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     resolution: ScopeDef,
@@ -254,7 +263,7 @@ pub(crate) fn render_path_resolution(
 }
 
 pub(crate) fn render_pattern_resolution(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     pattern_ctx: &PatternContext,
     local_name: hir::Name,
     resolution: ScopeDef,
@@ -263,7 +272,7 @@ pub(crate) fn render_pattern_resolution(
 }
 
 pub(crate) fn render_resolution_with_import(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     import_edit: LocatedImport,
 ) -> Option<Builder> {
@@ -276,7 +285,7 @@ pub(crate) fn render_resolution_with_import(
 }
 
 pub(crate) fn render_resolution_with_import_pat(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     pattern_ctx: &PatternContext,
     import_edit: LocatedImport,
 ) -> Option<Builder> {
@@ -286,7 +295,7 @@ pub(crate) fn render_resolution_with_import_pat(
 }
 
 pub(crate) fn render_expr(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     expr: &hir::term_search::Expr<'_>,
 ) -> Option<Builder> {
     let mut i = 1;
@@ -349,7 +358,7 @@ pub(crate) fn render_expr(
 
 fn get_import_name(
     resolution: ScopeDef,
-    ctx: &RenderContext<'_>,
+    ctx: &RenderContext<'_, '_>,
     import_edit: &LocatedImport,
 ) -> Option<hir::Name> {
     // FIXME: Temporary workaround for handling aliased import.
@@ -367,7 +376,7 @@ fn get_import_name(
 
 fn scope_def_to_name(
     resolution: ScopeDef,
-    ctx: &RenderContext<'_>,
+    ctx: &RenderContext<'_, '_>,
     import_edit: &LocatedImport,
 ) -> Option<hir::Name> {
     Some(match resolution {
@@ -379,7 +388,7 @@ fn scope_def_to_name(
 }
 
 fn render_resolution_pat(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     pattern_ctx: &PatternContext,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
@@ -397,7 +406,7 @@ fn render_resolution_pat(
 }
 
 fn render_resolution_path(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
@@ -462,6 +471,11 @@ fn render_resolution_path(
                 .insert_snippet(cap, ""); // set is snippet
         }
     }
+    let allow_module_path = matches!(path_ctx.kind, PathKind::Use) || !config.add_colons_to_module;
+    if !allow_module_path && matches!(resolution, ScopeDef::ModuleDef(Module(_))) {
+        insert_text = format_smolstr!("{insert_text}::");
+        item.lookup_by(name.clone()).label(insert_text.clone());
+    }
     adds_ret_type_arrow(completion, path_ctx, &mut item, insert_text.into());
 
     let mut set_item_relevance = |ty: Type<'_>| {
@@ -506,7 +520,7 @@ fn render_resolution_path(
 }
 
 fn render_resolution_simple_(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     local_name: &hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
@@ -580,9 +594,10 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentati
     }
 }
 
-fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> bool {
+fn scope_def_is_deprecated(ctx: &RenderContext<'_, '_>, resolution: ScopeDef) -> bool {
     let db = ctx.db();
     match resolution {
+        ScopeDef::ModuleDef(hir::ModuleDef::EnumVariant(it)) => ctx.is_variant_deprecated(it),
         ScopeDef::ModuleDef(it) => ctx.is_deprecated(it, it.as_assoc_item(db)),
         ScopeDef::GenericParam(it) => {
             ctx.is_deprecated(it, None /* generic params can't be assoc items */)
@@ -595,7 +610,7 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
 }
 
 pub(crate) fn render_type_keyword_snippet(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     label: &str,
     snippet: &str,
@@ -619,7 +634,7 @@ pub(crate) fn render_type_keyword_snippet(
 }
 
 fn adds_ret_type_arrow(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     item: &mut Builder,
     insert_text: String,
@@ -638,7 +653,7 @@ fn adds_ret_type_arrow(
 
 // FIXME: This checks types without possible coercions which some completions might want to do
 fn match_types(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     ty1: &hir::Type<'_>,
     ty2: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
@@ -652,7 +667,7 @@ fn match_types(
 }
 
 fn compute_type_match(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
     let expected_type = ctx.expected_type.as_ref()?;
@@ -686,12 +701,12 @@ fn compute_has_local_inherent_impl(
             .any(|imp| imp.trait_(db).is_none() && imp.module(db) == curr_module)
 }
 
-fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
+fn compute_exact_name_match(ctx: &CompletionContext<'_, '_>, completion_name: &str) -> bool {
     ctx.expected_name.as_ref().is_some_and(|name| name.text() == completion_name)
 }
 
 fn compute_ref_match(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionItemRefMode> {
     let expected_type = ctx.expected_type.as_ref()?;
@@ -703,7 +718,9 @@ fn compute_ref_match(
     if let Some(expected_without_ref) = &expected_without_ref
         && (completion_without_ref.is_none()
             || completion_ty.could_unify_with(ctx.db, expected_without_ref))
-        && completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref)
+        && completion_ty
+            .autoderef(ctx.db)
+            .any(|ty| ty.could_unify_with(ctx.db, expected_without_ref))
     {
         cov_mark::hit!(suggest_ref);
         let mutability = if expected_type.is_mutable_reference() {
@@ -726,7 +743,7 @@ fn compute_ref_match(
 }
 
 fn path_ref_match(
-    completion: &CompletionContext<'_>,
+    completion: &CompletionContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     ty: &hir::Type<'_>,
     item: &mut Builder,
@@ -828,7 +845,7 @@ mod tests {
                 items.push(format!(
                     "{tag} {} {} {relevance}\n",
                     it.label.primary,
-                    it.label.detail_right.clone().unwrap_or_default(),
+                    it.label.detail_right.as_deref().unwrap_or_default(),
                 ));
 
                 if let Some((label, _indel, relevance)) = it.ref_match() {
@@ -844,28 +861,64 @@ mod tests {
         expect.assert_eq(&actual);
 
         fn display_relevance(relevance: CompletionRelevance) -> String {
-            let relevance_factors = vec![
-                (relevance.type_match == Some(CompletionRelevanceTypeMatch::Exact), "type"),
-                (
-                    relevance.type_match == Some(CompletionRelevanceTypeMatch::CouldUnify),
-                    "type_could_unify",
-                ),
-                (relevance.exact_name_match, "name"),
-                (relevance.is_local, "local"),
-                (
-                    relevance.postfix_match == Some(CompletionRelevancePostfixMatch::Exact),
-                    "snippet",
-                ),
-                (relevance.trait_.is_some_and(|it| it.is_op_method), "op_method"),
-                (relevance.requires_import, "requires_import"),
-                (relevance.has_local_inherent_impl, "has_local_inherent_impl"),
+            let CompletionRelevance {
+                exact_name_match,
+                type_match,
+                is_local,
+                trait_,
+                is_name_already_imported: _,
+                requires_import,
+                is_private_editable: _,
+                postfix_match,
+                function: _,
+                is_skipping_completion: _,
+                has_local_inherent_impl,
+                is_deprecated,
+            } = relevance;
+            let relevance_factors = [
+                (type_match == Some(CompletionRelevanceTypeMatch::Exact), "type"),
+                (type_match == Some(CompletionRelevanceTypeMatch::CouldUnify), "type_could_unify"),
+                (exact_name_match, "name"),
+                (is_local, "local"),
+                (postfix_match == Some(CompletionRelevancePostfixMatch::Exact), "snippet"),
+                (trait_.is_some_and(|it| it.is_op_method), "op_method"),
+                (requires_import, "requires_import"),
+                (has_local_inherent_impl, "has_local_inherent_impl"),
+                (is_deprecated, "deprecated"),
             ]
             .into_iter()
-            .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
+            .filter_map(|(cond, desc)| cond.then_some(desc))
             .join("+");
 
             format!("[{relevance_factors}]")
         }
+    }
+
+    #[test]
+    fn trait_imported_as_underscore_should_not_appear_auto_import_again() {
+        // make sure there has no `requires_import`
+        // see https://github.com/rust-lang/rust-analyzer/issues/19767
+        check_relevance(
+            r#"
+//- /dep.rs crate:dep
+pub trait MyTrait {
+    fn my_method(&self);
+}
+
+//- /main.rs crate:main deps:dep
+use dep::MyTrait as _;
+struct MyStruct;
+impl dep::MyTrait for MyStruct {
+    fn my_method(&self) {}
+}
+fn main() {
+    MyStruct::my_method$0
+}
+"#,
+            expect![[r#"
+                me my_method(…) fn(&self) []
+            "#]],
+        );
     }
 
     #[test]
@@ -894,7 +947,7 @@ fn main() {
                 st dep::test_mod_b::Struct {…} dep::test_mod_b::Struct {  } [type_could_unify]
                 ex dep::test_mod_b::Struct {  }  [type_could_unify]
                 st Struct Struct [type_could_unify+requires_import]
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(Struct) []
                 st Struct Struct [requires_import]
@@ -932,7 +985,7 @@ fn main() {
 "#,
             expect![[r#"
                 un Union Union [type_could_unify+requires_import]
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(Union) []
                 en Union Union [requires_import]
@@ -970,7 +1023,7 @@ fn main() {
                 ev dep::test_mod_b::Enum::variant dep::test_mod_b::Enum::variant [type_could_unify]
                 ex dep::test_mod_b::Enum::variant  [type_could_unify]
                 en Enum Enum [type_could_unify+requires_import]
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(Enum) []
                 en Enum Enum [requires_import]
@@ -1007,7 +1060,7 @@ fn main() {
             expect![[r#"
                 ev dep::test_mod_b::Enum::Variant dep::test_mod_b::Enum::Variant [type_could_unify]
                 ex dep::test_mod_b::Enum::Variant  [type_could_unify]
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(Enum) []
             "#]],
@@ -1037,7 +1090,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(fn(usize) -> i32) []
                 fn function fn(usize) -> i32 [requires_import]
@@ -1070,7 +1123,7 @@ fn main() {
 "#,
             expect![[r#"
                 ct CONST i32 [type_could_unify+requires_import]
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(i32) []
                 ct CONST i64 [requires_import]
@@ -1102,7 +1155,7 @@ fn main() {
 "#,
             expect![[r#"
                 sc STATIC i32 [type_could_unify+requires_import]
-                md dep  []
+                md dep::  []
                 fn main() fn() []
                 fn test(…) fn(i32) []
                 sc STATIC i64 [requires_import]
@@ -1242,6 +1295,7 @@ fn main() { Foo::Fo$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1293,6 +1347,7 @@ fn main() { Foo::Fo$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1437,6 +1492,7 @@ fn main() { Foo::Fo$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1477,15 +1533,16 @@ fn main() { let _: m::Spam = S$0 }
                         detail: "fn()",
                     },
                     CompletionItem {
-                        label: "m",
+                        label: "m::",
                         detail_left: None,
                         detail_right: None,
                         source_range: 75..76,
                         delete: 75..76,
-                        insert: "m",
+                        insert: "m::",
                         kind: SymbolKind(
                             Module,
                         ),
+                        lookup: "m",
                     },
                     CompletionItem {
                         label: "m::Spam::Bar(…)",
@@ -1521,6 +1578,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1558,6 +1616,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1579,16 +1638,31 @@ fn main() { som$0 }
             expect![[r#"
                 [
                     CompletionItem {
-                        label: "something_deprecated",
+                        label: "something_deprecated::",
                         detail_left: None,
                         detail_right: None,
                         source_range: 55..58,
                         delete: 55..58,
-                        insert: "something_deprecated",
+                        insert: "something_deprecated::",
                         kind: SymbolKind(
                             Module,
                         ),
+                        lookup: "something_deprecated",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1634,6 +1708,20 @@ fn main() { som$0 }
                         lookup: "something_deprecated",
                         detail: "fn()",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1663,6 +1751,20 @@ fn main() { A$0 }
                         ),
                         detail: "A",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1692,6 +1794,20 @@ fn main() { A$0 }
                         ),
                         detail: "A",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1741,6 +1857,7 @@ fn main() { A::$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1776,6 +1893,7 @@ fn main() { A::$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: true,
                         },
                         trigger_call_info: true,
                     },
@@ -1807,6 +1925,20 @@ fn main() { A$0 }
                         ),
                         detail: "i32",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1836,6 +1968,20 @@ fn main() { A$0 }
                         ),
                         detail: "i32",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1862,6 +2008,20 @@ impl A$0
                             Trait,
                         ),
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1888,6 +2048,20 @@ fn main() { A$0 }
                             TypeAlias,
                         ),
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1918,6 +2092,20 @@ fn main() { a$0 }
                         lookup: "a!",
                         detail: "macro_rules! a",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: true,
+                        },
                     },
                 ]
             "#]],
@@ -1960,6 +2148,7 @@ fn main() { A { the$0 } }
                             function: None,
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: true,
                         },
                     },
                 ]
@@ -2020,6 +2209,7 @@ impl S {
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                     },
                     CompletionItem {
@@ -2112,6 +2302,7 @@ use self::E::*;
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         trigger_call_info: true,
                     },
@@ -2183,6 +2374,7 @@ fn foo(s: S) { s.$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                     },
                 ]
@@ -2396,6 +2588,7 @@ fn f() -> i32 {
                             function: None,
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                     },
                 ]
@@ -2502,6 +2695,7 @@ fn main() {
                             function: None,
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         ref_match: "&@65",
                     },
@@ -2624,8 +2818,8 @@ mod b {
             expect![[r#"
                 st Fooa Fooa []
                 tt Foob  []
-                md a  []
-                md b  []
+                md a::  []
+                md b::  []
             "#]],
         );
     }
@@ -2732,6 +2926,26 @@ fn main() {
                 fn main() fn() []
             "#]],
         );
+        check_relevance(
+            r#"
+struct S<T>(T);
+fn foo<T>(s: &mut S<T>) {}
+fn main() {
+    let mut ssss = S(2u32);
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                st S(…) S(T) []
+                st &mut S(…) [type]
+                lc ssss S<u32> [local]
+                lc &mut ssss [type+local]
+                st S S<{unknown}> []
+                st &mut S [type]
+                fn foo(…) fn(&mut S<T>) []
+                fn main() fn() []
+            "#]],
+        );
     }
 
     #[test]
@@ -2763,7 +2977,7 @@ fn main() {
                 tt Clone  []
                 tt Copy  []
                 fn bar(…) fn(Foo) []
-                md core  []
+                md core::  []
                 fn main() fn() []
             "#]],
         );
@@ -2805,7 +3019,7 @@ fn main() {
                 st &S [type]
                 st T T []
                 st &T [type]
-                md core  []
+                md core::  []
                 fn foo(…) fn(&S) []
                 fn main() fn() []
             "#]],
@@ -2854,7 +3068,7 @@ fn main() {
                 st &mut S [type]
                 st T T []
                 st &mut T [type]
-                md core  []
+                md core::  []
                 fn foo(…) fn(&mut S) []
                 fn main() fn() []
             "#]],
@@ -2957,7 +3171,7 @@ fn main() {
                 st &T [type]
                 fn bar() fn() -> T []
                 fn &bar() [type]
-                md core  []
+                md core::  []
                 fn foo(…) fn(&S) []
                 fn main() fn() []
             "#]],
@@ -3299,6 +3513,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         ref_match: "&@107",
                     },
@@ -3387,6 +3602,7 @@ fn foo() {
                             function: None,
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                     },
                 ]
@@ -3446,6 +3662,7 @@ fn main() {
                             ),
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                         ref_match: "&@92",
                     },
@@ -3632,10 +3849,29 @@ fn f() {
             expect![[r#"
                 st Buffer Buffer []
                 fn f() fn() []
-                md std  []
+                md std::  []
                 tt BufRead  [requires_import]
                 st BufReader BufReader [requires_import]
                 st BufWriter BufWriter [requires_import]
+            "#]],
+        );
+    }
+
+    #[test]
+    /// Issue: https://github.com/rust-lang/rust-analyzer/issues/18554
+    fn float_consts_relevance() {
+        check_relevance(
+            r#"
+//- minicore: float_consts
+fn main() {
+    let x = f32::INF$0
+}
+"#,
+            expect![[r#"
+                ct INFINITY pub const INFINITY: f32 []
+                ct NEG_INFINITY pub const NEG_INFINITY: f32 []
+                ct INFINITY f32 [type_could_unify+requires_import+deprecated]
+                ct NEG_INFINITY f32 [type_could_unify+requires_import+deprecated]
             "#]],
         );
     }
@@ -3917,6 +4153,7 @@ fn main() {
                             function: None,
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                     },
                     CompletionItem {
@@ -3952,6 +4189,7 @@ fn main() {
                             function: None,
                             is_skipping_completion: false,
                             has_local_inherent_impl: false,
+                            is_deprecated: false,
                         },
                     },
                 ]

@@ -314,6 +314,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm::LLVMRustLLVMHasZstdCompression()
     }
 
+    fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
+        llvm_util::target_has_mnemonic(sess, mnemonic)
+    }
+
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess)
     }

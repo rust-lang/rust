@@ -10,6 +10,7 @@ use rustc_type_ir::{
 };
 
 use crate::{
+    Span,
     db::InternedOpaqueTyId,
     next_solver::{
         AnyImplId, Const, ErrorGuaranteed, GenericArgs, Goal, TraitRef, Ty, TypeError,
@@ -63,7 +64,7 @@ pub enum NotConstEvaluatable {
 ///     so they are noops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub(crate) enum EvaluationResult {
+pub enum EvaluationResult {
     /// Evaluation successful.
     EvaluatedToOk,
     /// Evaluation successful, but there were unevaluated region obligations.
@@ -263,17 +264,23 @@ impl<'db> InferCtxt<'db> {
     ) -> SelectionResult<'db, Selection<'db>> {
         self.visit_proof_tree(
             Goal::new(self.interner, obligation.param_env, obligation.predicate),
-            &mut Select {},
+            &mut Select { span: obligation.cause.span() },
         )
         .break_value()
         .unwrap()
     }
 }
 
-struct Select {}
+struct Select {
+    span: Span,
+}
 
 impl<'db> ProofTreeVisitor<'db> for Select {
     type Result = ControlFlow<SelectionResult<'db, Selection<'db>>>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'db>) -> Self::Result {
         let mut candidates = goal.candidates();
@@ -286,7 +293,10 @@ impl<'db> ProofTreeVisitor<'db> for Select {
 
         // One candidate, no need to winnow.
         if candidates.len() == 1 {
-            return ControlFlow::Break(Ok(to_selection(candidates.into_iter().next().unwrap())));
+            return ControlFlow::Break(Ok(to_selection(
+                self.span,
+                candidates.into_iter().next().unwrap(),
+            )));
         }
 
         // Don't winnow until `Certainty::Yes` -- we don't need to winnow until
@@ -311,7 +321,7 @@ impl<'db> ProofTreeVisitor<'db> for Select {
             }
         }
 
-        ControlFlow::Break(Ok(to_selection(candidates.into_iter().next().unwrap())))
+        ControlFlow::Break(Ok(to_selection(self.span, candidates.into_iter().next().unwrap())))
     }
 }
 
@@ -368,7 +378,7 @@ fn candidate_should_be_dropped_in_favor_of<'db>(
     }
 }
 
-fn to_selection<'db>(cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> {
+fn to_selection<'db>(span: Span, cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> {
     if let Certainty::Maybe { .. } = cand.shallow_certainty() {
         return None;
     }
@@ -376,7 +386,7 @@ fn to_selection<'db>(cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> 
     let nested = match cand.result().expect("expected positive result") {
         Certainty::Yes => Vec::new(),
         Certainty::Maybe { .. } => cand
-            .instantiate_nested_goals()
+            .instantiate_nested_goals(span)
             .into_iter()
             .map(|nested| {
                 Obligation::new(
@@ -396,7 +406,7 @@ fn to_selection<'db>(cand: InspectCandidate<'_, 'db>) -> Option<Selection<'db>> 
                 // For impl candidates, we do the rematch manually to compute the args.
                 ImplSource::UserDefined(ImplSourceUserDefinedData {
                     impl_def_id,
-                    args: cand.instantiate_impl_args(),
+                    args: cand.instantiate_impl_args(span),
                     nested,
                 })
             }

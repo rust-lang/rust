@@ -1,5 +1,6 @@
-#![feature(rustc_private, stmt_expr_attributes)]
+#![feature(rustc_private, stmt_expr_attributes, cfg_target_has_reliable_f16_f128)]
 #![allow(
+    internal_features, // cfg_target_has_reliable_f16_f128
     clippy::manual_range_contains,
     clippy::useless_format,
     clippy::field_reassign_with_default,
@@ -181,7 +182,16 @@ fn make_miri_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
 
     Box::new(DummyCodegenBackend {
         target_config_override: Some(Box::new(move |sess| {
-            target_config_backend.target_config(sess)
+            let mut cfg = target_config_backend.target_config(sess);
+            // The basic types and ABI always work.
+            cfg.has_reliable_f16 = true;
+            cfg.has_reliable_f128 = true;
+            // We always provide the f16 intrinsics, but some are provided via the host,
+            // so forward its reliability.
+            cfg.has_reliable_f16_math = cfg!(target_has_reliable_f16_math);
+            // Many f128 operations are still missing.
+            cfg.has_reliable_f128_math = false;
+            cfg
         })),
     })
 }

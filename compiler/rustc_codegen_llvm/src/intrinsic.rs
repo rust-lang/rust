@@ -18,9 +18,7 @@ use rustc_hir::find_attr;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{
-    self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv, Unnormalized,
-};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
@@ -846,6 +844,29 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     // If there was an error, just skip this invocation... we'll abort compilation
                     // anyway, but we can keep codegen'ing to find more errors.
                     Err(()) => return Ok(()),
+                }
+            }
+
+            sym::return_address => {
+                match self.sess().target.arch {
+                    // Expand this list as needed
+                    | Arch::Wasm32
+                    | Arch::Wasm64 => {
+                        let ty = self.type_ptr();
+                        self.const_null(ty)
+                    }
+                    _ => {
+                        let ty = self.type_ix(32);
+                        let val = self.const_int(ty, 0);
+
+                        let type_params: &[&'ll Type] = if llvm_version < (23, 0, 0) {
+                            &[]
+                        } else {
+                            &[self.type_ptr()]
+                        };
+
+                        self.call_intrinsic("llvm.returnaddress", type_params, &[val])
+                    }
                 }
             }
 
@@ -3030,7 +3051,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(bx.typing_env(), Unnormalized::new_wip(ty))
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -3044,7 +3065,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(bx.typing_env(), Unnormalized::new_wip(ty))
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),

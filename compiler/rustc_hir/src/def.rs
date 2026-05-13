@@ -134,6 +134,11 @@ pub enum DefKind {
     },
     /// Refers to the struct or enum variant's constructor.
     ///
+    /// ```
+    /// struct S;
+    /// let x = S; // S in the value namespace is a Ctor
+    /// ```
+    ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
     /// [`DefKind::Variant`] is because structs and enum variants exist
     /// in the *type* namespace, whereas struct and enum variant *constructors*

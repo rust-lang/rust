@@ -40,7 +40,7 @@ use crate::{AssistContext, AssistId, Assists};
 // fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 // ```
 
-pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let parent = ret_type.syntax().parent()?;
     let body_expr = match_ast! {
@@ -212,7 +212,7 @@ impl WrapperKind {
 
 // Try to find an wrapper type alias in the current scope (shadowing the default).
 fn wrapper_alias<'db>(
-    ctx: &AssistContext<'db>,
+    ctx: &AssistContext<'_, 'db>,
     make: &SyntaxFactory,
     core_wrapper: hir::Enum,
     ast_ret_type: &ast::Type,

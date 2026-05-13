@@ -13,6 +13,7 @@
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
+#![feature(variant_count)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
@@ -869,9 +870,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     };
                     rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
                         let has_dep_info = render_options.dep_info().is_some();
-                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles)
-                            || render_options.emit.is_empty()
-                        {
+                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles) {
                             markdown::render_and_write(file, render_options, edition)?;
                         }
                         if has_dep_info {

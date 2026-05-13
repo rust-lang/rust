@@ -14,7 +14,7 @@ use rustc_ast::{
     TyAlias,
 };
 use rustc_attr_parsing::AttributeParser;
-use rustc_expand::base::ResolverExpand;
+use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
@@ -37,9 +37,8 @@ use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
-    ExternPreludeEntry, Finalize, IdentKey, LocalModule, MacroData, Module, ModuleKind,
-    ModuleOrUniformRoot, ParentScope, PathResult, Res, Resolver, Segment, SyntaxExtension, Used,
-    VisResolutionError, errors,
+    ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
+    ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError, errors,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -208,28 +207,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Gets the `SyntaxExtension` corresponding to `res`.
-    pub(crate) fn get_macro(&self, res: Res) -> Option<&Arc<SyntaxExtension>> {
+    pub(crate) fn get_macro(&self, res: Res) -> Option<&'ra Arc<SyntaxExtension>> {
         match res {
-            Res::Def(DefKind::Macro(..), def_id) => Some(&self.get_macro_by_def_id(def_id).ext),
-            Res::NonMacroAttr(_) => Some(&self.non_macro_attr),
+            Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
+            Res::NonMacroAttr(_) => Some(self.non_macro_attr),
             _ => None,
         }
     }
 
-    pub(crate) fn get_macro_by_def_id(&self, def_id: DefId) -> &'ra MacroData {
+    pub(crate) fn get_macro_by_def_id(&self, def_id: DefId) -> &'ra Arc<SyntaxExtension> {
         // Local macros are always compiled.
         match def_id.as_local() {
             Some(local_def_id) => self.local_macro_map[&local_def_id],
-            None => *self.extern_macro_map.borrow_mut().entry(def_id).or_insert_with(|| {
+            None => self.extern_macro_map.borrow_mut().entry(def_id).or_insert_with(|| {
                 let loaded_macro = self.cstore().load_macro_untracked(self.tcx, def_id);
-                let macro_data = match loaded_macro {
+                let ext = match loaded_macro {
                     LoadedMacro::MacroDef { def, ident, attrs, span, edition } => {
                         self.compile_macro(&def, ident, &attrs, span, ast::DUMMY_NODE_ID, edition)
                     }
-                    LoadedMacro::ProcMacro(ext) => MacroData::new(Arc::new(ext)),
+                    LoadedMacro::ProcMacro(ext) => ext,
                 };
 
-                self.arenas.alloc_macro(macro_data)
+                self.arenas.alloc_macro(ext)
             }),
         }
     }
@@ -254,7 +253,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match vis.kind {
             ast::VisibilityKind::Public => Ok(Visibility::Public),
             ast::VisibilityKind::Inherited => {
-                Ok(match parent_scope.module.kind {
+                Ok(match parent_scope.module.expect_local().kind {
                     // Any inherited visibility resolved directly inside an enum or trait
                     // (i.e. variants, fields, and trait items) inherits from the visibility
                     // of the enum or trait.
@@ -536,7 +535,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         root_id: NodeId,
         vis: Visibility,
     ) {
-        let current_module = self.parent_scope.module;
+        let current_module = self.parent_scope.module.expect_local();
         let import = self.r.arenas.alloc_import(ImportData {
             kind,
             parent_scope: self.parent_scope,
@@ -561,7 +560,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 if target.name != kw::Underscore {
                     self.r.per_ns(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
-                        this.resolution_or_default(current_module, key, target.span)
+                        this.resolution_or_default(current_module.to_module(), key, target.span)
                             .borrow_mut(this)
                             .single_imports
                             .insert(import);
@@ -867,12 +866,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Const(box ConstItem { ident, .. })
-            | ItemKind::Delegation(box Delegation { ident, .. })
-            | ItemKind::Static(box StaticItem { ident, .. }) => {
+            ItemKind::Const(ConstItem { ident, .. })
+            | ItemKind::Delegation(Delegation { ident, .. })
+            | ItemKind::Static(StaticItem { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
             }
-            ItemKind::Fn(box Fn { ident, .. }) => {
+            ItemKind::Fn(Fn { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
 
                 // Functions introducing procedural macros reserve a slot
@@ -881,12 +880,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(box TyAlias { ident, .. })
-            | ItemKind::TraitAlias(box TraitAlias { ident, .. }) => {
+            ItemKind::TyAlias(TyAlias { ident, .. })
+            | ItemKind::TraitAlias(TraitAlias { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
             }
 
-            ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
+            ItemKind::Enum(ident, _, _) | ItemKind::Trait(ast::Trait { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
 
                 let module = self.r.new_local_module(
@@ -1137,7 +1136,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
             AttributeParser::parse_limited(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
         {
-            if self.parent_scope.module.parent.is_some() {
+            if self.parent_scope.module.expect_local().parent.is_some() {
                 self.r
                     .dcx()
                     .emit_err(errors::ExternCrateLoadingMacroNotAtCrateRoot { span: item.span });
@@ -1248,7 +1247,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     /// directly into its parent scope's module.
     pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
-        self.parent_scope.module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
+        let module = self.parent_scope.module.expect_local();
+        module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
@@ -1277,8 +1277,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
             self.r.unused_macros.insert(def_id, (node_id, ident));
-            let nrules = self.r.local_macro_map[&def_id].nrules;
-            self.r.unused_macro_rules.insert(node_id, (def_id, DenseBitSet::new_filled(nrules)));
+            if let SyntaxExtensionKind::MacroRules(mr) = &self.r.local_macro_map[&def_id].kind {
+                let value = (def_id, DenseBitSet::new_filled(mr.nrules()));
+                self.r.unused_macro_rules.insert(node_id, value);
+            }
         }
     }
 
@@ -1294,13 +1296,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::MacroDef(ident, def) => {
                 (self.res(def_id), *ident, item.span, def.macro_rules)
             }
-            ItemKind::Fn(box ast::Fn { ident: fn_ident, .. }) => {
+            ItemKind::Fn(ast::Fn { ident: fn_ident, .. }) => {
                 match self.proc_macro_stub(item, *fn_ident) {
                     Some((macro_kind, ident, span)) => {
                         let macro_kinds = macro_kind.into();
                         let res = Res::Def(DefKind::Macro(macro_kinds), def_id.to_def_id());
-                        let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
-                        self.r.new_local_macro(def_id, macro_data);
+                        self.r.local_macro_map.insert(def_id, self.r.dummy_ext(macro_kind));
                         self.r.proc_macro_stubs.insert(def_id);
                         (res, ident, span, false)
                     }

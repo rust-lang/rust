@@ -1,4 +1,4 @@
-use crate::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use crate::sync::{MappedReadGuard, MappedWriteGuard, ReadGuard, RwLock, WriteGuard};
 
 /// The `Steal` struct is intended to used as the value for a query.

@@ -562,6 +562,13 @@ impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
     }
 
     /// Assert that an [`ArgParser`] has no args, or emits an error and return `None`.
+    ///
+    /// This is a higher-level (and harder to misuse) wrapper over multiple
+    /// [`ArgParser::as_no_args`]. You may still want to use the lower-level methods for the
+    /// following reasons:
+    ///
+    /// - You want to emit your own diagnostics (for instance, with [`SharedContext::emit_err`]).
+    /// - The attribute can be parsed in multiple ways and it does not make sense to emit an error.
     pub(crate) fn expect_no_args<'arg>(&mut self, arg: &'arg ArgParser) -> Option<()> {
         if let Err(span) = arg.as_no_args() {
             self.adcx().expected_no_args(span);
@@ -569,6 +576,26 @@ impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
         }
 
         Some(())
+    }
+
+    /// Asserts that a node is a string literal, or emits an error and return `None`
+    ///
+    /// `arg` must be a reference to any node that may contain a name-value pair, that is:
+    ///
+    /// - [`NameValueParser`],
+    /// - [`MetaItemOrLitParser`],
+    ///
+    /// This is a higher-level (and harder to misuse) wrapper over multiple `as_` methods in the
+    /// [`parser`][crate::parser] module. You may still want to use the lower-level methods for the
+    /// following reasons:
+    ///
+    /// - You want to emit your own diagnostics (for instance, with [`SharedContext::emit_err`]).
+    /// - The attribute can be parsed in multiple ways and it does not make sense to emit an error.
+    pub(crate) fn expect_string_literal<'arg, Arg>(&mut self, arg: &'arg Arg) -> Option<Symbol>
+    where
+        Arg: ExpectStringLiteral,
+    {
+        arg.expect_string_literal(self)
     }
 }
 
@@ -646,6 +673,44 @@ impl ExpectNameValue for ArgParser {
         };
 
         Some(nv)
+    }
+}
+
+pub(crate) trait ExpectStringLiteral {
+    fn expect_string_literal<'f, 'sess>(&self, cx: &mut AcceptContext<'f, 'sess>)
+    -> Option<Symbol>;
+}
+
+impl ExpectStringLiteral for NameValueParser {
+    fn expect_string_literal<'f, 'sess>(
+        &self,
+        cx: &mut AcceptContext<'f, 'sess>,
+    ) -> Option<Symbol> {
+        let value = self.value_as_str();
+        if value.is_none() {
+            cx.adcx().expected_string_literal(self.value_span, Some(self.value_as_lit()));
+        }
+        value
+    }
+}
+
+impl ExpectStringLiteral for MetaItemOrLitParser {
+    fn expect_string_literal<'f, 'sess>(
+        &self,
+        cx: &mut AcceptContext<'f, 'sess>,
+    ) -> Option<Symbol> {
+        let Some(lit) = self.as_lit() else {
+            cx.adcx().expected_string_literal(self.span(), None);
+            return None;
+        };
+
+        let str = lit.value_as_str();
+
+        if str.is_none() {
+            cx.adcx().expected_string_literal(self.span(), Some(lit));
+        }
+
+        str
     }
 }
 

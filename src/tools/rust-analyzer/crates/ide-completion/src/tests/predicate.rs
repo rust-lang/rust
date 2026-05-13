@@ -13,7 +13,7 @@ struct Foo<'lt, T, const C: usize> where $0 {}
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             st Foo<…> Foo<'_, {unknown}, _>
             st Record                Record
             st Tuple                  Tuple
@@ -39,7 +39,7 @@ struct Foo<'lt, T, const C: usize> where T: $0 {}
 "#,
         expect![[r#"
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             tt Trait
             kw crate::
             kw self::
@@ -57,7 +57,7 @@ struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
 "#,
         expect![[r#"
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             tt Trait
             kw crate::
             kw self::
@@ -73,7 +73,7 @@ struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
 "#,
         expect![[r#"
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             tt Trait
             kw crate::
             kw self::
@@ -90,7 +90,7 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             st Foo<…> Foo<'_, {unknown}, _>
             st Record                Record
             st Tuple                  Tuple
@@ -119,7 +119,7 @@ impl Record {
         expect![[r#"
             en Enum                    Enum
             ma makro!(…) macro_rules! makro
-            md module
+            md module::
             sp Self                  Record
             st Record                Record
             st Tuple                  Tuple
@@ -149,7 +149,7 @@ struct Foo<T> where T: $0 {}
 pub trait Trait {}
 "#,
         expect![[r#"
-            md std
+            md std::
             kw crate::
             kw self::
         "#]],
@@ -169,7 +169,7 @@ struct Foo<T> where T: $0 {}
 pub trait Trait {}
 "#,
         expect![[r#"
-            md std
+            md std::
             tt Trait
             kw crate::
             kw self::

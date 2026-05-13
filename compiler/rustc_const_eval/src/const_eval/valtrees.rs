@@ -199,10 +199,12 @@ fn reconstruct_place_meta<'tcx>(
 
     let mut last_valtree = valtree;
     // Traverse the type, and update `last_valtree` as we go.
+    //
+    // FIXME(#155345): Missing normalization call
     let tail = tcx.struct_tail_raw(
         layout.ty,
         &ObligationCause::dummy(),
-        |ty| ty,
+        |ty| ty.skip_norm_wip(),
         || {
             let branches = last_valtree.to_branch();
             last_valtree = branches.last().unwrap().to_value().valtree;

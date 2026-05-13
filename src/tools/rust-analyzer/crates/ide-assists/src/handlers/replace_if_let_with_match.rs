@@ -1,3 +1,5 @@
+use hir::db::ExpandDatabase;
+use itertools::Itertools;
 use std::iter::successors;
 
 use ide_db::{RootDatabase, defs::NameClass, ty_filter::TryEnum};
@@ -45,7 +47,10 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn replace_if_let_with_match(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     let available_range = TextRange::new(
         if_expr.syntax().text_range().start(),
@@ -66,8 +71,8 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         }
     });
     let scrutinee_to_be_expr = if_expr.condition()?;
-    let scrutinee_to_be_expr = match let_and_guard(&scrutinee_to_be_expr) {
-        (Some(let_expr), _) => let_expr.expr()?,
+    let scrutinee_to_be_expr = match let_and_guard(&scrutinee_to_be_expr, ctx)? {
+        (Some((_, expr)), _) => expr,
         (None, cond) => cond?,
     };
 
@@ -75,11 +80,9 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
     let mut cond_bodies = Vec::new();
     for if_expr in if_exprs {
         let cond = if_expr.condition()?;
-        let (cond, guard) = match let_and_guard(&cond) {
+        let (cond, guard) = match let_and_guard(&cond, ctx)? {
             (None, guard) => (None, Some(guard?)),
-            (Some(let_), guard) => {
-                let pat = let_.pat()?;
-                let expr = let_.expr()?;
+            (Some((pat, expr)), guard) => {
                 if scrutinee_to_be_expr.syntax().text() != expr.syntax().text() {
                     // Only if all condition expressions are equal we can merge them into a match
                     return None;
@@ -120,6 +123,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                         // Dedent from original position, then indent for match arm
                         let body = body.dedent(indent);
                         let body = unwrap_trivial_block(body);
+                        let pat = pretty_pat_inside_macro(pat, &ctx.sema);
                         match (pat, guard.map(|it| make.match_guard(it))) {
                             (Some(pat), guard) => make.match_arm(pat, guard, body),
                             (None, _) if !pat_seen => {
@@ -159,7 +163,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
 }
 
 fn make_else_arm(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     else_expr: Option<ast::Expr>,
     conditionals: &[(Option<ast::Pat>, Option<ast::Expr>, ast::BlockExpr)],
@@ -222,7 +226,10 @@ fn make_else_arm(
 //     }
 // }
 // ```
-pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn replace_match_with_if_let(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let match_expr: ast::MatchExpr = ctx.find_node_at_offset()?;
     let match_arm_list = match_expr.match_arm_list()?;
     let available_range = TextRange::new(
@@ -394,13 +401,18 @@ fn is_sad_pat(sema: &hir::Semantics<'_, RootDatabase>, pat: &ast::Pat) -> bool {
         .is_some_and(|it| does_pat_match_variant(pat, &it.sad_pattern()))
 }
 
-fn let_and_guard(cond: &ast::Expr) -> (Option<ast::LetExpr>, Option<ast::Expr>) {
+fn let_and_guard(
+    cond: &ast::Expr,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<(Option<(ast::Pat, ast::Expr)>, Option<ast::Expr>)> {
     if let ast::Expr::ParenExpr(expr) = cond
         && let Some(sub_expr) = expr.expr()
     {
-        let_and_guard(&sub_expr)
+        let_and_guard(&sub_expr, ctx)?
     } else if let ast::Expr::LetExpr(let_expr) = cond {
-        (Some(let_expr.clone()), None)
+        (Some((let_expr.pat()?, let_expr.expr()?)), None)
+    } else if let Some((pat, expr, guard)) = parse_matches_macro(cond, ctx) {
+        (Some((pat, expr)), guard)
     } else if let ast::Expr::BinExpr(bin_expr) = cond
         && let Some(ast::Expr::LetExpr(let_expr)) = and_bin_expr_left(bin_expr).lhs()
     {
@@ -418,10 +430,11 @@ fn let_and_guard(cond: &ast::Expr) -> (Option<ast::LetExpr>, Option<ast::Expr>) 
         }
 
         let new_expr = editor.finish().new_root().clone();
-        (Some(let_expr), ast::Expr::cast(new_expr))
+        (Some((let_expr.pat()?, let_expr.expr()?)), ast::Expr::cast(new_expr))
     } else {
         (None, Some(cond.clone()))
     }
+    .into()
 }
 
 fn match_scrutinee_needs_paren(expr: &ast::Expr) -> bool {
@@ -443,6 +456,66 @@ fn and_bin_expr_left(expr: &ast::BinExpr) -> ast::BinExpr {
     } else {
         expr.clone()
     }
+}
+
+fn parse_matches_macro(
+    expr: &ast::Expr,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<(ast::Pat, ast::Expr, Option<ast::Expr>)> {
+    let ast::Expr::MacroExpr(macro_expr) = expr else { return None };
+    let macro_call = macro_expr.macro_call()?;
+    let tt = macro_call.token_tree()?;
+    let r_delim = syntax::NodeOrToken::Token(tt.right_delimiter_token()?);
+
+    if macro_call.path()?.segment()?.name_ref()?.text() != "matches" {
+        return None;
+    }
+
+    let parse = |src: String| syntax::hacks::parse_expr_from_str(&src, ctx.edition());
+    let input = tt.syntax().children_with_tokens().skip(1).take_while(|it| *it != r_delim);
+    // Only supports single top-level comma case
+    let [comma] = input.clone().filter(|it| it.kind() == T![,]).collect_array()?;
+    let input_rest = input.clone().skip_while(|it| *it != comma).skip(1);
+    let if_kwd = input_rest.clone().find(|it| it.kind() == T![if]);
+    let input_expr = input.clone().take_while(|it| *it != comma).join("");
+    let input_pat = input_rest.clone().take_while(|it| Some(it) != if_kwd.as_ref());
+    let input_guard =
+        if_kwd.as_ref().map(|if_kwd| { input_rest }.skip_while(|it| it != if_kwd).skip(1).join(""));
+
+    let pat_token = match { input_pat }.find(|it| !it.kind().is_trivia())? {
+        syntax::NodeOrToken::Node(node) => node.first_token()?,
+        syntax::NodeOrToken::Token(t) => t,
+    };
+    // XXX: Use descend pat for sema analysis
+    let descend_pat = ctx.sema.descend_into_macros(pat_token).into_iter().find_map(|token| {
+        token
+            .parent_ancestors()
+            .take_while(|it| !matches!(it.kind(), SyntaxKind::MATCH_ARM | SyntaxKind::ITEM_LIST))
+            .filter_map(ast::Pat::cast)
+            .last()
+    })?;
+
+    Some((descend_pat, parse(input_expr)?, input_guard.and_then(parse)))
+}
+
+fn pretty_pat_inside_macro(
+    pat: Option<ast::Pat>,
+    sema: &hir::Semantics<'_, RootDatabase>,
+) -> Option<ast::Pat> {
+    let pretty = |pat| {
+        let db = sema.db;
+        let scope = sema.scope(&pat)?;
+        let file_id = scope.file_id().macro_file()?;
+        // Don't call `prettify_macro_expansion()` outside the actual assist action; see inline_macro assist
+        let pretty_node = hir::prettify_macro_expansion(
+            db,
+            pat,
+            db.expansion_span_map(file_id),
+            scope.module().krate(db).into(),
+        );
+        ast::Pat::cast(pretty_node)
+    };
+    pat.map(|pat| pretty(pat.syntax().clone()).unwrap_or(pat))
 }
 
 #[cfg(test)]
@@ -1808,6 +1881,53 @@ fn foo(x: Result<i32, ()>) {
     let bar: Result<i32, ()> = Ok(1);
     match bar {
         Ok(a @ b @ c @ d) => (),
+        Err(_) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_if_matches_with_match() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result, matches
+fn foo(x: Result<i32, ()>) {
+    $0if matches!(x, Ok(a @ 1..2)) {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    match x {
+        Ok(a@1..2) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result, matches
+fn foo(x: Result<i32, ()>) {
+    $0if matches!(x, Ok(ref a)) {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    match x {
+        Ok(ref a) => (),
         Err(_) => (),
     }
 }

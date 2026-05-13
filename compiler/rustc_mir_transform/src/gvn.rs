@@ -1776,7 +1776,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args)))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
         } else {
             None
         }

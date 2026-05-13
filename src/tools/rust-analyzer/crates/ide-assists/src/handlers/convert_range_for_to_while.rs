@@ -35,7 +35,10 @@ use crate::assist_context::{AssistContext, Assists};
 //     }
 // }
 // ```
-pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_range_for_to_while(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
     let make = editor.make();
     let for_kw = ctx.find_token_syntax_at_offset(T![for])?;

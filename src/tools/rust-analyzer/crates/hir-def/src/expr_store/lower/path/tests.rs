@@ -21,7 +21,7 @@ fn lower_path(path: ast::Path) -> (TestDB, ExpressionStore, Option<Path>) {
     let (db, file_id) = TestDB::with_single_file("");
     let krate = db.fetch_test_crate();
     let mut ctx =
-        ExprCollector::signature(&db, crate_def_map(&db, krate).root_module_id(), file_id.into());
+        ExprCollector::new(&db, crate_def_map(&db, krate).root_module_id(), file_id.into());
     let lowered_path = ctx.lower_path(path, &mut ExprCollector::impl_trait_allocator);
     let (store, _) = ctx.store.finish();
     (db, store, lowered_path)

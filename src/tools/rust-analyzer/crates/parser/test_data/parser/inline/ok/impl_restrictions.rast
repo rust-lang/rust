@@ -3,8 +3,6 @@ SOURCE_FILE
     VISIBILITY
       PUB_KW "pub"
     WHITESPACE " "
-    UNSAFE_KW "unsafe"
-    WHITESPACE " "
     IMPL_RESTRICTION
       IMPL_KW "impl"
       VISIBILITY_INNER
@@ -14,6 +12,8 @@ SOURCE_FILE
             NAME_REF
               CRATE_KW "crate"
         R_PAREN ")"
+    WHITESPACE " "
+    UNSAFE_KW "unsafe"
     WHITESPACE " "
     TRAIT_KW "trait"
     WHITESPACE " "

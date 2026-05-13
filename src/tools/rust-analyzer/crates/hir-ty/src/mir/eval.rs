@@ -5,20 +5,19 @@ use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
-    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, FunctionId, GeneralConstId,
-    HasModule, ItemContainerId, Lookup, StaticId, VariantId,
-    expr_store::{Body, HygieneId},
+    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
+    VariantId,
+    expr_store::{Body, ExpressionStore, HygieneId},
     item_tree::FieldsShape,
     lang_item::LangItems,
     layout::{TagEncoding, Variants},
-    resolver::{HasResolver, TypeNs, ValueNs},
+    resolver::{HasResolver, ValueNs},
     signatures::{
         EnumSignature, FunctionSignature, StaticFlags, StaticSignature, StructFlags,
         StructSignature, TraitSignature,
     },
 };
-use hir_expand::{InFile, mod_path::path, name::Name};
-use intern::sym;
+use hir_expand::{InFile, mod_path::path};
 use la_arena::ArenaMap;
 use macros::GenericTypeVisitable;
 use rustc_abi::{Size, TargetDataLayout};
@@ -30,7 +29,7 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
     AliasTyKind,
-    inherent::{AdtDef, GenericArgs as _, IntoKind, Region as _, SliceLike, Ty as _},
+    inherent::{GenericArgs as _, IntoKind, Region as _, SliceLike, Ty as _},
 };
 use span::FileId;
 use stdx::never;
@@ -38,9 +37,9 @@ use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    CallableDefId, ComplexMemoryMap, InferenceResult, MemoryMap, ParamEnvAndCrate,
+    CallableDefId, ComplexMemoryMap, InferBodyId, InferenceResult, MemoryMap, ParamEnvAndCrate,
     consteval::{self, ConstEvalError, try_const_usize},
-    db::{HirDatabase, InternedClosureId},
+    db::{GeneralConstId, HirDatabase, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
@@ -156,26 +155,26 @@ impl TlsData {
     }
 }
 
-struct StackFrame {
-    locals: Locals,
+struct StackFrame<'a> {
+    locals: Locals<'a>,
     destination: Option<BasicBlockId>,
     prev_stack_ptr: usize,
-    span: (MirSpan, DefWithBodyId),
+    span: (MirSpan, InferBodyId),
 }
 
 #[derive(Clone)]
-enum MirOrDynIndex {
-    Mir(Arc<MirBody>),
+enum MirOrDynIndex<'a> {
+    Mir(&'a MirBody),
     Dyn(usize),
 }
 
-pub struct Evaluator<'db> {
+pub struct Evaluator<'a, 'db> {
     db: &'db dyn HirDatabase,
     param_env: ParamEnvAndCrate<'db>,
-    target_data_layout: Arc<TargetDataLayout>,
+    target_data_layout: &'db TargetDataLayout,
     stack: Vec<u8>,
     heap: Vec<u8>,
-    code_stack: Vec<StackFrame>,
+    code_stack: Vec<StackFrame<'a>>,
     /// Stores the global location of the statics. We const evaluate every static first time we need it
     /// and see it's missing, then we add it to this to reuse.
     static_locations: FxHashMap<StaticId, Address>,
@@ -190,11 +189,11 @@ pub struct Evaluator<'db> {
     layout_cache: RefCell<FxHashMap<Ty<'db>, Arc<Layout>>>,
     projected_ty_cache: RefCell<FxHashMap<(Ty<'db>, PlaceElem), Ty<'db>>>,
     not_special_fn_cache: RefCell<FxHashSet<FunctionId>>,
-    mir_or_dyn_index_cache: RefCell<FxHashMap<(FunctionId, GenericArgs<'db>), MirOrDynIndex>>,
+    mir_or_dyn_index_cache: RefCell<FxHashMap<(FunctionId, GenericArgs<'db>), MirOrDynIndex<'a>>>,
     /// Constantly dropping and creating `Locals` is very costly. We store
     /// old locals that we normally want to drop here, to reuse their allocations
     /// later.
-    unused_locals_store: RefCell<FxHashMap<DefWithBodyId, Vec<Locals>>>,
+    unused_locals_store: RefCell<FxHashMap<InferBodyId, Vec<Locals<'a>>>>,
     cached_ptr_size: usize,
     cached_fn_trait_func: Option<FunctionId>,
     cached_fn_mut_trait_func: Option<FunctionId>,
@@ -237,17 +236,21 @@ impl Interval {
         Self { addr, size }
     }
 
-    fn get<'a, 'db>(&self, memory: &'a Evaluator<'db>) -> Result<'db, &'a [u8]> {
+    fn get<'b, 'a, 'db: 'a>(&self, memory: &'b Evaluator<'a, 'db>) -> Result<'db, &'b [u8]> {
         memory.read_memory(self.addr, self.size)
     }
 
-    fn write_from_bytes<'db>(&self, memory: &mut Evaluator<'db>, bytes: &[u8]) -> Result<'db, ()> {
+    fn write_from_bytes<'a, 'db: 'a>(
+        &self,
+        memory: &mut Evaluator<'a, 'db>,
+        bytes: &[u8],
+    ) -> Result<'db, ()> {
         memory.write_memory(self.addr, bytes)
     }
 
-    fn write_from_interval<'db>(
+    fn write_from_interval<'a, 'db: 'a>(
         &self,
-        memory: &mut Evaluator<'db>,
+        memory: &mut Evaluator<'a, 'db>,
         interval: Interval,
     ) -> Result<'db, ()> {
         memory.copy_from_interval(self.addr, interval)
@@ -259,16 +262,22 @@ impl Interval {
 }
 
 impl<'db> IntervalAndTy<'db> {
-    fn get<'a>(&self, memory: &'a Evaluator<'db>) -> Result<'db, &'a [u8]> {
+    fn get<'b, 'a>(&self, memory: &'b Evaluator<'a, 'db>) -> Result<'db, &'b [u8]>
+    where
+        'db: 'a,
+    {
         memory.read_memory(self.interval.addr, self.interval.size)
     }
 
-    fn new(
+    fn new<'a>(
         addr: Address,
         ty: Ty<'db>,
-        evaluator: &Evaluator<'db>,
-        locals: &Locals,
-    ) -> Result<'db, IntervalAndTy<'db>> {
+        evaluator: &Evaluator<'a, 'db>,
+        locals: &Locals<'a>,
+    ) -> Result<'db, IntervalAndTy<'db>>
+    where
+        'db: 'a,
+    {
         let size = evaluator.size_of_sized(ty, locals, "type of interval")?;
         Ok(IntervalAndTy { interval: Interval { addr, size }, ty })
     }
@@ -286,7 +295,7 @@ impl From<Interval> for IntervalOrOwned {
 }
 
 impl IntervalOrOwned {
-    fn get<'a, 'db>(&'a self, memory: &'a Evaluator<'db>) -> Result<'db, &'a [u8]> {
+    fn get<'b, 'a, 'db: 'a>(&'b self, memory: &'b Evaluator<'a, 'db>) -> Result<'db, &'b [u8]> {
         Ok(match self {
             IntervalOrOwned::Owned(o) => o,
             IntervalOrOwned::Borrowed(b) => b.get(memory)?,
@@ -362,7 +371,7 @@ pub enum MirEvalError {
     InvalidConst,
     InFunction(
         Box<MirEvalError>,
-        Vec<(Either<FunctionId, InternedClosureId>, MirSpan, DefWithBodyId)>,
+        Vec<(Either<FunctionId, InternedClosureId>, MirSpan, InferBodyId)>,
     ),
     ExecutionLimitExceeded,
     StackOverflow,
@@ -401,7 +410,16 @@ impl MirEvalError {
                         writeln!(f, "In {closure:?}")?;
                     }
                 }
-                let source_map = &Body::with_source_map(db, *def).1;
+                let (source_map, self_param_syntax) = match *def {
+                    InferBodyId::DefWithBodyId(def) => {
+                        let body = &Body::with_source_map(db, def).1;
+                        (&**body, body.self_param_syntax())
+                    }
+                    InferBodyId::AnonConstId(def) => {
+                        let store = ExpressionStore::with_source_map(db, def.loc(db).owner).1;
+                        (store, None)
+                    }
+                };
                 let span: InFile<SyntaxNodePtr> = match span {
                     MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
                         Ok(s) => s.map(|it| it.into()),
@@ -421,7 +439,7 @@ impl MirEvalError {
                             None => continue,
                         }
                     }
-                    MirSpan::SelfParam => match source_map.self_param_syntax() {
+                    MirSpan::SelfParam => match self_param_syntax {
                         Some(s) => s.map(|it| it.syntax_node_ptr()),
                         None => continue,
                     },
@@ -449,6 +467,7 @@ impl MirEvalError {
                     ItemContainerId::ImplId(impl_id) => Some({
                         db.impl_self_ty(impl_id)
                             .instantiate_identity()
+                            .skip_norm_wip()
                             .display(db, display_target)
                             .to_string()
                     }),
@@ -576,9 +595,9 @@ impl DropFlags {
 }
 
 #[derive(Debug)]
-struct Locals {
+struct Locals<'a> {
     ptr: ArenaMap<LocalId, Interval>,
-    body: Arc<MirBody>,
+    body: &'a MirBody,
     drop_flags: DropFlags,
 }
 
@@ -596,9 +615,9 @@ impl MirOutput {
     }
 }
 
-pub fn interpret_mir<'db>(
+pub fn interpret_mir<'a, 'db: 'a>(
     db: &'db dyn HirDatabase,
-    body: Arc<MirBody>,
+    body: &MirBody,
     // FIXME: This is workaround. Ideally, const generics should have a separate body (issue #7434), but now
     // they share their body with their parent, so in MIR lowering we have locals of the parent body, which
     // might have placeholders. With this argument, we (wrongly) assume that every placeholder type has
@@ -613,7 +632,7 @@ pub fn interpret_mir<'db>(
         if evaluator.ptr_size() != size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
-        let interval = evaluator.interpret_mir(body.clone(), None.into_iter())?;
+        let interval = evaluator.interpret_mir(body, None.into_iter())?;
         let bytes = interval.get(&evaluator)?;
         let mut memory_map = evaluator.create_memory_map(
             bytes,
@@ -638,13 +657,13 @@ const EXECUTION_LIMIT: usize = 100_000;
 #[cfg(not(test))]
 const EXECUTION_LIMIT: usize = 10_000_000;
 
-impl<'db> Evaluator<'db> {
+impl<'a, 'db: 'a> Evaluator<'a, 'db> {
     pub fn new(
         db: &'db dyn HirDatabase,
-        owner: DefWithBodyId,
+        owner: InferBodyId,
         assert_placeholder_ty_is_unused: bool,
         trait_env: Option<ParamEnvAndCrate<'db>>,
-    ) -> Result<'db, Evaluator<'db>> {
+    ) -> Result<'db, Evaluator<'a, 'db>> {
         let module = owner.module(db);
         let crate_id = module.krate(db);
         let target_data_layout = match db.target_data_layout(crate_id) {
@@ -666,7 +685,7 @@ impl<'db> Evaluator<'db> {
             db,
             random_state: oorandom::Rand64::new(0),
             param_env: trait_env.unwrap_or_else(|| ParamEnvAndCrate {
-                param_env: db.trait_environment(ExpressionStoreOwnerId::from(owner)),
+                param_env: db.trait_environment(owner.expression_store_owner(db)),
                 krate: crate_id,
             }),
             crate_id,
@@ -682,15 +701,9 @@ impl<'db> Evaluator<'db> {
             mir_or_dyn_index_cache: RefCell::new(Default::default()),
             unused_locals_store: RefCell::new(Default::default()),
             cached_ptr_size,
-            cached_fn_trait_func: lang_items
-                .Fn
-                .and_then(|x| x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call))),
-            cached_fn_mut_trait_func: lang_items.FnMut.and_then(|x| {
-                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_mut))
-            }),
-            cached_fn_once_trait_func: lang_items.FnOnce.and_then(|x| {
-                x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_once))
-            }),
+            cached_fn_trait_func: lang_items.Fn_call,
+            cached_fn_mut_trait_func: lang_items.FnMut_call_mut,
+            cached_fn_once_trait_func: lang_items.FnOnce_call_once,
             infcx,
         })
     }
@@ -705,11 +718,11 @@ impl<'db> Evaluator<'db> {
         self.infcx.interner.lang_items()
     }
 
-    fn place_addr(&self, p: &Place, locals: &Locals) -> Result<'db, Address> {
+    fn place_addr(&self, p: &Place, locals: &Locals<'a>) -> Result<'db, Address> {
         Ok(self.place_addr_and_ty_and_metadata(p, locals)?.0)
     }
 
-    fn place_interval(&self, p: &Place, locals: &Locals) -> Result<'db, Interval> {
+    fn place_interval(&self, p: &Place, locals: &Locals<'a>) -> Result<'db, Interval> {
         let place_addr_and_ty = self.place_addr_and_ty_and_metadata(p, locals)?;
         Ok(Interval {
             addr: place_addr_and_ty.0,
@@ -736,10 +749,10 @@ impl<'db> Evaluator<'db> {
         r
     }
 
-    fn place_addr_and_ty_and_metadata<'a>(
-        &'a self,
+    fn place_addr_and_ty_and_metadata<'b>(
+        &'b self,
         p: &Place,
-        locals: &'a Locals,
+        locals: &'b Locals<'a>,
     ) -> Result<'db, (Address, Ty<'db>, Option<IntervalOrOwned>)> {
         let mut addr = locals.ptr[p.local].addr;
         let mut ty: Ty<'db> = locals.body.locals[p.local].ty.as_ref();
@@ -873,11 +886,11 @@ impl<'db> Evaluator<'db> {
         self.layout(Ty::new_adt(self.interner(), adt, subst))
     }
 
-    fn place_ty<'a>(&'a self, p: &Place, locals: &'a Locals) -> Result<'db, Ty<'db>> {
+    fn place_ty<'b>(&'b self, p: &Place, locals: &'b Locals<'a>) -> Result<'db, Ty<'db>> {
         Ok(self.place_addr_and_ty_and_metadata(p, locals)?.1)
     }
 
-    fn operand_ty(&self, o: &Operand, locals: &Locals) -> Result<'db, Ty<'db>> {
+    fn operand_ty(&self, o: &Operand, locals: &Locals<'a>) -> Result<'db, Ty<'db>> {
         Ok(match &o.kind {
             OperandKind::Copy(p) | OperandKind::Move(p) => self.place_ty(p, locals)?,
             OperandKind::Constant { konst: _, ty } => ty.as_ref(),
@@ -898,7 +911,7 @@ impl<'db> Evaluator<'db> {
     fn operand_ty_and_eval(
         &mut self,
         o: &Operand,
-        locals: &mut Locals,
+        locals: &mut Locals<'a>,
     ) -> Result<'db, IntervalAndTy<'db>> {
         Ok(IntervalAndTy {
             interval: self.eval_operand(o, locals)?,
@@ -908,7 +921,7 @@ impl<'db> Evaluator<'db> {
 
     fn interpret_mir(
         &mut self,
-        body: Arc<MirBody>,
+        body: &'a MirBody,
         args: impl Iterator<Item = IntervalOrOwned>,
     ) -> Result<'db, Interval> {
         if let Some(it) = self.stack_depth_limit.checked_sub(1) {
@@ -917,8 +930,8 @@ impl<'db> Evaluator<'db> {
             return Err(MirEvalError::StackOverflow);
         }
         let mut current_block_idx = body.start_block;
-        let (mut locals, prev_stack_ptr) = self.create_locals_for_body(&body, None)?;
-        self.fill_locals_for_body(&body, &mut locals, args)?;
+        let (mut locals, prev_stack_ptr) = self.create_locals_for_body(body, None)?;
+        self.fill_locals_for_body(body, &mut locals, args)?;
         let prev_code_stack = mem::take(&mut self.code_stack);
         let span = (MirSpan::Unknown, body.owner);
         self.code_stack.push(StackFrame { locals, destination: None, prev_stack_ptr, span });
@@ -1041,7 +1054,7 @@ impl<'db> Evaluator<'db> {
                     let my_code_stack = mem::replace(&mut self.code_stack, prev_code_stack);
                     let mut error_stack = vec![];
                     for frame in my_code_stack.into_iter().rev() {
-                        if let DefWithBodyId::FunctionId(f) = frame.locals.body.owner {
+                        if let Some(f) = frame.locals.body.owner.as_function() {
                             error_stack.push((Either::Left(f), frame.span.0, frame.span.1));
                         }
                     }
@@ -1073,7 +1086,7 @@ impl<'db> Evaluator<'db> {
     fn fill_locals_for_body(
         &mut self,
         body: &MirBody,
-        locals: &mut Locals,
+        locals: &mut Locals<'a>,
         args: impl Iterator<Item = IntervalOrOwned>,
     ) -> Result<'db, ()> {
         let mut remain_args = body.param_locals.len();
@@ -1096,19 +1109,15 @@ impl<'db> Evaluator<'db> {
 
     fn create_locals_for_body(
         &mut self,
-        body: &Arc<MirBody>,
+        body: &'a MirBody,
         destination: Option<Interval>,
-    ) -> Result<'db, (Locals, usize)> {
+    ) -> Result<'db, (Locals<'a>, usize)> {
         let mut locals =
             match self.unused_locals_store.borrow_mut().entry(body.owner).or_default().pop() {
-                None => Locals {
-                    ptr: ArenaMap::new(),
-                    body: body.clone(),
-                    drop_flags: DropFlags::default(),
-                },
+                None => Locals { ptr: ArenaMap::new(), body, drop_flags: DropFlags::default() },
                 Some(mut l) => {
                     l.drop_flags.clear();
-                    l.body = body.clone();
+                    l.body = body;
                     l
                 }
             };
@@ -1145,7 +1154,7 @@ impl<'db> Evaluator<'db> {
         Ok((locals, prev_stack_pointer))
     }
 
-    fn eval_rvalue(&mut self, r: &Rvalue, locals: &mut Locals) -> Result<'db, IntervalOrOwned> {
+    fn eval_rvalue(&mut self, r: &Rvalue, locals: &mut Locals<'a>) -> Result<'db, IntervalOrOwned> {
         use IntervalOrOwned::*;
         Ok(match r {
             Rvalue::Use(it) => Borrowed(self.eval_operand(it, locals)?),
@@ -1651,7 +1660,7 @@ impl<'db> Evaluator<'db> {
         let TyKind::Adt(adt_def, _) = ty.kind() else {
             return Ok(0);
         };
-        let AdtId::EnumId(e) = adt_def.def_id().0 else {
+        let AdtId::EnumId(e) = adt_def.def_id() else {
             return Ok(0);
         };
         match &layout.variants {
@@ -1662,7 +1671,7 @@ impl<'db> Evaluator<'db> {
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
-                let size = tag.size(&*self.target_data_layout).bytes_usize();
+                let size = tag.size(self.target_data_layout).bytes_usize();
                 let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
                 let is_signed = tag.is_signed();
                 match tag_encoding {
@@ -1701,13 +1710,13 @@ impl<'db> Evaluator<'db> {
             return Ok(it);
         }
         if let TyKind::Adt(adt_ef, subst) = kind
-            && let AdtId::StructId(struct_id) = adt_ef.def_id().0
+            && let AdtId::StructId(struct_id) = adt_ef.def_id()
         {
             let field_types = self.db.field_types(struct_id.into());
             if let Some(ty) =
                 field_types.iter().last().map(|it| it.1.get().instantiate(self.interner(), subst))
             {
-                return self.coerce_unsized_look_through_fields(ty, goal);
+                return self.coerce_unsized_look_through_fields(ty.skip_norm_wip(), goal);
             }
         }
         Err(MirEvalError::CoerceUnsizedError(ty.store()))
@@ -1768,8 +1777,8 @@ impl<'db> Evaluator<'db> {
             }
             TyKind::Adt(adt_def, target_subst) => match &current_ty.kind() {
                 TyKind::Adt(current_adt_def, current_subst) => {
-                    let id = adt_def.def_id().0;
-                    let current_id = current_adt_def.def_id().0;
+                    let id = adt_def.def_id();
+                    let current_id = current_adt_def.def_id();
                     if id != current_id {
                         not_supported!("unsizing struct with different type");
                     }
@@ -1784,10 +1793,12 @@ impl<'db> Evaluator<'db> {
                     };
                     let target_last_field = self.db.field_types(id.into())[last_field]
                         .get()
-                        .instantiate(self.interner(), target_subst);
+                        .instantiate(self.interner(), target_subst)
+                        .skip_norm_wip();
                     let current_last_field = self.db.field_types(id.into())[last_field]
                         .get()
-                        .instantiate(self.interner(), current_subst);
+                        .instantiate(self.interner(), current_subst)
+                        .skip_norm_wip();
                     return self.unsizing_ptr_from_addr(
                         target_last_field,
                         current_last_field,
@@ -1804,10 +1815,10 @@ impl<'db> Evaluator<'db> {
         &mut self,
         it: VariantId,
         subst: GenericArgs<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
     ) -> Result<'db, (usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
         let adt = it.adt_id(self.db);
-        if let DefWithBodyId::VariantId(f) = locals.body.owner
+        if let Some(f) = locals.body.owner.as_variant()
             && let VariantId::EnumVariantId(it) = it
             && let AdtId::EnumId(e) = adt
             && f.lookup(self.db).parent == e
@@ -1851,7 +1862,7 @@ impl<'db> Evaluator<'db> {
                     if have_tag {
                         Some((
                             layout.fields.offset(0).bytes_usize(),
-                            tag.size(&*self.target_data_layout).bytes_usize(),
+                            tag.size(self.target_data_layout).bytes_usize(),
                             discriminant,
                         ))
                     } else {
@@ -1898,7 +1909,7 @@ impl<'db> Evaluator<'db> {
         Ok(result)
     }
 
-    fn eval_operand(&mut self, it: &Operand, locals: &mut Locals) -> Result<'db, Interval> {
+    fn eval_operand(&mut self, it: &Operand, locals: &mut Locals<'a>) -> Result<'db, Interval> {
         Ok(match &it.kind {
             OperandKind::Copy(p) | OperandKind::Move(p) => {
                 locals.drop_flags.remove_place(p, &locals.body.projection_store);
@@ -2051,7 +2062,7 @@ impl<'db> Evaluator<'db> {
     #[allow(clippy::double_parens)]
     fn allocate_const_in_heap(
         &mut self,
-        locals: &Locals,
+        locals: &Locals<'a>,
         konst: Const<'db>,
     ) -> Result<'db, Interval> {
         match konst.kind() {
@@ -2059,9 +2070,9 @@ impl<'db> Evaluator<'db> {
             ConstKind::Unevaluated(UnevaluatedConst { def: const_id, args: subst }) => {
                 let mut id = const_id.0;
                 let mut subst = subst;
-                if let hir_def::GeneralConstId::ConstId(c) = id {
+                if let GeneralConstId::ConstId(c) = id {
                     let (c, s) = lookup_impl_const(&self.infcx, self.param_env.param_env, c, subst);
-                    id = hir_def::GeneralConstId::ConstId(c);
+                    id = GeneralConstId::ConstId(c);
                     subst = s;
                 }
                 let allocation = match id {
@@ -2077,9 +2088,13 @@ impl<'db> Evaluator<'db> {
                             MirEvalError::ConstEvalError(name, Box::new(e))
                         })?
                     }
-                    GeneralConstId::AnonConstId(_) => {
-                        not_supported!("anonymous const evaluation")
-                    }
+                    GeneralConstId::AnonConstId(anon_const_id) => self
+                        .db
+                        .anon_const_eval(anon_const_id, subst, Some(self.param_env))
+                        .map_err(|e| {
+                            let name = id.name(self.db);
+                            MirEvalError::ConstEvalError(name, Box::new(e))
+                        })?,
                 };
                 self.allocate_allocation_in_heap(locals, allocation)
             }
@@ -2089,7 +2104,7 @@ impl<'db> Evaluator<'db> {
 
     fn allocate_allocation_in_heap(
         &mut self,
-        locals: &Locals,
+        locals: &Locals<'a>,
         allocation: Allocation<'db>,
     ) -> Result<'db, Interval> {
         let AllocationData { ty, memory: ref v, ref memory_map } = *allocation;
@@ -2128,7 +2143,7 @@ impl<'db> Evaluator<'db> {
         Ok(Interval::new(addr, size))
     }
 
-    fn eval_place(&mut self, p: &Place, locals: &Locals) -> Result<'db, Interval> {
+    fn eval_place(&mut self, p: &Place, locals: &Locals<'a>) -> Result<'db, Interval> {
         let addr = self.place_addr(p, locals)?;
         Ok(Interval::new(
             addr,
@@ -2228,13 +2243,17 @@ impl<'db> Evaluator<'db> {
         Ok(())
     }
 
-    fn size_align_of(&self, ty: Ty<'db>, locals: &Locals) -> Result<'db, Option<(usize, usize)>> {
+    fn size_align_of(
+        &self,
+        ty: Ty<'db>,
+        locals: &Locals<'a>,
+    ) -> Result<'db, Option<(usize, usize)>> {
         if let Some(layout) = self.layout_cache.borrow().get(&ty) {
             return Ok(layout
                 .is_sized()
                 .then(|| (layout.size.bytes_usize(), layout.align.bytes() as usize)));
         }
-        if let DefWithBodyId::VariantId(f) = locals.body.owner
+        if let Some(f) = locals.body.owner.as_variant()
             && let Some((AdtId::EnumId(e), _)) = ty.as_adt()
             && f.lookup(self.db).parent == e
         {
@@ -2257,7 +2276,7 @@ impl<'db> Evaluator<'db> {
     fn size_of_sized(
         &self,
         ty: Ty<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
         what: &'static str,
     ) -> Result<'db, usize> {
         match self.size_align_of(ty, locals)? {
@@ -2271,7 +2290,7 @@ impl<'db> Evaluator<'db> {
     fn size_align_of_sized(
         &self,
         ty: Ty<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
         what: &'static str,
     ) -> Result<'db, (usize, usize)> {
         match self.size_align_of(ty, locals)? {
@@ -2312,13 +2331,13 @@ impl<'db> Evaluator<'db> {
         &self,
         bytes: &[u8],
         ty: Ty<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
     ) -> Result<'db, ComplexMemoryMap<'db>> {
-        fn rec<'db>(
-            this: &Evaluator<'db>,
+        fn rec<'a, 'db: 'a>(
+            this: &Evaluator<'a, 'db>,
             bytes: &[u8],
             ty: Ty<'db>,
-            locals: &Locals,
+            locals: &Locals<'a>,
             mm: &mut ComplexMemoryMap<'db>,
             stack_depth_limit: usize,
         ) -> Result<'db, ()> {
@@ -2409,7 +2428,7 @@ impl<'db> Evaluator<'db> {
                         )?;
                     }
                 }
-                TyKind::Adt(adt, subst) => match adt.def_id().0 {
+                TyKind::Adt(adt, subst) => match adt.def_id() {
                     AdtId::StructId(s) => {
                         let data = s.fields(this.db);
                         let layout = this.layout(ty)?;
@@ -2419,7 +2438,10 @@ impl<'db> Evaluator<'db> {
                                 .fields
                                 .offset(u32::from(f.into_raw()) as usize)
                                 .bytes_usize();
-                            let ty = field_types[f].get().instantiate(this.interner(), subst);
+                            let ty = field_types[f]
+                                .get()
+                                .instantiate(this.interner(), subst)
+                                .skip_norm_wip();
                             let size = this.layout(ty)?.size.bytes_usize();
                             rec(
                                 this,
@@ -2436,7 +2458,7 @@ impl<'db> Evaluator<'db> {
                         if let Some((v, l)) = detect_variant_from_bytes(
                             &layout,
                             this.db,
-                            &this.target_data_layout,
+                            this.target_data_layout,
                             bytes,
                             e,
                         ) {
@@ -2445,7 +2467,10 @@ impl<'db> Evaluator<'db> {
                             for (f, _) in data.fields().iter() {
                                 let offset =
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
-                                let ty = field_types[f].get().instantiate(this.interner(), subst);
+                                let ty = field_types[f]
+                                    .get()
+                                    .instantiate(this.interner(), subst)
+                                    .skip_norm_wip();
                                 let size = this.layout(ty)?.size.bytes_usize();
                                 rec(
                                     this,
@@ -2487,7 +2512,7 @@ impl<'db> Evaluator<'db> {
         ty_of_bytes: impl Fn(&[u8]) -> Result<'db, Ty<'db>> + Copy,
         addr: Address,
         ty: Ty<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
     ) -> Result<'db, ()> {
         // FIXME: support indirect references
         let layout = self.layout(ty)?;
@@ -2527,11 +2552,11 @@ impl<'db> Evaluator<'db> {
                 let new_id = self.vtable_map.id(ty);
                 self.write_memory(addr, &new_id.to_le_bytes())?;
             }
-            TyKind::Adt(id, args) => match id.def_id().0 {
+            TyKind::Adt(id, args) => match id.def_id() {
                 AdtId::StructId(s) => {
                     for (i, (_, ty)) in self.db.field_types(s.into()).iter().enumerate() {
                         let offset = layout.fields.offset(i).bytes_usize();
-                        let ty = ty.get().instantiate(self.interner(), args);
+                        let ty = ty.get().instantiate(self.interner(), args).skip_norm_wip();
                         self.patch_addresses(
                             patch_map,
                             ty_of_bytes,
@@ -2546,13 +2571,13 @@ impl<'db> Evaluator<'db> {
                     if let Some((ev, layout)) = detect_variant_from_bytes(
                         &layout,
                         self.db,
-                        &self.target_data_layout,
+                        self.target_data_layout,
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
                         for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
                             let offset = layout.fields.offset(i).bytes_usize();
-                            let ty = ty.get().instantiate(self.interner(), args);
+                            let ty = ty.get().instantiate(self.interner(), args).skip_norm_wip();
                             self.patch_addresses(
                                 patch_map,
                                 ty_of_bytes,
@@ -2619,10 +2644,10 @@ impl<'db> Evaluator<'db> {
         bytes: Interval,
         destination: Interval,
         args: &[IntervalAndTy<'db>],
-        locals: &Locals,
+        locals: &Locals<'a>,
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<'db, Option<StackFrame>> {
+    ) -> Result<'db, Option<StackFrame<'a>>> {
         let id = from_bytes!(usize, bytes.get(self)?);
         let next_ty = self.vtable_map.ty(id)?;
         use rustc_type_ir::TyKind;
@@ -2650,9 +2675,9 @@ impl<'db> Evaluator<'db> {
         generic_args: GenericArgs<'db>,
         destination: Interval,
         args: &[IntervalAndTy<'db>],
-        locals: &Locals,
+        locals: &Locals<'a>,
         span: MirSpan,
-    ) -> Result<'db, Option<StackFrame>> {
+    ) -> Result<'db, Option<StackFrame<'a>>> {
         let mir_body = self
             .db
             .monomorphized_mir_body_for_closure(
@@ -2688,10 +2713,10 @@ impl<'db> Evaluator<'db> {
         generic_args: GenericArgs<'db>,
         destination: Interval,
         args: &[IntervalAndTy<'db>],
-        locals: &Locals,
+        locals: &Locals<'a>,
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<'db, Option<StackFrame>> {
+    ) -> Result<'db, Option<StackFrame<'a>>> {
         match def {
             CallableDefId::FunctionId(def) => {
                 if self.detect_fn_trait(def).is_some() {
@@ -2746,9 +2771,9 @@ impl<'db> Evaluator<'db> {
         &self,
         def: FunctionId,
         generic_args: GenericArgs<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
         span: MirSpan,
-    ) -> Result<'db, MirOrDynIndex> {
+    ) -> Result<'db, MirOrDynIndex<'a>> {
         let pair = (def, generic_args);
         if let Some(r) = self.mir_or_dyn_index_cache.borrow().get(&pair) {
             return Ok(r.clone());
@@ -2788,11 +2813,11 @@ impl<'db> Evaluator<'db> {
         mut def: FunctionId,
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
         destination: Interval,
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<'db, Option<StackFrame>> {
+    ) -> Result<'db, Option<StackFrame<'a>>> {
         if self.detect_and_exec_special_function(
             def,
             args,
@@ -2854,18 +2879,18 @@ impl<'db> Evaluator<'db> {
 
     fn exec_looked_up_function(
         &mut self,
-        mir_body: Arc<MirBody>,
-        locals: &Locals,
+        mir_body: &'a MirBody,
+        locals: &Locals<'a>,
         def: FunctionId,
         arg_bytes: impl Iterator<Item = IntervalOrOwned>,
         span: MirSpan,
         destination: Interval,
         target_bb: Option<BasicBlockId>,
-    ) -> Result<'db, Option<StackFrame>> {
+    ) -> Result<'db, Option<StackFrame<'a>>> {
         Ok(if let Some(target_bb) = target_bb {
             let (mut locals, prev_stack_ptr) =
-                self.create_locals_for_body(&mir_body, Some(destination))?;
-            self.fill_locals_for_body(&mir_body, &mut locals, arg_bytes.into_iter())?;
+                self.create_locals_for_body(mir_body, Some(destination))?;
+            self.fill_locals_for_body(mir_body, &mut locals, arg_bytes.into_iter())?;
             let span = (span, locals.body.owner);
             Some(StackFrame { locals, destination: Some(target_bb), prev_stack_ptr, span })
         } else {
@@ -2885,11 +2910,11 @@ impl<'db> Evaluator<'db> {
         def: FunctionId,
         args: &[IntervalAndTy<'db>],
         generic_args: GenericArgs<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
         destination: Interval,
         target_bb: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Result<'db, Option<StackFrame>> {
+    ) -> Result<'db, Option<StackFrame<'a>>> {
         let func = args
             .first()
             .ok_or_else(|| MirEvalError::InternalError("fn trait with no arg".into()))?;
@@ -2954,7 +2979,7 @@ impl<'db> Evaluator<'db> {
         }
     }
 
-    fn eval_static(&mut self, st: StaticId, locals: &Locals) -> Result<'db, Address> {
+    fn eval_static(&mut self, st: StaticId, locals: &Locals<'a>) -> Result<'db, Address> {
         if let Some(o) = self.static_locations.get(&st) {
             return Ok(*o);
         };
@@ -3001,7 +3026,12 @@ impl<'db> Evaluator<'db> {
         }
     }
 
-    fn drop_place(&mut self, place: &Place, locals: &mut Locals, span: MirSpan) -> Result<'db, ()> {
+    fn drop_place(
+        &mut self,
+        place: &Place,
+        locals: &mut Locals<'a>,
+        span: MirSpan,
+    ) -> Result<'db, ()> {
         let (addr, ty, metadata) = self.place_addr_and_ty_and_metadata(place, locals)?;
         if !locals.drop_flags.remove_place(place, &locals.body.projection_store) {
             return Ok(());
@@ -3016,15 +3046,12 @@ impl<'db> Evaluator<'db> {
     fn run_drop_glue_deep(
         &mut self,
         ty: Ty<'db>,
-        locals: &Locals,
+        locals: &Locals<'a>,
         addr: Address,
         _metadata: &[u8],
         span: MirSpan,
     ) -> Result<'db, ()> {
-        let Some(drop_fn) = (|| {
-            let drop_trait = self.lang_items().Drop?;
-            drop_trait.trait_items(self.db).method_by_name(&Name::new_symbol_root(sym::drop))
-        })() else {
+        let Some(drop_fn) = self.lang_items().Drop_drop else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
             return Ok(());
@@ -3046,7 +3073,7 @@ impl<'db> Evaluator<'db> {
         }
         match ty.kind() {
             TyKind::Adt(adt_def, subst) => {
-                let id = adt_def.def_id().0;
+                let id = adt_def.def_id();
                 match id {
                     AdtId::StructId(s) => {
                         let data = StructSignature::of(self.db, s);
@@ -3066,7 +3093,8 @@ impl<'db> Evaluator<'db> {
                                     let addr = addr.offset(offset);
                                     let ty = field_types[field]
                                         .get()
-                                        .instantiate(self.interner(), subst);
+                                        .instantiate(self.interner(), subst)
+                                        .skip_norm_wip();
                                     self.run_drop_glue_deep(ty, locals, addr, &[], span)?;
                                 }
                             }
@@ -3122,7 +3150,7 @@ impl<'db> Evaluator<'db> {
 
 pub fn render_const_using_debug_impl<'db>(
     db: &'db dyn HirDatabase,
-    owner: DefWithBodyId,
+    owner: InferBodyId,
     c: Allocation<'db>,
     ty: Ty<'db>,
 ) -> Result<'db, String> {
@@ -3135,16 +3163,9 @@ pub fn render_const_using_debug_impl<'db>(
         drop_flags: DropFlags::default(),
     };
     let data = evaluator.allocate_allocation_in_heap(locals, c)?;
+    let lang_items = evaluator.interner().lang_items();
     let resolver = owner.resolver(db);
-    let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
-        db,
-        &hir_def::expr_store::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
-    ) else {
-        not_supported!("core::fmt::Debug not found");
-    };
-    let Some(debug_fmt_fn) =
-        debug_trait.trait_items(db).method_by_name(&Name::new_symbol_root(sym::fmt))
-    else {
+    let Some(debug_fmt_fn) = lang_items.Debug_fmt else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
     // a1 = &[""]

@@ -1,7 +1,7 @@
 use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
-use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};

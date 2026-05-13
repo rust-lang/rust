@@ -5,7 +5,7 @@ use hir::HirDisplay;
 //
 // This diagnostic is triggered on moving non copy things out of references.
 pub(crate) fn moved_out_of_ref(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::MovedOutOfRef<'_>,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(

@@ -25,7 +25,10 @@ use crate::{AssistContext, Assists, utils::wrap_paren_in_call};
 //     a.unwrap_or_else(|| 2);
 // }
 // ```
-pub(crate) fn replace_with_lazy_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn replace_with_lazy_method(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     let scope = ctx.sema.scope(call.syntax())?;
 
@@ -113,7 +116,10 @@ fn into_closure(param: &Expr, name_lazy: &str) -> Expr {
 //     a.unwrap_or(2);
 // }
 // ```
-pub(crate) fn replace_with_eager_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn replace_with_eager_method(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_, '_>,
+) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     let scope = ctx.sema.scope(call.syntax())?;
 

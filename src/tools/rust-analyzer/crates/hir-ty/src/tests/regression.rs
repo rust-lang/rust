@@ -2,6 +2,8 @@ mod new_solver;
 
 use expect_test::expect;
 
+use crate::tests::check;
+
 use super::{check_infer, check_no_mismatches, check_types};
 
 #[test]
@@ -1956,7 +1958,7 @@ fn main() {
     Alias::Braced;
   //^^^^^^^^^^^^^ {unknown}
     let Alias::Braced = loop {};
-      //^^^^^^^^^^^^^ !
+      //^^^^^^^^^^^^^ {unknown}
   let Alias::Braced(..) = loop {};
     //^^^^^^^^^^^^^^^^^ Enum
 
@@ -2013,18 +2015,20 @@ where
 
 #[test]
 fn tait_async_stack_overflow_17199() {
-    check_types(
+    // The error here is because we don't support TAITs.
+    check(
         r#"
     //- minicore: fmt, future
     type Foo = impl core::fmt::Debug;
 
     async fn foo() -> Foo {
         ()
+     // ^^ expected impl Debug, got ()
     }
 
     async fn test() {
         let t = foo().await;
-         // ^ impl Debug
+         // ^ type: impl Debug
     }
 "#,
     );
@@ -2234,7 +2238,7 @@ type Bar = impl Foo;
 async fn f<A, B, C>() -> Bar {}
 "#,
         expect![[r#"
-            64..66 '{}': ()
+            64..66 '{}': impl Foo + ?Sized
         "#]],
     );
 }
@@ -2363,7 +2367,6 @@ fn test() {
 }
 "#,
         expect![[r#"
-            46..49 'Foo': Foo<N>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
@@ -2755,7 +2758,6 @@ where
             664..680 'filter...ter_fn': dyn Fn(&'? T) -> bool + 'static
             691..698 'loop {}': !
             696..698 '{}': ()
-            512..513 'N': usize
         "#]],
     );
 }

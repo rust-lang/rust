@@ -657,7 +657,7 @@ impl ProcMacroExpander for Expander {
                 let mut current_ctx = span.ctx;
 
                 while let Some(macro_call_id) = current_ctx.outer_expn(db) {
-                    let macro_call_loc = db.lookup_intern_macro_call(macro_call_id.into());
+                    let macro_call_loc = hir_expand::MacroCallId::from(macro_call_id).loc(db);
 
                     let call_site_file = macro_call_loc.kind.file_id();
 
@@ -701,7 +701,7 @@ impl ProcMacroExpander for Expander {
                 };
 
                 if let Some(macro_call_id) = span.ctx.outer_expn(db) {
-                    let macro_call_loc = db.lookup_intern_macro_call(macro_call_id.into());
+                    let macro_call_loc = hir_expand::MacroCallId::from(macro_call_id).loc(db);
 
                     let call_site_file = macro_call_loc.kind.file_id();
                     let call_site_ast_id = macro_call_loc.kind.erased_ast_id();

@@ -214,11 +214,11 @@ impl<'db> LookupTable<'db> {
 
 /// Context for the `term_search` function
 #[derive(Debug)]
-pub struct TermSearchCtx<'db, DB: HirDatabase> {
+pub struct TermSearchCtx<'a, 'db, DB: HirDatabase> {
     /// Semantics for the program
-    pub sema: &'db Semantics<'db, DB>,
+    pub sema: &'a Semantics<'db, DB>,
     /// Semantic scope, captures context for the term search
-    pub scope: &'db SemanticsScope<'db>,
+    pub scope: &'a SemanticsScope<'db>,
     /// Target / expected output type
     pub goal: Type<'db>,
     /// Configuration for term search
@@ -263,7 +263,7 @@ impl Default for TermSearchConfig {
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
 /// reduce the memory consumption. It is also unlikely anyone is willing ti browse through
 /// thousands of possible responses so we currently take first 10 from every tactic.
-pub fn term_search<'db, DB: HirDatabase>(ctx: &'db TermSearchCtx<'db, DB>) -> Vec<Expr<'db>> {
+pub fn term_search<'db, DB: HirDatabase>(ctx: &TermSearchCtx<'_, 'db, DB>) -> Vec<Expr<'db>> {
     let module = ctx.scope.module();
     let mut defs = FxHashSet::default();
     defs.insert(ScopeDef::ModuleDef(ModuleDef::Module(module)));

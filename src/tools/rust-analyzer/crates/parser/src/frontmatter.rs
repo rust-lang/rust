@@ -263,7 +263,7 @@ pub fn strip_ws_lines(input: &str) -> Option<usize> {
 /// True if `c` is considered a whitespace according to Rust language definition.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/whitespace.html)
 /// for definitions of these classes.
-fn is_whitespace(c: char) -> bool {
+pub(crate) fn is_whitespace(c: char) -> bool {
     // This is Pattern_White_Space.
     //
     // Note that this set is stable (ie, it doesn't change with different

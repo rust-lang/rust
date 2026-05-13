@@ -124,6 +124,9 @@ pub struct InferCtxtInner<'tcx> {
     /// region constraints would've been added.
     region_constraint_storage: Option<RegionConstraintStorage<'tcx>>,
 
+    /// Used by the next solver when `-Zassumptions-on-binders` is set.
+    solver_region_constraint_storage: SolverRegionConstraintStorage<'tcx>,
+
     /// A set of constraints that regionck must validate.
     ///
     /// Each constraint has the form `T:'a`, meaning "some type `T` must
@@ -171,6 +174,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: Default::default(),
             float_origin_origin_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
+            solver_region_constraint_storage: SolverRegionConstraintStorage::new(),
             region_obligations: Default::default(),
             region_assumptions: Default::default(),
             hir_typeck_potentially_region_dependent_goals: Default::default(),
@@ -315,9 +319,51 @@ pub struct InferCtxt<'tcx> {
     /// bound.
     universe: Cell<ty::UniverseIndex>,
 
+    /// List of assumed wellformed types which we can derive implied
+    /// bounds on a `for<...>` from. Only used unstabley and by the
+    /// new solver.
+    //
+    // FIXME(-Zassumptions-on-binders): This and `universe` should probably be
+    // in `InferCtxtInner` so they can participate in rollbacks and whatnot
+    placeholder_assumptions_for_next_solver: RefCell<
+        FxIndexMap<
+            ty::UniverseIndex,
+            Option<rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>>,
+        >,
+    >,
+
     next_trait_solver: bool,
 
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
+}
+
+impl<'tcx> Drop for InferCtxt<'tcx> {
+    fn drop(&mut self) {
+        let mut inner = self.inner.borrow_mut();
+        let opaque_type_storage = &mut inner.opaque_type_storage;
+
+        // No need for the drop bomb when we're in TypingMode::Borrowck, and the InferCtxt doesn't consider regions.
+        // This is okay since in `Borrowck`, the only reason we care about opaques is in relation to regions.
+        // In some places *after* typeck, like in lints we use `TypingMode::Borrowck`
+        // to prevent defining opaque types and we simply don't care about regions.
+        match self.typing_mode_raw() {
+            TypingMode::Coherence
+            | TypingMode::Analysis { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => {}
+            // In erased mode, the opaque type storage is always empty
+            TypingMode::ErasedNotCoherence(..) => {}
+            TypingMode::Borrowck { .. } => {
+                if !self.considering_regions {
+                    return;
+                }
+            }
+        }
+
+        if !opaque_type_storage.is_empty() {
+            ty::tls::with(|tcx| tcx.dcx().delayed_bug(format!("{opaque_type_storage:?}")));
+        }
+    }
 }
 
 /// See the `error_reporting` module for more details.
@@ -397,6 +443,10 @@ pub enum SubregionOrigin<'tcx> {
     },
 
     AscribeUserTypeProvePredicate(Span),
+
+    // FIXME(-Zassumptions-on-binders): this is a temporary hack until we support
+    // proper diagnostics for solver region constraints.
+    SolverRegionConstraint(Span),
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -408,6 +458,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
         match self {
             Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
             Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            Self::SolverRegionConstraint(span) => ConstraintCategory::SolverRegionConstraint(*span),
             _ => ConstraintCategory::BoringNoLocation,
         }
     }
@@ -607,6 +658,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(ty::UniverseIndex::ROOT),
+            placeholder_assumptions_for_next_solver: RefCell::new(Default::default()),
             next_trait_solver,
             obligation_inspector: Cell::new(None),
         }
@@ -1661,6 +1713,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             SubregionOrigin::CompareImplItemObligation { span, .. } => span,
             SubregionOrigin::AscribeUserTypeProvePredicate(span) => span,
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
+            SubregionOrigin::SolverRegionConstraint(a) => a,
         }
     }
 
@@ -1747,6 +1800,58 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             hir::Node::Expr(e) => e.span,
             _ => DUMMY_SP,
+        }
+    }
+}
+
+type SolverRegionConstraint<'tcx> =
+    rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>;
+
+#[derive(Clone, Debug)]
+struct SolverRegionConstraintStorage<'tcx>(SolverRegionConstraint<'tcx>);
+
+impl<'tcx> SolverRegionConstraintStorage<'tcx> {
+    fn new() -> Self {
+        SolverRegionConstraintStorage(SolverRegionConstraint::And(Box::new([])))
+    }
+
+    fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
+        self.0.clone()
+    }
+
+    fn pop(&mut self) -> Option<SolverRegionConstraint<'tcx>> {
+        match &mut self.0 {
+            SolverRegionConstraint::And(and) => {
+                let mut and = core::mem::take(and).into_iter().collect::<Vec<_>>();
+                let popped = and.pop()?;
+                self.0 = SolverRegionConstraint::And(and.into_boxed_slice());
+                Some(popped)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[instrument(level = "debug")]
+    fn push(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        match &mut self.0 {
+            SolverRegionConstraint::And(and) => {
+                let and = core::mem::take(and)
+                    .into_iter()
+                    .chain([constraint])
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice();
+                self.0 = SolverRegionConstraint::And(and);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn overwrite_solver_region_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        if !constraint.is_and() {
+            self.0 = SolverRegionConstraint::And(vec![constraint].into_boxed_slice())
+        } else {
+            self.0 = constraint;
         }
     }
 }

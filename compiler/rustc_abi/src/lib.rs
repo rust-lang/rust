@@ -45,7 +45,7 @@ use std::str::FromStr;
 
 use bitflags::bitflags;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_data_structures::stable_hash::StableOrd;
 #[cfg(feature = "nightly")]
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 #[cfg(feature = "nightly")]

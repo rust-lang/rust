@@ -2790,8 +2790,9 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
 ///
-/// On Linux (including Android), this function attempts to use `copy_file_range(2)`,
-/// and falls back to reading and writing if that is not possible.
+/// On Linux (including Android), this function uses copy_file_range(2),
+/// sendfile(2), or splice(2) syscalls to move data directly between files
+/// if possible.
 ///
 /// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
 /// NTFS streams are copied but only the size of the main stream is returned by

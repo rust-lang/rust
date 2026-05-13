@@ -151,6 +151,10 @@ pub enum ConstraintCategory<'tcx> {
         #[type_visitable(ignore)]
         ty::RegionVid,
     ),
+
+    // FIXME(-Zassumptions-on-binders): this is a temporary hack until we support
+    // proper diagnostics for solver region constraints.
+    SolverRegionConstraint(Span),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

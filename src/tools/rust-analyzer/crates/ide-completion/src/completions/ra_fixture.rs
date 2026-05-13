@@ -14,7 +14,7 @@ use crate::{
 
 pub(crate) fn complete_ra_fixture(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     original: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {

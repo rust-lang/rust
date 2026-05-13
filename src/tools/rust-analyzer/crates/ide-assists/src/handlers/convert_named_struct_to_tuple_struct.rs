@@ -54,7 +54,7 @@ use crate::{
 // ```
 pub(crate) fn convert_named_struct_to_tuple_struct(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     // XXX: We don't currently provide this assist for struct definitions inside macros, but if we
     // are to lift this limitation, don't forget to make `edit_struct_def()` consider macro files
@@ -92,7 +92,7 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
 }
 
 fn edit_struct_def(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     strukt: &Either<ast::Struct, ast::Variant>,
     record_fields: ast::RecordFieldList,
@@ -153,7 +153,7 @@ fn edit_struct_def(
 }
 
 fn edit_struct_references(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     strukt: Either<hir::Struct, hir::EnumVariant>,
 ) {
@@ -174,7 +174,7 @@ fn edit_struct_references(
 }
 
 fn process_struct_name_reference(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     r: FileReference,
     edit: &SyntaxEditor,
     source: &ast::SourceFile,
@@ -227,7 +227,7 @@ fn process_struct_name_reference(
 }
 
 fn record_to_tuple_struct_like<T, I>(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     source: &ast::SourceFile,
     editor: &SyntaxEditor,
     field_list: T,
@@ -282,7 +282,7 @@ where
 }
 
 fn edit_field_references(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
     fields: impl Iterator<Item = ast::RecordField>,
 ) {

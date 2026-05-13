@@ -22,7 +22,7 @@ use hir_expand::{
     builtin::quote::quote,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
-    span_map::SpanMapRef,
+    span_map::SpanMap,
 };
 use intern::{Symbol, sym};
 use itertools::Itertools;
@@ -64,7 +64,7 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
         .filter_map(|macro_call| {
             let errors = db.parse_macro_expansion_error(macro_call)?;
             let errors = errors.err.as_ref()?.render_to_string(&db);
-            let macro_loc = db.lookup_intern_macro_call(macro_call);
+            let macro_loc = macro_call.loc(&db);
             let ast_id = match macro_loc.kind {
                 MacroCallKind::FnLike { ast_id, .. } => ast_id.map(|it| it.erase()),
                 MacroCallKind::Derive { ast_id, .. } => ast_id.map(|it| it.erase()),
@@ -142,10 +142,10 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
 
         let mut expn_text = String::new();
-        if let Some(err) = exp.err {
+        if let Some(err) = &exp.err {
             format_to!(expn_text, "/* error: {} */", err.render_to_string(&db).message);
         }
-        let (parse, token_map) = exp.value;
+        let (parse, token_map) = &exp.value;
         if expect_errors {
             assert!(!parse.errors().is_empty(), "no parse errors in expansion");
             for e in parse.errors() {
@@ -161,7 +161,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
         let pp = pretty_print_macro_expansion(
             parse.syntax_node(),
-            SpanMapRef::ExpansionSpanMap(&token_map),
+            SpanMap::ExpansionSpanMap(token_map),
             show_spans,
             show_ctxt,
         );
@@ -215,7 +215,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             }
             let pp = pretty_print_macro_expansion(
                 src.value,
-                db.span_map(src.file_id).as_ref(),
+                db.span_map(src.file_id),
                 show_spans,
                 show_ctxt,
             );
@@ -230,7 +230,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         if let Some(macro_file) = src.file_id.macro_file() {
             let pp = pretty_print_macro_expansion(
                 src.value.syntax().clone(),
-                db.span_map(macro_file.into()).as_ref(),
+                db.span_map(macro_file.into()),
                 false,
                 false,
             );
@@ -245,7 +245,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         {
             let pp = pretty_print_macro_expansion(
                 src.value.syntax().clone(),
-                db.span_map(macro_file.into()).as_ref(),
+                db.span_map(macro_file.into()),
                 false,
                 false,
             );
@@ -309,7 +309,7 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
 
 fn pretty_print_macro_expansion(
     expn: SyntaxNode,
-    map: SpanMapRef<'_>,
+    map: SpanMap<'_>,
     show_spans: bool,
     show_ctxt: bool,
 ) -> String {

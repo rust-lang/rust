@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
@@ -638,6 +638,8 @@ declare_features! (
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
+    /// Allows `move(expr)` in closures.
+    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", Some(155050)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.

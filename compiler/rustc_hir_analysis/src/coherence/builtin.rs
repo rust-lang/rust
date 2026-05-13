@@ -391,8 +391,8 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         return None;
                     }
 
-                    let ty_a = field.ty(tcx, args_a);
-                    let ty_b = field.ty(tcx, args_b);
+                    let ty_a = field.ty(tcx, args_a).skip_norm_wip();
+                    let ty_b = field.ty(tcx, args_b).skip_norm_wip();
 
                     // FIXME: We could do normalization here, but is it really worth it?
                     if ty_a == ty_b {
@@ -748,6 +748,7 @@ fn generic_lifetime_params_count(args: &[ty::GenericArg<'_>]) -> usize {
     args.iter().filter(|arg| arg.as_region().is_some()).count()
 }
 
+// FIXME(#155345): This should return `Unnormalized`
 fn collect_struct_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
@@ -758,7 +759,7 @@ fn collect_struct_data_fields<'tcx>(
         .iter()
         .filter_map(|f| {
             // Ignore PhantomData fields
-            let ty = f.ty(tcx, args);
+            let ty = f.ty(tcx, args).skip_norm_wip();
             if ty.is_phantom_data() {
                 return None;
             }
@@ -922,7 +923,8 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             let diff_fields = fields
                 .iter_enumerated()
                 .filter_map(|(i, f)| {
-                    let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
+                    let (a, b) =
+                        (f.ty(tcx, args_a).skip_norm_wip(), f.ty(tcx, args_b).skip_norm_wip());
 
                     // Ignore PhantomData fields
                     let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();

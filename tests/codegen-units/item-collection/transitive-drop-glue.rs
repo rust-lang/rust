@@ -13,6 +13,7 @@ struct Leaf;
 
 impl Drop for Leaf {
     //~ MONO_ITEM fn <Leaf as std::ops::Drop>::drop
+    //~ MONO_ITEM fn <Leaf as std::ops::Drop>::pin_drop
     fn drop(&mut self) {}
 }
 

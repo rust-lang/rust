@@ -34,12 +34,11 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-1);
     ///
     /// assert_eq!(f16::powf(1.0, f16::NAN), 1.0);
     /// assert_eq!(f16::powf(f16::NAN, 0.0), 1.0);
@@ -65,7 +64,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let one = 1.0f16;
@@ -75,7 +73,7 @@ impl f16 {
     /// // ln(e) - 1 == 0
     /// let abs_difference = (e.ln() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -97,7 +95,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let f = 2.0f16;
@@ -105,7 +102,7 @@ impl f16 {
     /// // 2^2 - 4 == 0
     /// let abs_difference = (f.exp2() - 4.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-1);
     /// # }
     /// ```
     #[inline]
@@ -129,7 +126,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let one = 1.0f16;
@@ -139,14 +135,13 @@ impl f16 {
     /// // ln(e) - 1 == 0
     /// let abs_difference = (e.ln() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     ///
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert_eq!(0_f16.ln(), f16::NEG_INFINITY);
@@ -178,7 +173,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let five = 5.0f16;
@@ -186,14 +180,13 @@ impl f16 {
     /// // log5(5) - 1 == 0
     /// let abs_difference = (five.log(5.0) - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     ///
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert_eq!(0_f16.log(10.0), f16::NEG_INFINITY);
@@ -221,7 +214,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let two = 2.0f16;
@@ -229,14 +221,13 @@ impl f16 {
     /// // log2(2) - 1 == 0
     /// let abs_difference = (two.log2() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     ///
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert_eq!(0_f16.log2(), f16::NEG_INFINITY);
@@ -264,7 +255,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let ten = 10.0f16;
@@ -272,14 +262,13 @@ impl f16 {
     /// // log10(10) - 1 == 0
     /// let abs_difference = (ten.log10() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     ///
     /// Non-positive values:
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert_eq!(0_f16.log10(), f16::NEG_INFINITY);
@@ -311,7 +300,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 2.0f16;
@@ -320,7 +308,7 @@ impl f16 {
     /// // sqrt(x^2 + y^2)
     /// let abs_difference = (x.hypot(y) - (x.powi(2) + y.powi(2)).sqrt()).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -342,14 +330,13 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = std::f16::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -371,14 +358,13 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 2.0 * std::f16::consts::PI;
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -403,7 +389,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = std::f16::consts::FRAC_PI_4;
@@ -436,7 +421,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let f = std::f16::consts::FRAC_PI_4;
@@ -444,7 +428,7 @@ impl f16 {
     /// // asin(sin(pi/2))
     /// let abs_difference = (f.sin().asin() - f).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -472,7 +456,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let f = std::f16::consts::FRAC_PI_4;
@@ -480,7 +463,7 @@ impl f16 {
     /// // acos(cos(pi/4))
     /// let abs_difference = (f.cos().acos() - std::f16::consts::FRAC_PI_4).abs();
     ///
-    /// assert!(abs_difference <= f16::EPSILON);
+    /// assert!(abs_difference <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -507,7 +490,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let f = 1.0f16;
@@ -548,7 +530,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// // Positive angles measured counter-clockwise
@@ -591,7 +572,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = std::f16::consts::FRAC_PI_4;
@@ -600,8 +580,8 @@ impl f16 {
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
     /// let abs_difference_1 = (f.1 - x.cos()).abs();
     ///
-    /// assert!(abs_difference_0 <= f16::EPSILON);
-    /// assert!(abs_difference_1 <= f16::EPSILON);
+    /// assert!(abs_difference_0 <= 1e-2);
+    /// assert!(abs_difference_1 <= 1e-2);
     /// # }
     /// ```
     #[inline]
@@ -628,7 +608,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1e-4_f16;
@@ -665,7 +644,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1e-4_f16;
@@ -681,7 +659,6 @@ impl f16 {
     /// Out-of-range values:
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// assert_eq!((-1.0_f16).ln_1p(), f16::NEG_INFINITY);
@@ -711,7 +688,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let e = std::f16::consts::E;
@@ -747,7 +723,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let e = std::f16::consts::E;
@@ -783,7 +758,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let e = std::f16::consts::E;
@@ -816,7 +790,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
@@ -847,7 +820,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 1.0f16;
@@ -878,7 +850,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = std::f16::consts::FRAC_PI_6;
@@ -912,7 +883,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 5.0f16;
@@ -947,7 +917,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     ///
     /// let x = 2.0f16;
@@ -982,7 +951,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     /// /// The error function relates what percent of a normal distribution lies
     /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
@@ -1021,7 +989,6 @@ impl f16 {
     ///
     /// ```
     /// #![feature(f16)]
-    /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f16_math)] {
     /// let x: f16 = 0.123;
     ///

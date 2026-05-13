@@ -7,6 +7,7 @@ use hir_def::{
     expr_store::{Body, ExpressionStore},
     hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_tree::FieldsShape,
+    layout::ExternAbi,
     signatures::{
         ConstSignature, FunctionSignature, ImplSignature, StaticFlags, StaticSignature, TraitFlags,
         TraitSignature, TypeAliasSignature,
@@ -22,16 +23,16 @@ use hir_ty::{
         hir_display_with_store, write_bounds_like_dyn_trait_with_prefix, write_params_bounds,
         write_visibility,
     },
-    next_solver::ClauseKind,
+    next_solver::{ClauseKind, Unnormalized},
 };
 use itertools::Itertools;
-use rustc_type_ir::inherent::IntoKind;
+use rustc_type_ir::inherent::IntoKind as _;
 
 use crate::{
     Adt, AnyFunctionId, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
     EnumVariant, ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl,
-    LifetimeParam, Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef,
-    TupleField, Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union,
+    LifetimeParam, Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitPredicate,
+    TraitRef, TupleField, Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union,
 };
 
 fn write_builtin_derive_impl_method<'db>(
@@ -163,13 +164,16 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
     if data.is_async() {
         f.write_str("async ")?;
     }
+    if data.is_gen() {
+        f.write_str("gen ")?;
+    }
     // FIXME: This will show `unsafe` for functions that are `#[target_feature]` but not unsafe
     // (they are conditionally unsafe to call). We probably should show something else.
     if func.is_unsafe_to_call(db, None, f.edition()) {
         f.write_str("unsafe ")?;
     }
-    if let Some(abi) = &data.abi {
-        write!(f, "extern \"{}\" ", abi.as_str())?;
+    if data.abi != ExternAbi::Rust {
+        write!(f, "extern \"{}\" ", data.abi.as_str())?;
     }
     write!(f, "fn {}", data.name.display(f.db, f.edition()))?;
 
@@ -200,7 +204,7 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
             first = false;
         }
 
-        let pat_id = body.params[param.idx - body.self_param.is_some() as usize];
+        let pat_id = body.params[param.idx - body.self_param().is_some() as usize];
         let pat_str = body.pretty_print_pat(db, func_id.into(), pat_id, true, f.edition());
         f.write_str(&pat_str)?;
 
@@ -223,7 +227,7 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
     // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
     // Use ugly pattern match to strip the Future trait.
     // Better way?
-    let ret_type = if !data.is_async() {
+    let ret_type = if !data.is_async() && !data.is_gen() {
         data.ret_type
     } else if let Some(ret_type) = data.ret_type {
         match &data.store[ret_type] {
@@ -579,6 +583,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
         let predicates = GenericPredicates::query_all(f.db, self.id.parent());
         let predicates = predicates
             .iter_identity()
+            .map(Unnormalized::skip_norm_wip)
             .filter(|wc| match wc.kind().skip_binder() {
                 ClauseKind::Trait(tr) => tr.self_ty() == ty,
                 ClauseKind::Projection(proj) => proj.self_ty() == ty,
@@ -847,6 +852,12 @@ impl<'db> HirDisplay<'db> for Static {
 impl<'db> HirDisplay<'db> for TraitRef<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         self.trait_ref.hir_fmt(f)
+    }
+}
+
+impl<'db> HirDisplay<'db> for TraitPredicate<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
+        self.inner.hir_fmt(f)
     }
 }
 

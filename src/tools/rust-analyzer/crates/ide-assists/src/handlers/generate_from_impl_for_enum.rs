@@ -27,7 +27,7 @@ use crate::{
 // ```
 pub(crate) fn generate_from_impl_for_enum(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let adt = ast::Adt::Enum(variant.parent_enum());
@@ -107,7 +107,10 @@ struct VariantInfo {
     ty: ast::Type,
 }
 
-fn selected_variants(ctx: &AssistContext<'_>, variant: &ast::Variant) -> Option<Vec<VariantInfo>> {
+fn selected_variants(
+    ctx: &AssistContext<'_, '_>,
+    variant: &ast::Variant,
+) -> Option<Vec<VariantInfo>> {
     variant
         .parent_enum()
         .variant_list()?

@@ -1067,7 +1067,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                     obligation.param_env,
                                     obligation.cause.clone(),
                                     obligation.recursion_depth + 1,
-                                    ty,
+                                    ty.skip_norm_wip(),
                                 )
                                 .value
                             },
@@ -1506,13 +1506,13 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         assert_eq!(metadata_def_id, item_def_id);
 
         let mut obligations = PredicateObligations::new();
-        let normalize = |ty| {
+        let normalize = |ty: ty::Unnormalized<'tcx, Ty<'tcx>>| {
             normalize_with_depth_to(
                 selcx,
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                ty,
+                ty.skip_norm_wip(),
                 &mut obligations,
             )
         };

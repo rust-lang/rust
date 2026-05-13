@@ -9,7 +9,10 @@ pub mod scope;
 #[cfg(test)]
 mod tests;
 
-use std::ops::{Deref, Index};
+use std::{
+    borrow::Borrow,
+    ops::{Deref, Index},
+};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -25,14 +28,18 @@ use tt::TextRange;
 use crate::{
     AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
     db::DefDatabase,
-    expr_store::path::Path,
+    expr_store::path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     hir::{
-        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
-        PatId, RecordFieldPat, RecordSpread, Statement,
+        Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, InlineAsm, Label,
+        LabelId, MatchArm, OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        Statement,
     },
     nameres::{DefMap, block_def_map},
     signatures::VariantFields,
-    type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
+    type_ref::{
+        ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, PathId, RefType, TypeBound,
+        TypeRef, TypeRefId, UseArgRef,
+    },
 };
 
 pub use self::body::{Body, BodySourceMap};
@@ -91,21 +98,15 @@ pub type TypeSource = InFile<TypePtr>;
 pub type LifetimePtr = AstPtr<ast::Lifetime>;
 pub type LifetimeSource = InFile<LifetimePtr>;
 
-/// Describes where a const expression originated from.
-///
-/// Used by signature/body inference to determine the expected type for each
-/// const expression root.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RootExprOrigin {
-    /// Array length expression: `[T; <expr>]` — expected type is `usize`.
-    ArrayLength,
-    /// Const parameter default value: `const N: usize = <expr>`.
-    ConstParam(crate::hir::generics::LocalTypeOrConstParamId),
-    /// Const generic argument in a path: `SomeType::<{ <expr> }>` or `some_fn::<{ <expr> }>()`.
-    /// Determining the expected type requires path resolution, so it is deferred.
-    GenericArgsPath,
-    /// The root expression of a body.
-    BodyRoot,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ExprRoot {
+    root: ExprId,
+    // We store, for each root, the range of exprs (and pats and bindings) it holds.
+    // We store only the end (exclusive), since the start can be inferred from the previous
+    // roots or is zero.
+    exprs_end: ExprId,
+    pats_end: PatId,
+    bindings_end: BindingId,
 }
 
 // We split the store into types-only and expressions, because most stores (e.g. generics)
@@ -129,7 +130,34 @@ struct ExpressionOnlyStore {
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 
     /// Maps expression roots to their origin.
-    expr_roots: SmallVec<[(ExprId, RootExprOrigin); 1]>,
+    ///
+    /// Note: while every root expr is an inference root (aka. an `AnonConst`), there could be other roots that do not appear here.
+    /// This can happen when anon consts are nested, for example:
+    ///
+    /// ```
+    /// [
+    ///     ();
+    ///     {
+    ///         // this repeat expr is anon const #1, and *only it* appears in this list.
+    ///         [
+    ///             ();
+    ///             {
+    ///                 // this repeat expr is anon const #2.
+    ///                 0
+    ///             }
+    ///         ];
+    ///         0
+    ///     }
+    /// ]
+    /// ```
+    /// We do this because this allows us to search this list using a binary search,
+    /// and it does not bother us because we use this list for two things: constructing `ExprScopes`, which
+    /// works fine with nested exprs, and retrieving inference results, and we copy the inner const's inference
+    /// into the outer const.
+    // FIXME: Array repeat is not problematic indeed, but this could still break with exprs in types,
+    // which we do not visit for `ExprScopes` (they're fine for inference though). We either need to visit them,
+    // or use a more complicated search.
+    expr_roots: SmallVec<[ExprRoot; 1]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,7 +271,7 @@ pub struct ExpressionStoreBuilder {
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
-    pub inference_roots: Option<SmallVec<[(ExprId, RootExprOrigin); 1]>>,
+    inference_roots: Option<SmallVec<[ExprRoot; 1]>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
@@ -303,6 +331,7 @@ pub enum ExpressionStoreDiagnostics {
     UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
     AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+    PatternArgInExternFn { node: InFile<AstPtr<ast::Pat>> },
 }
 
 impl ExpressionStoreBuilder {
@@ -375,8 +404,8 @@ impl ExpressionStoreBuilder {
 
         let store = {
             let expr_only = if has_exprs {
-                if let Some(const_expr_origins) = &mut expr_roots {
-                    const_expr_origins.shrink_to_fit();
+                if let Some(expr_roots) = &mut expr_roots {
+                    expr_roots.shrink_to_fit();
                 }
                 Some(Box::new(ExpressionOnlyStore {
                     exprs,
@@ -386,7 +415,8 @@ impl ExpressionStoreBuilder {
                     binding_owners,
                     block_scopes: block_scopes.into_boxed_slice(),
                     ident_hygiene,
-                    expr_roots: expr_roots.unwrap_or_default(),
+                    expr_roots: expr_roots
+                        .expect("should always finish with a `Some(_)` expr_roots"),
                 }))
             } else {
                 None
@@ -427,6 +457,14 @@ impl ExpressionStoreBuilder {
 }
 
 impl ExpressionStore {
+    const EMPTY: &ExpressionStore =
+        &ExpressionStore { expr_only: None, types: Arena::new(), lifetimes: Arena::new() };
+
+    #[inline]
+    pub fn empty() -> &'static ExpressionStore {
+        ExpressionStore::EMPTY
+    }
+
     pub fn of(db: &dyn DefDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
         match def {
             ExpressionStoreOwnerId::Signature(def) => {
@@ -516,19 +554,35 @@ impl ExpressionStore {
     }
 
     /// Returns all expression root `ExprId`s found in this store.
-    pub fn expr_roots(&self) -> impl Iterator<Item = ExprId> {
-        self.const_expr_origins().iter().map(|&(id, _)| id)
+    pub fn expr_roots(&self) -> impl DoubleEndedIterator<Item = ExprId> {
+        self.expr_only
+            .as_ref()
+            .map_or(&[][..], |expr_only| &expr_only.expr_roots)
+            .iter()
+            .map(|root| root.root)
     }
 
-    /// Like [`Self::expr_roots`], but also returns the origin
-    /// of each expression.
-    pub fn expr_roots_with_origins(&self) -> impl Iterator<Item = (ExprId, RootExprOrigin)> {
-        self.const_expr_origins().iter().map(|&(id, origin)| (id, origin))
+    fn find_root_for(
+        &self,
+        mut get: impl FnMut(&ExprRoot) -> la_arena::RawIdx,
+        find: la_arena::RawIdx,
+    ) -> ExprId {
+        let expr_only = self.assert_expr_only();
+        let find = find.into_u32();
+        let entry = expr_only.expr_roots.partition_point(|root| get(root).into_u32() <= find);
+        expr_only.expr_roots[entry].root
     }
 
-    /// Returns the map of const expression roots to their origins.
-    pub fn const_expr_origins(&self) -> &[(ExprId, RootExprOrigin)] {
-        self.expr_only.as_ref().map_or(&[], |it| &it.expr_roots)
+    pub fn find_root_for_expr(&self, expr: ExprId) -> ExprId {
+        self.find_root_for(|root| root.exprs_end.into_raw(), expr.into_raw())
+    }
+
+    pub fn find_root_for_pat(&self, pat: PatId) -> ExprId {
+        self.find_root_for(|root| root.pats_end.into_raw(), pat.into_raw())
+    }
+
+    pub fn find_root_for_binding(&self, binding: BindingId) -> ExprId {
+        self.find_root_for(|root| root.bindings_end.into_raw(), binding.into_raw())
     }
 
     /// Returns an iterator over all block expressions in this store that define inner items.
@@ -552,33 +606,46 @@ impl ExpressionStore {
         });
     }
 
-    pub fn walk_pats_shallow(&self, pat_id: PatId, mut f: impl FnMut(PatId)) {
+    pub fn visit_pat_children(&self, pat_id: PatId, mut visitor: impl StoreVisitor) {
+        // Do not use `..` patterns or field accesses here, only destructuring, to ensure we cover all cases
+        // (we've had multiple bugs with this in the past).
         let pat = &self[pat_id];
         match pat {
-            Pat::Range { .. }
-            | Pat::Lit(..)
-            | Pat::Path(..)
-            | Pat::ConstBlock(..)
-            | Pat::Wild
-            | Pat::Missing
-            | Pat::Expr(_) => {}
-            &Pat::Bind { subpat, .. } => {
-                if let Some(subpat) = subpat {
-                    f(subpat);
-                }
+            Pat::Range { start, end, range_type: _ } => {
+                visitor.on_expr_opt(*start);
+                visitor.on_expr_opt(*end);
             }
-            Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
-                args.iter().copied().for_each(f);
+            Pat::Lit(expr) | Pat::ConstBlock(expr) | Pat::Expr(expr) => visitor.on_expr(*expr),
+            Pat::Path(_) | Pat::Wild | Pat::Missing | Pat::Rest => {}
+            &Pat::Bind { subpat, id: _ } => visitor.on_pat_opt(subpat),
+            Pat::Or(args) | Pat::Tuple { args, ellipsis: _ } => visitor.on_pats(args),
+            Pat::TupleStruct { args, ellipsis: _, path } => {
+                visitor.on_pats(args);
+                visitor.on_path(path);
             }
-            Pat::Ref { pat, .. } => f(*pat),
+            Pat::Ref { pat, mutability: _ } => visitor.on_pat(*pat),
             Pat::Slice { prefix, slice, suffix } => {
-                let total_iter = prefix.iter().chain(slice.iter()).chain(suffix.iter());
-                total_iter.copied().for_each(f);
+                visitor.on_pats(prefix);
+                visitor.on_pat_opt(*slice);
+                visitor.on_pats(suffix);
             }
-            Pat::Record { args, .. } => {
-                args.iter().for_each(|RecordFieldPat { pat, .. }| f(*pat));
+            Pat::Record { args, ellipsis: _, path } => {
+                args.iter().for_each(|RecordFieldPat { pat, name: _ }| visitor.on_pat(*pat));
+                visitor.on_path(path);
             }
-            Pat::Box { inner } => f(*inner),
+            Pat::Box { inner } | Pat::Deref { inner } => visitor.on_pat(*inner),
+        }
+    }
+
+    pub fn walk_pats_shallow(&self, pat_id: PatId, f: impl FnMut(PatId)) {
+        return self.visit_pat_children(pat_id, Visitor(f));
+
+        struct Visitor<F>(F);
+
+        impl<F: FnMut(PatId)> StoreVisitor for Visitor<F> {
+            fn on_pat(&mut self, pat: PatId) {
+                (self.0)(pat);
+            }
         }
     }
 
@@ -604,274 +671,210 @@ impl ExpressionStore {
         self.expr_only.as_ref()?.binding_owners.get(&id).copied()
     }
 
-    /// Walks the immediate children expressions and calls `f` for each child expression.
-    ///
-    /// Note that this does not walk const blocks.
-    pub fn walk_child_exprs(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
-        let expr = &self[expr_id];
-        match expr {
-            Expr::Continue { .. }
-            | Expr::Const(_)
-            | Expr::Missing
-            | Expr::Path(_)
-            | Expr::OffsetOf(_)
-            | Expr::Literal(_)
-            | Expr::Underscore => {}
-            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
-                AsmOperand::In { expr, .. }
-                | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. }
-                | AsmOperand::Const(expr)
-                | AsmOperand::Label(expr) => f(*expr),
-                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                    f(*in_expr);
-                    if let Some(out_expr) = out_expr {
-                        f(*out_expr);
+    pub fn visit_expr_children(&self, expr_id: ExprId, mut visitor: impl StoreVisitor) {
+        // Do not use `..` patterns or field accesses here, only destructuring, to ensure we cover all cases
+        // (we've had multiple bugs with this in the past).
+        match &self[expr_id] {
+            Expr::OffsetOf(OffsetOf { container, fields: _ }) => visitor.on_type(*container),
+            Expr::Path(path) => visitor.on_path(path),
+            Expr::Continue { label: _ } | Expr::Missing | Expr::Literal(_) | Expr::Underscore => {}
+            Expr::InlineAsm(InlineAsm { operands, options: _, kind: _ }) => {
+                operands.iter().for_each(|(_, op)| match op {
+                    AsmOperand::In { expr, reg: _ }
+                    | AsmOperand::Out { expr: Some(expr), late: _, reg: _ }
+                    | AsmOperand::InOut { expr, late: _, reg: _ }
+                    | AsmOperand::Const(expr)
+                    | AsmOperand::Label(expr) => visitor.on_expr(*expr),
+                    AsmOperand::SplitInOut { in_expr, out_expr, late: _, reg: _ } => {
+                        visitor.on_expr(*in_expr);
+                        visitor.on_expr_opt(*out_expr);
                     }
-                }
-                AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
-            }),
+                    AsmOperand::Out { expr: None, late: _, reg: _ } | AsmOperand::Sym(_) => (),
+                })
+            }
             Expr::If { condition, then_branch, else_branch } => {
-                f(*condition);
-                f(*then_branch);
-                if let &Some(else_branch) = else_branch {
-                    f(else_branch);
-                }
+                visitor.on_expr(*condition);
+                visitor.on_expr(*then_branch);
+                visitor.on_expr_opt(*else_branch);
             }
             Expr::Let { expr, pat } => {
-                self.walk_exprs_in_pat(*pat, &mut f);
-                f(*expr);
+                visitor.on_pat(*pat);
+                visitor.on_expr(*expr);
             }
-            Expr::Block { statements, tail, .. } | Expr::Unsafe { statements, tail, .. } => {
-                for stmt in statements.iter() {
+            Expr::Block { statements, tail, id: _, label: _ }
+            | Expr::Unsafe { statements, tail, id: _ } => {
+                for stmt in statements {
                     match stmt {
-                        Statement::Let { initializer, else_branch, pat, .. } => {
-                            if let &Some(expr) = initializer {
-                                f(expr);
-                            }
-                            if let &Some(expr) = else_branch {
-                                f(expr);
-                            }
-                            self.walk_exprs_in_pat(*pat, &mut f);
+                        Statement::Let { initializer, else_branch, pat, type_ref } => {
+                            visitor.on_expr_opt(*initializer);
+                            visitor.on_expr_opt(*else_branch);
+                            visitor.on_pat(*pat);
+                            visitor.on_type_opt(*type_ref);
                         }
-                        Statement::Expr { expr: expression, .. } => f(*expression),
+                        Statement::Expr { expr: expression, has_semi: _ } => {
+                            visitor.on_expr(*expression)
+                        }
                         Statement::Item(_) => (),
                     }
                 }
-                if let &Some(expr) = tail {
-                    f(expr);
-                }
+                visitor.on_expr_opt(*tail);
             }
-            Expr::Loop { body, .. } => f(*body),
-            Expr::Call { callee, args, .. } => {
-                f(*callee);
-                args.iter().copied().for_each(f);
+            Expr::Loop { body, label: _ } => visitor.on_expr(*body),
+            Expr::Call { callee, args } => {
+                visitor.on_expr(*callee);
+                visitor.on_exprs(args);
             }
-            Expr::MethodCall { receiver, args, .. } => {
-                f(*receiver);
-                args.iter().copied().for_each(f);
+            Expr::MethodCall { receiver, args, generic_args, method_name: _ } => {
+                visitor.on_expr(*receiver);
+                visitor.on_exprs(args);
+                visitor.on_generic_args_opt(generic_args);
             }
             Expr::Match { expr, arms } => {
-                f(*expr);
-                arms.iter().for_each(|arm| {
-                    f(arm.expr);
-                    if let Some(guard) = arm.guard {
-                        f(guard);
-                    }
-                    self.walk_exprs_in_pat(arm.pat, &mut f);
+                visitor.on_expr(*expr);
+                arms.iter().for_each(|MatchArm { pat, guard, expr }| {
+                    visitor.on_expr(*expr);
+                    visitor.on_expr_opt(*guard);
+                    visitor.on_pat(*pat);
                 });
             }
-            Expr::Break { expr, .. }
+            Expr::Break { expr, label: _ }
             | Expr::Return { expr }
             | Expr::Yield { expr }
-            | Expr::Yeet { expr } => {
-                if let &Some(expr) = expr {
-                    f(expr);
+            | Expr::Yeet { expr } => visitor.on_expr_opt(*expr),
+            Expr::Become { expr } => visitor.on_expr(*expr),
+            Expr::RecordLit { fields, spread, path } => {
+                for RecordLitField { name: _, expr } in fields.iter() {
+                    visitor.on_expr(*expr);
                 }
-            }
-            Expr::Become { expr } => f(*expr),
-            Expr::RecordLit { fields, spread, .. } => {
-                for field in fields.iter() {
-                    f(field.expr);
+                match spread {
+                    RecordSpread::Expr(expr) => visitor.on_expr(*expr),
+                    RecordSpread::None | RecordSpread::FieldDefaults => {}
                 }
-                if let RecordSpread::Expr(expr) = spread {
-                    f(*expr);
-                }
+                visitor.on_path(path);
             }
-            Expr::Closure { body, .. } => {
-                f(*body);
+            Expr::Closure { body, args, arg_types, ret_type, capture_by: _, closure_kind: _ } => {
+                visitor.on_expr(*body);
+                visitor.on_pats(args);
+                arg_types.iter().for_each(|arg_type| visitor.on_type_opt(*arg_type));
+                visitor.on_type_opt(*ret_type);
             }
-            Expr::BinaryOp { lhs, rhs, .. } => {
-                f(*lhs);
-                f(*rhs);
+            Expr::BinaryOp { lhs, rhs, op: _ } => {
+                visitor.on_expr(*lhs);
+                visitor.on_expr(*rhs);
             }
-            Expr::Range { lhs, rhs, .. } => {
-                if let &Some(lhs) = rhs {
-                    f(lhs);
-                }
-                if let &Some(rhs) = lhs {
-                    f(rhs);
-                }
+            Expr::Range { lhs, rhs, range_type: _ } => {
+                visitor.on_expr_opt(*lhs);
+                visitor.on_expr_opt(*rhs);
             }
-            Expr::Index { base, index, .. } => {
-                f(*base);
-                f(*index);
+            Expr::Index { base, index } => {
+                visitor.on_expr(*base);
+                visitor.on_expr(*index);
             }
-            Expr::Field { expr, .. }
+            Expr::Cast { expr, type_ref } => {
+                visitor.on_expr(*expr);
+                visitor.on_type(*type_ref);
+            }
+            Expr::Field { expr, name: _ }
             | Expr::Await { expr }
-            | Expr::Cast { expr, .. }
-            | Expr::Ref { expr, .. }
-            | Expr::UnaryOp { expr, .. }
-            | Expr::Box { expr } => {
-                f(*expr);
+            | Expr::Ref { expr, mutability: _, rawness: _ }
+            | Expr::UnaryOp { expr, op: _ }
+            | Expr::Box { expr }
+            | Expr::Const(expr) => {
+                visitor.on_expr(*expr);
             }
-            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
+            Expr::Tuple { exprs } => visitor.on_exprs(exprs),
             Expr::Array(a) => match a {
-                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
+                Array::ElementList { elements } => visitor.on_exprs(elements),
                 Array::Repeat { initializer, repeat } => {
-                    f(*initializer);
-                    f(*repeat)
+                    visitor.on_expr(*initializer);
+                    visitor.on_anon_const_expr(*repeat)
                 }
             },
             &Expr::Assignment { target, value } => {
-                self.walk_exprs_in_pat(target, &mut f);
-                f(value);
+                visitor.on_pat(target);
+                visitor.on_expr(value);
+            }
+        }
+    }
+
+    /// Walks the immediate children expressions and calls `f` for each child expression.
+    pub fn walk_child_exprs(&self, expr_id: ExprId, callback: impl FnMut(ExprId)) {
+        return self.visit_expr_children(expr_id, Visitor { callback, store: self });
+
+        struct Visitor<'a, F> {
+            callback: F,
+            store: &'a ExpressionStore,
+        }
+
+        impl<F: FnMut(ExprId)> StoreVisitor for Visitor<'_, F> {
+            fn on_expr(&mut self, expr: ExprId) {
+                (self.callback)(expr);
+            }
+
+            fn on_pat(&mut self, pat: PatId) {
+                self.store.walk_exprs_in_pat(pat, &mut self.callback);
             }
         }
     }
 
     /// Walks the immediate children expressions and calls `f` for each child expression but does
     /// not walk expressions within patterns.
-    ///
-    /// Note that this does not walk const blocks.
-    pub fn walk_child_exprs_without_pats(&self, expr_id: ExprId, mut f: impl FnMut(ExprId)) {
-        let expr = &self[expr_id];
-        match expr {
-            Expr::Continue { .. }
-            | Expr::Const(_)
-            | Expr::Missing
-            | Expr::Path(_)
-            | Expr::OffsetOf(_)
-            | Expr::Literal(_)
-            | Expr::Underscore => {}
-            Expr::InlineAsm(it) => it.operands.iter().for_each(|(_, op)| match op {
-                AsmOperand::In { expr, .. }
-                | AsmOperand::Out { expr: Some(expr), .. }
-                | AsmOperand::InOut { expr, .. }
-                | AsmOperand::Const(expr)
-                | AsmOperand::Label(expr) => f(*expr),
-                AsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                    f(*in_expr);
-                    if let Some(out_expr) = out_expr {
-                        f(*out_expr);
-                    }
-                }
-                AsmOperand::Out { expr: None, .. } | AsmOperand::Sym(_) => (),
-            }),
-            Expr::If { condition, then_branch, else_branch } => {
-                f(*condition);
-                f(*then_branch);
-                if let &Some(else_branch) = else_branch {
-                    f(else_branch);
-                }
+    pub fn walk_child_exprs_without_pats(&self, expr_id: ExprId, callback: impl FnMut(ExprId)) {
+        return self.visit_expr_children(expr_id, Visitor { callback });
+
+        struct Visitor<F> {
+            callback: F,
+        }
+
+        impl<F: FnMut(ExprId)> StoreVisitor for Visitor<F> {
+            fn on_expr(&mut self, expr: ExprId) {
+                (self.callback)(expr);
             }
-            Expr::Let { expr, .. } => {
-                f(*expr);
-            }
-            Expr::Block { statements, tail, .. } | Expr::Unsafe { statements, tail, .. } => {
-                for stmt in statements.iter() {
-                    match stmt {
-                        Statement::Let { initializer, else_branch, .. } => {
-                            if let &Some(expr) = initializer {
-                                f(expr);
-                            }
-                            if let &Some(expr) = else_branch {
-                                f(expr);
-                            }
-                        }
-                        Statement::Expr { expr: expression, .. } => f(*expression),
-                        Statement::Item(_) => (),
-                    }
-                }
-                if let &Some(expr) = tail {
-                    f(expr);
-                }
-            }
-            Expr::Loop { body, .. } => f(*body),
-            Expr::Call { callee, args, .. } => {
-                f(*callee);
-                args.iter().copied().for_each(f);
-            }
-            Expr::MethodCall { receiver, args, .. } => {
-                f(*receiver);
-                args.iter().copied().for_each(f);
-            }
-            Expr::Match { expr, arms } => {
-                f(*expr);
-                arms.iter().map(|arm| arm.expr).for_each(f);
-            }
-            Expr::Break { expr, .. }
-            | Expr::Return { expr }
-            | Expr::Yield { expr }
-            | Expr::Yeet { expr } => {
-                if let &Some(expr) = expr {
-                    f(expr);
-                }
-            }
-            Expr::Become { expr } => f(*expr),
-            Expr::RecordLit { fields, spread, .. } => {
-                for field in fields.iter() {
-                    f(field.expr);
-                }
-                if let RecordSpread::Expr(expr) = spread {
-                    f(*expr);
-                }
-            }
-            Expr::Closure { body, .. } => {
-                f(*body);
-            }
-            Expr::BinaryOp { lhs, rhs, .. } => {
-                f(*lhs);
-                f(*rhs);
-            }
-            Expr::Range { lhs, rhs, .. } => {
-                if let &Some(lhs) = rhs {
-                    f(lhs);
-                }
-                if let &Some(rhs) = lhs {
-                    f(rhs);
-                }
-            }
-            Expr::Index { base, index, .. } => {
-                f(*base);
-                f(*index);
-            }
-            Expr::Field { expr, .. }
-            | Expr::Await { expr }
-            | Expr::Cast { expr, .. }
-            | Expr::Ref { expr, .. }
-            | Expr::UnaryOp { expr, .. }
-            | Expr::Box { expr } => {
-                f(*expr);
-            }
-            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
-            Expr::Array(a) => match a {
-                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
-                Array::Repeat { initializer, repeat } => {
-                    f(*initializer);
-                    f(*repeat)
-                }
-            },
-            &Expr::Assignment { target: _, value } => f(value),
         }
     }
 
-    pub fn walk_exprs_in_pat(&self, pat_id: PatId, f: &mut impl FnMut(ExprId)) {
-        self.walk_pats(pat_id, &mut |pat| {
-            if let Pat::Expr(expr) | Pat::ConstBlock(expr) = self[pat] {
-                f(expr);
+    pub fn walk_exprs_in_pat(&self, pat_id: PatId, callback: impl FnMut(ExprId)) {
+        return Visitor { callback, store: self }.on_pat(pat_id);
+
+        struct Visitor<'a, F> {
+            callback: F,
+            store: &'a ExpressionStore,
+        }
+
+        impl<F: FnMut(ExprId)> StoreVisitor for Visitor<'_, F> {
+            fn on_expr(&mut self, expr: ExprId) {
+                (self.callback)(expr);
             }
-        });
+
+            fn on_pat(&mut self, pat: PatId) {
+                self.store.visit_pat_children(pat, self);
+            }
+        }
+    }
+
+    pub fn visit_type_ref_children(&self, type_ref: TypeRefId, mut visitor: impl StoreVisitor) {
+        match &self[type_ref] {
+            TypeRef::Never | TypeRef::Placeholder | TypeRef::TypeParam(_) | TypeRef::Error => {}
+            TypeRef::Tuple(types) => visitor.on_types(types),
+            TypeRef::Path(path) => visitor.on_path(path),
+            TypeRef::RawPtr(inner, _) | TypeRef::Slice(inner) => visitor.on_type(*inner),
+            TypeRef::Reference(ref_type) => {
+                let RefType { ty, lifetime, mutability: _ } = &**ref_type;
+                visitor.on_type(*ty);
+                visitor.on_lifetime_opt(*lifetime);
+            }
+            TypeRef::Array(ArrayType { ty, len: ConstRef { expr: len } }) => {
+                visitor.on_type(*ty);
+                visitor.on_anon_const_expr(*len);
+            }
+            TypeRef::Fn(fn_type) => {
+                let FnType { params, is_varargs: _, is_unsafe: _, abi: _ } = &**fn_type;
+                params.iter().for_each(|(_, param_ty)| visitor.on_type(*param_ty));
+            }
+            TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
+                visitor.on_type_bounds(bounds)
+            }
+        }
     }
 
     #[inline]
@@ -937,6 +940,128 @@ impl ExpressionStore {
         ExprId::from_raw(la_arena::RawIdx::from_u32(coroutine.into_raw().into_u32() + 1))
     }
 }
+
+pub trait StoreVisitor {
+    fn on_expr(&mut self, expr: ExprId) {
+        let _ = expr;
+    }
+    fn on_anon_const_expr(&mut self, expr: ExprId) {
+        self.on_expr(expr);
+    }
+    fn on_pat(&mut self, pat: PatId) {
+        let _ = pat;
+    }
+    fn on_type(&mut self, ty: TypeRefId) {
+        let _ = ty;
+    }
+    fn on_lifetime(&mut self, lifetime: LifetimeRefId) {
+        let _ = lifetime;
+    }
+}
+
+impl<V: StoreVisitor> StoreVisitor for &mut V {
+    fn on_expr(&mut self, expr: ExprId) {
+        V::on_expr(self, expr);
+    }
+    fn on_anon_const_expr(&mut self, expr: ExprId) {
+        V::on_anon_const_expr(self, expr);
+    }
+    fn on_pat(&mut self, pat: PatId) {
+        V::on_pat(self, pat);
+    }
+    fn on_type(&mut self, ty: TypeRefId) {
+        V::on_type(self, ty);
+    }
+    fn on_lifetime(&mut self, lifetime: LifetimeRefId) {
+        V::on_lifetime(self, lifetime);
+    }
+}
+
+trait StoreVisitorExt: StoreVisitor {
+    fn on_generic_args(&mut self, args: &GenericArgs) {
+        let GenericArgs { args, bindings, parenthesized: _, has_self_type: _ } = args;
+        for arg in args {
+            match arg {
+                GenericArg::Type(arg) => self.on_type(*arg),
+                GenericArg::Const(ConstRef { expr }) => self.on_anon_const_expr(*expr),
+                GenericArg::Lifetime(arg) => self.on_lifetime(*arg),
+            }
+        }
+        for AssociatedTypeBinding { name: _, args, type_ref, bounds } in bindings {
+            self.on_generic_args_opt(args);
+            self.on_type_opt(*type_ref);
+            self.on_type_bounds(bounds);
+        }
+    }
+
+    fn on_type_bound(&mut self, bound: &TypeBound) {
+        match bound {
+            TypeBound::Path(path_id, _) => self.on_type(path_id.type_ref()),
+            TypeBound::ForLifetime(_, path_id) => self.on_type(path_id.type_ref()),
+            TypeBound::Lifetime(lifetime) => self.on_lifetime(*lifetime),
+            TypeBound::Use(args) => {
+                for arg in args {
+                    match arg {
+                        UseArgRef::Lifetime(lifetime) => self.on_lifetime(*lifetime),
+                        UseArgRef::Name(_) => {}
+                    }
+                }
+            }
+            TypeBound::Error => {}
+        }
+    }
+
+    fn on_path(&mut self, path: &Path) {
+        match path {
+            Path::Normal(path) => {
+                let NormalPath { generic_args, type_anchor, mod_path: _ } = &**path;
+                generic_args.iter().for_each(|generic_arg| self.on_generic_args_opt(generic_arg));
+                self.on_type_opt(*type_anchor);
+            }
+            Path::BarePath(_) | Path::LangItem(..) => {}
+        }
+    }
+
+    fn on_expr_opt(&mut self, expr: Option<ExprId>) {
+        if let Some(expr) = expr {
+            self.on_expr(expr);
+        }
+    }
+    fn on_pat_opt(&mut self, pat: Option<PatId>) {
+        if let Some(pat) = pat {
+            self.on_pat(pat);
+        }
+    }
+    fn on_type_opt(&mut self, ty: Option<TypeRefId>) {
+        if let Some(ty) = ty {
+            self.on_type(ty);
+        }
+    }
+    fn on_lifetime_opt(&mut self, lifetime: Option<LifetimeRefId>) {
+        if let Some(lifetime) = lifetime {
+            self.on_lifetime(lifetime);
+        }
+    }
+    fn on_generic_args_opt(&mut self, args: &Option<impl Borrow<GenericArgs>>) {
+        if let Some(args) = args {
+            self.on_generic_args(args.borrow());
+        }
+    }
+
+    fn on_exprs(&mut self, exprs: impl IntoIterator<Item: Borrow<ExprId>>) {
+        exprs.into_iter().for_each(|expr| self.on_expr(*expr.borrow()));
+    }
+    fn on_pats(&mut self, pats: impl IntoIterator<Item: Borrow<PatId>>) {
+        pats.into_iter().for_each(|pat| self.on_pat(*pat.borrow()));
+    }
+    fn on_types(&mut self, types: impl IntoIterator<Item: Borrow<TypeRefId>>) {
+        types.into_iter().for_each(|ty| self.on_type(*ty.borrow()));
+    }
+    fn on_type_bounds(&mut self, bounds: impl IntoIterator<Item: Borrow<TypeBound>>) {
+        bounds.into_iter().for_each(|bound| self.on_type_bound(bound.borrow()));
+    }
+}
+impl<V: StoreVisitor> StoreVisitorExt for V {}
 
 impl Index<ExprId> for ExpressionStore {
     type Output = Expr;

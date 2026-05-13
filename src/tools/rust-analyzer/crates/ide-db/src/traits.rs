@@ -34,38 +34,33 @@ pub fn get_missing_assoc_items(
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
-    let edition = imp.module(sema.db).krate(sema.db).edition(sema.db);
 
     for item in imp.items(sema.db) {
         match item {
             hir::AssocItem::Function(it) => {
-                impl_fns_consts.insert(it.name(sema.db).display(sema.db, edition).to_string());
+                impl_fns_consts.insert(it.name(sema.db));
             }
             hir::AssocItem::Const(it) => {
                 if let Some(name) = it.name(sema.db) {
-                    impl_fns_consts.insert(name.display(sema.db, edition).to_string());
+                    impl_fns_consts.insert(name);
                 }
             }
             hir::AssocItem::TypeAlias(it) => {
-                impl_type.insert(it.name(sema.db).display(sema.db, edition).to_string());
+                impl_type.insert(it.name(sema.db));
             }
         }
     }
 
-    resolve_target_trait(sema, impl_def).map_or(vec![], |target_trait| {
+    imp.trait_(sema.db).map_or(vec![], |target_trait| {
         target_trait
             .items(sema.db)
             .into_iter()
             .filter(|i| match i {
-                hir::AssocItem::Function(f) => !impl_fns_consts
-                    .contains(&f.name(sema.db).display(sema.db, edition).to_string()),
-                hir::AssocItem::TypeAlias(t) => {
-                    !impl_type.contains(&t.name(sema.db).display(sema.db, edition).to_string())
+                hir::AssocItem::Function(f) => !impl_fns_consts.contains(&f.name(sema.db)),
+                hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(sema.db)),
+                hir::AssocItem::Const(c) => {
+                    c.name(sema.db).map(|n| !impl_fns_consts.contains(&n)).unwrap_or_default()
                 }
-                hir::AssocItem::Const(c) => c
-                    .name(sema.db)
-                    .map(|n| !impl_fns_consts.contains(&n.display(sema.db, edition).to_string()))
-                    .unwrap_or_default(),
             })
             .collect()
     })
@@ -158,7 +153,8 @@ mod tests {
         let file = sema.parse(position.file_id);
         let impl_block: ast::Impl =
             sema.find_node_at_offset_with_descend(file.syntax(), position.offset).unwrap();
-        let items = crate::traits::get_missing_assoc_items(&sema, &impl_block);
+        let items =
+            hir::attach_db(&db, || crate::traits::get_missing_assoc_items(&sema, &impl_block));
         let actual = items
             .into_iter()
             .map(|item| item.name(&db).unwrap().display(&db, Edition::CURRENT).to_string())

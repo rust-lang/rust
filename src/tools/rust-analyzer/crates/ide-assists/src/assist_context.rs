@@ -13,7 +13,7 @@ use crate::{
     Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel, assist_config::AssistConfig,
 };
 
-pub(crate) use ide_db::source_change::{SourceChangeBuilder, TreeMutator};
+pub(crate) use ide_db::source_change::SourceChangeBuilder;
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -45,9 +45,9 @@ pub(crate) use ide_db::source_change::{SourceChangeBuilder, TreeMutator};
 /// Note, however, that we don't actually use such two-phase logic at the
 /// moment, because the LSP API is pretty awkward in this place, and it's much
 /// easier to just compute the edit eagerly :-)
-pub(crate) struct AssistContext<'a> {
+pub(crate) struct AssistContext<'a, 'db> {
     pub(crate) config: &'a AssistConfig,
-    pub(crate) sema: Semantics<'a, RootDatabase>,
+    pub(crate) sema: Semantics<'db, RootDatabase>,
     frange: FileRange,
     trimmed_range: TextRange,
     source_file: SourceFile,
@@ -57,12 +57,12 @@ pub(crate) struct AssistContext<'a> {
     covering_element: SyntaxElement,
 }
 
-impl<'a> AssistContext<'a> {
+impl<'a, 'db> AssistContext<'a, 'db> {
     pub(crate) fn new(
-        sema: Semantics<'a, RootDatabase>,
+        sema: Semantics<'db, RootDatabase>,
         config: &'a AssistConfig,
         frange: FileRange,
-    ) -> AssistContext<'a> {
+    ) -> AssistContext<'a, 'db> {
         let source_file = sema.parse(frange.file_id);
 
         let start = frange.range.start();
@@ -95,7 +95,7 @@ impl<'a> AssistContext<'a> {
         }
     }
 
-    pub(crate) fn db(&self) -> &'a RootDatabase {
+    pub(crate) fn db(&self) -> &'db RootDatabase {
         self.sema.db
     }
 
@@ -165,7 +165,7 @@ pub(crate) struct Assists {
 }
 
 impl Assists {
-    pub(crate) fn new(ctx: &AssistContext<'_>, resolve: AssistResolveStrategy) -> Assists {
+    pub(crate) fn new(ctx: &AssistContext<'_, '_>, resolve: AssistResolveStrategy) -> Assists {
         Assists {
             resolve,
             file: ctx.frange.file_id.file_id(ctx.db()),

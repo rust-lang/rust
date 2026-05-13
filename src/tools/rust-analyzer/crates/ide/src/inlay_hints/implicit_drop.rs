@@ -37,7 +37,7 @@ pub(super) fn hints(
     let def = def.try_into().ok()?;
     let (hir, source_map) = hir::Body::with_source_map(sema.db, def);
 
-    let mir = sema.db.mir_body(def).ok()?;
+    let mir = sema.db.mir_body(def.into()).ok()?;
 
     let local_to_binding = mir.local_to_binding_map();
 

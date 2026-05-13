@@ -532,6 +532,23 @@ impl ContinueExpr {
         support::token(&self.syntax, T![continue])
     }
 }
+pub struct DerefPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl DerefPat {
+    #[inline]
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+    #[inline]
+    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn deref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![deref]) }
+}
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2254,6 +2271,7 @@ pub enum Meta {
 pub enum Pat {
     BoxPat(BoxPat),
     ConstBlockPat(ConstBlockPat),
+    DerefPat(DerefPat),
     IdentPat(IdentPat),
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
@@ -3583,6 +3601,38 @@ impl Clone for ContinueExpr {
 impl fmt::Debug for ContinueExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ContinueExpr").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for DerefPat {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        DEREF_PAT
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == DEREF_PAT }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for DerefPat {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for DerefPat {}
+impl PartialEq for DerefPat {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for DerefPat {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for DerefPat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DerefPat").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for DynTraitType {
@@ -8515,6 +8565,10 @@ impl From<ConstBlockPat> for Pat {
     #[inline]
     fn from(node: ConstBlockPat) -> Pat { Pat::ConstBlockPat(node) }
 }
+impl From<DerefPat> for Pat {
+    #[inline]
+    fn from(node: DerefPat) -> Pat { Pat::DerefPat(node) }
+}
 impl From<IdentPat> for Pat {
     #[inline]
     fn from(node: IdentPat) -> Pat { Pat::IdentPat(node) }
@@ -8578,6 +8632,7 @@ impl AstNode for Pat {
             kind,
             BOX_PAT
                 | CONST_BLOCK_PAT
+                | DEREF_PAT
                 | IDENT_PAT
                 | LITERAL_PAT
                 | MACRO_PAT
@@ -8599,6 +8654,7 @@ impl AstNode for Pat {
         let res = match syntax.kind() {
             BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
             CONST_BLOCK_PAT => Pat::ConstBlockPat(ConstBlockPat { syntax }),
+            DEREF_PAT => Pat::DerefPat(DerefPat { syntax }),
             IDENT_PAT => Pat::IdentPat(IdentPat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
             MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
@@ -8622,6 +8678,7 @@ impl AstNode for Pat {
         match self {
             Pat::BoxPat(it) => &it.syntax,
             Pat::ConstBlockPat(it) => &it.syntax,
+            Pat::DerefPat(it) => &it.syntax,
             Pat::IdentPat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
             Pat::MacroPat(it) => &it.syntax,
@@ -10117,6 +10174,11 @@ impl std::fmt::Display for ConstParam {
     }
 }
 impl std::fmt::Display for ContinueExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for DerefPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

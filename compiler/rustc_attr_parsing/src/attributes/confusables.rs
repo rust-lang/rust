@@ -19,10 +19,7 @@ impl AttributeParser for ConfusablesParser {
             }
 
             for param in list.mixed() {
-                let span = param.span();
-
-                let Some(lit) = param.lit().and_then(|i| i.value_str()) else {
-                    cx.adcx().expected_string_literal(span, param.lit());
+                let Some(lit) = cx.expect_string_literal(param) else {
                     continue;
                 };
 

@@ -142,10 +142,10 @@ fn layout_of_simd_ty<'db>(
     // where T is a primitive scalar (integer/float/pointer).
     let fields = db.field_types(id.into());
     let mut fields = fields.iter();
-    let Some(TyKind::Array(e_ty, e_len)) = fields
-        .next()
-        .filter(|_| fields.next().is_none())
-        .map(|f| (*f.1).get().instantiate(DbInterner::new_no_crate(db), args).kind())
+    let Some(TyKind::Array(e_ty, e_len)) =
+        fields.next().filter(|_| fields.next().is_none()).map(|f| {
+            (*f.1).get().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip().kind()
+        })
     else {
         return Err(LayoutError::InvalidSimdType);
     };
@@ -167,7 +167,7 @@ pub fn layout_of_ty_query(
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
-    let dl = &*target;
+    let dl = target;
     let cx = LayoutCx::new(dl);
     let infer_ctxt = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
@@ -177,7 +177,7 @@ pub fn layout_of_ty_query(
         .unwrap_or(ty.as_ref());
     let result = match ty.kind() {
         TyKind::Adt(def, args) => {
-            match def.inner().id {
+            match def.def_id() {
                 hir_def::AdtId::StructId(s) => {
                     let repr = AttrFlags::repr(db, s.into()).unwrap_or_default();
                     if repr.simd() {
@@ -187,13 +187,13 @@ pub fn layout_of_ty_query(
                             repr.packed(),
                             &args,
                             trait_env.as_ref(),
-                            &target,
+                            target,
                         );
                     }
                 }
                 _ => {}
             }
-            return db.layout_of_adt(def.inner().id, args.store(), trait_env);
+            return db.layout_of_adt(def.def_id(), args.store(), trait_env);
         }
         TyKind::Bool => Layout::scalar(
             dl,
@@ -374,7 +374,7 @@ pub(crate) fn layout_of_ty_cycle_result(
 fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -> Ty<'a> {
     match pointee.kind() {
         TyKind::Adt(def, args) => {
-            let struct_id = match def.inner().id {
+            let struct_id = match def.def_id() {
                 AdtId::StructId(id) => id,
                 _ => return pointee,
             };
@@ -405,7 +405,7 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types(def)[fd].get().instantiate(DbInterner::new_no_crate(db), args)
+    db.field_types(def)[fd].get().instantiate(DbInterner::new_no_crate(db), args).skip_norm_wip()
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {

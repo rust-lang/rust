@@ -3,7 +3,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{
+use rustc_data_structures::stable_hash::{
     RawDefId, RawDefPathHash, StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_data_structures::unhash::Unhasher;

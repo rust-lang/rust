@@ -397,6 +397,13 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(Diagnostic)]
+#[diag("`export_name` may not be empty")]
+pub(crate) struct EmptyExportName {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`export_name` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnExport {
     #[primary_span]
@@ -406,6 +413,13 @@ pub(crate) struct NullOnExport {
 #[derive(Diagnostic)]
 #[diag("`link_section` may not contain null characters", code = E0648)]
 pub(crate) struct NullOnLinkSection {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("link name may not contain null characters", code = E0648)]
+pub(crate) struct NullOnLinkName {
     #[primary_span]
     pub span: Span,
 }
@@ -981,13 +995,6 @@ pub(crate) struct IncompatibleWasmLink {
 pub(crate) struct LinkRequiresName {
     #[primary_span]
     #[label("missing `name` argument")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("link name must not contain NUL characters if link kind is `raw-dylib`")]
-pub(crate) struct RawDylibNoNul {
-    #[primary_span]
     pub span: Span,
 }
 

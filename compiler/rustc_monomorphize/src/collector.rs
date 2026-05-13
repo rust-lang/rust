@@ -1171,14 +1171,10 @@ fn find_tails_for_unsizing<'tcx>(
                 };
             let coerce_field = &source_adt_def.non_enum_variant().fields[coerce_index];
             // We're getting a possibly unnormalized type, so normalize it.
-            let source_field = tcx.normalize_erasing_regions(
-                typing_env,
-                Unnormalized::new_wip(coerce_field.ty(*tcx, source_args)),
-            );
-            let target_field = tcx.normalize_erasing_regions(
-                typing_env,
-                Unnormalized::new_wip(coerce_field.ty(*tcx, target_args)),
-            );
+            let source_field =
+                tcx.normalize_erasing_regions(typing_env, coerce_field.ty(*tcx, source_args));
+            let target_field =
+                tcx.normalize_erasing_regions(typing_env, coerce_field.ty(*tcx, target_args));
             find_tails_for_unsizing(tcx, source_field, target_field)
         }
 

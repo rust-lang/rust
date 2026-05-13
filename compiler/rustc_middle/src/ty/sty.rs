@@ -1277,7 +1277,10 @@ impl<'tcx> Ty<'tcx> {
             ScalableElt::ElementCount(_) => (NumScalableVectors::for_non_tuple(), *def),
             ScalableElt::Container => (
                 NumScalableVectors::from_field_count(def.non_enum_variant().fields.len())?,
-                def.non_enum_variant().fields[FieldIdx::ZERO].ty(tcx, args).ty_adt_def()?,
+                def.non_enum_variant().fields[FieldIdx::ZERO]
+                    .ty(tcx, args)
+                    .skip_norm_wip()
+                    .ty_adt_def()?,
             ),
         };
         let Some(ScalableElt::ElementCount(element_count)) = vec_def.repr().scalable else {
@@ -1286,7 +1289,7 @@ impl<'tcx> Ty<'tcx> {
         let variant = vec_def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
         let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-        Some((element_count, field_ty, num_vectors))
+        Some((element_count, field_ty.skip_norm_wip(), num_vectors))
     }
 
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
@@ -1297,7 +1300,7 @@ impl<'tcx> Ty<'tcx> {
         let variant = def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
         let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
-        let Array(f0_elem_ty, f0_len) = field_ty.kind() else {
+        let Array(f0_elem_ty, f0_len) = field_ty.skip_norm_wip().kind() else {
             bug!("Simd type has non-array field type {field_ty:?}")
         };
         // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
@@ -1730,7 +1733,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,
-        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let tail = tcx.struct_tail_raw(self, &ObligationCause::dummy(), normalize, || {});
         match tail.kind() {
@@ -1789,7 +1792,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn ptr_metadata_ty(
         self,
         tcx: TyCtxt<'tcx>,
-        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
         match self.ptr_metadata_ty_or_tail(tcx, normalize) {
             Ok(metadata) => metadata,
@@ -1815,7 +1818,7 @@ impl<'tcx> Ty<'tcx> {
         if pointee_ty.has_trivial_sizedness(tcx, SizedTraitKind::Sized) {
             tcx.types.unit
         } else {
-            match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x) {
+            match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x.skip_norm_wip()) {
                 Ok(metadata_ty) => metadata_ty,
                 Err(tail_ty) => {
                     let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, DUMMY_SP);

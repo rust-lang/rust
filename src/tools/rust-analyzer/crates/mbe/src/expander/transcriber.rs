@@ -222,7 +222,7 @@ fn expand_subtree(
                 let index =
                     ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |nest| nest.idx);
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    text_and_suffix: Symbol::integer(index),
+                    text_and_suffix: sym::Integer::get(index),
                     span: ctx.call_site,
                     kind: tt::LitKind::Integer,
                     suffix_len: 0,
@@ -234,7 +234,7 @@ fn expand_subtree(
                     0
                 });
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    text_and_suffix: Symbol::integer(length),
+                    text_and_suffix: sym::Integer::get(length),
                     span: ctx.call_site,
                     kind: tt::LitKind::Integer,
                     suffix_len: 0,
@@ -278,7 +278,7 @@ fn expand_subtree(
                 let res = count(binding, 0, depth.unwrap_or(0));
 
                 builder.push(tt::Leaf::Literal(tt::Literal {
-                    text_and_suffix: Symbol::integer(res),
+                    text_and_suffix: sym::Integer::get(res),
                     span: ctx.call_site,
                     suffix_len: 0,
                     kind: tt::LitKind::Integer,

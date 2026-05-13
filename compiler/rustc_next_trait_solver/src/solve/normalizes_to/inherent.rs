@@ -5,10 +5,11 @@
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
 
+use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -19,7 +20,7 @@ where
         &mut self,
         goal: Goal<I, ty::NormalizesTo<I>>,
         def_id: I::InherentAssocTermId,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let inherent = goal.predicate.alias;
 

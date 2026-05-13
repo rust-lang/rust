@@ -440,7 +440,7 @@ impl GlobalState {
                     let expansion_res = match client {
                         Some(Ok(client)) => match res {
                             Ok((crate_name, path)) => {
-                                progress(format!("loading proc-macros: {path}"));
+                                progress(path.to_string());
                                 let ignored_proc_macros = ignored_proc_macros
                                     .iter()
                                     .find_map(|(name, macros)| {

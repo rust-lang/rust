@@ -26,6 +26,7 @@ extern crate ra_ap_rustc_next_trait_solver as rustc_next_trait_solver;
 extern crate self as hir_ty;
 
 pub mod builtin_derive;
+mod generics;
 mod infer;
 mod inhabitedness;
 mod lower;
@@ -44,12 +45,12 @@ pub mod diagnostics;
 pub mod display;
 pub mod drop;
 pub mod dyn_compatibility;
-pub mod generics;
 pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
 pub mod mir;
 pub mod primitive;
+pub mod solver_errors;
 pub mod traits;
 pub mod upvars;
 
@@ -61,42 +62,55 @@ mod tests;
 use std::{hash::Hash, ops::ControlFlow};
 
 use hir_def::{
-    CallableDefId, ExpressionStoreOwnerId, GenericDefId, TypeAliasId, TypeOrConstParamId,
-    TypeParamId, resolver::TypeNs, type_ref::Rawness,
+    CallableDefId, ConstId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, FunctionId,
+    GenericDefId, HasModule, LifetimeParamId, ModuleId, StaticId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId,
+    db::DefDatabase,
+    expr_store::{Body, ExpressionStore},
+    hir::{BindingId, ExprId, ExprOrPatId, PatId},
+    resolver::{HasResolver, Resolver, TypeNs},
+    type_ref::{Rawness, TypeRefId},
 };
 use hir_expand::name::Name;
 use indexmap::{IndexMap, map::Entry};
-use intern::{Symbol, sym};
 use macros::GenericTypeVisitable;
 use mir::{MirEvalError, VTableMap};
+use rustc_abi::ExternAbi;
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt, UpcastFrom,
+    BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt,
     inherent::{IntoKind, Ty as _},
 };
+use stdx::impl_from;
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 
 use crate::{
-    db::HirDatabase,
-    display::{DisplayTarget, HirDisplay},
-    infer::unify::InferenceTable,
+    db::{AnonConstId, HirDatabase},
+    display::HirDisplay,
     lower::SupertraitsInfo,
     next_solver::{
         AliasTy, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, Canonical,
-        CanonicalVarKind, CanonicalVarKinds, ClauseKind, Const, ConstKind, DbInterner, FnSig,
-        GenericArgs, PolyFnSig, Predicate, Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
+        CanonicalVarKind, CanonicalVarKinds, ClauseKind, Const, ConstKind, DbInterner, GenericArgs,
+        PolyFnSig, Region, RegionKind, TraitRef, Ty, TyKind, TypingMode,
+        abi::Safety,
+        infer::{
+            DbInternerInferExt,
+            traits::{Obligation, ObligationCause},
+        },
+        obligation_ctxt::ObligationCtxt,
     },
 };
 
 pub use autoderef::autoderef;
 pub use infer::{
-    Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
+    Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, InferenceDiagnostic, InferenceResult,
     InferenceTyDiagnosticSource, OverloadedDeref, PointerCast, cast::CastError, could_coerce,
     could_unify, could_unify_deeply, infer_query_with_inspect,
 };
 pub use lower::{
-    GenericPredicates, ImplTraits, LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
+    GenericDefaults, GenericDefaultsRef, GenericPredicates, ImplTraits, LifetimeElisionKind,
+    TyDefId, TyLoweringContext, TyLoweringInferVarsCtx, TyLoweringResult, ValueTyDefId,
     diagnostics::*,
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
@@ -201,139 +215,12 @@ impl<'db> MemoryMap<'db> {
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
-pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
+pub fn type_or_const_param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> u32 {
     generics::generics(db, id.parent).type_or_const_param_idx(id)
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum FnAbi {
-    Aapcs,
-    AapcsUnwind,
-    AvrInterrupt,
-    AvrNonBlockingInterrupt,
-    C,
-    CCmseNonsecureCall,
-    CCmseNonsecureEntry,
-    CDecl,
-    CDeclUnwind,
-    CUnwind,
-    Efiapi,
-    Fastcall,
-    FastcallUnwind,
-    Msp430Interrupt,
-    PtxKernel,
-    RiscvInterruptM,
-    RiscvInterruptS,
-    Rust,
-    RustCall,
-    RustCold,
-    RustIntrinsic,
-    Stdcall,
-    StdcallUnwind,
-    System,
-    SystemUnwind,
-    Sysv64,
-    Sysv64Unwind,
-    Thiscall,
-    ThiscallUnwind,
-    Unadjusted,
-    Vectorcall,
-    VectorcallUnwind,
-    Wasm,
-    Win64,
-    Win64Unwind,
-    X86Interrupt,
-    RustPreserveNone,
-    Unknown,
-}
-
-impl FnAbi {
-    #[rustfmt::skip]
-    pub fn from_symbol(s: &Symbol) -> FnAbi {
-        match s {
-            s if *s == sym::aapcs_dash_unwind => FnAbi::AapcsUnwind,
-            s if *s == sym::aapcs => FnAbi::Aapcs,
-            s if *s == sym::avr_dash_interrupt => FnAbi::AvrInterrupt,
-            s if *s == sym::avr_dash_non_dash_blocking_dash_interrupt => FnAbi::AvrNonBlockingInterrupt,
-            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_call => FnAbi::CCmseNonsecureCall,
-            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_entry => FnAbi::CCmseNonsecureEntry,
-            s if *s == sym::C_dash_unwind => FnAbi::CUnwind,
-            s if *s == sym::C => FnAbi::C,
-            s if *s == sym::cdecl_dash_unwind => FnAbi::CDeclUnwind,
-            s if *s == sym::cdecl => FnAbi::CDecl,
-            s if *s == sym::efiapi => FnAbi::Efiapi,
-            s if *s == sym::fastcall_dash_unwind => FnAbi::FastcallUnwind,
-            s if *s == sym::fastcall => FnAbi::Fastcall,
-            s if *s == sym::msp430_dash_interrupt => FnAbi::Msp430Interrupt,
-            s if *s == sym::ptx_dash_kernel => FnAbi::PtxKernel,
-            s if *s == sym::riscv_dash_interrupt_dash_m => FnAbi::RiscvInterruptM,
-            s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
-            s if *s == sym::rust_dash_call => FnAbi::RustCall,
-            s if *s == sym::rust_dash_cold => FnAbi::RustCold,
-            s if *s == sym::rust_dash_preserve_dash_none => FnAbi::RustPreserveNone,
-            s if *s == sym::rust_dash_intrinsic => FnAbi::RustIntrinsic,
-            s if *s == sym::Rust => FnAbi::Rust,
-            s if *s == sym::stdcall_dash_unwind => FnAbi::StdcallUnwind,
-            s if *s == sym::stdcall => FnAbi::Stdcall,
-            s if *s == sym::system_dash_unwind => FnAbi::SystemUnwind,
-            s if *s == sym::system => FnAbi::System,
-            s if *s == sym::sysv64_dash_unwind => FnAbi::Sysv64Unwind,
-            s if *s == sym::sysv64 => FnAbi::Sysv64,
-            s if *s == sym::thiscall_dash_unwind => FnAbi::ThiscallUnwind,
-            s if *s == sym::thiscall => FnAbi::Thiscall,
-            s if *s == sym::unadjusted => FnAbi::Unadjusted,
-            s if *s == sym::vectorcall_dash_unwind => FnAbi::VectorcallUnwind,
-            s if *s == sym::vectorcall => FnAbi::Vectorcall,
-            s if *s == sym::wasm => FnAbi::Wasm,
-            s if *s == sym::win64_dash_unwind => FnAbi::Win64Unwind,
-            s if *s == sym::win64 => FnAbi::Win64,
-            s if *s == sym::x86_dash_interrupt => FnAbi::X86Interrupt,
-            _ => FnAbi::Unknown,
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            FnAbi::Aapcs => "aapcs",
-            FnAbi::AapcsUnwind => "aapcs-unwind",
-            FnAbi::AvrInterrupt => "avr-interrupt",
-            FnAbi::AvrNonBlockingInterrupt => "avr-non-blocking-interrupt",
-            FnAbi::C => "C",
-            FnAbi::CCmseNonsecureCall => "C-cmse-nonsecure-call",
-            FnAbi::CCmseNonsecureEntry => "C-cmse-nonsecure-entry",
-            FnAbi::CDecl => "C-decl",
-            FnAbi::CDeclUnwind => "cdecl-unwind",
-            FnAbi::CUnwind => "C-unwind",
-            FnAbi::Efiapi => "efiapi",
-            FnAbi::Fastcall => "fastcall",
-            FnAbi::FastcallUnwind => "fastcall-unwind",
-            FnAbi::Msp430Interrupt => "msp430-interrupt",
-            FnAbi::PtxKernel => "ptx-kernel",
-            FnAbi::RiscvInterruptM => "riscv-interrupt-m",
-            FnAbi::RiscvInterruptS => "riscv-interrupt-s",
-            FnAbi::Rust => "Rust",
-            FnAbi::RustCall => "rust-call",
-            FnAbi::RustCold => "rust-cold",
-            FnAbi::RustPreserveNone => "rust-preserve-none",
-            FnAbi::RustIntrinsic => "rust-intrinsic",
-            FnAbi::Stdcall => "stdcall",
-            FnAbi::StdcallUnwind => "stdcall-unwind",
-            FnAbi::System => "system",
-            FnAbi::SystemUnwind => "system-unwind",
-            FnAbi::Sysv64 => "sysv64",
-            FnAbi::Sysv64Unwind => "sysv64-unwind",
-            FnAbi::Thiscall => "thiscall",
-            FnAbi::ThiscallUnwind => "thiscall-unwind",
-            FnAbi::Unadjusted => "unadjusted",
-            FnAbi::Vectorcall => "vectorcall",
-            FnAbi::VectorcallUnwind => "vectorcall-unwind",
-            FnAbi::Wasm => "wasm",
-            FnAbi::Win64 => "win64",
-            FnAbi::Win64Unwind => "win64-unwind",
-            FnAbi::X86Interrupt => "x86-interrupt",
-            FnAbi::Unknown => "unknown-abi",
-        }
-    }
+pub fn lifetime_param_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> u32 {
+    generics::generics(db, id.parent).lifetime_param_idx(id)
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -495,7 +382,7 @@ pub fn associated_type_shorthand_candidates(
     };
 
     let mut dedup_map = FxHashSet::default();
-    let param_ty = Ty::new_param(interner, param, param_idx(db, param.into()).unwrap() as u32);
+    let param_ty = Ty::new_param(interner, param, type_or_const_param_idx(db, param.into()));
     // We use the ParamEnv and not the predicates because the ParamEnv elaborates bounds.
     let param_env = db.trait_environment(ExpressionStoreOwnerId::from(def));
     for clause in param_env.clauses {
@@ -525,68 +412,61 @@ pub fn associated_type_shorthand_candidates(
 /// To be used from `hir` only.
 pub fn callable_sig_from_fn_trait<'db>(
     self_ty: Ty<'db>,
-    trait_env: ParamEnvAndCrate<'db>,
+    param_env: ParamEnvAndCrate<'db>,
     db: &'db dyn HirDatabase,
 ) -> Option<(FnTrait, PolyFnSig<'db>)> {
-    let mut table = InferenceTable::new(db, trait_env.param_env, trait_env.krate, None);
-    let lang_items = table.interner().lang_items();
+    let ParamEnvAndCrate { param_env, krate } = param_env;
+    let interner = DbInterner::new_with(db, krate);
+    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let lang_items = interner.lang_items();
+    let cause = ObligationCause::dummy();
 
-    let fn_once_trait = FnTrait::FnOnce.get_id(lang_items)?;
-    let output_assoc_type = fn_once_trait
-        .trait_items(db)
-        .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
+    let impls_trait = |trait_: FnTrait| {
+        let mut ocx = ObligationCtxt::new(&infcx);
+        let tupled_args = infcx.next_ty_var(Span::Dummy);
+        let args = GenericArgs::new_from_slice(&[self_ty.into(), tupled_args.into()]);
+        let trait_id = trait_.get_id(lang_items)?;
+        let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), args);
+        let obligation = Obligation::new(interner, cause, param_env, trait_ref);
+        ocx.register_obligation(obligation);
+        if !ocx.try_evaluate_obligations().is_empty() {
+            return None;
+        }
+        let tupled_args =
+            infcx.resolve_vars_if_possible(tupled_args).replace_infer_with_error(interner);
+        if tupled_args.is_tuple() { Some(tupled_args) } else { None }
+    };
 
-    // Register two obligations:
-    // - Self: FnOnce<?args_ty>
-    // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
-    let args_ty = table.next_ty_var();
-    let args = GenericArgs::new_from_slice(&[self_ty.into(), args_ty.into()]);
-    let trait_ref = TraitRef::new_from_args(table.interner(), fn_once_trait.into(), args);
-    let projection = Ty::new_alias(
-        table.interner(),
-        AliasTy::new_from_args(
-            table.interner(),
-            rustc_type_ir::Projection { def_id: output_assoc_type.into() },
-            args,
-        ),
-    );
-
-    let pred = Predicate::upcast_from(trait_ref, table.interner());
-    if !table.try_obligation(pred).no_solution() {
-        table.register_obligation(pred);
-        let return_ty = table.normalize_alias_ty(projection);
-        for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
-            let fn_x_trait = fn_x.get_id(lang_items)?;
-            let trait_ref = TraitRef::new_from_args(table.interner(), fn_x_trait.into(), args);
-            if !table
-                .try_obligation(Predicate::upcast_from(trait_ref, table.interner()))
-                .no_solution()
-            {
-                let ret_ty = table.resolve_completely(return_ty);
-                let args_ty = table.resolve_completely(args_ty);
-                let TyKind::Tuple(params) = args_ty.kind() else {
-                    return None;
-                };
-                let inputs_and_output = Tys::new_from_iter(
-                    table.interner(),
-                    params.iter().chain(std::iter::once(ret_ty)),
-                );
-
-                return Some((
-                    fn_x,
-                    Binder::dummy(FnSig {
-                        inputs_and_output,
-                        c_variadic: false,
-                        safety: abi::Safety::Safe,
-                        abi: FnAbi::RustCall,
-                    }),
-                ));
+    let (trait_, args) = 'find_trait: {
+        for trait_ in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
+            if let Some(args) = impls_trait(trait_) {
+                break 'find_trait (trait_, args);
             }
         }
-        unreachable!("It should at least implement FnOnce at this point");
-    } else {
-        None
-    }
+        return None;
+    };
+
+    let output_assoc_type = lang_items.FnOnceOutput?;
+    let output_projection = Ty::new_alias(
+        interner,
+        AliasTy::new(
+            interner,
+            rustc_type_ir::Projection { def_id: output_assoc_type.into() },
+            [self_ty, args],
+        ),
+    );
+    let mut ocx = ObligationCtxt::new(&infcx);
+    let ret = ocx.structurally_normalize_ty(&cause, param_env, output_projection).ok()?;
+    let ret = ret.replace_infer_with_error(interner);
+
+    let sig = Binder::dummy(interner.mk_fn_sig(
+        args.tuple_fields(),
+        ret,
+        false,
+        Safety::Safe,
+        ExternAbi::Rust,
+    ));
+    Some((trait_, sig))
 }
 
 struct ParamCollector {
@@ -623,58 +503,128 @@ where
     Vec::from_iter(collector.params)
 }
 
-struct TypeInferenceVarCollector<'db> {
-    type_inference_vars: Vec<Ty<'db>>,
+pub fn known_const_to_ast<'db>(
+    konst: Const<'db>,
+    db: &'db dyn HirDatabase,
+    target_module: ModuleId,
+) -> Option<ConstArg> {
+    Some(make::expr_const_value(
+        &konst.display_source_code(db, target_module, true).unwrap_or_else(|_| "_".to_owned()),
+    ))
 }
 
-impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for TypeInferenceVarCollector<'db> {
-    type Result = ();
+/// A `Span` represents some location in lowered code - a type, expression or pattern.
+///
+/// It has no meaning outside its body therefore it should not exit the pass it was created in
+/// (e.g. inference). It is usually associated with a solver obligation or an infer var, which
+/// should also not cross the pass they were created in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Span {
+    ExprId(ExprId),
+    PatId(PatId),
+    BindingId(BindingId),
+    TypeRefId(TypeRefId),
+    /// An unimportant location. Errors on this will be suppressed.
+    Dummy,
+}
+impl_from!(ExprId, PatId, BindingId, TypeRefId for Span);
 
-    fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
-        use crate::rustc_type_ir::Flags;
-        if ty.is_ty_var() {
-            self.type_inference_vars.push(ty);
-        } else if ty.flags().intersects(rustc_type_ir::TypeFlags::HAS_TY_INFER) {
-            ty.super_visit_with(self);
-        } else {
-            // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
-            // that there are no placeholders.
+impl From<ExprOrPatId> for Span {
+    fn from(value: ExprOrPatId) -> Self {
+        match value {
+            ExprOrPatId::ExprId(idx) => idx.into(),
+            ExprOrPatId::PatId(idx) => idx.into(),
         }
     }
 }
 
-pub fn collect_type_inference_vars<'db, T>(value: &T) -> Vec<Ty<'db>>
-where
-    T: ?Sized + rustc_type_ir::TypeVisitable<DbInterner<'db>>,
-{
-    let mut collector = TypeInferenceVarCollector { type_inference_vars: vec![] };
-    value.visit_with(&mut collector);
-    collector.type_inference_vars
+impl Span {
+    pub(crate) fn pick_best(a: Span, b: Span) -> Span {
+        // We prefer dummy spans to minimize the risk of false errors.
+        if b.is_dummy() { b } else { a }
+    }
+
+    #[inline]
+    pub fn is_dummy(&self) -> bool {
+        matches!(self, Self::Dummy)
+    }
 }
 
-pub fn known_const_to_ast<'db>(
-    konst: Const<'db>,
-    db: &'db dyn HirDatabase,
-    display_target: DisplayTarget,
-) -> Option<ConstArg> {
-    Some(make::expr_const_value(konst.display(db, display_target).to_string().as_str()))
+/// A [`DefWithBodyId`], or an anon const.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Supertype)]
+pub enum InferBodyId {
+    DefWithBodyId(DefWithBodyId),
+    AnonConstId(AnonConstId),
+}
+impl_from!(DefWithBodyId(FunctionId, ConstId, StaticId), AnonConstId for InferBodyId);
+impl From<EnumVariantId> for InferBodyId {
+    fn from(id: EnumVariantId) -> Self {
+        InferBodyId::DefWithBodyId(DefWithBodyId::VariantId(id))
+    }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub(crate) enum DeclOrigin {
-    LetExpr,
-    /// from `let x = ..`
-    LocalDecl {
-        has_else: bool,
-    },
+impl HasModule for InferBodyId {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match self {
+            InferBodyId::DefWithBodyId(id) => id.module(db),
+            InferBodyId::AnonConstId(id) => id.module(db),
+        }
+    }
 }
 
-/// Provides context for checking patterns in declarations. More specifically this
-/// allows us to infer array types if the pattern is irrefutable and allows us to infer
-/// the size of the array. See issue rust-lang/rust#76342.
-#[derive(Debug, Copy, Clone)]
-pub(crate) struct DeclContext {
-    pub(crate) origin: DeclOrigin,
+impl HasResolver for InferBodyId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
+        match self {
+            InferBodyId::DefWithBodyId(id) => id.resolver(db),
+            InferBodyId::AnonConstId(id) => id.resolver(db),
+        }
+    }
+}
+
+impl InferBodyId {
+    pub fn expression_store_owner(self, db: &dyn HirDatabase) -> ExpressionStoreOwnerId {
+        match self {
+            InferBodyId::DefWithBodyId(id) => id.into(),
+            InferBodyId::AnonConstId(id) => id.loc(db).owner,
+        }
+    }
+
+    pub fn generic_def(self, db: &dyn HirDatabase) -> GenericDefId {
+        match self {
+            InferBodyId::DefWithBodyId(id) => id.generic_def(db),
+            InferBodyId::AnonConstId(id) => id.loc(db).owner.generic_def(db),
+        }
+    }
+
+    #[inline]
+    pub fn as_function(self) -> Option<FunctionId> {
+        match self {
+            InferBodyId::DefWithBodyId(DefWithBodyId::FunctionId(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_variant(self) -> Option<EnumVariantId> {
+        match self {
+            InferBodyId::DefWithBodyId(DefWithBodyId::VariantId(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn store_and_root_expr(self, db: &dyn HirDatabase) -> (&ExpressionStore, ExprId) {
+        match self {
+            InferBodyId::DefWithBodyId(id) => {
+                let body = Body::of(db, id);
+                (body, body.root_expr())
+            }
+            InferBodyId::AnonConstId(id) => {
+                let loc = id.loc(db);
+                let store = ExpressionStore::of(db, loc.owner);
+                (store, loc.expr)
+            }
+        }
+    }
 }
 
 pub fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {

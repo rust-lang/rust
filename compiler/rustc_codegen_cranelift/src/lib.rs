@@ -200,6 +200,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         println!("Cranelift version: {}", cranelift_codegen::VERSION);
     }
 
+    fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
+        // All Cranelift supported targets support ret except for s390x
+        mnemonic == "ret" && sess.target.arch != Arch::S390x
+    }
+
     fn target_cpu(&self, sess: &Session) -> String {
         // FIXME handle `-Ctarget-cpu=native`
         match sess.opts.cg.target_cpu {

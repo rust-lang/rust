@@ -12,7 +12,7 @@ use crate::{AssistContext, AssistId, Assists, GroupLabel};
 // ```
 // const _: char = '\x61';
 // ```
-pub(crate) fn convert_char_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_char_literal(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     if !ctx.has_empty_selection() {
         return None;
     }

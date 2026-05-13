@@ -22,7 +22,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     y: u32,
 // }
 // ```
-pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let ref_type_focused = ctx.find_node_at_offset::<ast::RefType>()?;
     if ref_type_focused.lifetime().is_some_and(|lifetime| lifetime.text() != "'_") {
         return None;

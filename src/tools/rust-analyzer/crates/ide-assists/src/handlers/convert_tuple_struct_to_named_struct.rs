@@ -58,7 +58,7 @@ use crate::{
 // ```
 pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let strukt_or_variant = ctx
         .find_node_at_offset::<ast::Struct>()
@@ -140,7 +140,7 @@ fn edit_struct_def(
 }
 
 fn edit_struct_references(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     edit: &mut SourceChangeBuilder,
     strukt: Either<hir::Struct, hir::EnumVariant>,
     names: &[ast::Name],
@@ -164,7 +164,7 @@ fn edit_struct_references(
 }
 
 fn process_struct_name_reference(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     r: FileReference,
     editor: &SyntaxEditor,
     source: &ast::SourceFile,
@@ -229,7 +229,7 @@ fn process_struct_name_reference(
 }
 
 fn process_delimiter(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     source: &ast::SourceFile,
     editor: &SyntaxEditor,
     list: &impl AstNode,
@@ -270,7 +270,7 @@ fn process_delimiter(
 }
 
 fn edit_field_references(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     edit: &mut SourceChangeBuilder,
     fields: impl Iterator<Item = ast::TupleField>,
     names: &[ast::Name],

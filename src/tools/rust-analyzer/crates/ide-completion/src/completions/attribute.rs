@@ -4,13 +4,7 @@
 
 use std::sync::LazyLock;
 
-use ide_db::{
-    FxHashMap, SymbolKind,
-    generated::lints::{
-        CLIPPY_LINT_GROUPS, CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, Lint, RUSTDOC_LINTS,
-    },
-    syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-};
+use ide_db::{FxHashMap, SymbolKind, syntax_helpers::node_ext::parse_tt_as_comma_sep_paths};
 use itertools::Itertools;
 use syntax::{
     AstNode, Edition, SyntaxKind, T,
@@ -26,6 +20,7 @@ use crate::{
 mod cfg;
 mod derive;
 mod diagnostic;
+mod feature;
 mod lint;
 mod macro_use;
 mod repr;
@@ -36,8 +31,8 @@ pub(crate) use self::derive::complete_derive_path;
 /// Complete inputs to known builtin attributes as well as derive attributes
 pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
-    &colon_prefix: &bool,
+    ctx: &CompletionContext<'_, '_>,
+    colon_prefix: bool,
     fake_attribute_under_caret: &ast::TokenTreeMeta,
     extern_crate: Option<&ast::ExternCrate>,
 ) -> Option<()> {
@@ -49,35 +44,25 @@ pub(crate) fn complete_known_attribute_input(
     let tt = attribute.token_tree()?;
 
     match segments.as_slice() {
-        ["repr"] => repr::complete_repr(acc, ctx, tt),
-        ["feature"] => lint::complete_lint(
+        ["repr"] => repr::complete_repr(acc, ctx, &parse_comma_sep_expr(tt)?),
+        ["feature"] => {
+            feature::complete_feature(acc, ctx, &parse_tt_as_comma_sep_paths(tt, ctx.edition)?)
+        }
+        ["allow" | "expect" | "deny" | "forbid" | "warn"] => lint::complete_lint(
             acc,
             ctx,
             colon_prefix,
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
-            FEATURES,
         ),
-        ["allow"] | ["expect"] | ["deny"] | ["forbid"] | ["warn"] => {
-            let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
-
-            let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
-                .iter()
-                .map(|g| &g.lint)
-                .chain(DEFAULT_LINTS)
-                .chain(CLIPPY_LINTS)
-                .chain(RUSTDOC_LINTS)
-                .cloned()
-                .collect();
-
-            lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
-        }
         ["macro_use"] => macro_use::complete_macro_use(
             acc,
             ctx,
             extern_crate,
             &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
         ),
-        ["diagnostic", "on_unimplemented"] => diagnostic::complete_on_unimplemented(acc, ctx, tt),
+        ["diagnostic", "on_unimplemented"] => {
+            diagnostic::complete_on_unimplemented(acc, ctx, &parse_comma_sep_expr(tt)?)
+        }
         _ => (),
     }
     Some(())
@@ -85,7 +70,7 @@ pub(crate) fn complete_known_attribute_input(
 
 pub(crate) fn complete_attribute_path(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx<'_>,
     &AttrCtx { kind, annotated_item_kind, ref derive_helpers }: &AttrCtx,
 ) {
@@ -190,7 +175,7 @@ pub(crate) fn complete_attribute_path(
     match attributes {
         Some(applicable) => applicable
             .iter()
-            .flat_map(|name| ATTRIBUTES.binary_search_by(|attr| attr.key().cmp(name)).ok())
+            .flat_map(|name| ATTRIBUTES.binary_search_by_key(name, |attr| attr.key()).ok())
             .flat_map(|idx| ATTRIBUTES.get(idx))
             .for_each(add_completion),
         None if is_inner => ATTRIBUTES.iter().for_each(add_completion),
