@@ -66,10 +66,32 @@ fn prefix_slice_suffix<'a, 'tcx>(
     output_pairs
 }
 
+impl<'tcx> FlatPat<'tcx> {
+    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
+    /// for the given pattern.
+    pub(crate) fn new(
+        place: PlaceBuilder<'tcx>,
+        pattern: &Pat<'tcx>,
+        cx: &mut Builder<'_, 'tcx>,
+    ) -> Self {
+        // Recursively build a tree of match pairs for the given pattern.
+        let mut match_pairs = vec![];
+        let mut extra_data = PatternExtraData {
+            span: pattern.span,
+            bindings: vec![],
+            ascriptions: vec![],
+            is_never: pattern.is_never_pattern(),
+        };
+        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
+
+        FlatPat { match_pairs, extra_data }
+    }
+}
+
 impl<'tcx> MatchPairTree<'tcx> {
     /// Recursively builds a match pair tree for the given pattern and its
     /// subpatterns.
-    pub(super) fn for_pattern(
+    fn for_pattern(
         mut place_builder: PlaceBuilder<'tcx>,
         pattern: &Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
