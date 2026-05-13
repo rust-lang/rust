@@ -21,6 +21,14 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
     item_def_id: DefId,
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
+    // FIXME(-Znext-solver): `AutoTraitFinder` still uses old-solver-only selection APIs.
+    // Do not synthesize rustdoc's auto-trait impls for display while the new solver is global.
+    if tcx.next_trait_solver_globally() {
+        cx.sess().dcx().fatal(
+            "rustdoc does not support generating auto-trait impls for display with `-Znext-solver=globally`",
+        );
+    }
+
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
     let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
 

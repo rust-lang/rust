@@ -1,0 +1,4 @@
+error: rustdoc does not support generating auto-trait impls for display with `-Znext-solver=globally`
+
+error: aborting due to 1 previous error
+
