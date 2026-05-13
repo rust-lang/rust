@@ -91,8 +91,12 @@ impl fmt::Display for AllocError {
 ///
 /// Memory blocks that are [*currently allocated*] by an allocator,
 /// must point to valid memory, and retain their validity until either:
-///  - the memory block is deallocated, or
-///  - the allocator is dropped.
+///  - the memory block is deallocated,
+///  - the allocator is mutated through public API taking `&mut` access (notably,
+///    running the allocator's destructor is such a mutation), or
+///  - the allocator's type becomes invalid.
+///    (For example, the type `&'a T` becomes invalid when `'a` expires.
+///    More generally, a type becomes invalid when any of its lifetime parameters has expired.)
 ///
 /// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it.
 /// A copied or cloned allocator must behave like the original allocator.
