@@ -63,14 +63,12 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. }) => {
-                bug!("type_name: unexpected free alias")
-            }
-            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
-                bug!("type_name: unexpected inherent projection")
-            }
-            ty::Infer(_) | ty::Alias(ty::AliasTy { kind: ty::Ambiguous, .. }) => unreachable!(),
-            ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
+            ty::Infer(_)
+            | ty::Alias(ty::AliasTy {
+                kind: ty::Free { .. } | ty::Inherent { .. } | ty::Ambiguous,
+                ..
+            })
+            | ty::CoroutineWitness(..) => bug!("type_name: unexpected type: {ty:?}"),
         }
     }
 
