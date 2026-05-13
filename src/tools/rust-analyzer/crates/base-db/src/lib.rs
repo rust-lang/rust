@@ -49,6 +49,7 @@ macro_rules! impl_intern_key {
         #[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
         #[derive(PartialOrd, Ord)]
         pub struct $id {
+            #[returns(ref)]
             pub loc: $loc,
         }
 

@@ -190,7 +190,7 @@ impl<'a> SymbolCollector<'a> {
                     let enum_name = Symbol::intern(EnumSignature::of(this.db, id).name.as_str());
                     this.with_container_name(Some(enum_name), |this| {
                         let variants = id.enum_variants(this.db);
-                        for (variant_id, variant_name, _) in &variants.variants {
+                        for (variant_name, (variant_id, _)) in &variants.variants {
                             this.push_decl(*variant_id, variant_name, true, None);
                         }
                     });

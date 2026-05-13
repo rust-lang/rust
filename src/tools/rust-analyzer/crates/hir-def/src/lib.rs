@@ -298,7 +298,7 @@ impl EnumId {
     pub fn enum_variants_with_diagnostics(
         self,
         db: &dyn DefDatabase,
-    ) -> &(EnumVariants, Option<ThinVec<InactiveEnumVariantCode>>) {
+    ) -> &(EnumVariants, ThinVec<InactiveEnumVariantCode>) {
         EnumVariants::of(db, self)
     }
 }
@@ -367,18 +367,33 @@ impl ExternBlockId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariantLoc {
     pub id: AstId<ast::Variant>,
     pub parent: EnumId,
-    pub index: u32,
+    pub name: Name,
 }
 impl_intern!(EnumVariantId, EnumVariantLoc);
 impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
+impl EnumVariantLoc {
+    pub fn index(&self, db: &dyn DefDatabase) -> usize {
+        self.parent
+            .enum_variants(db)
+            .variants
+            .get_full(&self.name)
+            .expect("parent enum should include this variant")
+            .0
+    }
+}
+
 impl EnumVariantId {
     pub fn fields(self, db: &dyn DefDatabase) -> &VariantFields {
         VariantFields::of(db, self.into())
+    }
+
+    pub fn index(self, db: &dyn DefDatabase) -> usize {
+        self.loc(db).index(db)
     }
 
     pub fn fields_with_source_map(

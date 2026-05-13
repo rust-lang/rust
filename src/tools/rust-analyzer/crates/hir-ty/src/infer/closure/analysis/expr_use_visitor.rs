@@ -1473,7 +1473,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     fn variant_index_for_adt(&self, pat_id: PatId) -> Result<(u32, VariantId)> {
         let variant = self.cx.result.variant_resolution_for_pat(pat_id).ok_or(ErrorGuaranteed)?;
         let variant_idx = match variant {
-            VariantId::EnumVariantId(variant) => variant.loc(self.cx.db).index,
+            VariantId::EnumVariantId(variant) => variant.index(self.cx.db) as u32,
             VariantId::StructId(_) | VariantId::UnionId(_) => 0,
         };
         Ok((variant_idx, variant))

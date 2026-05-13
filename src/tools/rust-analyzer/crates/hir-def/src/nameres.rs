@@ -427,7 +427,7 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
 
 #[salsa_macros::tracked(returns(ref))]
 pub fn block_def_map(db: &dyn DefDatabase, block_id: BlockId) -> DefMap {
-    let BlockLoc { ast_id, module } = block_id.lookup(db);
+    let BlockLoc { ast_id, module } = *block_id.lookup(db);
 
     let visibility = Visibility::Module(module, VisibilityExplicitness::Implicit);
     let module_data =

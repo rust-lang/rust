@@ -330,13 +330,7 @@ impl<'db> HirDisplay<'db> for Pat<'db> {
                     match variant {
                         VariantId::EnumVariantId(v) => {
                             let loc = v.lookup(f.db);
-                            write!(
-                                f,
-                                "{}",
-                                loc.parent.enum_variants(f.db).variants[loc.index as usize]
-                                    .1
-                                    .display(f.db, f.edition())
-                            )?;
+                            write!(f, "{}", loc.name.display(f.db, f.edition()))?;
                         }
                         VariantId::StructId(s) => write!(
                             f,

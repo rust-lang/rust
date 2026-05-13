@@ -149,8 +149,8 @@ fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) ->
     match file {
         HirFileId::FileId(_) => SyntaxContext::root(edition),
         HirFileId::MacroFile(m) => {
-            let kind = m.loc(db).kind;
-            db.macro_arg_considering_derives(m, &kind).2.ctx
+            let kind = &m.loc(db).kind;
+            db.macro_arg_considering_derives(m, kind).2.ctx
         }
     }
 }
@@ -542,11 +542,11 @@ impl<'db> TokenExpander<'db> {
     }
 }
 
-fn macro_expand(
-    db: &dyn ExpandDatabase,
+fn macro_expand<'db>(
+    db: &'db dyn ExpandDatabase,
     macro_call_id: MacroCallId,
-    loc: MacroCallLoc,
-) -> ExpandResult<(Cow<'_, tt::TopSubtree>, MatchedArmIndex)> {
+    loc: &MacroCallLoc,
+) -> ExpandResult<(Cow<'db, tt::TopSubtree>, MatchedArmIndex)> {
     let _p = tracing::info_span!("macro_expand").entered();
 
     let (ExpandResult { value: (tt, matched_arm), err }, span) = match loc.def.kind {

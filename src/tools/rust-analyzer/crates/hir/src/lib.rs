@@ -781,22 +781,20 @@ impl Module {
                             let (variants, diagnostics) = e.id.enum_variants_with_diagnostics(db);
                             let file = e.id.lookup(db).id.file_id;
                             let ast_id_map = db.ast_id_map(file);
-                            if let Some(diagnostics) = &diagnostics {
-                                for diag in diagnostics.iter() {
-                                    acc.push(
-                                        InactiveCode {
-                                            node: InFile::new(
-                                                file,
-                                                ast_id_map.get(diag.ast_id).syntax_node_ptr(),
-                                            ),
-                                            cfg: diag.cfg.clone(),
-                                            opts: diag.opts.clone(),
-                                        }
-                                        .into(),
-                                    );
-                                }
+                            for diag in diagnostics {
+                                acc.push(
+                                    InactiveCode {
+                                        node: InFile::new(
+                                            file,
+                                            ast_id_map.get(diag.ast_id).syntax_node_ptr(),
+                                        ),
+                                        cfg: diag.cfg.clone(),
+                                        opts: diag.opts.clone(),
+                                    }
+                                    .into(),
+                                );
                             }
-                            for &(v, _, _) in &variants.variants {
+                            for &(v, _) in variants.variants.values() {
                                 let source_map = &v.fields_with_source_map(db).1;
                                 push_ty_diagnostics(
                                     db,
@@ -1644,7 +1642,7 @@ impl Enum {
     }
 
     pub fn variants(self, db: &dyn HirDatabase) -> Vec<EnumVariant> {
-        self.id.enum_variants(db).variants.iter().map(|&(id, _, _)| EnumVariant { id }).collect()
+        self.id.enum_variants(db).variants.values().map(|&(id, _)| EnumVariant { id }).collect()
     }
 
     pub fn num_variants(self, db: &dyn HirDatabase) -> usize {
@@ -1763,9 +1761,7 @@ impl EnumVariant {
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let lookup = self.id.lookup(db);
-        let enum_ = lookup.parent;
-        enum_.enum_variants(db).variants[lookup.index as usize].1.clone()
+        self.id.lookup(db).name.clone()
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
@@ -1800,7 +1796,7 @@ impl EnumVariant {
             layout::Variants::Multiple { variants, .. } => Layout(
                 {
                     let lookup = self.id.lookup(db);
-                    let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
+                    let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index(db));
                     Arc::new(variants[rustc_enum_variant_idx].clone())
                 },
                 db.target_data_layout(parent_enum.krate(db).into()).unwrap(),
@@ -5694,8 +5690,8 @@ impl<'db> Type<'db> {
                             AdtId::EnumId(id) => id
                                 .enum_variants(self.interner.db())
                                 .variants
-                                .iter()
-                                .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))
+                                .values()
+                                .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))
                                 .collect(),
                             AdtId::UnionId(id) => {
                                 vec![variant_id_to_fields(id.into())]
@@ -7467,11 +7463,11 @@ fn body_param_env_from_has_crate<'db>(
 
 // FIXME: We probably don't want to expose this.
 pub trait MacroCallIdExt {
-    fn loc(self, db: &dyn HirDatabase) -> hir_expand::MacroCallLoc;
+    fn loc(self, db: &dyn HirDatabase) -> &hir_expand::MacroCallLoc;
 }
 impl MacroCallIdExt for span::MacroCallId {
     #[inline]
-    fn loc(self, db: &dyn HirDatabase) -> hir_expand::MacroCallLoc {
+    fn loc(self, db: &dyn HirDatabase) -> &hir_expand::MacroCallLoc {
         hir_expand::MacroCallId::from(self).loc(db)
     }
 }

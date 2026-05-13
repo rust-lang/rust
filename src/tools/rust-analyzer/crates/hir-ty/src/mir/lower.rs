@@ -2309,10 +2309,7 @@ pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result
             .to_string(),
         InferBodyId::DefWithBodyId(DefWithBodyId::VariantId(it)) => {
             let loc = it.lookup(db);
-            loc.parent.enum_variants(db).variants[loc.index as usize]
-                .1
-                .display(db, edition)
-                .to_string()
+            loc.name.display(db, edition).to_string()
         }
         InferBodyId::AnonConstId(_) => "{const}".to_owned(),
     };

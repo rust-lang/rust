@@ -1027,7 +1027,7 @@ impl<'db> DefCollector<'db> {
                             .enum_variants(self.db)
                             .variants
                             .iter()
-                            .map(|&(variant, ref name, _)| {
+                            .map(|(name, &(variant, _))| {
                                 let res = PerNs::both(variant.into(), variant.into(), vis, None);
                                 (Some(name.clone()), res)
                             })

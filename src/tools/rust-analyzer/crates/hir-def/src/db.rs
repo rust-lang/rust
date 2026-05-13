@@ -7,8 +7,7 @@ use hir_expand::{
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, AttrDefId, Macro2Loc, MacroExpander, MacroId, MacroRulesLoc, MacroRulesLocFlags,
-    TraitId,
+    AssocItemId, AttrDefId, MacroExpander, MacroId, MacroRulesLocFlags, TraitId,
     attrs::AttrFlags,
     item_tree::{ItemTree, file_item_tree},
     nameres::crate_def_map,
@@ -81,7 +80,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
 
     match id {
         MacroId::Macro2Id(it) => {
-            let loc: Macro2Loc = it.lookup(db);
+            let loc = it.lookup(db);
 
             MacroDefId {
                 krate: loc.container.krate(db),
@@ -92,7 +91,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             }
         }
         MacroId::MacroRulesId(it) => {
-            let loc: MacroRulesLoc = it.lookup(db);
+            let loc = it.lookup(db);
 
             MacroDefId {
                 krate: loc.container.krate(db),
