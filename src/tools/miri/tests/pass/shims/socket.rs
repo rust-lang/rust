@@ -27,21 +27,15 @@ fn test_create_ipv6_listener() {
     let _listener_ipv6 = TcpListener::bind("[::1]:0").unwrap();
 }
 
-/// Try to connect to a TCP listener running in a separate thread and
-/// accepting connections.
+/// Try to connect to a TCP listener and accepting connections.
 fn test_accept_and_connect() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     // Get local address with randomized port to know where
     // we need to connect to.
     let address = listener.local_addr().unwrap();
 
-    let handle = thread::spawn(move || {
-        let (_stream, _addr) = listener.accept().unwrap();
-    });
-
     let _stream = TcpStream::connect(address).unwrap();
-
-    handle.join().unwrap();
+    let (_other_stream, _addr) = listener.accept().unwrap();
 }
 
 /// Test reading and writing into two connected sockets and ensuring
@@ -165,16 +159,11 @@ fn test_sockopt_nodelay() {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
 
-    // Start server thread.
-    let handle = thread::spawn(move || {
-        listener.accept().unwrap();
-    });
-
     let stream = TcpStream::connect(address).unwrap();
+    let _other_end = listener.accept().unwrap();
+
     stream.set_nodelay(true).unwrap();
     assert_eq!(stream.nodelay().unwrap(), true);
     stream.set_nodelay(false).unwrap();
     assert_eq!(stream.nodelay().unwrap(), false);
-
-    handle.join().unwrap();
 }

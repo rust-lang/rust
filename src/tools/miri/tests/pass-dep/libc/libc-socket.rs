@@ -425,10 +425,8 @@ fn test_getsockname_ipv4_connect() {
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
-    // Spawn the server thread.
-    let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
-
     net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
 
     let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
         libc::getsockname(client_sockfd, storage, len)
@@ -443,8 +441,6 @@ fn test_getsockname_ipv4_connect() {
     assert_eq!(addr.sin_family, sock_addr.sin_family);
     assert_ne!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
     assert!(sock_addr.sin_port > 0);
-
-    server_thread.join().unwrap();
 }
 
 /// Test the `getsockname` syscall on an IPv6 socket which is bound.
@@ -485,10 +481,8 @@ fn test_getpeername_ipv4() {
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
-    // Spawn the server thread.
-    let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
-
     net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
 
     let (_, peer_addr) = net::sockname_ipv4(|storage, len| unsafe {
         libc::getpeername(client_sockfd, storage, len)
@@ -498,8 +492,6 @@ fn test_getpeername_ipv4() {
     assert_eq!(addr.sin_family, peer_addr.sin_family);
     assert_eq!(addr.sin_port, peer_addr.sin_port);
     assert_eq!(addr.sin_addr.s_addr, peer_addr.sin_addr.s_addr);
-
-    server_thread.join().unwrap();
 }
 
 /// Test the `getpeername` syscall on an IPv6 socket.
@@ -510,10 +502,8 @@ fn test_getpeername_ipv6() {
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
 
-    // Spawn the server thread.
-    let server_thread = thread::spawn(move || net::accept_ipv6(server_sockfd).unwrap());
-
     net::connect_ipv6(client_sockfd, addr).unwrap();
+    net::accept_ipv6(server_sockfd).unwrap();
 
     let (_, peer_addr) = net::sockname_ipv6(|storage, len| unsafe {
         libc::getpeername(client_sockfd, storage, len)
@@ -525,8 +515,6 @@ fn test_getpeername_ipv6() {
     assert_eq!(addr.sin6_flowinfo, peer_addr.sin6_flowinfo);
     assert_eq!(addr.sin6_scope_id, peer_addr.sin6_scope_id);
     assert_eq!(addr.sin6_addr.s6_addr, peer_addr.sin6_addr.s6_addr);
-
-    server_thread.join().unwrap();
 }
 
 /// Test shutting down TCP streams.
