@@ -1,5 +1,5 @@
 use crate::iter::FusedIterator;
-use crate::mem::MaybeUninit;
+use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::{fmt, ptr};
 
 /// An iterator over the mapped windows of another iterator.
@@ -201,10 +201,12 @@ impl<T, const N: usize> Buffer<T, N> {
 }
 
 impl<T, const N: usize> RawBuffer<T, N> {
+    #[inline]
     fn as_ptr(&self) -> *const MaybeUninit<T> {
         self.data.as_ptr().cast()
     }
 
+    #[inline]
     fn as_mut_ptr(&mut self) -> *mut MaybeUninit<T> {
         self.data.as_mut_ptr().cast()
     }
@@ -214,6 +216,7 @@ impl<T, const N: usize> RawBuffer<T, N> {
     /// `self.data` must uphold the internal invariants of `Buffer`:
     /// - `start` must be within the bounds `0..=N`
     /// - `self.data[start..start + N]` must be initialized.
+    #[inline]
     unsafe fn as_array_ref(&self, start: usize) -> &[T; N] {
         debug_assert!(start + N <= 2 * N);
 
@@ -237,26 +240,33 @@ impl<T, const N: usize> RawBuffer<T, N> {
 
 impl<T: Clone, const N: usize> Clone for Buffer<T, N> {
     fn clone(&self) -> Self {
-        let mut new_raw = RawBuffer {
-            data: [
-                [const { MaybeUninit::<T>::uninit() }; N],
-                [const { MaybeUninit::<T>::uninit() }; N],
-            ],
-        };
+        let mut md = ManuallyDrop::new(Buffer {
+            // INVARIANT: the `Buffer` is transiently wrapped in ManuallyDrop so
+            // the it is never actually dropped.
+            buffer: RawBuffer {
+                data: [
+                    [const { MaybeUninit::<T>::uninit() }; N],
+                    [const { MaybeUninit::<T>::uninit() }; N],
+                ],
+            },
+            // INVARIANT: our invariants guarantee `self.start` was within bounds,
+            // so this must be too.
+            start: self.start,
+        });
 
-        // SAFETY: invariants of a well-formed `Buffer` guarantee N elements
-        // starting at `start` are initialized.
-        let init = unsafe { self.buffer.as_array_ref(self.start) };
-        let cloned = init.clone();
-
-        // SAFETY: new_raw is currently fully uninitialized, which does not
+        // SAFETY: `md.buffer` is currently fully uninitialized, which can not
         // overlap with any initialized part.
-        unsafe { new_raw.as_uninit_array_mut(self.start).write(cloned) };
+        // Further, `self`'s invariants guarantee N elements starting at
+        // `self.start` are initialized within `self.buffer`.
+        unsafe {
+            md.buffer.as_uninit_array_mut(self.start).write(
+                // if clone starts unwinding, the `Buffer` is not dropped due
+                // to being inside a ManuallyDrop.
+                self.buffer.as_array_ref(self.start).clone(),
+            );
+        }
 
-        // SAFETY: new_raw has just been initialized above at the offset `self.start`,
-        // and the invariants of a well-formed `Buffer` guarantee `self.start` is within
-        // the bounds `0..=N`.
-        unsafe { Self::new(new_raw, self.start) }
+        ManuallyDrop::into_inner(md)
     }
 }
 
