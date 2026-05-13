@@ -122,15 +122,18 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> 
             let (usages_to_be_processed, record_fields, use_stmts_to_be_inserted) =
                 module.get_usages_and_record_fields(ctx, module_text_range);
 
+            let make = SyntaxFactory::without_mappings();
+
             builder.edit_file(ctx.vfs_file_id());
             use_stmts_to_be_inserted.into_iter().for_each(|(_, use_stmt)| {
                 builder.insert(ctx.selection_trimmed().end(), format!("\n{use_stmt}"));
             });
 
-            let import_items = module.resolve_imports(curr_parent_module, ctx);
-            module.change_visibility(record_fields);
+            let import_items = module.resolve_imports(curr_parent_module, ctx, &make);
+            module.change_visibility(record_fields, &make);
 
-            let module_def = generate_module_def(&impl_parent, &module).indent(old_item_indent);
+            let module_def =
+                generate_module_def(&impl_parent, &module, &make).indent(old_item_indent);
 
             let mut usages_to_be_processed_for_cur_file = vec![];
             for (file_id, usages) in usages_to_be_processed {
@@ -186,6 +189,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> 
 fn generate_module_def(
     parent_impl: &Option<ast::Impl>,
     Module { name, body_items, use_items }: &Module,
+    make: &SyntaxFactory,
 ) -> ast::Module {
     let items: Vec<_> = if let Some(impl_) = parent_impl.as_ref()
         && let Some(self_ty) = impl_.self_ty()
@@ -196,11 +200,15 @@ fn generate_module_def(
             .filter_map(ast::AssocItem::cast)
             .map(|it| it.indent(IndentLevel(1)))
             .collect_vec();
-        let assoc_item_list = make::assoc_item_list(Some(assoc_items)).clone_for_update();
-        let impl_ = impl_.reset_indent();
-        ted::replace(impl_.get_or_create_assoc_item_list().syntax(), assoc_item_list.syntax());
+        let impl_reset = impl_.reset_indent();
+        let (editor, impl_root) = SyntaxEditor::with_ast_node(&impl_reset);
+        let assoc_item_list = editor.make().assoc_item_list(assoc_items);
+        if let Some(existing_list) = impl_root.assoc_item_list() {
+            editor.replace(existing_list.syntax(), assoc_item_list.syntax());
+        }
+        let impl_ = ast::Impl::cast(editor.finish().new_root().clone()).unwrap();
         // Add the import for enum/struct corresponding to given impl block
-        let use_impl = make_use_stmt_of_node_with_super(self_ty.syntax());
+        let use_impl = make_use_stmt_of_node_with_super(self_ty.syntax(), make);
         once(use_impl)
             .chain(use_items.iter().cloned())
             .chain(once(ast::Item::Impl(impl_)))
@@ -210,19 +218,18 @@ fn generate_module_def(
     };
 
     let items = items.into_iter().map(|it| it.reset_indent().indent(IndentLevel(1))).collect_vec();
-    let module_body = make::item_list(Some(items));
-
-    let module_name = make::name(name);
-    make::mod_(module_name, Some(module_body))
+    let module_body = make.item_list(items);
+    let module_name = make.name(name);
+    make.mod_(module_name, Some(module_body))
 }
 
-fn make_use_stmt_of_node_with_super(node_syntax: &SyntaxNode) -> ast::Item {
-    let super_path = make::ext::ident_path("super");
-    let node_path = make::ext::ident_path(&node_syntax.to_string());
-    let use_ = make::use_(
+fn make_use_stmt_of_node_with_super(node_syntax: &SyntaxNode, make: &SyntaxFactory) -> ast::Item {
+    let super_path = make.ident_path("super");
+    let node_path = make.path_from_text(&node_syntax.to_string());
+    let use_ = make.use_(
+        [],
         None,
-        None,
-        make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
+        make.use_tree(make.path_concat(super_path, node_path), None, None, false),
     );
 
     ast::Item::from(use_)
@@ -386,18 +393,30 @@ impl Module {
                     if use_.syntax().parent().is_some_and(|parent| parent == covering_node)
                         && use_stmts_set.insert(use_.syntax().text_range().start())
                     {
-                        let use_ = use_stmts_to_be_inserted
-                            .entry(use_.syntax().text_range().start())
-                            .or_insert_with(|| use_.clone_subtree().clone_for_update());
-                        for seg in use_
-                            .syntax()
-                            .descendants()
-                            .filter_map(ast::NameRef::cast)
-                            .filter(|seg| seg.syntax().to_string() == name_ref.to_string())
-                        {
-                            let new_ref = make::path_from_text(&format!("{mod_name}::{seg}"))
-                                .clone_for_update();
-                            ted::replace(seg.syntax().parent()?, new_ref.syntax());
+                        let key = use_.syntax().text_range().start();
+                        let entry =
+                            use_stmts_to_be_inserted.entry(key).or_insert_with(|| use_.clone());
+                        let (editor, edit_root) = SyntaxEditor::with_ast_node(&*entry);
+                        let replacements: Vec<_> = {
+                            let make = editor.make();
+                            edit_root
+                                .syntax()
+                                .descendants()
+                                .filter_map(ast::NameRef::cast)
+                                .filter(|seg| seg.syntax().to_string() == name_ref.to_string())
+                                .filter_map(|seg| {
+                                    Some((
+                                        seg.syntax().parent()?,
+                                        make.path_from_text(&format!("{mod_name}::{seg}")),
+                                    ))
+                                })
+                                .collect()
+                        };
+                        if !replacements.is_empty() {
+                            for (parent, new_ref) in &replacements {
+                                editor.replace(parent, new_ref.syntax());
+                            }
+                            *entry = ast::Use::cast(editor.finish().new_root().clone()).unwrap();
                         }
                     }
                 }
@@ -408,18 +427,23 @@ impl Module {
         }
     }
 
-    fn change_visibility(&mut self, record_fields: Vec<SyntaxNode>) {
-        let (mut replacements, record_field_parents, impls) =
-            get_replacements_for_visibility_change(&mut self.body_items, false);
+    fn change_visibility(&mut self, record_fields: Vec<SyntaxNode>, make: &SyntaxFactory) {
+        for item in &mut self.body_items {
+            let (_, root) = SyntaxEditor::with_ast_node(&item.reset_indent());
+            *item = root;
+        }
 
-        let mut impl_items = impls
+        let (mut replacements, record_field_parents, impls) =
+            get_replacements_for_visibility_change(&self.body_items);
+
+        let impl_items = impls
             .into_iter()
             .flat_map(|impl_| impl_.syntax().descendants())
             .filter_map(ast::Item::cast)
             .collect_vec();
 
         let (mut impl_item_replacements, _, _) =
-            get_replacements_for_visibility_change(&mut impl_items, true);
+            get_replacements_for_visibility_change(&impl_items);
 
         replacements.append(&mut impl_item_replacements);
 
@@ -433,17 +457,39 @@ impl Module {
             }
         }
 
-        for (vis, syntax) in replacements {
-            let item = syntax.children_with_tokens().find(|node_or_token| {
-                match node_or_token.kind() {
-                    // We're skipping comments, doc comments, and attribute macros that may precede the keyword
-                    // that the visibility should be placed before.
-                    SyntaxKind::COMMENT | SyntaxKind::ATTR | SyntaxKind::WHITESPACE => false,
-                    _ => true,
-                }
-            });
+        for body_item in &mut self.body_items {
+            let insert_targets: Vec<_> = replacements
+                .iter()
+                .filter(|(vis, syntax)| {
+                    vis.is_none()
+                        && (syntax == body_item.syntax()
+                            || syntax.ancestors().any(|a| &a == body_item.syntax()))
+                })
+                .filter_map(|(_, syntax)| {
+                    syntax.children_with_tokens().find(|nt| {
+                        !matches!(
+                            nt.kind(),
+                            SyntaxKind::COMMENT | SyntaxKind::ATTR | SyntaxKind::WHITESPACE
+                        )
+                    })
+                })
+                .collect();
 
-            add_change_vis(vis, item);
+            if insert_targets.is_empty() {
+                continue;
+            }
+
+            let (editor, _) = SyntaxEditor::new(body_item.syntax().clone());
+            for target in insert_targets {
+                editor.insert_all(
+                    Position::before(target),
+                    vec![
+                        make.visibility_pub_crate().syntax().clone().into(),
+                        make.whitespace(" ").into(),
+                    ],
+                );
+            }
+            *body_item = ast::Item::cast(editor.finish().new_root().clone()).unwrap();
         }
     }
 
@@ -451,6 +497,7 @@ impl Module {
         &mut self,
         module: Option<ast::Module>,
         ctx: &AssistContext<'_, '_>,
+        make: &SyntaxFactory,
     ) -> Vec<TextRange> {
         let mut imports_to_remove = vec![];
         let mut node_set = FxHashSet::default();
@@ -477,7 +524,8 @@ impl Module {
                 })
                 .for_each(|(node, def)| {
                     if node_set.insert(node.to_string())
-                        && let Some(import) = self.process_def_in_sel(def, &node, &module, ctx)
+                        && let Some(import) =
+                            self.process_def_in_sel(def, &node, &module, ctx, make)
                     {
                         check_intersection_and_push(&mut imports_to_remove, import);
                     }
@@ -493,6 +541,7 @@ impl Module {
         use_node: &SyntaxNode,
         curr_parent_module: &Option<ast::Module>,
         ctx: &AssistContext<'_, '_>,
+        make: &SyntaxFactory,
     ) -> Option<TextRange> {
         //We only need to find in the current file
         let selection_range = ctx.selection_trimmed();
@@ -568,7 +617,7 @@ impl Module {
                     // mod -> ust_stmt transversal
                     // true  | false -> super import insertion
                     // true  | true -> super import insertion
-                    let super_use_node = make_use_stmt_of_node_with_super(use_node);
+                    let super_use_node = make_use_stmt_of_node_with_super(use_node, make);
                     self.use_items.insert(0, super_use_node);
                 }
                 None => {}
@@ -591,14 +640,14 @@ impl Module {
                     if !first_path_in_use_tree_str.contains("super")
                         && !first_path_in_use_tree_str.contains("crate")
                     {
-                        let super_path = make::ext::ident_path("super");
+                        let super_path = make.ident_path("super");
                         use_tree_str.push(super_path);
                     }
                 }
 
                 use_tree_paths = Some(use_tree_str);
             } else if def_in_mod && def_out_sel {
-                let super_use_node = make_use_stmt_of_node_with_super(use_node);
+                let super_use_node = make_use_stmt_of_node_with_super(use_node, make);
                 self.use_items.insert(0, super_use_node);
             }
         }
@@ -610,7 +659,7 @@ impl Module {
                 && let Some(first_path_in_use_tree) = use_tree_paths.first()
                 && first_path_in_use_tree.to_string().contains("super")
             {
-                use_tree_paths.insert(0, make::ext::ident_path("super"));
+                use_tree_paths.insert(0, make.ident_path("super"));
             }
 
             let is_item = matches!(
@@ -625,12 +674,12 @@ impl Module {
                     | Definition::TypeAlias(_)
             );
 
-            if (def_out_sel || !is_item) && use_stmt_not_in_sel {
-                let use_ = make::use_(
-                    None,
-                    None,
-                    make::use_tree(make::join_paths(use_tree_paths), None, None, false),
-                );
+            if (def_out_sel || !is_item)
+                && use_stmt_not_in_sel
+                && let Some(joined) =
+                    use_tree_paths.into_iter().reduce(|acc, p| make.path_concat(acc, p))
+            {
+                let use_ = make.use_([], None, make.use_tree(joined, None, None, false));
                 self.use_items.insert(0, ast::Item::from(use_));
             }
         }
@@ -742,8 +791,7 @@ fn check_def_in_mod_and_out_sel(
 }
 
 fn get_replacements_for_visibility_change(
-    items: &mut [ast::Item],
-    is_clone_for_updated: bool,
+    items: &[ast::Item],
 ) -> (
     Vec<(Option<ast::Visibility>, SyntaxNode)>,
     Vec<(Option<ast::Visibility>, SyntaxNode)>,
@@ -754,9 +802,6 @@ fn get_replacements_for_visibility_change(
     let mut impls = Vec::new();
 
     for item in items {
-        if !is_clone_for_updated {
-            *item = item.clone_for_update();
-        }
         //Use stmts are ignored
         macro_rules! push_to_replacement {
             ($it:ident) => {
@@ -811,15 +856,6 @@ fn get_use_tree_paths_from_path(
         })?;
 
     Some(use_tree_str)
-}
-
-fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax::SyntaxElement>) {
-    if vis.is_none()
-        && let Some(node_or_token) = node_or_token_opt
-    {
-        let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
-        ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
-    }
 }
 
 fn indent_range_before_given_node(node: &SyntaxNode) -> Option<TextRange> {
