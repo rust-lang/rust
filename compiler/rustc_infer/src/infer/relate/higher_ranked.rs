@@ -27,22 +27,11 @@ impl<'tcx> InferCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug_assert!(!binder.has_ambiguous_aliases());
-        self.enter_forall_and_leak_universe_inner(binder)
-    }
-
-    /// Same as `enter_forall_and_leak_universe`, but we allow ambiguous aliases here.
-    pub fn enter_forall_and_leak_universe_for_diagnostics<T>(
-        &self,
-        binder: ty::Binder<'tcx, T>,
-    ) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        self.enter_forall_and_leak_universe_inner(binder)
+        self.enter_forall_and_leak_universe_raw(binder)
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn enter_forall_and_leak_universe_inner<T>(&self, binder: ty::Binder<'tcx, T>) -> T
+    fn enter_forall_and_leak_universe_raw<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -96,7 +85,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // used after exiting `f`. For example region subtyping can result in outlives constraints
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
-        let value = self.enter_forall_and_leak_universe_inner(forall);
+        let value = self.enter_forall_and_leak_universe_raw(forall);
         debug!(?value);
         f(ty::UnnormalizedAmbiguous::new(value))
     }

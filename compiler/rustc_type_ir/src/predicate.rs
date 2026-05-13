@@ -656,18 +656,6 @@ impl<I: Interner> AliasTermKind<I> {
             AliasTermKind::InherentConst { def_id } => def_id.into(),
         }
     }
-
-    // Convert `AmbiguousTy` into its original kind.
-    pub fn reveal_ambiguous(self, args: I::GenericArgs) -> Self {
-        if let AliasTermKind::AmbiguousTy = self {
-            let ty::Alias(ty::AliasTy { kind, .. }) = args.type_at(0).kind() else {
-                unreachable!()
-            };
-            kind.into()
-        } else {
-            self
-        }
-    }
 }
 
 impl<I: Interner> From<ty::AliasTyKind<I>> for AliasTermKind<I> {
@@ -723,11 +711,7 @@ impl<I: Interner> AliasTerm<I> {
         kind: AliasTermKind<I>,
         args: I::GenericArgs,
     ) -> AliasTerm<I> {
-        // FIXME: skipping args compatibility check for `Ambiguous`.
-        // Should be fixed with the removal the `def_id` method .
-        if !matches!(kind, AliasTermKind::AmbiguousTy) {
-            interner.debug_assert_args_compatible(kind.def_id(), args);
-        }
+        interner.debug_assert_alias_term_args_compatible(kind, args);
         AliasTerm { kind, args, _use_alias_term_new_instead: () }
     }
 
@@ -834,26 +818,22 @@ impl<I: Interner> AliasTerm<I> {
         )
     }
 
-    fn projection_def_id(self) -> Option<I::TraitAssocTermId> {
-        match self.kind.reveal_ambiguous(self.args) {
-            AliasTermKind::ProjectionTy { def_id } => Some(def_id.into()),
-            AliasTermKind::ProjectionConst { def_id } => Some(def_id.into()),
+    fn projection_def_id(self) -> I::TraitAssocTermId {
+        match self.kind {
+            AliasTermKind::ProjectionTy { def_id } => def_id.into(),
+            AliasTermKind::ProjectionConst { def_id } => def_id.into(),
             AliasTermKind::InherentTy { .. }
             | AliasTermKind::OpaqueTy { .. }
             | AliasTermKind::FreeTy { .. }
             | AliasTermKind::UnevaluatedConst { .. }
             | AliasTermKind::FreeConst { .. }
-            | AliasTermKind::InherentConst { .. } => None,
-            AliasTermKind::AmbiguousTy => unreachable!(),
+            | AliasTermKind::InherentConst { .. }
+            | AliasTermKind::AmbiguousTy => unreachable!(),
         }
     }
 
-    fn expect_projection_def_id(self) -> I::TraitAssocTermId {
-        self.projection_def_id().expect("expected a projection")
-    }
-
     pub fn trait_def_id(self, interner: I) -> I::TraitId {
-        interner.projection_parent(self.expect_projection_def_id())
+        interner.projection_parent(self.projection_def_id())
     }
 
     /// Extracts the underlying trait reference and own args from this projection.
@@ -861,7 +841,7 @@ impl<I: Interner> AliasTerm<I> {
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
     pub fn trait_ref_and_own_args(self, interner: I) -> (TraitRef<I>, I::GenericArgsSlice) {
-        interner.trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), self.args)
+        interner.trait_ref_and_own_args_for_alias(self.projection_def_id(), self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
@@ -960,7 +940,7 @@ impl<I: Interner> ProjectionPredicate<I> {
     }
 
     pub fn def_id(self) -> I::TraitAssocTermId {
-        self.projection_term.expect_projection_def_id()
+        self.projection_term.projection_def_id()
     }
 }
 

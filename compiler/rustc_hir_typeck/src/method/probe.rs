@@ -2110,7 +2110,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             self.span,
                             BoundRegionConversionTime::FnCall,
                             poly_trait_ref,
-                            |value| value.skip_norm_wip(),
+                            |value| value.no_ambiguous_aliases(),
                         );
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);

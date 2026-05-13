@@ -422,17 +422,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function signature so that normalization does not need to deal
         // with bound regions.
         let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args);
-        let fn_sig = self.instantiate_binder_with_fresh_vars_then_fully_normalize(
+        let fn_sig = self.instantiate_unnormalized_binder_with_fresh_vars(
             obligation.cause.span,
             BoundRegionConversionTime::FnCall,
             fn_sig,
-            |sig| {
-                let InferOk { value: sig, obligations: o } =
-                    self.at(&obligation.cause, self.param_env).normalize(sig);
-                obligations.extend(o);
-                sig
-            },
         );
+        let InferOk { value: fn_sig, obligations: o } =
+            self.at(&obligation.cause, self.param_env).normalize(fn_sig);
+        obligations.extend(o);
 
         // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,

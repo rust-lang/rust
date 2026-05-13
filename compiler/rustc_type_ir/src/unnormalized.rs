@@ -7,7 +7,7 @@ use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
     Binder, BoundConstness, ClauseKind, HostEffectPredicate, Interner, PredicatePolarity,
-    TraitPredicate, TraitRef,
+    TraitPredicate, TraitRef, TypeVisitable, TypeVisitableExt,
 };
 
 /// A wrapper for values that need normalization.
@@ -148,7 +148,8 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitRef<I>>> {
     }
 }
 
-/// Like `Unnormalized`, but for value that contains unnormalized `Ambiguous` alias.
+/// Like `Unnormalized`, but for otherwise normalized values that contain
+/// unnormalized `Ambiguous` aliases.
 #[derive_where(Clone, Copy, PartialOrd, PartialEq, Debug; T)]
 pub struct UnnormalizedAmbiguous<I: Interner, T> {
     value: T,
@@ -162,13 +163,15 @@ impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
         Self { value, _tcx: PhantomData }
     }
 
-    /// FIXME: This is going to be removed in this PR.
-    pub fn skip_norm_wip(self) -> T {
-        self.value
-    }
-
     /// Only use this if it will then normalize away all ambiguous aliases.
     pub fn do_normalize(self) -> T {
+        self.value
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> UnnormalizedAmbiguous<I, T> {
+    pub fn no_ambiguous_aliases(self) -> T {
+        assert!(!self.value.has_ambiguous_aliases());
         self.value
     }
 }

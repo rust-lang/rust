@@ -94,20 +94,7 @@ impl<I: Interner> AliasTyKind<I> {
             AliasTyKind::Inherent { def_id } => def_id.into(),
             AliasTyKind::Opaque { def_id } => def_id.into(),
             AliasTyKind::Free { def_id } => def_id.into(),
-            // FIXME: in the meantime, We can `reveal_ambiguous` and call this method?
             AliasTyKind::Ambiguous => todo!("this method is expected to be removed"),
-        }
-    }
-
-    // Convert `Ambiguous` into its original kind.
-    pub fn reveal_ambiguous(self, args: I::GenericArgs) -> Self {
-        if let AliasTyKind::Ambiguous = self {
-            let ty::Alias(ty::AliasTy { kind, .. }) = args.type_at(0).kind() else {
-                unreachable!()
-            };
-            kind
-        } else {
-            self
         }
     }
 }
@@ -492,7 +479,7 @@ impl<I: Interner> Eq for AliasTy<I> {}
 
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, kind: AliasTyKind<I>, args: I::GenericArgs) -> AliasTy<I> {
-        interner.debug_assert_args_compatible(kind.def_id(), args);
+        interner.debug_assert_alias_ty_args_compatible(kind, args);
         AliasTy { kind, args, _use_alias_ty_new_instead: () }
     }
 

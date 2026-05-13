@@ -2373,12 +2373,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                         let fn_sig =
                             self.tcx.fn_sig(inherent_method.def_id).instantiate(self.tcx, args);
-                        let fn_sig = self.instantiate_binder_with_fresh_vars_then_fully_normalize(
+                        let fn_sig = self.instantiate_unnormalized_binder_with_fresh_vars(
                             item_name.span,
                             BoundRegionConversionTime::FnCall,
                             fn_sig,
-                            |sig| self.normalize(item_name.span, sig),
                         );
+                        let fn_sig = self.normalize(item_name.span, fn_sig);
                         let name = inherent_method.name();
                         let inputs = fn_sig.inputs();
                         let expected_inputs =

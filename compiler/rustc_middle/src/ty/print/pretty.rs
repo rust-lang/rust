@@ -3158,7 +3158,7 @@ define_print! {
     }
 
     ty::AliasTerm<'tcx> {
-        match self.kind(p.tcx()).reveal_ambiguous(self.args) {
+        match self.kind(p.tcx()) {
             ty::AliasTermKind::InherentTy {..} | ty::AliasTermKind::InherentConst {..} => p.pretty_print_inherent_projection(*self)?,
             ty::AliasTermKind::ProjectionTy { def_id } => {
                 if !(p.should_print_verbose() || with_reduced_queries())
@@ -3176,7 +3176,7 @@ define_print! {
             | ty::AliasTermKind::ProjectionConst { def_id } => {
                 p.print_def_path(def_id, self.args)?;
             }
-            ty::AliasTermKind::AmbiguousTy { .. } => unreachable!()
+            ty::AliasTermKind::AmbiguousTy { .. } => self.args.type_at(0).print(p)?,
         }
     }
 

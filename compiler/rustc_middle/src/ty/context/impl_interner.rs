@@ -277,6 +277,22 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.debug_assert_args_compatible(def_id, args);
     }
 
+    fn debug_assert_alias_ty_args_compatible(
+        self,
+        alias_ty: ty::AliasTyKind<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) {
+        self.debug_assert_alias_ty_args_compatible(alias_ty, args);
+    }
+
+    fn debug_assert_alias_term_args_compatible(
+        self,
+        alias_ty: ty::AliasTermKind<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) {
+        self.debug_assert_alias_term_args_compatible(alias_ty, args);
+    }
+
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`. Since we're missing a `Self` type, stick on
     /// a dummy self type and forward to `debug_assert_args_compatible`.

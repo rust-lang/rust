@@ -362,14 +362,14 @@ where
             //   normalize to that, so we have to treat it as an uncovered ty param.
             // * Otherwise it may normalize to any non-type-generic type
             //   be it local or non-local.
-            ty::Alias(ty::AliasTy { kind, args, .. }) => {
+            ty::Alias(ty::AliasTy { kind, .. }) => {
                 if ty.has_type_flags(
                     ty::TypeFlags::HAS_TY_PLACEHOLDER
                         | ty::TypeFlags::HAS_TY_BOUND
                         | ty::TypeFlags::HAS_TY_INFER,
                 ) {
                     match self.in_crate {
-                        InCrate::Local { mode } => match kind.reveal_ambiguous(args) {
+                        InCrate::Local { mode } => match kind {
                             ty::Projection { .. } => {
                                 if let OrphanCheckMode::Compat = mode {
                                     ControlFlow::Continue(())
@@ -377,7 +377,8 @@ where
                                     self.found_uncovered_ty_param(ty)
                                 }
                             }
-                            _ => self.found_uncovered_ty_param(ty),
+                            ty::Inherent { .. } |  ty::Opaque { .. } | ty::Free { .. } => self.found_uncovered_ty_param(ty),
+                            ty::AliasTyKind::Ambiguous => unreachable!(),
                         },
                         InCrate::Remote => {
                             // The inference variable might be unified with a local

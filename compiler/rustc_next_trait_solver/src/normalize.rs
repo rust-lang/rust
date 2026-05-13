@@ -195,10 +195,15 @@ where
             return Ok(ty);
         }
 
-        // With eager normalization, we should normalize the args of alias before
-        // normalizing the alias itself.
-        let ty = ty.try_super_fold_with(self)?;
-        let ty::Alias(alias_ty) = ty.kind() else { return Ok(ty) };
+        let ty = match ty.kind() {
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args, .. }) => {
+                // FIXME: long term we shouldn't ever normalize types containing ambiguous aliases,
+                // but for now we just try to renormalize the contained alias.
+                return Ok(args.type_at(0).try_fold_with(self)?);
+            }
+            ty::Alias(..) => ty.try_super_fold_with(self)?,
+            _ => return Ok(ty.try_super_fold_with(self)?),
+        };
 
         if ty.has_escaping_bound_vars() {
             let (ty, mapped_regions, mapped_types, mapped_consts) =
@@ -227,10 +232,8 @@ where
                 Ok(normalized_ty)
             }
         } else {
-            let alias =
-                if let ty::Ambiguous = alias_ty.kind { alias_ty.args.type_at(0) } else { ty };
             Ok(ensure_sufficient_stack(|| {
-                self.normalize_alias_term(alias.into(), HasEscapingBoundVars::No)
+                self.normalize_alias_term(ty.into(), HasEscapingBoundVars::No)
             })?
             .0
             .expect_ty())
@@ -272,6 +275,10 @@ where
             .0
             .expect_const())
         }
+    }
+
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
+        if p.allow_normalization() { p.try_super_fold_with(self) } else { Ok(p) }
     }
 }
 
@@ -327,14 +334,11 @@ where
         &mut self,
         t: Binder<I, T>,
     ) -> Result<Binder<I, T>, Self::Error> {
-        // We don't look into nested binders since they're not instantiated.
-        // Thus we assume we won't meet escaping bound vars as well.
-        Ok(t)
+        if t.has_ambiguous_aliases() { t.try_super_fold_with(self) } else { Ok(t) }
     }
 
     #[instrument(level = "trace", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
-        debug_assert!(!ty.has_escaping_bound_vars());
         if !ty.has_ambiguous_aliases() {
             return Ok(ty);
         }
@@ -348,8 +352,12 @@ where
         };
 
         let original_alias = args.type_at(0);
-        Ok(ensure_sufficient_stack(|| self.normalize_alias_term(original_alias.into()))?
-            .expect_ty())
+        if original_alias.has_escaping_bound_vars() {
+            Ok(original_alias)
+        } else {
+            Ok(ensure_sufficient_stack(|| self.normalize_alias_term(original_alias.into()))?
+                .expect_ty())
+        }
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -366,5 +374,14 @@ where
         // FIXME: add an new `Ambiguous` kind to `UnevaluatedConst` as well.
         // As a field or a new kind on `ConstKind`?
         Ok(ct)
+    }
+
+    fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error> {
+        if p.allow_normalization() {
+            p.try_super_fold_with(self)
+        } else {
+            assert!(!p.has_ambiguous_aliases());
+            Ok(p)
+        }
     }
 }

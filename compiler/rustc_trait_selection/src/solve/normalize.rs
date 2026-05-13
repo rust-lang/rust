@@ -174,6 +174,10 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
             self.term_to_infer(ct.into()).expect_const()
         }
     }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.allow_normalization() { p.super_fold_with(self) } else { p }
+    }
 }
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
@@ -307,5 +311,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
             Ok((ct, _)) => ct,
             Err(_) => ct.super_fold_with(self),
         }
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.allow_normalization() { p.super_fold_with(self) } else { p }
     }
 }

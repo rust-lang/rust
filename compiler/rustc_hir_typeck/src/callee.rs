@@ -586,12 +586,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // renormalize the associated types at this point, since they
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
-        let fn_sig = self.instantiate_binder_with_fresh_vars_then_fully_normalize(
+        let fn_sig = self.instantiate_unnormalized_binder_with_fresh_vars(
             call_expr.span,
             BoundRegionConversionTime::FnCall,
             fn_sig,
-            |sig| self.normalize(call_expr.span, sig),
         );
+        let fn_sig = self.normalize(call_expr.span, fn_sig);
 
         self.check_argument_types(
             call_expr.span,

@@ -3,8 +3,8 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use std::borrow::Cow;
-use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
+use std::{assert_matches, debug_assert_matches};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
@@ -478,13 +478,16 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        debug_assert_matches!(
-            (alias_ty.kind, tcx.def_kind(alias_ty.kind.def_id())),
-            (ty::Opaque { .. }, DefKind::OpaqueTy)
-                | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
-                | (ty::Free { .. }, DefKind::TyAlias)
-                | (ty::Ambiguous { .. }, DefKind::OpaqueTy | DefKind::AssocTy | DefKind::TyAlias)
-        );
+        if cfg!(debug_assertions) {
+            match alias_ty.kind {
+                ty::Opaque { def_id } => assert_matches!(tcx.def_kind(def_id), DefKind::OpaqueTy),
+                ty::Projection { def_id } | ty::Inherent { def_id } => {
+                    assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
+                }
+                ty::Free { def_id } => assert_matches!(tcx.def_kind(def_id), DefKind::TyAlias),
+                ty::Ambiguous => {}
+            }
+        }
         Ty::new(tcx, Alias(alias_ty))
     }
 

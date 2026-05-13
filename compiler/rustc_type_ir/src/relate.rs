@@ -213,7 +213,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
         a: ty::AliasTy<I>,
         b: ty::AliasTy<I>,
     ) -> RelateResult<I, ty::AliasTy<I>> {
-        if a.kind.def_id() != b.kind.def_id() {
+        if a.kind != b.kind {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(
                 a.kind.def_id(),
                 b.kind.def_id(),
@@ -236,10 +236,10 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
         a: ty::AliasTerm<I>,
         b: ty::AliasTerm<I>,
     ) -> RelateResult<I, ty::AliasTerm<I>> {
-        if a.def_id() != b.def_id() {
+        if a.kind != b.kind {
             Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id(), b.def_id())))
         } else {
-            let args = match a.kind(relation.cx()).reveal_ambiguous(a.args) {
+            let args = match a.kind(relation.cx()) {
                 ty::AliasTermKind::OpaqueTy { .. } => relate_args_with_variances(
                     relation,
                     relation.cx().variances_of(a.def_id()),
@@ -255,7 +255,10 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 | ty::AliasTermKind::ProjectionConst { .. } => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
-                ty::AliasTermKind::AmbiguousTy { .. } => unreachable!(),
+                ty::AliasTermKind::AmbiguousTy { .. } => {
+                    let nested = relation.tys(a.args.type_at(0), b.args.type_at(0))?;
+                    relation.cx().mk_args(&[nested.into()])
+                }
             };
             Ok(a.with_args(relation.cx(), args))
         }

@@ -1390,7 +1390,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
         F: FnMut(ty::UnnormalizedAmbiguous<'tcx, T>) -> T,
     {
-        let instantiated = self.instantiate_binder_with_fresh_vars(span, lbrct, value);
+        let instantiated = self.instantiate_binder_with_fresh_vars_raw(span, lbrct, value);
         renormalize_ambig(ty::UnnormalizedAmbiguous::new(instantiated))
     }
 
@@ -1403,23 +1403,20 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        debug_assert!(!value.has_ambiguous_aliases());
-        self.instantiate_binder_with_fresh_vars(span, lbrct, value)
+        assert!(!value.has_ambiguous_aliases());
+        self.instantiate_binder_with_fresh_vars_raw(span, lbrct, value)
     }
 
-    pub fn instantiate_binder_with_fresh_vars_then_fully_normalize<T, F>(
+    pub fn instantiate_unnormalized_binder_with_fresh_vars<T>(
         &self,
         span: Span,
         lbrct: BoundRegionConversionTime,
         value: ty::Unnormalized<'tcx, ty::Binder<'tcx, T>>,
-        mut normalize: F,
-    ) -> T
+    ) -> ty::Unnormalized<'tcx, T>
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
-        F: FnMut(ty::Unnormalized<'tcx, T>) -> T,
     {
-        let instantiated = value.map(|v| self.instantiate_binder_with_fresh_vars(span, lbrct, v));
-        normalize(instantiated)
+        value.map(|v| self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(span, lbrct, v))
     }
 
     // Instantiates the bound variables in a given binder with fresh inference
@@ -1429,7 +1426,7 @@ impl<'tcx> InferCtxt<'tcx> {
     // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     // that corresponds to your use case, consider whether or not you should
     // use [`InferCtxt::enter_forall`] instead.
-    fn instantiate_binder_with_fresh_vars<T>(
+    fn instantiate_binder_with_fresh_vars_raw<T>(
         &self,
         span: Span,
         lbrct: BoundRegionConversionTime,
