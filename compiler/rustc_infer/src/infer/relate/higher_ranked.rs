@@ -30,6 +30,16 @@ impl<'tcx> InferCtxt<'tcx> {
         self.enter_forall_and_leak_universe_raw(binder)
     }
 
+    pub fn enter_forall_with_ambiguous_aliases_and_leak_universe<T>(
+        &self,
+        binder: ty::Binder<'tcx, T>,
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        ty::UnnormalizedAmbiguous::new(self.enter_forall_and_leak_universe_raw(binder))
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     fn enter_forall_and_leak_universe_raw<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
