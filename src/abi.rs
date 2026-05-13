@@ -245,6 +245,8 @@ pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttri
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => return None,
+        // gcc/gccjit does not have anything for Swift's calling convention.
+        CanonAbi::Swift => panic!("gcc/gccjit backend does not support Swift calling convention"),
         CanonAbi::Arm(arm_call) => match arm_call {
             ArmCall::CCmseNonSecureCall => FnAttribute::ArmCmseNonsecureCall,
             ArmCall::CCmseNonSecureEntry => FnAttribute::ArmCmseNonsecureEntry,
