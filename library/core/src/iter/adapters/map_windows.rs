@@ -31,15 +31,27 @@ struct MapWindowsInner<I: Iterator, const N: usize> {
 }
 
 // `Buffer` uses two times of space to reduce moves among the iterations.
+struct Buffer<T, const N: usize> {
+    // Invariant: N elements starting from `self.start` must be initialized at
+    // with all other elements left uninitialized.
+    buffer: RawBuffer<T, N>,
+    // Invariant: `self.start <= N`
+    start: usize,
+}
+
+/// Internal storage for `Buffer<T, N>`.
+///
+/// Has no storage invariants, but has access invariants.
+/// See the unsafe method contracts for more information.
+///
+/// This type does not implement Drop, it will leak any data stored within.
+//
 // `Buffer<T, N>` is semantically `[MaybeUninit<T>; 2 * N]`. However, due
 // to limitations of const generics, we use this different type. Note that
 // it has the same underlying memory layout.
-struct Buffer<T, const N: usize> {
-    // Invariant: `self.buffer[self.start..self.start + N]` is initialized,
-    // with all other elements being uninitialized. This also
-    // implies that `self.start <= N`.
-    buffer: [[MaybeUninit<T>; N]; 2],
-    start: usize,
+#[repr(transparent)]
+struct RawBuffer<T, const N: usize> {
+    data: [[MaybeUninit<T>; N]; 2],
 }
 
 impl<I: Iterator, F, const N: usize> MapWindows<I, F, N> {
@@ -79,7 +91,16 @@ impl<I: Iterator, const N: usize> MapWindowsInner<I, N> {
                 Some(item) => buffer.push(item),
             },
         }
-        self.buffer.as_ref().map(Buffer::as_array_ref)
+        self.buffer.as_ref().map(|buf|
+            // SAFETY:
+            // - if this was the first time to advance, this is a new well-formed `Buffer`.
+            //
+            // - if we already had a buffer, and `iter.next()` was Some;
+            //   `Buffer::push` is responsible for upholding the invariant before we reach this.
+            //
+            // - if we already had a buffer, and `iter.next()` was None;
+            //   this closure is unreachable, as the buffer was taken beforehand.
+            unsafe { buf.buffer.as_array_ref(buf.start) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -98,37 +119,24 @@ impl<I: Iterator, const N: usize> MapWindowsInner<I, N> {
 }
 
 impl<T, const N: usize> Buffer<T, N> {
+    /// # Safety
+    ///
+    /// This type implements `Drop`, and it has invariants that must be upheld:
+    /// - `start` must be within the bounds `0..=N`.
+    /// - `raw[start..start + N]` must be initialized.
+    #[inline]
+    unsafe fn new(raw: RawBuffer<T, N>, start: usize) -> Self {
+        Self { buffer: raw, start }
+    }
+
     fn try_from_iter(iter: &mut impl Iterator<Item = T>) -> Option<Self> {
-        let first_half = crate::array::iter_next_chunk(iter).ok()?;
-        let buffer =
-            [MaybeUninit::new(first_half).transpose(), [const { MaybeUninit::uninit() }; N]];
-        Some(Self { buffer, start: 0 })
-    }
-
-    #[inline]
-    fn buffer_ptr(&self) -> *const MaybeUninit<T> {
-        self.buffer.as_ptr().cast()
-    }
-
-    #[inline]
-    fn buffer_mut_ptr(&mut self) -> *mut MaybeUninit<T> {
-        self.buffer.as_mut_ptr().cast()
-    }
-
-    #[inline]
-    fn as_array_ref(&self) -> &[T; N] {
-        debug_assert!(self.start + N <= 2 * N);
-
-        // SAFETY: our invariant guarantees these elements are initialized.
-        unsafe { &*self.buffer_ptr().add(self.start).cast() }
-    }
-
-    #[inline]
-    fn as_uninit_array_mut(&mut self) -> &mut MaybeUninit<[T; N]> {
-        debug_assert!(self.start + N <= 2 * N);
-
-        // SAFETY: our invariant guarantees these elements are in bounds.
-        unsafe { &mut *self.buffer_mut_ptr().add(self.start).cast() }
+        let first_half: [T; N] = crate::array::iter_next_chunk(iter).ok()?;
+        let raw = RawBuffer {
+            data: [MaybeUninit::new(first_half).transpose(), [const { MaybeUninit::uninit() }; N]],
+        };
+        // SAFETY: buffer has the first `first_half.len()` items initialized, which upholds the
+        // internal invariant for the start offset 0, which is also within bounds.
+        Some(unsafe { Self::new(raw, 0) })
     }
 
     /// Pushes a new item `next` to the back, and pops the front-most one.
@@ -136,7 +144,7 @@ impl<T, const N: usize> Buffer<T, N> {
     /// All the elements will be shifted to the front end when pushing reaches
     /// the back end.
     fn push(&mut self, next: T) {
-        let buffer_mut_ptr = self.buffer_mut_ptr();
+        let buffer_mut_ptr = self.buffer.as_mut_ptr();
         debug_assert!(self.start + N <= 2 * N);
 
         let to_drop = if self.start == N {
@@ -188,18 +196,67 @@ impl<T, const N: usize> Buffer<T, N> {
 
         // SAFETY: the index is valid and this is element `a` in the
         // diagram above and has not been dropped yet.
-        unsafe { ptr::drop_in_place(to_drop.cast_init()) };
+        unsafe { to_drop.cast_init().drop_in_place() };
+    }
+}
+
+impl<T, const N: usize> RawBuffer<T, N> {
+    fn as_ptr(&self) -> *const MaybeUninit<T> {
+        self.data.as_ptr().cast()
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut MaybeUninit<T> {
+        self.data.as_mut_ptr().cast()
+    }
+
+    /// # Safety
+    ///
+    /// `self.data` must uphold the internal invariants of `Buffer`:
+    /// - `start` must be within the bounds `0..=N`
+    /// - `self.data[start..start + N]` must be initialized.
+    unsafe fn as_array_ref(&self, start: usize) -> &[T; N] {
+        debug_assert!(start + N <= 2 * N);
+
+        // SAFETY: caller satisfies that `start` is within bounds.
+        unsafe { &*self.as_ptr().add(start).cast() }
+    }
+
+    /// # Safety
+    ///
+    /// `self.data` must uphold the internal invariants of `Buffer`:
+    /// - `start` must be within the bounds `0..=N`
+    /// - `self.data[start..start + N]` must not overlap with the initialized part.
+    #[inline]
+    unsafe fn as_uninit_array_mut(&mut self, start: usize) -> &mut MaybeUninit<[T; N]> {
+        debug_assert!(start + N <= 2 * N);
+
+        // SAFETY: caller satisfies that `start` is within bounds.
+        unsafe { &mut *self.as_mut_ptr().add(start).cast() }
     }
 }
 
 impl<T: Clone, const N: usize> Clone for Buffer<T, N> {
     fn clone(&self) -> Self {
-        let mut buffer = Buffer {
-            buffer: [[const { MaybeUninit::uninit() }; N], [const { MaybeUninit::uninit() }; N]],
-            start: self.start,
+        let mut new_raw = RawBuffer {
+            data: [
+                [const { MaybeUninit::<T>::uninit() }; N],
+                [const { MaybeUninit::<T>::uninit() }; N],
+            ],
         };
-        buffer.as_uninit_array_mut().write(self.as_array_ref().clone());
-        buffer
+
+        // SAFETY: invariants of a well-formed `Buffer` guarantee N elements
+        // starting at `start` are initialized.
+        let init = unsafe { self.buffer.as_array_ref(self.start) };
+        let cloned = init.clone();
+
+        // SAFETY: new_raw is currently fully uninitialized, which does not
+        // overlap with any initialized part.
+        unsafe { new_raw.as_uninit_array_mut(self.start).write(cloned) };
+
+        // SAFETY: new_raw has just been initialized above at the offset `self.start`,
+        // and the invariants of a well-formed `Buffer` guarantee `self.start` is within
+        // the bounds `0..=N`.
+        unsafe { Self::new(new_raw, self.start) }
     }
 }
 
@@ -215,15 +272,12 @@ where
 
 impl<T, const N: usize> Drop for Buffer<T, N> {
     fn drop(&mut self) {
-        // SAFETY: our invariant guarantees that N elements starting from
-        // `self.start` are initialized. We drop them here.
-        unsafe {
-            let initialized_part: *mut [T] = crate::ptr::slice_from_raw_parts_mut(
-                self.buffer_mut_ptr().add(self.start).cast(),
-                N,
-            );
-            ptr::drop_in_place(initialized_part);
-        }
+        // SAFETY: our invariant guarantees that `self.start` is within bounds
+        let init_ptr = unsafe { self.buffer.as_mut_ptr().add(self.start).cast_init() };
+
+        // SAFETY: our invariant guarantees N elements starting from
+        // `init_ptr` are initialized. We drop them here.
+        unsafe { init_ptr.cast_slice(N).drop_in_place() };
     }
 }
 
