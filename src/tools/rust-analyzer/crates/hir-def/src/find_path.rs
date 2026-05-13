@@ -177,7 +177,7 @@ fn find_path_for_module(
                 path: ModPath::from_segments(PathKind::Crate, None),
                 path_text_len: 5,
                 stability: Stable,
-                prefer_due_to_prelude: false,
+                has_prelude_segment: false,
             });
         }
         // - otherwise if the item is the crate root of a dependency crate, return the name from the extern prelude
@@ -205,7 +205,7 @@ fn find_path_for_module(
             } else {
                 PathKind::Plain
             };
-            return Some(Choice::new(ctx.cfg.prefer_prelude, kind, name.clone(), Stable));
+            return Some(Choice::new(kind, name.clone(), Stable));
         }
     }
 
@@ -223,12 +223,7 @@ fn find_path_for_module(
         );
         if let Some(scope_name) = scope_name {
             // - if the item is already in scope, return the name under which it is
-            return Some(Choice::new(
-                ctx.cfg.prefer_prelude,
-                ctx.prefix.path_kind(),
-                scope_name,
-                Stable,
-            ));
+            return Some(Choice::new(ctx.prefix.path_kind(), scope_name, Stable));
         }
     }
 
@@ -240,7 +235,7 @@ fn find_path_for_module(
             path: ModPath::from_segments(kind, None),
             path_text_len: path_kind_len(kind),
             stability: Stable,
-            prefer_due_to_prelude: false,
+            has_prelude_segment: false,
         });
     }
 
@@ -302,7 +297,7 @@ fn find_in_prelude(
         });
 
     if found_and_same_def.unwrap_or(true) {
-        Some(Choice::new(false, PathKind::Plain, name.clone(), Stable))
+        Some(Choice::new(PathKind::Plain, name.clone(), Stable))
     } else {
         None
     }
@@ -439,13 +434,7 @@ fn find_in_dep(
 
         // Determine best path for containing module and append last segment from `info`.
         // FIXME: we should guide this to look up the path locally, or from the same crate again?
-        let choice = find_path_for_module(
-            ctx,
-            visited_modules,
-            info.container,
-            true,
-            best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
-        );
+        let choice = find_path_for_module(ctx, visited_modules, info.container, true, max_len - 1);
         let Some(mut choice) = choice else {
             continue;
         };
@@ -471,15 +460,11 @@ fn calculate_best_path_local(
 ) {
     // FIXME: cache the `find_local_import_locations` output?
     find_local_import_locations(ctx, item, visited_modules, |visited_modules, name, module_id| {
-        // we are looking for paths of length up to best_path_len, any longer will make it be
-        // less optimal. The -1 is due to us pushing name onto it afterwards.
-        if let Some(choice) = find_path_for_module(
-            ctx,
-            visited_modules,
-            module_id,
-            false,
-            best_choice.as_ref().map_or(max_len, |it| it.path.len()) - 1,
-        ) {
+        // The container path may be at most `max_len - 1` segments since we push
+        // `name` on top of it.
+        if let Some(choice) =
+            find_path_for_module(ctx, visited_modules, module_id, false, max_len - 1)
+        {
             Choice::try_select(best_choice, choice, ctx.cfg.prefer_prelude, name.clone());
         }
     });
@@ -492,23 +477,23 @@ struct Choice {
     path_text_len: usize,
     /// The stability of the path
     stability: Stability,
-    /// Whether this path contains a prelude segment and preference for it has been signaled
-    prefer_due_to_prelude: bool,
+    /// Whether any segment of this path is named `prelude`
+    has_prelude_segment: bool,
 }
 
 impl Choice {
-    fn new(prefer_prelude: bool, kind: PathKind, name: Name, stability: Stability) -> Self {
+    fn new(kind: PathKind, name: Name, stability: Stability) -> Self {
         Self {
             path_text_len: path_kind_len(kind) + name.as_str().len(),
             stability,
-            prefer_due_to_prelude: prefer_prelude && name == sym::prelude,
+            has_prelude_segment: name == sym::prelude,
             path: ModPath::from_segments(kind, iter::once(name)),
         }
     }
 
-    fn push(mut self, prefer_prelude: bool, name: Name) -> Self {
+    fn push(mut self, name: Name) -> Self {
         self.path_text_len += name.as_str().len();
-        self.prefer_due_to_prelude |= prefer_prelude && name == sym::prelude;
+        self.has_prelude_segment |= name == sym::prelude;
         self.path.push_segment(name);
         self
     }
@@ -520,13 +505,19 @@ impl Choice {
         name: Name,
     ) {
         let Some(current) = current else {
-            *current = Some(other.push(prefer_prelude, name));
+            *current = Some(other.push(name));
             return;
         };
         match other
             .stability
             .cmp(&current.stability)
-            .then_with(|| other.prefer_due_to_prelude.cmp(&current.prefer_due_to_prelude))
+            .then_with(|| {
+                if prefer_prelude {
+                    other.has_prelude_segment.cmp(&current.has_prelude_segment)
+                } else {
+                    current.has_prelude_segment.cmp(&other.has_prelude_segment)
+                }
+            })
             .then_with(|| (current.path.len()).cmp(&(other.path.len() + 1)))
         {
             Ordering::Less => return,
@@ -684,7 +675,7 @@ mod tests {
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
         let mod_path = ModPath::from_src(&db, ast_path, &mut |range| {
-            db.span_map(pos.file_id.into()).as_ref().span_for_range(range).ctx
+            db.span_map(pos.file_id.into()).span_for_range(range).ctx
         })
         .unwrap();
 
@@ -2017,6 +2008,50 @@ pub mod foo {
                 BySelf (imports ✖): krate::foo::Foo
             "#]],
         );
+        check_found_path_prelude(
+            ra_fixture,
+            "krate::prelude::Foo",
+            expect![[r#"
+                Plain  (imports ✔): krate::prelude::Foo
+                Plain  (imports ✖): krate::prelude::Foo
+                ByCrate(imports ✔): krate::prelude::Foo
+                ByCrate(imports ✖): krate::prelude::Foo
+                BySelf (imports ✔): krate::prelude::Foo
+                BySelf (imports ✖): krate::prelude::Foo
+            "#]],
+        );
+    }
+
+    #[test]
+    fn avoids_prelude_when_prefer_prelude_false() {
+        let ra_fixture = r#"
+//- /main.rs crate:main deps:krate
+$0
+//- /krate.rs crate:krate
+pub mod prelude {
+    pub use crate::module::sub::*;
+}
+pub mod module {
+    pub mod sub {
+        pub struct Foo;
+    }
+}
+"#;
+        // krate::prelude::Foo (3 segs) is shorter than krate::module::sub::Foo (4 segs),
+        // but prefer_prelude=false should pick the longer canonical path.
+        check_found_path(
+            ra_fixture,
+            "krate::module::sub::Foo",
+            expect![[r#"
+                Plain  (imports ✔): krate::module::sub::Foo
+                Plain  (imports ✖): krate::module::sub::Foo
+                ByCrate(imports ✔): krate::module::sub::Foo
+                ByCrate(imports ✖): krate::module::sub::Foo
+                BySelf (imports ✔): krate::module::sub::Foo
+                BySelf (imports ✖): krate::module::sub::Foo
+            "#]],
+        );
+        // prefer_prelude=true should still pick the shorter prelude path.
         check_found_path_prelude(
             ra_fixture,
             "krate::prelude::Foo",

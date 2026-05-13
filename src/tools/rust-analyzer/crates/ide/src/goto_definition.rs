@@ -95,6 +95,11 @@ pub(crate) fn goto_definition(
             continue;
         }
 
+        if let Some(n) = find_definition_for_comparison_operators(sema, &token.value) {
+            navs.extend(n);
+            continue;
+        }
+
         let parent = token.value.parent()?;
 
         if let Some(question_mark_conversion) = goto_question_mark_conversions(sema, &parent) {
@@ -264,6 +269,62 @@ fn find_definition_for_known_blanket_dual_impls(
     Some(def_to_nav(sema, def))
 }
 
+// If the token is a comparison operator (!=, <, <=, >, >=) that resolves to a default trait method, navigate to the corresponding primary method (eq for ne, partial_cmp for the others).
+fn find_definition_for_comparison_operators(
+    sema: &Semantics<'_, RootDatabase>,
+    original_token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let bin_expr = ast::BinExpr::cast(original_token.parent()?)?;
+
+    let f = sema.resolve_bin_expr(&bin_expr)?;
+    let assoc = f.as_assoc_item(sema.db)?;
+
+    let lhs_type = sema.type_of_expr(&bin_expr.lhs()?)?.original;
+    let rhs_type = sema.type_of_expr(&bin_expr.rhs()?)?.original;
+
+    let t = match assoc.container(sema.db) {
+        hir::AssocItemContainer::Trait(t) => t,
+        hir::AssocItemContainer::Impl(_) => return None, // Already implemented by the type
+    };
+
+    let fn_name = f.name(sema.db);
+    let fn_name_str = fn_name.as_str();
+
+    let trait_name = t.name(sema.db);
+    let trait_name_str = trait_name.as_str();
+
+    let (target_fn_name, expected_trait) = match fn_name_str {
+        "ne" => ("eq", "PartialEq"),
+        "lt" | "le" | "gt" | "ge" => ("partial_cmp", "PartialOrd"),
+        _ => return None,
+    };
+
+    if trait_name_str != expected_trait {
+        return None;
+    }
+
+    let primary_f = t.items(sema.db).into_iter().find_map(|item| {
+        if let hir::AssocItem::Function(func) = item
+            && func.name(sema.db).as_str() == target_fn_name
+        {
+            return Some(func);
+        }
+        None
+    })?;
+
+    // Chalk requires ALL trait substitutions, including `Self`!
+    // We must pass [Self, Rhs]
+    let resolved_f = sema.resolve_trait_impl_method(
+        lhs_type.clone(),
+        t,
+        primary_f,
+        [lhs_type.clone(), rhs_type.clone()],
+    )?;
+
+    let def = Definition::from(resolved_f);
+
+    Some(def_to_nav(sema, def))
+}
 fn try_lookup_include_path(
     sema: &Semantics<'_, RootDatabase>,
     token: InFile<ast::String>,
@@ -4097,6 +4158,26 @@ fn foo() -> Result<(), Bar> {
     Ok(())
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn goto_definition_for_comparison_operators() {
+        check(
+            r#"
+//- minicore: eq, ord
+struct Foo;
+impl PartialEq for Foo {
+    fn eq(&self, other: &Self) -> bool { true }
+     //^^
+}
+
+fn main() {
+    let a = Foo;
+    let b = Foo;
+    let _ = a !=$0 b;
+}
+"#,
         );
     }
 }

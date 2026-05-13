@@ -3736,6 +3736,29 @@ fn doctest_unwrap_block() {
         "unwrap_block",
         r#####"
 fn foo() {
+    match () {
+        _ => {$0
+            bar()
+        }
+    }
+}
+"#####,
+        r#####"
+fn foo() {
+    match () {
+        _ => bar(),
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_unwrap_branch() {
+    check_doc_test(
+        "unwrap_branch",
+        r#####"
+fn foo() {
     if true {$0
         println!("foo");
     }

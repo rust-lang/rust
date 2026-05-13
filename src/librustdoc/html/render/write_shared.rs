@@ -165,7 +165,7 @@ fn write_rendered_cross_crate_info(
     resource_suffix: &str,
 ) -> Result<(), Error> {
     let m = &opt.should_merge;
-    if opt.should_emit_crate() {
+    if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
         if include_sources {
             write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, crates, m)?;
         }
@@ -190,7 +190,7 @@ fn write_resources(
     css_file_extension: Option<&Path>,
     resource_suffix: &str,
 ) -> Result<(), Error> {
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
+    if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
         // Handle added third-party themes
         for entry in style_files {
             let theme = entry.basename()?;
@@ -218,7 +218,7 @@ fn write_resources(
         }
     }
 
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlStaticFiles) {
+    if opt.emit.contains(&EmitType::HtmlStaticFiles) {
         let static_dir = dst.join("static.files");
         try_err!(fs::create_dir_all(&static_dir), &static_dir);
 

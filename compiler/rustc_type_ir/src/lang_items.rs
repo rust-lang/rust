@@ -1,5 +1,6 @@
 /// Lang items used by the new trait solver. This can be mapped to whatever internal
 /// representation of `LangItem`s used in the underlying compiler implementation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverProjectionLangItem {
     // tidy-alphabetical-start
     AsyncFnKindUpvars,
@@ -15,6 +16,7 @@ pub enum SolverProjectionLangItem {
     // tidy-alphabetical-end
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverAdtLangItem {
     // tidy-alphabetical-start
     DynMetadata,
@@ -23,6 +25,7 @@ pub enum SolverAdtLangItem {
     // tidy-alphabetical-end
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolverTraitLangItem {
     // tidy-alphabetical-start
     AsyncFn,

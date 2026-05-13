@@ -1,8 +1,9 @@
 use hir::next_solver::{DbInterner, TypingMode};
 use hir::{HasCrate, ModuleDef, Semantics};
+use ide_db::use_trivial_constructor::use_trivial_constructor_with_factory;
 use ide_db::{
-    RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast,
-    imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
+    RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast_with_factory,
+    imports::import_assets::item_for_path_search,
 };
 use syntax::syntax_editor::{Position, SyntaxEditor};
 use syntax::{
@@ -46,7 +47,7 @@ use crate::{
 // ```
 pub(crate) fn generate_single_field_struct_from(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let strukt_name = ctx.find_node_at_offset::<ast::Name>()?;
     let adt = ast::Adt::cast(strukt_name.syntax().parent()?)?;
@@ -86,7 +87,7 @@ pub(crate) fn generate_single_field_struct_from(
             let indent = strukt.indent_level();
             let ty_where_clause = strukt.where_clause();
             let type_gen_params = strukt.generic_param_list();
-            let type_gen_args = type_gen_params.as_ref().map(|params| params.to_generic_args());
+            let type_gen_args = type_gen_params.as_ref().map(|params| params.to_generic_args(make));
             let trait_gen_args = Some(make.generic_arg_list(
                 [ast::GenericArg::TypeArg(make.type_arg(main_field_ty.clone()))],
                 false,
@@ -178,7 +179,7 @@ fn make_adt_constructor(
 }
 
 fn make_constructors(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     module: hir::Module,
     types: &[ast::Type],
 ) -> Vec<Option<ast::Expr>> {
@@ -197,7 +198,13 @@ fn make_constructors(
 
             let ty_path = module.find_path(db, item_for_path_search(db, item_in_ns)?, cfg)?;
 
-            use_trivial_constructor(db, mod_path_to_ast(&ty_path, edition), &ty, edition)
+            use_trivial_constructor_with_factory(
+                &make,
+                db,
+                mod_path_to_ast_with_factory(&make, &ty_path, edition),
+                &ty,
+                edition,
+            )
         })
         .collect()
 }

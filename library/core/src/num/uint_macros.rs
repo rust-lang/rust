@@ -777,13 +777,9 @@ macro_rules! uint_impl {
         #[must_use]
         #[inline(always)]
         pub const fn from_be(x: Self) -> Self {
-            #[cfg(target_endian = "big")]
-            {
-                x
-            }
-            #[cfg(not(target_endian = "big"))]
-            {
-                x.swap_bytes()
+            cfg_select! {
+                target_endian = "big" => x,
+                _ => x.swap_bytes(),
             }
         }
 
@@ -808,13 +804,9 @@ macro_rules! uint_impl {
         #[must_use]
         #[inline(always)]
         pub const fn from_le(x: Self) -> Self {
-            #[cfg(target_endian = "little")]
-            {
-                x
-            }
-            #[cfg(not(target_endian = "little"))]
-            {
-                x.swap_bytes()
+            cfg_select! {
+                target_endian = "little" => x,
+                _ => x.swap_bytes(),
             }
         }
 
@@ -840,13 +832,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn to_be(self) -> Self { // or not to be?
-            #[cfg(target_endian = "big")]
-            {
-                self
-            }
-            #[cfg(not(target_endian = "big"))]
-            {
-                self.swap_bytes()
+            cfg_select! {
+                target_endian = "big" => self,
+                _ => self.swap_bytes(),
             }
         }
 
@@ -872,13 +860,9 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn to_le(self) -> Self {
-            #[cfg(target_endian = "little")]
-            {
-                self
-            }
-            #[cfg(not(target_endian = "little"))]
-            {
-                self.swap_bytes()
+            cfg_select! {
+                target_endian = "little" => self,
+                _ => self.swap_bytes(),
             }
         }
 
@@ -4220,13 +4204,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
+        /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(120u8, 120", stringify!($SelfT), ".truncate());")]
         /// assert_eq!(120u8, 376u32.truncate());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
         pub const fn truncate<Target>(self) -> Target
             where Self: [const] traits::TruncateTarget<Target>
@@ -4240,13 +4224,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
+        /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(120u8, 120", stringify!($SelfT), ".saturating_truncate());")]
         /// assert_eq!(255u8, 376u32.saturating_truncate());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
         pub const fn saturating_truncate<Target>(self) -> Target
             where Self: [const] traits::TruncateTarget<Target>
@@ -4260,13 +4244,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
+        /// #![feature(integer_widen_truncate)]
         #[doc = concat!("assert_eq!(Some(120u8), 120", stringify!($SelfT), ".checked_truncate());")]
         /// assert_eq!(None, 376u32.checked_truncate::<u8>());
         /// ```
         #[must_use = "this returns the truncated value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
         pub const fn checked_truncate<Target>(self) -> Option<Target>
             where Self: [const] traits::TruncateTarget<Target>
@@ -4274,22 +4258,22 @@ macro_rules! uint_impl {
             traits::TruncateTarget::internal_checked_truncate(self)
         }
 
-        /// Extend to an integer of the same size or larger, preserving its value.
+        /// Widen to an integer of the same size or larger, preserving its value.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(integer_extend_truncate)]
-        #[doc = concat!("assert_eq!(120u128, 120u8.extend());")]
+        /// #![feature(integer_widen_truncate)]
+        #[doc = concat!("assert_eq!(120u128, 120u8.widen());")]
         /// ```
-        #[must_use = "this returns the extended value and does not modify the original"]
-        #[unstable(feature = "integer_extend_truncate", issue = "154330")]
-        #[rustc_const_unstable(feature = "integer_extend_truncate", issue = "154330")]
+        #[must_use = "this returns the widened value and does not modify the original"]
+        #[unstable(feature = "integer_widen_truncate", issue = "154330")]
+        #[rustc_const_unstable(feature = "integer_widen_truncate", issue = "154330")]
         #[inline]
-        pub const fn extend<Target>(self) -> Target
-            where Self: [const] traits::ExtendTarget<Target>
+        pub const fn widen<Target>(self) -> Target
+            where Self: [const] traits::WidenTarget<Target>
         {
-            traits::ExtendTarget::internal_extend(self)
+            traits::WidenTarget::internal_widen(self)
         }
     }
 }

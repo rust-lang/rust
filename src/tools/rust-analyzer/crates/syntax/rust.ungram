@@ -748,6 +748,10 @@ Pat =
 | TuplePat
 | TupleStructPat
 | ConstBlockPat
+| DerefPat
+
+DerefPat =
+    'builtin' '#' 'deref' '(' Pat ')'
 
 LiteralPat =
   '-'? Literal

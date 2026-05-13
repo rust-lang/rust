@@ -72,7 +72,7 @@ check_only = ["libffi?/check_only", "capstone?/check_only", "genmc-sys?/check_on
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(bootstrap)']
+check-cfg = ['cfg(bootstrap)', 'cfg(target_has_reliable_f16_math)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

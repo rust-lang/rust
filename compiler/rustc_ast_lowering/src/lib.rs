@@ -45,7 +45,7 @@ use rustc_attr_parsing::{AttributeParser, OmitDoc, Recovery, ShouldEmit};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
@@ -159,6 +159,11 @@ struct LoweringContext<'a, 'hir> {
 
     delayed_lints: Vec<DelayedLint>,
 
+    /// Stack of `move(...)` collection states. A plain closure body pushes
+    /// `Some`, so `move(...)` expressions can record the generated locals they
+    /// should lower to. Nested bodies that cannot use `move(...)` push `None`.
+    move_expr_bindings: Vec<Option<expr::MoveExprState<'hir>>>,
+
     attribute_parser: AttributeParser<'hir>,
 }
 
@@ -216,6 +221,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
+            move_expr_bindings: Vec::new(),
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),

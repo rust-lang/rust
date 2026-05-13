@@ -202,3 +202,52 @@ cfg_select! {
     //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `!`
     //~| WARN unexpected `cfg` condition name
 }
+
+// Regression test for https://github.com/rust-lang/rust/issues/155701.
+cfg_select! {
+    /// doc comment
+    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    debug_assertions => {}
+    /// doc comment
+    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    _ => {}
+}
+
+cfg_select! {
+    #[cfg(false)]
+    //~^ ERROR attributes are not allowed on `cfg_select` branches
+    debug_assertions => {}
+    _ => {}
+}
+
+cfg_select! {
+    #![cfg(false)]
+    //~^ ERROR an inner attribute is not permitted in this context
+    debug_assertions => {}
+    _ => {}
+}
+
+cfg_select! {
+    //! inner doc comment
+    //~^ ERROR expected outer doc comment
+    debug_assertions => {}
+    _ => {}
+}
+
+cfg_select! {
+    debug_assertions => {}
+    /// line1
+    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    // line2
+    /// line3
+    _ => {}
+}
+
+cfg_select! {
+    /// outer doc comment
+    //~^ ERROR doc comments are not allowed on `cfg_select` branches
+    //! inner doc comment
+    //~^ ERROR expected outer doc comment
+    debug_assertions => {}
+    _ => {}
+}

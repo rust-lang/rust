@@ -432,7 +432,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+            ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
                 arm_block_id,
                 arm_span,
                 arm_ty,
@@ -1910,9 +1910,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
         let code = trace.cause.code();
-        if let &(ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-            source,
-            ..
+        if let &(ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause {
+            source, ..
         })
         | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
@@ -2302,14 +2301,14 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
                 ObligationCauseFailureCode::TryCompat { span, subdiags }
             }
-            ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                source, ..
-            }) => match source {
-                hir::MatchSource::TryDesugar(_) => {
-                    ObligationCauseFailureCode::TryCompat { span, subdiags }
+            ObligationCauseCode::MatchExpressionArm(MatchExpressionArmCause { source, .. }) => {
+                match source {
+                    hir::MatchSource::TryDesugar(_) => {
+                        ObligationCauseFailureCode::TryCompat { span, subdiags }
+                    }
+                    _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },
                 }
-                _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },
-            },
+            }
             ObligationCauseCode::IfExpression { .. } => {
                 ObligationCauseFailureCode::IfElseDifferent { span, subdiags }
             }

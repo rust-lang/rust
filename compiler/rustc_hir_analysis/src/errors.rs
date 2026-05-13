@@ -1986,3 +1986,35 @@ pub(crate) struct EiiDefkindMismatchStaticSafety {
     pub span: Span,
     pub eii_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("conflicting implementations of `Drop::drop` and `Drop::pin_drop`")]
+pub(crate) struct ConflictImplDropAndPinDrop {
+    #[primary_span]
+    pub span: Span,
+    #[label("`drop(&mut self)` implemented here")]
+    pub drop_span: Span,
+    #[label("`pin_drop(&pin mut self)` implemented here")]
+    pub pin_drop_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$adt_name}` must implement `pin_drop`")]
+#[help("structurally pinned types must keep `Pin`'s safety contract")]
+pub(crate) struct PinV2WithoutPinDrop {
+    #[primary_span]
+    #[suggestion(
+        "implement `pin_drop` instead",
+        code = "fn pin_drop(&pin mut self)",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+    #[note("`{$adt_name}` is marked `#[pin_v2]` here")]
+    #[suggestion(
+        "remove the `#[pin_v2]` attribute if it is not intended for structurally pinning",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub pin_v2_span: Option<Span>,
+    pub adt_name: Symbol,
+}

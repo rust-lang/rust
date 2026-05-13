@@ -45,18 +45,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
         self.check_activations(location);
 
         match &statement.kind {
-            StatementKind::Assign(box (lhs, rhs)) => {
+            StatementKind::Assign((lhs, rhs)) => {
                 self.consume_rvalue(location, rhs);
 
                 self.mutate_place(location, *lhs, Shallow(None));
             }
-            StatementKind::FakeRead(box (_, _)) => {
+            StatementKind::FakeRead((_, _)) => {
                 // Only relevant for initialized/liveness/safety checks.
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+            StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => {
                 self.consume_operand(location, op);
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                 src,
                 dst,
                 count,
@@ -324,7 +324,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (operand1, operand2)) => {
+            Rvalue::BinaryOp(_bin_op, (operand1, operand2)) => {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }

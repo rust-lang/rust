@@ -14,20 +14,21 @@ use hir_def::{
     },
     resolver::ValueNs,
 };
-use rustc_ast_ir::{try_visit, visit::VisitorResult};
-use rustc_type_ir::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
-    inherent::{AdtDef, IntoKind, Ty as _},
-};
+use macros::{TypeFoldable, TypeVisitable};
+use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use smallvec::{SmallVec, smallvec};
+use stdx::impl_from;
 use syntax::ast::{BinaryOp, UnaryOp};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, BindingMode,
-    infer::{CaptureSourceStack, InferenceContext, UpvarCapture, closure::analysis::BorrowKind},
+    Adjust, Adjustment, AutoBorrow, Span,
+    infer::{
+        ByRef, CaptureSourceStack, DerefPatBorrowMode, InferenceContext, PatAdjust, PatAdjustment,
+        UpvarCapture, closure::analysis::BorrowKind,
+    },
     method_resolution::CandidateId,
-    next_solver::{DbInterner, ErrorGuaranteed, StoredTy, Ty, TyKind},
+    next_solver::{ErrorGuaranteed, StoredTy, Ty, TyKind},
     upvars::UpvarsRef,
     utils::EnumerateAndAdjustIterator,
 };
@@ -69,12 +70,13 @@ pub enum PlaceBase {
     Upvar { closure: ExprId, var_id: BindingId },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub struct Projection {
     /// Type after the projection is applied.
     pub ty: StoredTy,
 
     /// Defines the kind of access made by the projection.
+    #[type_visitable(ignore)]
     pub kind: ProjectionKind,
 }
 
@@ -82,59 +84,15 @@ pub struct Projection {
 /// always correspond to a syntactic place expression. For example, when
 /// processing a pattern, a `Place` can be used to refer to the sub-value
 /// currently being inspected.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
 pub struct Place {
     /// The type of the `PlaceBase`
     pub base_ty: StoredTy,
     /// The "outermost" place that holds this value.
+    #[type_visitable(ignore)]
     pub base: PlaceBase,
     /// How this place is derived from the base place.
     pub projections: Vec<Projection>,
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for Place {
-    fn visit_with<V: TypeVisitor<DbInterner<'db>>>(&self, visitor: &mut V) -> V::Result {
-        let Self { base_ty, base: _, projections } = self;
-        try_visit!(base_ty.as_ref().visit_with(visitor));
-        for proj in projections {
-            let Projection { ty, kind: _ } = proj;
-            try_visit!(ty.as_ref().visit_with(visitor));
-        }
-        V::Result::output()
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for Place {
-    fn try_fold_with<F: FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        let Self { base_ty, base, projections } = self;
-        let base_ty = base_ty.as_ref().try_fold_with(folder)?.store();
-        let projections = projections
-            .into_iter()
-            .map(|proj| {
-                let Projection { ty, kind } = proj;
-                let ty = ty.as_ref().try_fold_with(folder)?.store();
-                Ok(Projection { ty, kind })
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(Self { base_ty, base, projections })
-    }
-
-    fn fold_with<F: TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        let Self { base_ty, base, projections } = self;
-        let base_ty = base_ty.as_ref().fold_with(folder).store();
-        let projections = projections
-            .into_iter()
-            .map(|proj| {
-                let Projection { ty, kind } = proj;
-                let ty = ty.as_ref().fold_with(folder).store();
-                Projection { ty, kind }
-            })
-            .collect();
-        Self { base_ty, base, projections }
-    }
 }
 
 impl Place {
@@ -212,6 +170,13 @@ impl PlaceWithOrigin {
         self.place.projections.push(projection);
         for origin_stack in &mut self.origins {
             origin_stack.push(origin);
+        }
+    }
+
+    pub(crate) fn span(&self) -> Span {
+        match self.origins.first() {
+            Some(origin) => origin.final_source().into(),
+            None => Span::Dummy,
         }
     }
 }
@@ -446,14 +411,6 @@ pub(crate) struct ExprUseVisitor<'a, 'b, 'db, D: Delegate<'db>> {
     upvars: UpvarsRef<'db>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PatWalkMode {
-    /// `let`, `match`.
-    Declaration,
-    /// Destructuring assignment.
-    Assignment,
-}
-
 impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
     /// Creates the ExprUseVisitor, configuring it with the various options provided:
     ///
@@ -477,7 +434,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
             let param_place = self.cat_rvalue(param.into(), param_ty);
 
             self.fake_read_scrutinee(param_place.clone(), false);
-            self.walk_pat(param_place, param, false, PatWalkMode::Declaration)?;
+            self.walk_pat(param_place, param, false)?;
         }
 
         self.consume_expr(body)?;
@@ -518,7 +475,6 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
         Ok(())
     }
 
-    // FIXME: It's suspicious that this is public; clippy should probably use `walk_expr`.
     #[instrument(skip(self), level = "debug")]
     pub(crate) fn consume_expr(&mut self, expr: ExprId) -> Result {
         let place_with_id = self.cat_expr(expr)?;
@@ -700,8 +656,8 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                 self.walk_expr(value)?;
                 let expr_place = self.cat_expr(value)?;
                 let update_guard =
-                    self.cx.resolver.update_to_inner_scope(self.cx.db, self.cx.owner, expr);
-                self.walk_pat(expr_place, target, false, PatWalkMode::Assignment)?;
+                    self.cx.resolver.update_to_inner_scope(self.cx.db, self.cx.store_owner, expr);
+                self.walk_pat(expr_place, target, false)?;
                 self.cx.resolver.reset_to_guard(update_guard);
             }
 
@@ -784,7 +740,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
         let expr_place = self.cat_expr(expr)?;
         f(self)?;
         self.fake_read_scrutinee(expr_place.clone(), els.is_some());
-        self.walk_pat(expr_place, pat, false, PatWalkMode::Declaration)?;
+        self.walk_pat(expr_place, pat, false)?;
         if let Some(els) = els {
             self.walk_expr(els)?;
         }
@@ -803,9 +759,9 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match self.cx.table.structurally_resolve_type(with_place.place.ty()).kind() {
+        match self.cx.structurally_resolve_type(with_expr.into(), with_place.place.ty()).kind() {
             TyKind::Adt(adt, args) if adt.is_struct() => {
-                let AdtId::StructId(adt) = adt.def_id().0 else { unreachable!() };
+                let AdtId::StructId(adt) = adt.def_id() else { unreachable!() };
                 let adt_fields = VariantId::from(adt).fields(self.cx.db).fields();
                 let adt_field_types = self.cx.db.field_types(adt.into());
                 // Consume those fields of the with expression that are needed.
@@ -815,7 +771,10 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                         let field_place = self.cat_projection(
                             with_expr.into(),
                             with_place.clone(),
-                            adt_field_types[f_index].get().instantiate(self.cx.interner(), args),
+                            adt_field_types[f_index]
+                                .get()
+                                .instantiate(self.cx.interner(), args)
+                                .skip_norm_wip(),
                             ProjectionKind::Field {
                                 field_idx: f_index.into_raw().into_u32(),
                                 variant_idx: 0,
@@ -838,6 +797,11 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
     fn expr_adjustments(&self, expr: ExprId) -> SmallVec<[Adjustment; 5]> {
         // Due to borrowck problems, we cannot borrow the adjustments, unfortunately.
         self.cx.result.expr_adjustment(expr).unwrap_or_default().into()
+    }
+
+    fn pat_adjustments(&self, pat: PatId) -> SmallVec<[PatAdjustment; 5]> {
+        // Due to borrowck problems, we cannot borrow the adjustments, unfortunately.
+        self.cx.result.pat_adjustment(pat).unwrap_or_default().into()
     }
 
     /// Invoke the appropriate delegate calls for anything that gets
@@ -896,7 +860,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
     }
 
     fn walk_arm(&mut self, discr_place: PlaceWithOrigin, arm: &MatchArm) -> Result {
-        self.walk_pat(discr_place, arm.pat, arm.guard.is_some(), PatWalkMode::Declaration)?;
+        self.walk_pat(discr_place, arm.pat, arm.guard.is_some())?;
 
         if let Some(e) = arm.guard {
             self.consume_expr(e)?;
@@ -920,14 +884,33 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
     /// Do note that discrepancies like these do still create obscure corners
     /// in the semantics of the language, and should be avoided if possible.
     #[instrument(skip(self), level = "debug")]
-    fn walk_pat(
-        &mut self,
-        discr_place: PlaceWithOrigin,
-        pat: PatId,
-        has_guard: bool,
-        mode: PatWalkMode,
-    ) -> Result {
+    fn walk_pat(&mut self, discr_place: PlaceWithOrigin, pat: PatId, has_guard: bool) -> Result {
         self.cat_pattern(discr_place.clone(), pat, &mut |this, place, pat| {
+            let walk_deref_pat = |this: &mut Self, subpattern: PatId, place: PlaceWithOrigin| {
+                // A deref pattern is a bit special: the binding mode of its inner bindings
+                // determines whether to borrow *at the level of the deref pattern* rather than
+                // borrowing the bound place (since that inner place is inside the temporary that
+                // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
+                // Deref patterns on boxes don't borrow, so we ignore them here.
+                // HACK: this could be a fake pattern corresponding to a deref inserted by match
+                // ergonomics, in which case `pat.hir_id` will be the id of the subpattern.
+                if let DerefPatBorrowMode::Borrow(mutability) =
+                    this.cx.deref_pat_borrow_mode(place.place.ty(), subpattern)
+                {
+                    let bk = BorrowKind::from_mutbl(mutability);
+                    this.delegate.borrow(place, bk, this.cx);
+                }
+            };
+
+            let pat = match pat {
+                CatPatternPat::PatId(pat) => pat,
+                CatPatternPat::DerefPat { inner } => {
+                    debug!("walk_pat: Deref {{ inner: {:?} }}", inner);
+                    walk_deref_pat(this, inner, place);
+                    return Ok(());
+                }
+            };
+
             debug!("walk_pat: pat.kind={:?}", this.cx.store[pat]);
             let read_discriminant = {
                 let place = place.clone();
@@ -961,17 +944,18 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                     // In a cases of pattern like `let pat = upvar`, don't use the span
                     // of the pattern, as this just looks confusing, instead use the span
                     // of the discriminant.
-                    match this.cx.result.binding_mode(pat) {
-                        Some(BindingMode::Ref(m)) => {
+                    match this.cx.result.binding_mode(pat).ok_or(ErrorGuaranteed)?.0 {
+                        ByRef::Yes(m) => {
                             let bk = BorrowKind::from_mutbl(m);
                             this.delegate.borrow(place, bk, this.cx);
                         }
-                        None | Some(BindingMode::Move) => {
+                        ByRef::No => {
                             debug!("walk_pat binding consuming pat");
                             this.consume_or_copy(place);
                         }
                     }
                 }
+                Pat::Deref { inner: subpattern } => walk_deref_pat(this, subpattern, place),
                 Pat::Path(ref path) => {
                     // A `Path` pattern is just a name like `Foo`. This is either a
                     // named constant or else it refers to an ADT variant
@@ -987,20 +971,14 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                         this.cx.store.pat_path_hygiene(pat),
                     );
                     let is_normal_const = matches!(resolution, Some(ValueNs::ConstId(_)));
-                    if mode == PatWalkMode::Assignment
-                        && let Some(ValueNs::LocalBinding(local)) = resolution
-                    {
-                        let pat_ty = this.pat_ty(pat)?;
-                        let place = this.cat_local(pat.into(), pat_ty, local)?;
-                        this.delegate.mutate(place, this.cx);
-                    } else if is_assoc_const || is_normal_const {
+                    if is_assoc_const || is_normal_const {
                         // Named constants have to be equated with the value
                         // being matched, so that's a read of the value being matched.
                         //
                         // FIXME: Does the MIR code skip this read when matching on a ZST?
                         // If so, we can also skip it here.
                         read_discriminant(this);
-                    } else if this.is_multivariant_adt(place.place.ty()) {
+                    } else if this.is_multivariant_adt(pat.into(), place.place.ty()) {
                         // Otherwise, this is a struct/enum variant, and so it's
                         // only a read if we need to read the discriminant.
                         read_discriminant(this);
@@ -1019,7 +997,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                     read_discriminant(this);
                 }
                 Pat::Record { .. } | Pat::TupleStruct { .. } => {
-                    if this.is_multivariant_adt(place.place.ty()) {
+                    if this.is_multivariant_adt(pat.into(), place.place.ty()) {
                         read_discriminant(this);
                     }
                 }
@@ -1035,7 +1013,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                         read_discriminant(this);
                     }
                 }
-                Pat::Expr(expr) if mode == PatWalkMode::Assignment => {
+                Pat::Expr(expr) => {
                     // Destructuring assignment.
                     this.mutate_expr(expr)?;
                 }
@@ -1044,13 +1022,13 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                 | Pat::Ref { .. }
                 | Pat::Tuple { .. }
                 | Pat::Wild
-                | Pat::Missing => {
+                | Pat::Missing
+                | Pat::Rest => {
                     // If the PatKind is Or, Box, Ref, Guard, or Tuple, the relevant accesses
                     // are made later as these patterns contains subpatterns.
                     // If the PatKind is Missing, Wild or Err, any relevant accesses are made when processing
                     // the other patterns that are part of the match
                 }
-                Pat::Expr(_) => {}
             }
 
             Ok(())
@@ -1167,6 +1145,13 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum CatPatternPat {
+    PatId(PatId),
+    DerefPat { inner: PatId },
+}
+impl_from!(PatId for CatPatternPat);
+
 /// The job of the methods whose name starts with `cat_` is to analyze
 /// expressions and construct the corresponding [`Place`]s. The `cat`
 /// stands for "categorize", this is a leftover from long ago when
@@ -1196,10 +1181,6 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         self.node_ty(expr.into())
     }
 
-    fn pat_ty(&mut self, pat: PatId) -> Result<Ty<'db>> {
-        self.node_ty(pat.into())
-    }
-
     fn expr_ty_adjusted(&mut self, expr: ExprId) -> Result<Ty<'db>> {
         self.expect_and_resolve_type(self.cx.result.type_of_expr_with_adjust(expr))
     }
@@ -1219,18 +1200,52 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
         // that aims to account for `ref x`.
-        if let Some(vec) = self.cx.result.pat_adjustments.get(&pat)
-            && let Some(first_adjust) = vec.first()
+        if let Some(vec) = self.cx.result.pat_adjustment(pat) {
+            if let Some(first_adjust) = vec.first() {
+                debug!("pat_ty(pat={:?}) found adjustment `{:?}`", pat, first_adjust);
+                return Ok(first_adjust.source.as_ref());
+            }
+        } else if let Pat::Ref { pat: subpat, .. } = self.cx.store[pat]
+            && self.cx.result.is_skipped_ref_pat(pat)
         {
-            debug!("pat_ty(pat={:?}) found adjustment `{:?}`", pat, first_adjust);
-            return Ok(first_adjust.as_ref());
+            return self.pat_ty_adjusted(subpat);
         }
+
         self.pat_ty_unadjusted(pat)
     }
 
     /// Like [`Self::pat_ty_adjusted`], but ignores implicit `&` patterns.
     fn pat_ty_unadjusted(&mut self, pat: PatId) -> Result<Ty<'db>> {
-        Ok(self.cx.result.pat_ty(pat))
+        let base_ty = self.node_ty(pat.into())?;
+        trace!(?base_ty);
+
+        // This code detects whether we are looking at a `ref x`,
+        // and if so, figures out what the type *being borrowed* is.
+        match self.cx.store[pat] {
+            Pat::Bind { .. } => {
+                let bm = self.cx.result.binding_mode(pat).ok_or(ErrorGuaranteed)?;
+
+                if let ByRef::Yes(_) = bm.0 {
+                    // a bind-by-ref means that the base_ty will be the type of the ident itself,
+                    // but what we want here is the type of the underlying value being borrowed.
+                    // So peel off one-level, turning the &T into T.
+                    match self
+                        .cx
+                        .structurally_resolve_type(pat.into(), base_ty)
+                        .builtin_deref(false)
+                    {
+                        Some(ty) => Ok(ty),
+                        None => {
+                            debug!("By-ref binding of non-derefable type: {base_ty:?}");
+                            Err(ErrorGuaranteed)
+                        }
+                    }
+                } else {
+                    Ok(base_ty)
+                }
+            }
+            _ => Ok(base_ty),
+        }
     }
 
     fn cat_expr(&mut self, expr: ExprId) -> Result<PlaceWithOrigin> {
@@ -1335,7 +1350,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
 
             Expr::Path(ref path) => {
                 let resolver_guard =
-                    self.cx.resolver.update_to_inner_scope(self.cx.db, self.cx.owner, expr);
+                    self.cx.resolver.update_to_inner_scope(self.cx.db, self.cx.store_owner, expr);
                 let resolution = self.cx.resolver.resolve_path_in_value_ns_fully(
                     self.cx.db,
                     path,
@@ -1423,7 +1438,8 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let TyKind::Ref(region, _, mutbl) = self.cx.table.structurally_resolve_type(base_ty).kind()
+        let TyKind::Ref(region, _, mutbl) =
+            self.cx.structurally_resolve_type(base.into(), base_ty).kind()
         else {
             return Err(ErrorGuaranteed);
         };
@@ -1440,7 +1456,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     ) -> Result<PlaceWithOrigin> {
         let base_curr_ty = base_place.place.ty();
         let Some(deref_ty) =
-            self.cx.table.structurally_resolve_type(base_curr_ty).builtin_deref(true)
+            self.cx.structurally_resolve_type(node, base_curr_ty).builtin_deref(true)
         else {
             debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
             return Err(ErrorGuaranteed);
@@ -1467,7 +1483,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     /// Here `pat_hir_id` is the ExprId of the pattern itself.
     fn total_fields_in_tuple(&mut self, pat_id: PatId) -> usize {
         let ty = self.cx.result.pat_ty(pat_id);
-        match self.cx.table.structurally_resolve_type(ty).kind() {
+        match self.cx.structurally_resolve_type(pat_id.into(), ty).kind() {
             TyKind::Tuple(args) => args.len(),
             _ => panic!("tuple pattern not applied to a tuple"),
         }
@@ -1486,7 +1502,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         op: &mut F,
     ) -> Result
     where
-        F: FnMut(&mut Self, PlaceWithOrigin, PatId) -> Result,
+        F: FnMut(&mut Self, PlaceWithOrigin, CatPatternPat) -> Result,
     {
         // If (pattern) adjustments are active for this pattern, adjust the `PlaceWithId` correspondingly.
         // `PlaceWithId`s are constructed differently from patterns. For example, in
@@ -1520,11 +1536,26 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         // Then we see that to get the same result, we must start with
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
-        let adjustments_len = self.cx.result.pat_adjustment(pat).map_or(0, |it| it.len());
-        for _ in 0..adjustments_len {
+        let adjustments = self.pat_adjustments(pat);
+        let mut adjusts = adjustments.iter().peekable();
+        while let Some(adjust) = adjusts.next() {
             debug!("applying adjustment to place_with_id={:?}", place_with_id);
-            // FIXME: We need to adjust this once we implement deref patterns (or pin ergonomics, for that matter).
-            place_with_id = self.cat_deref(pat.into(), place_with_id)?;
+            place_with_id = match adjust.kind {
+                PatAdjust::BuiltinDeref => self.cat_deref(pat.into(), place_with_id)?,
+                PatAdjust::OverloadedDeref => {
+                    // This adjustment corresponds to an overloaded deref; unless it's on a box, it
+                    // borrows the scrutinee to call `Deref::deref` or `DerefMut::deref_mut`. Invoke
+                    // the callback before setting `place_with_id` to the temporary storing the
+                    // result of the deref.
+                    op(self, place_with_id.clone(), CatPatternPat::DerefPat { inner: pat })?;
+                    let target_ty = match adjusts.peek() {
+                        Some(next_adjust) => next_adjust.source.as_ref(),
+                        // At the end of the deref chain, we get `pat`'s scrutinee.
+                        None => self.pat_ty_unadjusted(pat)?,
+                    };
+                    self.pat_deref_place(pat.into(), place_with_id, pat, target_ty)?
+                }
+            };
         }
         let place_with_id = place_with_id; // lose mutability
         debug!("applied adjustment derefs to get place_with_id={:?}", place_with_id);
@@ -1538,7 +1569,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         // `Some(x)` (which matches). Recursing once more, `*&Some(3)` and the pattern `Some(x)`
         // result in the place `Downcast<Some>(*&Some(3)).0` associated to `x` and invoke `op` with
         // that (where the `ref` on `x` is implied).
-        op(self, place_with_id.clone(), pat)?;
+        op(self, place_with_id.clone(), pat.into())?;
 
         match self.cx.store[pat] {
             Pat::Tuple { args: ref subpats, ellipsis: dots_pos } => {
@@ -1618,16 +1649,20 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
                 let subplace = self.cat_deref(pat.into(), place_with_id)?;
                 self.cat_pattern(subplace, subpat, op)?;
             }
+            Pat::Deref { inner: subpat } => {
+                let ty = self.pat_ty_adjusted(subpat)?;
+                let place = self.pat_deref_place(pat.into(), place_with_id, subpat, ty)?;
+                self.cat_pattern(place, subpat, op)?;
+            }
 
             Pat::Slice { prefix: ref before, slice, suffix: ref after } => {
                 let Some(element_ty) = self
                     .cx
-                    .table
-                    .structurally_resolve_type(place_with_id.place.ty())
+                    .structurally_resolve_type(pat.into(), place_with_id.place.ty())
                     .builtin_index()
                 else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
-                    panic!("explicit index of non-indexable type");
+                    return Err(ErrorGuaranteed);
                 };
                 let elt_place = self.cat_projection(
                     pat.into(),
@@ -1660,12 +1695,36 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
             | Pat::ConstBlock(..)
             | Pat::Range { .. }
             | Pat::Missing
+            | Pat::Rest
             | Pat::Wild => {
                 // always ok
             }
         }
 
         Ok(())
+    }
+
+    /// Represents the place matched on by a deref pattern's interior.
+    fn pat_deref_place(
+        &mut self,
+        node: ExprOrPatId,
+        base_place: PlaceWithOrigin,
+        inner: PatId,
+        target_ty: Ty<'db>,
+    ) -> Result<PlaceWithOrigin> {
+        match self.cx.deref_pat_borrow_mode(base_place.place.ty(), inner) {
+            // Deref patterns on boxes are lowered using a built-in deref.
+            DerefPatBorrowMode::Box => self.cat_deref(node, base_place),
+            // For other types, we create a temporary to match on.
+            DerefPatBorrowMode::Borrow(mutability) => {
+                let re_erased = self.cx.types.regions.erased;
+                let ty = Ty::new_ref(self.cx.interner(), re_erased, target_ty, mutability);
+                // A deref pattern stores the result of `Deref::deref` or `DerefMut::deref_mut` ...
+                let base = self.cat_rvalue(node, ty);
+                // ... and the inner pattern matches on the place behind that reference.
+                self.cat_deref(node, base)
+            }
+        }
     }
 
     /// Checks whether a type has multiple variants, and therefore, whether a
@@ -1682,13 +1741,13 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     /// FIXME(never_patterns): update this comment once the aforementioned MIR builder
     /// code is changed to be insensitive to inhhabitedness.
     #[instrument(skip(self), level = "debug")]
-    fn is_multivariant_adt(&mut self, ty: Ty<'db>) -> bool {
-        if let TyKind::Adt(def, _) = self.cx.table.structurally_resolve_type(ty).kind() {
+    fn is_multivariant_adt(&mut self, node: ExprOrPatId, ty: Ty<'db>) -> bool {
+        if let TyKind::Adt(def, _) = self.cx.structurally_resolve_type(node, ty).kind() {
             // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
             // to assume that more cases will be added to the variant in the future. This mean
             // that we should handle non-exhaustive SingleVariant the same way we would handle
             // a MultiVariant.
-            match def.def_id().0 {
+            match def.def_id() {
                 AdtId::StructId(_) | AdtId::UnionId(_) => false,
                 AdtId::EnumId(did) => {
                     let has_foreign_non_exhaustive = || {

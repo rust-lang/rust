@@ -1,5 +1,6 @@
 pub mod inspect;
 
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -12,6 +13,7 @@ use rustc_type_ir_macros::{
 use tracing::debug;
 
 use crate::lang_items::SolverTraitLangItem;
+use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
     self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
@@ -27,35 +29,52 @@ pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// having to worry about changes to currently used code. Once we've made progress on this
 /// solver, merge the two responses again.
 pub type QueryResult<I> = Result<CanonicalResponse<I>, NoSolution>;
+pub type QueryResultOrRerunNonErased<I> = Result<CanonicalResponse<I>, NoSolutionOrRerunNonErased>;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct NoSolution;
 
-pub enum NoSolutionOrOpaquesAccessed {
-    NoSolution(NoSolution),
-    /// A bit like [`NoSolution`], but for functions that normally cannot fail *unless* they accessed
-    /// opaues. (See [`TypingMode::ErasedNotCoherence`]). Getting `OpaquesAccessed` doesn't mean there
-    /// truly is no solution. It just means that we want to bail out of the current query as fast as
-    /// possible, possibly by returning `NoSolution` if that's fastest. This is okay because when you get
-    /// `OpaquesAccessed` we're guaranteed that we're going to retry this query in the original typing
-    /// mode to get the correct answer.
-    OpaquesAccessed,
+pub trait RerunResultExt<T> {
+    fn map_err_to_rerun(self) -> Result<Result<T, NoSolution>, RerunNonErased>;
 }
 
-/// This conversion is sound, because even in we're in `OpaquesAccessed`,
-/// we're going to retry so `NoSolution` is a valid response to give..
-impl From<NoSolutionOrOpaquesAccessed> for NoSolution {
-    fn from(
-        (NoSolutionOrOpaquesAccessed::NoSolution(_) | NoSolutionOrOpaquesAccessed::OpaquesAccessed): NoSolutionOrOpaquesAccessed,
-    ) -> Self {
-        NoSolution
+impl<T> RerunResultExt<T> for Result<T, NoSolutionOrRerunNonErased> {
+    fn map_err_to_rerun(self) -> Result<Result<T, NoSolution>, RerunNonErased> {
+        match self {
+            Ok(i) => Ok(Ok(i)),
+            Err(NoSolutionOrRerunNonErased::NoSolution(NoSolution)) => Ok(Err(NoSolution)),
+            Err(NoSolutionOrRerunNonErased::RerunNonErased(e)) => Err(e),
+        }
     }
 }
 
-impl From<NoSolution> for NoSolutionOrOpaquesAccessed {
+/// A bit like [`NoSolution`], but for functions that normally cannot fail *unless* they accessed
+/// opaues. (See [`TypingMode::ErasedNotCoherence`]). Getting `OpaquesAccessed` doesn't mean there
+/// truly is no solution. It just means that we want to bail out of the current query as fast as
+/// possible, possibly by returning `NoSolution` if that's fastest. This is okay because when you get
+/// `OpaquesAccessed` we're guaranteed that we're going to retry this query in the original typing
+/// mode to get the correct answer.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+pub struct RerunNonErased(());
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+pub enum NoSolutionOrRerunNonErased {
+    NoSolution(NoSolution),
+    RerunNonErased(RerunNonErased),
+}
+
+impl From<NoSolution> for NoSolutionOrRerunNonErased {
     fn from(value: NoSolution) -> Self {
         Self::NoSolution(value)
+    }
+}
+
+impl From<RerunNonErased> for NoSolutionOrRerunNonErased {
+    fn from(value: RerunNonErased) -> Self {
+        Self::RerunNonErased(value)
     }
 }
 
@@ -216,13 +235,13 @@ impl<I: Interner> RerunCondition<I> {
     }
 
     #[must_use]
-    fn should_bail(&self) -> bool {
+    fn should_bail(&self) -> Result<(), RerunNonErased> {
         match self {
-            Self::Always => true,
+            Self::Always => Err(RerunNonErased(())),
             Self::Never
             | Self::OpaqueInStorage(_)
             | Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_)
-            | Self::AnyOpaqueHasInferAsHidden => false,
+            | Self::AnyOpaqueHasInferAsHidden => Ok(()),
         }
     }
 
@@ -274,13 +293,15 @@ impl<I: Interner> Default for AccessedOpaques<I> {
 }
 
 impl<I: Interner> AccessedOpaques<I> {
-    pub fn update(&mut self, other: Self) {
+    pub fn update(&mut self, other: Self) -> Result<(), RerunNonErased> {
         *self = Self {
             // prefer the newest reason
             reason: other.reason.or(self.reason),
             // merging accessed states can only result in MultipleOrUnknown
             rerun: self.rerun.merge(other.rerun),
         };
+
+        self.should_bail()
     }
 
     #[must_use]
@@ -289,41 +310,47 @@ impl<I: Interner> AccessedOpaques<I> {
     }
 
     #[must_use]
-    pub fn should_bail(&self) -> bool {
+    pub fn should_bail(&self) -> Result<(), RerunNonErased> {
         self.rerun.should_bail()
     }
 
-    pub fn rerun_always(&mut self, reason: RerunReason) {
+    pub fn rerun_always(&mut self, reason: RerunReason) -> Result<Infallible, RerunNonErased> {
         debug!("set rerun always");
-        self.update(AccessedOpaques { reason: Some(reason), rerun: RerunCondition::Always });
+        match self.update(AccessedOpaques { reason: Some(reason), rerun: RerunCondition::Always }) {
+            Ok(_) => unreachable!(),
+            Err(e) => Err(e),
+        }
     }
 
-    pub fn rerun_if_in_post_analysis(&mut self, reason: RerunReason) {
+    pub fn rerun_if_in_post_analysis(&mut self, reason: RerunReason) -> Result<(), RerunNonErased> {
         debug!("set rerun if post analysis");
         self.update(AccessedOpaques {
             reason: Some(reason),
             rerun: RerunCondition::OpaqueInStorage(SmallCopyList::empty()),
-        });
+        })
     }
 
     pub fn rerun_if_opaque_in_opaque_type_storage(
         &mut self,
         reason: RerunReason,
         defid: I::LocalDefId,
-    ) {
+    ) -> Result<(), RerunNonErased> {
         debug!("set rerun if opaque type {defid:?} in storage");
         self.update(AccessedOpaques {
             reason: Some(reason),
             rerun: RerunCondition::OpaqueInStorage(SmallCopyList::new(defid)),
-        });
+        })
     }
 
-    pub fn rerun_if_any_opaque_has_infer_as_hidden_type(&mut self, reason: RerunReason) {
+    pub fn rerun_if_any_opaque_has_infer_as_hidden_type(
+        &mut self,
+        reason: RerunReason,
+    ) -> Result<(), RerunNonErased> {
         debug!("set rerun if any opaque in the storage has a hidden type that is an infer var");
         self.update(AccessedOpaques {
             reason: Some(reason),
             rerun: RerunCondition::AnyOpaqueHasInferAsHidden,
-        });
+        })
     }
 }
 
@@ -552,12 +579,32 @@ pub struct Response<I: Interner> {
 
 impl<I: Interner> Eq for Response<I> {}
 
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum ExternalRegionConstraints<I: Interner> {
+    /// normal region constraints used on stable/when -Znext-solver is used by itself
+    Old(Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>),
+    /// new form of region constraints used when `-Zassumptions-on-binders` is enabled.
+    /// supports ORs.
+    NextGen(RegionConstraint<I>),
+}
+
+impl<I: Interner> ExternalRegionConstraints<I> {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Old(r) => r.is_empty(),
+            Self::NextGen(r) => r.is_true(),
+        }
+    }
+}
+
 /// Additional constraints returned on success.
-#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
-    pub region_constraints: Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>,
+    pub region_constraints: ExternalRegionConstraints<I>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
@@ -565,10 +612,28 @@ pub struct ExternalConstraintsData<I: Interner> {
 impl<I: Interner> Eq for ExternalConstraintsData<I> {}
 
 impl<I: Interner> ExternalConstraintsData<I> {
+    pub fn new(cx: I) -> Self {
+        let region_constraints = match cx.assumptions_on_binders() {
+            true => ExternalRegionConstraints::NextGen(RegionConstraint::new_true()),
+            false => ExternalRegionConstraints::Old(vec![]),
+        };
+
+        Self {
+            region_constraints,
+            opaque_types: vec![],
+            normalization_nested_goals: NestedNormalizationGoals::default(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.region_constraints.is_empty()
-            && self.opaque_types.is_empty()
-            && self.normalization_nested_goals.is_empty()
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            normalization_nested_goals,
+        } = self;
+        region_constraints.is_empty()
+            && opaque_types.is_empty()
+            && normalization_nested_goals.is_empty()
     }
 }
 

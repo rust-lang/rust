@@ -11,11 +11,11 @@ use synstructure::decl_derive;
 mod current_version;
 mod diagnostics;
 mod extension;
-mod hash_stable;
 mod lift;
 mod print_attribute;
 mod query;
 mod serialize;
+mod stable_hash;
 mod symbols;
 mod type_foldable;
 mod type_visitable;
@@ -59,10 +59,10 @@ pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 decl_derive!(
-    [StableHash, attributes(stable_hasher)] => hash_stable::hash_stable_derive
+    [StableHash, attributes(stable_hash)] => stable_hash::stable_hash_derive
 );
 decl_derive!(
-    [StableHash_NoContext, attributes(stable_hasher)] => hash_stable::hash_stable_no_context_derive
+    [StableHash_NoContext, attributes(stable_hash)] => stable_hash::stable_hash_no_context_derive
 );
 
 // Encoding and Decoding derives

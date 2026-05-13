@@ -68,7 +68,7 @@ use hir_expand::{
 };
 use intern::Symbol;
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use span::{Edition, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{AstNode, SmolStr, SyntaxNode, ToSmolStr, ast};
@@ -83,6 +83,7 @@ use crate::{
     item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     per_ns::PerNs,
+    unstable_features::UnstableFeatures,
     visibility::{Visibility, VisibilityExplicitness},
 };
 
@@ -216,7 +217,7 @@ struct DefMapCrateData {
     /// Custom tool modules registered with `#![register_tool]`.
     registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
-    unstable_features: FxHashSet<Symbol>,
+    unstable_features: UnstableFeatures,
     /// `#[rustc_coherence_is_core]`
     rustc_coherence_is_core: bool,
     no_core: bool,
@@ -233,7 +234,7 @@ impl DefMapCrateData {
             fn_proc_macro_mapping: FxHashMap::default(),
             fn_proc_macro_mapping_back: FxHashMap::default(),
             registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
-            unstable_features: FxHashSet::default(),
+            unstable_features: UnstableFeatures::default(),
             rustc_coherence_is_core: false,
             no_core: false,
             no_std: false,
@@ -554,8 +555,9 @@ impl DefMap {
         &self.data.registered_tools
     }
 
-    pub fn is_unstable_feature_enabled(&self, feature: &Symbol) -> bool {
-        self.data.unstable_features.contains(feature)
+    #[inline]
+    pub fn features(&self) -> &UnstableFeatures {
+        &self.data.unstable_features
     }
 
     pub fn is_rustc_coherence_is_core(&self) -> bool {

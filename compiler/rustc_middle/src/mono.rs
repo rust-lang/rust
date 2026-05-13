@@ -5,7 +5,7 @@ use std::hash::Hash;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{
+use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::unord::UnordMap;

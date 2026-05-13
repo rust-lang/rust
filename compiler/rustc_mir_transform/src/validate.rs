@@ -720,7 +720,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, field.ty(self.tcx, args));
+                        check_equal(self, location, field.ty(self.tcx, args).skip_norm_wip());
                     }
                     ty::Closure(_, args) => {
                         let args = args.as_closure();
@@ -1032,9 +1032,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert_eq!(idx, FIRST_VARIANT);
                     let dest_ty = self.tcx.normalize_erasing_regions(
                         self.typing_env,
-                        Unnormalized::new_wip(
-                            adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
-                        ),
+                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
                     if let [field] = fields.raw.as_slice() {
                         let src_ty = field.ty(self.body, self.tcx);
@@ -1057,10 +1055,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ));
                     }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
-                        let dest_ty = self.tcx.normalize_erasing_regions(
-                            self.typing_env,
-                            Unnormalized::new_wip(dest.ty(self.tcx, args)),
-                        );
+                        let dest_ty = self
+                            .tcx
+                            .normalize_erasing_regions(self.typing_env, dest.ty(self.tcx, args));
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
                             self.fail(location, "adt field has the wrong type");
                         }

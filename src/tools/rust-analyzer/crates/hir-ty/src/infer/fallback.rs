@@ -1,6 +1,5 @@
 //! Fallback of infer vars to `!` and `i32`/`f64`.
 
-use intern::sym;
 use petgraph::{
     Graph,
     visit::{Dfs, Walker},
@@ -76,11 +75,11 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn diverging_fallback_behavior(&self) -> DivergingFallbackBehavior {
-        if self.krate().data(self.db).edition.at_least_2024() {
+        if self.edition.at_least_2024() {
             return DivergingFallbackBehavior::ToNever;
         }
 
-        if self.resolver.def_map().is_unstable_feature_enabled(&sym::never_type_fallback) {
+        if self.features.never_type_fallback {
             return DivergingFallbackBehavior::ContextDependent;
         }
 

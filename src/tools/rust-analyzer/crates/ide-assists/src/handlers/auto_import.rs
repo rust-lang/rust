@@ -7,7 +7,7 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
         import_assets::{ImportAssets, ImportCandidate, LocatedImport, TraitImportCandidate},
-        insert_use::{ImportScope, insert_use, insert_use_as_alias},
+        insert_use::{ImportScope, insert_use_as_alias_with_editor, insert_use_with_editor},
     },
 };
 use syntax::{AstNode, Edition, SyntaxNode, ast, match_ast};
@@ -91,7 +91,7 @@ use crate::{AssistContext, AssistId, Assists, GroupLabel};
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
-pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let cfg = ctx.config.import_path_config();
 
     let (import_assets, syntax_under_caret, expected) = find_importable_node(ctx)?;
@@ -125,8 +125,14 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
             (AssistId::quick_fix("auto_import"), import_path.display(ctx.db(), edition));
         let add_normal_import = |acc: &mut Assists, label| {
             acc.add_group(&group_label, assist_id, label, range, |builder| {
-                let scope = builder.make_import_scope_mut(scope.clone());
-                insert_use(&scope, mod_path_to_ast(&import_path, edition), &ctx.config.insert_use);
+                let editor = builder.make_editor(scope.as_syntax_node());
+                insert_use_with_editor(
+                    &scope,
+                    mod_path_to_ast(&import_path, edition),
+                    &ctx.config.insert_use,
+                    &editor,
+                );
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
             })
         };
         let add_underscore_import = |acc: &mut Assists, name: &TraitImportCandidate<'_>, label| {
@@ -139,13 +145,15 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                 name.assoc_item_name.text()
             ));
             acc.add_group(&group_label, assist_id, label, range, |builder| {
-                let scope = builder.make_import_scope_mut(scope.clone());
-                insert_use_as_alias(
+                let editor = builder.make_editor(scope.as_syntax_node());
+                insert_use_as_alias_with_editor(
                     &scope,
                     mod_path_to_ast(&import_path, edition),
                     &ctx.config.insert_use,
                     edition,
+                    &editor,
                 );
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
             });
         };
 
@@ -170,8 +178,8 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     Some(())
 }
 
-pub(super) fn find_importable_node<'a: 'db, 'db>(
-    ctx: &'a AssistContext<'db>,
+pub(super) fn find_importable_node<'db>(
+    ctx: &AssistContext<'_, 'db>,
 ) -> Option<(ImportAssets<'db>, SyntaxNode, Option<Type<'db>>)> {
     // Deduplicate this with the `expected_type_and_name` logic for completions
     let expected = |expr_or_pat: Either<ast::Expr, ast::Pat>| match expr_or_pat {
@@ -248,7 +256,7 @@ fn group_label(import_candidate: &ImportCandidate<'_>) -> GroupLabel {
 /// Determine how relevant a given import is in the current context. Higher scores are more
 /// relevant.
 pub(crate) fn relevance_score(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     import: &LocatedImport,
     expected: Option<&Type<'_>>,
     current_module: Option<&Module>,

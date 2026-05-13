@@ -375,6 +375,15 @@ If false, `-p <package>` will be passed instead if applicable. In case it is not
 check will be performed.
 
 
+## rust-analyzer.completion.addColonsToModule {#completion.addColonsToModule}
+
+Default: `true`
+
+Automatically add `::` when completing the module.
+
+Will not be completed in `use`.
+
+
 ## rust-analyzer.completion.addSemicolonToUnit {#completion.addSemicolonToUnit}
 
 Default: `true`

@@ -110,7 +110,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     return Err(NonAsmTypeReason::EmptySIMDArray(ty));
                 }
                 let field = &fields[FieldIdx::ZERO];
-                let elem_ty = field.ty(self.tcx(), args);
+                let elem_ty = field.ty(self.tcx(), args).skip_norm_wip();
 
                 let (size, ty) = match *elem_ty.kind() {
                     ty::Array(ty, len) => {

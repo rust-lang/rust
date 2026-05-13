@@ -41,6 +41,29 @@ impl<T> VisitorResult for ControlFlow<T> {
     }
 }
 
+impl<E> VisitorResult for Result<(), E> {
+    type Residual = E;
+
+    fn output() -> Self {
+        Ok(())
+    }
+    fn from_residual(residual: Self::Residual) -> Self {
+        Err(residual)
+    }
+    fn from_branch(b: ControlFlow<Self::Residual>) -> Self {
+        match b {
+            ControlFlow::Continue(()) => Ok(()),
+            ControlFlow::Break(e) => Err(e),
+        }
+    }
+    fn branch(self) -> ControlFlow<Self::Residual> {
+        match self {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(e) => ControlFlow::Break(e),
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! try_visit {
     ($e:expr) => {

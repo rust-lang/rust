@@ -26,7 +26,7 @@ use crate::{AssistContext, Assists};
 //
 // sth!{ }
 // ```
-pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     #[derive(Debug)]
     enum MacroDelims {
         LPar,
@@ -45,7 +45,8 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
     let ltoken = token_tree.left_delimiter_token()?;
     let rtoken = token_tree.right_delimiter_token()?;
 
-    if !is_macro_call(&token_tree)? {
+    if is_macro_call(&token_tree) != Some(true) {
+        cov_mark::hit!(toggle_macro_delimiter_is_not_macro_call);
         return None;
     }
 
@@ -111,7 +112,6 @@ fn is_macro_call(token_tree: &ast::TokenTree) -> Option<bool> {
         return Some(true);
     }
 
-    let token_tree = ast::TokenTree::cast(parent)?;
     let prev = previous_non_trivia_token(token_tree.syntax().clone())?;
     let prev_prev = previous_non_trivia_token(prev.clone())?;
     Some(prev.kind() == T![!] && prev_prev.kind() == SyntaxKind::IDENT)
@@ -374,6 +374,7 @@ mod abc {
 
     #[test]
     fn test_unrelated_par() {
+        cov_mark::check!(toggle_macro_delimiter_is_not_macro_call);
         check_assist_not_applicable(
             toggle_macro_delimiter,
             r#"
@@ -383,8 +384,7 @@ macro_rules! prt {
     }};
 }
 
-prt!(($03 + 5));
-
+prt!((3 + 5$0));
             "#,
         )
     }

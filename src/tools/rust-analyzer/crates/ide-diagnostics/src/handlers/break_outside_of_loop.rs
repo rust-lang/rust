@@ -4,7 +4,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if the `break` keyword is used outside of a loop.
 pub(crate) fn break_outside_of_loop(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::BreakOutsideOfLoop,
 ) -> Diagnostic {
     let message = if d.bad_value_break {
@@ -147,7 +147,7 @@ fn test() {
             r#"
 //- minicore: option, try
 fn test() {
-    try {
+    let _: Option<_> = try {
         || {
             let x = Some(2);
             Some(x?)

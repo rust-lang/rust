@@ -970,7 +970,7 @@ where
             && self
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
-                .enter_without_propagated_nested_goals(|ecx| -> Result<_, NoSolution> {
+                .enter_without_propagated_nested_goals(|ecx| {
                     let source_projection = ecx.instantiate_binder_with_infer(source_projection);
                     ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
                     ecx.try_evaluate_added_goals()

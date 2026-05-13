@@ -1777,7 +1777,7 @@ mod prim_ref {}
 /// However, a direct cast back is not possible. You need to use `transmute`:
 ///
 /// ```rust
-/// # #[cfg(not(miri))] { // FIXME: use strict provenance APIs once they are stable, then remove this `cfg`
+/// # #[cfg(not(miri))] { // disabled because it fails with -Zmiri-strict-provenance
 /// # let fnptr: fn(i32) -> i32 = |x| x+2;
 /// # let fnptr_addr = fnptr as usize;
 /// let fnptr = fnptr_addr as *const ();

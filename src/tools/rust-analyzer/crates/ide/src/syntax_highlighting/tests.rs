@@ -39,10 +39,18 @@ fn attributes() {
 // This is another normal comment
 #[derive(Copy, Unresolved)]
 // The reason for these being here is to test AttrIds
+#[default]
 enum Foo {
     #[default]
-    Bar
+    Bar {
+        #[default]
+        field: i32
+    }
 }
+
+#[derive(Default)]
+#[default]
+struct Bar(#[default] i32);
 "#,
         expect_file!["./test_data/highlight_attributes.html"],
         false,
@@ -1348,7 +1356,7 @@ fn benchmark_syntax_highlighting_parser() {
             })
             .count()
     };
-    assert_eq!(hash, 1631);
+    assert_eq!(hash, 1644);
 }
 
 #[test]

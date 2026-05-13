@@ -1,5 +1,5 @@
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:80:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:93:5
    |
 LL |     result_unit_unit();
    |     ^^^^^^^^^^^^^^^^^^
@@ -15,8 +15,14 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = result_unit_unit();
    |     +++++++
 
+error: unused `MustUse` in a `Result` with an uninhabited error that must be used
+  --> $DIR/must_use-result-unit-uninhabited.rs:96:5
+   |
+LL |     result_must_use_never();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:84:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:99:5
    |
 LL |     result_unit_myuninhabited_nonexhaustive();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +34,7 @@ LL |     let _ = result_unit_myuninhabited_nonexhaustive();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:86:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:101:5
    |
 LL |     result_unit_assoctype(S2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +46,7 @@ LL |     let _ = result_unit_assoctype(S2);
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:88:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:103:5
    |
 LL |     S2.method_use_assoc_type();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +58,7 @@ LL |     let _ = S2.method_use_assoc_type();
    |     +++++++
 
 error: unused `ControlFlow` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:90:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:105:5
    |
 LL |     controlflow_unit();
    |     ^^^^^^^^^^^^^^^^^^
@@ -63,7 +69,7 @@ LL |     let _ = controlflow_unit();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:99:9
+  --> $DIR/must_use-result-unit-uninhabited.rs:114:9
    |
 LL |         self.generate();
    |         ^^^^^^^^^^^^^^^
@@ -74,5 +80,5 @@ help: use `let _ = ...` to ignore the resulting value
 LL |         let _ = self.generate();
    |         +++++++
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

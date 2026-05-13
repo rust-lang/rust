@@ -533,7 +533,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
-            mir::Rvalue::BinaryOp(op_with_overflow, box (ref lhs, ref rhs))
+            mir::Rvalue::BinaryOp(op_with_overflow, (ref lhs, ref rhs))
                 if let Some(op) = op_with_overflow.overflowing_to_wrapping() =>
             {
                 let lhs = self.codegen_operand(bx, lhs);
@@ -553,7 +553,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     move_annotation: None,
                 }
             }
-            mir::Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
+            mir::Rvalue::BinaryOp(op, (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(bx, lhs);
                 let rhs = self.codegen_operand(bx, rhs);
                 let llresult = match (lhs.val, rhs.val) {

@@ -33,7 +33,7 @@ use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
@@ -1423,10 +1423,14 @@ impl Hash for FieldDef {
 }
 
 impl<'tcx> FieldDef {
-    /// Returns the type of this field. The resulting type is not normalized. The `arg` is
-    /// typically obtained via the second field of [`TyKind::Adt`].
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, args).skip_norm_wip()
+    /// Returns the type of this field. The `args` are typically obtained via
+    /// the second field of [`TyKind::Adt`].
+    pub fn ty(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        args: GenericArgsRef<'tcx>,
+    ) -> Unnormalized<'tcx, Ty<'tcx>> {
+        tcx.type_of(self.did).instantiate(tcx, args)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -2073,7 +2077,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Even if this returns `true`, constness may still be unstable!
     #[inline]
-    pub fn is_const_fn(self, def_id: DefId) -> bool {
+    pub fn is_const_fn(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        let def_id = def_id.into_query_key();
         matches!(
             self.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure
@@ -2495,8 +2500,13 @@ fn typetree_from_ty_impl_inner<'tcx>(
 
                 for (field_idx, field_def) in adt_def.all_fields().enumerate() {
                     let field_ty = field_def.ty(tcx, args);
-                    let field_tree =
-                        typetree_from_ty_impl_inner(tcx, field_ty, depth + 1, visited, false);
+                    let field_tree = typetree_from_ty_impl_inner(
+                        tcx,
+                        field_ty.skip_norm_wip(),
+                        depth + 1,
+                        visited,
+                        false,
+                    );
 
                     let field_offset = layout.fields.offset(field_idx).bytes_usize();
 

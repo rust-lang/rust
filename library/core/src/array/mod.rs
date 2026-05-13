@@ -90,10 +90,8 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
 /// You can also capture things, for example to create an array full of clones
 /// where you can't just use `[item; N]` because it's not `Copy`:
 /// ```
-/// # // TBH `array::repeat` would be better for this, but it's not stable yet.
-/// let my_string = String::from("Hello");
-/// let clones: [String; 42] = std::array::from_fn(|_| my_string.clone());
-/// assert!(clones.iter().all(|x| *x == my_string));
+/// let my_string: [String; 2] = std::array::from_fn(|i| format!("Hello {i}"));
+/// assert_eq!(my_string, ["Hello 0", "Hello 1"]);
 /// ```
 ///
 /// The array is generated in ascending index order, starting from the front

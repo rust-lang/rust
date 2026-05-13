@@ -34,10 +34,7 @@ impl CombineAttributeParser for DebuggerViualizerParser {
             }
         };
 
-        let Some(path) = args.value_as_str() else {
-            cx.adcx().expected_string_literal(args.value_span, Some(args.value_as_lit()));
-            return None;
-        };
+        let path = cx.expect_string_literal(args)?;
 
         Some(DebugVisualizer { span: ident.span.to(args.value_span), visualizer_type, path })
     }

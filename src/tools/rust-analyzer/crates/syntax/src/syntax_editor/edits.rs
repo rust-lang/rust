@@ -3,7 +3,7 @@
 use crate::{
     AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
     algo::neighbor,
-    ast::{self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make},
+    ast::{self, AstNode, HasGenericParams, HasName, edit::IndentLevel, make},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -109,64 +109,79 @@ impl GetOrCreateWhereClause for ast::Enum {
 }
 
 impl SyntaxEditor {
-    /// Adds a new generic param to the function using `SyntaxEditor`
-    pub fn add_generic_param(&self, function: &Fn, new_param: GenericParam) {
-        match function.generic_param_list() {
-            Some(generic_param_list) => match generic_param_list.generic_params().last() {
-                Some(last_param) => {
-                    // There exists a generic param list and it's not empty
-                    let position = generic_param_list.r_angle_token().map_or_else(
-                        || Position::last_child_of(function.syntax()),
-                        Position::before,
-                    );
+    /// Adds a new generic param to the node using `SyntaxEditor`
+    pub fn add_generic_param(
+        &self,
+        node: &impl ast::HasGenericParams,
+        new_param: ast::GenericParam,
+    ) {
+        let make = self.make();
+        match node.generic_param_list() {
+            Some(generic_param_list) => {
+                let is_lifetime = matches!(new_param, ast::GenericParam::LifetimeParam(_));
 
-                    if last_param
-                        .syntax()
-                        .next_sibling_or_token()
-                        .is_some_and(|it| it.kind() == SyntaxKind::COMMA)
-                    {
-                        self.insert(
-                            Position::after(last_param.syntax()),
-                            new_param.syntax().clone(),
-                        );
-                        self.insert(
-                            Position::after(last_param.syntax()),
-                            make::token(SyntaxKind::WHITESPACE),
-                        );
-                        self.insert(
-                            Position::after(last_param.syntax()),
-                            make::token(SyntaxKind::COMMA),
-                        );
+                if let Some(first_param) = generic_param_list.generic_params().next() {
+                    let last_lifetime = generic_param_list
+                        .generic_params()
+                        .filter(|p| matches!(p, ast::GenericParam::LifetimeParam(_)))
+                        .last();
+
+                    if is_lifetime {
+                        if let Some(last_lt) = last_lifetime {
+                            let elements = vec![
+                                make.token(SyntaxKind::COMMA).into(),
+                                make.token(SyntaxKind::WHITESPACE).into(),
+                                new_param.syntax().clone().into(),
+                            ];
+                            self.insert_all(Position::after(last_lt.syntax()), elements);
+                        } else {
+                            // Insert before the first parameter
+                            let elements = vec![
+                                new_param.syntax().clone().into(),
+                                make.token(SyntaxKind::COMMA).into(),
+                                make.token(SyntaxKind::WHITESPACE).into(),
+                            ];
+                            self.insert_all(Position::before(first_param.syntax()), elements);
+                        }
                     } else {
+                        let last_param = generic_param_list.generic_params().last().unwrap();
                         let elements = vec![
-                            make::token(SyntaxKind::COMMA).into(),
-                            make::token(SyntaxKind::WHITESPACE).into(),
+                            make.token(SyntaxKind::COMMA).into(),
+                            make.token(SyntaxKind::WHITESPACE).into(),
                             new_param.syntax().clone().into(),
                         ];
-                        self.insert_all(position, elements);
+                        self.insert_all(Position::after(last_param.syntax()), elements);
+                    }
+                } else {
+                    if let Some(l_angle) = generic_param_list.l_angle_token() {
+                        self.insert(Position::after(l_angle), new_param.syntax().clone());
                     }
                 }
-                None => {
-                    // There exists a generic param list but it's empty
-                    let position = Position::after(generic_param_list.l_angle_token().unwrap());
-                    self.insert(position, new_param.syntax());
-                }
-            },
+            }
             None => {
-                // There was no generic param list
-                let position = if let Some(name) = function.name() {
-                    Position::after(name.syntax)
-                } else if let Some(fn_token) = function.fn_token() {
-                    Position::after(fn_token)
-                } else if let Some(param_list) = function.param_list() {
-                    Position::before(param_list.syntax)
-                } else {
-                    Position::last_child_of(function.syntax())
-                };
+                let position =
+                    if let Some(name) = node.syntax().children().find_map(ast::Name::cast) {
+                        Position::after(name.syntax())
+                    } else if let Some(impl_node) = ast::Impl::cast(node.syntax().clone()) {
+                        impl_node
+                            .impl_token()
+                            .map_or_else(|| Position::last_child_of(node.syntax()), Position::after)
+                    } else if let Some(fn_node) = ast::Fn::cast(node.syntax().clone()) {
+                        if let Some(fn_token) = fn_node.fn_token() {
+                            Position::after(fn_token)
+                        } else if let Some(param_list) = fn_node.param_list() {
+                            Position::before(param_list.syntax())
+                        } else {
+                            Position::last_child_of(node.syntax())
+                        }
+                    } else {
+                        Position::last_child_of(node.syntax())
+                    };
+
                 let elements = vec![
-                    make::token(SyntaxKind::L_ANGLE).into(),
+                    make.token(SyntaxKind::L_ANGLE).into(),
                     new_param.syntax().clone().into(),
-                    make::token(SyntaxKind::R_ANGLE).into(),
+                    make.token(SyntaxKind::R_ANGLE).into(),
                 ];
                 self.insert_all(position, elements);
             }
@@ -176,11 +191,7 @@ impl SyntaxEditor {
 
 fn get_or_insert_comma_after(editor: &SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
     let make = editor.make();
-    match syntax
-        .siblings_with_tokens(Direction::Next)
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == T![,])
-    {
+    match comma_after(syntax) {
         Some(it) => it,
         None => {
             let comma = make.token(T![,]);
@@ -224,6 +235,113 @@ impl ast::AssocItemList {
             .collect();
         editor.insert_all(position, elements);
     }
+}
+
+impl ast::RecordExprFieldList {
+    pub fn add_fields(
+        &self,
+        editor: &SyntaxEditor,
+        fields: impl IntoIterator<Item = ast::RecordExprField>,
+    ) {
+        add_record_fields(
+            editor,
+            self.syntax(),
+            self.fields().last().map(|it| it.syntax().clone()),
+            self.l_curly_token(),
+            fields.into_iter().map(|it| it.syntax().clone().into()),
+        );
+    }
+}
+
+impl ast::RecordPatFieldList {
+    pub fn add_fields(
+        &self,
+        editor: &SyntaxEditor,
+        fields: impl IntoIterator<Item = ast::RecordPatField>,
+    ) {
+        add_record_fields(
+            editor,
+            self.syntax(),
+            self.fields().last().map(|it| it.syntax().clone()),
+            self.l_curly_token(),
+            fields.into_iter().map(|it| it.syntax().clone().into()),
+        );
+    }
+}
+
+fn add_record_fields(
+    editor: &SyntaxEditor,
+    field_list: &SyntaxNode,
+    last_field: Option<SyntaxNode>,
+    l_curly: Option<SyntaxToken>,
+    fields: impl Iterator<Item = SyntaxElement>,
+) {
+    let fields = fields.collect::<Vec<_>>();
+    if fields.is_empty() {
+        return;
+    }
+
+    let make = editor.make();
+    let is_multiline = field_list.text().contains_char('\n');
+    let whitespace = || {
+        if is_multiline {
+            let indent = IndentLevel::from_node(field_list) + 1;
+            make.whitespace(&format!("\n{indent}"))
+        } else {
+            make.whitespace(" ")
+        }
+    };
+
+    if is_multiline {
+        normalize_ws_between_braces(editor, field_list);
+    }
+
+    let mut elements = Vec::new();
+    let next_after_insert;
+    let position = match last_field {
+        Some(last_field) => match comma_after(&last_field) {
+            Some(comma) => {
+                next_after_insert = comma.next_sibling_or_token();
+                Position::after(comma)
+            }
+            None => {
+                next_after_insert = last_field.next_sibling_or_token();
+                elements.push(make.token(T![,]).into());
+                Position::after(last_field)
+            }
+        },
+        None => match l_curly {
+            Some(it) => {
+                next_after_insert = it.next_sibling_or_token();
+                Position::after(it)
+            }
+            None => {
+                next_after_insert = None;
+                Position::last_child_of(field_list)
+            }
+        },
+    };
+
+    let fields_len = fields.len();
+    for (idx, field) in fields.into_iter().enumerate() {
+        elements.push(whitespace().into());
+        elements.push(field);
+        if is_multiline || idx + 1 != fields_len {
+            elements.push(make.token(T![,]).into());
+        }
+    }
+    if !is_multiline && next_after_insert.is_some_and(|it| it.kind() != SyntaxKind::WHITESPACE) {
+        elements.push(make.whitespace(" ").into());
+    }
+
+    editor.insert_all(position, elements);
+}
+
+fn comma_after(syntax: &SyntaxNode) -> Option<SyntaxToken> {
+    syntax
+        .siblings_with_tokens(Direction::Next)
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == T![,])
 }
 
 impl ast::Impl {

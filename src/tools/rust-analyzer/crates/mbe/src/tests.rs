@@ -237,7 +237,7 @@ fn expr_2021() {
               PUNCH   ; [alone] 0:Root[0000, 0]@39..40#ROOT2024
 
             _;
-            (const  {
+            (const {
                 1
             });"#]],
     );

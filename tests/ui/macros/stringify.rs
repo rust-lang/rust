@@ -3,6 +3,7 @@
 //@ compile-flags: --test
 
 #![allow(incomplete_features)]
+#![allow(unused_features)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(const_block_items)]
@@ -11,6 +12,7 @@
 #![feature(decl_macro)]
 #![feature(macro_guard_matcher)]
 #![feature(more_qualified_paths)]
+#![feature(move_expr)]
 #![feature(never_patterns)]
 #![feature(specialization)]
 #![feature(trait_alias)]
@@ -110,6 +112,7 @@ fn test_expr() {
     c1!(expr, [ *expr ], "*expr");
     c1!(expr, [ !expr ], "!expr");
     c1!(expr, [ -expr ], "-expr");
+    c1!(expr, [ move(expr) ], "move(expr)");
 
     // ExprKind::Lit
     c1!(expr, [ 'x' ], "'x'");

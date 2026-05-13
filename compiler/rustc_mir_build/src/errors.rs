@@ -562,6 +562,16 @@ pub(crate) struct UnsafeBinderCastRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
+#[derive(Diagnostic)]
+#[diag("call `{$function}` explicitly is unsafe and requires unsafe block", code = E0133)]
+pub(crate) struct CallDropExplicitlyRequiresUnsafe {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) function: String,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
 #[derive(Subdiagnostic)]
 #[label("items do not inherit unsafety from separate enclosing items")]
 pub(crate) struct UnsafeNotInheritedNote {

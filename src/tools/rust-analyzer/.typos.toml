@@ -34,6 +34,7 @@ thir = "thir"
 jod = "jod"
 tructure = "tructure"
 taits = "taits"
+inh = "inh"
 
 [default.extend-identifiers]
 anc = "anc"

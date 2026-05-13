@@ -11,7 +11,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 // Diagnostic: proc-macro-disabled
 //
 // This diagnostic is shown for proc macros that have been specifically disabled via `rust-analyzer.procMacro.ignored`.
-pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
+pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = ctx.sema.diagnostics_display_range_for_range(d.range);
     Diagnostic::new(
@@ -25,7 +25,10 @@ pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
 // Diagnostic: macro-def-error
 //
 // This diagnostic is shown for macro expansion errors.
-pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefError) -> Diagnostic {
+pub(crate) fn macro_def_error(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::MacroDefError,
+) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = match d.name {
         Some(name) => ctx.sema.diagnostics_display_range_for_range(d.node.with_value(name)),

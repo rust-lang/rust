@@ -12,7 +12,7 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // This diagnostic is triggered if a `let` statement without an `else` branch has a non-exhaustive
 // pattern.
 pub(crate) fn non_exhaustive_let(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::NonExhaustiveLet,
 ) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(

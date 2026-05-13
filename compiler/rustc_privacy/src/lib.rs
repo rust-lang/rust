@@ -476,7 +476,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             self.changed |= self.effective_visibilities.update(
                 def_id,
                 max_vis,
-                || private_vis,
+                private_vis,
                 inherited_effective_vis,
                 level,
                 self.tcx,

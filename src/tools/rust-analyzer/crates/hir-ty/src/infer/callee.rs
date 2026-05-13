@@ -2,17 +2,17 @@
 
 use std::iter;
 
-use intern::sym;
+use rustc_abi::ExternAbi;
 use tracing::debug;
 
-use hir_def::{CallableDefId, hir::ExprId, signatures::FunctionSignature};
+use hir_def::{CallableDefId, ConstParamId, hir::ExprId, signatures::FunctionSignature};
 use rustc_type_ir::{
     InferTy, Interner,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, FnAbi,
+    Adjust, Adjustment, AutoBorrow,
     autoderef::{GeneralAutoderef, InferenceContextAutoderef},
     infer::{
         AllowTwoPhase, AutoBorrowMutability, Expectation, InferenceContext, InferenceDiagnostic,
@@ -20,7 +20,7 @@ use crate::{
     },
     method_resolution::{MethodCallee, TreatNotYetDefinedOpaques},
     next_solver::{
-        FnSig, Ty, TyKind,
+        ConstKind, FnSig, Ty, TyKind,
         infer::{BoundRegionConversionTime, traits::ObligationCause},
     },
 };
@@ -43,13 +43,21 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let original_callee_ty = self.infer_expr_no_expect(callee_expr, ExprIsRead::Yes);
 
-        let expr_ty = self.table.try_structurally_resolve_type(original_callee_ty);
+        let expr_ty =
+            self.table.try_structurally_resolve_type(callee_expr.into(), original_callee_ty);
 
-        let mut autoderef = GeneralAutoderef::new_from_inference_context(self, expr_ty);
+        let mut autoderef =
+            GeneralAutoderef::new_from_inference_context(self, expr_ty, callee_expr.into());
         let mut result = None;
+        let mut error_reported = false;
         while result.is_none() && autoderef.next().is_some() {
-            result =
-                Self::try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &mut autoderef);
+            result = Self::try_overloaded_call_step(
+                call_expr,
+                callee_expr,
+                arg_exprs,
+                &mut autoderef,
+                &mut error_reported,
+            );
         }
 
         // FIXME: rustc does some ABI checks here, but the ABI mapping is in rustc_target and we don't have access to that crate.
@@ -65,16 +73,18 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.infer_expr_no_expect(arg, ExprIsRead::Yes);
                 }
 
-                self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
-                    call_expr,
-                    found: original_callee_ty.store(),
-                });
+                if !error_reported {
+                    self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
+                        call_expr,
+                        found: original_callee_ty.store(),
+                    });
+                }
 
                 self.types.types.error
             }
 
             Some(CallStep::Builtin(callee_ty)) => {
-                self.confirm_builtin_call(call_expr, callee_ty, arg_exprs, expected)
+                self.confirm_builtin_call(callee_expr, call_expr, callee_ty, arg_exprs, expected)
             }
 
             Some(CallStep::DeferredClosure(_def_id, fn_sig)) => {
@@ -87,7 +97,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
 
         // we must check that return type of called functions is WF:
-        self.table.register_wf_obligation(output.into(), ObligationCause::new());
+        self.table.register_wf_obligation(output.into(), ObligationCause::new(call_expr));
 
         output
     }
@@ -97,9 +107,11 @@ impl<'db> InferenceContext<'_, 'db> {
         callee_expr: ExprId,
         arg_exprs: &[ExprId],
         autoderef: &mut InferenceContextAutoderef<'_, '_, 'db>,
+        error_reported: &mut bool,
     ) -> Option<CallStep<'db>> {
         let final_ty = autoderef.final_ty();
-        let adjusted_ty = autoderef.ctx().table.try_structurally_resolve_type(final_ty);
+        let adjusted_ty =
+            autoderef.ctx().table.try_structurally_resolve_type(callee_expr.into(), final_ty);
 
         // If the callee is a function pointer or a closure, then we're all set.
         match adjusted_ty.kind() {
@@ -119,12 +131,13 @@ impl<'db> InferenceContext<'_, 'db> {
             {
                 let closure_sig = args.as_closure().sig();
                 let closure_sig = autoderef.ctx().infcx().instantiate_binder_with_fresh_vars(
+                    callee_expr.into(),
                     BoundRegionConversionTime::FnCall,
                     closure_sig,
                 );
                 let adjust_steps = autoderef.adjust_steps_as_infer_ok();
                 let adjustments = autoderef.ctx().table.register_infer_ok(adjust_steps);
-                let def_id = def_id.0.loc(autoderef.ctx().db).1;
+                let def_id = def_id.0.loc(autoderef.ctx().db).expr;
                 autoderef.ctx().record_deferred_call_resolution(
                     def_id,
                     DeferredCallResolution {
@@ -149,15 +162,16 @@ impl<'db> InferenceContext<'_, 'db> {
                 let closure_args = args.as_coroutine_closure();
                 let coroutine_closure_sig =
                     autoderef.ctx().infcx().instantiate_binder_with_fresh_vars(
+                        callee_expr.into(),
                         BoundRegionConversionTime::FnCall,
                         closure_args.coroutine_closure_sig(),
                     );
-                let tupled_upvars_ty = autoderef.ctx().table.next_ty_var();
+                let tupled_upvars_ty = autoderef.ctx().table.next_ty_var(call_expr.into());
                 // We may actually receive a coroutine back whose kind is different
                 // from the closure that this dispatched from. This is because when
                 // we have no captures, we automatically implement `FnOnce`. This
                 // impl forces the closure kind to `FnOnce` i.e. `u8`.
-                let kind_ty = autoderef.ctx().table.next_ty_var();
+                let kind_ty = autoderef.ctx().table.next_ty_var(call_expr.into());
                 let interner = autoderef.ctx().interner();
                 let call_sig = interner.mk_fn_sig(
                     [coroutine_closure_sig.tupled_inputs_ty],
@@ -168,13 +182,13 @@ impl<'db> InferenceContext<'_, 'db> {
                         interner.coroutine_for_closure(def_id),
                         tupled_upvars_ty,
                     ),
-                    coroutine_closure_sig.c_variadic,
-                    coroutine_closure_sig.safety,
-                    coroutine_closure_sig.abi,
+                    coroutine_closure_sig.fn_sig_kind.c_variadic(),
+                    coroutine_closure_sig.fn_sig_kind.safety(),
+                    coroutine_closure_sig.fn_sig_kind.abi(),
                 );
                 let adjust_steps = autoderef.adjust_steps_as_infer_ok();
                 let adjustments = autoderef.ctx().table.register_infer_ok(adjust_steps);
-                let def_id = def_id.0.loc(autoderef.ctx().db).1;
+                let def_id = def_id.0.loc(autoderef.ctx().db).expr;
                 autoderef.ctx().record_deferred_call_resolution(
                     def_id,
                     DeferredCallResolution {
@@ -211,6 +225,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     autoderef
                         .ctx()
                         .type_must_be_known_at_this_point(callee_expr.into(), adjusted_ty);
+                    *error_reported = true;
                     return None;
                 }
 
@@ -230,8 +245,8 @@ impl<'db> InferenceContext<'_, 'db> {
         // is implemented, and use this information for diagnostic.
         autoderef
             .ctx()
-            .try_overloaded_call_traits(adjusted_ty, Some(arg_exprs))
-            .or_else(|| autoderef.ctx().try_overloaded_call_traits(adjusted_ty, None))
+            .try_overloaded_call_traits(call_expr, adjusted_ty, Some(arg_exprs))
+            .or_else(|| autoderef.ctx().try_overloaded_call_traits(call_expr, adjusted_ty, None))
             .map(|(autoref, method)| {
                 let adjustments = autoderef.adjust_steps_as_infer_ok();
                 let mut adjustments = autoderef.ctx().table.register_infer_ok(adjustments);
@@ -243,6 +258,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
     fn try_overloaded_call_traits(
         &mut self,
+        call_expr: ExprId,
         adjusted_ty: Ty<'db>,
         opt_arg_exprs: Option<&[ExprId]>,
     ) -> Option<(Option<Adjustment>, MethodCallee<'db>)> {
@@ -258,36 +274,38 @@ impl<'db> InferenceContext<'_, 'db> {
         // ...or *ideally*, we just have `LendingFn`/`LendingFnMut`, which
         // would naturally unify these two trait hierarchies in the most
         // general way.
+
         let call_trait_choices = if self.shallow_resolve(adjusted_ty).is_coroutine_closure() {
             [
-                (self.lang_items.AsyncFn, sym::async_call, true),
-                (self.lang_items.AsyncFnMut, sym::async_call_mut, true),
-                (self.lang_items.AsyncFnOnce, sym::async_call_once, false),
-                (self.lang_items.Fn, sym::call, true),
-                (self.lang_items.FnMut, sym::call_mut, true),
-                (self.lang_items.FnOnce, sym::call_once, false),
+                (self.lang_items.AsyncFn, self.lang_items.AsyncFn_async_call, true),
+                (self.lang_items.AsyncFnMut, self.lang_items.AsyncFnMut_async_call_mut, true),
+                (self.lang_items.AsyncFnOnce, self.lang_items.AsyncFnOnce_async_call_once, false),
+                (self.lang_items.Fn, self.lang_items.Fn_call, true),
+                (self.lang_items.FnMut, self.lang_items.FnMut_call_mut, true),
+                (self.lang_items.FnOnce, self.lang_items.FnOnce_call_once, false),
             ]
         } else {
             [
-                (self.lang_items.Fn, sym::call, true),
-                (self.lang_items.FnMut, sym::call_mut, true),
-                (self.lang_items.FnOnce, sym::call_once, false),
-                (self.lang_items.AsyncFn, sym::async_call, true),
-                (self.lang_items.AsyncFnMut, sym::async_call_mut, true),
-                (self.lang_items.AsyncFnOnce, sym::async_call_once, false),
+                (self.lang_items.Fn, self.lang_items.Fn_call, true),
+                (self.lang_items.FnMut, self.lang_items.FnMut_call_mut, true),
+                (self.lang_items.FnOnce, self.lang_items.FnOnce_call_once, false),
+                (self.lang_items.AsyncFn, self.lang_items.AsyncFn_async_call, true),
+                (self.lang_items.AsyncFnMut, self.lang_items.AsyncFnMut_async_call_mut, true),
+                (self.lang_items.AsyncFnOnce, self.lang_items.AsyncFnOnce_async_call_once, false),
             ]
         };
 
         // Try the options that are least restrictive on the caller first.
-        for (opt_trait_def_id, method_name, borrow) in call_trait_choices {
-            let Some(trait_def_id) = opt_trait_def_id else {
+        for (opt_trait_def_id, opt_method_def_id, borrow) in call_trait_choices {
+            let (Some(trait_def_id), Some(method_def_id)) = (opt_trait_def_id, opt_method_def_id)
+            else {
                 continue;
             };
 
             let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
                 Ty::new_tup_from_iter(
                     self.interner(),
-                    arg_exprs.iter().map(|_| self.table.next_ty_var()),
+                    arg_exprs.iter().map(|&arg| self.table.next_ty_var(arg.into())),
                 )
             });
 
@@ -298,9 +316,9 @@ impl<'db> InferenceContext<'_, 'db> {
             // one which may apply. So if we treat opaques as inference variables
             // `Box<impl FnOnce()>: Fn` is considered ambiguous and chosen.
             if let Some(ok) = self.table.lookup_method_for_operator(
-                ObligationCause::new(),
-                method_name,
+                ObligationCause::new(call_expr),
                 trait_def_id,
+                method_def_id,
                 adjusted_ty,
                 opt_input_type,
                 TreatNotYetDefinedOpaques::AsRigid,
@@ -337,12 +355,21 @@ impl<'db> InferenceContext<'_, 'db> {
     fn check_legacy_const_generics(
         &mut self,
         callee: Option<CallableDefId>,
+        callee_ty: Ty<'db>,
         args: &[ExprId],
     ) -> Box<[u32]> {
-        let func = match callee {
-            Some(CallableDefId::FunctionId(func)) => func,
+        let (func, fn_generic_args) = match (callee, callee_ty.kind()) {
+            (Some(CallableDefId::FunctionId(func)), TyKind::FnDef(_, fn_generic_args)) => {
+                (func, fn_generic_args)
+            }
             _ => return Default::default(),
         };
+        let generics = crate::generics::generics(self.db, func.into());
+        let const_params = generics
+            .iter_self_type_or_consts()
+            .filter(|(_, param_data)| param_data.const_param().is_some())
+            .map(|(id, _)| ConstParamId::from_unchecked(id))
+            .collect::<Vec<_>>();
 
         let data = FunctionSignature::of(self.db, func);
         let Some(legacy_const_generics_indices) = data.legacy_const_generics_indices(self.db, func)
@@ -364,11 +391,29 @@ impl<'db> InferenceContext<'_, 'db> {
         }
 
         // check legacy const parameters
-        for arg_idx in legacy_const_generics_indices.iter().copied() {
+        for (const_idx, arg_idx) in legacy_const_generics_indices.iter().copied().enumerate() {
             if arg_idx >= args.len() as u32 {
                 continue;
             }
-            let expected = Expectation::none(); // FIXME use actual const ty, when that is lowered correctly
+
+            if let Some(const_arg) = fn_generic_args.get(const_idx).and_then(|it| it.konst())
+                && let ConstKind::Infer(_) = const_arg.kind()
+            {
+                // Instantiate the generic arg with an error type, to prevent errors from it.
+                // FIXME: Actually lower the expression as const.
+                _ = self
+                    .table
+                    .at(&ObligationCause::dummy())
+                    .eq(self.types.consts.error, const_arg)
+                    .map(|infer_ok| self.table.register_infer_ok(infer_ok));
+            }
+
+            let expected = if let Some(&const_param) = const_params.get(const_idx) {
+                Expectation::has_type(self.db.const_param_ty(const_param))
+            } else {
+                Expectation::None
+            };
+
             self.infer_expr(args[arg_idx as usize], &expected, ExprIsRead::Yes);
             // FIXME: evaluate and unify with the const
         }
@@ -378,6 +423,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
     fn confirm_builtin_call(
         &mut self,
+        callee_expr: ExprId,
         call_expr: ExprId,
         callee_ty: Ty<'db>,
         arg_exprs: &[ExprId],
@@ -385,8 +431,11 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let (fn_sig, def_id) = match callee_ty.kind() {
             TyKind::FnDef(def_id, args) => {
-                let fn_sig =
-                    self.db.callable_item_signature(def_id.0).instantiate(self.interner(), args);
+                let fn_sig = self
+                    .db
+                    .callable_item_signature(def_id.0)
+                    .instantiate(self.interner(), args)
+                    .skip_norm_wip();
                 (fn_sig, Some(def_id.0))
             }
 
@@ -401,11 +450,13 @@ impl<'db> InferenceContext<'_, 'db> {
         // renormalize the associated types at this point, since they
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
-        let fn_sig = self
-            .infcx()
-            .instantiate_binder_with_fresh_vars(BoundRegionConversionTime::FnCall, fn_sig);
+        let fn_sig = self.infcx().instantiate_binder_with_fresh_vars(
+            callee_expr.into(),
+            BoundRegionConversionTime::FnCall,
+            fn_sig,
+        );
 
-        let indices_to_skip = self.check_legacy_const_generics(def_id, arg_exprs);
+        let indices_to_skip = self.check_legacy_const_generics(def_id, callee_ty, arg_exprs);
         self.check_call_arguments(
             call_expr,
             fn_sig.inputs(),
@@ -413,16 +464,17 @@ impl<'db> InferenceContext<'_, 'db> {
             expected,
             arg_exprs,
             &indices_to_skip,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::DontTupleArguments,
         );
 
-        if fn_sig.abi == FnAbi::RustCall
+        if fn_sig.abi() == ExternAbi::RustCall
             && let Some(ty) = fn_sig.inputs().last().copied()
             && let Some(tuple_trait) = self.lang_items.Tuple
         {
-            self.table.register_bound(ty, tuple_trait, ObligationCause::new());
-            self.require_type_is_sized(ty);
+            let span = arg_exprs.last().copied().unwrap_or(call_expr);
+            self.table.register_bound(ty, tuple_trait, ObligationCause::new(span));
+            self.require_type_is_sized(ty, span.into());
         }
 
         fn_sig.output()
@@ -446,7 +498,7 @@ impl<'db> InferenceContext<'_, 'db> {
             expected,
             arg_exprs,
             &[],
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
         );
 
@@ -467,7 +519,7 @@ impl<'db> InferenceContext<'_, 'db> {
             expected,
             arg_exprs,
             &[],
-            method.sig.c_variadic,
+            method.sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
         );
 
@@ -495,7 +547,7 @@ impl<'a, 'db> DeferredCallResolution<'db> {
         assert!(ctx.infcx().closure_kind(self.closure_ty).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
-        match ctx.try_overloaded_call_traits(self.closure_ty, None) {
+        match ctx.try_overloaded_call_traits(self.call_expr, self.closure_ty, None) {
             Some((autoref, method_callee)) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature

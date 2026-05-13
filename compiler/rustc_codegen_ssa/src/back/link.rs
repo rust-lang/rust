@@ -754,10 +754,15 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
         escaped_stdout = for_each(&stdout, |line, output| {
             // Hide some progress messages from link.exe that we don't care about.
             // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
+            // When incremental linking is enabled and an .ilk exists, but its associated .exe is
+            // missing, link.exe prints the path of the missing .exe followed by:
+            let ilk_but_no_exe =
+                "not found or not built by the last incremental link; performing full link";
             let trimmed = line.trim_start();
             if trimmed.starts_with("Creating library")
                 || trimmed.starts_with("Generating code")
                 || trimmed.starts_with("Finished generating code")
+                || trimmed.ends_with(ilk_but_no_exe)
             {
                 linker_info += line;
                 linker_info += "\r\n";

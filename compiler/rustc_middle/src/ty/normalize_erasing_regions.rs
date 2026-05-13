@@ -66,6 +66,30 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn assert_fully_normalized(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: impl TypeFoldable<TyCtxt<'tcx>> + Eq,
+    ) {
+        let value = self.erase_and_anonymize_regions(value);
+        if value.has_aliases() {
+            assert_eq!(
+                value.clone(),
+                value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, typing_env })
+            )
+        }
+    }
+
+    pub fn debug_assert_fully_normalized(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: impl TypeFoldable<TyCtxt<'tcx>> + Eq,
+    ) {
+        if cfg!(debug_assertions) {
+            self.assert_fully_normalized(typing_env, value);
+        }
+    }
+
     /// Tries to erase the regions in `value` and then fully normalize all the
     /// types found within. The result will also have regions erased.
     ///

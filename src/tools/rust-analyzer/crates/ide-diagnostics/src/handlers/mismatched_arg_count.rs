@@ -12,7 +12,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_ran
 //
 // This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
 pub(crate) fn mismatched_tuple_struct_pat_arg_count(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::MismatchedTupleStructPatArgCount,
 ) -> Diagnostic {
     let s = if d.found == 1 { "" } else { "s" };
@@ -33,7 +33,7 @@ pub(crate) fn mismatched_tuple_struct_pat_arg_count(
 //
 // This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
 pub(crate) fn mismatched_arg_count(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::MismatchedArgCount,
 ) -> Diagnostic {
     let s = if d.expected == 1 { "" } else { "s" };
@@ -47,7 +47,7 @@ pub(crate) fn mismatched_arg_count(
 }
 
 fn invalid_args_range(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     source: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     expected: usize,
     found: usize,
@@ -205,6 +205,7 @@ trait Foo { fn method(&self, _arg: usize) {} }
 
 fn f() {
     let x;
+     // ^ error: type annotations needed
     x.method();
 }
 "#,
@@ -453,6 +454,8 @@ fn g() {
     b::<1, 3>(0, 2);
 
     b(0, 1, 2);
+ // ^ error: type annotations needed
+ // | full type: `fn b<_, _>(u8, u8)`
            //^ error: expected 4 arguments, found 3
 }
             "#,

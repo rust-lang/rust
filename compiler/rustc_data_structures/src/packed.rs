@@ -3,7 +3,7 @@ use std::fmt;
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use crate::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 /// A packed 128-bit integer. Useful for reducing the size of structures in
 /// some cases.

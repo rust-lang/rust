@@ -8,7 +8,7 @@ use std::fmt::{self, Write};
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};

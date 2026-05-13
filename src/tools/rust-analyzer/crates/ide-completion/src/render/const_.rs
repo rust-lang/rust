@@ -6,12 +6,15 @@ use syntax::ToSmolStr;
 
 use crate::{item::CompletionItem, render::RenderContext};
 
-pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
+pub(crate) fn render_const(
+    ctx: RenderContext<'_, '_>,
+    const_: hir::Const,
+) -> Option<CompletionItem> {
     let _p = tracing::info_span!("render_const").entered();
     render(ctx, const_)
 }
 
-fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
+fn render(ctx: RenderContext<'_, '_>, const_: hir::Const) -> Option<CompletionItem> {
     let db = ctx.db();
     let name = const_.name(db)?;
     let (name, escaped_name) =

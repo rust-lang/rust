@@ -25,12 +25,12 @@ pub(crate) fn expand(
     // Allow using `#[global_allocator]` on an item statement
     // FIXME - if we get deref patterns, use them to reduce duplication here
     let (item, ident, is_stmt, ty_span) = if let Annotatable::Item(item) = &item
-        && let ItemKind::Static(box ast::StaticItem { ident, ty, .. }) = &item.kind
+        && let ItemKind::Static(ast::StaticItem { ident, ty, .. }) = &item.kind
     {
         (item, *ident, false, ecx.with_def_site_ctxt(ty.span))
     } else if let Annotatable::Stmt(stmt) = &item
         && let StmtKind::Item(item) = &stmt.kind
-        && let ItemKind::Static(box ast::StaticItem { ident, ty, .. }) = &item.kind
+        && let ItemKind::Static(ast::StaticItem { ident, ty, .. }) = &item.kind
     {
         (item, *ident, true, ecx.with_def_site_ctxt(ty.span))
     } else {

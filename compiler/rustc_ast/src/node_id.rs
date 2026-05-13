@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_span::LocalExpnId;
 
 rustc_index::newtype_index! {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-use crate::common::{Config, TestMode};
+use crate::common::{Config, PassFailMode, TestMode};
 use crate::directives::{
     DirectiveLine, NormalizeKind, NormalizeRule, TestProps, parse_and_update_aux,
     parse_edition_range, split_flags,
@@ -196,15 +196,9 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                 &mut props.check_test_line_numbers_match,
             );
         }),
-        multi_handler(&["check-pass", "build-pass", "run-pass"], |config, ln, props| {
-            props.update_pass_mode(ln, config);
+        multi_handler(PassFailMode::STR_VARIANTS, |config, ln, props| {
+            props.update_pass_fail_mode(ln, config);
         }),
-        multi_handler(
-            &["check-fail", "build-fail", "run-fail", "run-crash", "run-fail-or-crash"],
-            |config, ln, props| {
-                props.update_fail_mode(ln, config);
-            },
-        ),
         handler(IGNORE_PASS, |config, ln, props| {
             config.set_name_directive(ln, IGNORE_PASS, &mut props.ignore_pass);
         }),

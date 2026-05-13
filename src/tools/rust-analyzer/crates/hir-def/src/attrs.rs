@@ -137,8 +137,10 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                 "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                 "ignore" => attr_flags.insert(AttrFlags::IS_IGNORE),
                 "lang" => attr_flags.insert(AttrFlags::LANG_ITEM),
+                "must_use" => attr_flags.insert(AttrFlags::IS_MUST_USE),
                 "path" => attr_flags.insert(AttrFlags::HAS_PATH),
                 "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
+                "rustc_reservation_impl" => attr_flags.insert(AttrFlags::RUSTC_RESERVATION_IMPL),
                 "export_name" => {
                     if let Some(value) = attr.value_string()
                         && *value == *"main"
@@ -227,6 +229,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                     "unstable" => attr_flags.insert(AttrFlags::IS_UNSTABLE),
                     "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                     "macro_export" => attr_flags.insert(AttrFlags::IS_MACRO_EXPORT),
+                    "must_use" => attr_flags.insert(AttrFlags::IS_MUST_USE),
                     "no_mangle" => attr_flags.insert(AttrFlags::NO_MANGLE),
                     "pointee" => attr_flags.insert(AttrFlags::IS_POINTEE),
                     "non_exhaustive" => attr_flags.insert(AttrFlags::NON_EXHAUSTIVE),
@@ -260,6 +263,12 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                         "skip" => attr_flags.insert(AttrFlags::RUST_ANALYZER_SKIP),
                         "prefer_underscore_import" => {
                             attr_flags.insert(AttrFlags::PREFER_UNDERSCORE_IMPORT)
+                        }
+                        _ => {}
+                    },
+                    "diagnostic" => match &*second_segment {
+                        "do_not_recommend" => {
+                            attr_flags.insert(AttrFlags::DIAGNOSTIC_DO_NOT_RECOMMEND)
                         }
                         _ => {}
                     },
@@ -335,6 +344,10 @@ bitflags::bitflags! {
         const MACRO_STYLE_PARENTHESES = 1 << 48;
 
         const PREFER_UNDERSCORE_IMPORT = 1 << 49;
+
+        const IS_MUST_USE = 1 << 50;
+
+        const DIAGNOSTIC_DO_NOT_RECOMMEND = 1 << 51;
     }
 }
 
@@ -724,52 +737,56 @@ impl AttrFlags {
             return None;
         }
 
-        return repr(db, owner);
+        Self::repr_assume_has(db, owner)
+    }
 
-        #[salsa::tracked]
-        fn repr(db: &dyn DefDatabase, owner: AdtId) -> Option<ReprOptions> {
-            let mut result = None;
-            collect_attrs::<Infallible>(db, owner.into(), |attr| {
-                let mut current = None;
-                if let ast::Meta::TokenTreeMeta(attr) = &attr
-                    && let Some(path) = attr.path()
-                    && let Some(tt) = attr.token_tree()
+    /// Only call this when you've verified the type indeed has a `#[repr]` attribute!
+    ///
+    /// Prefer [`AttrFlags::repr()`] in non-perf-sensitive places as it also has a check that
+    /// that the ADT has repr.
+    #[salsa::tracked]
+    pub fn repr_assume_has(db: &dyn DefDatabase, owner: AdtId) -> Option<ReprOptions> {
+        let mut result = None;
+        collect_attrs::<Infallible>(db, owner.into(), |attr| {
+            let mut current = None;
+            if let ast::Meta::TokenTreeMeta(attr) = &attr
+                && let Some(path) = attr.path()
+                && let Some(tt) = attr.token_tree()
+            {
+                if path.is1("repr")
+                    && let Some(repr) = parse_repr_tt(&tt)
                 {
-                    if path.is1("repr")
-                        && let Some(repr) = parse_repr_tt(&tt)
-                    {
-                        current = Some(repr);
-                    } else if path.is1("rustc_scalable_vector")
-                        && let mut tt = TokenTreeChildren::new(&tt)
-                        && let Some(NodeOrToken::Token(scalable)) = tt.next()
-                        && let Some(scalable) = ast::IntNumber::cast(scalable)
-                        && let Ok(scalable) = scalable.value()
-                        && let Ok(scalable) = scalable.try_into()
-                    {
-                        current = Some(ReprOptions {
-                            scalable: Some(rustc_abi::ScalableElt::ElementCount(scalable)),
-                            ..ReprOptions::default()
-                        });
-                    }
-                } else if let ast::Meta::PathMeta(attr) = &attr
-                    && attr.path().is1("rustc_scalable_vector")
+                    current = Some(repr);
+                } else if path.is1("rustc_scalable_vector")
+                    && let mut tt = TokenTreeChildren::new(&tt)
+                    && let Some(NodeOrToken::Token(scalable)) = tt.next()
+                    && let Some(scalable) = ast::IntNumber::cast(scalable)
+                    && let Ok(scalable) = scalable.value()
+                    && let Ok(scalable) = scalable.try_into()
                 {
                     current = Some(ReprOptions {
-                        scalable: Some(rustc_abi::ScalableElt::Container),
+                        scalable: Some(rustc_abi::ScalableElt::ElementCount(scalable)),
                         ..ReprOptions::default()
                     });
                 }
+            } else if let ast::Meta::PathMeta(attr) = &attr
+                && attr.path().is1("rustc_scalable_vector")
+            {
+                current = Some(ReprOptions {
+                    scalable: Some(rustc_abi::ScalableElt::Container),
+                    ..ReprOptions::default()
+                });
+            }
 
-                if let Some(current) = current {
-                    match &mut result {
-                        Some(existing) => merge_repr(existing, current),
-                        None => result = Some(current),
-                    }
+            if let Some(current) = current {
+                match &mut result {
+                    Some(existing) => merge_repr(existing, current),
+                    None => result = Some(current),
                 }
-                ControlFlow::Continue(())
-            });
-            result
-        }
+            }
+            ControlFlow::Continue(())
+        });
+        result
     }
 
     /// Call this only if there are legacy const generics, to save memory.
@@ -1138,6 +1155,28 @@ impl AttrFlags {
                             return ControlFlow::Break(Symbol::intern(&feature));
                         }
                     }
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
+
+    /// Returns `None` if there is no `#[must_use]`, `Some(None)` if there is a `#[must_use]` without a message,
+    /// and `Some(Some(message))` if there is a `#[must_use]` with a message.
+    pub fn must_use_message(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Option<&str>> {
+        if !AttrFlags::query(db, owner).contains(AttrFlags::IS_MUST_USE) {
+            return None;
+        }
+        return Some(must_use_message(db, owner));
+
+        #[salsa::tracked(returns(as_deref))]
+        fn must_use_message(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Box<str>> {
+            collect_attrs(db, owner, |attr| {
+                if let ast::Meta::KeyValueMeta(attr) = attr
+                    && attr.path().is1("must_use")
+                    && let Some(message) = attr.value_string()
+                {
+                    return ControlFlow::Break(Box::from(&*message));
                 }
                 ControlFlow::Continue(())
             })

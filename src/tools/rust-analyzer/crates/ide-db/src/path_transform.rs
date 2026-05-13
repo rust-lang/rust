@@ -1,6 +1,6 @@
 //! See [`PathTransform`].
 
-use crate::helpers::mod_path_to_ast;
+use crate::helpers::mod_path_to_ast_with_factory;
 use either::Either;
 use hir::{
     AsAssocItem, FindPathConfig, HirDisplay, HirFileId, ModuleDef, SemanticsScope,
@@ -151,7 +151,7 @@ impl<'a> PathTransform<'a> {
                 prettify_macro_expansion(
                     db,
                     node,
-                    &db.expansion_span_map(file_id),
+                    db.expansion_span_map(file_id),
                     self.target_scope.module().krate(db).into(),
                 )
             }
@@ -218,8 +218,7 @@ impl<'a> PathTransform<'a> {
                     }
                 }
                 (Either::Left(k), None) => {
-                    if let Some(default) =
-                        k.default(db, target_module.krate(db).to_display_target(db))
+                    if let Some(default) = k.default_source_code(db, target_module)
                         && let Some(default) = default.expr()
                     {
                         const_substs.insert(k, default.syntax().clone());
@@ -354,6 +353,7 @@ impl Ctx<'_> {
     }
 
     fn transform_path_(&self, editor: &SyntaxEditor, path: &ast::Path) -> Option<()> {
+        let make = editor.make();
         if path.qualifier().is_some() {
             return None;
         }
@@ -397,7 +397,14 @@ impl Ctx<'_> {
                                 hir::ModuleDef::Trait(trait_ref),
                                 cfg,
                             )?;
-                            match make::ty_path(mod_path_to_ast(&found_path, self.target_edition)) {
+                            match make
+                                .ty_path(mod_path_to_ast_with_factory(
+                                    make,
+                                    &found_path,
+                                    self.target_edition,
+                                ))
+                                .into()
+                            {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
                                 _ => None,
                             }
@@ -447,7 +454,7 @@ impl Ctx<'_> {
                     allow_unstable: true,
                 };
                 let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
-                let res = mod_path_to_ast(&found_path, self.target_edition);
+                let res = mod_path_to_ast_with_factory(make, &found_path, self.target_edition);
                 let (res_editor, res) = SyntaxEditor::with_ast_node(&res);
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list())
                     && let Some(segment) = res.segment()
@@ -501,7 +508,8 @@ impl Ctx<'_> {
                     )?;
 
                     if let Some(qual) =
-                        mod_path_to_ast(&found_path, self.target_edition).qualifier()
+                        mod_path_to_ast_with_factory(make, &found_path, self.target_edition)
+                            .qualifier()
                     {
                         editor.replace(
                             path.syntax(),
@@ -524,8 +532,9 @@ impl Ctx<'_> {
 
     fn transform_ident_pat(&self, editor: &SyntaxEditor, ident_pat: &ast::IdentPat) -> Option<()> {
         let name = ident_pat.name()?;
+        let make = editor.make();
 
-        let temp_path = make::path_from_text(&name.text());
+        let temp_path = make.path_from_text(&name.text());
 
         let resolution = self.source_scope.speculative_resolve(&temp_path)?;
 
@@ -580,7 +589,7 @@ impl Ctx<'_> {
                 let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
                 editor.replace(
                     ident_pat.syntax(),
-                    mod_path_to_ast(&found_path, self.target_edition).syntax(),
+                    mod_path_to_ast_with_factory(make, &found_path, self.target_edition).syntax(),
                 );
                 Some(())
             }

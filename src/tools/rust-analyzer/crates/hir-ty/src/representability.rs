@@ -1,7 +1,7 @@
 //! Detecting whether a type is infinitely-sized.
 
 use hir_def::{AdtId, VariantId, hir::generics::GenericParams};
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use rustc_type_ir::inherent::IntoKind;
 
 use crate::{
     db::HirDatabase,
@@ -47,14 +47,14 @@ pub(crate) fn representability_cycle(
 
 fn variant_representability(db: &dyn HirDatabase, id: VariantId) -> Representability {
     for ty in db.field_types(id).values() {
-        rtry!(representability_ty(db, ty.get().instantiate_identity()));
+        rtry!(representability_ty(db, ty.get().instantiate_identity().skip_norm_wip()));
     }
     Representability::Representable
 }
 
 fn representability_ty<'db>(db: &'db dyn HirDatabase, ty: Ty<'db>) -> Representability {
     match ty.kind() {
-        TyKind::Adt(adt_id, args) => representability_adt_ty(db, adt_id.def_id().0, args),
+        TyKind::Adt(adt_id, args) => representability_adt_ty(db, adt_id.def_id(), args),
         // FIXME(#11924) allow zero-length arrays?
         TyKind::Array(ty, _) => representability_ty(db, ty),
         TyKind::Tuple(tys) => {
@@ -94,7 +94,11 @@ fn params_in_repr(db: &dyn HirDatabase, def_id: AdtId) -> Box<[bool]> {
         .collect::<Box<[bool]>>();
     let mut handle_variant = |variant| {
         for field in db.field_types(variant).values() {
-            params_in_repr_ty(db, field.get().instantiate_identity(), &mut params_in_repr);
+            params_in_repr_ty(
+                db,
+                field.get().instantiate_identity().skip_norm_wip(),
+                &mut params_in_repr,
+            );
         }
     };
     match def_id {
@@ -112,7 +116,7 @@ fn params_in_repr(db: &dyn HirDatabase, def_id: AdtId) -> Box<[bool]> {
 fn params_in_repr_ty<'db>(db: &'db dyn HirDatabase, ty: Ty<'db>, params_in_repr: &mut [bool]) {
     match ty.kind() {
         TyKind::Adt(adt, args) => {
-            let inner_params_in_repr = self::params_in_repr(db, adt.def_id().0);
+            let inner_params_in_repr = self::params_in_repr(db, adt.def_id());
             for (i, arg) in args.iter().enumerate() {
                 if let GenericArgKind::Type(ty) = arg.kind()
                     && inner_params_in_repr[i]

@@ -1049,7 +1049,6 @@ pub(crate) fn handle_runnables(
                         all_targets = if all_targets { " --all-targets" } else { "" }
                     ),
                     location: None,
-                    kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
                         workspace_root: Some(spec.workspace_root.clone().into()),
                         cwd: cwd.into(),
@@ -1076,7 +1075,6 @@ pub(crate) fn handle_runnables(
                 res.push(lsp_ext::Runnable {
                     label: "cargo check --workspace".to_owned(),
                     location: None,
-                    kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::RunnableArgs::Cargo(lsp_ext::CargoRunnableArgs {
                         workspace_root: None,
                         cwd: path.as_path().unwrap().to_path_buf().into(),

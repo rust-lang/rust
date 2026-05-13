@@ -154,7 +154,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                     if let Some(field) = field {
                         let ty0 = self.tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            Unnormalized::new_wip(field.ty(self.tcx, args)),
+                            field.ty(self.tcx, args),
                         );
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that

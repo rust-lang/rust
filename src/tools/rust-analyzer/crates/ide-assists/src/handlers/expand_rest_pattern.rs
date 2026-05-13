@@ -29,7 +29,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 fn expand_record_rest_pattern(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     record_pat: ast::RecordPat,
     rest_pat: ast::RestPat,
 ) -> Option<()> {
@@ -92,7 +92,7 @@ fn expand_record_rest_pattern(
 // ```
 fn expand_tuple_struct_rest_pattern(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     pat: ast::TupleStructPat,
     rest_pat: ast::RestPat,
 ) -> Option<()> {
@@ -171,7 +171,7 @@ fn expand_tuple_struct_rest_pattern(
 // ```
 fn expand_tuple_rest_pattern(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     pat: ast::TuplePat,
     rest_pat: ast::RestPat,
 ) -> Option<()> {
@@ -233,7 +233,7 @@ fn expand_tuple_rest_pattern(
 // ```
 fn expand_slice_rest_pattern(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     pat: ast::SlicePat,
     rest_pat: ast::RestPat,
 ) -> Option<()> {
@@ -277,7 +277,7 @@ fn expand_slice_rest_pattern(
     )
 }
 
-pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let rest_pat = ctx.find_node_at_offset::<ast::RestPat>()?;
     let parent = rest_pat.syntax().parent()?;
     match_ast! {
@@ -292,7 +292,7 @@ pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 }
 
 fn gen_unnamed_pat(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     name_gen: &mut NameGenerator,
     ty: &hir::Type<'_>,

@@ -316,7 +316,8 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             @call(mir_field, args) => {
                 let (parent, place_ty) = self.parse_place_inner(args[0])?;
                 let field = FieldIdx::from_u32(self.parse_integer_literal(args[1])? as u32);
-                let field_ty = PlaceTy::field_ty(self.tcx, place_ty.ty, place_ty.variant_index, field);
+                let field_ty = PlaceTy::field_ty(self.tcx, place_ty.ty, place_ty.variant_index, field)
+                    .skip_norm_wip();
                 let proj = PlaceElem::Field(field, field_ty);
                 let place = parent.project_deeper(&[proj], self.tcx);
                 return Ok((place, PlaceTy::from_ty(field_ty)));

@@ -381,8 +381,7 @@ fn signature_help_for_generics(
                 }
             }
             GenericParam::ConstParam(param) => {
-                if let Some(expr) = param.default(db, display_target).and_then(|konst| konst.expr())
-                {
+                if let Some(expr) = param.default(db, display_target) {
                     format_to!(buf, " = {}", expr);
                 }
             }

@@ -12,6 +12,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, BufferedEarlyLint, Diagnostic, MultiSpan, pluralize, struct_span_code_err,
 };
+use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
@@ -822,6 +823,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for decl in [resolution.non_glob_decl, resolution.glob_decl] {
                     if let Some(decl) = decl
                         && let DeclKind::Import { source_decl, import } = decl.kind
+                        // FIXME: Do not check visibility-ambiguous imports for now. To check them
+                        // properly we need to preserve all imports in ambiguous glob sets and
+                        // check them all individually.
+                        && decl.ambiguity_vis_max.get().is_none()
                     {
                         // The source entity is too private to be reexported
                         // with the given import declaration's visibility.
@@ -1656,7 +1661,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             match decl.kind {
                 // exclude decl_macro
                 DeclKind::Def(Res::Def(DefKind::Macro(_), def_id))
-                    if self.get_macro_by_def_id(def_id).macro_rules =>
+                    if let SyntaxExtensionKind::MacroRules(mr) =
+                        &self.get_macro_by_def_id(def_id).kind
+                        && mr.is_macro_rules() =>
                 {
                     err.subdiagnostic(ConsiderAddingMacroExport { span: decl.span });
                     err.subdiagnostic(ConsiderMarkingAsPubCrate { vis_span: import.vis_span });
@@ -1787,7 +1794,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Add to module's glob_importers
-        module.glob_importers.borrow_mut_unchecked().push(import);
+        if module.is_local() {
+            module.glob_importers.borrow_mut_unchecked().push(import);
+        }
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.

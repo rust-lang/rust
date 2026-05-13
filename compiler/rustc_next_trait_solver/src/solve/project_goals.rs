@@ -1,8 +1,9 @@
+use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, ProjectionPredicate};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
+use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource};
 
 impl<D, I> EvalCtxt<'_, D>
 where
@@ -13,7 +14,7 @@ where
     pub(super) fn compute_projection_goal(
         &mut self,
         goal: Goal<I, ProjectionPredicate<I>>,
-    ) -> QueryResult<I> {
+    ) -> QueryResultOrRerunNonErased<I> {
         let cx = self.cx();
         let projection_term = goal.predicate.projection_term.to_term(cx);
         let goal = goal.with(

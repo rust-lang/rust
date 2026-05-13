@@ -14,10 +14,10 @@ note: ...and refers to the struct `S` which is defined here
    |
 LL |     pub struct S {}
    |     ^^^^^^^^^^^^ you could import this directly
-help: import `S` through the re-export
+help: import `S` directly
    |
 LL - use crate::both::private::S;
-LL + use m::S;
+LL + use crate::m::S;
    |
 
 error[E0603]: struct import `S` is private
@@ -36,10 +36,10 @@ note: ...and refers to the struct `S` which is defined here
    |
 LL |     pub struct S {}
    |     ^^^^^^^^^^^^ you could import this directly
-help: import `S` through the re-export
+help: import `S` directly
    |
 LL -     use crate::both::private::S;
-LL +     use m::S;
+LL +     use crate::m::S;
    |
 
 error: aborting due to 2 previous errors

@@ -1240,6 +1240,9 @@ fn infer_array() {
             274..275 'x': [u8; 0]
             287..289 '[]': [u8; 0]
             299..300 'y': [u8; 4]
+            307..308 '2': usize
+            307..310 '2+2': usize
+            309..310 '2': usize
             314..323 '[1,2,3,4]': [u8; 4]
             315..316 '1': u8
             317..318 '2': u8
@@ -1811,8 +1814,6 @@ impl Foo for u8 {
 }
 
 #[test]
-// FIXME
-#[should_panic]
 fn const_eval_in_function_signature() {
     check_types(
         r#"
@@ -2066,6 +2067,138 @@ fn test() {
 }
 
 #[test]
+fn gen_block_types_inferred() {
+    check_infer(
+        r#"
+//- minicore: iterator, deref
+use core::iter::Iterator;
+
+fn test() {
+    let mut generator = gen {
+        yield 1i8;
+    };
+    let result = generator.next();
+}
+        "#,
+        expect![[r#"
+            37..131 '{     ...t(); }': ()
+            47..60 'mut generator': impl Iterator<Item = i8>
+            63..93 'gen { ...     }': impl Iterator<Item = i8>
+            77..86 'yield 1i8': ()
+            83..86 '1i8': i8
+            103..109 'result': Option<i8>
+            112..121 'generator': impl Iterator<Item = i8>
+            112..128 'genera...next()': Option<i8>
+        "#]],
+    );
+}
+
+#[test]
+fn async_gen_block_types_inferred() {
+    check_infer(
+        r#"
+//- minicore: async_iterator, option, future, deref, pin
+use core::async_iter::AsyncIterator;
+use core::pin::Pin;
+use core::task::Context;
+
+fn test(mut cx: Context<'_>) {
+    let mut generator = async gen {
+        yield 1i8;
+    };
+    let result = Pin::new(&mut generator).poll_next(&mut cx);
+}
+        "#,
+        expect![[r#"
+            91..97 'mut cx': Context<'?>
+            112..239 '{     ...cx); }': ()
+            122..135 'mut generator': impl AsyncIterator<Item = {unknown}>
+            138..174 'async ...     }': impl AsyncIterator<Item = {unknown}>
+            158..167 'yield 1i8': ()
+            164..167 '1i8': i8
+            184..190 'result': Poll<Option<{unknown}>>
+            193..201 'Pin::new': fn new<&'? mut impl AsyncIterator<Item = {unknown}>>(&'? mut impl AsyncIterator<Item = {unknown}>) -> Pin<&'? mut impl AsyncIterator<Item = {unknown}>>
+            193..217 'Pin::n...rator)': Pin<&'? mut impl AsyncIterator<Item = {unknown}>>
+            193..236 'Pin::n...ut cx)': Poll<Option<{unknown}>>
+            202..216 '&mut generator': &'? mut impl AsyncIterator<Item = {unknown}>
+            207..216 'generator': impl AsyncIterator<Item = {unknown}>
+            228..235 '&mut cx': &'? mut Context<'?>
+            233..235 'cx': Context<'?>
+        "#]],
+    );
+}
+
+#[test]
+fn gen_fn_types_inferred() {
+    check_infer(
+        r#"
+//- minicore: iterator, deref
+use core::iter::Iterator;
+
+gen fn html() {
+    yield ();
+}
+
+fn test() {
+    let mut generator = html();
+    let result = generator.next();
+}
+        "#,
+        expect![[r#"
+            41..58 '{     ... (); }': ()
+            47..55 'yield ()': ()
+            53..55 '()': ()
+            70..140 '{     ...t(); }': ()
+            80..93 'mut generator': impl Iterator<Item = ()>
+            96..100 'html': fn html() -> impl Iterator<Item = ()>
+            96..102 'html()': impl Iterator<Item = ()>
+            112..118 'result': Option<()>
+            121..130 'generator': impl Iterator<Item = ()>
+            121..137 'genera...next()': Option<()>
+        "#]],
+    );
+}
+
+#[test]
+fn async_gen_fn_types_inferred() {
+    check_infer(
+        r#"
+//- minicore: async_iterator, option, future, deref, pin
+use core::async_iter::AsyncIterator;
+use core::pin::Pin;
+use core::task::Context;
+
+async gen fn html() {
+    yield ();
+}
+
+fn test(mut cx: Context<'_>) {
+    let mut generator = html();
+    let result = Pin::new(&mut generator).poll_next(&mut cx);
+}
+        "#,
+        expect![[r#"
+            103..120 '{     ... (); }': ()
+            109..117 'yield ()': ()
+            115..117 '()': ()
+            130..136 'mut cx': Context<'?>
+            151..248 '{     ...cx); }': ()
+            161..174 'mut generator': impl AsyncIterator<Item = ()>
+            177..181 'html': fn html() -> impl AsyncIterator<Item = ()>
+            177..183 'html()': impl AsyncIterator<Item = ()>
+            193..199 'result': Poll<Option<()>>
+            202..210 'Pin::new': fn new<&'? mut impl AsyncIterator<Item = ()>>(&'? mut impl AsyncIterator<Item = ()>) -> Pin<&'? mut impl AsyncIterator<Item = ()>>
+            202..226 'Pin::n...rator)': Pin<&'? mut impl AsyncIterator<Item = ()>>
+            202..245 'Pin::n...ut cx)': Poll<Option<()>>
+            211..225 '&mut generator': &'? mut impl AsyncIterator<Item = ()>
+            216..225 'generator': impl AsyncIterator<Item = ()>
+            237..244 '&mut cx': &'? mut Context<'?>
+            242..244 'cx': Context<'?>
+        "#]],
+    );
+}
+
+#[test]
 fn tuple_pattern_nested_match_ergonomics() {
     check_no_mismatches(
         r#"
@@ -2270,6 +2403,7 @@ fn infer_generic_from_later_assignment() {
             79..83 'None': Option<bool>
             89..127 'loop {...     }': !
             94..127 '{     ...     }': ()
+            104..107 'end': Option<bool>
             104..107 'end': Option<bool>
             104..120 'end = ...(true)': ()
             110..114 'Some': fn Some<bool>(bool) -> Option<bool>
@@ -2563,7 +2697,6 @@ fn generic_default_in_struct_literal() {
 
 #[test]
 fn generic_default_depending_on_other_type_arg() {
-    // FIXME: the {unknown} is a bug
     check_infer(
         r#"
         struct Thing<T = u128, F = fn() -> T> { t: T }
@@ -2580,7 +2713,7 @@ fn generic_default_depending_on_other_type_arg() {
             83..130 '{     ...2 }; }': ()
             89..91 't1': Thing<u32, fn() -> u32>
             97..99 't2': Thing<u128, fn() -> u128>
-            105..127 'Thing:...1u32 }': Thing<u32, fn() -> {unknown}>
+            105..127 'Thing:...1u32 }': Thing<u32, fn() -> u32>
             121..125 '1u32': u32
         "#]],
     );
@@ -3459,15 +3592,13 @@ struct TS(usize);
 fn main() {
     let x;
     [x,] = &[1,];
-  //^^^^expected &'? [i32; 1], got [{unknown}]
 
     let x;
     [(x,),] = &[(1,),];
-  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}]
 
     let x;
     ((x,),) = &((1,),);
-  //^^^^^^^expected &'? ((i32,),), got (({unknown},),)
+  //^^^^^^^expected &'? ((i32,),), got ({unknown},)
 
     let x;
     (x,) = &(1,);
@@ -3475,7 +3606,7 @@ fn main() {
 
     let x;
     (S { a: x },) = &(S { a: 42 },);
-  //^^^^^^^^^^^^^expected &'? (S,), got (S,)
+  //^^^^^^^^^^^^^expected &'? (S,), got ({unknown},)
 
     let x;
     S { a: x } = &S { a: 42 };
@@ -3868,8 +3999,6 @@ fn main() {
             208..209 'c': u8
             213..214 'a': A
             213..221 'a.into()': [u8; 2]
-            33..34 '2': usize
-            111..112 '3': usize
         "#]],
     );
 }
@@ -3900,6 +4029,7 @@ fn main() {
             100..113 'async_closure': fn async_closure<impl AsyncFnOnce(i32)>(impl AsyncFnOnce(i32))
             100..147 'async_...    })': ()
             114..146 'async ...     }': impl AsyncFnOnce(i32)
+            121..124 'arg': i32
             121..124 'arg': i32
             126..146 '{     ...     }': ()
             136..139 'arg': i32
@@ -4055,14 +4185,14 @@ fn foo() {
             130..153 '{     ...     }': &'? T
             140..147 'loop {}': !
             145..147 '{}': ()
-            207..220 'LazyLock::new': fn new<[u32; _]>() -> LazyLock<[u32; _]>
-            207..222 'LazyLock::new()': LazyLock<[u32; _]>
+            207..220 'LazyLock::new': fn new<[u32; 0]>() -> LazyLock<[u32; 0]>
+            207..222 'LazyLock::new()': LazyLock<[u32; 0]>
             234..285 '{     ...CK); }': ()
-            244..245 '_': &'? [u32; _]
-            248..263 'LazyLock::force': fn force<[u32; _]>(&'? LazyLock<[u32; _]>) -> &'? [u32; _]
-            248..282 'LazyLo..._LOCK)': &'? [u32; _]
-            264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; _]>
-            265..281 'VALUES...Y_LOCK': LazyLock<[u32; _]>
+            244..245 '_': &'? [u32; 0]
+            248..263 'LazyLock::force': fn force<[u32; 0]>(&'? LazyLock<[u32; 0]>) -> &'? [u32; 0]
+            248..282 'LazyLo..._LOCK)': &'? [u32; 0]
+            264..281 '&VALUE...Y_LOCK': &'? LazyLock<[u32; 0]>
+            265..281 'VALUES...Y_LOCK': LazyLock<[u32; 0]>
             197..202 '{ 0 }': usize
             199..200 '0': usize
         "#]],
@@ -4140,11 +4270,38 @@ union U {
     "#,
         expect![[r#"
             242..243 '0': isize
-            46..47 '2': i32
-            65..68 '0.0': f32
-            90..91 '2': i32
-            200..201 '0': i32
-            212..213 '0': i32
+            111..125 '{ C as usize }': usize
+            113..114 'C': f32
+            113..123 'C as usize': usize
+        "#]],
+    );
+}
+
+#[test]
+fn async_closure_with_params() {
+    check_no_mismatches(
+        r#"
+fn foo() {
+    let capture = false;
+    async move |param: i32| {
+        capture;
+    };
+}
+    "#,
+    );
+}
+
+#[test]
+fn enum_variant_anon_const() {
+    check_infer(
+        r#"
+enum Enum {
+    Variant([(); { 2 }]),
+}
+    "#,
+        expect![[r#"
+            29..34 '{ 2 }': usize
+            31..32 '2': usize
         "#]],
     );
 }

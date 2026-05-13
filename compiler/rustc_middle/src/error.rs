@@ -63,6 +63,18 @@ pub(crate) struct RecursionLimitReached<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag("reached the recursion limit while computing the size of `{$ty}`")]
+#[help(
+    "consider increasing the recursion limit by adding a `#![recursion_limit = \"{$suggested_limit}\"]`"
+)]
+pub(crate) struct RecursionLimitReachedSizeSkeleton<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub suggested_limit: rustc_hir::limit::Limit,
+}
+
+#[derive(Diagnostic)]
 #[diag("constant evaluation of enum discriminant resulted in non-integer")]
 pub(crate) struct ConstEvalNonIntError {
     #[primary_span]

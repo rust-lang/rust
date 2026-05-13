@@ -1798,6 +1798,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // the `'region: 'static` constraints introduced by placeholder outlives.
                 ConstraintCategory::Internal => 7,
                 ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 8,
+                ConstraintCategory::SolverRegionConstraint(_) => 9,
             };
 
             debug!("constraint {constraint:?} category: {category:?}, interest: {interest:?}");

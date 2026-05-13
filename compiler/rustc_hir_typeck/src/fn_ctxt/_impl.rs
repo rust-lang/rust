@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let tail = self.tcx.struct_tail_raw(
                 ty,
                 &self.misc(span),
-                |ty| self.normalize(span, Unnormalized::new_wip(ty)),
+                |ty| self.normalize(span, ty),
                 || {},
             );
             // Sized types have static alignment, and so do slices.
@@ -644,7 +644,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &'tcx ty::FieldDef,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        self.normalize(span, Unnormalized::new_wip(field.ty(self.tcx, args)))
+        self.normalize(span, field.ty(self.tcx, args))
     }
 
     /// Drain all obligations that are stalled on coroutines defined in this body.

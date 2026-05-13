@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{Dominators, dominators};
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -20,14 +20,6 @@ pub struct BasicBlocks<'tcx> {
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
 type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
-
-#[derive(Debug, Clone, Copy)]
-pub enum SwitchTargetValue {
-    // A normal switch value.
-    Normal(u128),
-    // The final "otherwise" fallback value.
-    Otherwise,
-}
 
 #[derive(Clone, Default, Debug)]
 struct Cache {

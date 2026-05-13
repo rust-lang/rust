@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub(crate) fn render_variant_lit(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: Option<hir::Name>,
     variant: hir::EnumVariant,
@@ -34,7 +34,7 @@ pub(crate) fn render_variant_lit(
 }
 
 pub(crate) fn render_struct_literal(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     strukt: hir::Struct,
     path: Option<hir::ModPath>,
@@ -48,7 +48,7 @@ pub(crate) fn render_struct_literal(
 }
 
 fn render(
-    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     thing: Variant,
     name: hir::Name,
@@ -154,7 +154,7 @@ enum Variant {
 }
 
 impl Variant {
-    fn fields(self, ctx: &CompletionContext<'_>) -> Option<Vec<hir::Field>> {
+    fn fields(self, ctx: &CompletionContext<'_, '_>) -> Option<Vec<hir::Field>> {
         let fields = match self {
             Variant::Struct(it) => it.fields(ctx.db),
             Variant::EnumVariant(it) => it.fields(ctx.db),
@@ -187,14 +187,12 @@ impl Variant {
         }
     }
 
-    fn is_deprecated(self, ctx: &RenderContext<'_>) -> bool {
+    fn is_deprecated(self, ctx: &RenderContext<'_, '_>) -> bool {
         match self {
             Variant::Struct(it) => {
                 ctx.is_deprecated(it, None /* structs can't be assoc items */)
             }
-            Variant::EnumVariant(it) => {
-                ctx.is_deprecated(it, None /* enum variants can't be assoc items */)
-            }
+            Variant::EnumVariant(it) => ctx.is_variant_deprecated(it),
         }
     }
 

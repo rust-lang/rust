@@ -1,20 +1,20 @@
 use std::debug_assert_matches;
 
 use rustc_abi::IntegerType;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
 
-trait AbiHashStable<'tcx> {
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher);
+trait AbiStableHash<'tcx> {
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher);
 }
 macro_rules! default_hash_impl {
     ($($t:ty,)+) => {
-        $(impl<'tcx> AbiHashStable<'tcx> for $t {
+        $(impl<'tcx> AbiStableHash<'tcx> for $t {
             #[inline]
-            fn abi_hash(&self, _tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+            fn abi_stable_hash(&self, _tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
                 ::std::hash::Hash::hash(self, hasher);
             }
         })*
@@ -23,80 +23,80 @@ macro_rules! default_hash_impl {
 
 default_hash_impl! { u8, u64, usize, }
 
-impl<'tcx> AbiHashStable<'tcx> for bool {
+impl<'tcx> AbiStableHash<'tcx> for bool {
     #[inline]
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        (if *self { 1u8 } else { 0u8 }).abi_hash(tcx, hasher);
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+        (if *self { 1u8 } else { 0u8 }).abi_stable_hash(tcx, hasher);
     }
 }
 
-impl<'tcx> AbiHashStable<'tcx> for str {
+impl<'tcx> AbiStableHash<'tcx> for str {
     #[inline]
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        self.as_bytes().abi_hash(tcx, hasher);
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+        self.as_bytes().abi_stable_hash(tcx, hasher);
     }
 }
 
-impl<'tcx> AbiHashStable<'tcx> for Symbol {
+impl<'tcx> AbiStableHash<'tcx> for Symbol {
     #[inline]
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        self.as_str().abi_hash(tcx, hasher);
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+        self.as_str().abi_stable_hash(tcx, hasher);
     }
 }
 
-impl<'tcx, T: AbiHashStable<'tcx>> AbiHashStable<'tcx> for [T] {
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        self.len().abi_hash(tcx, hasher);
+impl<'tcx, T: AbiStableHash<'tcx>> AbiStableHash<'tcx> for [T] {
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+        self.len().abi_stable_hash(tcx, hasher);
         for item in self {
-            item.abi_hash(tcx, hasher);
+            item.abi_stable_hash(tcx, hasher);
         }
     }
 }
 
-impl<'tcx> AbiHashStable<'tcx> for Ty<'tcx> {
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+impl<'tcx> AbiStableHash<'tcx> for Ty<'tcx> {
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
         match self.kind() {
-            ty::Bool => sym::bool.abi_hash(tcx, hasher),
-            ty::Char => sym::char.abi_hash(tcx, hasher),
-            ty::Int(int_ty) => int_ty.name_str().abi_hash(tcx, hasher),
-            ty::Uint(uint_ty) => uint_ty.name_str().abi_hash(tcx, hasher),
-            ty::Float(float_ty) => float_ty.name_str().abi_hash(tcx, hasher),
+            ty::Bool => sym::bool.abi_stable_hash(tcx, hasher),
+            ty::Char => sym::char.abi_stable_hash(tcx, hasher),
+            ty::Int(int_ty) => int_ty.name_str().abi_stable_hash(tcx, hasher),
+            ty::Uint(uint_ty) => uint_ty.name_str().abi_stable_hash(tcx, hasher),
+            ty::Float(float_ty) => float_ty.name_str().abi_stable_hash(tcx, hasher),
 
             ty::Adt(adt_def, args) => {
-                adt_def.is_struct().abi_hash(tcx, hasher);
-                adt_def.is_enum().abi_hash(tcx, hasher);
-                adt_def.is_union().abi_hash(tcx, hasher);
+                adt_def.is_struct().abi_stable_hash(tcx, hasher);
+                adt_def.is_enum().abi_stable_hash(tcx, hasher);
+                adt_def.is_union().abi_stable_hash(tcx, hasher);
 
                 if let Some(align) = adt_def.repr().align {
-                    align.bits().abi_hash(tcx, hasher);
+                    align.bits().abi_stable_hash(tcx, hasher);
                 }
 
                 if let Some(integer) = adt_def.repr().int {
                     match integer {
-                        IntegerType::Pointer(sign) => sign.abi_hash(tcx, hasher),
+                        IntegerType::Pointer(sign) => sign.abi_stable_hash(tcx, hasher),
                         IntegerType::Fixed(integer, sign) => {
-                            integer.int_ty_str().abi_hash(tcx, hasher);
-                            sign.abi_hash(tcx, hasher);
+                            integer.int_ty_str().abi_stable_hash(tcx, hasher);
+                            sign.abi_stable_hash(tcx, hasher);
                         }
                     }
                 }
 
                 if let Some(pack) = adt_def.repr().pack {
-                    pack.bits().abi_hash(tcx, hasher);
+                    pack.bits().abi_stable_hash(tcx, hasher);
                 }
 
-                adt_def.repr().c().abi_hash(tcx, hasher);
+                adt_def.repr().c().abi_stable_hash(tcx, hasher);
 
                 for variant in adt_def.variants() {
-                    variant.name.abi_hash(tcx, hasher);
+                    variant.name.abi_stable_hash(tcx, hasher);
                     for field in &variant.fields {
-                        field.name.abi_hash(tcx, hasher);
+                        field.name.abi_stable_hash(tcx, hasher);
                         let field_ty =
                             tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
-                        field_ty.abi_hash(tcx, hasher);
+                        field_ty.abi_stable_hash(tcx, hasher);
                     }
                 }
-                args.abi_hash(tcx, hasher);
+                args.abi_stable_hash(tcx, hasher);
             }
 
             ty::Tuple(args) if args.len() == 0 => {}
@@ -130,25 +130,25 @@ impl<'tcx> AbiHashStable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> AbiHashStable<'tcx> for ty::FnSig<'tcx> {
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+impl<'tcx> AbiStableHash<'tcx> for ty::FnSig<'tcx> {
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
         for ty in self.inputs_and_output {
-            ty.abi_hash(tcx, hasher);
+            ty.abi_stable_hash(tcx, hasher);
         }
-        self.safety().is_safe().abi_hash(tcx, hasher);
+        self.safety().is_safe().abi_stable_hash(tcx, hasher);
     }
 }
 
-impl<'tcx> AbiHashStable<'tcx> for ty::GenericArg<'tcx> {
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
-        self.kind().abi_hash(tcx, hasher);
+impl<'tcx> AbiStableHash<'tcx> for ty::GenericArg<'tcx> {
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+        self.kind().abi_stable_hash(tcx, hasher);
     }
 }
 
-impl<'tcx> AbiHashStable<'tcx> for ty::GenericArgKind<'tcx> {
-    fn abi_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
+impl<'tcx> AbiStableHash<'tcx> for ty::GenericArgKind<'tcx> {
+    fn abi_stable_hash(&self, tcx: TyCtxt<'tcx>, hasher: &mut StableHasher) {
         match self {
-            ty::GenericArgKind::Type(t) => t.abi_hash(tcx, hasher),
+            ty::GenericArgKind::Type(t) => t.abi_stable_hash(tcx, hasher),
             ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Const(_) => unimplemented!(),
         }
     }
@@ -167,7 +167,7 @@ pub(crate) fn compute_hash_of_export_fn<'tcx>(
 
     let hash = {
         let mut hasher = StableHasher::new();
-        sig_ty.abi_hash(tcx, &mut hasher);
+        sig_ty.abi_stable_hash(tcx, &mut hasher);
         hasher.finish::<Hash128>()
     };
 

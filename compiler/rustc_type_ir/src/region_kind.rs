@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
@@ -215,8 +215,9 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
     }
 }
 
+// This impl could be derived with `StableHash_NoContext`, but we instead write it by hand in order
+// to panic on `ReVar`.
 #[cfg(feature = "nightly")]
-// This is not a derived impl because a derive would require `I: StableHash`
 impl<I: Interner> StableHash for RegionKind<I>
 where
     I::EarlyParamRegion: StableHash,

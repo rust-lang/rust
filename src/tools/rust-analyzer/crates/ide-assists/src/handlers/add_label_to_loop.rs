@@ -30,7 +30,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     }
 // }
 // ```
-pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let loop_expr = ctx.find_node_at_offset::<ast::AnyHasLoopBody>()?;
     let loop_kw = loop_token(&loop_expr)?;
     if loop_expr.label().is_some() || !loop_kw.text_range().contains_inclusive(ctx.offset()) {
@@ -86,7 +86,7 @@ fn loop_token(loop_expr: &ast::AnyHasLoopBody) -> Option<syntax::SyntaxToken> {
 fn insert_label_after_token(
     editor: &SyntaxEditor,
     token: &SyntaxToken,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     builder: &mut SourceChangeBuilder,
 ) {
     let make = editor.make();

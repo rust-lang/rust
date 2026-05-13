@@ -3238,7 +3238,7 @@ pub(crate) struct DotDotDotRestPattern {
     #[suggestion(
         "for a rest pattern, use `..` instead of `...`",
         style = "verbose",
-        code = "",
+        code = "..",
         applicability = "machine-applicable"
     )]
     pub suggestion: Option<Span>,

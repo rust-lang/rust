@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub(crate) fn render_struct_pat(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     pattern_ctx: &PatternContext,
     strukt: hir::Struct,
     local_name: Option<Name>,
@@ -44,7 +44,7 @@ pub(crate) fn render_struct_pat(
 }
 
 pub(crate) fn render_variant_pat(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     pattern_ctx: &PatternContext,
     path_ctx: Option<&PathCompletionCtx<'_>>,
     variant: hir::EnumVariant,
@@ -104,7 +104,7 @@ pub(crate) fn render_variant_pat(
 }
 
 fn build_completion(
-    ctx: RenderContext<'_>,
+    ctx: RenderContext<'_, '_>,
     label: SmolStr,
     lookup: SmolStr,
     pat: String,
@@ -140,7 +140,7 @@ fn build_completion(
 }
 
 fn render_pat(
-    ctx: &RenderContext<'_>,
+    ctx: &RenderContext<'_, '_>,
     pattern_ctx: &PatternContext,
     name: &str,
     kind: StructKind,

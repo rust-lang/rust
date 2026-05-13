@@ -95,21 +95,36 @@ macro_rules! static_regex {
 pub(crate) use static_regex;
 
 macro_rules! string_enum {
-    ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
+    (
+        $(#[$meta:meta])*
+        $vis:vis enum $name:ident {
+            $(
+                $(#[$variant_meta:meta])*
+                $variant:ident => $repr:expr,
+            )*
+        }
+    ) => {
         $(#[$meta])*
         $vis enum $name {
-            $($variant,)*
+            $(
+                $(#[$variant_meta])*
+                $variant,
+            )*
         }
 
         impl $name {
             #[allow(dead_code)]
-            $vis const VARIANTS: &'static [Self] = &[$(Self::$variant,)*];
+            $vis const VARIANTS: &'static [Self] = &[
+                $( Self::$variant, )*
+            ];
             #[allow(dead_code)]
-            $vis const STR_VARIANTS: &'static [&'static str] = &[$(Self::$variant.to_str(),)*];
+            $vis const STR_VARIANTS: &'static [&'static str] = &[
+                $( Self::$variant.to_str(), )*
+            ];
 
             $vis const fn to_str(&self) -> &'static str {
                 match self {
-                    $(Self::$variant => $repr,)*
+                    $( Self::$variant => $repr, )*
                 }
             }
         }
@@ -125,7 +140,7 @@ macro_rules! string_enum {
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
-                    $($repr => Ok(Self::$variant),)*
+                    $( $repr => Ok(Self::$variant), )*
                     _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
                 }
             }

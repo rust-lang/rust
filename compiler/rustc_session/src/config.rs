@@ -14,7 +14,7 @@ use std::{cmp, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd};
+use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
@@ -1133,7 +1133,7 @@ pub struct OutputFilenames {
     /// preserved with a flag like `-C save-temps`, since these files may be
     /// hard linked.
     // This does not affect incr comp outputs, only where temp files are stored.
-    #[stable_hasher(ignore)]
+    #[stable_hash(ignore)]
     invocation_temp: Option<String>,
 
     explicit_dwo_out_directory: Option<PathBuf>,
@@ -3034,7 +3034,7 @@ pub(crate) mod dep_tracking {
 
     use rustc_abi::Align;
     use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hasher::StableHasher;
+    use rustc_data_structures::stable_hash::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;

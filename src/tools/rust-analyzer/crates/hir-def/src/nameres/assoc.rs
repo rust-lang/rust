@@ -138,7 +138,7 @@ struct AssocItemCollector<'db> {
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
     ast_id_map: &'db AstIdMap,
-    span_map: SpanMap,
+    span_map: SpanMap<'db>,
     cfg_options: &'db CfgOptions,
     file_id: HirFileId,
     diagnostics: Vec<DefDiagnostic>,
@@ -191,19 +191,18 @@ impl<'db> AssocItemCollector<'db> {
 
     fn collect_item(&mut self, item: ast::AssocItem) {
         let ast_id = self.ast_id_map.ast_id(&item);
-        let attrs =
-            match AttrsOrCfg::lower(self.db, &item, &|| self.cfg_options, self.span_map.as_ref()) {
-                AttrsOrCfg::Enabled { attrs } => attrs,
-                AttrsOrCfg::CfgDisabled(cfg) => {
-                    self.diagnostics.push(DefDiagnostic::unconfigured_code(
-                        self.module_id,
-                        InFile::new(self.file_id, ast_id.erase()),
-                        cfg.0,
-                        self.cfg_options.clone(),
-                    ));
-                    return;
-                }
-            };
+        let attrs = match AttrsOrCfg::lower(self.db, &item, &|| self.cfg_options, self.span_map) {
+            AttrsOrCfg::Enabled { attrs } => attrs,
+            AttrsOrCfg::CfgDisabled(cfg) => {
+                self.diagnostics.push(DefDiagnostic::unconfigured_code(
+                    self.module_id,
+                    InFile::new(self.file_id, ast_id.erase()),
+                    cfg.0,
+                    self.cfg_options.clone(),
+                ));
+                return;
+            }
+        };
         let ast_id = InFile::new(self.file_id, ast_id.upcast());
 
         'attrs: for (attr_id, attr) in attrs.as_ref().iter() {
@@ -218,7 +217,7 @@ impl<'db> AssocItemCollector<'db> {
                 attr_id,
             ) {
                 Ok(ResolvedAttr::Macro(call_id)) => {
-                    let loc = self.db.lookup_intern_macro_call(call_id);
+                    let loc = call_id.loc(self.db);
                     if let MacroDefKind::ProcMacro(_, exp, _) = loc.def.kind {
                         // If there's no expander for the proc macro (e.g. the
                         // proc macro is ignored, or building the proc macro
@@ -357,7 +356,7 @@ impl<'db> AssocItemCollector<'db> {
             return;
         }
 
-        let (syntax, span_map) = self.db.parse_macro_expansion(macro_call_id).value;
+        let (syntax, span_map) = &self.db.parse_macro_expansion(macro_call_id).value;
         let old_file_id = mem::replace(&mut self.file_id, macro_call_id.into());
         let old_ast_id_map = mem::replace(&mut self.ast_id_map, self.db.ast_id_map(self.file_id));
         let old_span_map = mem::replace(&mut self.span_map, SpanMap::ExpansionSpanMap(span_map));

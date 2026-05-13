@@ -12,7 +12,7 @@ use hir_def::{
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use rustc_type_ir::{
-    AliasTyKind, Interner, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
+    AliasTyKind, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
     inherent::{GenericArgs as _, IntoKind},
 };
 
@@ -21,7 +21,8 @@ use crate::{
     db::HirDatabase,
     next_solver::{
         AliasTy, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, ParamEnv,
-        StoredEarlyBinder, StoredTy, TraitRef, Ty, TyKind, fold::fold_tys, generics::Generics,
+        StoredEarlyBinder, StoredTy, TraitRef, Ty, TyKind, Unnormalized, fold::fold_tys,
+        generics::Generics,
     },
 };
 
@@ -53,7 +54,10 @@ fn trait_args(trait_: BuiltinDeriveImplTrait, self_ty: Ty<'_>) -> GenericArgs<'_
     }
 }
 
-pub(crate) fn generics_of<'db>(interner: DbInterner<'db>, id: BuiltinDeriveImplId) -> Generics {
+pub(crate) fn generics_of<'db>(
+    interner: DbInterner<'db>,
+    id: BuiltinDeriveImplId,
+) -> Generics<'db> {
     let db = interner.db;
     let loc = id.loc(db);
     match loc.trait_ {
@@ -65,15 +69,14 @@ pub(crate) fn generics_of<'db>(interner: DbInterner<'db>, id: BuiltinDeriveImplI
         | BuiltinDeriveImplTrait::Ord
         | BuiltinDeriveImplTrait::PartialOrd
         | BuiltinDeriveImplTrait::Eq
-        | BuiltinDeriveImplTrait::PartialEq => interner.generics_of(loc.adt.into()),
+        | BuiltinDeriveImplTrait::PartialEq => Generics::from_generic_def(db, loc.adt.into()),
         BuiltinDeriveImplTrait::CoerceUnsized | BuiltinDeriveImplTrait::DispatchFromDyn => {
-            let mut generics = interner.generics_of(loc.adt.into());
             let trait_id = loc
                 .trait_
                 .get_id(interner.lang_items())
                 .expect("we don't pass the impl to the solver if we can't resolve the trait");
-            generics.push_param(coerce_pointee_new_type_param(trait_id).into());
-            generics
+            let additional_param = coerce_pointee_new_type_param(trait_id).into();
+            Generics::from_generic_def_plus_one(db, loc.adt.into(), additional_param)
         }
     }
 }
@@ -150,7 +153,7 @@ pub fn impl_trait<'db>(
 }
 
 #[salsa::tracked(returns(ref))]
-pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPredicates {
+pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPredicates {
     let loc = impl_.loc(db);
     let generic_params = GenericParams::of(db, loc.adt.into());
     let interner = DbInterner::new_with(db, loc.module(db).krate(db));
@@ -195,6 +198,7 @@ pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> 
             };
             let duplicated_bounds =
                 adt_predicates.explicit_predicates().iter_identity().filter_map(|pred| {
+                    let pred = pred.skip_norm_wip();
                     let mentions_pointee =
                         pred.visit_with(&mut MentionsPointee { pointee_param_idx }).is_break();
                     if !mentions_pointee {
@@ -216,6 +220,7 @@ pub fn predicates<'db>(db: &'db dyn HirDatabase, impl_: BuiltinDeriveImplId) -> 
                     adt_predicates
                         .explicit_predicates()
                         .iter_identity()
+                        .map(Unnormalized::skip_norm_wip)
                         .chain(duplicated_bounds)
                         .chain(unsize_bound),
                 )
@@ -317,6 +322,7 @@ fn simple_trait_predicates<'db>(
             adt_predicates
                 .explicit_predicates()
                 .iter_identity()
+                .map(Unnormalized::skip_norm_wip)
                 .chain(extra_predicates)
                 .chain(assoc_type_bounds),
         )
@@ -359,7 +365,7 @@ fn extend_assoc_type_bounds<'db>(
 
     let mut visitor = ProjectionFinder { interner, assoc_type_bounds, trait_id, trait_ };
     for (_, field) in fields.iter() {
-        field.get().instantiate_identity().visit_with(&mut visitor);
+        field.get().instantiate_identity().skip_norm_wip().visit_with(&mut visitor);
     }
 }
 

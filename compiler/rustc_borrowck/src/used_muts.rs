@@ -78,7 +78,7 @@ impl<'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'_, '_, '_, 'tcx> {
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        if let StatementKind::Assign(box (into, _)) = &statement.kind {
+        if let StatementKind::Assign((into, _)) = &statement.kind {
             debug!(
                 "visit_statement: statement={:?} local={:?} \
                     never_initialized_mut_locals={:?}",
