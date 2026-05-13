@@ -5,7 +5,7 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]

@@ -105,7 +105,7 @@ pub(crate) trait DocFolder: Sized {
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
         item.inner.kind = match item.inner.kind {
-            StrippedItem(box i) => StrippedItem(Box::new(self.fold_inner_recur(i))),
+            StrippedItem(i) => StrippedItem(Box::new(self.fold_inner_recur(*i))),
             _ => self.fold_inner_recur(item.inner.kind),
         };
         item

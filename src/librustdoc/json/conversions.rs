@@ -232,7 +232,7 @@ impl FromClean<clean::GenericArg> for GenericArg {
         match arg {
             Lifetime(l) => GenericArg::Lifetime(l.into_json(renderer)),
             Type(t) => GenericArg::Type(t.into_json(renderer)),
-            Const(box c) => GenericArg::Const(c.into_json(renderer)),
+            Const(c) => GenericArg::Const(c.into_json(renderer)),
             Infer => GenericArg::Infer,
         }
     }
