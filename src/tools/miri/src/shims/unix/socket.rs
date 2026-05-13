@@ -895,6 +895,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let socket = this.read_scalar(socket)?.to_i32()?;
         let level = this.read_scalar(level)?.to_i32()?;
         let option_name = this.read_scalar(option_name)?.to_i32()?;
+        let option_value_ptr = this.read_pointer(option_value)?;
         let socklen_layout = this.libc_ty_layout("socklen_t");
         let option_len = this.read_scalar(option_len)?.to_int(socklen_layout.size)?;
 
@@ -903,7 +904,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
 
-        let Some(_socket) = fd.downcast::<Socket>() else {
+        let Some(socket) = fd.downcast::<Socket>() else {
             // Man page specifies to return ENOTSOCK if `fd` is not a socket.
             return this.set_last_error_and_return_i32(LibcError("ENOTSOCK"));
         };
@@ -921,7 +922,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return this.set_last_error_and_return_i32(LibcError("EINVAL"));
                     }
                     let option_value =
-                        this.deref_pointer_as(option_value, this.machine.layouts.i32)?;
+                        this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
                     let _val = this.read_scalar(&option_value)?.to_i32()?;
                     // We entirely ignore this value since we do not support signals anyway.
 
@@ -934,7 +935,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Option value should be C-int which is usually 4 bytes.
                     return this.set_last_error_and_return_i32(LibcError("EINVAL"));
                 }
-                let option_value = this.deref_pointer_as(option_value, this.machine.layouts.i32)?;
+                let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
                 let _val = this.read_scalar(&option_value)?.to_i32()?;
                 // We entirely ignore this: std always sets REUSEADDR for us, and in the end it's more of a
                 // hint to bypass some arbitrary timeout anyway.
@@ -944,10 +945,72 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "setsockopt: option {option_name:#x} is unsupported for level SOL_SOCKET",
                 );
             }
+        } else if level == this.eval_libc_i32("IPPROTO_IP") {
+            let opt_ip_ttl = this.eval_libc_i32("IP_TTL");
+
+            if option_name == opt_ip_ttl {
+                if option_len != 4 {
+                    // Option value should be C-uint which is usually 4 bytes.
+                    return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+                }
+                let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.u32);
+                let ttl = this.read_scalar(&option_value)?.to_u32()?;
+
+                let result = match &*socket.state.borrow() {
+                    SocketState::Initial | SocketState::Bound(_) =>
+                        throw_unsup_format!(
+                            "setsockopt: setting option IP_TTL on level IPPROTO_IP is only supported \
+                            on connected and listening sockets"
+                        ),
+                    SocketState::Listening(listener) => listener.set_ttl(ttl),
+                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
+                        stream.set_ttl(ttl),
+                };
+
+                return match result {
+                    Ok(_) => interp_ok(Scalar::from_i32(0)),
+                    Err(e) => this.set_last_error_and_return_i32(e),
+                };
+            } else {
+                throw_unsup_format!(
+                    "setsockopt: option {option_name:#x} is unsupported for level IPPROTO_IP",
+                );
+            }
+        } else if level == this.eval_libc_i32("IPPROTO_TCP") {
+            let opt_tcp_nodelay = this.eval_libc_i32("TCP_NODELAY");
+
+            if option_name == opt_tcp_nodelay {
+                if option_len != 4 {
+                    // Option value should be C-int which is usually 4 bytes.
+                    return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+                }
+                let option_value = this.ptr_to_mplace(option_value_ptr, this.machine.layouts.i32);
+                let nodelay = this.read_scalar(&option_value)?.to_i32()? != 0;
+
+                let result = match &*socket.state.borrow() {
+                    SocketState::Initial | SocketState::Bound(_) | SocketState::Listening(_) =>
+                        throw_unsup_format!(
+                            "setsockopt: setting option TCP_NODELAY on level IPPROTO_TCP is only supported \
+                            on connected sockets"
+                        ),
+                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
+                        stream.set_nodelay(nodelay),
+                };
+
+                return match result {
+                    Ok(_) => interp_ok(Scalar::from_i32(0)),
+                    Err(e) => this.set_last_error_and_return_i32(e),
+                };
+            } else {
+                throw_unsup_format!(
+                    "setsockopt: option {option_name:#x} is unsupported for level IPPROTO_TCP"
+                );
+            }
         }
 
         throw_unsup_format!(
-            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET is allowed"
+            "setsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP \
+            and IPPROTO_TCP are allowed"
         );
     }
 
@@ -1065,9 +1128,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "getsockopt: option {option_name:#x} is unsupported for level IPPROTO_IP",
                 );
             }
+        } else if level == this.eval_libc_i32("IPPROTO_TCP") {
+            let opt_tcp_nodelay = this.eval_libc_i32("TCP_NODELAY");
+
+            if option_name == opt_tcp_nodelay {
+                let nodelay = match &*socket.state.borrow() {
+                    SocketState::Initial | SocketState::Bound(_) | SocketState::Listening(_) =>
+                        throw_unsup_format!(
+                            "getsockopt: reading option TCP_NODELAY on level IPPROTO_TCP is only supported \
+                            on connected sockets"
+                        ),
+                    SocketState::Connecting(stream) | SocketState::Connected(stream) =>
+                        stream.nodelay(),
+                };
+
+                let nodelay = match nodelay {
+                    Ok(nodelay) => nodelay,
+                    Err(e) => return this.set_last_error_and_return_i32(e),
+                };
+
+                // Allocate new buffer on the stack with the `i32` layout.
+                let value_buffer = this.allocate(this.machine.layouts.i32, MemoryKind::Stack)?;
+                this.write_int(i32::from(nodelay), &value_buffer)?;
+                value_buffer
+            } else {
+                throw_unsup_format!(
+                    "getsockopt: option {option_name:#x} is unsupported for level IPPROTO_TCP"
+                );
+            }
         } else {
             throw_unsup_format!(
-                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET is allowed"
+                "getsockopt: level {level:#x} is unsupported, only SOL_SOCKET, IPPROTO_IP \
+                and IPPROTO_TCP are allowed"
             )
         };
 
