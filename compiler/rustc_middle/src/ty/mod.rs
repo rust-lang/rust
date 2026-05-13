@@ -179,6 +179,12 @@ pub struct ResolverGlobalCtxt {
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
+    // FIXME: This table contains ADTs reachable from macro 2.0.
+    // Currently, reachability of a definition from a macro is determined by nominal visibility
+    // (see `compute_effective_visibilities`). This is incorrect and leads to the necessity
+    // of traversing ADT fields in `rustc_privacy`. Remove this workaround once the
+    // correct reachability logic is implemented for macros.
+    pub macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
