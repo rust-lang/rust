@@ -147,3 +147,38 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitRef<I>>> {
         Unnormalized::new(inner)
     }
 }
+
+/// Like `Unnormalized`, but for value that contains unnormalized `Ambiguous` alias.
+#[derive_where(Clone, Copy, PartialOrd, PartialEq, Debug; T)]
+pub struct UnnormalizedAmbiguous<I: Interner, T> {
+    value: T,
+    #[derive_where(skip(Debug))]
+    _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
+    /// Should only be used in binder instantitation.
+    pub fn new(value: T) -> Self {
+        Self { value, _tcx: PhantomData }
+    }
+
+    /// FIXME: This is going to be eventually removed.
+    /// If you meet this in codebase, try using one of the ambiguous renormalization
+    /// routines to consume the wrapper. Or use `skip_normalization` when normalization
+    /// is really unnecessary.
+    pub fn skip_norm_wip(self) -> T {
+        self.value
+    }
+
+    /// Intentionally skip normalization.
+    /// You probably should perform normalization in most cases.
+    pub fn skip_normalization(self) -> T {
+        self.value
+    }
+}
+
+impl<I: Interner, T> From<UnnormalizedAmbiguous<I, T>> for Unnormalized<I, T> {
+    fn from(value: UnnormalizedAmbiguous<I, T>) -> Unnormalized<I, T> {
+        Unnormalized::new(value.skip_normalization())
+    }
+}

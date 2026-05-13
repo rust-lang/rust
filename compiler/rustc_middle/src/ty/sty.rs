@@ -43,6 +43,7 @@ pub type FnSigKind<'tcx> = ir::FnSigKind<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
 pub type Unnormalized<'tcx, T> = ir::Unnormalized<TyCtxt<'tcx>, T>;
+pub type UnnormalizedAmbiguous<'tcx, T> = ir::UnnormalizedAmbiguous<TyCtxt<'tcx>, T>;
 pub type TypingMode<'tcx, S = MayBeErased> = ir::TypingMode<TyCtxt<'tcx>, S>;
 pub type TypingModeEqWrapper<'tcx> = ir::TypingModeEqWrapper<TyCtxt<'tcx>>;
 pub type Placeholder<'tcx, T> = ir::Placeholder<TyCtxt<'tcx>, T>;
