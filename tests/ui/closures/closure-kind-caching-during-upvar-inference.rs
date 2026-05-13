@@ -1,3 +1,5 @@
+//! Issue: https://github.com/rust-lang/rust/issues/34349
+
 // This is a regression test for a problem encountered around upvar
 // inference and trait caching: in particular, we were entering a
 // temporary closure kind during inference, and then caching results

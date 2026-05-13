@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/32389
+
 //@ run-pass
 fn foo<T>() -> T { loop {} }
 

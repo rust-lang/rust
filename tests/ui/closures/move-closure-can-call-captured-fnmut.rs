@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16668
+
 //@ check-pass
 #![allow(dead_code)]
 struct Parser<'a, I, O> {

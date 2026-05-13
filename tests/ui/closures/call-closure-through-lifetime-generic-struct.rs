@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/17816
+
 //@ run-pass
 #![allow(unused_variables)]
 use std::marker::PhantomData;

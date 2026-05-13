@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/46069
+
 //@ run-pass
 use std::iter::{Fuse, Cloned};
 use std::slice::Iter;

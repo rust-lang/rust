@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed for `Expr<'_, _>`
-  --> $DIR/issue-23046.rs:17:15
+  --> $DIR/hrtb-closure-in-recursive-enum-type-error.rs:19:15
    |
 LL |     let ex = |x| {
    |               ^

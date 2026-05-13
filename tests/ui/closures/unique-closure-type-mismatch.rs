@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/24036
+
 fn closure_to_loc() {
     let mut x = |c| c + 1;
     x = |c| c + 1;
