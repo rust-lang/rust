@@ -7,7 +7,7 @@
 const fn foo() -> Result<(), ()> { Ok(()) }
 
 fn main() -> Result<(), ()> {
-    const A: () = foo()?; //~ ERROR the `?` operator cannot be used to return from a `const` initializer
-    static B: () = foo()?; //~ ERROR the `?` operator cannot be used to return from a `static` initializer
+    const A: () = foo()?; //~ ERROR the `?` operator cannot be used to return from inside a `const` initializer
+    static B: () = foo()?; //~ ERROR the `?` operator cannot be used to return from inside a `static` initializer
     Ok(())
 }

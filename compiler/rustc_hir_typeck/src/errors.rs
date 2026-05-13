@@ -101,7 +101,7 @@ impl IntoDiagArg for ReturnLikeStatementKind {
 }
 
 #[derive(Diagnostic)]
-#[diag("the `?` operator cannot be used to return from a `{$keyword}` initializer", code = E0807)]
+#[diag("the `?` operator cannot be used to return from inside a `{$keyword}` initializer", code = E0807)]
 pub(crate) struct QuestionMarkInConst {
     #[primary_span]
     pub span: Span,
