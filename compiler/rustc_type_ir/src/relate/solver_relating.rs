@@ -134,7 +134,7 @@ where
         &mut self,
         value: ty::UnnormalizedAmbiguous<I, T>,
     ) -> T {
-        let value = value.skip_normalization();
+        let value = value.do_normalize();
         let mut replacer = ReplaceAmbiguousAliasWithInfer::new(self.infcx, self.param_env);
         let value = value.fold_with(&mut replacer);
         self.register_goals(replacer.goals());

@@ -1745,7 +1745,7 @@ where
         param_env: I::ParamEnv,
         value: ty::Unnormalized<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
-        self.normalize_inner(param_env, value, NormalizationScope::All)
+        self.normalize_inner(param_env, value.skip_normalization(), NormalizationScope::All)
     }
 
     /// Only normalizes aliases of `AmbiguousTy` kind.
@@ -1759,16 +1759,15 @@ where
         param_env: I::ParamEnv,
         value: ty::UnnormalizedAmbiguous<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
-        self.normalize_inner(param_env, value.into(), NormalizationScope::AmbiguousAlias)
+        self.normalize_inner(param_env, value.do_normalize(), NormalizationScope::AmbiguousAlias)
     }
 
     fn normalize_inner<T: TypeFoldable<I>>(
         &mut self,
         param_env: I::ParamEnv,
-        value: ty::Unnormalized<I, T>,
+        value: T,
         scope: NormalizationScope,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
-        let value = value.skip_normalization();
         let value = self.delegate.resolve_vars_if_possible(value);
         // To drop the mutable borrow of self early.
         let (normalized, stalled_goals) = {

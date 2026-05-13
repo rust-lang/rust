@@ -56,13 +56,13 @@ impl<'tcx> At<'_, 'tcx> {
         if self.infcx.next_trait_solver() {
             let Normalized { value, obligations } = crate::solve::normalize(
                 *self,
-                Unnormalized::new(value.skip_normalization()),
+                Unnormalized::new(value.do_normalize()),
                 NormalizationScope::AmbiguousAlias,
             );
             InferOk { value, obligations }
         } else {
             // We won't have ambiguous aliases in old solver so no-op.
-            InferOk { value: value.skip_normalization(), obligations: Default::default() }
+            InferOk { value: value.do_normalize(), obligations: Default::default() }
         }
     }
 

@@ -546,7 +546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
-                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip();
+                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
@@ -576,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // FIXME(const_trait_impl): these arms should error because we can't enforce them
-            ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
+            ty::FnPtr(sig_tys, hdr) => (ty::Unnormalized::new_wip(sig_tys.with(hdr)), None),
 
             _ => unreachable!(),
         };
@@ -586,12 +586,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // renormalize the associated types at this point, since they
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
-        let fn_sig = self.instantiate_binder_with_fresh_vars(
+        let fn_sig = self.instantiate_binder_with_fresh_vars_then_fully_normalize(
             call_expr.span,
             BoundRegionConversionTime::FnCall,
             fn_sig,
+            |sig| self.normalize(call_expr.span, sig),
         );
-        let fn_sig = self.normalize(call_expr.span, fn_sig.into());
 
         self.check_argument_types(
             call_expr.span,

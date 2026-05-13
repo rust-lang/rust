@@ -1391,7 +1391,7 @@ impl<'tcx> InferCtxt<'tcx> {
         F: FnMut(ty::UnnormalizedAmbiguous<'tcx, T>) -> T,
     {
         let instantiated = self.instantiate_binder_with_fresh_vars(span, lbrct, value);
-        renormalize_ambig(instantiated)
+        renormalize_ambig(ty::UnnormalizedAmbiguous::new(instantiated))
     }
 
     pub fn instantiate_binder_with_fresh_vars_no_ambiguous_aliases<T>(
@@ -1404,7 +1404,22 @@ impl<'tcx> InferCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         debug_assert!(!value.has_ambiguous_aliases());
-        self.instantiate_binder_with_fresh_vars(span, lbrct, value).skip_normalization()
+        self.instantiate_binder_with_fresh_vars(span, lbrct, value)
+    }
+
+    pub fn instantiate_binder_with_fresh_vars_then_fully_normalize<T, F>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        value: ty::Unnormalized<'tcx, ty::Binder<'tcx, T>>,
+        mut normalize: F,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        F: FnMut(ty::Unnormalized<'tcx, T>) -> T,
+    {
+        let instantiated = value.map(|v| self.instantiate_binder_with_fresh_vars(span, lbrct, v));
+        normalize(instantiated)
     }
 
     // Instantiates the bound variables in a given binder with fresh inference
@@ -1414,22 +1429,17 @@ impl<'tcx> InferCtxt<'tcx> {
     // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     // that corresponds to your use case, consider whether or not you should
     // use [`InferCtxt::enter_forall`] instead.
-    //
-    // You shouldn't use this method directly. Have a look at its wrappers.
-    // FIXME: I really want to make this method private. But it's needed for one use case:
-    // a full normalization after instantiating binder where the value can contain ambiguous
-    // aliases. Maybe add another wrapper for that use case?
-    pub fn instantiate_binder_with_fresh_vars<T>(
+    fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,
         lbrct: BoundRegionConversionTime,
         value: ty::Binder<'tcx, T>,
-    ) -> ty::UnnormalizedAmbiguous<'tcx, T>
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(inner) = value.no_bound_vars() {
-            return ty::UnnormalizedAmbiguous::new(inner);
+            return inner;
         }
 
         let bound_vars = value.bound_vars();
@@ -1462,7 +1472,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
         let delegate = ToFreshVars { args };
-        ty::UnnormalizedAmbiguous::new(self.tcx.replace_bound_vars_uncached(value, delegate))
+        self.tcx.replace_bound_vars_uncached(value, delegate)
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

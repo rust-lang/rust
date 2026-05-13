@@ -162,23 +162,13 @@ impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
         Self { value, _tcx: PhantomData }
     }
 
-    /// FIXME: This is going to be eventually removed.
-    /// If you meet this in codebase, try using one of the ambiguous renormalization
-    /// routines to consume the wrapper. Or use `skip_normalization` when normalization
-    /// is really unnecessary.
+    /// FIXME: This is going to be removed in this PR.
     pub fn skip_norm_wip(self) -> T {
         self.value
     }
 
-    /// Intentionally skip normalization.
-    /// You probably should perform normalization in most cases.
-    pub fn skip_normalization(self) -> T {
+    /// Only use this if it will then normalize away all ambiguous aliases.
+    pub fn do_normalize(self) -> T {
         self.value
-    }
-}
-
-impl<I: Interner, T> From<UnnormalizedAmbiguous<I, T>> for Unnormalized<I, T> {
-    fn from(value: UnnormalizedAmbiguous<I, T>) -> Unnormalized<I, T> {
-        Unnormalized::new(value.skip_normalization())
     }
 }
