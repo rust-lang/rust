@@ -61,6 +61,7 @@ mod handlers {
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
     pub(crate) mod non_exhaustive_record_expr;
+    pub(crate) mod non_exhaustive_record_pat;
     pub(crate) mod parenthesized_generic_args_without_fn_trait;
     pub(crate) mod pattern_arg_in_extern_fn;
     pub(crate) mod private_assoc_item;
@@ -466,6 +467,9 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::NonExhaustiveLet(d) => handlers::non_exhaustive_let::non_exhaustive_let(&ctx, &d),
             AnyDiagnostic::NonExhaustiveRecordExpr(d) => {
                 handlers::non_exhaustive_record_expr::non_exhaustive_record_expr(&ctx, &d)
+            }
+            AnyDiagnostic::NonExhaustiveRecordPat(d) => {
+                handlers::non_exhaustive_record_pat::non_exhaustive_record_pat(&ctx, &d)
             }
             AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::DuplicateField(d) => handlers::duplicate_field::duplicate_field(&ctx, &d),
