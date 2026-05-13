@@ -1,14 +1,20 @@
-error[E0271]: type mismatch resolving `fn(&str) == fn(&str) {f}`
+error[E0271]: type mismatch resolving `<i32 as With>::F == fn(&str) {f}`
   --> $DIR/lazy-nested-obligations-2.rs:20:21
    |
 LL |     let _: V<i32> = V(f);
-   |                     ^^^^ types differ
+   |                     ^^^^ expected fn item, found fn pointer
+   |
+   = note: expected fn item `for<'a> fn(&'a _) {f}`
+           found fn pointer `for<'a> fn(&'a _)`
 
-error[E0271]: type mismatch resolving `fn(&str) == fn(&str) {f}`
+error[E0271]: type mismatch resolving `<i32 as With>::F == fn(&str) {f}`
   --> $DIR/lazy-nested-obligations-2.rs:27:22
    |
 LL |     let _: E3<i32> = E3::Var(f);
-   |                      ^^^^^^^^^^ types differ
+   |                      ^^^^^^^^^^ expected fn item, found fn pointer
+   |
+   = note: expected fn item `for<'a> fn(&'a _) {f}`
+           found fn pointer `for<'a> fn(&'a _)`
 
 error: aborting due to 2 previous errors
 
