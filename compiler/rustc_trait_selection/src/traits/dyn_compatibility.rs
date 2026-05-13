@@ -867,7 +867,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
             ty::ConstKind::Unevaluated(proj) if self.tcx.features().min_generic_const_args() => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes
-                        if let trait_def_id = self.tcx.parent(proj.def)
+                        if matches!(self.tcx.def_kind(proj.def), DefKind::AssocConst { .. })
+                            && let trait_def_id = self.tcx.parent(proj.def)
                             && self.tcx.def_kind(trait_def_id) == DefKind::Trait =>
                     {
                         let trait_ref = ty::TraitRef::from_assoc(self.tcx, trait_def_id, proj.args);
