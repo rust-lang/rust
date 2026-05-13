@@ -2346,6 +2346,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
+        ty::Alias(ty::AliasTy { kind: ty::Ambiguous, .. }) => panic!("Ambiguous alias"),
 
         ty::Error(_) => FatalError.raise(),
     }
