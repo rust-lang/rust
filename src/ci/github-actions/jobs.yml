@@ -27,7 +27,7 @@ runners:
     <<: *base-job
 
   - &job-windows
-    os: windows-2025
+    os: windows-2025-vs2026
     <<: *base-job
 
   - &job-windows-8c
