@@ -491,7 +491,7 @@ impl Item {
 
     /// Returns true if item is an associated function with a `self` parameter.
     pub(crate) fn has_self_param(&self) -> bool {
-        if let ItemKind::MethodItem(box Function { decl, .. }, _) = &self.inner.kind {
+        if let ItemKind::MethodItem(Function { decl, .. }, _) = &self.inner.kind {
             decl.receiver_type().is_some()
         } else {
             false
@@ -505,8 +505,8 @@ impl Item {
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
-            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => None,
-            ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
+            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => None,
+            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     Some(rustc_span(impl_id, tcx))
                 } else {
@@ -667,16 +667,21 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+        matches!(self.kind, AssocTypeItem(..) | StrippedItem(AssocTypeItem(..)))
     }
     pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(box RequiredAssocTypeItem(..)))
+        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(RequiredAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(self.kind, ProvidedAssocConstItem(..) | ImplAssocConstItem(..) | StrippedItem(box (ProvidedAssocConstItem(..) | ImplAssocConstItem(..))))
+        matches!(
+            self.kind,
+            ProvidedAssocConstItem(..)
+                | ImplAssocConstItem(..)
+                | StrippedItem(ProvidedAssocConstItem(..) | ImplAssocConstItem(..))
+        )
     }
     pub(crate) fn is_required_associated_const(&self) -> bool {
-        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(box RequiredAssocConstItem(..)))
+        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(RequiredAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -1508,9 +1513,9 @@ impl Type {
 
     pub(crate) fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
-            Primitive(p) | BorrowedRef { type_: box Primitive(p), .. } => Some(p),
-            Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
-            Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
+            Primitive(p) | BorrowedRef { type_: Primitive(p), .. } => Some(p),
+            Slice(..) | BorrowedRef { type_: Slice(..), .. } => Some(PrimitiveType::Slice),
+            Array(..) | BorrowedRef { type_: Array(..), .. } => Some(PrimitiveType::Array),
             Tuple(ref tys) => {
                 if tys.is_empty() {
                     Some(PrimitiveType::Unit)
@@ -1590,7 +1595,7 @@ impl Type {
             Type::Path { path } => return Some(path.def_id()),
             DynTrait(bounds, _) => return bounds.first().map(|b| b.trait_.def_id()),
             Primitive(p) => return cache.primitive_locations.get(p).cloned(),
-            BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
+            BorrowedRef { type_: Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { type_, .. } => return type_.def_id(cache),
             Tuple(tys) => {
                 if tys.is_empty() {
@@ -1605,7 +1610,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             Type::FieldOf(..) => PrimitiveType::FieldOf,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
+            QPath(QPathData { self_type, .. }) => return self_type.def_id(cache),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)

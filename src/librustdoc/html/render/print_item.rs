@@ -1524,9 +1524,8 @@ fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt:
 fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Display {
     fmt::from_fn(|f| {
         if !s.is_empty()
-            && s.iter().all(|field| {
-                matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
-            })
+            && s.iter()
+                .all(|field| matches!(field.kind, clean::StrippedItem(clean::StructFieldItem(..))))
         {
             return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
@@ -1534,7 +1533,7 @@ fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Displa
         s.iter()
             .map(|ty| {
                 fmt::from_fn(|f| match ty.kind {
-                    clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_"),
+                    clean::StrippedItem(clean::StructFieldItem(_)) => f.write_str("_"),
                     clean::StructFieldItem(ref ty) => write!(f, "{}", print_type(ty, cx)),
                     _ => unreachable!(),
                 })
@@ -1852,7 +1851,7 @@ fn item_variants(
                 )?;
                 for field in fields {
                     match field.kind {
-                        clean::StrippedItem(box clean::StructFieldItem(_)) => {}
+                        clean::StrippedItem(clean::StructFieldItem(_)) => {}
                         clean::StructFieldItem(ref ty) => {
                             let id = cx.derive_id(format!(
                                 "variant.{}.field.{}",
@@ -2355,7 +2354,7 @@ fn render_implementor(
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
         clean::Type::Path { ref path, .. }
-        | clean::BorrowedRef { type_: box clean::Type::Path { ref path, .. }, .. }
+        | clean::BorrowedRef { type_: clean::Type::Path { ref path, .. }, .. }
             if !path.is_assoc_ty() =>
         {
             implementor_dups[&path.last()].1
@@ -2551,7 +2550,7 @@ fn render_struct_fields(
                 w.write_str("(")?;
                 if !fields.is_empty()
                     && fields.iter().all(|field| {
-                        matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+                        matches!(field.kind, clean::StrippedItem(clean::StructFieldItem(..)))
                     })
                 {
                     write!(w, "<span class=\"comment\">/* private fields */</span>")?;
@@ -2561,7 +2560,7 @@ fn render_struct_fields(
                             w.write_str(", ")?;
                         }
                         match field.kind {
-                            clean::StrippedItem(box clean::StructFieldItem(..)) => {
+                            clean::StrippedItem(clean::StructFieldItem(..)) => {
                                 write!(w, "_")?;
                             }
                             clean::StructFieldItem(ref ty) => {

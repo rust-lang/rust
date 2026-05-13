@@ -1472,11 +1472,8 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 generics.where_predicates.retain_mut(|pred| match *pred {
                     WherePredicate::BoundPredicate {
                         ty:
-                            QPath(box QPathData {
-                                ref assoc,
-                                ref self_type,
-                                trait_: Some(ref trait_),
-                                ..
+                            QPath(QPathData {
+                                ref assoc, ref self_type, trait_: Some(ref trait_), ..
                             }),
                         bounds: ref mut pred_bounds,
                         ..
@@ -2786,7 +2783,7 @@ fn add_without_unwanted_attributes<'hir>(
             hir::Attribute::Parsed(AttributeKind::DocComment { .. }) => {
                 attrs.push((Cow::Borrowed(attr), import_parent));
             }
-            hir::Attribute::Parsed(AttributeKind::Doc(box d)) => {
+            hir::Attribute::Parsed(AttributeKind::Doc(d)) => {
                 // Remove attributes from `normal` that should not be inherited by `use` re-export.
                 let DocAttribute {
                     first_span: _,

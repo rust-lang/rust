@@ -809,7 +809,8 @@ fn document_full_inner(
         }
 
         let kind = match &item.kind {
-            clean::ItemKind::StrippedItem(box kind) | kind => kind,
+            clean::ItemKind::StrippedItem(kind) => kind,
+            kind => kind,
         };
 
         if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
@@ -1582,7 +1583,7 @@ fn render_deref_methods(
         .items
         .iter()
         .find_map(|item| match item.kind {
-            clean::AssocTypeItem(box ref t, _) => Some(match *t {
+            clean::AssocTypeItem(ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -2709,7 +2710,7 @@ fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> 
             clean::Type::BorrowedRef { type_, .. } => {
                 work.push_back(type_);
             }
-            clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
+            clean::Type::QPath(clean::QPathData { self_type, trait_, .. }) => {
                 work.push_back(self_type);
                 if let Some(trait_) = trait_ {
                     process_path(trait_.def_id());
