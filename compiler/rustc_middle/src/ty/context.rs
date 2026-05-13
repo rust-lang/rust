@@ -2064,6 +2064,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
+        // TODO
+        match binder.skip_binder() {
+            ty::PredicateKind::AliasRelate(lhs, rhs, ..) => {
+                assert!(
+                    lhs.to_alias_term(self)
+                        .filter(|a| !matches!(a.kind, ty::AliasTermKind::AmbiguousTy))
+                        .is_some()
+                        || rhs
+                            .to_alias_term(self)
+                            .filter(|a| !matches!(a.kind, ty::AliasTermKind::AmbiguousTy))
+                            .is_some(),
+                    "{binder:?}"
+                )
+            }
+            _ => {}
+        }
         self.interners.intern_predicate(binder)
     }
 
@@ -2250,6 +2266,17 @@ impl<'tcx> TyCtxt<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
+        // TODO
+        match st {
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args, .. }) => {
+                match args.type_at(0).kind() {
+                    ty::Alias(ty::AliasTy { kind: ty::Ambiguous, .. }) => unreachable!(),
+                    ty::Alias(_) => {}
+                    _ => unreachable!(),
+                }
+            }
+            _ => {}
+        }
         self.interners.intern_ty(st)
     }
 
