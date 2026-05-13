@@ -81,8 +81,8 @@ and/or the [XRay whitepaper](http://research.google.com/pubs/pub45287.html).
 Set the `-Z instrument-function=xray` compiler flag in order to enable XRay instrumentation.
 
   - `-Z instrument-function=xray` – use the default settings
-  - `-Z instrument-function=xray -Z instrument-xray-opts=skip-exit` – configure a custom setting
-  - `-Z instrument-function=xray -Z instrument-xray-opts=ignore-loops,instruction-threshold=300` –
+  - `-Z instrument-function=xray:skip-exit` – configure a custom setting
+  - `-Z instrument-function=xray:ignore-loops,instruction-threshold=300` –
     multiple settings separated by commas
 
 Supported options:

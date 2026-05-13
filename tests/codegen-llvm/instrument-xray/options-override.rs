@@ -1,8 +1,8 @@
-// Checks that the last `-Z instrument-xray-opts` option wins.
+// Checks that the last `-Z instrument-function=xray:opt` option wins.
 //
 //@ needs-xray
-//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=always -Copt-level=0
-//@ compile-flags: -Z instrument-function=xray -Z instrument-xray-opts=never -Copt-level=0
+//@ compile-flags: -Z instrument-function=xray:always -Copt-level=0
+//@ compile-flags: -Z instrument-function=xray:never -Copt-level=0
 
 #![crate_type = "lib"]
 

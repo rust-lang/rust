@@ -1,8 +1,8 @@
-// Checks that `-Z instrument-xray-opts` does not allow duplicates.
+// Checks that `-Z instrument-function=xray` does not allow duplicate configuration options.
 //
 //@ needs-xray
-//@ compile-flags: -Z instrument-xray-opts=ignore-loops,ignore-loops
+//@ compile-flags: -Z instrument-function=xray:ignore-loops,ignore-loops
 
 fn main() {}
 
-//~? ERROR incorrect value `ignore-loops,ignore-loops` for unstable option `instrument-xray-opts`
+//~? ERROR incorrect value `xray:ignore-loops,ignore-loops` for unstable option `instrument-function`

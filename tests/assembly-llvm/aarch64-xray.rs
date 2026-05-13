@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: -Zinstrument-function=xray -Zinstrument-xray-opts=always
+//@ compile-flags: -Zinstrument-function=xray:always
 
 //@ revisions: aarch64-linux
 //@[aarch64-linux] compile-flags: --target=aarch64-unknown-linux-gnu

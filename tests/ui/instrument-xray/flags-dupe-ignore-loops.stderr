@@ -1,2 +1,2 @@
-error: incorrect value `ignore-loops,ignore-loops` for unstable option `instrument-xray-opts` - a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit` was expected
+error: incorrect value `xray:ignore-loops,ignore-loops` for unstable option `instrument-function` - `fentry` | `mcount` | `xray`, and an optional colon with a list of comma separated options. was expected
 

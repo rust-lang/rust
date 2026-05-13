@@ -160,7 +160,7 @@ pub enum InstrumentFunction {
     /// `-Z instrument-function=mcount`
     Mcount,
     /// `-Z instrument-function=xray`
-    XRay,
+    XRay(InstrumentXRayOpts),
 }
 
 /// Individual flag values controlled by `-Zcoverage-options`.
@@ -261,19 +261,19 @@ pub enum AnnotateMoves {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InstrumentXRayOpts {
-    /// `-Z instrument-xray-opts=always`, force instrumentation
+    /// `-Z instrument-function=xray:always`, force instrumentation
     pub always: bool,
-    /// `-Z instrument-xray-opts=never`, disable instrumentation
+    /// `-Z instrument-function=xray:never`, disable instrumentation
     pub never: bool,
-    /// `-Z instrument-xray-opts=ignore-loops`, ignore presence of loops,
+    /// `-Z instrument-function=xray:ignore-loops`, ignore presence of loops,
     /// instrument functions based only on instruction count
     pub ignore_loops: bool,
-    /// `-Z instrument-xray-opts=instruction-threshold=N`, explicitly set instruction threshold
+    /// `-Z instrument-function=xray:instruction-threshold=N`, explicitly set instruction threshold
     /// for instrumentation, or `None` to use compiler's default
     pub instruction_threshold: Option<usize>,
-    /// `-Z instrument-xray-opts=skip-entry`, do not instrument function entry
+    /// `-Z instrument-function=xray:skip-entry`, do not instrument function entry
     pub skip_entry: bool,
-    /// `-Z instrument-xray-opts=skip-exit`, do not instrument function exit
+    /// `-Z instrument-function=xray:skip-exit`, do not instrument function exit
     pub skip_exit: bool,
 }
 

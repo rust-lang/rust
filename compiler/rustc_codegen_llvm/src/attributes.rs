@@ -243,11 +243,10 @@ fn instrument_function_attr<'ll>(
                 ));
             }
         }
-        InstrumentFunction::XRay => {
+        InstrumentFunction::XRay(options) => {
             // XRay instrumentation is similar to __cyg_profile_func_{enter,exit}.
             // Function prologue and epilogue are instrumented with NOP sleds,
             // a runtime library later replaces them with detours into tracing code.
-            let options = &sess.opts.unstable_opts.instrument_xray_opts;
 
             let mut never = options.never;
             let mut always = options.always;

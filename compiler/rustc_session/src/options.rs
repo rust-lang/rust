@@ -783,8 +783,7 @@ mod desc {
     pub(crate) const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub(crate) const parse_instrument_coverage: &str = parse_bool;
     pub(crate) const parse_coverage_options: &str = "`block` | `branch` | `condition`";
-    pub(crate) const parse_instrument_function: &str = "`fentry` | `mcount` | `xray`";
-    pub(crate) const parse_instrument_xray_opts: &str = "a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
+    pub(crate) const parse_instrument_function: &str = "`fentry` | `mcount` | `xray`, and an optional colon with a list of comma separated options.";
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
@@ -1543,15 +1542,42 @@ pub mod parse {
         slot: &mut InstrumentFunction,
         v: Option<&str>,
     ) -> bool {
+        // Argument looks like the regex: type(:sub_opt(,sub_opt)*)?
         let Some(v) = v else { return false };
-        match v {
-            "fentry" => *slot = InstrumentFunction::Fentry,
-            "mcount" => *slot = InstrumentFunction::Mcount,
-            "xray" => *slot = InstrumentFunction::XRay,
-            "none" => *slot = InstrumentFunction::No,
-            _ => return false,
+        let opts: Vec<_> = v.split(':').collect();
+        if opts.len() > 2 {
+            println!("too many opts");
+            return false;
         }
-        true
+        let sub_opts = opts.get(1).copied();
+        let mut parsed = false;
+
+        match opts[0] {
+            "fentry" => {
+                parsed = sub_opts.is_none();
+                *slot = InstrumentFunction::Fentry;
+            }
+            "mcount" => {
+                parsed = sub_opts.is_none();
+                *slot = InstrumentFunction::Mcount;
+            }
+            "xray" => {
+                // Accept this option multiple times, this allows replacing or
+                // specifying additional options.
+                let mut xray_opts = match slot {
+                    InstrumentFunction::XRay(opts) => opts,
+                    _ => &mut InstrumentXRayOpts::default(),
+                };
+                parsed = parse_instrument_xray_opts(&mut xray_opts, sub_opts);
+                *slot = InstrumentFunction::XRay(*xray_opts);
+            }
+            "none" => {
+                parsed = sub_opts.is_none();
+                *slot = InstrumentFunction::No;
+            }
+            _ => {}
+        }
+        parsed
     }
 
     pub(crate) fn parse_instrument_xray_opts(
@@ -2400,17 +2426,12 @@ options! {
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about AST and HIR (default: no)"),
     instrument_function: InstrumentFunction = (InstrumentFunction::No, parse_instrument_function, [TRACKED],
-        "insert function entry/exit instrument code. Options are none, xray, mcount, fentry. The default is none."),
-    instrument_xray_opts: InstrumentXRayOpts = (InstrumentXRayOpts::default(), parse_instrument_xray_opts, [TRACKED],
-        "configuration options for XRay-based tracing (default is ``).
-         Optional extra settings:
-         `=always`
-         `=never`
-         `=ignore-loops`
-         `=instruction-threshold=N`
-         `=skip-entry`
-         `=skip-exit`
-         Multiple options can be combined with commas."),
+        "insert function instrument code for tracing (default: none).
+         Instrumentation options are:
+         `xray`, `mcount`, or `fentry`
+         Additional configuration options can be set with a colon followed
+         by a comma separated list (e.g `xray:ignore-loops`).
+         `xray`: always,never,ignore-loops,instruction-threshold=N,skip-entry,skip-exit"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),

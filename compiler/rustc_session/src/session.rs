@@ -1338,7 +1338,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                     .emit_err(errors::InstrumentationNotSupported { us: "fentry".to_string() });
             }
         }
-        InstrumentFunction::XRay => {
+        InstrumentFunction::XRay(_) => {
             if !sess.target.options.supports_xray {
                 sess.dcx().emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
             }
