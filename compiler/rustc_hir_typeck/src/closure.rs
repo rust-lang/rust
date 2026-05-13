@@ -830,8 +830,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     BoundRegionConversionTime::FnCall,
                     supplied_sig,
                     |value| {
-                        // FIXME: a proper cause?
-                        let cause = self.misc(DUMMY_SP);
+                        let cause = self.misc(self.tcx.def_span(expr_def_id));
                         let InferOk { value, obligations } =
                             self.at(&cause, self.param_env).renormalize_ambiguous_aliases(value);
                         all_obligations.extend(obligations);

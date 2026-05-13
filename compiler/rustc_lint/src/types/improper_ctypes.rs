@@ -894,10 +894,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: None,
             },
 
-            ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => todo!(),
             ty::Param(..)
             | ty::Alias(ty::AliasTy {
-                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. } | ty::Ambiguous,
                 ..
             })
             | ty::Infer(..)

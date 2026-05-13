@@ -815,7 +815,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 return; // Subtree handled by compute_inherent_projection.
             }
 
-            // Generally we skip predicates that contain escaping bound vars. See above.
+            // Ambiguous aliases only wrap another higher-ranked alias whose
+            // normalization is currently ambiguous, we will handle that alias
+            // when recursing into args.
             ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => {}
 
             ty::Adt(def, args) => {
