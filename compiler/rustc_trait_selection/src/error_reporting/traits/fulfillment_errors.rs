@@ -714,7 +714,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Errors for `ConstEvaluatable`, `ConstEquate` predicates show up as
                     // `SelectionError::ConstEvalFailure`, not `Unimplemented`.
                     // Ambiguous predicates should never error.
-                    // We never return `Err` when proving `UnstableFeature`` goal.
+                    // We never return `Err` when proving `UnstableFeature` goal.
                     ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                     | ty::PredicateKind::ConstEquate { .. }
                     | ty::PredicateKind::Ambiguous
