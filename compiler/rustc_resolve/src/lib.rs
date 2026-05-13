@@ -1530,6 +1530,8 @@ pub struct Resolver<'ra, 'tcx> {
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>> = Vec::new(),
 
     effective_visibilities: EffectiveVisibilities,
+    macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
+
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     all_macro_rules: UnordSet<Symbol> = Default::default(),
@@ -1852,6 +1854,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             confused_type_with_std_module: Default::default(),
             stripped_cfg_items: Default::default(),
             effective_visibilities: Default::default(),
+            macro_reachable_adts: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
@@ -1962,6 +1965,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             expn_that_defined,
             visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
+            macro_reachable_adts: self.macro_reachable_adts,
             extern_crate_map,
             module_children: self.module_children,
             ambig_module_children: self.ambig_module_children,

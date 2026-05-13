@@ -1,11 +1,13 @@
 use std::mem;
 
 use rustc_ast::visit::Visitor;
-use rustc_ast::{Crate, EnumDef, ast, visit};
+use rustc_ast::{Attribute, Crate, EnumDef, ast, visit};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::ty::Visibility;
+use rustc_span::sym;
 use tracing::info;
 
 use crate::{Decl, DeclKind, Resolver};
@@ -34,6 +36,19 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     import_effective_visibilities: EffectiveVisibilities<Decl<'ra>>,
     // It's possible to recalculate this at any point, but it's relatively expensive.
     current_private_vis: Visibility,
+    /// A set of pairs corresponding to modules, where the first module is
+    /// reachable via a macro that's defined in the second module. This cannot
+    /// be represented as reachable because it can't handle the following case:
+    ///
+    /// pub mod n {                         // Should be `Public`
+    ///     pub(crate) mod p {              // Should *not* be accessible
+    ///         pub fn f() -> i32 { 12 }    // Must be `Reachable`
+    ///     }
+    /// }
+    /// pub macro m() {
+    ///     n::p::f()
+    /// }
+    macro_reachable: FxHashSet<(LocalDefId, LocalDefId)>,
     changed: bool,
 }
 
@@ -71,6 +86,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             def_effective_visibilities: Default::default(),
             import_effective_visibilities: Default::default(),
             current_private_vis: Visibility::Restricted(CRATE_DEF_ID),
+            macro_reachable: Default::default(),
             changed: true,
         };
 
@@ -210,6 +226,123 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         let nominal_vis = self.r.tcx.local_visibility(def_id);
         self.update_def(def_id, nominal_vis, ParentId::Def(parent_id), self.current_private_vis);
     }
+
+    fn update_macro(&mut self, def_id: LocalDefId, inherited_effective_vis: EffectiveVisibility) {
+        let max_vis = Some(self.r.tcx.local_visibility(def_id));
+        let priv_vis = if def_id == CRATE_DEF_ID {
+            Visibility::Restricted(CRATE_DEF_ID)
+        } else {
+            self.r.private_vis_def(def_id)
+        };
+        self.changed |= self.def_effective_visibilities.update(
+            def_id,
+            max_vis,
+            priv_vis,
+            inherited_effective_vis,
+            Level::Reachable,
+            self.r.tcx,
+        );
+    }
+
+    // We have to make sure that the items that macros might reference
+    // are reachable, since they might be exported transitively.
+    fn update_reachability_from_macro(
+        &mut self,
+        local_def_id: LocalDefId,
+        md: &ast::MacroDef,
+        attrs: &[Attribute],
+    ) {
+        // Non-opaque macros cannot make other items more accessible than they already are.
+        if rustc_ast::attr::find_by_name(attrs, sym::rustc_macro_transparency)
+            .map_or(md.macro_rules, |attr| attr.value_str() != Some(sym::opaque))
+        {
+            return;
+        }
+
+        let macro_module_def_id = self.r.tcx.local_parent(local_def_id);
+        if self.r.tcx.def_kind(macro_module_def_id) != DefKind::Mod {
+            // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
+            return;
+        }
+
+        let Some(macro_ev) = self
+            .def_effective_visibilities
+            .effective_vis(local_def_id)
+            .filter(|ev| ev.public_at_level().is_some())
+            .copied()
+        else {
+            return;
+        };
+
+        // Since we are starting from an externally visible module,
+        // all the parents in the loop below are also guaranteed to be modules.
+        let mut module_def_id = macro_module_def_id;
+        loop {
+            let changed_reachability =
+                self.update_macro_reachable(module_def_id, macro_module_def_id, macro_ev);
+            if changed_reachability || module_def_id == CRATE_DEF_ID {
+                break;
+            }
+            module_def_id = self.r.tcx.local_parent(module_def_id);
+        }
+    }
+
+    /// Updates the item as being reachable through a macro defined in the given
+    /// module. Returns `true` if the level has changed.
+    fn update_macro_reachable(
+        &mut self,
+        module_def_id: LocalDefId,
+        defining_mod: LocalDefId,
+        macro_ev: EffectiveVisibility,
+    ) -> bool {
+        if self.macro_reachable.insert((module_def_id, defining_mod)) {
+            let module = self.r.expect_module(module_def_id.to_def_id());
+            for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
+                let Some(decl) = name_resolution.borrow().best_decl() else {
+                    continue;
+                };
+
+                if let Res::Def(def_kind, def_id) = decl.res()
+                    && let Some(def_id) = def_id.as_local()
+                    // FIXME: defs should be checked with `EffectiveVisibilities::is_reachable`.
+                    && decl.vis().is_accessible_from(defining_mod, self.r.tcx)
+                {
+                    let vis = self.r.tcx.local_visibility(def_id);
+                    self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod, macro_ev);
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fn update_macro_reachable_def(
+        &mut self,
+        def_id: LocalDefId,
+        def_kind: DefKind,
+        vis: Visibility,
+        module: LocalDefId,
+        macro_ev: EffectiveVisibility,
+    ) {
+        self.update_macro(def_id, macro_ev);
+
+        match def_kind {
+            DefKind::Mod => {
+                if vis.is_accessible_from(module, self.r.tcx) {
+                    self.update_macro_reachable(def_id, module, macro_ev);
+                }
+            }
+            DefKind::Struct | DefKind::Union => {
+                self.r
+                    .macro_reachable_adts
+                    .entry(def_id)
+                    .or_insert_with(Default::default)
+                    .insert(module);
+            }
+            _ => {}
+        }
+    }
 }
 
 impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
@@ -217,7 +350,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
         let def_id = self.r.local_def_id(item.id);
         // Update effective visibilities of nested items.
         // If it's a mod, also make the visitor walk all of its items
-        match item.kind {
+        match &item.kind {
             // Resolved in rustc_privacy when types are available
             ast::ItemKind::Impl(..) => return,
 
@@ -234,7 +367,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
                 self.current_private_vis = prev_private_vis;
             }
 
-            ast::ItemKind::Enum(_, _, EnumDef { ref variants }) => {
+            ast::ItemKind::Enum(_, _, EnumDef { variants }) => {
                 self.set_bindings_effective_visibilities(def_id);
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
@@ -244,7 +377,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
                 }
             }
 
-            ast::ItemKind::Struct(_, _, ref def) | ast::ItemKind::Union(_, _, ref def) => {
+            ast::ItemKind::Struct(_, _, def) | ast::ItemKind::Union(_, _, def) => {
                 for field in def.fields() {
                     self.update_field(self.r.local_def_id(field.id), def_id);
                 }
@@ -252,6 +385,10 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
 
             ast::ItemKind::Trait(..) => {
                 self.set_bindings_effective_visibilities(def_id);
+            }
+
+            ast::ItemKind::MacroDef(_, macro_def) => {
+                self.update_reachability_from_macro(def_id, macro_def, &item.attrs);
             }
 
             ast::ItemKind::ExternCrate(..)
@@ -262,7 +399,6 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             | ast::ItemKind::GlobalAsm(..)
             | ast::ItemKind::TyAlias(..)
             | ast::ItemKind::TraitAlias(..)
-            | ast::ItemKind::MacroDef(..)
             | ast::ItemKind::ForeignMod(..)
             | ast::ItemKind::Fn(..)
             | ast::ItemKind::Delegation(..) => return,
