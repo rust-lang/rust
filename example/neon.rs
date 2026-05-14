@@ -308,6 +308,53 @@ unsafe fn test_vaesimcq_u8() {
 }
 
 #[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256hq_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256h
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let c = u32x4::from([8, 9, 10, 11]);
+    let e = u32x4::from([0x27bb4ae0, 0xd8f61f7c, 0xb7c1ecdc, 0x10800215]);
+    let r: u32x4 = unsafe { transmute(vsha256hq_u32(transmute(a), transmute(b), transmute(c))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256h2q_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256h2
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let c = u32x4::from([8, 9, 10, 11]);
+    let e = u32x4::from([0x6989ee0d, 0x4b055920, 0x52800a12, 0x00000014]);
+    let r: u32x4 = unsafe { transmute(vsha256h2q_u32(transmute(a), transmute(b), transmute(c))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256su0q_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256su0
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let e = u32x4::from([0x02004000, 0x04008001, 0x0600c002, 0x08010003]);
+    let r: u32x4 = unsafe { transmute(vsha256su0q_u32(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "sha2")]
+unsafe fn test_vsha256su1q_u32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.crypto.sha256su1
+    let a = u32x4::from([0, 1, 2, 3]);
+    let b = u32x4::from([4, 5, 6, 7]);
+    let c = u32x4::from([8, 9, 10, 11]);
+    let e = u32x4::from([0x00044005, 0x0004e007, 0xa802211b, 0xec036145]);
+    let r: u32x4 = unsafe { transmute(vsha256su1q_u32(transmute(a), transmute(b), transmute(c))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -346,6 +393,11 @@ fn main() {
         test_vaesdq_u8();
         test_vaesmcq_u8();
         test_vaesimcq_u8();
+
+        test_vsha256hq_u32();
+        test_vsha256h2q_u32();
+        test_vsha256su0q_u32();
+        test_vsha256su1q_u32();
     }
 }
 
