@@ -9,7 +9,7 @@ use rustc_session::errors::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
-use super::prelude::{ALL_TARGETS, AllowedTargets};
+use super::prelude::{AllowedTargets, CHECKED_LATER};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::errors::{
@@ -707,7 +707,7 @@ impl AttributeParser for DocParser {
         },
     )];
     // FIXME: Currently emitted from 2 different places, generating duplicated warnings.
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER);
     // const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
     //     Allow(Target::ExternCrate),
     //     Allow(Target::Use),

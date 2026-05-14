@@ -69,7 +69,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", import_name_type = "decorated|noprefix|undecorated""#,
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER); //FIXME Still checked fully in `check_attr.rs`
 
     fn extend(
         cx: &mut AcceptContext<'_, '_>,
@@ -528,7 +528,7 @@ impl SingleAttributeParser for LinkSectionParser {
 pub(crate) struct ExportStableParser;
 impl NoArgsAttributeParser for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER); //FIXME Still checked fully in `check_attr.rs`
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
 

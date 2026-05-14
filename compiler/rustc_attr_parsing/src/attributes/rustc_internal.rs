@@ -532,7 +532,7 @@ pub(crate) struct LangParser;
 
 impl SingleAttributeParser for LangParser {
     const PATH: &[Symbol] = &[sym::lang];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER); // Targets are checked per lang item in `rustc_passes`
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -564,7 +564,7 @@ pub(crate) struct PanicHandlerParser;
 
 impl NoArgsAttributeParser for PanicHandlerParser {
     const PATH: &[Symbol] = &[sym::panic_handler];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER); // Targets are checked per lang item in `rustc_passes`
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Lang(LangItem::PanicImpl);
 }
 

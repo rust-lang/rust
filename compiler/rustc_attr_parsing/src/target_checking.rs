@@ -14,7 +14,7 @@ use crate::errors::{
     UnsupportedAttributesInWhere,
 };
 use crate::session_diagnostics::InvalidTarget;
-use crate::target_checking::Policy::Allow;
+use crate::target_checking::Policy::{Allow, Warn};
 
 #[derive(Debug)]
 pub(crate) enum AllowedTargets {
@@ -394,10 +394,81 @@ fn filter_targets(
     added_fake_targets.push(target_group_name);
 }
 
+/// This is a list of default targets to which a attribute can be applied
+/// This is used for attributes that are not parted to the new target checking system yet can use this list as a placeholder.
+/// This excludes `Target::MacroCall`, as attributes on macro calls are otherwise not checked for parsed attributes.
+pub(crate) const CHECKED_LATER: &'static [Policy] = {
+    use Policy::Allow;
+    &[
+        Allow(Target::ExternCrate),
+        Allow(Target::Use),
+        Allow(Target::Static),
+        Allow(Target::Const),
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Mod),
+        Allow(Target::ForeignMod),
+        Allow(Target::GlobalAsm),
+        Allow(Target::TyAlias),
+        Allow(Target::Enum),
+        Allow(Target::Variant),
+        Allow(Target::Struct),
+        Allow(Target::Field),
+        Allow(Target::Union),
+        Allow(Target::Trait),
+        Allow(Target::TraitAlias),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Expression),
+        Allow(Target::Statement),
+        Allow(Target::Arm),
+        Allow(Target::AssocConst),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::AssocTy),
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
+        Allow(Target::MacroDef),
+        Allow(Target::Param),
+        Allow(Target::PatField),
+        Allow(Target::ExprField),
+        Allow(Target::WherePredicate),
+        Allow(Target::Crate),
+        Allow(Target::Delegation { mac: false }),
+        Allow(Target::Delegation { mac: true }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Const,
+            has_default: false,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Const,
+            has_default: true,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Lifetime,
+            has_default: false,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Lifetime,
+            has_default: true,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Type,
+            has_default: false,
+        }),
+        Allow(Target::GenericParam {
+            kind: rustc_hir::target::GenericParamKind::Type,
+            has_default: true,
+        }),
+        Warn(Target::MacroCall),
+    ]
+};
+
 /// This is the list of all targets to which a attribute can be applied
-/// This is used for:
-/// - `rustc_dummy`, which can be applied to all targets
-/// - Attributes that are not parted to the new target system yet can use this list as a placeholder
+/// This is used for attributes that are actually allowed on all targets, such as `rustc_dummy`
 pub(crate) const ALL_TARGETS: &'static [Policy] = {
     use Policy::Allow;
     &[

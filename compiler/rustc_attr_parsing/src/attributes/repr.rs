@@ -58,7 +58,7 @@ impl CombineAttributeParser for ReprParser {
 
     //FIXME Still checked fully in `check_attr.rs`
     //This one is slightly more complicated because the allowed targets depend on the arguments
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER);
 }
 
 macro_rules! int_pat {

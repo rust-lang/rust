@@ -556,7 +556,7 @@ impl SingleAttributeParser for SanitizeParser {
     const PATH: &[Symbol] = &[sym::sanitize];
 
     // FIXME: still checked in check_attrs.rs
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(CHECKED_LATER);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[
         r#"address = "on|off""#,

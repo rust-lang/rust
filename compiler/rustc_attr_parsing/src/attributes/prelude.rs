@@ -24,4 +24,4 @@ pub(super) use crate::parser::*;
 #[doc(hidden)]
 pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
 #[doc(hidden)]
-pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets, CHECKED_LATER};
