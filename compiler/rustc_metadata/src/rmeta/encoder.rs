@@ -2222,7 +2222,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), index, ctxt_data| {
                 syntax_contexts.set_some_hashed(
-                    index,
+                    index.as_u32(),
                     this.lazy(ctxt_data),
                     ctxt_data,
                     &mut hcx.borrow_mut(),
