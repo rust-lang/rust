@@ -278,6 +278,8 @@ pub trait Const<I: Interner<Const = Self>>:
 
     fn new_unevaluated(interner: I, uv: ty::UnevaluatedConst<I>) -> Self;
 
+    fn new_value(interner: I, value: I::ValueConst) -> Self;
+
     fn new_expr(interner: I, expr: I::ExprConst) -> Self;
 
     fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self;
@@ -296,7 +298,9 @@ pub trait Const<I: Interner<Const = Self>>:
 }
 
 #[rust_analyzer::prefer_underscore_import]
-pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
+pub trait ValueConst<I: Interner<ValueConst = Self>>:
+    TypeFoldable<I> + Copy + Debug + Hash + Eq
+{
     fn ty(self) -> I::Ty;
     fn valtree(self) -> I::ValTree;
 }

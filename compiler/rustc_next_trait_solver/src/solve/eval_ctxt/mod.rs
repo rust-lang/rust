@@ -1470,12 +1470,24 @@ where
         &mut self,
         param_env: I::ParamEnv,
         uv: ty::UnevaluatedConst<I>,
-    ) -> Result<Option<I::Const>, RerunNonErased> {
+    ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)?;
         }
 
-        Ok(self.delegate.evaluate_const(param_env, uv))
+        if let Some(ct) = self.delegate.evaluate_const(param_env, uv) {
+            Ok(Some(match ct.kind() {
+                // FIXME(adt_const_params): `evaluate_const` currently does not normalize the type
+                // of const values.
+                ty::ConstKind::Value(value) => Const::new_value(
+                    self.cx(),
+                    self.normalize(param_env, ty::Unnormalized::new_wip(value))?,
+                ),
+                _ => ct,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     pub(super) fn evaluate_const_and_instantiate_normalizes_to_term(

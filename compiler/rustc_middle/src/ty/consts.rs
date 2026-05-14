@@ -194,6 +194,10 @@ impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
         Const::new_unevaluated(interner, uv)
     }
 
+    fn new_value(interner: TyCtxt<'tcx>, value: ty::Value<'tcx>) -> Self {
+        Const::new_value(interner, value.valtree, value.ty)
+    }
+
     fn new_expr(interner: TyCtxt<'tcx>, expr: ty::Expr<'tcx>) -> Self {
         Const::new_expr(interner, expr)
     }
