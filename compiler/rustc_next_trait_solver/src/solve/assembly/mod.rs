@@ -111,7 +111,7 @@ where
                 goal.param_env,
                 trait_ref,
                 bounds,
-            ) {
+            )? {
                 Ok(requirements) => {
                     ecx.add_goals(GoalSource::ImplWhereBound, requirements);
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

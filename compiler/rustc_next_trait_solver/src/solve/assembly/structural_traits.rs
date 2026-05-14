@@ -5,8 +5,8 @@ use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
-use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
+use rustc_type_ir::solve::{NoSolutionOrRerunNonErased, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
     TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
@@ -879,14 +879,13 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: Binder<I, ty::TraitRef<I>>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Vec<Goal<I, I::Predicate>>, Ambiguous>
+) -> Result<Result<Vec<Goal<I, I::Predicate>>, Ambiguous>, NoSolutionOrRerunNonErased>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     let cx = ecx.cx();
-    let trait_ref =
-        ecx.instantiate_binder_with_infer(param_env, trait_ref).map_err(|_| Ambiguous)?;
+    let trait_ref = ecx.instantiate_binder_with_infer(param_env, trait_ref)?;
     let mut requirements = vec![];
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
@@ -942,12 +941,14 @@ where
         nested: vec![],
     };
 
-    let requirements = requirements.try_fold_with(&mut folder)?;
-    Ok(folder
-        .nested
-        .into_iter()
-        .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
-        .collect())
+    let requirements = requirements.try_fold_with(&mut folder).map(|requirements| {
+        folder
+            .nested
+            .into_iter()
+            .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
+            .collect()
+    });
+    Ok(requirements)
 }
 
 struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I>> {
