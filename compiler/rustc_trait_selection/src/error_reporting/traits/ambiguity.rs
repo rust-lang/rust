@@ -40,65 +40,68 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 
     let impl_may_apply = |impl_def_id| {
         let ocx = ObligationCtxt::new(infcx);
-        infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
-            let placeholder_obligation = ocx.renormalize_ambiguous_aliases(
-                &ObligationCause::dummy(),
-                param_env,
-                placeholder_obligation,
-            );
-            let obligation_trait_ref = ocx.normalize(
-                &ObligationCause::dummy(),
-                param_env,
-                Unnormalized::new_wip(placeholder_obligation.trait_ref),
-            );
+        ocx.enter_forall(
+            &ObligationCause::dummy(),
+            param_env,
+            obligation.predicate,
+            |placeholder_obligation| {
+                let obligation_trait_ref = ocx.normalize(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    Unnormalized::new_wip(placeholder_obligation.trait_ref),
+                );
 
-            let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref =
-                tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip();
-            let impl_trait_ref = ocx.normalize(
-                &ObligationCause::dummy(),
-                param_env,
-                Unnormalized::new_wip(impl_trait_ref),
-            );
+                let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                let impl_trait_ref =
+                    tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip();
+                let impl_trait_ref = ocx.normalize(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    Unnormalized::new_wip(impl_trait_ref),
+                );
 
-            if let Err(_) =
-                ocx.eq(&ObligationCause::dummy(), param_env, obligation_trait_ref, impl_trait_ref)
-            {
-                return false;
-            }
+                if let Err(_) = ocx.eq(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    obligation_trait_ref,
+                    impl_trait_ref,
+                ) {
+                    return false;
+                }
 
-            let impl_trait_header = tcx.impl_trait_header(impl_def_id);
-            let impl_polarity = impl_trait_header.polarity;
+                let impl_trait_header = tcx.impl_trait_header(impl_def_id);
+                let impl_polarity = impl_trait_header.polarity;
 
-            match (impl_polarity, predicate_polarity) {
-                (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
-                | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {}
-                _ => return false,
-            }
+                match (impl_polarity, predicate_polarity) {
+                    (ty::ImplPolarity::Positive, ty::PredicatePolarity::Positive)
+                    | (ty::ImplPolarity::Negative, ty::PredicatePolarity::Negative) => {}
+                    _ => return false,
+                }
 
-            let obligations = tcx
-                .predicates_of(impl_def_id)
-                .instantiate(tcx, impl_args)
-                .into_iter()
-                .map(|(predicate, _)| {
-                    Obligation::new(
-                        tcx,
-                        ObligationCause::dummy(),
-                        param_env,
-                        predicate.skip_norm_wip(),
-                    )
-                })
-                // Kinda hacky, but let's just throw away obligations that overflow.
-                // This may reduce the accuracy of this check (if the obligation guides
-                // inference or it actually resulted in error after others are processed)
-                // ... but this is diagnostics code.
-                .filter(|obligation| {
-                    infcx.next_trait_solver() || infcx.evaluate_obligation(obligation).is_ok()
-                });
-            ocx.register_obligations(obligations);
+                let obligations = tcx
+                    .predicates_of(impl_def_id)
+                    .instantiate(tcx, impl_args)
+                    .into_iter()
+                    .map(|(predicate, _)| {
+                        Obligation::new(
+                            tcx,
+                            ObligationCause::dummy(),
+                            param_env,
+                            predicate.skip_norm_wip(),
+                        )
+                    })
+                    // Kinda hacky, but let's just throw away obligations that overflow.
+                    // This may reduce the accuracy of this check (if the obligation guides
+                    // inference or it actually resulted in error after others are processed)
+                    // ... but this is diagnostics code.
+                    .filter(|obligation| {
+                        infcx.next_trait_solver() || infcx.evaluate_obligation(obligation).is_ok()
+                    });
+                ocx.register_obligations(obligations);
 
-            ocx.try_evaluate_obligations().is_empty()
-        })
+                ocx.try_evaluate_obligations().is_empty()
+            },
+        )
     };
 
     let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
