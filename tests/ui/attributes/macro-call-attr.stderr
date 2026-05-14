@@ -1,0 +1,136 @@
+warning: unused doc comment
+  --> $DIR/macro-call-attr.rs:15:1
+   |
+LL | #[doc = ""]
+   | ^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
+   |
+   = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+note: the lint level is defined here
+  --> $DIR/macro-call-attr.rs:11:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_doc_comments)]` implied by `#[warn(unused)]`
+
+warning: `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
+  --> $DIR/macro-call-attr.rs:17:1
+   |
+LL | #[diagnostic::do_not_recommend]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | test!();
+   | ------- not a trait implementation
+   |
+   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
+  --> $DIR/macro-call-attr.rs:19:1
+   |
+LL | #[diagnostic::on_const]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | test!();
+   | ------- not a trait implementation
+
+warning: `#[diagnostic::on_move]` can only be applied to enums, structs or unions
+  --> $DIR/macro-call-attr.rs:21:1
+   |
+LL | #[diagnostic::on_move]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
+  --> $DIR/macro-call-attr.rs:23:1
+   |
+LL | #[diagnostic::on_unimplemented]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
+  --> $DIR/macro-call-attr.rs:25:1
+   |
+LL | #[diagnostic::on_unknown]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | test!();
+   | ------- not an import
+
+warning: `#[diagnostic::on_unmatch_args]` can only be applied to macro definitions
+  --> $DIR/macro-call-attr.rs:27:1
+   |
+LL | #[diagnostic::on_unmatch_args]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `#[sanitize]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:29:1
+   |
+LL | #[sanitize()]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[sanitize]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+   = note: `#[warn(unused_attributes)]` implied by `#[warn(unused)]`
+
+warning: `#[register_tool]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:32:1
+   |
+LL | #[register_tool(test)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[register_tool]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: `#[link]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:35:1
+   |
+LL | #[link(name = "x")]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[link]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: `#[export_stable]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:38:1
+   |
+LL | #[export_stable]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[export_stable]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: `#[repr]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:41:1
+   |
+LL | #[repr(align(64))]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[repr]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: `#[lang]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:44:1
+   |
+LL | #[lang = "sized"]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[lang]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: `#[panic_handler]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:47:1
+   |
+LL | #[panic_handler]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[panic_handler]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: `#[may_dangle]` attribute cannot be used on macro calls
+  --> $DIR/macro-call-attr.rs:50:1
+   |
+LL | #[may_dangle]
+   | ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[may_dangle]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, use statements, and where predicates
+
+warning: 15 warnings emitted
+
