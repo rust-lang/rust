@@ -1384,9 +1384,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     /// that corresponds to your use case, consider whether or not you should
     /// use [`InferCtxt::enter_forall`] instead.
-    ///
-    /// If you're in the old solver or your binder doesn't have `Ambiguous` aliases, use
-    /// `instantiate_binder_with_fresh_vars_no_ambiguous_aliases` instead.
     pub fn instantiate_unnormalized_binder_with_fresh_vars<T>(
         &self,
         span: Span,
