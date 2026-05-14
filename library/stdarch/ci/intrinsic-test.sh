@@ -10,9 +10,16 @@ fi
 case ${2} in
     clang)
         export CC="${CLANG_PATH}"
+        CC_ARG_STYLE=clang
         ;;
     gcc)
         export CC="${GCC_PATH}"
+        CC_ARG_STYLE=gcc
+        ;;
+    icx)
+        export CC="${ICX_PATH}"
+        # `icx` uses clang-style arguments
+        CC_ARG_STYLE=clang
         ;;
     *)
         >&2 echo "Unknown compiler: ${2}"
@@ -61,7 +68,7 @@ case "${1}" in
             --skip "crates/intrinsic-test/missing_${ARCH}_common.txt" \
             --skip "crates/intrinsic-test/missing_${ARCH}_${2}.txt" \
             --target "${1}" \
-            --cc-arg-style "${2}"
+            --cc-arg-style "${CC_ARG_STYLE}"
         ;;
     *)
         cargo run "${INTRINSIC_TEST}" --release \
@@ -69,7 +76,7 @@ case "${1}" in
             --skip "crates/intrinsic-test/missing_${ARCH}_common.txt" \
             --skip "crates/intrinsic-test/missing_${ARCH}_${2}.txt" \
             --target "${1}" \
-            --cc-arg-style "${2}"
+            --cc-arg-style "${CC_ARG_STYLE}"
         ;;
 esac
 

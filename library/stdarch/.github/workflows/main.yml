@@ -285,6 +285,12 @@ jobs:
         include:
           - target: aarch64_be-unknown-linux-gnu
             build_std: true
+          - target: x86_64-unknown-linux-gnu
+            cc: icx
+            profile: dev
+          - target: x86_64-unknown-linux-gnu
+            cc: icx
+            profile: release
         exclude:
           - target: armv7-unknown-linux-gnueabihf
             cc: gcc
