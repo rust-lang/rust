@@ -879,13 +879,14 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: Binder<I, ty::TraitRef<I>>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Result<Vec<Goal<I, I::Predicate>>, Ambiguous>, NoSolutionOrRerunNonErased>
+) -> Result<Vec<Goal<I, I::Predicate>>, Result<Ambiguous, NoSolutionOrRerunNonErased>>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     let cx = ecx.cx();
-    let trait_ref = ecx.instantiate_binder_with_infer(param_env, trait_ref)?;
+    let trait_ref =
+        ecx.instantiate_binder_with_infer(param_env, trait_ref).map_err(|err| Err(err))?;
     let mut requirements = vec![];
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
@@ -941,14 +942,13 @@ where
         nested: vec![],
     };
 
-    let requirements = requirements.try_fold_with(&mut folder).map(|requirements| {
+    requirements.try_fold_with(&mut folder).map(|requirements| {
         folder
             .nested
             .into_iter()
             .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
             .collect()
-    });
-    Ok(requirements)
+    })
 }
 
 struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I>> {
@@ -989,7 +989,7 @@ where
     fn try_eagerly_replace_alias(
         &mut self,
         alias_term: ty::AliasTerm<I>,
-    ) -> Result<Option<I::Term>, Ambiguous> {
+    ) -> Result<Option<I::Term>, Result<Ambiguous, NoSolutionOrRerunNonErased>> {
         if alias_term.self_ty() != self.self_ty {
             return Ok(None);
         }
@@ -1013,13 +1013,13 @@ where
             // If there's more than one projection that we can unify here, then we
             // need to stall until inference constrains things so that there's only
             // one choice.
-            return Err(Ambiguous);
+            return Err(Ok(Ambiguous));
         }
 
         let replacement = self
             .ecx
             .instantiate_binder_with_infer(self.param_env, *replacement)
-            .map_err(|_| Ambiguous)?;
+            .map_err(|e| Err(e))?;
         self.nested.extend(
             self.ecx
                 .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)
@@ -1038,13 +1038,16 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    type Error = Ambiguous;
+    type Error = Result<Ambiguous, NoSolutionOrRerunNonErased>;
 
     fn cx(&self) -> I {
         self.ecx.cx()
     }
 
-    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
+    fn try_fold_ty(
+        &mut self,
+        ty: I::Ty,
+    ) -> Result<I::Ty, Result<Ambiguous, NoSolutionOrRerunNonErased>> {
         if let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Projection { .. }, .. }) = ty.kind()
             && let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())?
         {
