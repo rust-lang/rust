@@ -309,13 +309,12 @@ where
             StructurallyRelateAliases::Yes => {
                 assert_eq!(a.bound_vars(), b.bound_vars());
                 a.rebind((a.skip_binder(), b.skip_binder()));
-                self.infcx.enter_forall( a.rebind((a.skip_binder(), b.skip_binder())), |val| {
+                self.infcx.enter_forall(a.rebind((a.skip_binder(), b.skip_binder())), |val| {
                     let (a, b) = val.keep_ambiguous_aliases_for_structurally_relate();
                     self.relate(a, b)
                 })?;
                 return Ok(a);
-
-            },
+            }
             StructurallyRelateAliases::No => {}
         }
 

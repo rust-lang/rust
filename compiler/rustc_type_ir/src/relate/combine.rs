@@ -115,7 +115,6 @@ where
             panic!("We do not expect to encounter `Fresh` variables in the new solver")
         }
 
-
         (_, ty::Alias(..)) | (ty::Alias(..), _) if infcx.next_trait_solver() => {
             match relation.structurally_relate_aliases() {
                 StructurallyRelateAliases::Yes => structurally_relate_tys(relation, a, b),
