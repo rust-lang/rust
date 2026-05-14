@@ -146,7 +146,7 @@ where
         self.infcx.create_next_universe();
 
         let (normalized, ambig_goal) = (self.normalize)(alias_term)?;
-
+        self.stalled_goals.extend(ambig_goal);
         // Return ambiguous higher ranked alias as is, if
         //   - it contains escaping vars, and
         //   - the normalized term contains infer vars newly created
@@ -164,7 +164,6 @@ where
             }
         }
 
-        self.stalled_goals.extend(ambig_goal);
         Ok((normalized, NeedRenormalization::No))
     }
 }
