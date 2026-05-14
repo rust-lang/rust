@@ -215,8 +215,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.graviola", &|runner| {
         let (arch, _) = runner.target_compiler.triple.split_once('-').unwrap();
 
-        // FIXME: Disable `aarch64` until intrinsics are supported.
-        if !["x86_64"].contains(&arch) {
+        if !["aarch64", "x86_64"].contains(&arch) {
             eprintln!("Skipping `graviola` tests: unsupported target");
             return;
         }
