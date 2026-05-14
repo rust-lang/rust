@@ -265,8 +265,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         delegate: impl BoundVarReplacerDelegate<'tcx>,
-    ) -> T {
-        self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate)
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T> {
+        let value = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
+        ty::UnnormalizedAmbiguous::new(value)
     }
 
     /// Replaces any late-bound regions bound in `value` with

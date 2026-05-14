@@ -850,16 +850,14 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        self.enter_forall_no_ambiguous_aliases(
-            predicate,
-            |ty::SubtypePredicate { a_is_expected, a, b }| {
-                if a_is_expected {
-                    Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
-                } else {
-                    Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
-                }
-            },
-        )
+        self.enter_forall(predicate, |pred| {
+            let ty::SubtypePredicate { a_is_expected, a, b } = pred.no_ambiguous_aliases();
+            if a_is_expected {
+                Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
+            } else {
+                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
+            }
+        })
     }
 
     /// Number of type variables created so far.
@@ -1389,34 +1387,6 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// If you're in the old solver or your binder doesn't have `Ambiguous` aliases, use
     /// `instantiate_binder_with_fresh_vars_no_ambiguous_aliases` instead.
-    pub fn instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases_with<T, F>(
-        &self,
-        span: Span,
-        lbrct: BoundRegionConversionTime,
-        value: ty::Binder<'tcx, T>,
-        mut renormalize_ambig: F,
-    ) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
-        F: FnMut(ty::UnnormalizedAmbiguous<'tcx, T>) -> T,
-    {
-        let instantiated = self.instantiate_binder_with_fresh_vars_raw(span, lbrct, value);
-        renormalize_ambig(ty::UnnormalizedAmbiguous::new(instantiated))
-    }
-
-    pub fn instantiate_binder_with_fresh_vars_no_ambiguous_aliases<T>(
-        &self,
-        span: Span,
-        lbrct: BoundRegionConversionTime,
-        value: ty::Binder<'tcx, T>,
-    ) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
-    {
-        assert!(!value.has_ambiguous_aliases());
-        self.instantiate_binder_with_fresh_vars_raw(span, lbrct, value)
-    }
-
     pub fn instantiate_unnormalized_binder_with_fresh_vars<T>(
         &self,
         span: Span,
@@ -1426,10 +1396,11 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        value.map(|v| self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(span, lbrct, v))
+        value
+            .map(|v| self.instantiate_binder_with_fresh_vars(span, lbrct, v).no_ambiguous_aliases())
     }
 
-    fn instantiate_binder_with_fresh_vars_raw<T>(
+    pub fn instantiate_binder_with_fresh_vars_old_solver<T>(
         &self,
         span: Span,
         lbrct: BoundRegionConversionTime,
@@ -1438,8 +1409,21 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        debug_assert!(!self.next_trait_solver());
+        self.instantiate_binder_with_fresh_vars(span, lbrct, value).no_ambiguous_aliases()
+    }
+
+    pub fn instantiate_binder_with_fresh_vars<T>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        value: ty::Binder<'tcx, T>,
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
         if let Some(inner) = value.no_bound_vars() {
-            return inner;
+            return ty::UnnormalizedAmbiguous::new(inner);
         }
 
         let bound_vars = value.bound_vars();

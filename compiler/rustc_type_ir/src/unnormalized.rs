@@ -163,6 +163,11 @@ impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
         Self { value, _tcx: PhantomData }
     }
 
+    pub fn dummy(value: T) -> Self {
+        // TODO: assert no unnormalized alias without escaping bound vars
+        Self { value, _tcx: PhantomData }
+    }
+
     /// This should only be used when structurally relating types.
     pub fn keep_ambiguous_aliases_for_structurally_relate(self) -> T {
         self.value

@@ -450,7 +450,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // pred instead of just instantiating it with placeholders b/c of
                 // higher-ranked implied bound issues in the old solver.
                 | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..)) => {
-                    let pred = ty::Binder::dummy(infcx.enter_forall_and_leak_universe(binder));
+                    let pred = ty::Binder::dummy(infcx.enter_forall_and_leak_universe_old_solver(binder));
                     let mut obligations = PredicateObligations::with_capacity(1);
                     obligations.push(obligation.with(infcx.tcx, pred));
 

@@ -3034,13 +3034,11 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
                 .instantiate(self.call_ctxt.fn_ctxt.tcx, args)
                 .skip_norm_wip();
 
-            self.call_ctxt
-                .fn_ctxt
-                .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases(
-                    call_name.span,
-                    BoundRegionConversionTime::FnCall,
-                    fn_sig,
-                );
+            self.call_ctxt.fn_ctxt.instantiate_binder_with_fresh_vars(
+                call_name.span,
+                BoundRegionConversionTime::FnCall,
+                fn_sig,
+            );
         }
         None
     }

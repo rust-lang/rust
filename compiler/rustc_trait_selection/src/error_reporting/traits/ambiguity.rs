@@ -102,37 +102,42 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
     };
 
     let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
-        let ocx = ObligationCtxt::new(infcx);
-        infcx.enter_forall_no_ambiguous_aliases(obligation.predicate, |placeholder_obligation| {
-            let obligation_trait_ref = ocx.normalize(
-                &ObligationCause::dummy(),
-                param_env,
-                Unnormalized::new_wip(placeholder_obligation.trait_ref),
-            );
+        let ocx: ObligationCtxt<'_, '_> = ObligationCtxt::new(infcx);
+        ocx.enter_forall(
+            &ObligationCause::dummy(),
+            param_env,
+            obligation.predicate,
+            |placeholder_obligation| {
+                let obligation_trait_ref = ocx.normalize(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    Unnormalized::new_wip(placeholder_obligation.trait_ref),
+                );
 
-            let param_env_predicate = infcx
-                .instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
-                    DUMMY_SP,
+                let param_env_predicate = ocx.instantiate_binder_with_fresh_vars(
+                    &ObligationCause::dummy(),
                     BoundRegionConversionTime::HigherRankedType,
+                    param_env,
                     poly_trait_predicate,
                 );
-            let param_env_trait_ref = ocx.normalize(
-                &ObligationCause::dummy(),
-                param_env,
-                Unnormalized::new_wip(param_env_predicate.trait_ref),
-            );
+                let param_env_trait_ref = ocx.normalize(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    Unnormalized::new_wip(param_env_predicate.trait_ref),
+                );
 
-            if let Err(_) = ocx.eq(
-                &ObligationCause::dummy(),
-                param_env,
-                obligation_trait_ref,
-                param_env_trait_ref,
-            ) {
-                return false;
-            }
+                if let Err(_) = ocx.eq(
+                    &ObligationCause::dummy(),
+                    param_env,
+                    obligation_trait_ref,
+                    param_env_trait_ref,
+                ) {
+                    return false;
+                }
 
-            ocx.try_evaluate_obligations().is_empty()
-        })
+                ocx.try_evaluate_obligations().is_empty()
+            },
+        )
     };
 
     let mut ambiguities = Vec::new();

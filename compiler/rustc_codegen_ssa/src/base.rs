@@ -128,26 +128,31 @@ pub fn validate_trivial_unsize<'tcx>(
                 tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
             let universe = infcx.universe();
             let ocx = ObligationCtxt::new(&infcx);
-            infcx.enter_forall_no_ambiguous_aliases(hr_target_principal, |target_principal| {
-                let source_principal = infcx
-                    .instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
-                        DUMMY_SP,
+            ocx.enter_forall(
+                &ObligationCause::dummy(),
+                param_env,
+                hr_target_principal,
+                |target_principal| {
+                    let source_principal = ocx.instantiate_binder_with_fresh_vars(
+                        &ObligationCause::dummy(),
                         BoundRegionConversionTime::HigherRankedType,
+                        param_env,
                         hr_source_principal,
                     );
-                let Ok(()) = ocx.eq(
-                    &ObligationCause::dummy(),
-                    param_env,
-                    target_principal,
-                    source_principal,
-                ) else {
-                    return false;
-                };
-                if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
-                    return false;
-                }
-                infcx.leak_check(universe, None).is_ok()
-            })
+                    let Ok(()) = ocx.eq(
+                        &ObligationCause::dummy(),
+                        param_env,
+                        target_principal,
+                        source_principal,
+                    ) else {
+                        return false;
+                    };
+                    if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+                        return false;
+                    }
+                    infcx.leak_check(universe, None).is_ok()
+                },
+            )
         }
         (_, None) => true,
         _ => false,

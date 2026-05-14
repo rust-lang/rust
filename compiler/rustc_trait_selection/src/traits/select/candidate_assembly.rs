@@ -207,7 +207,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.probe(|_| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
+                self.infcx.enter_forall_and_leak_universe_old_solver(poly_trait_predicate);
 
             // The bounds returned by `item_bounds` may contain duplicates after
             // normalization, so try to deduplicate when possible to avoid
@@ -924,7 +924,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-            self.infcx.enter_forall_no_ambiguous_aliases(
+            self.infcx.enter_forall_old_solver(
                 poly_trait_predicate,
                 |placeholder_trait_predicate| {
                     let self_ty = placeholder_trait_predicate.self_ty();

@@ -435,7 +435,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    pub(crate) fn instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases<T>(
+    pub(crate) fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,
         lbrct: BoundRegionConversionTime,
@@ -444,15 +444,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        self.instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases_with(
-            span,
-            lbrct,
-            value,
-            |value| {
-                self.register_infer_ok_obligations(
-                    self.at(&self.misc(span), self.param_env).renormalize_ambiguous_aliases(value),
-                )
-            },
+        let value = self.infcx.instantiate_binder_with_fresh_vars(span, lbrct, value);
+        self.register_infer_ok_obligations(
+            self.at(&self.misc(span), self.param_env).renormalize_ambiguous_aliases(value),
         )
     }
 

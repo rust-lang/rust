@@ -833,11 +833,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             diag.downgrade_to_delayed_bug();
         }
 
-        if let Ok(Some(ImplSource::UserDefined(impl_data))) = self
-            .enter_forall_no_ambiguous_aliases(trait_ref, |trait_ref_for_select| {
+        let ocx = ObligationCtxt::new(self);
+        let impl_source = ocx.enter_forall(
+            &ObligationCause::dummy(),
+            obligation.param_env,
+            trait_ref,
+            |trait_ref_for_select| {
                 SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
-            })
-        {
+            },
+        );
+        if let Ok(Some(ImplSource::UserDefined(impl_data))) = impl_source {
             let impl_did = impl_data.impl_def_id;
             let trait_did = trait_ref.def_id();
             let impl_span = self.tcx.def_span(impl_did);
@@ -958,11 +963,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Verify that the arguments are compatible. If the signature is
         // mismatched, then we have a totally different error to report.
-        if self.enter_forall_no_ambiguous_aliases(found_args, |found_args| {
-            self.enter_forall_no_ambiguous_aliases(expected_args, |expected_args| {
-                !self.can_eq(obligation.param_env, expected_args, found_args)
-            })
-        }) {
+        let ocx = ObligationCtxt::new(self);
+        if ocx.enter_forall(
+            &ObligationCause::dummy(),
+            obligation.param_env,
+            found_args,
+            |found_args| {
+                ocx.enter_forall(
+                    &ObligationCause::dummy(),
+                    obligation.param_env,
+                    expected_args,
+                    |expected_args| !self.can_eq(obligation.param_env, expected_args, found_args),
+                )
+            },
+        ) {
             return None;
         }
 
@@ -1402,7 +1416,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut pred = obligation.predicate.as_trait_clause();
         while let Some((next_code, next_pred)) = code.parent_with_predicate() {
             if let Some(pred) = pred {
-                self.enter_forall_no_ambiguous_aliases(pred, |pred| {
+                let ocx = ObligationCtxt::new(self);
+                ocx.enter_forall(&ObligationCause::dummy(), obligation.param_env, pred, |pred| {
                     let ty = self.tcx.short_string(pred.self_ty(), diag.long_ty_path());
                     let trait_path = self
                         .tcx
@@ -1421,6 +1436,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn can_match_trait(
         &self,
+        ocx: &ObligationCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         goal: ty::TraitPredicate<'tcx>,
         assumption: ty::PolyTraitPredicate<'tcx>,
@@ -1430,9 +1446,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return false;
         }
 
-        let trait_assumption = self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
-            DUMMY_SP,
+        let trait_assumption = ocx.instantiate_binder_with_fresh_vars(
+            &ObligationCause::dummy(),
             infer::BoundRegionConversionTime::HigherRankedType,
+            param_env,
             assumption,
         );
 
@@ -1441,13 +1458,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn can_match_host_effect(
         &self,
+        ocx: &ObligationCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         goal: ty::HostEffectPredicate<'tcx>,
         assumption: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
     ) -> bool {
-        let assumption = self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
-            DUMMY_SP,
+        let assumption = ocx.instantiate_binder_with_fresh_vars(
+            &ObligationCause::dummy(),
             infer::BoundRegionConversionTime::HigherRankedType,
+            param_env,
             assumption,
         );
 
@@ -1466,13 +1485,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn can_match_projection(
         &self,
+        ocx: &ObligationCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         goal: ty::ProjectionPredicate<'tcx>,
         assumption: ty::PolyProjectionPredicate<'tcx>,
     ) -> bool {
-        let assumption = self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
-            DUMMY_SP,
+        let assumption = ocx.instantiate_binder_with_fresh_vars(
+            &ObligationCause::dummy(),
             infer::BoundRegionConversionTime::HigherRankedType,
+            param_env,
             assumption,
         );
 
@@ -1500,23 +1521,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         let param_env = error.param_env;
 
+        let ocx = ObligationCtxt::new(self);
         if let Some(error) = error.predicate.as_trait_clause() {
-            self.enter_forall_no_ambiguous_aliases(error, |error| {
+            ocx.enter_forall(&ObligationCause::dummy(), param_env, error, |error| {
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_trait_clause())
-                    .any(|implied| self.can_match_trait(param_env, error, implied))
+                    .any(|implied| self.can_match_trait(&ocx, param_env, error, implied))
             })
         } else if let Some(error) = Self::as_host_effect_clause(error.predicate) {
-            self.enter_forall_no_ambiguous_aliases(error, |error| {
+            ocx.enter_forall(&ObligationCause::dummy(), param_env, error, |error| {
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(Self::as_host_effect_clause)
-                    .any(|implied| self.can_match_host_effect(param_env, error, implied))
+                    .any(|implied| self.can_match_host_effect(&ocx, param_env, error, implied))
             })
         } else if let Some(error) = error.predicate.as_projection_clause() {
-            self.enter_forall_no_ambiguous_aliases(error, |error| {
+            ocx.enter_forall(&ObligationCause::dummy(), param_env, error, |error| {
                 elaborate(self.tcx, std::iter::once(cond.predicate))
                     .filter_map(|implied| implied.as_projection_clause())
-                    .any(|implied| self.can_match_projection(param_env, error, implied))
+                    .any(|implied| self.can_match_projection(&ocx, param_env, error, implied))
             })
         } else {
             false
@@ -1545,14 +1567,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                     let ocx = ObligationCtxt::new(self);
 
-                    let data = self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
-                        obligation.cause.span,
+                    let data = ocx.instantiate_binder_with_fresh_vars(
+                        &obligation.cause,
                         infer::BoundRegionConversionTime::HigherRankedType,
+                        obligation.param_env,
                         bound_predicate.rebind(data),
                     );
                     let unnormalized_term = data.projection_term.to_term(self.tcx);
-                    // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
-                    // to deeply normalize this type.
                     let normalized_term = ocx.normalize(
                         &obligation.cause,
                         obligation.param_env,
@@ -1686,7 +1707,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return None;
                 };
 
-                let trait_ref = self.enter_forall_and_leak_universe(
+                let ocx = ObligationCtxt::new(self);
+                let trait_ref = ocx.enter_forall_and_leak_universe(
+                    &ObligationCause::dummy(),
+                    obligation.param_env,
                     predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
                 );
                 let Ok(Some(ImplSource::UserDefined(impl_data))) =
@@ -2075,11 +2099,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // that failed. This should uncover a better hint for what *is* implemented.
             if self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
-
-                self.enter_forall_no_ambiguous_aliases(trait_pred, |obligation_trait_ref| {
+                let cause = &ObligationCause::dummy();
+                ocx.enter_forall(&cause, param_env, trait_pred, |obligation_trait_ref| {
                     let impl_args = self.fresh_args_for_item(DUMMY_SP, single.impl_def_id);
                     let impl_trait_ref = ocx.normalize(
-                        &ObligationCause::dummy(),
+                        &cause,
                         param_env,
                         ty::EarlyBinder::bind(single.trait_ref).instantiate(self.tcx, impl_args),
                     );

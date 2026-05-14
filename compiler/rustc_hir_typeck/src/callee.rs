@@ -232,12 +232,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_sig = args.as_closure().sig();
-                let closure_sig = self
-                    .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases(
-                        call_expr.span,
-                        BoundRegionConversionTime::FnCall,
-                        closure_sig,
-                    );
+                let closure_sig = self.instantiate_binder_with_fresh_vars(
+                    call_expr.span,
+                    BoundRegionConversionTime::FnCall,
+                    closure_sig,
+                );
                 let adjustments = self.adjust_steps(autoderef);
                 self.record_deferred_call_resolution(
                     def_id,
@@ -260,12 +259,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::CoroutineClosure(def_id, args) if self.closure_kind(adjusted_ty).is_none() => {
                 let def_id = def_id.expect_local();
                 let closure_args = args.as_coroutine_closure();
-                let coroutine_closure_sig = self
-                    .instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases(
-                        call_expr.span,
-                        BoundRegionConversionTime::FnCall,
-                        closure_args.coroutine_closure_sig(),
-                    );
+                let coroutine_closure_sig = self.instantiate_binder_with_fresh_vars(
+                    call_expr.span,
+                    BoundRegionConversionTime::FnCall,
+                    closure_args.coroutine_closure_sig(),
+                );
                 let tupled_upvars_ty = self.next_ty_var(callee_expr.span);
                 // We may actually receive a coroutine back whose kind is different
                 // from the closure that this dispatched from. This is because when

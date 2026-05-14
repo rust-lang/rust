@@ -9,6 +9,13 @@ use crate::infer::InferCtxt;
 use crate::infer::snapshot::CombinedSnapshot;
 
 impl<'tcx> InferCtxt<'tcx> {
+    pub fn enter_forall_and_leak_universe_old_solver<T>(&self, binder: ty::Binder<'tcx, T>) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        debug_assert!(!self.next_trait_solver());
+        self.enter_forall_and_leak_universe(binder).no_ambiguous_aliases()
+    }
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
     /// `binder` with placeholder variables in a new universe. This means that the
     /// new placeholders can only be named by inference variables created after
@@ -22,32 +29,17 @@ impl<'tcx> InferCtxt<'tcx> {
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     ///
     /// This is expected to be used in the old solver only so no ambiguous aliases allowed.
-    pub fn enter_forall_and_leak_universe<T>(&self, binder: ty::Binder<'tcx, T>) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
-        debug_assert!(!binder.has_ambiguous_aliases());
-        self.enter_forall_and_leak_universe_raw(binder)
-    }
-
-    pub fn enter_forall_with_ambiguous_aliases_and_leak_universe<T>(
+    #[instrument(level = "debug", skip(self), ret)]
+    pub fn enter_forall_and_leak_universe<T>(
         &self,
         binder: ty::Binder<'tcx, T>,
     ) -> ty::UnnormalizedAmbiguous<'tcx, T>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        ty::UnnormalizedAmbiguous::new(self.enter_forall_and_leak_universe_raw(binder))
-    }
-
-    #[instrument(level = "debug", skip(self), ret)]
-    fn enter_forall_and_leak_universe_raw<T>(&self, binder: ty::Binder<'tcx, T>) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>,
-    {
         // Inlined `no_bound_vars`.
         if !binder.as_ref().skip_binder().has_escaping_bound_vars() {
-            return binder.skip_binder();
+            return ty::UnnormalizedAmbiguous::dummy(binder.skip_binder());
         }
 
         let next_universe = self.create_next_universe();
@@ -98,13 +90,13 @@ impl<'tcx> InferCtxt<'tcx> {
         // used after exiting `f`. For example region subtyping can result in outlives constraints
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
-        let value = self.enter_forall_and_leak_universe_raw(forall);
+        let value = self.enter_forall_and_leak_universe(forall);
         debug!(?value);
-        f(ty::UnnormalizedAmbiguous::new(value))
+        f(value)
     }
 
     #[instrument(level = "debug", skip(self, f))]
-    pub fn enter_forall_no_ambiguous_aliases<T, U>(
+    pub fn enter_forall_old_solver<T, U>(
         &self,
         forall: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,
@@ -112,9 +104,10 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        debug_assert!(!self.next_trait_solver());
         let value = self.enter_forall_and_leak_universe(forall);
         debug!(?value);
-        f(value)
+        f(value.no_ambiguous_aliases())
     }
 
     /// See [RegionConstraintCollector::leak_check][1]. We only check placeholder

@@ -178,7 +178,8 @@ pub(super) fn poly_project_and_unify_term<'cx, 'tcx>(
 ) -> ProjectAndUnifyResult<'tcx> {
     let infcx = selcx.infcx;
     let r = infcx.commit_if_ok(|_snapshot| {
-        let placeholder_predicate = infcx.enter_forall_and_leak_universe(obligation.predicate);
+        let placeholder_predicate =
+            infcx.enter_forall_and_leak_universe_old_solver(obligation.predicate);
 
         let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
         match project_and_unify_term(selcx, &placeholder_obligation) {
@@ -1910,7 +1911,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     let cause = &obligation.cause;
     let param_env = obligation.param_env;
 
-    let cache_entry = infcx.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(
+    let cache_entry = infcx.instantiate_binder_with_fresh_vars_old_solver(
         cause.span,
         BoundRegionConversionTime::HigherRankedType,
         poly_cache_entry,
