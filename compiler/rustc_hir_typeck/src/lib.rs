@@ -142,18 +142,26 @@ fn typeck_with_inspect<'tcx>(
             // type that has an infer in it, lower the type directly so that it'll
             // be correctly filled with infer. We'll use this inference to provide
             // a suggestion later on.
-            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
+            ty::Unnormalized::new_wip(fcx.lowerer().lower_fn_ty(
+                id,
+                header.safety(),
+                header.abi,
+                decl,
+                None,
+                None,
+            ))
         } else {
-            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip()
+            tcx.fn_sig(def_id).instantiate_identity()
         };
 
-        check_abi(tcx, id, span, fn_sig.abi());
+        check_abi(tcx, id, span, fn_sig.skip_norm_wip().abi());
         check_custom_abi(tcx, def_id, fn_sig.skip_binder(), *fn_sig_span);
 
         loops::check(tcx, def_id, body);
 
         // Compute the function signature from point of view of inside the fn.
-        let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
+        let mut fn_sig =
+            tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig).skip_norm_wip();
 
         // Normalize the input and output types one at a time, using a different
         // `WellFormedLoc` for each. We cannot call `normalize_associated_types`

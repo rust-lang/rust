@@ -142,7 +142,7 @@ enum ParamKind {
 }
 
 fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
-    let sig = tcx.fn_sig(parent_def_id).instantiate_identity().skip_norm_wip();
+    let sig = tcx.fn_sig(parent_def_id).instantiate_identity();
 
     let mut in_scope_parameters = FxIndexMap::default();
     // Populate the in_scope_parameters list first with all of the generics in scope
@@ -163,7 +163,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
         in_scope_parameters.insert(def_id, ParamKind::Free(def_id));
     }
 
-    let sig = tcx.liberate_late_bound_regions(parent_def_id.to_def_id(), sig);
+    let sig = tcx.liberate_late_bound_regions(parent_def_id.to_def_id(), sig).skip_norm_wip();
 
     // Then visit the signature to walk through all the binders (incl. the late-bound
     // vars on the function itself, which we need to count too).

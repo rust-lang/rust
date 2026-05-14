@@ -626,10 +626,12 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
             (vec![], tcx.type_of(def_id).instantiate_identity().skip_norm_wip(), None)
         }
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
-            let sig = tcx.liberate_late_bound_regions(
-                def_id.to_def_id(),
-                tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip(),
-            );
+            let sig = tcx
+                .liberate_late_bound_regions(
+                    def_id.to_def_id(),
+                    tcx.fn_sig(def_id).instantiate_identity(),
+                )
+                .skip_norm_wip();
             (sig.inputs().to_vec(), sig.output(), None)
         }
         DefKind::Closure => {
@@ -637,7 +639,12 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
             match closure_ty.kind() {
                 ty::Closure(_, args) => {
                     let args = args.as_closure();
-                    let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), args.sig());
+                    let sig = tcx
+                        .liberate_late_bound_regions(
+                            def_id.to_def_id(),
+                            ty::Unnormalized::new_wip(args.sig()),
+                        )
+                        .skip_norm_wip();
                     let self_ty = match args.kind() {
                         ty::ClosureKind::Fn => {
                             Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty)
@@ -670,10 +677,12 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                 }
                 ty::CoroutineClosure(did, args) => {
                     let args = args.as_coroutine_closure();
-                    let sig = tcx.liberate_late_bound_regions(
-                        def_id.to_def_id(),
-                        args.coroutine_closure_sig(),
-                    );
+                    let sig = tcx
+                        .liberate_late_bound_regions(
+                            def_id.to_def_id(),
+                            ty::Unnormalized::dummy(args.coroutine_closure_sig()),
+                        )
+                        .skip_normalization();
                     let self_ty = match args.kind() {
                         ty::ClosureKind::Fn => {
                             Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty)

@@ -811,6 +811,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         region_ctxt_fn,
                     )
                 });
+                let unnormalized_sig = unnormalized_sig.no_ambiguous_aliases();
                 debug!(?unnormalized_sig);
                 // IMPORTANT: We have to prove well formed for the function signature before
                 // we normalize it, as otherwise types like `<&'a &'b () as Trait>::Assoc`

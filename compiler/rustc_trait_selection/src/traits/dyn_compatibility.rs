@@ -416,6 +416,8 @@ fn virtual_call_violations_for_method<'tcx>(
     trait_def_id: DefId,
     method: ty::AssocItem,
 ) -> Vec<MethodViolation> {
+    // FIXME(#155345): Pretty much all of this function intentionally uses
+    // unnormalized types and should track this properly.
     let sig = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip();
 
     // The method's first parameter must be named `self`
@@ -488,7 +490,9 @@ fn virtual_call_violations_for_method<'tcx>(
         errors.push(MethodViolation::Generic);
     }
 
-    let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
+    let receiver_ty = tcx
+        .liberate_late_bound_regions(method.def_id, ty::Unnormalized::new_wip(sig.input(0)))
+        .skip_norm_wip();
 
     // `self: Self` can't be dispatched on.
     // However, this is considered dyn compatible. We allow it as a special case here.
@@ -924,7 +928,8 @@ fn contains_illegal_impl_trait_in_trait<'tcx>(
     fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
 ) -> Option<MethodViolation> {
-    let ty = tcx.liberate_late_bound_regions(fn_def_id, ty);
+    let ty =
+        tcx.liberate_late_bound_regions(fn_def_id, ty::Unnormalized::new_wip(ty)).skip_norm_wip();
 
     if tcx.asyncness(fn_def_id).is_async() {
         // Rendering the error as a separate `async-specific` message is better.

@@ -892,7 +892,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
                 ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), kind);
             ty::Region::new_var(self.tcx, indices.to_region_vid(liberated_region))
         });
-        value
+        value.no_ambiguous_aliases()
     }
 }
 

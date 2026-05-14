@@ -207,7 +207,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
-    ) -> (T, FxIndexMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>)
+    ) -> (ty::UnnormalizedAmbiguous<'tcx, T>, FxIndexMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -223,14 +223,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         mut replace_regions: F,
-    ) -> T
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T>
     where
         F: FnMut(ty::BoundRegion<'tcx>) -> ty::Region<'tcx>,
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let value = value.skip_binder();
         if !value.has_escaping_bound_vars() {
-            value
+            ty::UnnormalizedAmbiguous::dummy(value)
         } else {
             let delegate = FnMutDelegate {
                 regions: &mut replace_regions,
@@ -238,7 +238,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 consts: &mut |b| bug!("unexpected bound ct in binder: {b:?}"),
             };
             let mut replacer = BoundVarReplacer::new(self, delegate);
-            value.fold_with(&mut replacer)
+            ty::UnnormalizedAmbiguous::new(value.fold_with(&mut replacer))
         }
     }
 
@@ -270,19 +270,36 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::UnnormalizedAmbiguous::new(value)
     }
 
-    /// Replaces any late-bound regions bound in `value` with
-    /// free variants attached to `all_outlive_scope`.
-    pub fn liberate_late_bound_regions<T>(
+    pub fn liberate_late_bound_regions_normalized<T>(
         self,
         all_outlive_scope: DefId,
         value: ty::Binder<'tcx, T>,
-    ) -> T
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.instantiate_bound_regions_uncached(value, |br| {
             let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
             ty::Region::new_late_param(self, all_outlive_scope, kind)
+        })
+    }
+
+    /// Replaces any late-bound regions bound in `value` with
+    /// free variants attached to `all_outlive_scope`.
+    pub fn liberate_late_bound_regions<T>(
+        self,
+        all_outlive_scope: DefId,
+        value: ty::Unnormalized<'tcx, ty::Binder<'tcx, T>>,
+    ) -> ty::Unnormalized<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        value.map(|value| {
+            self.instantiate_bound_regions_uncached(value, |br| {
+                let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
+                ty::Region::new_late_param(self, all_outlive_scope, kind)
+            })
+            .no_ambiguous_aliases()
         })
     }
 
@@ -315,13 +332,14 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
-    /// method lookup and a few other places where precise region relationships are not required.
+    /// Replaces any late-bound regions bound in `value` with `'erased`. This should
+    /// generally only be used in codegen and does not expect any ambiguous aliases
+    /// in `value``.
     pub fn instantiate_bound_regions_with_erased<T>(self, value: Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.instantiate_bound_regions(value, |_| self.lifetimes.re_erased).0
+        self.instantiate_bound_regions(value, |_| self.lifetimes.re_erased).0.no_ambiguous_aliases()
     }
 
     /// Anonymize all bound variables in `value`, this is mostly used to improve caching.

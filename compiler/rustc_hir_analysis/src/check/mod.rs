@@ -538,8 +538,9 @@ fn suggestion_signature<'tcx>(
             tcx,
             tcx.liberate_late_bound_regions(
                 assoc.def_id,
-                tcx.fn_sig(assoc.def_id).instantiate(tcx, args).skip_norm_wip(),
-            ),
+                tcx.fn_sig(assoc.def_id).instantiate(tcx, args),
+            )
+            .skip_norm_wip(),
             assoc.ident(tcx),
             tcx.predicates_of(assoc.def_id)
                 .instantiate_own(tcx, args)

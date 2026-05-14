@@ -152,11 +152,18 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
             self.report_signature_mismatch(
                 expr.span,
-                self.tcx.liberate_late_bound_regions(
-                    CRATE_DEF_ID.to_def_id(),
-                    caller_ty.fn_sig(self.tcx),
-                ),
-                self.tcx.liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
+                self.tcx
+                    .liberate_late_bound_regions(
+                        CRATE_DEF_ID.to_def_id(),
+                        ty::Unnormalized::new_wip(caller_ty.fn_sig(self.tcx)),
+                    )
+                    .skip_norm_wip(),
+                self.tcx
+                    .liberate_late_bound_regions(
+                        CRATE_DEF_ID.to_def_id(),
+                        ty::Unnormalized::new_wip(ty.fn_sig(self.tcx)),
+                    )
+                    .skip_norm_wip(),
             );
         }
 

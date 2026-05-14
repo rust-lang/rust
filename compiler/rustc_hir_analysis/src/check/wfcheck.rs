@@ -425,10 +425,12 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                         // For methods, we check the function signature's return type for any GATs
                         // to constrain. In the `into_iter` case, we see that the return type
                         // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
-                        let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
-                            item_def_id.to_def_id(),
-                            tcx.fn_sig(item_def_id).instantiate_identity().skip_norm_wip(),
-                        );
+                        let sig = tcx
+                            .liberate_late_bound_regions(
+                                item_def_id.to_def_id(),
+                                tcx.fn_sig(item_def_id).instantiate_identity(),
+                            )
+                            .skip_norm_wip();
                         gather_gat_bounds(
                             tcx,
                             param_env,
@@ -1014,7 +1016,7 @@ pub(crate) fn check_associated_item(
                 Ok(())
             }
             ty::AssocKind::Fn { .. } => {
-                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
+                let sig = tcx.fn_sig(def_id).instantiate_identity();
                 let hir_sig =
                     tcx.hir_node_by_def_id(def_id).fn_sig().expect("bad signature for method");
                 check_fn_or_method(wfcx, sig, hir_sig.decl, def_id);
@@ -1233,7 +1235,7 @@ fn check_item_fn(
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         check_eiis_fn(tcx, def_id);
 
-        let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
+        let sig = tcx.fn_sig(def_id).instantiate_identity();
         check_fn_or_method(wfcx, sig, decl, def_id);
         Ok(())
     })
@@ -1701,12 +1703,12 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 #[instrument(level = "debug", skip(wfcx, hir_decl))]
 fn check_fn_or_method<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    sig: ty::PolyFnSig<'tcx>,
+    sig: ty::Unnormalized<'tcx, ty::PolyFnSig<'tcx>>,
     hir_decl: &hir::FnDecl<'_>,
     def_id: LocalDefId,
 ) {
     let tcx = wfcx.tcx();
-    let mut sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
+    let mut sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig).skip_norm_wip();
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
@@ -1812,8 +1814,8 @@ fn check_method_receiver<'tcx>(
     let span = fn_sig.decl.inputs[0].span;
     let loc = Some(WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 });
 
-    let sig = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip();
-    let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
+    let sig = tcx.fn_sig(method.def_id).instantiate_identity();
+    let sig = tcx.liberate_late_bound_regions(method.def_id, sig).skip_norm_wip();
     let sig = wfcx.normalize(DUMMY_SP, loc, Unnormalized::new_wip(sig));
 
     debug!("check_method_receiver: sig={:?}", sig);

@@ -97,6 +97,10 @@ impl<I: Interner, T> Unnormalized<I, Binder<I, T>> {
     pub fn skip_binder(self) -> T {
         self.value.skip_binder()
     }
+
+    pub fn bound_vars(&self) -> I::BoundVarKinds {
+        self.value.bound_vars()
+    }
 }
 
 impl<I: Interner> Unnormalized<I, I::Clause> {

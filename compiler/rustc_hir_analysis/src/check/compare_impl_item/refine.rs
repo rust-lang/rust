@@ -44,23 +44,23 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     let impl_def_id = impl_m.container_id(tcx);
     let impl_m_args = ty::GenericArgs::identity_for_item(tcx, impl_m.def_id);
     let trait_m_to_impl_m_args = impl_m_args.rebase_onto(tcx, impl_def_id, impl_trait_ref.args);
-    let bound_trait_m_sig =
-        tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args).skip_norm_wip();
-    let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, bound_trait_m_sig);
+    let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args);
+    let trait_m_sig =
+        tcx.liberate_late_bound_regions(impl_m.def_id, bound_trait_m_sig).skip_norm_wip();
     // replace the self type of the trait ref with `Self` so that diagnostics render better.
-    let trait_m_sig_with_self_for_diag = tcx.liberate_late_bound_regions(
-        impl_m.def_id,
-        tcx.fn_sig(trait_m.def_id)
-            .instantiate(
+    let trait_m_sig_with_self_for_diag = tcx
+        .liberate_late_bound_regions(
+            impl_m.def_id,
+            tcx.fn_sig(trait_m.def_id).instantiate(
                 tcx,
                 tcx.mk_args_from_iter(
                     [tcx.types.self_param.into()]
                         .into_iter()
                         .chain(trait_m_to_impl_m_args.iter().skip(1)),
                 ),
-            )
-            .skip_norm_wip(),
-    );
+            ),
+        )
+        .skip_norm_wip();
 
     let Ok(hidden_tys) = tcx.collect_return_position_impl_trait_in_trait_tys(impl_m.def_id) else {
         // Error already emitted, no need to delay another.

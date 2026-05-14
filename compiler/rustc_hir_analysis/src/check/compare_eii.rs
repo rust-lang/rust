@@ -68,8 +68,9 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     let mut wf_tys = FxIndexSet::default();
     let norm_cause = ObligationCause::misc(external_impl_span, external_impl);
 
-    let declaration_sig = tcx.fn_sig(foreign_item).instantiate_identity().skip_norm_wip();
-    let declaration_sig = tcx.liberate_late_bound_regions(external_impl.into(), declaration_sig);
+    let declaration_sig = tcx.fn_sig(foreign_item).instantiate_identity();
+    let declaration_sig =
+        tcx.liberate_late_bound_regions(external_impl.into(), declaration_sig).skip_norm_wip();
     debug!(?declaration_sig);
 
     // We need to check wf of the unnormalized sig.

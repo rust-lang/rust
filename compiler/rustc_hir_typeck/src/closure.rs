@@ -250,18 +250,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // coroutine. To do so, we use the `CoroutineClosureSignature` to compute
                 // the coroutine type, filling in the tupled_upvars_ty and kind_ty with infer
                 // vars which will get constrained during upvar analysis.
-                let coroutine_output_ty = tcx.liberate_late_bound_regions(
-                    expr_def_id.to_def_id(),
-                    closure_args.coroutine_closure_sig().map_bound(|sig| {
-                        sig.to_coroutine(
-                            tcx,
-                            parent_args,
-                            coroutine_kind_ty,
-                            tcx.coroutine_for_closure(expr_def_id),
-                            coroutine_upvars_ty,
-                        )
-                    }),
-                );
+                let coroutine_output_ty = tcx
+                    .liberate_late_bound_regions(
+                        expr_def_id.to_def_id(),
+                        ty::Unnormalized::new_wip(closure_args.coroutine_closure_sig().map_bound(
+                            |sig| {
+                                sig.to_coroutine(
+                                    tcx,
+                                    parent_args,
+                                    coroutine_kind_ty,
+                                    tcx.coroutine_for_closure(expr_def_id),
+                                    coroutine_upvars_ty,
+                                )
+                            },
+                        )),
+                    )
+                    .skip_norm_wip();
                 liberated_sig = tcx.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
@@ -1118,8 +1122,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_def_id: LocalDefId,
         bound_sig: ty::PolyFnSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
-        let liberated_sig =
-            self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
+        let liberated_sig = self
+            .tcx()
+            .liberate_late_bound_regions(
+                expr_def_id.to_def_id(),
+                ty::Unnormalized::new_wip(bound_sig),
+            )
+            .skip_norm_wip();
         let liberated_sig =
             self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(liberated_sig));
         ClosureSignatures { bound_sig, liberated_sig }

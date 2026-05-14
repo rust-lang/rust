@@ -713,9 +713,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
-            // `ReBound`, and we don't particularly care about the regions.
-            let real_ty = self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
+            let ocx = ObligationCtxt::new(self);
+            let real_ty = ocx.instantiate_binder_with_fresh_vars(
+                &ObligationCause::dummy(),
+                BoundRegionConversionTime::HigherRankedType,
+                obligation.param_env,
+                real_trait_pred.self_ty(),
+            );
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 return false;
             }
