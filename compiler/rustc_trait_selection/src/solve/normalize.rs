@@ -145,11 +145,13 @@ impl<'me, 'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasWithInfer<'me, 'tcx> {
         }
 
         let ty = match ty.kind() {
-            ty::Alias(ty::AliasTy { kind: ty::Ambiguous,  args, .. }) => return args.type_at(0).fold_with(self),
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args, .. }) => {
+                return args.type_at(0).fold_with(self);
+            }
             ty::Alias(_) => ty.super_fold_with(self),
             _ => return ty.super_fold_with(self),
         };
-    
+
         if ty.has_escaping_bound_vars() {
             let (replaced, ..) =
                 BoundVarReplacer::replace_bound_vars(self.at.infcx, &mut self.universes, ty);
@@ -263,7 +265,10 @@ where
         return Err(errors);
     }
 
-    assert!(!value.has_ambiguous_aliases(), "unexpected ambig aliases after normalizing: {value:?}");
+    assert!(
+        !value.has_ambiguous_aliases(),
+        "unexpected ambig aliases after normalizing: {value:?}"
+    );
     Ok((value, stalled_coroutine_goals))
 }
 

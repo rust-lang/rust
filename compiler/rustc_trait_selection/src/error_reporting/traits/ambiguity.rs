@@ -40,7 +40,12 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 
     let impl_may_apply = |impl_def_id| {
         let ocx = ObligationCtxt::new(infcx);
-        infcx.enter_forall_no_ambiguous_aliases(obligation.predicate, |placeholder_obligation| {
+        infcx.enter_forall(obligation.predicate, |placeholder_obligation| {
+            let placeholder_obligation = ocx.renormalize_ambiguous_aliases(
+                &ObligationCause::dummy(),
+                param_env,
+                placeholder_obligation,
+            );
             let obligation_trait_ref = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
