@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::collect::ItemCtxt;
+use crate::errors::DelegationSelfTypeNotSpecified;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 type RemapTable = FxHashMap<u32, u32>;
@@ -284,6 +285,12 @@ fn get_delegation_self_ty_or_err(tcx: TyCtxt<'_>, delegation_id: LocalDefId) -> 
             ctx.lower_ty(tcx.hir_node(id).expect_ty())
         })
         .unwrap_or_else(|| {
+            // It is possible to attempt to get self type when it is used in signature
+            // (i.e., `fn default() -> Self`), so emit error here in addition to possible
+            // `mismatched types` error (see #156388).
+            let err = DelegationSelfTypeNotSpecified { span: tcx.def_span(delegation_id) };
+            tcx.dcx().emit_err(err);
+
             Ty::new_error_with_message(
                 tcx,
                 tcx.def_span(delegation_id),
