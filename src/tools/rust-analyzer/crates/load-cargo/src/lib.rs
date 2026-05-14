@@ -609,11 +609,9 @@ impl ProcMacroExpander for Expander {
             SubRequest::LineColumn { file_id, ast_id, offset } => {
                 let range =
                     resolve_sub_span(db, file_id, ast_id, TextRange::empty(TextSize::from(offset)));
-                let source = db.file_text(range.file_id.file_id(db)).text(db);
-                let line_index = ide_db::line_index::LineIndex::new(source);
-                let (line, column) = line_index
-                    .try_line_col(range.range.start())
-                    .map(|lc| (lc.line + 1, lc.col + 1))
+                let (line, column) = db
+                    .line_column(range.file_id.file_id(db), range.range.start())
+                    .map(|(line, col)| (line + 1, col + 1))
                     .unwrap_or((1, 1));
                 // proc_macro::Span line/column are 1-based
                 Ok(SubResponse::LineColumnResult { line, column })

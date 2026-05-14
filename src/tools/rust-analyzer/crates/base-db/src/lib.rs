@@ -7,6 +7,7 @@ extern crate rustc_driver as _;
 
 pub use salsa;
 pub use salsa_macros;
+use span::TextSize;
 
 // FIXME: Rename this crate, base db is non descriptive
 mod change;
@@ -281,6 +282,8 @@ pub trait SourceDatabase: salsa::Database {
     fn crates_map(&self) -> Arc<CratesMap>;
 
     fn nonce_and_revision(&self) -> (Nonce, salsa::Revision);
+
+    fn line_column(&self, file: FileId, offset: TextSize) -> Result<(u32, u32), ()>;
 }
 
 static NEXT_NONCE: AtomicUsize = AtomicUsize::new(0);
