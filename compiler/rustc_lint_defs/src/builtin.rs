@@ -857,7 +857,7 @@ declare_lint! {
     ///
     /// Otherwise, consider removing it if the struct is no longer in use.
     pub UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS,
-    Allow,
+    Deny,
     "detects public structs with private fields that cannot be constructed or otherwise used through the external API"
 }
 
