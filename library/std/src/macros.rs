@@ -5,6 +5,9 @@
 //! library.
 // ignore-tidy-dbg
 
+#[cfg(test)]
+mod tests;
+
 #[doc = include_str!("../../core/src/macros/panic.md")]
 #[macro_export]
 #[rustc_builtin_macro(std_panic)]
