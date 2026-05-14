@@ -1,56 +1,21 @@
 // MIR for `b::{closure#0}` 0 coroutine_resume
-/* coroutine_layout = CoroutineLayout {
-    field_tys: {
-        _s0: CoroutineSavedTy {
-            ty: Coroutine(
-                DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
-                [
-                    (),
-                    std::future::ResumeTy,
-                    (),
-                    (),
-                    (),
-                ],
-            ),
-            source_info: SourceInfo {
-                span: $DIR/async_await.rs:27:5: 27:14 (#9),
-                scope: scope[0],
-            },
-            ignore_for_traits: false,
-        },
-        _s1: CoroutineSavedTy {
-            ty: Coroutine(
-                DefId(0:5 ~ async_await[ccf8]::a::{closure#0}),
-                [
-                    (),
-                    std::future::ResumeTy,
-                    (),
-                    (),
-                    (),
-                ],
-            ),
-            source_info: SourceInfo {
-                span: $DIR/async_await.rs:28:5: 28:14 (#11),
-                scope: scope[0],
-            },
-            ignore_for_traits: false,
-        },
-    },
-    variant_fields: {
-        Unresumed(0): [],
-        Returned (1): [],
-        Panicked (2): [],
-        Suspend0 (3): [_s0],
-        Suspend1 (4): [_s1],
-    },
-    storage_conflicts: BitMatrix(2x2) {
-        (_s0, _s0),
-        (_s1, _s1),
-    },
-} */
 
 fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) -> Poll<()> {
+    coroutine layout {
+        field _s0: {async fn body of a()};
+        field _s1: {async fn body of a()};
+        variant_fields = {
+            Unresumed(0): [],
+            Returned (1): [],
+            Panicked (2): [],
+            Suspend0 (3): [_s0],
+            Suspend1 (4): [_s1],
+        }
+        storage_conflicts = BitMatrix(2x2) {(_s0, _s0), (_s1, _s1)}
+    }
     debug _task_context => _2;
+    coroutine debug __awaitee => _s0;
+    coroutine debug __awaitee => _s1;
     let mut _0: std::task::Poll<()>;
     let _3: ();
     let mut _4: {async fn body of a()};

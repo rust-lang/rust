@@ -1,15 +1,14 @@
 // MIR for `a::{closure#0}` 0 coroutine_resume
-/* coroutine_layout = CoroutineLayout {
-    field_tys: {},
-    variant_fields: {
-        Unresumed(0): [],
-        Returned (1): [],
-        Panicked (2): [],
-    },
-    storage_conflicts: BitMatrix(0x0) {},
-} */
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {
+    coroutine layout {
+        variant_fields = {
+            Unresumed(0): [],
+            Returned (1): [],
+            Panicked (2): [],
+        }
+        storage_conflicts = BitMatrix(0x0) {}
+    }
     debug _task_context => _2;
     let mut _0: std::task::Poll<()>;
     let mut _3: ();

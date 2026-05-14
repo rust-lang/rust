@@ -1,29 +1,19 @@
 // MIR for `main::{closure#1}` after StateTransform
-/* coroutine_layout = CoroutineLayout {
-    field_tys: {
-        _s0: CoroutineSavedTy {
-            ty: std::string::String,
-            source_info: SourceInfo {
-                span: $DIR/coroutine.rs:26:6: 26:9 (#0),
-                scope: scope[0],
-            },
-            ignore_for_traits: false,
-        },
-    },
-    variant_fields: {
-        Unresumed(0): [],
-        Returned (1): [],
-        Panicked (2): [],
-        Suspend0 (3): [_s0],
-        Suspend1 (4): [_s0],
-    },
-    storage_conflicts: BitMatrix(1x1) {
-        (_s0, _s0),
-    },
-} */
 
 fn main::{closure#1}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:26:5: 26:18}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
+    coroutine layout {
+        field _s0: String;
+        variant_fields = {
+            Unresumed(0): [],
+            Returned (1): [],
+            Panicked (2): [],
+            Suspend0 (3): [_s0],
+            Suspend1 (4): [_s0],
+        }
+        storage_conflicts = BitMatrix(1x1) {(_s0, _s0)}
+    }
     debug arg => (((*_18) as variant#4).0: std::string::String);
+    coroutine debug arg => _s0;
     let mut _0: std::ops::CoroutineState<(&str, std::string::String, &std::panic::Location<'_>), ()>;
     let _3: std::string::String;
     let mut _4: (&str, std::string::String, &std::panic::Location<'_>);

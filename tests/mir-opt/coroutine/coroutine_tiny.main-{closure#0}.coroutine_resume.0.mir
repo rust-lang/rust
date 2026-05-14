@@ -1,28 +1,18 @@
 // MIR for `main::{closure#0}` 0 coroutine_resume
-/* coroutine_layout = CoroutineLayout {
-    field_tys: {
-        _s0: CoroutineSavedTy {
-            ty: HasDrop,
-            source_info: SourceInfo {
-                span: $DIR/coroutine_tiny.rs:22:13: 22:15 (#0),
-                scope: scope[0],
-            },
-            ignore_for_traits: false,
-        },
-    },
-    variant_fields: {
-        Unresumed(0): [],
-        Returned (1): [],
-        Panicked (2): [],
-        Suspend0 (3): [_s0],
-    },
-    storage_conflicts: BitMatrix(1x1) {
-        (_s0, _s0),
-    },
-} */
 
 fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:21:5: 21:13}>, _2: u8) -> CoroutineState<(), ()> {
+    coroutine layout {
+        field _s0: HasDrop;
+        variant_fields = {
+            Unresumed(0): [],
+            Returned (1): [],
+            Panicked (2): [],
+            Suspend0 (3): [_s0],
+        }
+        storage_conflicts = BitMatrix(1x1) {(_s0, _s0)}
+    }
     debug _x => _2;
+    coroutine debug _d => _s0;
     let mut _0: std::ops::CoroutineState<(), ()>;
     let _3: HasDrop;
     let mut _4: !;
