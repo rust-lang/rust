@@ -1,9 +1,11 @@
+use rustc_ast as ast;
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
 use rustc_hir::Target;
 use rustc_span::sym;
 use smallvec::SmallVec;
 
+use crate::errors::GlobalAsmStatementPositionUnstable;
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 
 impl<'hir> LoweringContext<'_, 'hir> {
@@ -44,6 +46,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Item(it) => {
+                    if let ast::ItemKind::GlobalAsm(_) = &it.kind {
+                        if !self.tcx.features().global_asm_statement_position() {
+                            let span = self.lower_span(s.span);
+                            self.tcx
+                                .sess
+                                .create_feature_err(
+                                    GlobalAsmStatementPositionUnstable { span },
+                                    sym::global_asm_statement_position,
+                                )
+                                .emit();
+                        }
+                    }
+
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
                         |(i, item_id)| {
                             let hir_id = match i {

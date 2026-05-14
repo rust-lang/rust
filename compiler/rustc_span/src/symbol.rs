@@ -1036,6 +1036,7 @@ symbols! {
         global_alloc_ty,
         global_allocator,
         global_asm,
+        global_asm_statement_position,
         global_registration,
         globs,
         gpu_launch_sized_workgroup_mem,
