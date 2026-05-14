@@ -3,6 +3,10 @@
 // Tests that associated type bounds from supertraits are properly checked
 // when forming trait objects, and that valid cases compile successfully.
 
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 trait Super {
     type Assoc;
 }

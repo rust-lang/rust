@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/supertrait-assoc-type-bounds.rs:17:39
+  --> $DIR/supertrait-assoc-type-bounds.rs:21:39
    |
 LL |     let _y: String = unchecked_copy::<dyn Sub<Assoc = String>>(&x);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
 note: required by a bound in `unchecked_copy`
-  --> $DIR/supertrait-assoc-type-bounds.rs:11:22
+  --> $DIR/supertrait-assoc-type-bounds.rs:15:22
    |
 LL | fn unchecked_copy<T: Sub<Assoc = String> + ?Sized>(x: &String) -> String {
    |                      ^^^^^^^^^^^^^^^^^^^ required by this bound in `unchecked_copy`
