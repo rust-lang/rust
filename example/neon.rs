@@ -355,6 +355,27 @@ unsafe fn test_vsha256su1q_u32() {
 }
 
 #[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "aes")]
+fn test_vmull_p64() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.pmull64
+    let a: u64 = 3;
+    let b: u64 = 6;
+    let e: u128 = 10;
+    let r: u128 = vmull_p64(a, b);
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vmull_p8() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.pmull.v8i16
+    let a = u8x8::from([0, 1, 2, 3, 4, 5, 6, 7]);
+    let b = u8x8::from([8, 9, 10, 11, 12, 13, 14, 15]);
+    let e = u16x8::from([0x0000, 0x0009, 0x0014, 0x001d, 0x0030, 0x0039, 0x0024, 0x002d]);
+    let r: u16x8 = unsafe { transmute(vmull_p8(transmute(a), transmute(b))) };
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -398,6 +419,9 @@ fn main() {
         test_vsha256h2q_u32();
         test_vsha256su0q_u32();
         test_vsha256su1q_u32();
+
+        test_vmull_p64();
+        test_vmull_p8();
     }
 }
 
