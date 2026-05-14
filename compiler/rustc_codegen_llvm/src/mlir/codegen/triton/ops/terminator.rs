@@ -372,6 +372,10 @@ impl<'a> TritonCodegen<'a> {
                 TritonCodegen::codegen_max_constancy_call as LocalCallHandler<'a, 'tcx>
             }
             "triton::Triton::where_" => TritonCodegen::codegen_where_call as LocalCallHandler<'a, 'tcx>,
+            // `Into::into` for tensor types is an identity conversion at the MLIR level
+            // (T::I32Tensor and T::Tensor<i32> share the same MLIR type in LlvmTriton).
+            // Pass the argument through unchanged so the SSA value retains its static shape.
+            "Into::into" => TritonCodegen::codegen_identity_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::assume" => TritonCodegen::codegen_assume_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::device_assert" => {
                 TritonCodegen::codegen_device_assert_call as LocalCallHandler<'a, 'tcx>
@@ -550,6 +554,35 @@ impl<'a> TritonCodegen<'a> {
 
         mlir_block.append_operation(call_op);
         Ok(result)
+    }
+
+    /// Identity pass-through for `Into::into` on tensor types.
+    /// `T::I32Tensor` and `T::Tensor<i32>` are the same MLIR type in `LlvmTriton`;
+    /// returning the argument unchanged preserves its static shape in the SSA.
+    #[allow(clippy::too_many_arguments)]
+    pub fn codegen_identity_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 1, "codegen_identity_call: expected 1 arg");
+        let val = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx),
+            location, mlir_block, state,
+        )?;
+        Ok(Some(val))
     }
 
     #[allow(clippy::too_many_arguments)]
