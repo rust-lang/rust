@@ -649,7 +649,7 @@ impl<I: Interner> AliasTermKind<I> {
             AliasTermKind::InherentTy { def_id } => def_id.into(),
             AliasTermKind::OpaqueTy { def_id } => def_id.into(),
             AliasTermKind::FreeTy { def_id } => def_id.into(),
-            AliasTermKind::AmbiguousTy => todo!("this method is expected to be removed"),
+            AliasTermKind::AmbiguousTy => unreachable!("this method is expected to be removed"),
             AliasTermKind::UnevaluatedConst { def_id } => def_id.into(),
             AliasTermKind::ProjectionConst { def_id } => def_id.into(),
             AliasTermKind::FreeConst { def_id } => def_id.into(),

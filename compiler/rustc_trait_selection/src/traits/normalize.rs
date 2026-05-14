@@ -62,7 +62,7 @@ impl<'tcx> At<'_, 'tcx> {
             InferOk { value, obligations }
         } else {
             // We won't have ambiguous aliases in old solver so no-op.
-            InferOk { value: value.do_normalize(), obligations: Default::default() }
+            InferOk { value: value.no_ambiguous_aliases(), obligations: Default::default() }
         }
     }
 

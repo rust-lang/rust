@@ -94,7 +94,7 @@ impl<I: Interner> AliasTyKind<I> {
             AliasTyKind::Inherent { def_id } => def_id.into(),
             AliasTyKind::Opaque { def_id } => def_id.into(),
             AliasTyKind::Free { def_id } => def_id.into(),
-            AliasTyKind::Ambiguous => todo!("this method is expected to be removed"),
+            AliasTyKind::Ambiguous => unreachable!("this method is expected to be removed"),
         }
     }
 }
