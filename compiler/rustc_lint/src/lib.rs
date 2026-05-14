@@ -301,6 +301,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_VISIBILITIES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
+        UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS,
         UNUSED_MUT,
         // FIXME: add this lint when it becomes stable,
         // see https://github.com/rust-lang/rust/issues/115585.
