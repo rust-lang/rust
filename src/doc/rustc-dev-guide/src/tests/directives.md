@@ -133,7 +133,7 @@ means the test won't be compiled or run.
 Some examples of `X` in `ignore-X` or `only-X`:
 
 - A full target triple: `aarch64-apple-ios`
-- Architecture: `aarch64`, `arm`, `mips`, `wasm32`, `x86_64`, `x86`,
+- Architecture: `aarch64`, `arm`, `csky`, `mips`, `mips64`, `wasm32`, `x86_64`, `x86`,
   ...
 - OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`,
   ...

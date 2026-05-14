@@ -2,7 +2,26 @@
 //@ ignore-backends: gcc
 //
 //@ ignore-wasm
+//
+// LLVM musttail support is incomplete for these targets.
+// See https://github.com/rust-lang/rust/issues/148748 for the target test matrix.
+// See https://github.com/llvm/llvm-project/issues/63214 for AIX and PowerPC.
+// See https://github.com/llvm/llvm-project/issues/57795 for MIPS and MIPS64.
+//@ ignore-aix
+//@ ignore-csky
+//@ ignore-mips
+//@ ignore-mips64
+//@ ignore-powerpc
+//@ ignore-powerpc64
+//
+// LLVM musttail support is lacking for indirect arguments that do not fit in registers.
+// See https://github.com/llvm/llvm-project/issues/157814 for RISC-V.
+// See https://github.com/llvm/llvm-project/issues/168152 for LoongArch.
+// RISC-V fix: https://github.com/llvm/llvm-project/pull/185094, should be in LLVM 23.
+// LoongArch will likely be fixed with similar changes.
 //@ ignore-riscv64
+//@ ignore-loongarch32
+//@ ignore-loongarch64
 #![feature(explicit_tail_calls)]
 #![expect(incomplete_features)]
 
