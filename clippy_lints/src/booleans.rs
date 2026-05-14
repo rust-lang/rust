@@ -11,7 +11,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, RustcVersion, UnOp};
-use rustc_lint::{LateContext, LateLintPass, Level};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, SyntaxContext};
@@ -204,7 +204,7 @@ fn check_simplify_not(cx: &LateContext<'_>, msrv: Msrv, expr: &Expr<'_>) {
         && !expr.span.from_expansion()
         && !inner.span.from_expansion()
         && let Some(suggestion) = simplify_not(cx, msrv, inner)
-        && cx.tcx.lint_level_spec_at_node(NONMINIMAL_BOOL, expr.hir_id).level != Level::Allow
+        && !cx.tcx.lint_level_spec_at_node(NONMINIMAL_BOOL, expr.hir_id).is_allow()
     {
         use clippy_utils::sugg::{Sugg, has_enclosing_paren};
         let maybe_par = if let Some(sug) = Sugg::hir_opt(cx, inner) {
@@ -611,7 +611,7 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                 }
             }
             let nonminimal_bool_lint = |mut suggestions: Vec<_>| {
-                if self.cx.tcx.lint_level_spec_at_node(NONMINIMAL_BOOL, e.hir_id).level != Level::Allow {
+                if !self.cx.tcx.lint_level_spec_at_node(NONMINIMAL_BOOL, e.hir_id).is_allow() {
                     suggestions.sort();
                     span_lint_hir_and_then(
                         self.cx,

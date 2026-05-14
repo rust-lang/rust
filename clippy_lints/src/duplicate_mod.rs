@@ -95,11 +95,11 @@ impl EarlyLintPass for DuplicateMod {
                 .iter()
                 .zip(lint_level_specs)
                 .filter_map(|(span, level_spec)| {
-                    if let Some(id) = level_spec.lint_id {
+                    if let Some(id) = level_spec.lint_id() {
                         cx.fulfill_expectation(id);
                     }
 
-                    (!matches!(level_spec.level, Level::Allow | Level::Expect)).then_some(*span)
+                    (!matches!(level_spec.level(), Level::Allow | Level::Expect)).then_some(*span)
                 })
                 .collect();
 

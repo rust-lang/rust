@@ -2,7 +2,7 @@ use clippy_utils::ast_utils::is_cfg_test;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::{self, Inline, ItemKind, ModKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{FileName, Ident, SourceFile, Span, SyntaxContext, sym};
@@ -137,9 +137,9 @@ impl EarlyLintPass for ModStyle {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if cx.builder.lint_level_spec(MOD_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level_spec(SELF_NAMED_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level_spec(INLINE_MODULES).level == Level::Allow
+        if cx.builder.lint_level_spec(MOD_MODULE_FILES).is_allow()
+            && cx.builder.lint_level_spec(SELF_NAMED_MODULE_FILES).is_allow()
+            && cx.builder.lint_level_spec(INLINE_MODULES).is_allow()
         {
             return;
         }
@@ -192,9 +192,9 @@ impl EarlyLintPass for ModStyle {
     }
 
     fn check_item_post(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if cx.builder.lint_level_spec(MOD_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level_spec(SELF_NAMED_MODULE_FILES).level == Level::Allow
-            && cx.builder.lint_level_spec(INLINE_MODULES).level == Level::Allow
+        if cx.builder.lint_level_spec(MOD_MODULE_FILES).is_allow()
+            && cx.builder.lint_level_spec(SELF_NAMED_MODULE_FILES).is_allow()
+            && cx.builder.lint_level_spec(INLINE_MODULES).is_allow()
         {
             return;
         }
