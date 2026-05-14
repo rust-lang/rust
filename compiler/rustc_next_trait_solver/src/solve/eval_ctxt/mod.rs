@@ -1322,13 +1322,15 @@ where
         Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
     }
 
+    /// Same as the infcx one except we renormalize possible ambiguous aliases
+    /// in the instantiated binder.
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
         &mut self,
         param_env: I::ParamEnv,
         value: ty::Binder<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
         let instantiated = self.delegate.instantiate_binder_with_infer(value);
-        self.normalize_ambiguous_only(param_env, instantiated)
+        self.renormalize_ambiguous_aliases(param_env, instantiated)
     }
 
     /// `enter_forall`, but takes `&mut self` and passes it back through the
@@ -1336,6 +1338,9 @@ where
     ///
     /// The `param_env` is used to *compute* the assumptions of the binder, not *as* the
     /// assumptions associated with the binder.
+    ///
+    /// We renormalize possible ambiguous aliases in the instantiated binder
+    /// before doing anything else.
     ///
     /// FIXME(inherent_associated_types): fix this?
     pub(super) fn enter_forall_with_assumptions<T: TypeFoldable<I>, U>(
@@ -1345,7 +1350,7 @@ where
         f: impl FnOnce(&mut Self, T) -> Result<U, NoSolutionOrRerunNonErased>,
     ) -> Result<U, NoSolutionOrRerunNonErased> {
         self.delegate.enter_forall(value, |value| {
-            let value = self.normalize_ambiguous_only(param_env, value)?;
+            let value = self.renormalize_ambiguous_aliases(param_env, value)?;
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
@@ -1754,7 +1759,7 @@ where
     ///
     /// This should be used after instantiating binders to improve perf, assuming that
     /// other normalizable aliases have been normalized before.
-    pub fn normalize_ambiguous_only<T: TypeFoldable<I>>(
+    pub fn renormalize_ambiguous_aliases<T: TypeFoldable<I>>(
         &mut self,
         param_env: I::ParamEnv,
         value: ty::UnnormalizedAmbiguous<I, T>,

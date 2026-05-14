@@ -82,6 +82,9 @@ impl<'tcx> InferCtxt<'tcx> {
     /// This method should be preferred over `fn enter_forall_and_leak_universe`.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+    ///
+    /// Check `renormalize_ambiguous_aliases` methods for handling the
+    /// `UnnormalizedAmbiguous` wrapper.
     #[instrument(level = "debug", skip(self, f))]
     pub fn enter_forall<T, U>(
         &self,

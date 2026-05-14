@@ -16,7 +16,11 @@ use crate::placeholder::{BoundVarReplacer, PlaceholderReplacer};
 /// This folder normalizes value and collects ambiguous goals.
 ///
 /// Note that for ambiguous alias which contains escaping bound vars,
-/// we just return the original alias and don't collect the ambiguous goal.
+/// we just return the original alias wrapped in `Ambiguous` alias and
+/// don't collect the ambiguous goal.
+///
+/// `Ambiguous` aliases are expected to be normalized away by
+/// `BinderRenormalizer`. Though this folder can handle them as well.
 pub struct NormalizationFolder<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
@@ -282,7 +286,9 @@ where
     }
 }
 
-// Only handle ambiguous alias in the outmost instantiated binder.
+/// As a perf optimization, we only need to normalize aliases of `Ambiguous`
+/// kind after instantiating binders, assuming other kinds of aliases have
+/// been normalized before.
 pub struct BinderRenormalizer<'a, Infcx, I, F, E>
 where
     Infcx: InferCtxtLike<Interner = I>,
@@ -334,6 +340,9 @@ where
         &mut self,
         t: Binder<I, T>,
     ) -> Result<Binder<I, T>, Self::Error> {
+        // It's possible that we have ambiguous aliases which only reference
+        // outer instantiated bound vars in the nested inner binder.
+        // We should normalize those as well.
         if t.has_ambiguous_aliases() { t.try_super_fold_with(self) } else { Ok(t) }
     }
 

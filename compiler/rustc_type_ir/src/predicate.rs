@@ -595,7 +595,7 @@ pub enum AliasTermKind<I: Interner> {
 
     /// A wrapper that indicates the alias needs to be re-normalized.
     ///
-    /// It's specifc to ambiguous aliases that contain escaping bound vars.
+    /// It's specific to ambiguous aliases that contain escaping bound vars.
     /// This is an optimization for binder renormalization and is only used in the
     /// next solver. See `NormalizationFolder`.
     ///

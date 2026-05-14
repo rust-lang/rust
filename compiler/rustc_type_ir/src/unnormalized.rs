@@ -158,7 +158,7 @@ pub struct UnnormalizedAmbiguous<I: Interner, T> {
 }
 
 impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
-    /// Should only be used in binder instantitation.
+    /// Should only be used in binder instantiation.
     pub fn new(value: T) -> Self {
         Self { value, _tcx: PhantomData }
     }

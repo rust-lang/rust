@@ -1379,6 +1379,16 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// Instantiates the bound variables in a given binder with fresh inference
+    /// variables in the current universe.
+    ///
+    /// Use this method if you'd like to find some generic parameters of the binder's
+    /// variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
+    /// that corresponds to your use case, consider whether or not you should
+    /// use [`InferCtxt::enter_forall`] instead.
+    ///
+    /// If you're in the old solver or your binder doesn't have `Ambiguous` aliases, use
+    /// `instantiate_binder_with_fresh_vars_no_ambiguous_aliases` instead.
     pub fn instantiate_binder_with_fresh_vars_renormalize_ambiguous_aliases_with<T, F>(
         &self,
         span: Span,
@@ -1419,13 +1429,6 @@ impl<'tcx> InferCtxt<'tcx> {
         value.map(|v| self.instantiate_binder_with_fresh_vars_no_ambiguous_aliases(span, lbrct, v))
     }
 
-    // Instantiates the bound variables in a given binder with fresh inference
-    // variables in the current universe.
-    //
-    // Use this method if you'd like to find some generic parameters of the binder's
-    // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
-    // that corresponds to your use case, consider whether or not you should
-    // use [`InferCtxt::enter_forall`] instead.
     fn instantiate_binder_with_fresh_vars_raw<T>(
         &self,
         span: Span,
