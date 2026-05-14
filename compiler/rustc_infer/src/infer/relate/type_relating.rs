@@ -299,15 +299,23 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 //
                 // [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
                 ty::Covariant => {
-                    infcx.enter_forall(b, |b| {
-                        let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
-                        self.relate(a.no_ambiguous_aliases(), b.no_ambiguous_aliases())
+                    infcx.enter_forall_old_solver(b, |b| {
+                        let a = infcx.instantiate_binder_with_fresh_vars_old_solver(
+                            span,
+                            HigherRankedType,
+                            a,
+                        );
+                        self.relate(a, b)
                     })?;
                 }
                 ty::Contravariant => {
-                    infcx.enter_forall(a, |a| {
-                        let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
-                        self.relate(a.no_ambiguous_aliases(), b.no_ambiguous_aliases())
+                    infcx.enter_forall_old_solver(a, |a| {
+                        let b = infcx.instantiate_binder_with_fresh_vars_old_solver(
+                            span,
+                            HigherRankedType,
+                            b,
+                        );
+                        self.relate(a, b)
                     })?;
                 }
 
@@ -322,15 +330,23 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 // `exists<..> A == for<..> B` and `exists<..> B == for<..> A`.
                 // Check if `exists<..> A == for<..> B`
                 ty::Invariant => {
-                    infcx.enter_forall(b, |b| {
-                        let a = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, a);
-                        self.relate(a.no_ambiguous_aliases(), b.no_ambiguous_aliases())
+                    infcx.enter_forall_old_solver(b, |b| {
+                        let a = infcx.instantiate_binder_with_fresh_vars_old_solver(
+                            span,
+                            HigherRankedType,
+                            a,
+                        );
+                        self.relate(a, b)
                     })?;
 
                     // Check if `exists<..> B == for<..> A`.
-                    infcx.enter_forall(a, |a| {
-                        let b = infcx.instantiate_binder_with_fresh_vars(span, HigherRankedType, b);
-                        self.relate(a.no_ambiguous_aliases(), b.no_ambiguous_aliases())
+                    infcx.enter_forall_old_solver(a, |a| {
+                        let b = infcx.instantiate_binder_with_fresh_vars_old_solver(
+                            span,
+                            HigherRankedType,
+                            b,
+                        );
+                        self.relate(a, b)
                     })?;
                 }
                 ty::Bivariant => {
