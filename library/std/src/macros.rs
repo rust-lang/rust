@@ -369,8 +369,7 @@ macro_rules! dbg {
 /// E.g. `dbg_internal!(() () (1, 2))` expands into
 /// ```rust, ignore
 /// match (1, 2) {
-///     args => {
-///         let (tmp_1, tmp_2) = args;
+///     (tmp_1, tmp_2) => {
 ///         eprint!("...", &tmp_1, &tmp_2, /* some other arguments */);
 ///         (tmp_1, tmp_2)
 ///     }
@@ -386,9 +385,7 @@ pub macro dbg_internal {
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
         // Always put the arguments in a tuple to avoid an unused parens lint on the pattern.
         match ($($processed,)+) {
-            // Move the entire tuple so it doesn't stick around as a temporary (#154988).
-            args => {
-                let ($($bound,)+) = args;
+            ($($bound,)+) => {
                 $crate::eprint!(
                     $crate::concat!($($piece),+),
                     $(
