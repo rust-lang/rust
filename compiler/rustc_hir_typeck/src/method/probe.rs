@@ -1080,7 +1080,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         sig,
                     )
                 });
-                let fty = self.normalize(self.span, fty);
+                // We shouldn't register predicates to fcx in `probe()` as they're not rollbacked.
+                // Although it probably doesn't matter much for diagnostics.
+                let ocx = ObligationCtxt::new(&self.infcx);
+                let fty = ocx.normalize(&ObligationCause::dummy(), self.param_env, fty);
+                if !ocx.try_evaluate_obligations().is_empty() {
+                    return false;
+                }
+
                 self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
