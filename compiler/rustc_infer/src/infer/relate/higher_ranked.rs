@@ -27,8 +27,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `fn enter_forall` should be preferred over this method.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    ///
-    /// This is expected to be used in the old solver only so no ambiguous aliases allowed.
     #[instrument(level = "debug", skip(self), ret)]
     pub fn enter_forall_and_leak_universe<T>(
         &self,
