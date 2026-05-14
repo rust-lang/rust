@@ -2334,6 +2334,9 @@ fn test_fs_set_times_follows_symlink() {
     use crate::os::windows::fs::FileTimesExt;
 
     let tmp = tmpdir();
+    if !got_symlink_permission(&tmp) {
+        return;
+    }
 
     // Create a target file
     let target = tmp.join("target");
@@ -2432,6 +2435,9 @@ fn test_fs_set_times_nofollow() {
     use crate::os::windows::fs::FileTimesExt;
 
     let tmp = tmpdir();
+    if !got_symlink_permission(&tmp) {
+        return;
+    }
 
     // Create a target file and a symlink to it
     let target = tmp.join("target");
