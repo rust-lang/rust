@@ -96,7 +96,7 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_AMBIGUOUS_ALIAS.bits();
 
         /// Is a type or const error reachable?
-        const HAS_NON_REGION_ERROR          = 1 << 16;
+        const HAS_NON_REGION_ERROR        = 1 << 16;
         /// Is a region error reachable?
         const HAS_RE_ERROR                = 1 << 17;
         /// Is an error type/lifetime/const reachable?
