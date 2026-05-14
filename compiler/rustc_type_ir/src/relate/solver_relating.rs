@@ -305,6 +305,20 @@ where
             return Ok(a);
         }
 
+        match self.structurally_relate_aliases {
+            StructurallyRelateAliases::Yes => {
+                assert_eq!(a.bound_vars(), b.bound_vars());
+                a.rebind((a.skip_binder(), b.skip_binder()));
+                self.infcx.enter_forall( a.rebind((a.skip_binder(), b.skip_binder())), |val| {
+                    let (a, b) = val.keep_ambiguous_aliases_for_structurally_relate();
+                    self.relate(a, b)
+                })?;
+                return Ok(a);
+
+            },
+            StructurallyRelateAliases::No => {}
+        }
+
         match self.ambient_variance {
             // Checks whether `for<..> sub <: for<..> sup` holds.
             //
@@ -393,12 +407,14 @@ where
         &mut self,
         obligations: impl IntoIterator<Item: ty::Upcast<I, I::Predicate>>,
     ) {
+        std::assert_matches!(self.structurally_relate_aliases, StructurallyRelateAliases::No);
         self.goals.extend(
             obligations.into_iter().map(|pred| Goal::new(self.infcx.cx(), self.param_env, pred)),
         );
     }
 
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>) {
+        std::assert_matches!(self.structurally_relate_aliases, StructurallyRelateAliases::No);
         self.goals.extend(obligations);
     }
 

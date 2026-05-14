@@ -163,6 +163,11 @@ impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
         Self { value, _tcx: PhantomData }
     }
 
+    /// This should only be used when structurally relating types.
+    pub fn keep_ambiguous_aliases_for_structurally_relate(self) -> T {
+        self.value
+    }
+
     /// Only use this if it will then normalize away all ambiguous aliases.
     pub fn do_normalize(self) -> T {
         self.value

@@ -362,7 +362,7 @@ where
 
         let original_alias = args.type_at(0);
         if original_alias.has_escaping_bound_vars() {
-            Ok(original_alias)
+            Ok(ty)
         } else {
             Ok(ensure_sufficient_stack(|| self.normalize_alias_term(original_alias.into()))?
                 .expect_ty())
