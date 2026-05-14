@@ -284,7 +284,7 @@ declare_features! (
     (removed, struct_inherit, "1.0.0", None, None),
     /// Allows the use of target_feature when a function is marked inline(always).
     (removed, target_feature_inline_always, "CURRENT_RUSTC_VERSION", Some(145574),
-     Some("removed because `#[inline(always)]` with `#[target_feature]` is forbidden")),
+     Some("removed because of unfixable soundness issues")),
     (removed, test_removed_feature, "1.0.0", None, None),
     /// Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None),

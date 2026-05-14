@@ -425,7 +425,7 @@ fn check_result(
             .dcx()
             .struct_span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
         diag.note(
-            "See issue here for full discussion; \
+            "See this issue for full discussion: \
             https://github.com/rust-lang/rust/issues/145574",
         );
         diag.emit();
