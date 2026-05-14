@@ -147,6 +147,7 @@ declare_lint_pass! {
         UNUSED_MACRO_RULES,
         UNUSED_MUT,
         UNUSED_QUALIFICATIONS,
+        UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS,
         UNUSED_UNSAFE,
         UNUSED_VARIABLES,
         UNUSED_VISIBILITIES,
@@ -816,6 +817,48 @@ declare_lint! {
     Allow,
     "detect public items in executable crates that are never used",
     crate_level_only
+}
+
+declare_lint! {
+    /// The `unused_unconstructable_pub_structs` lint detects public structs
+    /// with private fields that cannot be constructed or otherwise used through
+    /// the external API.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unused_unconstructable_pub_structs)]
+    ///
+    /// pub struct Foo(i32);
+    /// # fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is emitted for a `pub` struct when:
+    ///
+    /// * It has private fields and no public constructor, so downstream crates
+    ///   cannot construct a value of the type.
+    /// * It is not used locally and does not appear in any reachable path from
+    ///   external APIs other than the public struct item itself.
+    /// * It has no field that marks intentional unconstructability, such as a
+    ///   field with unit or never type.
+    ///
+    /// Such structs may have been unused for a long time, but are now effectively dead code.
+    /// This lint helps find those items.
+    ///
+    /// To silence the warning for individual items, prefix the name with an
+    /// underscore such as `_Foo`.
+    ///
+    /// To indicate that the behavior is intentional, add a field with unit or
+    /// never type if the struct is only used at the type level.
+    ///
+    /// Otherwise, consider removing it if the struct is no longer in use.
+    pub UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS,
+    Allow,
+    "detects public structs with private fields that cannot be constructed or otherwise used through the external API"
 }
 
 declare_lint! {

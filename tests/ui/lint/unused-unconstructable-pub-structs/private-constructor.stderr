@@ -1,0 +1,31 @@
+error: struct `PrivateTuple` is never constructed
+  --> $DIR/private-constructor.rs:3:12
+   |
+LL | pub struct PrivateTuple(i32);
+   |            ^^^^^^^^^^^^
+   |
+   = note: this `pub` struct has private fields, no public constructor, and is not otherwise reachable through the external API, so consider providing a public constructor or removing it
+note: the lint level is defined here
+  --> $DIR/private-constructor.rs:1:9
+   |
+LL | #![deny(unused_unconstructable_pub_structs)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: struct `PrivateField` is never constructed
+  --> $DIR/private-constructor.rs:6:12
+   |
+LL | pub struct PrivateField {
+   |            ^^^^^^^^^^^^
+   |
+   = note: this `pub` struct has private fields, no public constructor, and is not otherwise reachable through the external API, so consider providing a public constructor or removing it
+
+error: struct `MixedPhantom` is never constructed
+  --> $DIR/private-constructor.rs:11:12
+   |
+LL | pub struct MixedPhantom<T> {
+   |            ^^^^^^^^^^^^
+   |
+   = note: this `pub` struct has private fields, no public constructor, and is not otherwise reachable through the external API, so consider providing a public constructor or removing it
+
+error: aborting due to 3 previous errors
+

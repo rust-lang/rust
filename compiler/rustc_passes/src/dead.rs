@@ -10,7 +10,7 @@ use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath, find_attr};
@@ -21,13 +21,15 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
+use rustc_session::lint::builtin::{
+    DEAD_CODE, DEAD_CODE_PUB_IN_BINARY, UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS,
+};
 use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
     ChangeFields, DeadCodePubInBinaryNote, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
-    UselessAssignment,
+    UnusedUnconstructablePubStructsNote, UselessAssignment,
 };
 
 /// Any local definition that may call something in its body block should be explored. For example,
@@ -68,6 +70,42 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::Closure
         | DefKind::SyntheticCoroutineBody => false,
     }
+}
+
+fn struct_can_be_constructed_directly(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {
+    // Skip language items
+    if tcx.as_lang_item(id.to_def_id()).is_some() {
+        return true;
+    }
+
+    let adt_def = tcx.adt_def(id.to_def_id());
+
+    // We only care about structs for now
+    if !adt_def.is_struct() {
+        return true;
+    }
+
+    // Such types often declared in Rust but constructed by FFI, so ignore
+    if adt_def.repr().c() || adt_def.repr().transparent() {
+        return true;
+    }
+
+    // Skip types contain fields of unit, never or PhantomData,
+    // it's usually intentional to make the type not constructible
+    if adt_def.all_fields().any(|field| {
+        let field_type = tcx.type_of(field.did).skip_binder();
+        field_type.is_unit() || field_type.is_never()
+    }) {
+        return true;
+    }
+
+    adt_def.all_fields().all(|field| field.vis.is_public())
+        || adt_def.all_fields().all(|field| tcx.type_of(field.did).skip_binder().is_phantom_data())
+}
+
+fn method_has_receiver(tcx: TyCtxt<'_>, id: LocalDefId) -> bool {
+    tcx.hir_fn_decl_by_hir_id(tcx.local_def_id_to_hir_id(id))
+        .is_some_and(|fn_decl| fn_decl.implicit_self().has_implicit_self())
 }
 
 /// Determine if a work from the worklist is coming from a `#[allow]`
@@ -561,9 +599,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 (self.tcx.local_parent(local_def_id), trait_item_id)
             }
             // impl items are live if the corresponding traits are live
-            DefKind::Impl { of_trait: true } => {
-                (local_def_id, self.tcx.impl_trait_id(local_def_id).as_local())
-            }
+            DefKind::Impl { of_trait } => (
+                local_def_id,
+                of_trait
+                    .then(|| self.tcx.impl_trait_id(local_def_id))
+                    .and_then(|did| did.as_local()),
+            ),
             _ => bug!(),
         };
 
@@ -921,12 +962,14 @@ fn maybe_record_as_seed<'tcx>(
 struct SeedWorklists {
     worklist: Vec<WorkItem>,
     deferred_seeds: Vec<WorkItem>,
+    deferred_unconstructable_pubs: Vec<WorkItem>,
     unsolved_items: Vec<LocalDefId>,
 }
 
 fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
     let mut unsolved_items = Vec::new();
     let mut deferred_seeds = Vec::new();
+    let mut deferred_unconstructable_pubs = Vec::new();
     let mut worklist = Vec::new();
 
     if let Some((def_id, _)) = tcx.entry_fn(())
@@ -940,12 +983,47 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
     }
 
     for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
-        if effective_vis.is_public_at_level(Level::Reachable) {
-            deferred_seeds.push(WorkItem {
-                id: *id,
-                propagated: ComesFromAllowExpect::No,
-                own: ComesFromAllowExpect::No,
-            });
+        if !effective_vis.is_public_at_level(Level::Reachable) {
+            continue;
+        }
+
+        let work_item = WorkItem {
+            id: *id,
+            propagated: ComesFromAllowExpect::No,
+            own: ComesFromAllowExpect::No,
+        };
+
+        match tcx.def_kind(*id) {
+            DefKind::Struct if !struct_can_be_constructed_directly(tcx, *id) => {
+                deferred_unconstructable_pubs.push(work_item);
+            }
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fn)
+                if !struct_can_be_constructed_directly(tcx, tcx.local_parent(*id)) =>
+            {
+                deferred_unconstructable_pubs.push(work_item);
+            }
+
+            DefKind::Impl { of_trait } => {
+                if !of_trait {
+                    unsolved_items.push(*id);
+                }
+
+                deferred_unconstructable_pubs.push(work_item);
+            }
+            DefKind::AssocFn
+                if let DefKind::Impl { of_trait } = tcx.def_kind(tcx.local_parent(*id))
+                    && method_has_receiver(tcx, *id) =>
+            {
+                if !of_trait {
+                    unsolved_items.push(*id);
+                }
+
+                deferred_unconstructable_pubs.push(work_item);
+            }
+
+            _ => {
+                deferred_seeds.push(work_item);
+            }
         }
     }
 
@@ -958,15 +1036,19 @@ fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
         maybe_record_as_seed(tcx, id, &mut push_into_worklist, &mut unsolved_items);
     }
 
-    SeedWorklists { worklist, deferred_seeds, unsolved_items }
+    SeedWorklists { worklist, deferred_seeds, deferred_unconstructable_pubs, unsolved_items }
 }
 
 fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
-    let SeedWorklists { worklist, deferred_seeds, mut unsolved_items } =
-        create_and_seed_worklist(tcx);
+    let SeedWorklists {
+        worklist,
+        deferred_seeds,
+        deferred_unconstructable_pubs,
+        mut unsolved_items,
+    } = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -989,8 +1071,17 @@ fn live_symbols_and_ignored_derived_traits(
     symbol_visitor.worklist.extend(deferred_seeds);
     mark_live_symbols_and_ignored_derived_traits(&mut symbol_visitor, &mut unsolved_items)?;
 
+    let pre_unconstructable_pubs = DeadCodeLivenessSnapshot {
+        live_symbols: symbol_visitor.live_symbols.clone(),
+        ignored_derived_traits: symbol_visitor.ignored_derived_traits.clone(),
+    };
+
+    symbol_visitor.worklist.extend(deferred_unconstructable_pubs);
+    mark_live_symbols_and_ignored_derived_traits(&mut symbol_visitor, &mut unsolved_items)?;
+
     Ok(DeadCodeLivenessSummary {
         pre_deferred_seeding,
+        pre_unconstructable_pubs,
         final_result: DeadCodeLivenessSnapshot {
             live_symbols: symbol_visitor.live_symbols,
             ignored_derived_traits: symbol_visitor.ignored_derived_traits,
@@ -1093,6 +1184,15 @@ impl<'tcx> DeadVisitor<'tcx> {
 
     fn dead_code_pub_in_binary_note(&self) -> Option<DeadCodePubInBinaryNote> {
         self.target_lint.name.eq(DEAD_CODE_PUB_IN_BINARY.name).then_some(DeadCodePubInBinaryNote)
+    }
+
+    fn unused_unconstructable_pub_structs_note(
+        &self,
+    ) -> Option<UnusedUnconstructablePubStructsNote> {
+        self.target_lint
+            .name
+            .eq(UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS.name)
+            .then_some(UnusedUnconstructablePubStructsNote)
     }
 
     // # Panics
@@ -1207,6 +1307,8 @@ impl<'tcx> DeadVisitor<'tcx> {
                     participle,
                     name_list,
                     dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
+                    unused_unconstructable_pub_structs_note: self
+                        .unused_unconstructable_pub_structs_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
                     ignored_derived_impls,
@@ -1244,6 +1346,8 @@ impl<'tcx> DeadVisitor<'tcx> {
                     participle,
                     name_list,
                     dead_code_pub_in_binary_note: self.dead_code_pub_in_binary_note(),
+                    unused_unconstructable_pub_structs_note: self
+                        .unused_unconstructable_pub_structs_note(),
                     parent_info,
                     ignored_derived_impls,
                     enum_variants_with_same_name,
@@ -1320,8 +1424,11 @@ impl<'tcx> DeadVisitor<'tcx> {
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
-    let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
-        tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
+    let Ok(DeadCodeLivenessSummary {
+        pre_deferred_seeding,
+        pre_unconstructable_pubs,
+        final_result,
+    }) = tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
     else {
         return;
     };
@@ -1346,6 +1453,26 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                 .filter(|foreign_item| is_unused_pub(foreign_item.owner_id.def_id)),
         );
     }
+
+    let is_unused_unconstructable_pub = |def_id| {
+        tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
+            && !pre_unconstructable_pubs.live_symbols.contains(&def_id)
+            && tcx.def_kind(def_id) == DefKind::Struct
+            && !struct_can_be_constructed_directly(tcx, def_id)
+    };
+    lint_dead_codes(
+        tcx,
+        UNUSED_UNCONSTRUCTABLE_PUB_STRUCTS,
+        module,
+        &pre_unconstructable_pubs.live_symbols,
+        &pre_unconstructable_pubs.ignored_derived_traits,
+        module_items
+            .free_items()
+            .filter(|free_item| is_unused_unconstructable_pub(free_item.owner_id.def_id)),
+        module_items
+            .foreign_items()
+            .filter(|foreign_item| is_unused_unconstructable_pub(foreign_item.owner_id.def_id)),
+    );
 
     lint_dead_codes(
         tcx,
