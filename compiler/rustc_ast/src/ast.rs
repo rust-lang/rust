@@ -3867,6 +3867,19 @@ pub struct Fn {
     pub eii_impls: ThinVec<EiiImpl>,
 }
 
+impl Fn {
+    pub fn is_pin_drop_sugar(&self) -> bool {
+        self.ident.name == sym::drop
+            && self
+                .sig
+                .decl
+                .inputs
+                .first()
+                .and_then(|param| param.to_self())
+                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct EiiImpl {
     pub node_id: NodeId,
