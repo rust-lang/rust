@@ -1697,12 +1697,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
                 interp_ok(Err(IoError::HostError(io::ErrorKind::WouldBlock.into())))
             }
-            Ok(bytes_read) if bytes_read < length && bytes_read > 0 => {
-                // We had a short read. (Note that reading 0 bytes is guaranteed to indicate EOF,
-                // and can never happen spuriously, so we have to exclude that case.) On Unix hosts
-                // using the `epoll` and `kqueue` backends, a short read means that the read buffer
-                // is empty. We update the readiness accordingly, which means that next time we see
-                // "readable" we will report an epoll edge. Some applications (e.g. tokio) rely on
+            Ok(bytes_read) if !should_peek && bytes_read < length && bytes_read > 0 => {
+                // We had a short read (and were not peeking). (Note that reading 0 bytes is guaranteed
+                // to indicate EOF, and can never happen spuriously, so we have to exclude that case.)
+                // On Unix hosts using the `epoll` and `kqueue` backends, a short read means that the
+                // read buffer is empty. We update the readiness accordingly, which means that next time
+                // we see "readable" we will report an epoll edge. Some applications (e.g. tokio) rely on
                 // this behavior; see
                 // <https://github.com/tokio-rs/tokio/blob/HEAD/tokio/src/io/poll_evented.rs#L190-L210>
                 if cfg!(any(
