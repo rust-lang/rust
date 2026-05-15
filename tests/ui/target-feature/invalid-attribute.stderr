@@ -166,7 +166,7 @@ error: cannot use `#[inline(always)]` with `#[target_feature]`
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: See issue here for full discussion; https://github.com/rust-lang/rust/issues/145574
+   = note: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
 
 error: the feature named `foo` is not valid for this target
   --> $DIR/invalid-attribute.rs:26:18

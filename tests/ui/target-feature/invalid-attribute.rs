@@ -67,7 +67,7 @@ trait Baz {}
 
 #[inline(always)]
 //~^ ERROR: cannot use `#[inline(always)]`
-//~| NOTE: See issue here for full discussion; https://github.com/rust-lang/rust/issues/145574
+//~| NOTE: See this issue for full discussion: https://github.com/rust-lang/rust/issues/145574
 #[target_feature(enable = "sse2")]
 unsafe fn test() {}
 
