@@ -486,6 +486,9 @@ impl Resolver<'_, '_> {
 
             let remove_whole_use = remove_spans.len() == 1 && remove_spans[0] == unused.item_span;
             let num_to_remove = ms.primary_spans().len();
+            // Only offer rustfix suggestions for spans that point at directly editable code.
+            let can_suggest_removal =
+                remove_spans.iter().all(|span| span.can_be_used_for_suggestions());
 
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
@@ -516,11 +519,13 @@ impl Resolver<'_, '_> {
                 unused.use_tree_id,
                 ms,
                 move |dcx, level, sess| {
-                    let sugg = if remove_whole_use {
-                        errors::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
-                    } else {
-                        errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
-                    };
+                    let sugg = can_suggest_removal.then(|| {
+                        if remove_whole_use {
+                            errors::UnusedImportsSugg::RemoveWholeUse { span: remove_spans[0] }
+                        } else {
+                            errors::UnusedImportsSugg::RemoveImports { remove_spans, num_to_remove }
+                        }
+                    });
                     let test_module_span = test_module_span.map(|span| {
                         sess.downcast_ref::<rustc_session::Session>()
                             .expect("expected a `Session`")
