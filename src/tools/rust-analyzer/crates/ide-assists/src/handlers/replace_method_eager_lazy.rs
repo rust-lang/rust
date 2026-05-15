@@ -2,7 +2,7 @@ use hir::Semantics;
 use ide_db::{RootDatabase, assists::AssistId, defs::Definition, famous_defs::FamousDefs};
 use syntax::{
     AstNode,
-    ast::{self, Expr, HasArgList, make, syntax_factory::SyntaxFactory},
+    ast::{self, Expr, HasArgList, syntax_factory::SyntaxFactory},
 };
 
 use crate::{AssistContext, Assists, utils::wrap_paren_in_call};
@@ -64,6 +64,7 @@ pub(crate) fn replace_with_lazy_method(
         format!("Replace {method_name} with {method_name_lazy}"),
         call.syntax().text_range(),
         |builder| {
+            let editor = builder.make_editor(call.syntax());
             let param_name = match &*method_name_lazy {
                 "and_then" => "it",
                 "or_else" | "unwrap_or_else" => {
@@ -77,9 +78,10 @@ pub(crate) fn replace_with_lazy_method(
                 }
                 _ => "",
             };
-            let closured = into_closure(&last_arg, param_name);
-            builder.replace(method_name.syntax().text_range(), method_name_lazy);
-            builder.replace_ast(last_arg, closured);
+            let closured = into_closure(&last_arg, param_name, editor.make());
+            editor.replace(method_name.syntax(), editor.make().name(&method_name_lazy).syntax());
+            editor.replace(last_arg.syntax(), closured.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -96,7 +98,7 @@ fn lazy_method_name(name: &str) -> String {
     }
 }
 
-fn into_closure(param: &Expr, param_name: &str) -> Expr {
+fn into_closure(param: &Expr, param_name: &str, make: &SyntaxFactory) -> Expr {
     (|| {
         if let ast::Expr::CallExpr(call) = param {
             if call.arg_list()?.args().count() == 0 { Some(call.expr()?) } else { None }
@@ -105,10 +107,9 @@ fn into_closure(param: &Expr, param_name: &str) -> Expr {
         }
     })()
     .unwrap_or_else(|| {
-        let pats = (!param_name.is_empty()).then(|| {
-            make::untyped_param(make::ext::simple_ident_pat(make::name(param_name)).into())
-        });
-        make::expr_closure(pats, param.clone()).into()
+        let pats = (!param_name.is_empty())
+            .then(|| make.untyped_param(make.simple_ident_pat(make.name(param_name)).into()));
+        make.expr_closure(pats, param.clone()).into()
     })
 }
 
@@ -170,14 +171,16 @@ pub(crate) fn replace_with_eager_method(
         format!("Replace {method_name} with {method_name_eager}"),
         call.syntax().text_range(),
         |builder| {
-            builder.replace(method_name.syntax().text_range(), method_name_eager);
-            let called = into_call(&last_arg, &ctx.sema);
-            builder.replace_ast(last_arg, called);
+            let editor = builder.make_editor(call.syntax());
+            let called = into_call(&last_arg, &ctx.sema, editor.make());
+            editor.replace(method_name.syntax(), editor.make().name(method_name_eager).syntax());
+            editor.replace(last_arg.syntax(), called.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
-fn into_call(param: &Expr, sema: &Semantics<'_, RootDatabase>) -> Expr {
+fn into_call(param: &Expr, sema: &Semantics<'_, RootDatabase>, make: &SyntaxFactory) -> Expr {
     (|| {
         if let ast::Expr::ClosureExpr(closure) = param {
             let mut params = closure.param_list()?.params();
@@ -197,8 +200,8 @@ fn into_call(param: &Expr, sema: &Semantics<'_, RootDatabase>) -> Expr {
         }
     })()
     .unwrap_or_else(|| {
-        let callable = wrap_paren_in_call(param.clone(), &SyntaxFactory::without_mappings());
-        make::expr_call(callable, make::arg_list(Vec::new())).into()
+        let callable = wrap_paren_in_call(param.clone(), make);
+        make.expr_call(callable, make.arg_list(Vec::new())).into()
     })
 }
 
