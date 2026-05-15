@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `T::This normalizes-to _`
+error[E0271]: type mismatch resolving `_ == T::This`
   --> $DIR/normalization-overflow.rs:14:5
    |
 LL |     type This = Self::This;
