@@ -12,6 +12,16 @@ macro_rules! panic {
     };
 }
 
+#[macro_export]
+#[rustc_builtin_macro(panic_handler)]
+#[allow_internal_unstable(extern_item_impls)]
+#[stable(feature = "panic_handler", since = "1.30.0")]
+macro_rules! panic_handler {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
+
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
 ///
 /// Assertions are always checked in both debug and release builds, and cannot

@@ -124,6 +124,7 @@
 #![feature(diagnostic_opaque)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
+#![feature(extern_item_impls)]
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
