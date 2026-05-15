@@ -1,5 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/147855>
-//@ edition:2024
+//@ edition:2021
 //@ run-rustfix
 //@ rustfix-only-machine-applicable
 //@ check-pass
