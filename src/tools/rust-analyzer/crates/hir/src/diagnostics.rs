@@ -120,6 +120,7 @@ diagnostics![AnyDiagnostic<'db> ->
     MacroError,
     MacroExpansionParseError,
     MalformedDerive,
+    MethodCallIllegalSizedBound,
     MismatchedArgCount,
     MismatchedTupleStructPatArgCount,
     MissingFields,
@@ -596,6 +597,11 @@ pub struct InvalidLhsOfAssignment {
 }
 
 #[derive(Debug)]
+pub struct MethodCallIllegalSizedBound {
+    pub call_expr: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug)]
 pub struct PatternArgInExternFn {
     pub node: InFile<AstPtr<ast::Pat>>,
 }
@@ -983,6 +989,9 @@ impl<'db> AnyDiagnostic<'db> {
             &InferenceDiagnostic::InvalidLhsOfAssignment { lhs } => {
                 let lhs = expr_syntax(lhs)?;
                 InvalidLhsOfAssignment { lhs }.into()
+            }
+            &InferenceDiagnostic::MethodCallIllegalSizedBound { call_expr } => {
+                MethodCallIllegalSizedBound { call_expr: expr_syntax(call_expr)? }.into()
             }
             &InferenceDiagnostic::TypeMustBeKnown { at_point, ref top_term } => {
                 let at_point = span_syntax(at_point)?;
