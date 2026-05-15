@@ -231,6 +231,14 @@ lsx_vabsd_bu
 lsx_vabsd_hu
 lsx_vabsd_wu
 lsx_vabsd_du
+lsx_vpickev_b
+lsx_vpickev_h
+lsx_vpickev_w
+lsx_vpickev_d
+lsx_vpickod_b
+lsx_vpickod_h
+lsx_vpickod_w
+lsx_vpickod_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -459,3 +467,11 @@ lasx_xvabsd_bu
 lasx_xvabsd_hu
 lasx_xvabsd_wu
 lasx_xvabsd_du
+lasx_xvpickev_b
+lasx_xvpickev_h
+lasx_xvpickev_w
+lasx_xvpickev_d
+lasx_xvpickod_b
+lasx_xvpickod_h
+lasx_xvpickod_w
+lasx_xvpickod_d
