@@ -1,5 +1,5 @@
 error: unexpected `...`
-  --> $DIR/no-closure.rs:6:35
+  --> $DIR/no-closure.rs:5:35
    |
 LL | const F: extern "C" fn(...) = |_: ...| {};
    |                                   ^^^
@@ -7,7 +7,7 @@ LL | const F: extern "C" fn(...) = |_: ...| {};
    = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: unexpected `...`
-  --> $DIR/no-closure.rs:11:14
+  --> $DIR/no-closure.rs:10:14
    |
 LL |     let f = |...| {};
    |              ^^^ not a valid pattern
@@ -15,7 +15,7 @@ LL |     let f = |...| {};
    = note: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error: unexpected `...`
-  --> $DIR/no-closure.rs:16:17
+  --> $DIR/no-closure.rs:15:17
    |
 LL |     let f = |_: ...| {};
    |                 ^^^

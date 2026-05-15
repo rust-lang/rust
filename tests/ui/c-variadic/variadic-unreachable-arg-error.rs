@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(c_variadic)]
-
 extern "C" {
     fn foo(f: isize, x: u8, ...);
 }

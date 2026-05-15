@@ -1,4 +1,4 @@
-use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
@@ -388,17 +388,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_poly_trait_ref(self, t);
     }
 
-    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, _: Span, _: NodeId) {
         if let Some(_header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {
             self.check_late_bound_lifetime_defs(generic_params);
-        }
-
-        if fn_kind.ctxt() != Some(FnCtxt::Foreign) && fn_kind.decl().c_variadic() {
-            gate!(self, c_variadic, span, "C-variadic functions are unstable");
         }
 
         visit::walk_fn(self, fn_kind)
