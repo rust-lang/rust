@@ -406,6 +406,10 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         input_stats::print_ast_stats(tcx, krate);
     }
 
+    if sess.print_llvm_stats_json().is_some() {
+        input_stats::collect_ast_stats(tcx, krate);
+    }
+
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
         rustc_ast_passes::feature_gate::check_crate(krate, sess, tcx.features());
@@ -1073,6 +1077,9 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 fn run_required_analyses(tcx: TyCtxt<'_>) {
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
+    }
+    if tcx.sess.print_llvm_stats_json().is_some() {
+        rustc_passes::input_stats::collect_hir_stats(tcx);
     }
     // When using rustdoc's "jump to def" feature, it enters this code and `check_crate`
     // is not defined. So we need to cfg it out.

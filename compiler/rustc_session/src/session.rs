@@ -178,6 +178,9 @@ pub struct Session {
     ///
     /// The value is the `DepNodeIndex` of the node encodes the used feature.
     pub used_features: Lock<FxHashMap<Symbol, u32>>,
+
+    /// Frontend stats collected for JSON output.
+    pub frontend_stats: Lock<Vec<(String, usize)>>,
 }
 
 #[derive(Clone, Copy)]
@@ -1127,6 +1130,7 @@ pub fn build_session(
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
+        frontend_stats: Lock::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);

@@ -197,6 +197,47 @@ impl<'k> StatCollector<'k> {
         _ = writeln!(s, "{prefix} {}", "=".repeat(banner_w));
         eprint!("{s}");
     }
+    fn to_json_entries(&self, prefix: &str) -> Vec<(String, usize)> {
+        let mut out = Vec::new();
+        let mut keys: Vec<_> = self.nodes.keys().collect();
+        keys.sort();
+        for label in keys {
+            let node = &self.nodes[label];
+            out.push((format!("{prefix}.{label}.count"), node.stats.count));
+            let mut sub_keys: Vec<_> = node.subnodes.keys().collect();
+            sub_keys.sort();
+            for sub_label in sub_keys {
+                let subnode = &node.subnodes[sub_label];
+                out.push((format!("{prefix}.{label}.{sub_label}.count"), subnode.count));
+                out.push((format!("{prefix}.{label}.{sub_label}.size"), subnode.size));
+            }
+        }
+        out
+    }
+}
+
+pub fn collect_hir_stats(tcx: TyCtxt<'_>) {
+    if tcx.sess.print_llvm_stats_json().is_none() {
+        return;
+    }
+    let mut collector =
+        StatCollector { tcx: Some(tcx), nodes: FxHashMap::default(), seen: FxHashSet::default() };
+    tcx.hir_walk_toplevel_module(&mut collector);
+    tcx.hir_walk_attributes(&mut collector);
+    let mut stats = tcx.sess.frontend_stats.lock();
+    stats.extend(collector.to_json_entries("hir-stats"));
+}
+
+pub fn collect_ast_stats(tcx: TyCtxt<'_>, krate: &ast::Crate) {
+    if tcx.sess.print_llvm_stats_json().is_none() {
+        return;
+    }
+    use rustc_ast::visit::Visitor;
+    let mut collector =
+        StatCollector { tcx: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
+    collector.visit_crate(krate);
+    let mut stats = tcx.sess.frontend_stats.lock();
+    stats.extend(collector.to_json_entries("ast-stats"));
 }
 
 // Used to avoid boilerplate for types with many variants.

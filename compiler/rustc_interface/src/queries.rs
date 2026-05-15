@@ -72,15 +72,35 @@ impl Linker {
 
         if let Some(out_path) = sess.print_llvm_stats_json() {
             let llvm_stats_json = codegen_backend.print_statistics_json();
+            let frontend_stats = sess.frontend_stats.lock();
 
+            let mut json_entries = Vec::new();
             if !llvm_stats_json.is_empty() {
-                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                if let Some(start) = llvm_stats_json.find('{') {
+                    if let Some(end) = llvm_stats_json.rfind('}') {
+                        for line in llvm_stats_json[start + 1..end].lines() {
+                            let line = line.trim().strip_suffix(',').unwrap_or(line.trim());
+                            if !line.is_empty() {
+                                json_entries.push(line.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Append frontend stats
+            for (key, value) in frontend_stats.iter() {
+                json_entries.push(format!("{:?}: {}", key, value));
+            }
+
+            if !json_entries.is_empty() {
+                let final_json = format!("{{\n        {}\n}}", json_entries.join(",\n        "));
+                if let Err(e) = std::fs::write(&out_path, final_json) {
                     sess.dcx().err(format!("failed to write stats to {}: {}", out_path, e));
                 }
             } else {
                 sess.dcx().warn(format!(
-                    "requested to print LLVM statistics to JSON file {}, but the codegen backend \
-                    did not provide any statistics",
+                    "requested to print statistics to JSON file {}, but no statistics were collected",
                     out_path,
                 ));
             }
