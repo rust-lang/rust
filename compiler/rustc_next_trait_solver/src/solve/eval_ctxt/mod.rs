@@ -59,7 +59,7 @@ enum CurrentGoalKind {
     /// goals never get the inference constraints from the actual normalized-to type.
     ///
     /// Because of this we return any ambiguous nested goals from `NormalizesTo` to the
-    /// caller when then adds these to its own context. The caller is always an `AliasRelate`
+    /// caller when then adds these to its own context. The caller is always an `Projection`
     /// goal so this never leaks out of the solver.
     NormalizesTo,
 }
@@ -478,7 +478,7 @@ where
     /// the nested goal is a `NormalizesTo` goal.
     ///
     /// As all other goal kinds do not return any nested goals and
-    /// `NormalizesTo` is only used by `AliasRelate`, all other callsites
+    /// `NormalizesTo` is only used by `Projection`, all other callsites
     /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
     /// storage.
     pub(super) fn evaluate_goal_raw(
@@ -1793,16 +1793,15 @@ where
 
     fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
         match ty.kind() {
-            ty::Alias(..) if !ty.has_escaping_bound_vars() => {
+            ty::Alias(alias) if !ty.has_escaping_bound_vars() => {
                 let infer_ty = self.ecx.next_ty_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    infer_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
+                let projection = ty::ProjectionPredicate {
+                    projection_term: alias.into(),
+                    term: infer_ty.into(),
+                };
                 self.ecx.add_goal(
                     self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
+                    Goal::new(self.cx(), self.param_env, projection),
                 );
                 infer_ty
             }
@@ -1822,16 +1821,13 @@ where
 
     fn fold_const(&mut self, ct: I::Const) -> I::Const {
         match ct.kind() {
-            ty::ConstKind::Unevaluated(..) if !ct.has_escaping_bound_vars() => {
+            ty::ConstKind::Unevaluated(uc) if !ct.has_escaping_bound_vars() => {
                 let infer_ct = self.ecx.next_const_infer();
-                let normalizes_to = ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    infer_ct.into(),
-                    ty::AliasRelationDirection::Equate,
-                );
+                let projection =
+                    ty::ProjectionPredicate { projection_term: uc.into(), term: infer_ct.into() };
                 self.ecx.add_goal(
                     self.normalization_goal_source,
-                    Goal::new(self.cx(), self.param_env, normalizes_to),
+                    Goal::new(self.cx(), self.param_env, projection),
                 );
                 infer_ct
             }
