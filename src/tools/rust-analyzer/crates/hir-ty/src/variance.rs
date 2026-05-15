@@ -25,8 +25,8 @@ use crate::{
     db::HirDatabase,
     generics::{Generics, generics},
     next_solver::{
-        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Region,
-        RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
+        Const, ConstKind, DbInterner, ExistentialPredicate, GenericArgKind, GenericArgs, Pattern,
+        PatternKind, Region, RegionKind, StoredVariancesOf, TermKind, Ty, TyKind, VariancesOf,
     },
 };
 
@@ -249,13 +249,31 @@ impl<'db> Context<'db> {
                 // we encounter this when walking the trait references for object
                 // types, where we use Error as the Self type
             }
+            TyKind::Pat(typ, pat) => {
+                self.add_constraints_from_pat(pat);
+                self.add_constraints_from_ty(typ, variance);
+            }
             TyKind::Bound(..) => {}
             TyKind::CoroutineWitness(..)
             | TyKind::Placeholder(..)
             | TyKind::Infer(..)
-            | TyKind::UnsafeBinder(..)
-            | TyKind::Pat(..) => {
+            | TyKind::UnsafeBinder(..) => {
                 never!("unexpected type encountered in variance inference: {:?}", ty)
+            }
+        }
+    }
+
+    fn add_constraints_from_pat(&mut self, pat: Pattern<'db>) {
+        match pat.kind() {
+            PatternKind::Range { start, end } => {
+                self.add_constraints_from_const(start);
+                self.add_constraints_from_const(end);
+            }
+            PatternKind::NotNull => {}
+            PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.add_constraints_from_pat(pat)
+                }
             }
         }
     }

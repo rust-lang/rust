@@ -542,7 +542,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             &TypeRef::PatternType(ty, pat) => {
                 let ty = self.lower_ty(ty);
                 let Some(pat) = self.lower_pattern_type(pat, ty) else {
-                    // FIXME: Report an error.
                     return (self.types.types.error, res);
                 };
                 Ty::new_pat(self.interner, ty, pat)
@@ -568,7 +567,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 )
                 .ok()?,
             ),
-            _ => return None,
+            hir_def::hir::Pat::Missing => return None,
+            _ => {
+                never!("pattern type can only be Range, NotNull or Or");
+                return None;
+            }
         };
         Some(Pattern::new(self.interner, pat_kind))
     }

@@ -529,7 +529,6 @@ fn tuple_ptr_with_dst_tail() {
 }
 
 #[test]
-#[ignore = "FIXME: We need to have proper pattern types"]
 fn non_zero_and_non_null() {
     size_and_align! {
         minicore: non_zero, non_null, option;

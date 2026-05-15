@@ -1709,15 +1709,19 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         if let Some(it) = goal(kind) {
             return Ok(it);
         }
-        if let TyKind::Adt(adt_ef, subst) = kind
-            && let AdtId::StructId(struct_id) = adt_ef.def_id()
-        {
-            let field_types = self.db.field_types(struct_id.into());
-            if let Some(ty) =
-                field_types.iter().last().map(|it| it.1.get().instantiate(self.interner(), subst))
-            {
-                return self.coerce_unsized_look_through_fields(ty.skip_norm_wip(), goal);
+        match kind {
+            TyKind::Adt(adt_ef, subst) if let AdtId::StructId(struct_id) = adt_ef.def_id() => {
+                let field_types = self.db.field_types(struct_id.into());
+                if let Some(ty) = field_types
+                    .iter()
+                    .last()
+                    .map(|it| it.1.get().instantiate(self.interner(), subst))
+                {
+                    return self.coerce_unsized_look_through_fields(ty.skip_norm_wip(), goal);
+                }
             }
+            TyKind::Pat(ty, _) => return self.coerce_unsized_look_through_fields(ty, goal),
+            _ => (),
         }
         Err(MirEvalError::CoerceUnsizedError(ty.store()))
     }
