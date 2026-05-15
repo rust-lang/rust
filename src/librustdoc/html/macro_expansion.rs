@@ -1,5 +1,8 @@
-use rustc_ast::visit::{Visitor, walk_crate, walk_expr, walk_item, walk_pat, walk_stmt, walk_ty};
-use rustc_ast::{Crate, Expr, Item, Pat, Stmt, Ty};
+use rustc_ast::visit::{
+    AssocCtxt, Visitor, walk_assoc_item, walk_crate, walk_expr, walk_item, walk_pat, walk_stmt,
+    walk_ty,
+};
+use rustc_ast::{AssocItem, Crate, Expr, Item, Pat, Stmt, Ty};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Span};
@@ -159,6 +162,16 @@ impl<'ast> Visitor<'ast> for ExpandedCodeVisitor<'ast> {
             self.handle_new_span(ty.span, || rustc_ast_pretty::pprust::ty_to_string(ty));
         } else {
             walk_ty(self, ty);
+        }
+    }
+
+    fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
+        if item.span.from_expansion() {
+            self.handle_new_span(item.span, || {
+                rustc_ast_pretty::pprust::assoc_item_to_string(item)
+            });
+        } else {
+            walk_assoc_item(self, item, ctxt);
         }
     }
 }
