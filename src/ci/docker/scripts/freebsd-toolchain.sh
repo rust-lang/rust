@@ -5,8 +5,9 @@ set -eux
 
 arch=$1
 binutils_version=2.40
-freebsd_version=12.3
-triple=$arch-unknown-freebsd12
+freebsd_version=14.4
+freebsd_date=2026-03-10
+triple=$arch-unknown-freebsd14
 sysroot=/usr/local/$triple
 
 hide_output() {
@@ -52,16 +53,16 @@ files_to_extract=(
 "./usr/lib/*crt*.o"
 )
 # Try to unpack only the libraries the build needs, to save space.
-for lib in c cxxrt gcc_s m thr util; do
+for lib in c c++ cxxrt gcc_s m thr util; do
   files_to_extract=("${files_to_extract[@]}" "./lib/lib${lib}.*" "./usr/lib/lib${lib}.*")
 done
-for lib in c++ c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared procstat devstat kvm memstat; do
+for lib in c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared procstat devstat kvm memstat; do
   files_to_extract=("${files_to_extract[@]}" "./usr/lib/lib${lib}.*")
 done
 
 # Originally downloaded from:
 # URL=https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
-URL=https://ci-mirrors.rust-lang.org/rustc/2022-05-06-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
+URL=https://ci-mirrors.rust-lang.org/rustc/${freebsd_date}-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 
 # Clang can do cross-builds out of the box, if we give it the right
@@ -70,7 +71,7 @@ curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 # there might be other problems.)
 #
 # The --target option is last because the cross-build of LLVM uses
-# --target without an OS version ("-freebsd" vs. "-freebsd12").  This
+# --target without an OS version ("-freebsd" vs. "-freebsd14").  This
 # makes Clang default to libstdc++ (which no longer exists), and also
 # controls other features, like GNU-style symbol table hashing and
 # anything predicated on the version number in the __FreeBSD__
