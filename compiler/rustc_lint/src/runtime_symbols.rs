@@ -15,10 +15,11 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
-    /// #[unsafe(no_mangle)]
+    #[cfg_attr(bootstrap, doc = "```rust")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    #[cfg_attr(not(bootstrap), doc = "#[unsafe(no_mangle)]")]
     /// pub fn strlen() {} // invalid definition of the `strlen` function
-    /// ```
+    #[doc = "```"]
     ///
     /// {{produces}}
     ///
