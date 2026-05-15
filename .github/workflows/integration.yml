@@ -5,6 +5,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   integration-tests:
     runs-on: ubuntu-latest

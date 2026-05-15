@@ -33,6 +33,9 @@ on:
         description: 'Optional comma separated list of rustfmt config options to pass when running the feature branch'
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   diff_check:
     runs-on: ubuntu-latest

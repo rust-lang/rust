@@ -5,6 +5,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/virtual-environments-for-github-hosted-runners#supported-runners-and-hardware-resources
