@@ -1,5 +1,4 @@
 use rustc_abi::{Scalar, Size, TagEncoding, Variants, WrappingRange};
-use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
@@ -20,12 +19,6 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // This pass emits new panics. If for whatever reason we do not have a panic
-        // implementation, running this pass may cause otherwise-valid code to not compile.
-        if tcx.lang_items().get(LangItem::PanicImpl).is_none() {
-            return;
-        }
-
         let typing_env = body.typing_env(tcx);
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &mut body.local_decls;
