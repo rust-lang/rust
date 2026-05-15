@@ -179,7 +179,7 @@ pub use core::ffi::{
     c_ulong, c_ulonglong, c_ushort,
 };
 #[unstable(feature = "c_size_t", issue = "88345")]
-pub use core::ffi::{c_ptrdiff_t, c_size_t, c_ssize_t};
+pub use core::ffi::{c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t};
 
 #[doc(inline)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]

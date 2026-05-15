@@ -174,6 +174,26 @@ pub type c_ptrdiff_t = isize;
 #[unstable(feature = "c_size_t", issue = "88345")]
 pub type c_ssize_t = isize;
 
+/// Equivalent to C's `intptr_t` type.
+///
+/// This type have the same size with a pointer. The C standard technically only
+/// requires that this type be a signed integer type just capable of holding a
+/// pointer.
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct c_intptr_t(pub *const ());
+
+/// Equivalent to C's `uintptr_t` type.
+///
+/// This type have the same size with a pointer. The C standard technically only
+/// requires that this type be an unsigned integer type just capable of holding
+/// a pointer.
+#[unstable(feature = "c_size_t", issue = "88345")]
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct c_uintptr_t(pub *const ());
+
 mod c_int_definition {
     crate::cfg_select! {
         any(target_arch = "avr", target_arch = "msp430") => {

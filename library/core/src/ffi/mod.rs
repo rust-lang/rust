@@ -38,7 +38,7 @@ pub use self::primitives::{
     c_ulong, c_ulonglong, c_ushort,
 };
 #[unstable(feature = "c_size_t", issue = "88345")]
-pub use self::primitives::{c_ptrdiff_t, c_size_t, c_ssize_t};
+pub use self::primitives::{c_intptr_t, c_ptrdiff_t, c_size_t, c_ssize_t, c_uintptr_t};
 
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
