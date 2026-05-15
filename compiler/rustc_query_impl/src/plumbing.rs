@@ -175,7 +175,8 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
 
 pub(crate) fn loadable_from_disk<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeIndex) -> bool {
     if let Some(cache) = tcx.query_system.on_disk_cache.as_ref() {
-        cache.loadable_from_disk(id)
+        assert!(cache.loadable_from_disk(id));
+        true
     } else {
         false
     }
