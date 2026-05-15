@@ -85,3 +85,30 @@ impl fmt::Debug for c_void {
 )]
 #[link(name = "/defaultlib:libcmt", modifiers = "+verbatim", cfg(target_feature = "crt-static"))]
 unsafe extern "C" {}
+
+// Used by rustc for checking the definitions of other function with the same symbol names
+//
+// See the `invalid_runtime_symbols_definitions` lint.
+mod runtime_symbols {
+    use crate::ffi::{c_char, c_int, c_void};
+
+    unsafe extern "C" {
+        #[lang = "memcpy_fn"]
+        fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+
+        #[lang = "memmove_fn"]
+        fn memmove(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
+
+        #[lang = "memset_fn"]
+        fn memset(s: *mut c_void, c: c_int, n: usize) -> *mut c_void;
+
+        #[lang = "memcmp_fn"]
+        fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
+
+        #[lang = "bcmp_fn"]
+        fn bcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
+
+        #[lang = "strlen_fn"]
+        fn strlen(s: *const c_char) -> usize;
+    }
+}
