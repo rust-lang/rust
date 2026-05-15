@@ -5277,3 +5277,41 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn rpit_with_type_and_only_late_bound_lifetime() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+struct Foo {}
+
+impl<'a> Trait for () {}
+
+fn foo<'a, T>(t: &'a mut T) -> impl Trait<'a> {}
+
+fn bar() {
+    let mut f = Foo {};
+    let p = foo(&mut f);
+}
+"#,
+    );
+}
+
+#[test]
+fn rpit_with_type_and_both_lifetimes() {
+    check_no_mismatches(
+        r#"
+trait Trait<'a> {}
+struct Foo {}
+
+impl<'a> Trait for () {}
+
+fn foo<'a, 'b, T: 'b>(t: &'a mut T) -> impl Trait<'a> {}
+
+fn bar() {
+    let mut f = Foo {};
+    let p = foo(&mut f);
+}
+"#,
+    );
+}

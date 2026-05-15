@@ -43,6 +43,12 @@ pub enum LifetimeBoundType {
     LateBound,
 }
 
+impl LifetimeParamData {
+    pub fn is_late_bound(&self) -> bool {
+        self.bound_type == LifetimeBoundType::LateBound
+    }
+}
+
 /// Data about a generic const parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ConstParamData {
@@ -306,10 +312,7 @@ impl GenericParams {
 
     #[inline]
     pub fn len_late_bound_lifetimes(&self) -> usize {
-        self.lifetimes
-            .iter()
-            .filter(|(_, p)| !p.is_opaque_captured && p.bound_type == LifetimeBoundType::LateBound)
-            .count()
+        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::LateBound).count()
     }
 
     #[inline]
@@ -345,16 +348,14 @@ impl GenericParams {
     pub fn iter_lt(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
-        self.iter_early_bound_lt().chain(self.iter_late_bound_lt())
+        self.lifetimes.iter()
     }
 
     #[inline]
     pub fn iter_early_bound_lt(
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
-        self.lifetimes
-            .iter()
-            .filter(|(_, p)| p.is_opaque_captured || p.bound_type == LifetimeBoundType::EarlyBound)
+        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::EarlyBound)
     }
 
     #[inline]
@@ -412,24 +413,18 @@ impl GenericParams {
     pub fn late_bound_lifetime_idx(
         &self,
         lifetime_param_id: &LocalLifetimeParamId,
-        is_opaque_lowering: bool,
     ) -> Option<usize> {
         self.iter_late_bound_lt().position(|(id, data)| {
-            !(is_opaque_lowering && data.is_opaque_captured)
-                && data.bound_type == LifetimeBoundType::LateBound
-                && id == *lifetime_param_id
+            data.bound_type == LifetimeBoundType::LateBound && id == *lifetime_param_id
         })
     }
 
     pub fn early_bound_lifetime_idx(
         &self,
         lifetime_param_id: &LocalLifetimeParamId,
-        is_opaque_lowering: bool,
     ) -> Option<usize> {
         self.iter_early_bound_lt().position(|(id, data)| {
-            ((is_opaque_lowering && data.is_opaque_captured)
-                || data.bound_type == LifetimeBoundType::EarlyBound)
-                && id == *lifetime_param_id
+            data.bound_type == LifetimeBoundType::EarlyBound && id == *lifetime_param_id
         })
     }
 }

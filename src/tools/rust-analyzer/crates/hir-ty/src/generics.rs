@@ -83,6 +83,16 @@ impl<'db> SingleGenerics<'db> {
             .map(move |(local_id, data)| (LifetimeParamId { parent, local_id }, data))
     }
 
+    fn iter_late_bound_lifetimes(
+        &self,
+        consider_late_bound: bool,
+    ) -> impl Iterator<Item = (LifetimeParamId, &'db LifetimeParamData)> {
+        let parent = self.def;
+        self.params.iter_late_bound_lt().filter_map(move |(local_id, data)| {
+            consider_late_bound.then_some((LifetimeParamId { parent, local_id }, data))
+        })
+    }
+
     pub(crate) fn iter_type_or_consts(
         &self,
     ) -> impl Iterator<Item = (TypeOrConstParamId, &'db TypeOrConstParamData)> {
@@ -118,23 +128,33 @@ impl<'db> SingleGenerics<'db> {
         (trait_self, iter)
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
-        let lifetimes = self.iter_lifetimes().map(|(id, data)| {
+    pub(crate) fn iter(
+        &self,
+        consider_late_bound: bool,
+    ) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
+        let lifetime_map = |(id, data)| {
             (GenericParamId::LifetimeParamId(id), GenericParamDataRef::LifetimeParamData(data))
-        });
+        };
+        let lifetimes = self.iter_lifetimes().map(lifetime_map);
+        let late_bound_lifetimes =
+            self.iter_late_bound_lifetimes(consider_late_bound).map(lifetime_map);
+
         let (trait_self, type_and_consts) = self.trait_self_and_others();
-        trait_self.into_iter().chain(lifetimes).chain(type_and_consts)
+        trait_self.into_iter().chain(lifetimes).chain(type_and_consts).chain(late_bound_lifetimes)
     }
 
     pub(crate) fn iter_with_idx(
         &self,
     ) -> impl Iterator<Item = (u32, GenericParamId, GenericParamDataRef<'db>)> {
-        std::iter::zip(self.preceding_params_len.., self.iter())
+        std::iter::zip(self.preceding_params_len.., self.iter(false))
             .map(|(index, (id, data))| (index, id, data))
     }
 
-    pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> {
-        self.iter().map(|(id, _)| id)
+    pub(crate) fn iter_id(
+        &self,
+        consider_late_bound: bool,
+    ) -> impl Iterator<Item = GenericParamId> {
+        self.iter(consider_late_bound).map(|(id, _)| id)
     }
 
     pub(crate) fn iter_late_bound(
@@ -148,6 +168,18 @@ impl<'db> SingleGenerics<'db> {
                 GenericParamDataRef::LifetimeParamData(data),
             )
         })
+    }
+
+    pub(crate) fn type_or_const_param(&self, param_id: TypeParamId) -> GenericParamDataRef<'db> {
+        let data = &self.params[param_id.local_id()];
+        match data {
+            TypeOrConstParamData::TypeParamData(type_param_data) => {
+                GenericParamDataRef::TypeParamData(type_param_data)
+            }
+            TypeOrConstParamData::ConstParamData(const_param_data) => {
+                GenericParamDataRef::ConstParamData(const_param_data)
+            }
+        }
     }
 }
 
@@ -182,7 +214,7 @@ impl<'db> Generics<'db> {
     pub(crate) fn iter_self(
         &self,
     ) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
-        self.owner().iter()
+        self.owner().iter(false)
     }
 
     pub(crate) fn iter_self_with_idx(
@@ -198,7 +230,7 @@ impl<'db> Generics<'db> {
     }
 
     pub(crate) fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> {
-        self.parent().into_iter().flat_map(|parent| parent.iter_id())
+        self.parent().into_iter().flat_map(move |parent| parent.iter_id(false))
     }
 
     pub(crate) fn iter_self_type_or_consts(
@@ -208,13 +240,18 @@ impl<'db> Generics<'db> {
     }
 
     /// Iterate over the parent params followed by self params.
-    #[cfg(test)]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'_>)> {
-        self.iter_owners().flat_map(|owner| owner.iter())
+    pub(crate) fn iter(
+        &self,
+        consider_late_bound: bool,
+    ) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
+        self.iter_owners().flat_map(move |owner| owner.iter(consider_late_bound))
     }
 
-    pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> {
-        self.iter_owners().flat_map(|owner| owner.iter_id())
+    pub(crate) fn iter_id(
+        &self,
+        consider_late_bound: bool,
+    ) -> impl Iterator<Item = GenericParamId> {
+        self.iter_owners().flat_map(move |owner| owner.iter_id(consider_late_bound))
     }
 
     /// Returns total number of generic parameters in scope, including those from parent.
@@ -298,16 +335,19 @@ impl<'db> Generics<'db> {
     pub(crate) fn lifetime_param_idx(
         &self,
         param: LifetimeParamId,
-        is_opaque_lowering: bool,
+        is_lowering_impl_trait_bounds: bool,
     ) -> (u32, bool) {
         let owner = self.find_owner(param.parent);
-        if let Some(late_bound_idx) =
-            owner.params.late_bound_lifetime_idx(&param.local_id, is_opaque_lowering)
-        {
+        if is_lowering_impl_trait_bounds {
+            let idx = self.opaque_lifetime_idx(param);
+            return (owner.preceding_params_len + (idx as u32), false);
+        }
+
+        if let Some(late_bound_idx) = owner.params.late_bound_lifetime_idx(&param.local_id) {
             return (late_bound_idx as u32, true);
         }
         let has_trait_self = matches!(owner.def, GenericDefId::TraitId(_));
-        match owner.params.early_bound_lifetime_idx(&param.local_id, is_opaque_lowering) {
+        match owner.params.early_bound_lifetime_idx(&param.local_id) {
             Some(idx) => {
                 (owner.preceding_params_len + u32::from(has_trait_self) + (idx as u32), false)
             }
@@ -325,6 +365,22 @@ impl<'db> Generics<'db> {
             store: ExpressionStore::empty(),
         });
         Generics { chain }
+    }
+
+    pub(crate) fn type_or_const_param(&self, param_id: TypeParamId) -> GenericParamDataRef<'db> {
+        self.find_owner(param_id.parent()).type_or_const_param(param_id)
+    }
+
+    fn opaque_lifetime_idx(&self, param: LifetimeParamId) -> usize {
+        self.find_owner(param.parent)
+            .iter_id(true)
+            .position(|id| {
+                let GenericParamId::LifetimeParamId(id) = id else {
+                    return false;
+                };
+                param == id
+            })
+            .unwrap()
     }
 }
 

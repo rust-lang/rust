@@ -67,7 +67,8 @@ use crate::{
         FnSigKind, FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PatList, Pattern,
         PolyFnSig, Predicate, Region, StoredClauses, StoredConst, StoredEarlyBinder,
         StoredGenericArg, StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy,
-        TraitPredicate, TraitRef, Ty, Tys, Unnormalized, abi::Safety, util::BottomUpFolder,
+        TraitPredicate, TraitRef, Ty, Tys, Unnormalized, abi::Safety, mk_param,
+        util::BottomUpFolder,
     },
 };
 
@@ -248,6 +249,7 @@ pub struct TyLoweringContext<'db, 'a> {
     forbid_params_after_reason: ForbidParamsAfterReason,
     pub(crate) defined_anon_consts: ThinVec<AnonConstId>,
     infer_vars: Option<&'a mut dyn TyLoweringInferVarsCtx<'db>>,
+    is_lowering_impl_trait_bounds: bool,
     bound_vars: Vec<BoundVarKinds<'db>>, // FIXME: HRTB and other for lifetime doesn't change it now
     lifetime_lowering_mode: LifetimeLoweringMode,
 }
@@ -288,6 +290,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             forbid_params_after_reason: ForbidParamsAfterReason::AnonConst,
             defined_anon_consts: ThinVec::new(),
             infer_vars: None,
+            is_lowering_impl_trait_bounds: false,
             bound_vars,
             lifetime_lowering_mode,
         }
@@ -631,8 +634,41 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             });
                         self.impl_trait_mode.opaque_type_data[idx] = actual_opaque_type_data;
 
-                        let args =
-                            GenericArgs::identity_for_item(self.interner, opaque_ty_id.into());
+                        let mut late_bound_index = 0;
+                        let args = GenericArgs::for_item(
+                            self.interner,
+                            opaque_ty_id.into(),
+                            |index, param @ (id, data), _| {
+                                if let GenericParamDataRef::LifetimeParamData(lt) = data
+                                    && lt.is_late_bound()
+                                {
+                                    let GenericParamId::LifetimeParamId(id) = id else {
+                                        unreachable!()
+                                    };
+                                    let bound_region_kind =
+                                        BoundRegionKind::Named(id.parent.into());
+                                    let region = match self.lifetime_lowering_mode {
+                                        LifetimeLoweringMode::Bound => Region::new_bound(
+                                            interner,
+                                            self.in_binders,
+                                            BoundRegion {
+                                                var: BoundVar::from_u32(late_bound_index),
+                                                kind: bound_region_kind,
+                                            },
+                                        ),
+                                        LifetimeLoweringMode::LateParam => Region::new_late_param(
+                                            interner,
+                                            self.generic_def.into(),
+                                            bound_region_kind,
+                                        ),
+                                    };
+                                    late_bound_index += 1;
+                                    return region.into();
+                                }
+
+                                mk_param(interner, index - late_bound_index, param)
+                            },
+                        );
                         Ty::new_alias(
                             self.interner,
                             AliasTy::new_from_args(
@@ -1209,6 +1245,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             self.interner,
             AliasTy::new_from_args(interner, rustc_type_ir::Opaque { def_id: def_id.into() }, args),
         );
+        let prev_is_lowering_impl_trait_bounds =
+            mem::replace(&mut self.is_lowering_impl_trait_bounds, true);
         let (predicates, assoc_ty_bounds_start) =
             self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
                 let mut predicates = Vec::new();
@@ -1230,14 +1268,18 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             trait_id.into(),
                             GenericArgs::new_from_slice(&[self_ty.into()]),
                         );
+                        let binder = BoundVarKinds::new_from_slice(ctx.bound_vars.last().unwrap());
                         Clause(Predicate::new(
                             interner,
-                            Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                    trait_ref,
-                                    polarity: rustc_type_ir::PredicatePolarity::Positive,
-                                }),
-                            )),
+                            Binder::bind_with_vars(
+                                rustc_type_ir::PredicateKind::Clause(
+                                    rustc_type_ir::ClauseKind::Trait(TraitPredicate {
+                                        trait_ref,
+                                        polarity: rustc_type_ir::PredicatePolarity::Positive,
+                                    }),
+                                ),
+                                binder,
+                            ),
                         ))
                     });
                     predicates.extend(sized_clause);
@@ -1248,6 +1290,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 (predicates, assoc_ty_bounds_start)
             });
 
+        self.is_lowering_impl_trait_bounds = prev_is_lowering_impl_trait_bounds;
         ImplTrait {
             predicates: Clauses::new_from_slice(&predicates).store(),
             assoc_ty_bounds_start,
@@ -1259,10 +1302,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             Some(resolution) => match resolution {
                 LifetimeNs::Static => Region::new_static(self.interner),
                 LifetimeNs::LifetimeParam(id) => {
-                    let is_opaque_lowering =
-                        self.impl_trait_mode.mode == ImplTraitLoweringMode::Opaque;
                     let (idx, is_late_bound) =
-                        self.generics().lifetime_param_idx(id, is_opaque_lowering);
+                        self.generics().lifetime_param_idx(id, self.is_lowering_impl_trait_bounds);
                     self.region_param(id, idx, is_late_bound)
                 }
             },
