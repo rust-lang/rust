@@ -99,7 +99,7 @@ the need to specify them manually.
 Well known names and values are implicitly added as long as at least one `--check-cfg` argument
 is present.
 
-As of `2025-01-02T`, the list of known names is as follows:
+As of `2026-05-15T`, the list of known names is as follows:
 
 <!--- See CheckCfg::fill_well_known in compiler/rustc_session/src/config.rs -->
 
@@ -122,6 +122,7 @@ As of `2025-01-02T`, the list of known names is as follows:
  - `target_endian`
  - `target_env`
  - `target_family`
+ - `target_object_format`
  - `target_feature`
  - `target_has_atomic`
  - `target_has_atomic_primitive_alignment`
@@ -131,6 +132,7 @@ As of `2025-01-02T`, the list of known names is as follows:
  - `target_thread_local`
  - `target_vendor`
  - `ub_checks`
+ - `contract_checks`
  - `unix`
  - `windows`
 
