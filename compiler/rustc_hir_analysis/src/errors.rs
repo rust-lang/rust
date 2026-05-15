@@ -15,6 +15,8 @@ pub(crate) mod wrong_number_of_generic_args;
 mod precise_captures;
 pub(crate) use precise_captures::*;
 
+pub(crate) mod remove_or_use_generic;
+
 #[derive(Diagnostic)]
 #[diag("ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`")]
 pub(crate) struct AmbiguousAssocItem<'a> {
