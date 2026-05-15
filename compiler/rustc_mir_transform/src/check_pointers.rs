@@ -1,5 +1,4 @@
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -58,12 +57,6 @@ pub(crate) fn check_pointers<'tcx, F>(
         /* source_info: */ SourceInfo,
     ) -> PointerCheck<'tcx>,
 {
-    // This pass emits new panics. If for whatever reason we do not have a panic
-    // implementation, running this pass may cause otherwise-valid code to not compile.
-    if tcx.lang_items().get(LangItem::PanicImpl).is_none() {
-        return;
-    }
-
     let typing_env = body.typing_env(tcx);
     let basic_blocks = body.basic_blocks.as_mut();
     let local_decls = &mut body.local_decls;
