@@ -1673,6 +1673,14 @@ pub(crate) struct UnsupportedDelegation<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("delegation self type is not specified")]
+#[help("consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`")]
+pub(crate) struct DelegationSelfTypeNotSpecified {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("method should be `async` or return a future, but it is synchronous")]
 pub(crate) struct MethodShouldReturnFuture {
     #[primary_span]
