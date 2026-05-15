@@ -15,7 +15,7 @@ fn main() {
 }
 ```
 
-The detailed documentation for the `std::autodiff` module is available at [std::autodiff](https://doc.rust-lang.org/std/autodiff/index.html).
+The detailed documentation for the `std::autodiff` module is available at [std::autodiff](https://doc.rust-lang.org/nightly/std/autodiff/index.html).
 
 Differentiable programming is used in various fields like numerical computing, [solid mechanics][ratel], [computational chemistry][molpipx], [fluid dynamics][waterlily] or for Neural Network training via Backpropagation, [ODE solver][diffsol], [differentiable rendering][libigl], [quantum computing][catalyst], and climate simulations.
 
@@ -25,3 +25,5 @@ Differentiable programming is used in various fields like numerical computing, [
 [diffsol]: https://github.com/martinjrobins/diffsol
 [libigl]: https://github.com/alecjacobson/libigl-enzyme-example?tab=readme-ov-file#run
 [catalyst]: https://github.com/PennyLaneAI/catalyst
+
+
