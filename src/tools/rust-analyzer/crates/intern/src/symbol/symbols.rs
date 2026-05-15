@@ -671,4 +671,7 @@ define_symbols! {
     deref_patterns,
     mut_ref,
     type_changing_struct_update,
+    RangeMin,
+    RangeMax,
+    RangeSub,
 }
