@@ -14,8 +14,8 @@ impl<X> Projector for dyn Animal<X> {
 
 fn make_static<'a, T>(t: &'a T) -> &'static T {
     let x: <dyn Animal<&'a T> as Projector>::Foo = t;
-    let any = generic::<dyn Animal<&'a T>, &'a T>(x);
     //~^ ERROR: lifetime may not live long enough
+    let any = generic::<dyn Animal<&'a T>, &'a T>(x);
     any.downcast_ref::<&'static T>().unwrap()
 }
 

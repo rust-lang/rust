@@ -12,7 +12,7 @@ use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArgsRef, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_session::errors::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -997,6 +997,27 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             }
                         });
                     self.out.extend(obligations);
+
+                    for (pred, _) in tcx
+                        .explicit_implied_predicates_of(principal_def_id)
+                        .iter_instantiated_copied(tcx, args)
+                        .map(Unnormalized::skip_norm_wip)
+                    {
+                        if !pred.has_escaping_bound_vars()
+                            && !matches!(
+                                pred.kind().skip_binder(),
+                                ty::ClauseKind::Trait(tp) if tp.self_ty() == t
+                            )
+                        {
+                            self.out.push(traits::Obligation::with_depth(
+                                tcx,
+                                self.cause(ObligationCauseCode::WellFormed(None)),
+                                self.recursion_depth,
+                                self.param_env,
+                                pred,
+                            ));
+                        }
+                    }
                 }
 
                 if !t.has_escaping_bound_vars() {
