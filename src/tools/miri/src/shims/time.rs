@@ -334,11 +334,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let deadline = this.read_scalar(deadline_op)?.to_u64()?;
         // Our mach_absolute_time "ticks" are plain nanoseconds.
-        let duration = Duration::from_nanos(deadline);
+        let deadline = Duration::from_nanos(deadline);
+        // This is *absolute* time.
+        let deadline = this.machine.monotonic_clock.epoch().add_lossy(deadline);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Absolute, duration)),
+            Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -362,10 +364,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(duration) = this.read_timespec(&duration)? else {
             return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
+        let deadline = this.machine.monotonic_clock.now().add_lossy(duration);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
+            Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -401,14 +404,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         };
 
-        let timeout_anchor = if flags == 0 {
+        let timeout_style = if flags == 0 {
             // No flags set, the timespec should be interpreted as a duration
-            // to sleep for
-            TimeoutAnchor::Relative
+            // to sleep for, i.e., a relative time.
+            TimeoutStyle::Relative
         } else if flags == this.eval_libc_i32("TIMER_ABSTIME") {
             // Only flag TIMER_ABSTIME set, the timespec should be interpreted as
             // an absolute time.
-            TimeoutAnchor::Absolute
+            TimeoutStyle::Absolute
         } else {
             // The standard lib (through `sleep_until`) only needs TIMER_ABSTIME
             throw_unsup_format!(
@@ -416,10 +419,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 TIMER_ABSTIME is supported"
             );
         };
+        let deadline = this.machine.timeout(TimeoutClock::Monotonic, timeout_style, duration);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, timeout_anchor, duration)),
+            Some(deadline),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {
@@ -440,10 +444,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 
         let duration = Duration::from_millis(timeout_ms.into());
+        let deadline = this.machine.monotonic_clock.now().add_lossy(duration);
 
         this.block_thread(
             BlockReason::Sleep,
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
+            Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
                 |_this, unblock: UnblockKind| {

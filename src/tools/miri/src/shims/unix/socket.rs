@@ -3,7 +3,6 @@ use std::io;
 use std::io::Read;
 use std::net::{Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4};
 use std::sync::atomic::AtomicBool;
-use std::time::Duration;
 
 use mio::event::Source;
 use mio::net::{TcpListener, TcpStream};
@@ -1780,16 +1779,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If we should wait until the connection is established, the timeout is `None`.
         // Otherwise, we use a zero duration timeout, i.e. we return immediately
         // (but we still go through the scheduler once -- which is fine).
-        let timeout = if should_wait {
-            None
-        } else {
-            Some((TimeoutClock::Monotonic, TimeoutAnchor::Absolute, Duration::ZERO))
-        };
+        let deadline =
+            if should_wait { None } else { Some(this.machine.monotonic_clock.now().into()) };
 
         this.block_thread_for_io(
             socket.clone(),
             BlockingIoInterest::Write,
-            timeout,
+            deadline,
             callback!(
                 @capture<'tcx> {
                     socket: FileDescriptionRef<Socket>,

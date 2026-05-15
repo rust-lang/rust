@@ -355,7 +355,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         &mut self,
         source_fd: FileDescriptionRef<dyn SourceFileDescription>,
         interest: BlockingIoInterest,
-        timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
+        deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -370,7 +370,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         } else {
             // The I/O readiness is currently not fulfilled. We block the thread
             // until the readiness is fulfilled and execute the callback then.
-            this.block_thread(BlockReason::IO, timeout, callback);
+            this.block_thread(BlockReason::IO, deadline, callback);
             interp_ok(())
         }
     }
