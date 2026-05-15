@@ -3,7 +3,7 @@
 
 #![feature(min_generic_const_args)]
 
-trait Bar<const N: bool = false> {}
+trait Bar<const N: usize = const { 1 + 1 }> {}
 
 trait Foo {
     type AssocB: Bar;
