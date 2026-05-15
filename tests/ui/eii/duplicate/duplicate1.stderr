@@ -1,10 +1,10 @@
 error: multiple implementations of `#[eii1]`
-  --> $DIR/auxiliary/impl1.rs:10:1
+  --> $DIR/auxiliary/impl1.rs:9:1
    |
 LL | fn other(x: u64) {
    | ^^^^^^^^^^^^^^^^ first implemented here in crate `impl1`
    |
-  ::: $DIR/auxiliary/impl2.rs:10:1
+  ::: $DIR/auxiliary/impl2.rs:9:1
    |
 LL | fn other(x: u64) {
    | ---------------- also implemented here in crate `impl2`
