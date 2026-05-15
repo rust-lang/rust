@@ -199,11 +199,15 @@ impl<'k> StatCollector<'k> {
     }
     fn to_json_entries(&self, prefix: &str) -> Vec<(String, usize)> {
         let mut out = Vec::new();
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut keys: Vec<_> = self.nodes.keys().collect();
         keys.sort();
         for label in keys {
             let node = &self.nodes[label];
             out.push((format!("{prefix}.{label}.count"), node.stats.count));
+            // We will soon sort, so the initial order does not matter.
+            #[allow(rustc::potential_query_instability)]
             let mut sub_keys: Vec<_> = node.subnodes.keys().collect();
             sub_keys.sort();
             for sub_label in sub_keys {
