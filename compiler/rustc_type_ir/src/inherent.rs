@@ -472,6 +472,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>

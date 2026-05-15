@@ -303,13 +303,10 @@ impl<'tcx> BestObligation<'tcx> {
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         assert!(!self.consider_ambiguities);
         let tcx = goal.infcx().tcx;
-        if let ty::Alias(..) = self_ty.kind() {
+        if let ty::Alias(alias) = *self_ty.kind() {
             let infer_term = goal.infcx().next_ty_var(self.obligation.cause.span);
-            let pred = ty::PredicateKind::AliasRelate(
-                self_ty.into(),
-                infer_term.into(),
-                ty::AliasRelationDirection::Equate,
-            );
+            let pred =
+                ty::ProjectionPredicate { projection_term: alias.into(), term: infer_term.into() };
             let obligation =
                 Obligation::new(tcx, self.obligation.cause.clone(), goal.goal().param_env, pred);
             self.with_derived_obligation(obligation, |this| {
