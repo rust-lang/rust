@@ -14,6 +14,7 @@ use crate::ty::TyCtxt;
 pub struct QueryJobId(pub NonZero<u64>);
 
 /// Represents an active query job.
+// TODO: remake this as a singly-linked graph
 #[derive(Clone, Debug)]
 pub struct QueryJob<'tcx> {
     pub id: QueryJobId,

@@ -626,10 +626,30 @@ pub fn mark_blocked() {
     }
 }
 
+#[inline]
+pub fn park(validate: impl FnOnce(usize) -> bool) -> bool {
+    let worker_thread = WorkerThread::current();
+    assert!(!worker_thread.is_null());
+    unsafe {
+        let registry = &(*worker_thread).registry;
+        registry.sleep.park(validate, (*worker_thread).index)
+    }
+}
+
 /// Mark a previously blocked Rayon worker thread as unblocked
 #[inline]
 pub fn mark_unblocked(registry: &Registry) {
     registry.sleep.mark_unblocked()
+}
+
+#[inline]
+pub fn unpark(thread_index: usize) {
+    let worker_thread = WorkerThread::current();
+    assert!(!worker_thread.is_null());
+    unsafe {
+        let registry = &(*worker_thread).registry;
+        registry.sleep.unpark(thread_index);
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

@@ -909,7 +909,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// By only providing the `TyCtxt` inside of the closure we enforce that the type
     /// context and any interned value (types, args, etc.) can only be used while `ty::tls`
     /// has a valid reference to the context, to allow formatting values that need it.
-    pub fn create_global_ctxt<T>(
+    pub fn create_global_ctxt<T, F>(
         gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
         sess: &'tcx Session,
         crate_types: Vec<CrateType>,
@@ -923,8 +923,11 @@ impl<'tcx> TyCtxt<'tcx> {
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
         jobserver_proxy: Arc<Proxy>,
-        f: impl FnOnce(TyCtxt<'tcx>) -> T,
-    ) -> T {
+        f: F,
+    ) -> T
+    where
+        F: for<'a> FnOnce(TyCtxt<'a>) -> T,
+    {
         let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
             sess.dcx().emit_fatal(err);
         });

@@ -9,23 +9,16 @@
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
+use std::ptr::{drop_in_place, slice_from_raw_parts_mut};
+use std::slice;
+use std::sync::atomic::{AtomicPtr, Ordering};
 
 use rustc_index::Idx;
 
+use crate::cache_entry::CacheEntry;
+
 #[cfg(test)]
 mod tests;
-
-struct Slot<V> {
-    // We never construct &Slot<V> so it's fine for this to not be in an UnsafeCell.
-    value: V,
-    // This is both an index and a once-lock.
-    //
-    // 0: not yet initialized.
-    // 1: lock held, initializing.
-    // 2..u32::MAX - 2: initialized.
-    index_and_lock: AtomicU32,
-}
 
 /// This uniquely identifies a single `Slot<V>` entry in the buckets map, and provides accessors for
 /// either getting the value or putting a value.
@@ -71,7 +64,10 @@ impl SlotIndex {
     // SAFETY: Buckets must be managed solely by functions here (i.e., get/put on SlotIndex) and
     // `self` comes from SlotIndex::from_index
     #[inline]
-    unsafe fn get<V: Copy>(&self, buckets: &[AtomicPtr<Slot<V>>; 21]) -> Option<(V, u32)> {
+    unsafe fn get<'a, V: Copy>(
+        &self,
+        buckets: &'a [AtomicPtr<CacheEntry<V>>; 21],
+    ) -> Option<&'a CacheEntry<V>> {
         let bucket = &buckets[self.bucket_idx];
         let ptr = bucket.load(Ordering::Acquire);
         // Bucket is not yet initialized: then we obviously won't find this entry in that bucket.
@@ -81,37 +77,24 @@ impl SlotIndex {
         debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
-        let slot = unsafe { ptr.add(self.index_in_bucket) };
+        let entry_ptr = unsafe { ptr.add(self.index_in_bucket) };
 
         // SAFETY: initialized bucket has zeroed all memory within the bucket, so we are valid for
-        // AtomicU32 access.
-        let index_and_lock = unsafe { &(*slot).index_and_lock };
-        let current = index_and_lock.load(Ordering::Acquire);
-        let index = match current {
-            0 => return None,
-            // Treat "initializing" as actually just not initialized at all.
-            // The only reason this is a separate state is that `complete` calls could race and
-            // we can't allow that, but from load perspective there's no difference.
-            1 => return None,
-            _ => current - 2,
-        };
-
-        // SAFETY:
-        // * slot is a valid pointer (buckets are always valid for the index we get).
-        // * value is initialized since we saw a >= 2 index above.
-        // * `V: Copy`, so safe to read.
-        let value = unsafe { (*slot).value };
-        Some((value, index))
+        // CacheEntry access.
+        Some(unsafe { &*entry_ptr })
     }
 
-    fn bucket_ptr<V>(&self, bucket: &AtomicPtr<Slot<V>>) -> *mut Slot<V> {
+    fn bucket_ptr<V>(&self, bucket: &AtomicPtr<CacheEntry<V>>) -> *mut CacheEntry<V> {
         let ptr = bucket.load(Ordering::Acquire);
         if ptr.is_null() { Self::initialize_bucket(bucket, self.bucket_idx) } else { ptr }
     }
 
     #[cold]
     #[inline(never)]
-    fn initialize_bucket<V>(bucket: &AtomicPtr<Slot<V>>, bucket_idx: BucketIndex) -> *mut Slot<V> {
+    fn initialize_bucket<V>(
+        bucket: &AtomicPtr<CacheEntry<V>>,
+        bucket_idx: BucketIndex,
+    ) -> *mut CacheEntry<V> {
         static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
         // If we are initializing the bucket, then acquire a global lock.
@@ -126,12 +109,13 @@ impl SlotIndex {
         // initialize this bucket.
         if ptr.is_null() {
             let bucket_layout =
-                std::alloc::Layout::array::<Slot<V>>(bucket_idx.capacity()).unwrap();
+                std::alloc::Layout::array::<CacheEntry<V>>(bucket_idx.capacity()).unwrap();
             // This is more of a sanity check -- this code is very cold, so it's safe to pay a
             // little extra cost here.
             assert!(bucket_layout.size() > 0);
             // SAFETY: Just checked that size is non-zero.
-            let allocated = unsafe { std::alloc::alloc_zeroed(bucket_layout).cast::<Slot<V>>() };
+            let allocated =
+                unsafe { std::alloc::alloc_zeroed(bucket_layout).cast::<CacheEntry<V>>() };
             if allocated.is_null() {
                 std::alloc::handle_alloc_error(bucket_layout);
             }
@@ -146,65 +130,18 @@ impl SlotIndex {
 
     /// Returns true if this successfully put into the map.
     #[inline]
-    fn put<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21], value: V, extra: u32) -> bool {
+    fn get_or_init<'a, V>(&self, buckets: &'a [AtomicPtr<CacheEntry<V>>; 21]) -> &'a CacheEntry<V> {
         let bucket = &buckets[self.bucket_idx];
         let ptr = self.bucket_ptr(bucket);
 
         debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
-        let slot = unsafe { ptr.add(self.index_in_bucket) };
+        let entry_ptr = unsafe { ptr.add(self.index_in_bucket) };
 
         // SAFETY: initialized bucket has zeroed all memory within the bucket, so we are valid for
-        // AtomicU32 access.
-        let index_and_lock = unsafe { &(*slot).index_and_lock };
-        match index_and_lock.compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire) {
-            Ok(_) => {
-                // We have acquired the initialization lock. It is our job to write `value` and
-                // then set the lock to the real index.
-
-                unsafe {
-                    (&raw mut (*slot).value).write(value);
-                }
-
-                index_and_lock.store(extra.checked_add(2).unwrap(), Ordering::Release);
-
-                true
-            }
-
-            // Treat "initializing" as the caller's fault. Callers are responsible for ensuring that
-            // there are no races on initialization. In the compiler's current usage for query
-            // caches, that's the "active query map" which ensures each query actually runs once
-            // (even if concurrently started).
-            Err(1) => panic!("caller raced calls to put()"),
-
-            // This slot was already populated. Also ignore, currently this is the same as
-            // "initializing".
-            Err(_) => false,
-        }
-    }
-
-    /// Inserts into the map, given that the slot is unique, so it won't race with other threads.
-    #[inline]
-    unsafe fn put_unique<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21], value: V, extra: u32) {
-        let bucket = &buckets[self.bucket_idx];
-        let ptr = self.bucket_ptr(bucket);
-
-        debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
-        // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
-        // must be inbounds.
-        let slot = unsafe { ptr.add(self.index_in_bucket) };
-
-        // SAFETY: We known our slot is unique as a precondition of this function, so this can't race.
-        unsafe {
-            (&raw mut (*slot).value).write(value);
-        }
-
-        // SAFETY: initialized bucket has zeroed all memory within the bucket, so we are valid for
-        // AtomicU32 access.
-        let index_and_lock = unsafe { &(*slot).index_and_lock };
-
-        index_and_lock.store(extra.checked_add(2).unwrap(), Ordering::Release);
+        // CacheEntry access.
+        unsafe { &*entry_ptr }
     }
 }
 
@@ -231,54 +168,35 @@ pub struct VecCache<K: Idx, V, I> {
     // Bucket 19: 1073741824
     // Bucket 20: 2147483648
     // The total number of entries if all buckets are initialized is 2^32.
-    buckets: [AtomicPtr<Slot<V>>; BUCKETS],
-
-    // In the compiler's current usage these are only *read* during incremental and self-profiling.
-    // They are an optimization over iterating the full buckets array.
-    present: [AtomicPtr<Slot<()>>; BUCKETS],
-    len: AtomicUsize,
+    buckets: [AtomicPtr<CacheEntry<V>>; BUCKETS],
 
     key: PhantomData<(K, I)>,
 }
 
 impl<K: Idx, V, I> Default for VecCache<K, V, I> {
     fn default() -> Self {
-        VecCache {
-            buckets: Default::default(),
-            key: PhantomData,
-            len: Default::default(),
-            present: Default::default(),
-        }
+        VecCache { buckets: Default::default(), key: PhantomData }
     }
 }
 
 // SAFETY: No access to `V` is made.
 unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
     fn drop(&mut self) {
-        // We have unique ownership, so no locks etc. are needed. Since `K` and `V` are both `Copy`,
+        // We have unique ownership, so no locks etc. are needed. Since `K` is `Copy`,
         // we are also guaranteed to just need to deallocate any large arrays (not iterate over
         // contents).
-        //
-        // Confirm no need to deallocate individual entries. Note that `V: Copy` is asserted on
-        // insert/lookup but not necessarily construction, primarily to avoid annoyingly propagating
-        // the bounds into struct definitions everywhere.
         assert!(!std::mem::needs_drop::<K>());
-        assert!(!std::mem::needs_drop::<V>());
 
         for (idx, bucket) in BucketIndex::enumerate_buckets(&self.buckets) {
             let bucket = bucket.load(Ordering::Acquire);
             if !bucket.is_null() {
-                let layout = std::alloc::Layout::array::<Slot<V>>(ENTRIES_BY_BUCKET[idx]).unwrap();
-                unsafe {
-                    std::alloc::dealloc(bucket.cast(), layout);
+                if std::mem::needs_drop::<V>() {
+                    unsafe {
+                        drop_in_place(slice_from_raw_parts_mut(bucket, ENTRIES_BY_BUCKET[idx]))
+                    }
                 }
-            }
-        }
-
-        for (idx, bucket) in BucketIndex::enumerate_buckets(&self.present) {
-            let bucket = bucket.load(Ordering::Acquire);
-            if !bucket.is_null() {
-                let layout = std::alloc::Layout::array::<Slot<()>>(ENTRIES_BY_BUCKET[idx]).unwrap();
+                let layout =
+                    std::alloc::Layout::array::<CacheEntry<V>>(ENTRIES_BY_BUCKET[idx]).unwrap();
                 unsafe {
                     std::alloc::dealloc(bucket.cast(), layout);
                 }
@@ -290,54 +208,32 @@ unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
 impl<K, V, I> VecCache<K, V, I>
 where
     K: Eq + Idx + Copy + Debug,
-    V: Copy,
     I: Idx + Copy,
 {
-    #[inline(always)]
-    pub fn lookup(&self, key: &K) -> Option<(V, I)> {
-        let key = u32::try_from(key.index()).unwrap();
-        let slot_idx = SlotIndex::from_index(key);
-        match unsafe { slot_idx.get(&self.buckets) } {
-            Some((value, idx)) => Some((value, I::new(idx as usize))),
-            None => None,
-        }
-    }
-
     #[inline]
-    pub fn complete(&self, key: K, value: V, index: I) {
+    pub fn lookup(&self, key: K) -> &CacheEntry<V> {
         let key = u32::try_from(key.index()).unwrap();
         let slot_idx = SlotIndex::from_index(key);
-        if slot_idx.put(&self.buckets, value, index.index() as u32) {
-            let present_idx = self.len.fetch_add(1, Ordering::Relaxed);
-            let slot = SlotIndex::from_index(u32::try_from(present_idx).unwrap());
-            // SAFETY: We should always be uniquely putting due to `len` fetch_add returning unique values.
-            // We can't get here if `len` overflows because `put` will not succeed u32::MAX + 1 times
-            // as it will run out of slots.
-            unsafe { slot.put_unique(&self.present, (), key) };
-        }
+        slot_idx.get_or_init(&self.buckets)
     }
 
-    pub fn for_each(&self, f: &mut dyn FnMut(&K, &V, I)) {
-        for idx in 0..self.len.load(Ordering::Acquire) {
-            let key = SlotIndex::from_index(idx as u32);
-            match unsafe { key.get(&self.present) } {
-                // This shouldn't happen in our current usage (iter is really only
-                // used long after queries are done running), but if we hit this in practice it's
-                // probably fine to just break early.
-                None => unreachable!(),
-                Some(((), key)) => {
-                    let key = K::new(key as usize);
-                    // unwrap() is OK: present entries are always written only after we put the real
-                    // entry.
-                    let value = self.lookup(&key).unwrap();
-                    f(&key, &value.0, value.1);
+    pub fn for_each(&self, mut f: impl FnMut(K, &V, I)) {
+        for (bucket_idx, bucket) in BucketIndex::enumerate_buckets(&self.buckets) {
+            let mut idx =
+                if let BucketIndex::Bucket00 = bucket_idx { 0 } else { bucket_idx.capacity() };
+            let bucket = bucket.load(Ordering::Acquire);
+            if !bucket.is_null() {
+                let entries =
+                    unsafe { slice::from_raw_parts(bucket, ENTRIES_BY_BUCKET[bucket_idx]) };
+                for entry in entries {
+                    if let Some((value, additional_index)) = entry.get_finished() {
+                        let key = K::new(idx);
+                        f(key, value, I::new(additional_index as usize));
+                    }
+                    idx += 1;
                 }
             }
         }
-    }
-
-    pub fn len(&self) -> usize {
-        self.len.load(Ordering::Acquire)
     }
 }
 

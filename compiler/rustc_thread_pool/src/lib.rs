@@ -95,7 +95,7 @@ pub use worker_local::WorkerLocal;
 pub use self::broadcast::{BroadcastContext, broadcast, spawn_broadcast};
 pub use self::join::{join, join_context};
 use self::registry::{CustomSpawn, DefaultSpawn, ThreadSpawn};
-pub use self::registry::{Registry, ThreadBuilder, mark_blocked, mark_unblocked};
+pub use self::registry::{Registry, ThreadBuilder, mark_blocked, mark_unblocked, park, unpark};
 pub use self::scope::{Scope, ScopeFifo, in_place_scope, in_place_scope_fifo, scope, scope_fifo};
 pub use self::spawn::{spawn, spawn_fifo};
 pub use self::thread_pool::{

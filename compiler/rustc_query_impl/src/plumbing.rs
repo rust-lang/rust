@@ -92,8 +92,8 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
     assert!(all_inactive(&query.state));
-    query.cache.for_each(&mut |key, value, dep_node| {
-        if (query.will_cache_on_disk_for_key_fn)(*key) {
+    query.cache.for_each(|key, value, dep_node| {
+        if (query.will_cache_on_disk_for_key_fn)(key) {
             encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
         }
     });
@@ -116,10 +116,10 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
     let _timer = tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name);
 
     let cache = &query.cache;
-    let mut map = UnordMap::with_capacity(cache.len());
-    cache.for_each(&mut |key, _, _| {
-        let node = DepNode::construct(tcx, query.dep_kind, key);
-        if let Some(other_key) = map.insert(node, *key) {
+    let mut map = UnordMap::default();
+    cache.for_each(|key, _, _| {
+        let node = DepNode::construct(tcx, query.dep_kind, &key);
+        if let Some(other_key) = map.insert(node, key) {
             bug!(
                 "query key:\n\
                 `{:?}`\n\
@@ -156,9 +156,10 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
         return;
     }
 
-    match query.cache.lookup(&key) {
+    let entry = query.cache.lookup(key);
+    match entry.try_start() {
         // If the value is already in memory, then promotion isn't needed.
-        Some(_) => {}
+        None => {}
 
         // "Execute" the query to load its disk-cached value into memory.
         //
@@ -167,8 +168,8 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
         //
         // FIXME(Zalathar): Is there a reasonable way to skip more of the
         // query bookkeeping when doing this?
-        None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get);
+        Some(entry) => {
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get { entry });
         }
     }
 }

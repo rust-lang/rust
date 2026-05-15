@@ -1,10 +1,10 @@
 //! Helper functions that serve as the immediate implementation of
 //! `tcx.$query(..)` and its variations.
 
+use rustc_data_structures::cache_entry::{CacheEntry, EntryInProgress};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::dep_graph;
-use crate::dep_graph::DepNodeKey;
+use crate::dep_graph::{self, DepNodeIndex, DepNodeKey};
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::{EnsureMode, QueryCache, QueryMode, QueryVTable};
 use crate::ty::TyCtxt;
@@ -14,12 +14,26 @@ use crate::ty::TyCtxt;
 ///
 /// (Also performs some associated bookkeeping, if a value was found.)
 #[inline(always)]
-fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: C::Key) -> Option<C::Value>
-where
-    C: QueryCache,
-{
-    match cache.lookup(&key) {
+fn get_cached_or_start<'tcx, 'a, V>(
+    tcx: TyCtxt<'tcx>,
+    cache_entry: &'a CacheEntry<V>,
+) -> Result<&'a V, EntryInProgress<'a, V>> {
+    match cache_entry.get_or_start() {
+        Ok((value, index)) => {
+            let index = DepNodeIndex::from_u32(index);
+            tcx.prof.query_cache_hit(index.into());
+            tcx.dep_graph.read_index(index);
+            Ok(value)
+        }
+        Err(in_progress) => Err(in_progress),
+    }
+}
+
+#[inline(always)]
+fn try_get_cached<'tcx, 'a, V>(tcx: TyCtxt<'tcx>, cache_entry: &'a CacheEntry<V>) -> Option<&'a V> {
+    match cache_entry.get() {
         Some((value, index)) => {
+            let index = DepNodeIndex::from_u32(index);
             tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
             Some(value)
@@ -40,9 +54,10 @@ pub(crate) fn query_get_at<'tcx, C>(
 where
     C: QueryCache,
 {
-    match try_get_cached(tcx, &query.cache, key) {
-        Some(value) => value,
-        None => (query.execute_query_fn)(tcx, span, key, QueryMode::Get).unwrap(),
+    let entry = query.cache.lookup(key);
+    match get_cached_or_start(tcx, entry) {
+        Ok(value) => *value,
+        Err(entry) => *(query.execute_query_fn)(tcx, span, key, QueryMode::Get { entry }).unwrap(),
     }
 }
 
@@ -57,10 +72,11 @@ pub(crate) fn query_ensure_ok_or_done<'tcx, C>(
 ) where
     C: QueryCache,
 {
-    match try_get_cached(tcx, &query.cache, key) {
+    let entry = query.cache.lookup(key);
+    match try_get_cached(tcx, entry) {
         Some(_value) => {}
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode, entry });
         }
     }
 }
@@ -84,17 +100,18 @@ where
         }
     };
 
-    match try_get_cached(tcx, &query.cache, key) {
-        Some(value) => convert(value),
+    let entry = query.cache.lookup(key);
+    match try_get_cached(tcx, entry) {
+        Some(value) => convert(*value),
         None => {
             match (query.execute_query_fn)(
                 tcx,
                 DUMMY_SP,
                 key,
-                QueryMode::Ensure { ensure_mode: EnsureMode::Ok },
+                QueryMode::Ensure { ensure_mode: EnsureMode::Ok, entry },
             ) {
                 // We executed the query. Convert the successful result.
-                Some(res) => convert(res),
+                Some(res) => convert(*res),
 
                 // Reaching here means we didn't execute the query, but we can just assume the
                 // query succeeded, because it was green in the incremental cache. If it is green,
@@ -122,14 +139,15 @@ pub(crate) fn query_feed<'tcx, C>(
     let format_value = query.format_value;
 
     // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, &query.cache, key) {
-        Some(old) => {
+    let entry = query.cache.lookup(key);
+    match get_cached_or_start(tcx, entry) {
+        Ok(old) => {
             // The query already has a cached value for this key.
             // That's OK if both values are the same, i.e. they have the same hash,
             // so now we check their hashes.
             if let Some(hash_value_fn) = query.hash_value_fn {
                 let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
+                    (hash_value_fn(hcx, old), hash_value_fn(hcx, &value))
                 });
                 if old_hash != value_hash {
                     // We have an inconsistency. This can happen if one of the two
@@ -138,7 +156,7 @@ pub(crate) fn query_feed<'tcx, C>(
                     tcx.dcx().delayed_bug(format!(
                         "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                         old value: {old}\nnew value: {value}",
-                        old = format_value(&old),
+                        old = format_value(old),
                         value = format_value(&value),
                     ));
                 }
@@ -149,12 +167,12 @@ pub(crate) fn query_feed<'tcx, C>(
                 bug!(
                     "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                     old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
+                    old = format_value(old),
                     value = format_value(&value),
                 )
             }
         }
-        None => {
+        Err(entry) => {
             // There is no cached value for this key, so feed the query by
             // adding the provided value to the cache.
             let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
@@ -165,7 +183,7 @@ pub(crate) fn query_feed<'tcx, C>(
                 query.hash_value_fn,
                 query.format_value,
             );
-            query.cache.complete(key, value, dep_node_index);
+            entry.complete(value, dep_node_index.as_u32());
         }
     }
 }

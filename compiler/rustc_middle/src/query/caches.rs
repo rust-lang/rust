@@ -1,6 +1,7 @@
-use std::sync::OnceLock;
-
+use rustc_arena::TypedArena;
+use rustc_data_structures::cache_entry::CacheEntry;
 use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sync::{DynSend, DynSync, WorkerLocal};
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -20,104 +21,92 @@ pub trait QueryCache: Sized {
 
     /// Returns the cached value (and other information) associated with the
     /// given key, if it is present in the cache.
-    fn lookup(&self, key: &Self::Key) -> Option<(Self::Value, DepNodeIndex)>;
-
-    /// Adds a key/value entry to this cache.
-    ///
-    /// Called by some part of the query system, after having obtained the
-    /// value by executing the query or loading a cached value from disk.
-    fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex);
+    fn lookup(&self, key: Self::Key) -> &CacheEntry<Self::Value>;
 
     /// Calls a closure on each entry in this cache.
-    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
-
-    /// Returns the number of entries currently in this cache.
-    ///
-    /// Useful for reserving capacity in data structures that will hold the
-    /// output of a call to [`Self::for_each`].
-    fn len(&self) -> usize;
+    fn for_each(&self, f: impl FnMut(Self::Key, &Self::Value, DepNodeIndex));
 }
+
+struct SyncConstPtr<T>(*const T);
+
+impl<T> Copy for SyncConstPtr<T> {}
+
+impl<T> Clone for SyncConstPtr<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+unsafe impl<T: Sync> Send for SyncConstPtr<T> {}
+unsafe impl<T: Sync> Sync for SyncConstPtr<T> {}
+unsafe impl<T: DynSync> DynSend for SyncConstPtr<T> {}
+unsafe impl<T: DynSync> DynSync for SyncConstPtr<T> {}
 
 /// In-memory cache for queries whose keys aren't suitable for any of the
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
-    cache: ShardedHashMap<K, (V, DepNodeIndex)>,
+    cache: ShardedHashMap<K, SyncConstPtr<CacheEntry<V>>>,
+    arena: WorkerLocal<TypedArena<CacheEntry<V>>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
-        DefaultCache { cache: Default::default() }
+        DefaultCache { cache: Default::default(), arena: Default::default() }
     }
 }
 
-impl<K, V> QueryCache for DefaultCache<K, V>
+impl<K, V: Copy> QueryCache for DefaultCache<K, V>
 where
     K: QueryKey,
-    V: Copy,
 {
     type Key = K;
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        self.cache.get(key)
-    }
-
-    #[inline]
-    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        self.cache.insert_unique(key, (value, index));
-    }
-
-    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        for shard in self.cache.lock_shards() {
-            for (k, v) in shard.iter() {
-                f(k, &v.0, v.1);
-            }
+    fn lookup(&self, key: K) -> &CacheEntry<V> {
+        // FIXME: zero out arena to avoid writes
+        unsafe {
+            &*self
+                .cache
+                .get_or_insert_with(key, || SyncConstPtr(self.arena.alloc(CacheEntry::empty())))
+                .0
         }
     }
 
-    fn len(&self) -> usize {
-        self.cache.len()
+    fn for_each(&self, mut f: impl FnMut(Self::Key, &Self::Value, DepNodeIndex)) {
+        for shard in self.cache.lock_shards() {
+            for &(k, ent) in shard.iter() {
+                let Some((v, i)) = (unsafe { (*ent.0).get_finished() }) else { continue };
+                f(k, v, DepNodeIndex::from_u32(i));
+            }
+        }
     }
 }
 
 /// In-memory cache for queries whose key type only has one value (e.g. `()`).
 /// The cache therefore only needs to store one query return value.
 pub struct SingleCache<V> {
-    cache: OnceLock<(V, DepNodeIndex)>,
+    entry: CacheEntry<V>,
 }
 
 impl<V> Default for SingleCache<V> {
     fn default() -> Self {
-        SingleCache { cache: OnceLock::new() }
+        SingleCache { entry: CacheEntry::empty() }
     }
 }
 
-impl<V> QueryCache for SingleCache<V>
-where
-    V: Copy,
-{
+impl<V: Copy> QueryCache for SingleCache<V> {
     type Key = ();
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
-        self.cache.get().copied()
+    fn lookup(&self, _key: ()) -> &CacheEntry<V> {
+        &self.entry
     }
 
-    #[inline]
-    fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
-        self.cache.set((value, index)).ok();
-    }
-
-    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        if let Some(value) = self.cache.get() {
-            f(&(), &value.0, value.1)
+    fn for_each(&self, mut f: impl FnMut(Self::Key, &Self::Value, DepNodeIndex)) {
+        if let Some((value, index)) = self.entry.get_finished() {
+            f((), value, DepNodeIndex::from_u32(index))
         }
-    }
-
-    fn len(&self) -> usize {
-        self.cache.get().is_some().into()
     }
 }
 
@@ -138,66 +127,41 @@ impl<V> Default for DefIdCache<V> {
     }
 }
 
-impl<V> QueryCache for DefIdCache<V>
-where
-    V: Copy,
-{
+impl<V: Copy> QueryCache for DefIdCache<V> {
     type Key = DefId;
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, key: &DefId) -> Option<(V, DepNodeIndex)> {
+    fn lookup(&self, key: DefId) -> &CacheEntry<V> {
         if key.krate == LOCAL_CRATE {
-            self.local.lookup(&key.index)
+            self.local.lookup(key.index)
         } else {
             self.foreign.lookup(key)
         }
     }
 
-    #[inline]
-    fn complete(&self, key: DefId, value: V, index: DepNodeIndex) {
-        if key.krate == LOCAL_CRATE {
-            self.local.complete(key.index, value, index)
-        } else {
-            self.foreign.complete(key, value, index)
-        }
-    }
-
-    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        self.local.for_each(&mut |key, value, index| {
-            f(&DefId { krate: LOCAL_CRATE, index: *key }, value, index);
+    fn for_each(&self, mut f: impl FnMut(Self::Key, &Self::Value, DepNodeIndex)) {
+        self.local.for_each(|index, value, dep_index| {
+            f(DefId { krate: LOCAL_CRATE, index }, value, dep_index);
         });
         self.foreign.for_each(f);
     }
-
-    fn len(&self) -> usize {
-        self.local.len() + self.foreign.len()
-    }
 }
 
-impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
+impl<K, V: Copy> QueryCache for VecCache<K, V, DepNodeIndex>
 where
     K: Idx + QueryKey,
-    V: Copy,
 {
     type Key = K;
     type Value = V;
 
     #[inline(always)]
-    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
+    fn lookup(&self, key: K) -> &CacheEntry<V> {
         self.lookup(key)
     }
 
-    #[inline]
-    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        self.complete(key, value, index)
-    }
-
-    fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+    #[inline(always)]
+    fn for_each(&self, f: impl FnMut(K, &V, DepNodeIndex)) {
         self.for_each(f)
-    }
-
-    fn len(&self) -> usize {
-        self.len()
     }
 }

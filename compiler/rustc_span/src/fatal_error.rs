@@ -12,6 +12,7 @@ pub use rustc_data_structures::FatalErrorMarker;
 impl !Send for FatalError {}
 
 impl FatalError {
+    #[cold]
     pub fn raise(self) -> ! {
         std::panic::resume_unwind(Box::new(FatalErrorMarker))
     }

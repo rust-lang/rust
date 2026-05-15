@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::Deref;
 
+use rustc_data_structures::cache_entry::{CacheEntry, EntryInProgress};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::hash_table::HashTable;
@@ -57,12 +58,11 @@ pub struct Cycle<'tcx> {
     pub frames: Vec<QueryStackFrame<'tcx>>,
 }
 
-#[derive(Debug)]
-pub enum QueryMode {
+pub enum QueryMode<'a, V> {
     /// This is a normal query call to `tcx.$query(..)` or `tcx.at(span).$query(..)`.
-    Get,
+    Get { entry: EntryInProgress<'a, V> },
     /// This is a call to `tcx.ensure_ok().$query(..)` or `tcx.ensure_done().$query(..)`.
-    Ensure { ensure_mode: EnsureMode },
+    Ensure { entry: &'a CacheEntry<V>, ensure_mode: EnsureMode },
 }
 
 /// Distinguishes between `tcx.ensure_ok()` and `tcx.ensure_done()` in shared
@@ -130,7 +130,8 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// and putting the obtained value into the in-memory cache.
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+    pub execute_query_fn:
+        for<'a> fn(TyCtxt<'tcx>, Span, C::Key, QueryMode<'a, C::Value>) -> Option<&'a C::Value>,
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
