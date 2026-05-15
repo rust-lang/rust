@@ -16,14 +16,6 @@ error[E0275]: overflow evaluating the requirement `<Vec<u8> as Trait<String>>::P
 LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0275]: overflow evaluating the requirement `<Vec<u8> as Trait<String>>::Proof == _`
-  --> $DIR/item-bound-via-impl-where-clause.rs:31:21
-   |
-LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0275`.
