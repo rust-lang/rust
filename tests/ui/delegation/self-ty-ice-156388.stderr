@@ -1,0 +1,10 @@
+error: delegation self type is not specified
+  --> $DIR/self-ty-ice-156388.rs:5:16
+   |
+LL | reuse Default::default;
+   |                ^^^^^^^
+   |
+   = help: consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`
+
+error: aborting due to 1 previous error
+
