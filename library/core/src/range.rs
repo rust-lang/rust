@@ -23,6 +23,8 @@ mod iter;
 #[stable(feature = "new_range_api_legacy", since = "CURRENT_RUSTC_VERSION")]
 pub mod legacy;
 
+use core::ops::Bound::{self, Excluded, Included, Unbounded};
+
 #[doc(inline)]
 #[stable(feature = "new_range_from_api", since = "1.96.0")]
 pub use iter::RangeFromIter;
@@ -33,19 +35,13 @@ pub use iter::RangeInclusiveIter;
 #[stable(feature = "new_range_api", since = "1.96.0")]
 pub use iter::RangeIter;
 
-// FIXME(#125687): re-exports temporarily removed
-// Because re-exports of stable items (Bound, RangeBounds, RangeFull, RangeTo)
-// can't be made unstable.
-//
-// #[doc(inline)]
-// #[unstable(feature = "new_range_api", issue = "125687")]
-// pub use crate::iter::Step;
-// #[doc(inline)]
-// #[unstable(feature = "new_range_api", issue = "125687")]
-// pub use crate::ops::{Bound, IntoBounds, OneSidedRange, RangeBounds, RangeFull, RangeTo};
 use crate::iter::Step;
-use crate::ops::Bound::{self, Excluded, Included, Unbounded};
+// FIXME(one_sided_range): These types should move into this module.
+// FIXME(range_into_bounds): Ditto. Also consider re-exporting `RangeBounds` and related.
 use crate::ops::{IntoBounds, OneSidedRange, OneSidedRangeBound, RangeBounds};
+#[doc(inline)]
+#[stable(feature = "new_range_api_exports", since = "CURRENT_RUSTC_VERSION")]
+pub use crate::ops::{RangeFull, RangeTo};
 
 /// A (half-open) range bounded inclusively below and exclusively above.
 ///
