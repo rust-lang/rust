@@ -20,7 +20,7 @@
 const CONST_VISIBILITY: u8 = 0;
 
 #[cfg(not(bpass1))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
 pub const CONST_VISIBILITY: u8 = 0;
 
@@ -30,7 +30,7 @@ pub const CONST_VISIBILITY: u8 = 0;
 const CONST_CHANGE_TYPE_1: i32 = 0;
 
 #[cfg(not(bpass1))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="bpass2", except="owner,type_of")]
 #[rustc_clean(cfg="bpass3")]
 const CONST_CHANGE_TYPE_1: u32 = 0;
 
@@ -40,13 +40,13 @@ const CONST_CHANGE_TYPE_1: u32 = 0;
 const CONST_CHANGE_TYPE_2: Option<u32> = None;
 
 #[cfg(not(bpass1))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="bpass2", except="owner,type_of")]
 #[rustc_clean(cfg="bpass3")]
 const CONST_CHANGE_TYPE_2: Option<u64> = None;
 
 
 // Change value between simple literals
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
 const CONST_CHANGE_VALUE_1: i16 = {
     #[cfg(bpass1)]
@@ -58,7 +58,7 @@ const CONST_CHANGE_VALUE_1: i16 = {
 
 
 // Change value between expressions
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
 const CONST_CHANGE_VALUE_2: i16 = {
     #[cfg(bpass1)]
@@ -68,7 +68,7 @@ const CONST_CHANGE_VALUE_2: i16 = {
     { 1 + 2 }
 };
 
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
 const CONST_CHANGE_VALUE_3: i16 = {
     #[cfg(bpass1)]
@@ -78,7 +78,7 @@ const CONST_CHANGE_VALUE_3: i16 = {
     { 2 * 3 }
 };
 
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
 const CONST_CHANGE_VALUE_4: i16 = {
     #[cfg(bpass1)]
@@ -100,11 +100,11 @@ mod const_change_type_indirectly {
     #[cfg(not(bpass1))]
     use super::ReferencedType2 as Type;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="bpass2", except="owner,type_of")]
     #[rustc_clean(cfg="bpass3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
-    #[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,type_of")]
+    #[rustc_clean(cfg="bpass2", except="owner,type_of")]
     #[rustc_clean(cfg="bpass3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

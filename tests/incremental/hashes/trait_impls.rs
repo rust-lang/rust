@@ -33,9 +33,9 @@ impl ChangeMethodNameTrait for Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass2")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="owner,associated_item_def_ids,predicates_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 pub trait ChangeMethodNameTrait {
     #[rustc_clean(cfg="bpass3")]
@@ -44,9 +44,9 @@ pub trait ChangeMethodNameTrait {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass2")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass5")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodNameTrait for Foo {
     #[rustc_clean(cfg="bpass3")]
@@ -76,12 +76,12 @@ impl ChangeMethodBodyTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodBodyTrait for Foo {
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass2")]
+    #[rustc_clean(except="owner,typeck_root", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck_root", cfg="bpass5")]
+    #[rustc_clean(except="owner,typeck_root", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method_name() {
         ()
@@ -111,12 +111,12 @@ impl ChangeMethodBodyTraitInlined for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodBodyTraitInlined for Foo {
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck_root,optimized_mir", cfg="bpass2")]
+    #[rustc_clean(except="owner,typeck_root,optimized_mir", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,typeck_root,optimized_mir", cfg="bpass5")]
+    #[rustc_clean(except="owner,typeck_root,optimized_mir", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     #[inline]
     fn method_name() {
@@ -144,16 +144,16 @@ pub trait ChangeMethodSelfnessTrait {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="opt_hir_owner_nodes,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="opt_hir_owner_nodes,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]
@@ -182,16 +182,16 @@ pub trait RemoveMethodSelfnessTrait {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl RemoveMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="opt_hir_owner_nodes,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="opt_hir_owner_nodes,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]
@@ -222,12 +222,12 @@ pub trait ChangeMethodSelfmutnessTrait {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodSelfmutnessTrait for Foo {
-    #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
+    #[rustc_clean(except="owner,fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="bpass5")]
+    #[rustc_clean(except="owner,fn_sig,typeck_root,optimized_mir", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method_name(&mut self) {}
 }
@@ -250,9 +250,9 @@ pub trait ChangeItemKindTrait {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass2")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass5")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeItemKindTrait for Foo {
     type name = ();
@@ -278,9 +278,9 @@ pub trait RemoveItemTrait {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass2")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass5")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl RemoveItemTrait for Foo {
     type TypeName = ();
@@ -305,9 +305,9 @@ pub trait AddItemTrait {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass2")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,associated_item_def_ids", cfg="bpass5")]
+#[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl AddItemTrait for Foo {
     type TypeName = ();
@@ -333,12 +333,12 @@ impl ChangeHasValueTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(except="owner,predicates_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 pub trait ChangeHasValueTrait {
-    #[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+    #[rustc_clean(except="owner", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+    #[rustc_clean(except="owner", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method_name() { }
 }
@@ -370,12 +370,12 @@ impl AddDefaultTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl AddDefaultTrait for Foo {
-    #[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+    #[rustc_clean(except="owner", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+    #[rustc_clean(except="owner", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     default fn method_name() { }
 }
@@ -404,12 +404,12 @@ pub trait AddArgumentTrait {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl AddArgumentTrait for Foo {
-    #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
+    #[rustc_clean(except="owner,fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="bpass5")]
+    #[rustc_clean(except="owner,fn_sig,typeck_root,optimized_mir", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method_name(&self, _x: u32) { }
 }
@@ -438,12 +438,12 @@ pub trait ChangeArgumentTypeTrait {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeArgumentTypeTrait for Foo {
-    #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
+    #[rustc_clean(except="owner,fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="opt_hir_owner_nodes,fn_sig,typeck_root,optimized_mir", cfg="bpass5")]
+    #[rustc_clean(except="owner,fn_sig,typeck_root,optimized_mir", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method_name(&self, _x: char) { }
 }
@@ -463,18 +463,18 @@ impl AddTypeParameterToImpl<u32> for Bar<u32> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,generics_of,impl_trait_header", cfg="bpass2")]
+#[rustc_clean(except="owner,generics_of,impl_trait_header", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,generics_of,impl_trait_header", cfg="bpass5")]
+#[rustc_clean(except="owner,generics_of,impl_trait_header", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl<TTT> AddTypeParameterToImpl<TTT> for Bar<TTT> {
     #[rustc_clean(
-        except="opt_hir_owner_nodes,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
+        except="owner,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="opt_hir_owner_nodes,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
+        except="owner,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]
@@ -494,9 +494,9 @@ impl ChangeSelfTypeOfImpl for u32 {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,impl_trait_header", cfg="bpass2")]
+#[rustc_clean(except="owner,impl_trait_header", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes,impl_trait_header", cfg="bpass5")]
+#[rustc_clean(except="owner,impl_trait_header", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl ChangeSelfTypeOfImpl for u64 {
     #[rustc_clean(except="fn_sig,typeck_root,optimized_mir", cfg="bpass2")]
@@ -519,9 +519,9 @@ impl<T> AddLifetimeBoundToImplParameter for T {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+#[rustc_clean(except="owner", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl<T: 'static> AddLifetimeBoundToImplParameter for T {
     #[rustc_clean(cfg="bpass2")]
@@ -544,9 +544,9 @@ impl<T> AddTraitBoundToImplParameter for T {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass2")]
+#[rustc_clean(except="owner", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="opt_hir_owner_nodes", cfg="bpass5")]
+#[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl<T: Clone> AddTraitBoundToImplParameter for T {
     #[rustc_clean(cfg="bpass2")]

@@ -52,6 +52,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashState;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -626,8 +627,13 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.local_def_id_to_hir_id(HirId::make_owner(self.def_id()));
-        self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes::synthetic())));
+        self.owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
+            nodes: self.tcx.arena.alloc(hir::OwnerNodes::synthetic()),
+            parenting: self.tcx.arena.alloc(Default::default()),
+            delayed_lints: self.tcx.arena.alloc(Steal::new(Default::default())),
+            trait_map: self.tcx.arena.alloc(Default::default()),
+        }));
+
         self.feed_owner_id().hir_attr_map(hir::AttributeMap::EMPTY);
     }
 }

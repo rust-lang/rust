@@ -10,7 +10,7 @@
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
-#[rustc_clean(except = "opt_hir_owner_nodes", cfg = "bpass2")]
+#[rustc_clean(except = "owner", cfg = "bpass2")]
 pub fn foo() {
     #[cfg(bpass1)]
     pub fn baz() {} // order is different...

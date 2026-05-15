@@ -16,7 +16,8 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModDefId};
+use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -58,14 +59,14 @@ impl<'hir> Crate<'hir> {
     /// `owners` of `hir_crate` or it can be delayed AST owner (i.e., delegations)
     /// we need to firstly check in `hir_crate` and then delayed AST owners.
     /// This method can be invoked when not all delayed AST owners are lowered.
-    pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
+    pub fn owner(&'hir self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> &'hir MaybeOwner<'hir> {
         // Delayed LocalDefId can be in `self.owners` if there exists non-delayed LocalDefId
         // which is greater than delayed LocalDefId, we use IndexVec for owners,
         // so we will call ensure_contains_elem which will grow it.
         if let Some(owner) = self.owners.get(def_id)
             && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
         {
-            return *owner;
+            return owner;
         }
 
         if self.delayed_ids.contains(&def_id) {
@@ -422,8 +423,7 @@ impl<'tcx> TyCtxt<'tcx> {
             HirId {
                 owner: parent_owner_id,
                 local_id: self
-                    .hir_crate(())
-                    .owner(self, parent_owner_id.def_id)
+                    .owner(parent_owner_id.def_id)
                     .unwrap()
                     .parenting
                     .get(&owner_id.def_id)
@@ -452,23 +452,65 @@ pub struct Hashes {
     pub attrs_hash: Option<Fingerprint>,
 }
 
+/// Unites some of `OwnerInfo`'s fields into same struct that is used by owner `query`.
+/// `AttributeMap` is handled separately as placing it in this struct led to perf regressions:
+/// <https://github.com/rust-lang/rust/pull/155678#issuecomment-4304597871>.
+/// This struct is created mainly for uniting/splitting fields of `OwnerInfo` so they are
+/// stored/invalidated together in incremental compilation.
+/// For comments about each field see `OwnerInfo` struct.
+#[derive(Debug, StableHash)]
+pub struct ProjectedOwnerInfo<'tcx> {
+    pub nodes: &'tcx OwnerNodes<'tcx>,
+    pub parenting: &'tcx LocalDefIdMap<ItemLocalId>,
+    pub trait_map: &'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>,
+
+    #[stable_hash(ignore)]
+    pub delayed_lints: &'tcx Steal<DelayedLints>,
+}
+
+#[derive(Debug, StableHash)]
+pub enum ProjectedMaybeOwner<'tcx> {
+    Owner(ProjectedOwnerInfo<'tcx>),
+    NonOwner(HirId),
+}
+
+impl<'tcx> ProjectedMaybeOwner<'tcx> {
+    pub fn create_from(value: &'tcx MaybeOwner<'tcx>, def_id: LocalDefId) -> Self {
+        match value {
+            MaybeOwner::Owner(o) => ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
+                nodes: &o.nodes,
+                parenting: &o.parenting,
+                trait_map: &o.trait_map,
+                delayed_lints: &o.delayed_lints,
+            }),
+            MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(*hir_id),
+            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
+        }
+    }
+
+    pub fn as_owner(&'tcx self) -> Option<&'tcx ProjectedOwnerInfo<'tcx>> {
+        match self {
+            ProjectedMaybeOwner::Owner(i) => Some(i),
+            ProjectedMaybeOwner::NonOwner(_) => None,
+        }
+    }
+
+    pub fn unwrap(&'tcx self) -> &'tcx ProjectedOwnerInfo<'tcx> {
+        self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
+    }
+}
+
 pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
-        MaybeOwner::Owner(_) => HirId::make_owner(def_id),
-        MaybeOwner::NonOwner(hir_id) => hir_id,
-        MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
-    };
-    providers.opt_hir_owner_nodes =
-        |tcx, id| tcx.hir_crate(()).owner(tcx, id).as_owner().map(|i| &i.nodes);
-    providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.opt_ast_lowering_delayed_lints =
-        |tcx, id| tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|o| &o.delayed_lints);
+    providers.owner = |tcx, def_id| {
+        ProjectedMaybeOwner::create_from(tcx.hir_crate(()).owner(tcx, def_id), def_id)
+    };
+    providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -508,7 +550,4 @@ pub fn provide(providers: &mut Providers) {
         |tcx, trait_id| tcx.resolutions(()).trait_impls.get(&trait_id).map_or(&[], |xs| &xs[..]);
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
-    providers.in_scope_traits_map = |tcx, id| {
-        tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|owner_info| &owner_info.trait_map)
-    };
 }

@@ -25,9 +25,9 @@ pub fn change_closure_body() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_closure_body() {
     let _ = || 3u32;
@@ -43,9 +43,9 @@ pub fn add_parameter() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner, typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner, typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_parameter() {
     let x = 0u32;
@@ -61,9 +61,9 @@ pub fn change_parameter_pattern() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner, typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner, typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_parameter_pattern() {
     let _ = |(x,): (u32,)| x;
@@ -78,9 +78,9 @@ pub fn add_move() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_move() {
     let _ = move || 1;
@@ -96,9 +96,9 @@ pub fn add_type_ascription_to_parameter() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg = "bpass2", except = "owner, typeck_root")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg = "bpass5", except = "owner, typeck_root")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
@@ -115,9 +115,9 @@ pub fn change_parameter_type() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_parameter_type() {
     let closure = |x: u16| (x as u64) + 1;
