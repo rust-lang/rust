@@ -492,7 +492,13 @@ fn render_resolution_path(
             ..CompletionRelevance::default()
         });
 
-        path_ref_match(completion, path_ctx, &ty, &mut item);
+        match resolution {
+            ScopeDef::Local(_)
+            | ScopeDef::ModuleDef(ModuleDef::Const(_) | ModuleDef::Static(_)) => {
+                path_ref_match(completion, path_ctx, &ty, &mut item)
+            }
+            _ => (),
+        }
     };
 
     match resolution {
@@ -720,7 +726,7 @@ fn compute_ref_match(
             || completion_ty.could_unify_with(ctx.db, expected_without_ref))
         && completion_ty
             .autoderef(ctx.db)
-            .any(|ty| ty.could_unify_with(ctx.db, expected_without_ref))
+            .any(|ty| !ty.is_unknown() && ty.could_unify_with(ctx.db, expected_without_ref))
     {
         cov_mark::hit!(suggest_ref);
         let mutability = if expected_type.is_mutable_reference() {
@@ -2639,7 +2645,6 @@ fn go(world: &WorldSnapshot) { go(w$0) }
                 st WorldSnapshot {…} WorldSnapshot { _f: () } []
                 st &WorldSnapshot {…} [type]
                 st WorldSnapshot WorldSnapshot []
-                st &WorldSnapshot [type]
                 fn go(…) fn(&WorldSnapshot) []
             "#]],
         );
@@ -2865,7 +2870,6 @@ fn main() {
                 st S S []
                 st &mut S [type]
                 st S S []
-                st &mut S [type]
                 fn foo(…) fn(&mut S) []
                 fn main() fn() []
             "#]],
@@ -2879,6 +2883,7 @@ fn main() {
     foo(&mut $0);
 }
             "#,
+            // FIXME: There are many `S` here
             expect![[r#"
                 lc s S [type+name+local]
                 st S S [type]
@@ -2941,8 +2946,31 @@ fn main() {
                 lc ssss S<u32> [local]
                 lc &mut ssss [type+local]
                 st S S<{unknown}> []
-                st &mut S [type]
                 fn foo(…) fn(&mut S<T>) []
+                fn main() fn() []
+            "#]],
+        );
+        // Regression test https://github.com/rust-lang/rust-analyzer/issues/22324
+        check_relevance(
+            r#"
+//- minicore: deref
+struct S<T>(T);
+impl<T> core::ops::Deref for S<T> {
+    type Target = T;
+}
+fn foo<T>(s: &u32) {}
+fn main() {
+    let ssss = S();
+    foo($0);
+}
+            "#,
+            // FIXME: term_search exclude ssss.0 (field.ty().is_unknown())
+            expect![[r#"
+                ex ssss.0  [type_could_unify]
+                lc ssss S<{unknown}> [local]
+                st S S<{unknown}> []
+                md core::  []
+                fn foo(…) fn(&u32) []
                 fn main() fn() []
             "#]],
         );
@@ -3016,9 +3044,7 @@ fn main() {
                 lc t T [local]
                 lc &t [type+local]
                 st S S []
-                st &S [type]
                 st T T []
-                st &T [type]
                 md core::  []
                 fn foo(…) fn(&S) []
                 fn main() fn() []
@@ -3065,9 +3091,7 @@ fn main() {
                 lc t T [local]
                 lc &mut t [type+local]
                 st S S []
-                st &mut S [type]
                 st T T []
-                st &mut T [type]
                 md core::  []
                 fn foo(…) fn(&mut S) []
                 fn main() fn() []
@@ -3131,7 +3155,6 @@ fn bar(t: &Foo) {}
                 ev Foo::B Foo::B []
                 ev &Foo::B [type]
                 en Foo Foo []
-                en &Foo [type]
                 fn bar(…) fn(&Foo) []
                 fn foo() fn() []
             "#]],
@@ -3166,9 +3189,7 @@ fn main() {
                 st &S [type]
                 ex core::ops::Deref::deref(&bar())  [type_could_unify]
                 st S S []
-                st &S [type]
                 st T T []
-                st &T [type]
                 fn bar() fn() -> T []
                 fn &bar() [type]
                 md core::  []
