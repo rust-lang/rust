@@ -1,6 +1,5 @@
+//! Without the `new_range` feature enabled, `..` syntax resolves to the legacy types.
 //@ check-pass
-
-#![feature(new_range_api_legacy)]
 
 fn main() {
     // Unchanged

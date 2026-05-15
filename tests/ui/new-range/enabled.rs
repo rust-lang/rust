@@ -1,3 +1,4 @@
+//! With the `new_range` feature enabled, `..` syntax resolves to the new range types.
 //@ check-pass
 
 #![feature(new_range)]

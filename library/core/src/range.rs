@@ -20,7 +20,7 @@ use crate::hash::Hash;
 
 mod iter;
 
-#[unstable(feature = "new_range_api_legacy", issue = "125687")]
+#[stable(feature = "new_range_api_legacy", since = "CURRENT_RUSTC_VERSION")]
 pub mod legacy;
 
 #[doc(inline)]
