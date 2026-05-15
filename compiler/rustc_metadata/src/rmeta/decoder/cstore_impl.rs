@@ -341,8 +341,6 @@ provide! { tcx, def_id, other, cdata,
     has_global_allocator => { cdata.root.has_global_allocator }
     // FIXME: to be replaced with externally_implementable_items below
     has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
-    // FIXME: to be replaced with externally_implementable_items below
-    has_panic_handler => { cdata.root.has_panic_handler }
 
     externally_implementable_items => {
         cdata.get_externally_implementable_items(tcx)

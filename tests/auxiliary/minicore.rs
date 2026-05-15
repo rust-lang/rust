@@ -494,21 +494,11 @@ pub mod simd {
     pub type u8x16 = Simd<u8, 16>;
 }
 
-#[lang = "panic_info"]
-struct PanicInfo<'a> {
-    _marker: &'a (),
-}
-
 #[lang = "panic_location"]
 struct PanicLocation {
     file: &'static str,
     line: u32,
     column: u32,
-}
-
-#[panic_handler]
-fn panic_handler(_: &PanicInfo<'_>) -> ! {
-    loop {}
 }
 
 #[track_caller]

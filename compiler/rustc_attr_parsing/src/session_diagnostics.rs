@@ -108,42 +108,22 @@ pub(crate) struct DocAttributeNotAttribute {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "`#[target_feature]` cannot be applied to a {$kind ->
-        [panic_handler] `#[panic_handler]`
-        *[other] lang item
-    } function"
-)]
+#[diag("`#[target_feature]` cannot be applied to a lang item function")]
 pub(crate) struct TargetFeatureOnLangItem {
     #[primary_span]
     pub attr_span: Span,
-    pub kind: Symbol,
-    #[label(
-        "{$kind ->
-            [panic_handler] `#[panic_handler]`
-            *[other] lang item
-        } function is not allowed to have `#[target_feature]`"
-    )]
+    pub kind: Symbol, // FIXME remove
+    #[label("lang item function is not allowed to have `#[target_feature]`")]
     pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$name ->
-    [panic_impl] `#[panic_handler]`
-    *[other] `{$name}` lang item
-} function is not allowed to have `#[track_caller]`"
-)]
+#[diag("`{$name}` lang item function is not allowed to have `#[track_caller]`")]
 pub(crate) struct TrackCallerOnLangItem {
     #[primary_span]
     pub attr_span: Span,
     pub name: Symbol,
-    #[label(
-        "{$name ->
-            [panic_impl] `#[panic_handler]`
-            *[other] `{$name}` lang item
-        } function is not allowed to have `#[track_caller]`"
-    )]
+    #[label("`{$name}` lang item function is not allowed to have `#[track_caller]`")]
     pub sig_span: Span,
 }
 

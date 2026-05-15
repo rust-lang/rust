@@ -573,16 +573,6 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     }
 }
 
-#[lang = "panic_info"]
-struct PanicInfo<'a> {
-    _marker: &'a (),
-}
-
-#[panic_handler]
-fn panic_handler(_: &PanicInfo<'_>) -> ! {
-    loop {}
-}
-
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
 #[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
