@@ -192,7 +192,7 @@ warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
 LL |     target_has_atomic_primitive_alignment = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_has_atomic_primitive_alignment` are: (none), `128`, `16`, `32`, `64`, `8`, and `ptr`
+   = note: expected values for `target_has_atomic_primitive_alignment` are: `128`, `16`, `32`, `64`, `8`, and `ptr`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`

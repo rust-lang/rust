@@ -485,13 +485,10 @@ impl CheckCfg {
             sym::integer(64usize),
             sym::integer(128usize),
         ];
-        for sym in [
-            sym::target_has_atomic,
-            sym::target_has_atomic_primitive_alignment,
-            sym::target_has_atomic_load_store,
-        ] {
+        for sym in [sym::target_has_atomic, sym::target_has_atomic_load_store] {
             ins!(sym, no_values).extend(atomic_values);
         }
+        ins!(sym::target_has_atomic_primitive_alignment, empty_values).extend(atomic_values);
 
         ins!(sym::target_thread_local, no_values);
 
