@@ -438,6 +438,10 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         def: GenericDefId,
     },
+    MethodCallIllegalSizedBound {
+        #[type_visitable(ignore)]
+        call_expr: ExprId,
+    },
     MethodCallIncorrectGenericsOrder {
         #[type_visitable(ignore)]
         expr: ExprId,
