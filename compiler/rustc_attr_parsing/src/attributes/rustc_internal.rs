@@ -611,15 +611,6 @@ impl NoArgsAttributeParser for RustcHasIncoherentInherentImplsParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHasIncoherentInherentImpls;
 }
 
-pub(crate) struct PanicHandlerParser;
-
-impl NoArgsAttributeParser for PanicHandlerParser {
-    const PATH: &[Symbol] = &[sym::panic_handler];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
-    const STABILITY: AttributeStability = AttributeStability::Stable;
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Lang(LangItem::PanicImpl);
-}
-
 pub(crate) struct RustcNounwindParser;
 
 impl NoArgsAttributeParser for RustcNounwindParser {

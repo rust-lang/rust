@@ -44,6 +44,7 @@ mod global_allocator;
 mod iter;
 mod log_syntax;
 mod offload;
+mod panic_handler;
 mod pattern_type;
 mod source_util;
 mod test;
@@ -122,6 +123,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
         offload_kernel: offload::expand_kernel,
+        panic_handler: panic_handler::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
         unsafe_eii: eii::unsafe_eii,

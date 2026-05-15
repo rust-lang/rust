@@ -828,21 +828,11 @@ pub macro naked_asm() {
 
 pub static A_STATIC: u8 = 42;
 
-#[lang = "panic_info"]
-struct PanicInfo<'a> {
-    _marker: &'a (),
-}
-
 #[lang = "panic_location"]
 struct PanicLocation {
     file: &'static str,
     line: u32,
     column: u32,
-}
-
-#[panic_handler]
-fn panic_handler(_: &PanicInfo<'_>) -> ! {
-    loop {}
 }
 
 #[track_caller]

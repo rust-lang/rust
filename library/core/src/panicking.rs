@@ -13,7 +13,8 @@
 //! interface for panicking is:
 //!
 //! ```
-//! fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !
+//! #[eii(panic_handler)]
+//! fn panic_handler(pi: &core::panic::PanicInfo<'_>) -> !
 //! # { loop {} }
 //! ```
 //!
@@ -40,6 +41,10 @@ compile_error!(
     In both cases, you still need to build core, e.g. with `-Zbuild-std`"
 );
 
+/// The user defined `#[panic_handler]` function.
+#[eii(panic_handler)]
+fn panic_impl(pi: &PanicInfo<'_>) -> !;
+
 // First we define the two main entry points that all panics go through.
 // In the end both are just convenience wrappers around `panic_impl`.
 
@@ -62,13 +67,6 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         super::intrinsics::abort()
     }
 
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    unsafe extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
     let pi = PanicInfo::new(
         &fmt,
         Location::caller(),
@@ -76,8 +74,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         /* force_no_backtrace */ false,
     );
 
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
+    panic_impl(&pi)
 }
 
 /// Like `panic_fmt`, but for non-unwinding panics.
@@ -103,13 +100,6 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
                 super::intrinsics::abort()
             }
 
-            // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-            // that gets resolved to the `#[panic_handler]` function.
-            unsafe extern "Rust" {
-                #[lang = "panic_impl"]
-                fn panic_impl(pi: &PanicInfo<'_>) -> !;
-            }
-
             // PanicInfo with the `can_unwind` flag set to false forces an abort.
             let pi = PanicInfo::new(
                 &fmt,
@@ -118,8 +108,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
                 force_no_backtrace,
             );
 
-            // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-            unsafe { panic_impl(&pi) }
+            panic_impl(&pi)
         }
     )
 }

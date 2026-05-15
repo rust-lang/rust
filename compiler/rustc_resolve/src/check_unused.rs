@@ -436,7 +436,6 @@ impl Resolver<'_, '_> {
                         !tcx.is_compiler_builtins(cnum)
                             && !tcx.is_panic_runtime(cnum)
                             && !tcx.has_global_allocator(cnum)
-                            && !tcx.has_panic_handler(cnum)
                             && tcx
                                 .externally_implementable_items(cnum)
                                 .values()

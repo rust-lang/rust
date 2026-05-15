@@ -54,18 +54,10 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 // Known lang item
                 Some(lang_item) => {
                     if actual_target != lang_item.target() {
-                        // `#[panic_handler]` is turned into `#[lang = "panic_impl"]`, but in contrast
-                        // to the actual lang item attr, is applied to `Fn` instead of `ForeignFn`.
-                        if !(lang_item.is_weak()
-                            && actual_target == Target::Fn
-                            && lang_item.target() == Target::ForeignFn
-                            && matches!(lang_item, LangItem::PanicImpl))
-                        {
-                            self.tcx
+                        self.tcx
                             .dcx()
                             .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
-                            return;
-                        }
+                        return;
                     }
                     // Weak lang items are handled separately
                     if lang_item.is_weak() && actual_target == Target::ForeignFn {
@@ -312,14 +304,12 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 }
 
 /// Extracts the first `lang = "$name"` out of a list of attributes.
-/// The `#[panic_handler]` attribute is also extracted out when found.
 ///
 /// This function is used for `ast::Attribute`, for `hir::Attribute` use the `find_attr!` macro with `AttributeKind::Lang`
 pub(crate) fn extract_ast(attrs: &[rustc_ast::ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
             _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span()),
-            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span()),
             _ => return None,
         })
     })

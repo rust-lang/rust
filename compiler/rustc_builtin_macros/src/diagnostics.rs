@@ -50,6 +50,13 @@ pub(crate) struct AllocErrorMustBeFn {
 }
 
 #[derive(Diagnostic)]
+#[diag("panic_handler must be a function")]
+pub(crate) struct PanicHandlerMustBeFn {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("macro requires a boolean expression as an argument")]
 pub(crate) struct AssertRequiresBoolean {
     #[primary_span]
