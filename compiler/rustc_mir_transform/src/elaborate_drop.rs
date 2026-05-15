@@ -1,14 +1,13 @@
 use std::{fmt, iter, mem};
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug, traits};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
 
@@ -218,65 +217,20 @@ where
         let tcx = self.tcx();
         let span = self.source_info.span;
 
-        let (fut_ty, drop_fn_def_id, trait_args) = if call_destructor_only {
+        let async_drop_fn_def_id = if call_destructor_only {
             // Resolving obj.<AsyncDrop::drop>()
-            let trait_ref =
-                ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::AsyncDrop, span), [drop_ty]);
-            let (drop_trait, trait_args) = match tcx.codegen_select_candidate(
-                ty::TypingEnv::fully_monomorphized().as_query_input(trait_ref),
-            ) {
-                Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {
-                    impl_def_id,
-                    args,
-                    ..
-                })) => (*impl_def_id, *args),
-                impl_source => {
-                    span_bug!(span, "invalid `AsyncDrop` impl_source: {:?}", impl_source);
-                }
-            };
-            // impl_item_refs may be empty if drop fn is not implemented in 'impl AsyncDrop for ...'
-            // (#140974).
-            // Such code will report error, so just generate sync drop here and return
-            let Some(drop_fn_def_id) =
-                tcx.associated_item_def_ids(drop_trait).first().and_then(|&def_id| {
-                    if tcx.def_kind(def_id) == DefKind::AssocFn
-                        && tcx.check_args_compatible(def_id, trait_args)
-                    {
-                        Some(def_id)
-                    } else {
-                        None
-                    }
-                })
-            else {
-                tcx.dcx().span_delayed_bug(
-                    self.elaborator.body().span,
-                    "AsyncDrop type without correct `async fn drop(...)`.",
-                );
-                return self.new_block(
-                    unwind,
-                    TerminatorKind::Drop {
-                        place,
-                        target: succ,
-                        unwind: unwind.into_action(),
-                        replace: false,
-                        drop: None,
-                        async_fut: None,
-                    },
-                );
-            };
-            let drop_fn = Ty::new_fn_def(tcx, drop_fn_def_id, trait_args);
-            let sig = drop_fn.fn_sig(tcx);
-            let sig = tcx.instantiate_bound_regions_with_erased(sig);
-            (sig.output(), drop_fn_def_id, trait_args)
+            let async_drop_trait = tcx.require_lang_item(LangItem::AsyncDrop, span);
+            tcx.associated_item_def_ids(async_drop_trait)[0]
         } else {
             // Resolving async_drop_in_place<T> function for drop_ty
-            let drop_fn_def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, span);
-            let trait_args = tcx.mk_args(&[drop_ty.into()]);
-            let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args).skip_norm_wip();
-            let sig = tcx.instantiate_bound_regions_with_erased(sig);
-            (sig.output(), drop_fn_def_id, trait_args)
+            tcx.require_lang_item(LangItem::AsyncDropInPlace, span)
         };
 
+        let fut_ty = tcx
+            .instantiate_bound_regions_with_erased(
+                Ty::new_fn_def(tcx, async_drop_fn_def_id, [drop_ty]).fn_sig(tcx),
+            )
+            .output();
         let fut = self.new_temp(fut_ty);
 
         // #1:pin_obj_bb >>> obj_ref = &mut obj
@@ -368,7 +322,7 @@ where
             unwind,
             call_statements,
             TerminatorKind::Call {
-                func: Operand::function_handle(tcx, drop_fn_def_id, trait_args, span),
+                func: Operand::function_handle(tcx, async_drop_fn_def_id, [drop_ty.into()], span),
                 args: [Spanned { node: Operand::Move(drop_arg), span: DUMMY_SP }].into(),
                 destination: fut.into(),
                 target: Some(drop_term_bb),
