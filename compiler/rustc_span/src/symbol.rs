@@ -2011,6 +2011,7 @@ symbols! {
         sve_tuple_create4,
         sve_tuple_get,
         sve_tuple_set,
+        sve_zeroinitializer,
         sym,
         sync,
         synthetic,

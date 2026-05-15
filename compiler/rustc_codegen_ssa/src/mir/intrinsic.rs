@@ -124,6 +124,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
+                | sym::sve_zeroinitializer
                 | sym::return_address => {}
                 _ => {
                     span_bug!(
