@@ -2654,7 +2654,7 @@ impl<'b> Pattern for &'b String {
 
     #[inline]
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        Some(Utf8Pattern::StringPattern(self.as_bytes()))
+        Some(Utf8Pattern::StringPattern(self.as_str()))
     }
 }
 
