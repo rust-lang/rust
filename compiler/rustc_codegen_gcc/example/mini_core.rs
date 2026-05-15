@@ -574,6 +574,30 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     }
 }
 
+#[lang = "panic_info"]
+struct PanicInfo<'a> {
+    _marker: &'a (),
+}
+
+#[panic_handler]
+fn panic_handler(_: &PanicInfo<'_>) -> ! {
+    loop {}
+}
+
+#[track_caller]
+#[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
+#[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
+fn panic_misaligned_pointer_dereference(_required: usize, _found: usize) -> ! {
+    loop {}
+}
+
+#[track_caller]
+#[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_pointer_dereference() -> ! {
+    loop {}
+}
+
 #[lang = "eh_personality"]
 fn eh_personality() -> ! {
     loop {}
