@@ -641,6 +641,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                             |index, param @ (id, data), _| {
                                 if let GenericParamDataRef::LifetimeParamData(lt) = data
                                     && lt.is_late_bound()
+                                    && !self.is_lowering_impl_trait_bounds
                                 {
                                     let GenericParamId::LifetimeParamId(id) = id else {
                                         unreachable!()

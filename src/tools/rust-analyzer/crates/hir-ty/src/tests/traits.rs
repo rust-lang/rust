@@ -5315,3 +5315,27 @@ fn bar() {
 "#,
     );
 }
+
+#[test]
+fn async_impl_trait() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+trait Reader {}
+
+struct Path {}
+struct Result<T> { v: T }
+
+impl Reader for () {}
+
+async fn read<'a>(path: &'a Path) -> Result<impl Reader + 'a> {
+    Result { v: () }
+}
+
+fn foo() {
+    let p = Path {};
+    let v = read(&p);
+}
+"#,
+    );
+}
