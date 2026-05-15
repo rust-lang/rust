@@ -713,7 +713,7 @@ pub fn std_cargo(
     // and because the linker ANDs the property across all objects, any binary
     // linking Rust code loses IBT protection -- even if all other code was
     // compiled with -fcf-protection=branch.
-    if target.contains("x86_64") {
+    if target.contains("x86_64") && builder.unstable_features() {
         cargo.rustflag("-Zcf-protection=branch");
     }
 
