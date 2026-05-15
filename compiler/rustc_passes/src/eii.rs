@@ -18,8 +18,8 @@ enum CheckingMode {
 }
 
 fn get_checking_mode(tcx: TyCtxt<'_>) -> CheckingMode {
-    // if any of the crate types is not rlib or dylib, we must check for existence.
-    if tcx.crate_types().iter().any(|i| !matches!(i, CrateType::Rlib | CrateType::Dylib)) {
+    // if any of the crate types is not rlib, we must check for existence.
+    if tcx.crate_types().iter().any(|i| !matches!(i, CrateType::Rlib)) {
         CheckingMode::CheckExistence
     } else {
         CheckingMode::CheckDuplicates
