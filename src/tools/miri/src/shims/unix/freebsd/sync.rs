@@ -93,7 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // extended variant, `struct _umtx_time`, as the `uaddr2` argument of _umtx_op().
                     // They are distinguished by the `uaddr` value, which must be equal
                     // to the size of the structure pointed to by `uaddr2`, casted to uintptr_t.
-                    let timeout = if this.ptr_is_null(uaddr2)? {
+                    let deadline = if this.ptr_is_null(uaddr2)? {
                         // no timeout parameter
                         None
                     } else {
@@ -105,13 +105,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                             };
 
-                            let anchor = if umtx_time.abs_time {
-                                TimeoutAnchor::Absolute
+                            let style = if umtx_time.abs_time {
+                                TimeoutStyle::Absolute
                             } else {
-                                TimeoutAnchor::Relative
+                                TimeoutStyle::Relative
                             };
 
-                            Some((umtx_time.timeout_clock, anchor, umtx_time.timeout))
+                            Some(this.machine.timeout(
+                                umtx_time.timeout_clock,
+                                style,
+                                umtx_time.timeout,
+                            ))
                         } else if uaddr == timespec_layout.size.bytes() {
                             // RealTime clock can't be used in isolation mode.
                             this.check_no_isolation("`_umtx_op` with `timespec` timeout")?;
@@ -127,7 +131,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // code (umtx_copyin_umtx_time() in kern_umtx.c), it seems to default to CLOCK_REALTIME,
                             // so that's what we also do.
                             // Discussion in golang: https://github.com/golang/go/issues/17168#issuecomment-250235271
-                            Some((TimeoutClock::RealTime, TimeoutAnchor::Relative, duration))
+                            Some(this.machine.timeout(
+                                TimeoutClock::RealTime,
+                                TimeoutStyle::Relative,
+                                duration,
+                            ))
                         } else {
                             return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                         }
@@ -137,7 +145,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.futex_wait(
                         futex_ref,
                         u32::MAX, // we set the bitset to include all bits
-                        timeout,
+                        deadline,
                         callback!(
                             @capture<'tcx> {
                                 dest: MPlaceTy<'tcx>,
