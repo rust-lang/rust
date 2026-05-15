@@ -1,4 +1,4 @@
-<!-- date-check: Jul 2025 -->
+<!-- date-check: May 2026 -->
 
 # Implementing new language features
 
