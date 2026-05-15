@@ -612,6 +612,18 @@ impl<I: Interner> AliasTermKind<I> {
             | AliasTermKind::FreeConst { .. } => false,
         }
     }
+
+    pub fn is_trait_projection(self) -> bool {
+        match self {
+            AliasTermKind::ProjectionTy { .. } | AliasTermKind::ProjectionConst { .. } => true,
+            AliasTermKind::InherentTy { .. }
+            | AliasTermKind::OpaqueTy { .. }
+            | AliasTermKind::FreeTy { .. }
+            | AliasTermKind::AnonConst { .. }
+            | AliasTermKind::FreeConst { .. }
+            | AliasTermKind::InherentConst { .. } => false,
+        }
+    }
 }
 
 impl<I: Interner> From<ty::AliasTyKind<I>> for AliasTermKind<I> {

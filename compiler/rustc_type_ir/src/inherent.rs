@@ -480,14 +480,6 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
 {
     fn as_clause(self) -> Option<I::Clause>;
 
-    fn as_normalizes_to(self) -> Option<ty::Binder<I, ty::NormalizesTo<I>>> {
-        let kind = self.kind();
-        match kind.skip_binder() {
-            ty::PredicateKind::NormalizesTo(pred) => Some(kind.rebind(pred)),
-            _ => None,
-        }
-    }
-
     fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::WellFormed(_)) | PredicateKind::AliasRelate(..) => {

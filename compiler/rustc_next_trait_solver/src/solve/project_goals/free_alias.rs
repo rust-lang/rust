@@ -1,4 +1,4 @@
-//! Computes a projection)goal for inherent associated types,
+//! Computes a projection goal for inherent associated types,
 //! `#![feature(lazy_type_alias)]` and `#![feature(type_alias_impl_trait)]`.
 //!
 //! Since a free alias is never ambiguous, this just computes the `type_of` of

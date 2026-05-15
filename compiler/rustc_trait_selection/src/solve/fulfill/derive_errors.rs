@@ -50,9 +50,6 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
                 expected_ty,
             })
         }
-        ty::PredicateKind::NormalizesTo(..) => {
-            FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
-        }
         ty::PredicateKind::AliasRelate(_, _, _) => {
             FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
@@ -75,7 +72,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         | ty::PredicateKind::Ambiguous => {
             FulfillmentErrorCode::Select(SelectionError::Unimplemented)
         }
-        ty::PredicateKind::ConstEquate(..) => {
+        ty::PredicateKind::ConstEquate(..) | ty::PredicateKind::NormalizesTo(..) => {
             bug!("unexpected goal: {obligation:?}")
         }
     };
@@ -394,12 +391,11 @@ impl<'tcx> BestObligation<'tcx> {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))) => {
                 self.detect_error_in_self_ty_normalization(goal, pred.self_ty())?;
             }
-            Some(ty::PredicateKind::NormalizesTo(pred))
-                if let ty::AliasTermKind::ProjectionTy { .. }
-                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind =>
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)))
+                if pred.projection_term.kind.is_trait_projection() =>
             {
-                self.detect_error_in_self_ty_normalization(goal, pred.alias.self_ty())?;
-                self.detect_non_well_formed_assoc_item(goal, pred.alias)?;
+                self.detect_error_in_self_ty_normalization(goal, pred.projection_term.self_ty())?;
+                self.detect_non_well_formed_assoc_item(goal, pred.projection_term)?;
             }
             Some(_) | None => {}
         }
@@ -461,15 +457,11 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(host_pred)) => {
                 ChildMode::Host(pred.kind().rebind(host_pred))
             }
-            ty::PredicateKind::NormalizesTo(normalizes_to)
-                if matches!(
-                    normalizes_to.alias.kind,
-                    ty::AliasTermKind::ProjectionTy { .. }
-                        | ty::AliasTermKind::ProjectionConst { .. }
-                ) =>
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection))
+                if projection.projection_term.kind.is_trait_projection() =>
             {
                 ChildMode::Trait(pred.kind().rebind(ty::TraitPredicate {
-                    trait_ref: normalizes_to.alias.trait_ref(tcx),
+                    trait_ref: projection.projection_term.trait_ref(tcx),
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
