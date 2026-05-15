@@ -1713,6 +1713,43 @@ pub mod result {
         #[lang = "Err"]
         Err(E),
     }
+    impl<T, E> Result<T, E> {
+        pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
+            match self {
+                Ok(v) => Ok(v),
+                Err(_) => res,
+            }
+        }
+
+        pub const fn unwrap_or(self, default: T) -> T {
+            match self {
+                Ok(t) => t,
+                Err(_) => default,
+            }
+        }
+
+        // region:fn
+        pub const fn or_else<F, O>(self, op: O) -> Result<T, F>
+        where
+            O: FnOnce(E) -> Result<T, F>,
+        {
+            match self {
+                Ok(t) => Ok(t),
+                Err(e) => op(e),
+            }
+        }
+
+        pub const fn unwrap_or_else<F>(self, op: F) -> T
+        where
+            F: FnOnce(E) -> T,
+        {
+            match self {
+                Ok(t) => t,
+                Err(e) => op(e),
+            }
+        }
+        // endregion:fn
+    }
 }
 // endregion:result
 
