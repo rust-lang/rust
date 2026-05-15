@@ -308,7 +308,10 @@ impl str {
     pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
         // Fast path for replacing a single ASCII character with another.
         if let Some(from_byte) = match from.as_utf8_pattern() {
-            Some(Utf8Pattern::StringPattern([from_byte])) => Some(*from_byte),
+            Some(Utf8Pattern::StringPattern(s)) => match s.as_bytes() {
+                [from_byte] => Some(*from_byte),
+                _ => None,
+            },
             Some(Utf8Pattern::CharPattern(c)) => c.as_ascii().map(|ascii_char| ascii_char.to_u8()),
             _ => None,
         } {
