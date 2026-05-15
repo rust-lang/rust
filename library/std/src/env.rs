@@ -689,7 +689,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// [GetTempPath]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppatha
 /// [appledoc]: https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html#//apple_ref/doc/uid/TP40002585-SW10
 ///
-/// ```no_run
+/// ```
 /// use std::env;
 ///
 /// fn main() {
