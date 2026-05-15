@@ -149,10 +149,18 @@ impl Trait for () {
     type Item = ();
     fn item() {}
 }
+impl Trait for Adt<i32> {}
+   //^^^^^ error: not all trait items implemented, missing: `type Item`, `fn item`
 
 // Items with Self: Sized bound not required to be implemented for unsized types.
 impl Trait for str {}
 impl Trait for dyn OtherTrait {}
+impl Trait for Adt<[i32]> {}
+impl Trait for Slice<i32> {}
+impl Trait for (str,) {}
+
+struct Adt<T>(i32, T);
+struct Slice<T>([T]);
  "#,
         )
     }

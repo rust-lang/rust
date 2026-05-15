@@ -944,14 +944,17 @@ impl Module {
                     .collect();
 
                 if !missing.is_empty() {
+                    let env = ParamEnvAndCrate {
+                        param_env: db.trait_environment(GenericDefId::from(impl_id).into()),
+                        krate: self.id.krate(db),
+                    };
                     let self_ty = db.impl_self_ty(impl_id).instantiate_identity().skip_norm_wip();
-                    let self_ty = structurally_normalize_ty(
-                        &infcx,
-                        self_ty,
-                        db.trait_environment(GenericDefId::from(impl_id).into()),
-                    );
+                    let self_ty = structurally_normalize_ty(&infcx, self_ty, env.param_env);
+                    let tail_ty = struct_tail_raw(db, interner, self_ty, |ty| {
+                        structurally_normalize_ty(&infcx, ty, env.param_env)
+                    });
                     let self_ty_is_guaranteed_unsized = matches!(
-                        self_ty.kind(),
+                        tail_ty.kind(),
                         TyKind::Dynamic(..) | TyKind::Slice(..) | TyKind::Str
                     );
                     if self_ty_is_guaranteed_unsized {
@@ -7470,6 +7473,44 @@ impl MacroCallIdExt for span::MacroCallId {
     fn loc(self, db: &dyn HirDatabase) -> &hir_expand::MacroCallLoc {
         hir_expand::MacroCallId::from(self).loc(db)
     }
+}
+
+// Like https://github.com/rust-lang/rust/blob/7c3c88f42ad444f4688b865591d84660be4ece2f/compiler/rustc_middle/src/ty/util.rs#L254-L310
+pub fn struct_tail_raw<'db>(
+    db: &'db dyn HirDatabase,
+    interner: DbInterner<'db>,
+    mut ty: Ty<'db>,
+    mut normalize: impl FnMut(Ty<'db>) -> Ty<'db>,
+) -> Ty<'db> {
+    let recursion_limit = 16;
+    for iteration in 0.. {
+        if iteration >= recursion_limit {
+            return Ty::new_error(interner, ErrorGuaranteed);
+        }
+        match ty.kind() {
+            TyKind::Adt(def, args) => {
+                let AdtId::StructId(def_id) = def.def_id() else { break };
+                let last_field = db.field_types(def_id.into()).iter().next_back();
+                match last_field {
+                    Some((_, field)) => {
+                        ty = normalize(field.get().instantiate(interner, args).skip_norm_wip())
+                    }
+                    None => break,
+                }
+            }
+            TyKind::Tuple(tys) if let Some((&last_ty, _)) = tys.split_last() => {
+                ty = last_ty;
+            }
+            TyKind::Tuple(_) => break,
+            TyKind::Pat(inner, _) => {
+                ty = inner;
+            }
+            _ => {
+                break;
+            }
+        }
+    }
+    ty
 }
 
 pub use hir_ty::next_solver;
