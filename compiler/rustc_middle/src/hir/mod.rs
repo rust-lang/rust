@@ -59,14 +59,14 @@ impl<'hir> Crate<'hir> {
     /// `owners` of `hir_crate` or it can be delayed AST owner (i.e., delegations)
     /// we need to firstly check in `hir_crate` and then delayed AST owners.
     /// This method can be invoked when not all delayed AST owners are lowered.
-    pub fn owner(&'hir self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> &'hir MaybeOwner<'hir> {
+    pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
         // Delayed LocalDefId can be in `self.owners` if there exists non-delayed LocalDefId
         // which is greater than delayed LocalDefId, we use IndexVec for owners,
         // so we will call ensure_contains_elem which will grow it.
         if let Some(owner) = self.owners.get(def_id)
             && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
         {
-            return owner;
+            return *owner;
         }
 
         if self.delayed_ids.contains(&def_id) {
@@ -458,7 +458,7 @@ pub struct Hashes {
 /// This struct is created mainly for uniting/splitting fields of `OwnerInfo` so they are
 /// stored/invalidated together in incremental compilation.
 /// For comments about each field see `OwnerInfo` struct.
-#[derive(Debug, StableHash)]
+#[derive(Clone, Copy, Debug, StableHash)]
 pub struct ProjectedOwnerInfo<'tcx> {
     pub nodes: &'tcx OwnerNodes<'tcx>,
     pub parenting: &'tcx LocalDefIdMap<ItemLocalId>,
@@ -468,14 +468,14 @@ pub struct ProjectedOwnerInfo<'tcx> {
     pub delayed_lints: &'tcx Steal<DelayedLints>,
 }
 
-#[derive(Debug, StableHash)]
+#[derive(Clone, Copy, Debug, StableHash)]
 pub enum ProjectedMaybeOwner<'tcx> {
     Owner(ProjectedOwnerInfo<'tcx>),
     NonOwner(HirId),
 }
 
 impl<'tcx> ProjectedMaybeOwner<'tcx> {
-    pub fn create_from(value: &'tcx MaybeOwner<'tcx>, def_id: LocalDefId) -> Self {
+    pub fn create_from(value: MaybeOwner<'tcx>, def_id: LocalDefId) -> Self {
         match value {
             MaybeOwner::Owner(o) => ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
                 nodes: &o.nodes,
@@ -483,12 +483,12 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
                 trait_map: &o.trait_map,
                 delayed_lints: &o.delayed_lints,
             }),
-            MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(*hir_id),
+            MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(hir_id),
             MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
         }
     }
 
-    pub fn as_owner(&'tcx self) -> Option<&'tcx ProjectedOwnerInfo<'tcx>> {
+    pub fn as_owner(&self) -> Option<&ProjectedOwnerInfo<'tcx>> {
         match self {
             ProjectedMaybeOwner::Owner(i) => Some(i),
             ProjectedMaybeOwner::NonOwner(_) => None,

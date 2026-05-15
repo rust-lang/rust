@@ -108,7 +108,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_id = def_id.into_query_key();
         match self.owner(def_id) {
             ProjectedMaybeOwner::Owner(_) => HirId::make_owner(def_id),
-            ProjectedMaybeOwner::NonOwner(hir_id) => *hir_id,
+            ProjectedMaybeOwner::NonOwner(hir_id) => hir_id,
         }
     }
 
