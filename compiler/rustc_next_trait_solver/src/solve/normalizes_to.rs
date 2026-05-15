@@ -1,8 +1,3 @@
-mod anon_const;
-mod free_alias;
-mod inherent;
-mod opaque_types;
-
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
@@ -39,19 +34,12 @@ where
             ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 self.normalize_associated_term(goal)
             }
-            ty::AliasTermKind::InherentTy { def_id } => {
-                self.normalize_inherent_associated_term(goal, def_id.into())
-            }
-            ty::AliasTermKind::InherentConst { def_id } => {
-                self.normalize_inherent_associated_term(goal, def_id.into())
-            }
-            ty::AliasTermKind::OpaqueTy { def_id } => self.normalize_opaque_type(goal, def_id),
-            ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
-                self.normalize_free_alias(goal).map_err(Into::into)
-            }
-            ty::AliasTermKind::AnonConst { def_id } => {
-                self.normalize_anon_const(goal, def_id).map_err(Into::into)
-            }
+            ty::AliasTermKind::InherentTy { .. }
+            | ty::AliasTermKind::InherentConst { .. }
+            | ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::FreeTy { .. }
+            | ty::AliasTermKind::FreeConst { .. }
+            | ty::AliasTermKind::AnonConst { .. } => unreachable!(),
         }
     }
 
@@ -121,18 +109,14 @@ where
     /// We know `term` to always be a fully unconstrained inference variable, so
     /// `eq` should never fail here. However, in case `term` contains aliases, we
     /// emit nested `AliasRelate` goals to structurally normalize the alias.
-    pub fn instantiate_normalizes_to_term(
-        &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
-        term: I::Term,
-    ) {
+    fn instantiate_normalizes_to_term(&mut self, goal: Goal<I, NormalizesTo<I>>, term: I::Term) {
         self.eq(goal.param_env, goal.predicate.term, term)
             .expect("expected goal term to be fully unconstrained");
     }
 
     /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
     /// with a rigid alias. Using this is pretty much always wrong.
-    pub fn structurally_instantiate_normalizes_to_term(
+    fn structurally_instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
         term: ty::AliasTerm<I>,
@@ -423,7 +407,12 @@ where
                         },
                         target_args,
                     );
-                    return ecx.evaluate_const_and_instantiate_normalizes_to_term(goal, uv);
+                    return ecx.evaluate_const_and_instantiate_projection_term(
+                        goal.param_env,
+                        goal.predicate.alias,
+                        goal.predicate.term,
+                        uv,
+                    );
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };

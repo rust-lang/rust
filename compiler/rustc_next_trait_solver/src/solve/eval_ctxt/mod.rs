@@ -1472,14 +1472,16 @@ where
         Ok(self.delegate.evaluate_const(param_env, uv))
     }
 
-    pub(super) fn evaluate_const_and_instantiate_normalizes_to_term(
+    pub(super) fn evaluate_const_and_instantiate_projection_term(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        param_env: I::ParamEnv,
+        projection_term: ty::AliasTerm<I>,
+        expected_term: I::Term,
         uv: ty::UnevaluatedConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        match self.evaluate_const(goal.param_env, uv)? {
+        match self.evaluate_const(param_env, uv)? {
             Some(evaluated) => {
-                self.instantiate_normalizes_to_term(goal, evaluated.into());
+                self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None if self.cx().features().generic_const_args() => {
@@ -1499,7 +1501,12 @@ where
                     // however, we want to structurally instantiate to the original, non-rebased,
                     // trait `Self` form of the constant (with generic arguments being the trait
                     // `Self` type).
-                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    self.relate_rigid_alias_non_alias(
+                        param_env,
+                        projection_term,
+                        ty::Invariant,
+                        expected_term,
+                    )?;
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
             }
