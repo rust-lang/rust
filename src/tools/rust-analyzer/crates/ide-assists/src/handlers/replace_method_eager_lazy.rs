@@ -65,22 +65,24 @@ pub(crate) fn replace_with_lazy_method(
         call.syntax().text_range(),
         |builder| {
             let editor = builder.make_editor(call.syntax());
-            let param_name = match &*method_name_lazy {
-                "and_then" => "it",
+            let add_param = match &*method_name_lazy {
+                "and_then" => true,
                 "or_else" | "unwrap_or_else" => {
-                    if let Some(result) = FamousDefs(&ctx.sema, scope.krate()).core_result_Result()
-                        && result.ty(ctx.db()).could_unify_with(ctx.db(), &receiver_ty)
-                    {
-                        "e"
-                    } else {
-                        ""
-                    }
+                    FamousDefs(&ctx.sema, scope.krate()).core_result_Result().is_some_and(
+                        |result| result.ty(ctx.db()).could_unify_with(ctx.db(), &receiver_ty),
+                    )
                 }
-                _ => "",
+                _ => false,
             };
-            let closured = into_closure(&last_arg, param_name, editor.make());
+            let closured = into_closure(&last_arg, add_param, editor.make());
             editor.replace(method_name.syntax(), editor.make().name(&method_name_lazy).syntax());
             editor.replace(last_arg.syntax(), closured.syntax());
+            if let Some(cap) = ctx.config.snippet_cap
+                && let ast::Expr::ClosureExpr(closured) = closured
+                && let Some(param) = closured.param_list().and_then(|it| it.params().next())
+            {
+                editor.add_annotation(param.syntax(), builder.make_placeholder_snippet(cap));
+            }
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -98,7 +100,7 @@ fn lazy_method_name(name: &str) -> String {
     }
 }
 
-fn into_closure(param: &Expr, param_name: &str, make: &SyntaxFactory) -> Expr {
+fn into_closure(param: &Expr, add_param: bool, make: &SyntaxFactory) -> Expr {
     (|| {
         if let ast::Expr::CallExpr(call) = param {
             if call.arg_list()?.args().count() == 0 { Some(call.expr()?) } else { None }
@@ -107,8 +109,7 @@ fn into_closure(param: &Expr, param_name: &str, make: &SyntaxFactory) -> Expr {
         }
     })()
     .unwrap_or_else(|| {
-        let pats = (!param_name.is_empty())
-            .then(|| make.untyped_param(make.simple_ident_pat(make.name(param_name)).into()));
+        let pats = add_param.then(|| make.untyped_param(make.wildcard_pat().into()));
         make.expr_closure(pats, param.clone()).into()
     })
 }
@@ -259,7 +260,7 @@ fn foo() {
             r#"
 fn foo() {
     let foo = Ok(1);
-    return foo.unwrap_or_else(|e| 2);
+    return foo.unwrap_or_else(|${0:_}| 2);
 }
 "#,
         )
@@ -395,7 +396,7 @@ fn foo() {
             r#"
 fn foo() {
     let foo = Some("foo");
-    return foo.and_then(|it| Some("bar"));
+    return foo.and_then(|${0:_}| Some("bar"));
 }
 "#,
         )
