@@ -1,4 +1,6 @@
-//@revisions: deny_cli allow_cli
+//@revisions: deny_cli allow_cli capped
+//@[capped] compile-flags: --cap-lints=allow
+//@[capped] check-pass
 //@[deny_cli] compile-flags: -Drustdoc::unescaped_backticks
 //@[allow_cli] compile-flags: -Arustdoc::unescaped_backticks
 //@[allow_cli] check-pass
