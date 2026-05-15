@@ -401,7 +401,7 @@ impl<'a> SymbolCollector<'a> {
     fn collect_from_impl(&mut self, impl_id: ImplId) {
         let impl_data = ImplSignature::of(self.db, impl_id);
         let impl_name = Some(
-            hir_display_with_store(impl_data.self_ty, &impl_data.store)
+            hir_display_with_store(impl_data.self_ty, impl_id.into(), &impl_data.store)
                 .display(
                     self.db,
                     crate::Impl::from(impl_id).krate(self.db).to_display_target(self.db),

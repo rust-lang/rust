@@ -417,6 +417,7 @@ fn check_pat_variant_nested_or_literal_with_depth(
         | ast::Pat::PathPat(_)
         | ast::Pat::BoxPat(_)
         | ast::Pat::DerefPat(_)
+        | ast::Pat::NotNull(_)
         | ast::Pat::ConstBlockPat(_) => true,
 
         ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {

@@ -719,6 +719,10 @@ impl<'db> ExprCollector<'db> {
             ast::Type::DynTraitType(inner) => TypeRef::DynTrait(
                 self.type_bounds_from_ast(inner.type_bound_list(), impl_trait_lower_fn),
             ),
+            ast::Type::PatternType(inner) => TypeRef::PatternType(
+                self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn),
+                self.collect_pat_top(inner.pat()),
+            ),
             ast::Type::MacroType(mt) => match mt.macro_call() {
                 Some(mcall) => {
                     let macro_ptr = AstPtr::new(&mcall);
@@ -2782,6 +2786,7 @@ impl<'db> ExprCollector<'db> {
                 let inner = self.collect_pat_opt(inner.pat(), binding_list);
                 Pat::Deref { inner }
             }
+            ast::Pat::NotNull(_) => Pat::NotNull,
             ast::Pat::ConstBlockPat(const_block_pat) => {
                 if let Some(block) = const_block_pat.block_expr() {
                     let expr_id = self.with_label_rib(RibKind::Constant, |this| {

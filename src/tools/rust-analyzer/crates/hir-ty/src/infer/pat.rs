@@ -448,7 +448,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 )
             }
             Pat::Missing => self.types.types.error,
-            Pat::Wild | Pat::Rest => expected,
+            Pat::Wild | Pat::Rest | Pat::NotNull => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             // Pat::Never => expected,
             Pat::Path(_) => {
@@ -662,6 +662,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
             Pat::Ref { .. }
             // No need to do anything on a missing pattern.
             | Pat::Missing
+            // No need to do anything on a `NotNull` pattern, they are only allowed in type contexts.
+            | Pat::NotNull
             // A `_`/`..` pattern works with any expected type, so there's no need to do anything.
             | Pat::Wild | Pat::Rest
             // Bindings also work with whatever the expected type is,

@@ -1023,6 +1023,7 @@ impl<'a, 'b, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'b, 'db, D> {
                 | Pat::Tuple { .. }
                 | Pat::Wild
                 | Pat::Missing
+                | Pat::NotNull
                 | Pat::Rest => {
                     // If the PatKind is Or, Box, Ref, Guard, or Tuple, the relevant accesses
                     // are made later as these patterns contains subpatterns.
@@ -1696,6 +1697,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
             | Pat::Range { .. }
             | Pat::Missing
             | Pat::Rest
+            | Pat::NotNull
             | Pat::Wild => {
                 // always ok
             }

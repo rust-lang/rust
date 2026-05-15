@@ -616,7 +616,7 @@ impl ExpressionStore {
                 visitor.on_expr_opt(*end);
             }
             Pat::Lit(expr) | Pat::ConstBlock(expr) | Pat::Expr(expr) => visitor.on_expr(*expr),
-            Pat::Path(_) | Pat::Wild | Pat::Missing | Pat::Rest => {}
+            Pat::Path(_) | Pat::Wild | Pat::Missing | Pat::Rest | Pat::NotNull => {}
             &Pat::Bind { subpat, id: _ } => visitor.on_pat_opt(subpat),
             Pat::Or(args) | Pat::Tuple { args, ellipsis: _ } => visitor.on_pats(args),
             Pat::TupleStruct { args, ellipsis: _, path } => {
@@ -855,6 +855,10 @@ impl ExpressionStore {
     pub fn visit_type_ref_children(&self, type_ref: TypeRefId, mut visitor: impl StoreVisitor) {
         match &self[type_ref] {
             TypeRef::Never | TypeRef::Placeholder | TypeRef::TypeParam(_) | TypeRef::Error => {}
+            &TypeRef::PatternType(ty, pat) => {
+                visitor.on_type(ty);
+                visitor.on_pat(pat)
+            }
             TypeRef::Tuple(types) => visitor.on_types(types),
             TypeRef::Path(path) => visitor.on_path(path),
             TypeRef::RawPtr(inner, _) | TypeRef::Slice(inner) => visitor.on_type(*inner),

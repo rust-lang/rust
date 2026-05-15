@@ -717,6 +717,7 @@ pub enum Pat {
     Deref {
         inner: PatId,
     },
+    NotNull,
     ConstBlock(ExprId),
     /// An expression inside a pattern. That can only occur inside assignments.
     ///
@@ -734,7 +735,8 @@ impl Pat {
             | Pat::Wild
             | Pat::Missing
             | Pat::Rest
-            | Pat::Expr(_) => {}
+            | Pat::Expr(_)
+            | Pat::NotNull => {}
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }

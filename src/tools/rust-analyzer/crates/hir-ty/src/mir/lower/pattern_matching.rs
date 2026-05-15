@@ -132,7 +132,9 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 .into(),
         );
         Ok(match &self.store[pattern] {
-            Pat::Missing | Pat::Rest => return Err(MirLowerError::IncompletePattern),
+            Pat::Missing | Pat::Rest | Pat::NotNull => {
+                return Err(MirLowerError::IncompletePattern);
+            }
             Pat::Wild => (current, current_else),
             Pat::Tuple { args, ellipsis } => {
                 let subst = match self.infer.pat_ty(pattern).kind() {
@@ -376,6 +378,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                             self.db,
                             p,
                             self.display_target(),
+                            self.owner.expression_store_owner(self.db),
                             self.store,
                         )
                     };

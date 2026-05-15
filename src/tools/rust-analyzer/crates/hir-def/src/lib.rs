@@ -852,6 +852,12 @@ impl From<VariantId> for ExpressionStoreOwnerId {
     }
 }
 
+impl From<ImplId> for ExpressionStoreOwnerId {
+    fn from(id: ImplId) -> Self {
+        ExpressionStoreOwnerId::Signature(id.into())
+    }
+}
+
 impl GenericDefId {
     pub fn file_id_and_params_of(
         self,

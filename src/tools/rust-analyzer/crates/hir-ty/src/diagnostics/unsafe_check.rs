@@ -255,9 +255,8 @@ impl<'db> UnsafeVisitor<'db> {
                 | Pat::Box { .. }
                 | Pat::Deref { .. }
                 | Pat::Expr(..)
-                | Pat::ConstBlock(..) => {
-                    self.on_unsafe_op(current.into(), UnsafetyReason::UnionField)
-                }
+                | Pat::ConstBlock(..)
+                | Pat::NotNull => self.on_unsafe_op(current.into(), UnsafetyReason::UnionField),
                 // `Or` only wraps other patterns, and `Missing`/`Wild` do not constitute a read.
                 Pat::Missing | Pat::Rest | Pat::Wild | Pat::Or(_) => {}
             }

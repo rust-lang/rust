@@ -15,7 +15,7 @@ use hir_def::{
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
     hir::{
-        ClosureKind as HirClosureKind, CoroutineKind,
+        ClosureKind as HirClosureKind, CoroutineKind, PatId,
         generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     },
     item_scope::ItemInNs,
@@ -2350,39 +2350,58 @@ pub fn write_visibility<'db>(
 }
 
 pub trait HirDisplayWithExpressionStore<'db> {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result;
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result;
 }
 
 impl<'db, T: ?Sized + HirDisplayWithExpressionStore<'db>> HirDisplayWithExpressionStore<'db>
     for &'_ T
 {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
-        T::hir_fmt(&**self, f, store)
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
+        T::hir_fmt(&**self, f, owner, store)
     }
 }
 
 pub fn hir_display_with_store<'a, 'db, T: HirDisplayWithExpressionStore<'db> + 'a>(
     value: T,
+    owner: ExpressionStoreOwnerId,
     store: &'a ExpressionStore,
 ) -> impl HirDisplay<'db> + 'a {
-    ExpressionStoreAdapter(value, store)
+    ExpressionStoreAdapter(value, owner, store)
 }
 
-struct ExpressionStoreAdapter<'a, T>(T, &'a ExpressionStore);
+struct ExpressionStoreAdapter<'a, T>(T, ExpressionStoreOwnerId, &'a ExpressionStore);
 
 impl<'a, T> ExpressionStoreAdapter<'a, T> {
-    fn wrap(store: &'a ExpressionStore) -> impl Fn(T) -> ExpressionStoreAdapter<'a, T> {
-        move |value| ExpressionStoreAdapter(value, store)
+    fn wrap(
+        owner: ExpressionStoreOwnerId,
+        store: &'a ExpressionStore,
+    ) -> impl Fn(T) -> ExpressionStoreAdapter<'a, T> {
+        move |value| ExpressionStoreAdapter(value, owner, store)
     }
 }
 
 impl<'db, T: HirDisplayWithExpressionStore<'db>> HirDisplay<'db> for ExpressionStoreAdapter<'_, T> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
-        T::hir_fmt(&self.0, f, self.1)
+        T::hir_fmt(&self.0, f, self.1, self.2)
     }
 }
 impl<'db> HirDisplayWithExpressionStore<'db> for LifetimeRefId {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        _owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
         match &store[*self] {
             LifetimeRef::Named(name) => write!(f, "{}", name.display(f.db, f.edition())),
             LifetimeRef::Static => write!(f, "'static"),
@@ -2401,7 +2420,12 @@ impl<'db> HirDisplayWithExpressionStore<'db> for LifetimeRefId {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
         match &store[*self] {
             TypeRef::Never => write!(f, "!")?,
             TypeRef::TypeParam(param) => {
@@ -2426,7 +2450,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                                     }
                                     _ => None,
                                 })
-                                .map(ExpressionStoreAdapter::wrap(store)),
+                                .map(ExpressionStoreAdapter::wrap(owner, store)),
                             " + ",
                         )?;
                     }
@@ -2435,20 +2459,20 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
             TypeRef::Placeholder => write!(f, "_")?,
             TypeRef::Tuple(elems) => {
                 write!(f, "(")?;
-                f.write_joined(elems.iter().map(ExpressionStoreAdapter::wrap(store)), ", ")?;
+                f.write_joined(elems.iter().map(ExpressionStoreAdapter::wrap(owner, store)), ", ")?;
                 if elems.len() == 1 {
                     write!(f, ",")?;
                 }
                 write!(f, ")")?;
             }
-            TypeRef::Path(path) => path.hir_fmt(f, store)?,
+            TypeRef::Path(path) => path.hir_fmt(f, owner, store)?,
             TypeRef::RawPtr(inner, mutability) => {
                 let mutability = match mutability {
                     hir_def::type_ref::Mutability::Shared => "*const ",
                     hir_def::type_ref::Mutability::Mut => "*mut ",
                 };
                 write!(f, "{mutability}")?;
-                inner.hir_fmt(f, store)?;
+                inner.hir_fmt(f, owner, store)?;
             }
             TypeRef::Reference(ref_) => {
                 let mutability = match ref_.mutability {
@@ -2457,22 +2481,22 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                 };
                 write!(f, "&")?;
                 if let Some(lifetime) = &ref_.lifetime {
-                    lifetime.hir_fmt(f, store)?;
+                    lifetime.hir_fmt(f, owner, store)?;
                     write!(f, " ")?;
                 }
                 write!(f, "{mutability}")?;
-                ref_.ty.hir_fmt(f, store)?;
+                ref_.ty.hir_fmt(f, owner, store)?;
             }
             TypeRef::Array(array) => {
                 write!(f, "[")?;
-                array.ty.hir_fmt(f, store)?;
+                array.ty.hir_fmt(f, owner, store)?;
                 write!(f, "; ")?;
-                array.len.hir_fmt(f, store)?;
+                array.len.hir_fmt(f, owner, store)?;
                 write!(f, "]")?;
             }
             TypeRef::Slice(inner) => {
                 write!(f, "[")?;
-                inner.hir_fmt(f, store)?;
+                inner.hir_fmt(f, owner, store)?;
                 write!(f, "]")?;
             }
             TypeRef::Fn(fn_) => {
@@ -2492,7 +2516,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                             write!(f, "{}: ", name.display(f.db, f.edition()))?;
                         }
 
-                        param_type.hir_fmt(f, store)?;
+                        param_type.hir_fmt(f, owner, store)?;
 
                         if index != function_parameters.len() - 1 {
                             write!(f, ", ")?;
@@ -2506,18 +2530,29 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                         TypeRef::Tuple(tup) if tup.is_empty() => {}
                         _ => {
                             write!(f, " -> ")?;
-                            return_type.hir_fmt(f, store)?;
+                            return_type.hir_fmt(f, owner, store)?;
                         }
                     }
                 }
             }
             TypeRef::ImplTrait(bounds) => {
                 write!(f, "impl ")?;
-                f.write_joined(bounds.iter().map(ExpressionStoreAdapter::wrap(store)), " + ")?;
+                f.write_joined(
+                    bounds.iter().map(ExpressionStoreAdapter::wrap(owner, store)),
+                    " + ",
+                )?;
             }
             TypeRef::DynTrait(bounds) => {
                 write!(f, "dyn ")?;
-                f.write_joined(bounds.iter().map(ExpressionStoreAdapter::wrap(store)), " + ")?;
+                f.write_joined(
+                    bounds.iter().map(ExpressionStoreAdapter::wrap(owner, store)),
+                    " + ",
+                )?;
+            }
+            TypeRef::PatternType(ty, pat) => {
+                ty.hir_fmt(f, owner, store)?;
+                write!(f, " is ")?;
+                pat.hir_fmt(f, owner, store)?;
             }
             TypeRef::Error => write!(f, "{{error}}")?,
         }
@@ -2526,7 +2561,12 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for ConstRef {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, _store: &ExpressionStore) -> Result {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        _owner: ExpressionStoreOwnerId,
+        _store: &ExpressionStore,
+    ) -> Result {
         // FIXME
         write!(f, "{{const}}")?;
 
@@ -2534,17 +2574,45 @@ impl<'db> HirDisplayWithExpressionStore<'db> for ConstRef {
     }
 }
 
+impl<'db> HirDisplayWithExpressionStore<'db> for PatId {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
+        write!(
+            f,
+            "{}",
+            hir_def::expr_store::pretty::print_pat_hir(
+                f.db,
+                store,
+                owner,
+                *self,
+                false,
+                f.edition()
+            )
+        )?;
+        Ok(())
+    }
+}
+
 impl<'db> HirDisplayWithExpressionStore<'db> for TypeBound {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
         match self {
             &TypeBound::Path(path, modifier) => {
                 match modifier {
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(f, "?")?,
                 }
-                store[path].hir_fmt(f, store)
+                store[path].hir_fmt(f, owner, store)
             }
-            TypeBound::Lifetime(lifetime) => lifetime.hir_fmt(f, store),
+            TypeBound::Lifetime(lifetime) => lifetime.hir_fmt(f, owner, store),
             TypeBound::ForLifetime(lifetimes, path) => {
                 let edition = f.edition();
                 write!(
@@ -2552,7 +2620,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeBound {
                     "for<{}> ",
                     lifetimes.iter().map(|it| it.display(f.db, edition)).format(", ")
                 )?;
-                store[*path].hir_fmt(f, store)
+                store[*path].hir_fmt(f, owner, store)
             }
             TypeBound::Use(args) => {
                 write!(f, "use<")?;
@@ -2560,7 +2628,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeBound {
                 let last = args.len().saturating_sub(1);
                 for (idx, arg) in args.iter().enumerate() {
                     match arg {
-                        UseArgRef::Lifetime(lt) => lt.hir_fmt(f, store)?,
+                        UseArgRef::Lifetime(lt) => lt.hir_fmt(f, owner, store)?,
                         UseArgRef::Name(n) => write!(f, "{}", n.display(f.db, edition))?,
                     }
                     if idx != last {
@@ -2575,11 +2643,16 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeBound {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for Path {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
         match (self.type_anchor(), self.kind()) {
             (Some(anchor), _) => {
                 write!(f, "<")?;
-                anchor.hir_fmt(f, store)?;
+                anchor.hir_fmt(f, owner, store)?;
                 write!(f, ">")?;
             }
             (_, PathKind::Plain) => {}
@@ -2622,7 +2695,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
         });
         if let Some(ty) = trait_self_ty {
             write!(f, "<")?;
-            ty.hir_fmt(f, store)?;
+            ty.hir_fmt(f, owner, store)?;
             write!(f, " as ")?;
             // Now format the path of the trait...
         }
@@ -2652,17 +2725,17 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
                         if let Some(v) = tuple {
                             if v.len() == 1 {
                                 write!(f, "(")?;
-                                v[0].hir_fmt(f, store)?;
+                                v[0].hir_fmt(f, owner, store)?;
                                 write!(f, ")")?;
                             } else {
-                                generic_args.args[0].hir_fmt(f, store)?;
+                                generic_args.args[0].hir_fmt(f, owner, store)?;
                             }
                         }
                         if let Some(ret) = generic_args.bindings[0].type_ref
                             && !matches!(&store[ret], TypeRef::Tuple(v) if v.is_empty())
                         {
                             write!(f, " -> ")?;
-                            ret.hir_fmt(f, store)?;
+                            ret.hir_fmt(f, owner, store)?;
                         }
                     }
                     hir_def::expr_store::path::GenericArgsParentheses::No => {
@@ -2675,7 +2748,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
                             } else {
                                 write!(f, ", ")?;
                             }
-                            arg.hir_fmt(f, store)?;
+                            arg.hir_fmt(f, owner, store)?;
                         }
                         for binding in generic_args.bindings.iter() {
                             if first {
@@ -2688,7 +2761,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
                             match &binding.type_ref {
                                 Some(ty) => {
                                     write!(f, " = ")?;
-                                    ty.hir_fmt(f, store)?
+                                    ty.hir_fmt(f, owner, store)?
                                 }
                                 None => {
                                     write!(f, ": ")?;
@@ -2696,7 +2769,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
                                         binding
                                             .bounds
                                             .iter()
-                                            .map(ExpressionStoreAdapter::wrap(store)),
+                                            .map(ExpressionStoreAdapter::wrap(owner, store)),
                                         " + ",
                                     )?;
                                 }
@@ -2723,14 +2796,21 @@ impl<'db> HirDisplayWithExpressionStore<'db> for Path {
 }
 
 impl<'db> HirDisplayWithExpressionStore<'db> for hir_def::expr_store::path::GenericArg {
-    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>, store: &ExpressionStore) -> Result {
+    fn hir_fmt(
+        &self,
+        f: &mut HirFormatter<'_, 'db>,
+        owner: ExpressionStoreOwnerId,
+        store: &ExpressionStore,
+    ) -> Result {
         match self {
-            hir_def::expr_store::path::GenericArg::Type(ty) => ty.hir_fmt(f, store),
+            hir_def::expr_store::path::GenericArg::Type(ty) => ty.hir_fmt(f, owner, store),
             hir_def::expr_store::path::GenericArg::Const(_c) => {
                 // write!(f, "{}", c.display(f.db, f.edition()))
                 write!(f, "<expr>")
             }
-            hir_def::expr_store::path::GenericArg::Lifetime(lifetime) => lifetime.hir_fmt(f, store),
+            hir_def::expr_store::path::GenericArg::Lifetime(lifetime) => {
+                lifetime.hir_fmt(f, owner, store)
+            }
         }
     }
 }

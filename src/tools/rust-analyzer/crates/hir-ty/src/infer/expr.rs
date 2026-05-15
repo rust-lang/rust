@@ -201,6 +201,7 @@ impl<'db> InferenceContext<'_, 'db> {
             | Pat::Slice { .. }
             | Pat::ConstBlock(_)
             | Pat::Record { .. }
+            | Pat::NotNull
             | Pat::Missing => true,
             Pat::Expr(_) => unreachable!(
                 "we don't call pat_guaranteed_to_constitute_read_for_never() with assignments"

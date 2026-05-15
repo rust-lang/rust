@@ -1494,6 +1494,9 @@ fn coerce_pointee_expand(
             ast::Type::TupleType(ty) => any_long(ty.fields(), |ty| {
                 substitute_type_in_bound(editor, ty, param_name, replacement)
             }),
+            ast::Type::PatternType(ty) => ty
+                .ty()
+                .is_some_and(|ty| substitute_type_in_bound(editor, ty, param_name, replacement)),
             ast::Type::InferType(_) | ast::Type::MacroType(_) | ast::Type::NeverType(_) => false,
         };
 
