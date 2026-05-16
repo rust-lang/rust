@@ -3,8 +3,8 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use std::borrow::Cow;
-use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
+use std::{assert_matches, debug_assert_matches};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
@@ -43,6 +43,7 @@ pub type FnSigKind<'tcx> = ir::FnSigKind<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
 pub type Unnormalized<'tcx, T> = ir::Unnormalized<TyCtxt<'tcx>, T>;
+pub type UnnormalizedAmbiguous<'tcx, T> = ir::UnnormalizedAmbiguous<TyCtxt<'tcx>, T>;
 pub type TypingMode<'tcx, S = MayBeErased> = ir::TypingMode<TyCtxt<'tcx>, S>;
 pub type TypingModeEqWrapper<'tcx> = ir::TypingModeEqWrapper<TyCtxt<'tcx>>;
 pub type Placeholder<'tcx, T> = ir::Placeholder<TyCtxt<'tcx>, T>;
@@ -477,12 +478,16 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_alias(tcx: TyCtxt<'tcx>, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        debug_assert_matches!(
-            (alias_ty.kind, tcx.def_kind(alias_ty.kind.def_id())),
-            (ty::Opaque { .. }, DefKind::OpaqueTy)
-                | (ty::Projection { .. } | ty::Inherent { .. }, DefKind::AssocTy)
-                | (ty::Free { .. }, DefKind::TyAlias)
-        );
+        if cfg!(debug_assertions) {
+            match alias_ty.kind {
+                ty::Opaque { def_id } => assert_matches!(tcx.def_kind(def_id), DefKind::OpaqueTy),
+                ty::Projection { def_id } | ty::Inherent { def_id } => {
+                    assert_matches!(tcx.def_kind(def_id), DefKind::AssocTy)
+                }
+                ty::Free { def_id } => assert_matches!(tcx.def_kind(def_id), DefKind::TyAlias),
+                ty::Ambiguous => {}
+            }
+        }
         Ty::new(tcx, Alias(alias_ty))
     }
 

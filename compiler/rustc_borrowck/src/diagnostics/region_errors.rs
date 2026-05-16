@@ -1082,7 +1082,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let typeck_results = tcx.typeck(self.mir_def_id());
 
         // We don't use `ty.peel_refs()` to get the number of `*`s needed to get the root type.
-        let liberated_sig = tcx.liberate_late_bound_regions(closure_def_id.to_def_id(), args.sig());
+        let liberated_sig = tcx
+            .liberate_late_bound_regions(
+                closure_def_id.to_def_id(),
+                ty::Unnormalized::new_wip(args.sig()),
+            )
+            .skip_norm_wip();
         let mut peeled_ty = liberated_sig.output();
         let mut count = 0;
         while let ty::Ref(_, ref_ty, _) = *peeled_ty.kind() {

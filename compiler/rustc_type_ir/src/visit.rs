@@ -265,6 +265,10 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_type_flags(TypeFlags::HAS_ALIAS)
     }
 
+    fn has_ambiguous_aliases(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_AMBIGUOUS_ALIAS)
+    }
+
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }

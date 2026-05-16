@@ -377,7 +377,8 @@ where
                                     self.found_uncovered_ty_param(ty)
                                 }
                             }
-                            _ => self.found_uncovered_ty_param(ty),
+                            ty::Inherent { .. } |  ty::Opaque { .. } | ty::Free { .. } => self.found_uncovered_ty_param(ty),
+                            ty::AliasTyKind::Ambiguous => unreachable!(),
                         },
                         InCrate::Remote => {
                             // The inference variable might be unified with a local

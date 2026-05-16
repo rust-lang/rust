@@ -326,19 +326,20 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxIndexSet::default();
 
-    let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
+    // We need to check wf of unnormalized sig.
+    let unnormalized_impl_sig = infcx.instantiate_unnormalized_binder_with_fresh_vars(
         impl_m_span,
         BoundRegionConversionTime::HigherRankedType,
-        tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
+        tcx.fn_sig(impl_m.def_id).instantiate_identity(),
     );
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let impl_sig =
-        ocx.normalize(&norm_cause, param_env, Unnormalized::new_wip(unnormalized_impl_sig));
+    let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
+
     debug!(?impl_sig);
 
-    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_norm_wip();
-    let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
+    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args);
+    let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig).skip_norm_wip();
 
     // Next, add all inputs and output as well-formed tys. Importantly,
     // we have to do this before normalization, since the normalized ty may
@@ -375,7 +376,7 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if !(impl_sig, trait_sig).references_error() {
-        for ty in unnormalized_impl_sig.inputs_and_output {
+        for ty in unnormalized_impl_sig.skip_normalization().inputs_and_output {
             ocx.register_obligation(traits::Obligation::new(
                 infcx.tcx,
                 cause.clone(),
@@ -534,15 +535,12 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
     // Normalize the impl signature with fresh variables for lifetime inference.
     let misc_cause = ObligationCause::misc(return_span, impl_m_def_id);
-    let impl_sig = ocx.normalize(
-        &misc_cause,
-        param_env,
-        Unnormalized::new_wip(infcx.instantiate_binder_with_fresh_vars(
-            return_span,
-            BoundRegionConversionTime::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
-        )),
+    let impl_sig = infcx.instantiate_unnormalized_binder_with_fresh_vars(
+        return_span,
+        BoundRegionConversionTime::HigherRankedType,
+        tcx.fn_sig(impl_m.def_id).instantiate_identity(),
     );
+    let impl_sig = ocx.normalize(&misc_cause, param_env, impl_sig);
     impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();
 
@@ -554,8 +552,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
             impl_m.def_id,
-            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_norm_wip(),
+            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
         )
+        .skip_norm_wip()
         .fold_with(&mut collector);
 
     let trait_sig =
@@ -1259,12 +1258,12 @@ fn check_region_late_boundedness<'tcx>(
         .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, impl_m.def_id));
 
     let impl_m_args = infcx.fresh_args_for_item(DUMMY_SP, impl_m.def_id);
-    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args).skip_norm_wip();
-    let impl_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, impl_m_sig);
+    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args);
+    let impl_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, impl_m_sig).skip_norm_wip();
 
     let trait_m_args = infcx.fresh_args_for_item(DUMMY_SP, trait_m.def_id);
-    let trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args).skip_norm_wip();
-    let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_m_sig);
+    let trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args);
+    let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_m_sig).skip_norm_wip();
 
     let ocx = ObligationCtxt::new(&infcx);
 
@@ -1515,11 +1514,12 @@ fn compare_self_type<'tcx>(
             }
             ty::AssocContainer::Trait => tcx.types.self_param,
         };
-        let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip().input(0);
+        let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().map(|sig| sig.input(0));
         let (infcx, param_env) = tcx
             .infer_ctxt()
             .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
-        let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
+        let self_arg_ty =
+            tcx.liberate_late_bound_regions(method.def_id, self_arg_ty).skip_norm_wip();
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         get_self_string(self_arg_ty, can_eq_self)
     };

@@ -8,7 +8,10 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError,
+    TypeTrace,
+};
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
@@ -116,6 +119,16 @@ where
         value: Unnormalized<'tcx, T>,
     ) -> T {
         let infer_ok = self.infcx.at(cause, param_env).normalize(value);
+        self.register_infer_ok_obligations(infer_ok)
+    }
+
+    pub fn renormalize_ambiguous_aliases<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::UnnormalizedAmbiguous<'tcx, T>,
+    ) -> T {
+        let infer_ok = self.infcx.at(cause, param_env).renormalize_ambiguous_aliases(value);
         self.register_infer_ok_obligations(infer_ok)
     }
 
@@ -349,6 +362,45 @@ where
         value: Unnormalized<'tcx, T>,
     ) -> Result<T, Vec<E>> {
         self.infcx.at(cause, param_env).deeply_normalize(value, &mut **self.engine.borrow_mut())
+    }
+
+    pub fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::Binder<'tcx, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U {
+        self.infcx.enter_forall(value, |value| {
+            f(self.renormalize_ambiguous_aliases(cause, param_env, value))
+        })
+    }
+
+    pub fn enter_forall_and_leak_universe<T>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        binder: ty::Binder<'tcx, T>,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let value = self.infcx.enter_forall_and_leak_universe(binder);
+        self.renormalize_ambiguous_aliases(cause, param_env, value)
+    }
+
+    pub fn instantiate_binder_with_fresh_vars<T>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        lbrct: BoundRegionConversionTime,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::Binder<'tcx, T>,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        let value = self.infcx.instantiate_binder_with_fresh_vars(cause.span, lbrct, value);
+        self.renormalize_ambiguous_aliases(cause, param_env, value)
     }
 
     pub fn structurally_normalize_ty(

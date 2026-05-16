@@ -1073,13 +1073,19 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
-                let fty =
-                    self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args).skip_norm_wip();
-                let fty = self.instantiate_binder_with_fresh_vars(
+                let fty = self.instantiate_unnormalized_binder_with_fresh_vars(
                     self.span,
                     BoundRegionConversionTime::FnCall,
-                    fty,
+                    self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args),
                 );
+                // We shouldn't register predicates to fcx in `probe()` as they're not rollbacked.
+                // Although it probably doesn't matter much for diagnostics.
+                let ocx = ObligationCtxt::new(&self.infcx);
+                let fty = ocx.normalize(&ObligationCause::dummy(), self.param_env, fty);
+                if !ocx.try_evaluate_obligations().is_empty() {
+                    return false;
+                }
+
                 self.can_eq(self.param_env, fty.output(), expected)
             }),
             _ => false,
@@ -2035,13 +2041,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
 
-                    let trait_ref = self.instantiate_binder_with_fresh_vars(
-                        self.span,
+                    let trait_ref = ocx.instantiate_binder_with_fresh_vars(
+                        cause,
                         BoundRegionConversionTime::FnCall,
+                        self.param_env,
                         poly_trait_ref,
                     );
-                    let trait_ref =
-                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(trait_ref));
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
                     xform_self_ty =
@@ -2100,9 +2105,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     trait_predicate = Some(trait_ref.upcast(self.tcx));
                 }
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
-                    let trait_ref = self.instantiate_binder_with_fresh_vars(
-                        self.span,
+                    let trait_ref = ocx.instantiate_binder_with_fresh_vars(
+                        cause,
                         BoundRegionConversionTime::FnCall,
+                        self.param_env,
                         poly_trait_ref,
                     );
                     (xform_self_ty, xform_ret_ty) =

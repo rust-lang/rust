@@ -5,7 +5,7 @@ use crate::data_structures::DelayedSet;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::{Goal, VisibleForLeakCheck};
-use crate::{self as ty, InferCtxtLike, Interner};
+use crate::{self as ty, InferCtxtLike, Interner, TypeFolder, TypeSuperFoldable, TypeVisitableExt};
 
 pub trait RelateExt: InferCtxtLike {
     fn relate<T: Relate<Self::Interner>>(
@@ -128,6 +128,17 @@ where
             goals: vec![],
             cache: Default::default(),
         }
+    }
+
+    fn normalize_ambiguous_aliases<T: TypeFoldable<I>>(
+        &mut self,
+        value: ty::UnnormalizedAmbiguous<I, T>,
+    ) -> T {
+        let value = value.do_normalize();
+        let mut replacer = ReplaceAmbiguousAliasWithInfer::new(self.infcx, self.param_env);
+        let value = value.fold_with(&mut replacer);
+        self.register_goals(replacer.goals());
+        value
     }
 }
 
@@ -294,6 +305,19 @@ where
             return Ok(a);
         }
 
+        match self.structurally_relate_aliases {
+            StructurallyRelateAliases::Yes => {
+                assert_eq!(a.bound_vars(), b.bound_vars());
+                a.rebind((a.skip_binder(), b.skip_binder()));
+                self.infcx.enter_forall(a.rebind((a.skip_binder(), b.skip_binder())), |val| {
+                    let (a, b) = val.keep_ambiguous_aliases_for_structurally_relate();
+                    self.relate(a, b)
+                })?;
+                return Ok(a);
+            }
+            StructurallyRelateAliases::No => {}
+        }
+
         match self.ambient_variance {
             // Checks whether `for<..> sub <: for<..> sup` holds.
             //
@@ -312,13 +336,17 @@ where
             // [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
             ty::Covariant => {
                 self.infcx.enter_forall(b, |b| {
+                    let b = self.normalize_ambiguous_aliases(b);
                     let a = self.infcx.instantiate_binder_with_infer(a);
+                    let a = self.normalize_ambiguous_aliases(a);
                     self.relate(a, b)
                 })?;
             }
             ty::Contravariant => {
                 self.infcx.enter_forall(a, |a| {
+                    let a = self.normalize_ambiguous_aliases(a);
                     let b = self.infcx.instantiate_binder_with_infer(b);
+                    let b = self.normalize_ambiguous_aliases(b);
                     self.relate(a, b)
                 })?;
             }
@@ -335,13 +363,17 @@ where
             // Check if `exists<..> A == for<..> B`
             ty::Invariant => {
                 self.infcx.enter_forall(b, |b| {
+                    let b = self.normalize_ambiguous_aliases(b);
                     let a = self.infcx.instantiate_binder_with_infer(a);
+                    let a = self.normalize_ambiguous_aliases(a);
                     self.relate(a, b)
                 })?;
 
                 // Check if `exists<..> B == for<..> A`.
                 self.infcx.enter_forall(a, |a| {
+                    let a = self.normalize_ambiguous_aliases(a);
                     let b = self.infcx.instantiate_binder_with_infer(b);
+                    let b = self.normalize_ambiguous_aliases(b);
                     self.relate(a, b)
                 })?;
             }
@@ -374,12 +406,14 @@ where
         &mut self,
         obligations: impl IntoIterator<Item: ty::Upcast<I, I::Predicate>>,
     ) {
+        std::assert_matches!(self.structurally_relate_aliases, StructurallyRelateAliases::No);
         self.goals.extend(
             obligations.into_iter().map(|pred| Goal::new(self.infcx.cx(), self.param_env, pred)),
         );
     }
 
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>) {
+        std::assert_matches!(self.structurally_relate_aliases, StructurallyRelateAliases::No);
         self.goals.extend(obligations);
     }
 
@@ -405,5 +439,89 @@ where
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
         })]);
+    }
+}
+
+// FIXME: this is a temporary solution for renomalizing ambiguous aliases
+// inside solver relating. We may pursue actual normalization in the future.
+pub struct ReplaceAmbiguousAliasWithInfer<'a, Infcx, I>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    infcx: &'a Infcx,
+    param_env: I::ParamEnv,
+    goals: Vec<Goal<I, I::Predicate>>,
+}
+
+impl<'a, Infcx, I> ReplaceAmbiguousAliasWithInfer<'a, Infcx, I>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    pub fn new(infcx: &'a Infcx, param_env: I::ParamEnv) -> Self {
+        Self { infcx, param_env, goals: Vec::new() }
+    }
+
+    pub fn goals(self) -> Vec<Goal<I, I::Predicate>> {
+        self.goals
+    }
+}
+
+impl<'a, Infcx, I> TypeFolder<I> for ReplaceAmbiguousAliasWithInfer<'a, Infcx, I>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    fn cx(&self) -> I {
+        self.infcx.cx()
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
+        // Ambiguous aliases in nested binders will be handled when they're instantiated.
+        t
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        debug_assert!(!ty.has_escaping_bound_vars());
+        if !ty.has_ambiguous_aliases() {
+            return ty;
+        }
+
+        // With eager normalization, we should normalize the args of alias before
+        // normalizing the alias itself.
+        let ty = ty.super_fold_with(self);
+        let ty::Alias(ty::AliasTy { kind: ty::AliasTyKind::Ambiguous, args, .. }) = ty.kind()
+        else {
+            return ty;
+        };
+
+        let original_alias = args.type_at(0);
+
+        let infer_ty = self.infcx.next_ty_infer();
+        let normalizes_to = ty::PredicateKind::AliasRelate(
+            original_alias.into(),
+            infer_ty.into(),
+            ty::AliasRelationDirection::Equate,
+        );
+        self.goals.push(Goal::new(self.cx(), self.param_env, normalizes_to));
+        infer_ty
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+        debug_assert!(!ct.has_escaping_bound_vars());
+        if !ct.has_ambiguous_aliases() {
+            return ct;
+        }
+
+        // With eager normalization, we should normalize the args of alias before
+        // normalizing the alias itself.
+        let ct = ct.super_fold_with(self);
+        let ty::ConstKind::Unevaluated(..) = ct.kind() else { return ct };
+        // FIXME: add an new `Ambiguous` kind to `UnevaluatedConst` as well.
+        // As a field or a new kind on `ConstKind`?
+        ct
     }
 }

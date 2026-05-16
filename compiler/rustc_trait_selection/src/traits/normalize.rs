@@ -15,6 +15,7 @@ use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
     TypeVisitableExt, TypingMode, Unnormalized,
 };
+use rustc_next_trait_solver::normalize::NormalizationScope;
 use tracing::{debug, instrument};
 
 use super::{BoundVarReplacer, PlaceholderReplacer, SelectionContext, project};
@@ -33,7 +34,8 @@ impl<'tcx> At<'_, 'tcx> {
         value: Unnormalized<'tcx, T>,
     ) -> InferOk<'tcx, T> {
         if self.infcx.next_trait_solver() {
-            let Normalized { value, obligations } = crate::solve::normalize(*self, value);
+            let Normalized { value, obligations } =
+                crate::solve::normalize(*self, value, NormalizationScope::All);
             InferOk { value, obligations }
         } else {
             let value = value.skip_normalization();
@@ -41,6 +43,26 @@ impl<'tcx> At<'_, 'tcx> {
             let Normalized { value, obligations } =
                 normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
             InferOk { value, obligations }
+        }
+    }
+
+    /// Normalize aliases of `Ambiguous` kind in a value.
+    ///
+    /// We should use this after instantiating binders to improve perf.
+    fn renormalize_ambiguous_aliases<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        value: ty::UnnormalizedAmbiguous<'tcx, T>,
+    ) -> InferOk<'tcx, T> {
+        if self.infcx.next_trait_solver() {
+            let Normalized { value, obligations } = crate::solve::normalize(
+                *self,
+                Unnormalized::new(value.do_normalize()),
+                NormalizationScope::AmbiguousAlias,
+            );
+            InferOk { value, obligations }
+        } else {
+            // We won't have ambiguous aliases in old solver so no-op.
+            InferOk { value: value.no_ambiguous_aliases(), obligations: Default::default() }
         }
     }
 
@@ -441,6 +463,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             ty::Projection { .. } => self.normalize_trait_projection(data.into()).expect_type(),
             ty::Inherent { .. } => self.normalize_inherent_projection(data.into()).expect_type(),
             ty::Free { .. } => self.normalize_free_alias(data.into()).expect_type(),
+            ty::Ambiguous { .. } => unreachable!(),
         }
     }
 

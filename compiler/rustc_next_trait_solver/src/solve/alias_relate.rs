@@ -44,7 +44,8 @@ where
             lhs.to_alias_term(self.cx()).is_some()
                 || rhs.to_alias_term(self.cx()).is_some()
                 || lhs.is_error()
-                || rhs.is_error()
+                || rhs.is_error(),
+            "{lhs:?} {rhs:?}",
         );
 
         // Structurally normalize the lhs.

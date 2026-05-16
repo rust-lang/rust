@@ -927,6 +927,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
             ty::AliasTermKind::OpaqueTy { def_id } => Some(self.variances_of(def_id)),
+            ty::AliasTermKind::AmbiguousTy => Some(&[ty::Variance::Covariant]),
             ty::AliasTermKind::InherentTy { .. }
             | ty::AliasTermKind::InherentConst { .. }
             | ty::AliasTermKind::FreeTy { .. }

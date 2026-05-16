@@ -815,6 +815,11 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 return; // Subtree handled by compute_inherent_projection.
             }
 
+            // Ambiguous aliases only wrap another higher-ranked alias whose
+            // normalization is currently ambiguous, we will handle that alias
+            // when recursing into args.
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => {}
+
             ty::Adt(def, args) => {
                 // WfNominalType
                 let obligations = self.nominal_obligations(def.did(), args);

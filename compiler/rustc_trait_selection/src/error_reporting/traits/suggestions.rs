@@ -713,9 +713,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
-            // `ReBound`, and we don't particularly care about the regions.
-            let real_ty = self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
+            let ocx = ObligationCtxt::new(self);
+            let real_ty = ocx.instantiate_binder_with_fresh_vars(
+                &ObligationCause::dummy(),
+                BoundRegionConversionTime::HigherRankedType,
+                obligation.param_env,
+                real_trait_pred.self_ty(),
+            );
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 return false;
             }
@@ -1014,9 +1018,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return false;
         }
 
-        let self_ty = self.instantiate_binder_with_fresh_vars(
-            DUMMY_SP,
+        let ocx = ObligationCtxt::new(self);
+        let self_ty = ocx.instantiate_binder_with_fresh_vars(
+            &ObligationCause::dummy(),
             BoundRegionConversionTime::FnCall,
+            obligation.param_env,
             trait_pred.self_ty(),
         );
 
@@ -1345,8 +1351,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
+        let ocx = ObligationCtxt::new(self);
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        self.enter_forall(self_ty, |ty: Ty<'_>| {
+        ocx.enter_forall(&ObligationCause::dummy(), obligation.param_env, self_ty, |ty: Ty<'_>| {
             let Some(generics) = self.tcx.hir_get_generics(obligation.cause.body_id) else {
                 return false;
             };
@@ -1558,18 +1565,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         };
 
-        let output = self.instantiate_binder_with_fresh_vars(
-            DUMMY_SP,
+        let ocx = ObligationCtxt::new(self);
+        let output = ocx.instantiate_binder_with_fresh_vars(
+            &ObligationCause::dummy(),
             BoundRegionConversionTime::FnCall,
+            param_env,
             output,
         );
         let inputs = inputs
             .skip_binder()
             .iter()
             .map(|ty| {
-                self.instantiate_binder_with_fresh_vars(
-                    DUMMY_SP,
+                ocx.instantiate_binder_with_fresh_vars(
+                    &ObligationCause::dummy(),
                     BoundRegionConversionTime::FnCall,
+                    param_env,
                     inputs.rebind(*ty),
                 )
             })
@@ -4845,10 +4855,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(failed_pred) = failed_pred.as_trait_clause()
                     && where_pred.def_id() == failed_pred.def_id()
                 {
-                    self.enter_forall(where_pred, |where_pred| {
-                        let failed_pred = self.instantiate_binder_with_fresh_vars(
-                            expr.span,
+                    let ocx = ObligationCtxt::new(self);
+                    let cause = ObligationCause::dummy();
+                    ocx.enter_forall(&cause, param_env, where_pred, |where_pred| {
+                        let failed_pred = ocx.instantiate_binder_with_fresh_vars(
+                            &cause,
                             BoundRegionConversionTime::FnCall,
+                            param_env,
                             failed_pred,
                         );
 
@@ -4857,7 +4870,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         for (expected, actual) in zipped {
                             self.probe(|_| {
                                 match self
-                                    .at(&ObligationCause::misc(expr.span, body_id), param_env)
+                                    .at(&cause, param_env)
                                     // Doesn't actually matter if we define opaque types here, this is just used for
                                     // diagnostics, and the result is never kept around.
                                     .eq(DefineOpaqueTypes::Yes, expected, actual)
@@ -5588,7 +5601,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
-                self.enter_forall(pred, |pred| {
+                ocx.enter_forall(&ObligationCause::dummy(), param_env, pred, |pred| {
                     let pred = ocx.normalize(
                         &ObligationCause::dummy(),
                         param_env,
@@ -6060,14 +6073,23 @@ fn hint_missing_borrow<'tcx>(
         return;
     }
 
+    let ocx = ObligationCtxt::new(infcx);
     let found_args = match found.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => {
+            ocx.enter_forall(&ObligationCause::dummy(), param_env, *sig_tys, |sig_tys| {
+                sig_tys.inputs().iter()
+            })
+        }
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => {
+            ocx.enter_forall(&ObligationCause::dummy(), param_env, *sig_tys, |sig_tys| {
+                sig_tys.inputs().iter()
+            })
+        }
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }

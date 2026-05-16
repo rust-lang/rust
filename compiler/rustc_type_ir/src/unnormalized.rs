@@ -7,7 +7,7 @@ use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
     Binder, BoundConstness, ClauseKind, HostEffectPredicate, Interner, PredicatePolarity,
-    TraitPredicate, TraitRef,
+    TraitPredicate, TraitRef, TypeVisitable, TypeVisitableExt,
 };
 
 /// A wrapper for values that need normalization.
@@ -97,6 +97,10 @@ impl<I: Interner, T> Unnormalized<I, Binder<I, T>> {
     pub fn skip_binder(self) -> T {
         self.value.skip_binder()
     }
+
+    pub fn bound_vars(&self) -> I::BoundVarKinds {
+        self.value.bound_vars()
+    }
 }
 
 impl<I: Interner> Unnormalized<I, I::Clause> {
@@ -145,5 +149,43 @@ impl<I: Interner> Unnormalized<I, Binder<I, TraitRef<I>>> {
             })
             .upcast(cx);
         Unnormalized::new(inner)
+    }
+}
+
+/// Like `Unnormalized`, but for otherwise normalized values that contain
+/// unnormalized `Ambiguous` aliases.
+#[derive_where(Clone, Copy, PartialOrd, PartialEq, Debug; T)]
+pub struct UnnormalizedAmbiguous<I: Interner, T> {
+    value: T,
+    #[derive_where(skip(Debug))]
+    _tcx: PhantomData<fn() -> I>,
+}
+
+impl<I: Interner, T> UnnormalizedAmbiguous<I, T> {
+    /// Should only be used in binder instantiation.
+    pub fn new(value: T) -> Self {
+        Self { value, _tcx: PhantomData }
+    }
+
+    pub fn dummy(value: T) -> Self {
+        // TODO: assert no unnormalized alias without escaping bound vars
+        Self { value, _tcx: PhantomData }
+    }
+
+    /// This should only be used when structurally relating types.
+    pub fn keep_ambiguous_aliases_for_structurally_relate(self) -> T {
+        self.value
+    }
+
+    /// Only use this if it will then normalize away all ambiguous aliases.
+    pub fn do_normalize(self) -> T {
+        self.value
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> UnnormalizedAmbiguous<I, T> {
+    pub fn no_ambiguous_aliases(self) -> T {
+        assert!(!self.value.has_ambiguous_aliases());
+        self.value
     }
 }

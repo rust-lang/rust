@@ -850,7 +850,8 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
+        self.enter_forall(predicate, |pred| {
+            let ty::SubtypePredicate { a_is_expected, a, b } = pred.no_ambiguous_aliases();
             if a_is_expected {
                 Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
             } else {
@@ -1376,14 +1377,27 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    // Instantiates the bound variables in a given binder with fresh inference
-    // variables in the current universe.
-    //
-    // Use this method if you'd like to find some generic parameters of the binder's
-    // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
-    // that corresponds to your use case, consider whether or not you should
-    // use [`InferCtxt::enter_forall`] instead.
-    pub fn instantiate_binder_with_fresh_vars<T>(
+    /// Instantiates the bound variables in a given binder with fresh inference
+    /// variables in the current universe.
+    ///
+    /// Use this method if you'd like to find some generic parameters of the binder's
+    /// variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
+    /// that corresponds to your use case, consider whether or not you should
+    /// use [`InferCtxt::enter_forall`] instead.
+    pub fn instantiate_unnormalized_binder_with_fresh_vars<T>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        value: ty::Unnormalized<'tcx, ty::Binder<'tcx, T>>,
+    ) -> ty::Unnormalized<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        value
+            .map(|v| self.instantiate_binder_with_fresh_vars(span, lbrct, v).no_ambiguous_aliases())
+    }
+
+    pub fn instantiate_binder_with_fresh_vars_old_solver<T>(
         &self,
         span: Span,
         lbrct: BoundRegionConversionTime,
@@ -1392,8 +1406,21 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
+        debug_assert!(!self.next_trait_solver());
+        self.instantiate_binder_with_fresh_vars(span, lbrct, value).no_ambiguous_aliases()
+    }
+
+    pub fn instantiate_binder_with_fresh_vars<T>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        value: ty::Binder<'tcx, T>,
+    ) -> ty::UnnormalizedAmbiguous<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
         if let Some(inner) = value.no_bound_vars() {
-            return inner;
+            return ty::UnnormalizedAmbiguous::new(inner);
         }
 
         let bound_vars = value.bound_vars();

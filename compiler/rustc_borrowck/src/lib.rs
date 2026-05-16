@@ -32,7 +32,8 @@ use rustc_index::bit_set::MixedBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{
-    InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
+    BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
+    TyCtxtInferExt,
 };
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
@@ -706,6 +707,20 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         }
 
         next_region
+    }
+
+    /// We expect all aliases to already be fully normalized during borrowck,
+    /// so we can redefine this method to just unwrap the unnormalized alias binder.
+    pub(crate) fn instantiate_binder_with_fresh_vars<T>(
+        &self,
+        span: Span,
+        lbrct: BoundRegionConversionTime,
+        value: ty::Binder<'tcx, T>,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+    {
+        self.infcx.instantiate_binder_with_fresh_vars(span, lbrct, value).no_ambiguous_aliases()
     }
 }
 

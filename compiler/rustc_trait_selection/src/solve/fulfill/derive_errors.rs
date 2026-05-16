@@ -9,7 +9,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GoalEvaluation, MaybeInfo, SolverDelegateEvalExt as _};
 use tracing::{instrument, trace};
@@ -58,17 +58,13 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         ty::PredicateKind::AliasRelate(_, _, _) => {
             FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
         }
-        ty::PredicateKind::Subtype(pred) => {
-            let (a, b) = infcx.enter_forall_and_leak_universe(
-                obligation.predicate.kind().rebind((pred.a, pred.b)),
-            );
+        ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ }) => {
+            assert!(!(a, b).has_escaping_bound_vars());
             let expected_found = ExpectedFound::new(a, b);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
-        ty::PredicateKind::Coerce(pred) => {
-            let (a, b) = infcx.enter_forall_and_leak_universe(
-                obligation.predicate.kind().rebind((pred.a, pred.b)),
-            );
+        ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+            assert!(!(a, b).has_escaping_bound_vars());
             let expected_found = ExpectedFound::new(b, a);
             FulfillmentErrorCode::Subtype(expected_found, TypeError::Sorts(expected_found))
         }
@@ -393,7 +389,6 @@ impl<'tcx> BestObligation<'tcx> {
         &mut self,
         goal: &inspect::InspectGoal<'_, 'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
-        let tcx = goal.infcx().tcx;
         let pred_kind = goal.goal().predicate.kind();
 
         match pred_kind.no_bound_vars() {
@@ -402,7 +397,7 @@ impl<'tcx> BestObligation<'tcx> {
             }
             Some(ty::PredicateKind::NormalizesTo(pred))
                 if let ty::AliasTermKind::ProjectionTy { .. }
-                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind(tcx) =>
+                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind =>
             {
                 self.detect_error_in_self_ty_normalization(goal, pred.alias.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.alias)?;
@@ -469,7 +464,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             }
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
-                    normalizes_to.alias.kind(tcx),
+                    normalizes_to.alias.kind,
                     ty::AliasTermKind::ProjectionTy { .. }
                         | ty::AliasTermKind::ProjectionConst { .. }
                 ) =>

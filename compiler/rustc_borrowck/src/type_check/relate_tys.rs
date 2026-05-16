@@ -173,7 +173,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         let value = if let Some(inner) = binder.no_bound_vars() {
-            inner
+            ty::UnnormalizedAmbiguous::dummy(inner)
         } else {
             let infcx = self.type_checker.infcx;
             let mut lazy_universe = None;
@@ -207,7 +207,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         };
 
         debug!(?value);
-        f(self, value)
+        f(self, value.no_ambiguous_aliases())
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -245,7 +245,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         let replaced = infcx.tcx.replace_bound_vars_uncached(binder, delegate);
         debug!(?replaced);
 
-        replaced
+        replaced.no_ambiguous_aliases()
     }
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {

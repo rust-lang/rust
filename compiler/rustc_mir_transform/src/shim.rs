@@ -1182,7 +1182,9 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
             sig.fn_sig_kind,
         )
     });
-    let sig = tcx.liberate_late_bound_regions(coroutine_closure_def_id, poly_sig);
+    let sig = tcx
+        .liberate_late_bound_regions(coroutine_closure_def_id, ty::Unnormalized::dummy(poly_sig))
+        .skip_normalization();
     let ty::Coroutine(coroutine_def_id, coroutine_args) = *sig.output().kind() else {
         bug!();
     };

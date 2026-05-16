@@ -2064,6 +2064,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
+        // TODO
+        match binder.skip_binder() {
+            ty::PredicateKind::AliasRelate(lhs, rhs, ..) => {
+                assert!(
+                    lhs.to_alias_term(self)
+                        .filter(|a| !matches!(a.kind, ty::AliasTermKind::AmbiguousTy))
+                        .is_some()
+                        || rhs
+                            .to_alias_term(self)
+                            .filter(|a| !matches!(a.kind, ty::AliasTermKind::AmbiguousTy))
+                            .is_some(),
+                    "{binder:?}"
+                )
+            }
+            _ => {}
+        }
         self.interners.intern_predicate(binder)
     }
 
@@ -2134,6 +2150,64 @@ impl<'tcx> TyCtxt<'tcx> {
         true
     }
 
+    pub fn debug_assert_alias_ty_args_compatible(
+        self,
+        alias_ty: ty::AliasTyKind<'tcx>,
+        args: &'tcx [ty::GenericArg<'tcx>],
+    ) {
+        if cfg!(debug_assertions) {
+            match alias_ty {
+                ty::AliasTyKind::Projection { def_id }
+                | ty::AliasTyKind::Inherent { def_id }
+                | ty::AliasTyKind::Opaque { def_id }
+                | ty::AliasTyKind::Free { def_id } => {
+                    self.debug_assert_args_compatible(def_id, args)
+                }
+                ty::AliasTyKind::Ambiguous => {
+                    assert_eq!(args.len(), 1);
+                    match args[0].expect_ty().kind() {
+                        ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args: _, .. }) => {
+                            unreachable!()
+                        }
+                        ty::Alias(_) => {}
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn debug_assert_alias_term_args_compatible(
+        self,
+        alias_term: ty::AliasTermKind<'tcx>,
+        args: &'tcx [ty::GenericArg<'tcx>],
+    ) {
+        if cfg!(debug_assertions) {
+            match alias_term {
+                rustc_type_ir::AliasTermKind::ProjectionTy { def_id }
+                | rustc_type_ir::AliasTermKind::InherentTy { def_id }
+                | rustc_type_ir::AliasTermKind::OpaqueTy { def_id }
+                | rustc_type_ir::AliasTermKind::FreeTy { def_id }
+                | rustc_type_ir::AliasTermKind::UnevaluatedConst { def_id }
+                | rustc_type_ir::AliasTermKind::ProjectionConst { def_id }
+                | rustc_type_ir::AliasTermKind::FreeConst { def_id }
+                | rustc_type_ir::AliasTermKind::InherentConst { def_id } => {
+                    self.debug_assert_args_compatible(def_id, args)
+                }
+                ty::AliasTermKind::AmbiguousTy => {
+                    assert_eq!(args.len(), 1);
+                    match args[0].expect_ty().kind() {
+                        ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args: _, .. }) => {
+                            unreachable!()
+                        }
+                        ty::Alias(_) => {}
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        }
+    }
+
     /// With `cfg(debug_assertions)`, assert that args are compatible with their generics,
     /// and print out the args if not.
     pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
@@ -2192,6 +2266,17 @@ impl<'tcx> TyCtxt<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
+        // TODO
+        match st {
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous, args, .. }) => {
+                match args.type_at(0).kind() {
+                    ty::Alias(ty::AliasTy { kind: ty::Ambiguous, .. }) => unreachable!(),
+                    ty::Alias(_) => {}
+                    _ => unreachable!(),
+                }
+            }
+            _ => {}
+        }
         self.interners.intern_ty(st)
     }
 

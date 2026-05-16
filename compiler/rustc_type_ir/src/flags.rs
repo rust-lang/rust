@@ -82,6 +82,9 @@ bitflags::bitflags! {
         /// Does this have `ConstKind::Unevaluated`?
         const HAS_CT_PROJECTION           = 1 << 14;
 
+        /// Does this have `Ambiguous` aliases?
+        const HAS_AMBIGUOUS_ALIAS         = 1 << 15;
+
         /// Does this have `Alias` or `ConstKind::Unevaluated`?
         ///
         /// Rephrased, could this term be normalized further?
@@ -89,26 +92,27 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_TY_FREE_ALIAS.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()
-                                          | TypeFlags::HAS_CT_PROJECTION.bits();
+                                          | TypeFlags::HAS_CT_PROJECTION.bits()
+                                          | TypeFlags::HAS_AMBIGUOUS_ALIAS.bits();
 
         /// Is a type or const error reachable?
-        const HAS_NON_REGION_ERROR          = 1 << 15;
+        const HAS_NON_REGION_ERROR        = 1 << 16;
         /// Is a region error reachable?
-        const HAS_RE_ERROR                = 1 << 16;
+        const HAS_RE_ERROR                = 1 << 17;
         /// Is an error type/lifetime/const reachable?
         const HAS_ERROR                   = TypeFlags::HAS_NON_REGION_ERROR.bits()
                                           | TypeFlags::HAS_RE_ERROR.bits();
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but `ReBound` and `ReErased`.
-        const HAS_FREE_REGIONS            = 1 << 17;
+        const HAS_FREE_REGIONS            = 1 << 18;
 
         /// Does this have any `ReBound` regions?
-        const HAS_RE_BOUND                = 1 << 18;
+        const HAS_RE_BOUND                = 1 << 19;
         /// Does this have any `Bound` types?
-        const HAS_TY_BOUND                = 1 << 19;
+        const HAS_TY_BOUND                = 1 << 20;
         /// Does this have any `ConstKind::Bound` consts?
-        const HAS_CT_BOUND                = 1 << 20;
+        const HAS_CT_BOUND                = 1 << 21;
         /// Does this have any bound variables?
         /// Used to check if a global bound is safe to evaluate.
         const HAS_BOUND_VARS              = TypeFlags::HAS_RE_BOUND.bits()
@@ -116,7 +120,7 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_CT_BOUND.bits();
 
         /// Does this have any `ReErased` regions?
-        const HAS_RE_ERASED               = 1 << 21;
+        const HAS_RE_ERASED               = 1 << 22;
 
         /// Does this have any regions of any kind?
         const HAS_REGIONS                 = TypeFlags::HAS_FREE_REGIONS.bits()
@@ -133,19 +137,19 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits();
 
         /// Does this value have `InferTy::FreshTy/FreshIntTy/FreshFloatTy`?
-        const HAS_TY_FRESH                = 1 << 22;
+        const HAS_TY_FRESH                = 1 << 23;
 
         /// Does this value have `InferConst::Fresh`?
-        const HAS_CT_FRESH                = 1 << 23;
+        const HAS_CT_FRESH                = 1 << 24;
 
         /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
-        const HAS_BINDER_VARS             = 1 << 24;
+        const HAS_BINDER_VARS             = 1 << 25;
 
         /// Does this type have any coroutines in it?
-        const HAS_TY_CORO                 = 1 << 25;
+        const HAS_TY_CORO                 = 1 << 26;
 
         /// Does this have a `Bound(BoundVarIndexKind::Canonical, _)`?
-        const HAS_CANONICAL_BOUND         = 1 << 26;
+        const HAS_CANONICAL_BOUND         = 1 << 27;
     }
 }
 
@@ -301,6 +305,7 @@ impl<I: Interner> FlagComputation<I> {
                     ty::Free { .. } => TypeFlags::HAS_TY_FREE_ALIAS,
                     ty::Opaque { .. } => TypeFlags::HAS_TY_OPAQUE,
                     ty::Inherent { .. } => TypeFlags::HAS_TY_INHERENT,
+                    ty::Ambiguous { .. } => TypeFlags::HAS_AMBIGUOUS_ALIAS,
                 });
 
                 self.add_alias_ty(alias);

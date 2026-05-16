@@ -33,7 +33,7 @@ fn test_free() {
 
 fn test_free_mismatch() {
     let (mut arr, mut arr_with_weird_len) = free();
-    //[next]~^ ERROR type mismatch resolving `10 == 2`
+    //[next]~^ ERROR type mismatch resolving `FREE::<10> == 2`
     arr_with_weird_len = [(); 2];
     arr = [(); 10];
 }
@@ -50,7 +50,7 @@ fn test_proj() {
 
 fn test_proj_mismatch() {
     let (mut arr, mut arr_with_weird_len) = proj();
-    //[next]~^ ERROR type mismatch resolving `10 == 2`
+    //[next]~^ ERROR type mismatch resolving `<S as Trait>::PROJ::<10> == 2`
     arr_with_weird_len = [(); 2];
     arr = [(); 10];
 }

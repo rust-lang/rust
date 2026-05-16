@@ -5,8 +5,8 @@ use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
-use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
+use rustc_type_ir::solve::{NoSolutionOrRerunNonErased, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
     TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
@@ -50,7 +50,8 @@ where
         ty::Dynamic(..)
         | ty::Param(..)
         | ty::Alias(ty::AliasTy {
-            kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+            kind:
+                ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. } | ty::Ambiguous { .. },
             ..
         })
         | ty::Placeholder(..)
@@ -878,13 +879,14 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: Binder<I, ty::TraitRef<I>>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Vec<Goal<I, I::Predicate>>, Ambiguous>
+) -> Result<Vec<Goal<I, I::Predicate>>, Result<Ambiguous, NoSolutionOrRerunNonErased>>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     let cx = ecx.cx();
-    let trait_ref = ecx.instantiate_binder_with_infer(trait_ref);
+    let trait_ref =
+        ecx.instantiate_binder_with_infer(param_env, trait_ref).map_err(|err| Err(err))?;
     let mut requirements = vec![];
     // Elaborating all supertrait outlives obligations here is not soundness critical,
     // since if we just used the unelaborated set, then the transitive supertraits would
@@ -940,12 +942,13 @@ where
         nested: vec![],
     };
 
-    let requirements = requirements.try_fold_with(&mut folder)?;
-    Ok(folder
-        .nested
-        .into_iter()
-        .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
-        .collect())
+    requirements.try_fold_with(&mut folder).map(|requirements| {
+        folder
+            .nested
+            .into_iter()
+            .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
+            .collect()
+    })
 }
 
 struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I>> {
@@ -971,7 +974,8 @@ where
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
                 .enter_without_propagated_nested_goals(|ecx| {
-                    let source_projection = ecx.instantiate_binder_with_infer(source_projection);
+                    let source_projection =
+                        ecx.instantiate_binder_with_infer(self.param_env, source_projection)?;
                     ecx.eq(self.param_env, source_projection.projection_term, target_projection)?;
                     ecx.try_evaluate_added_goals()
                 })
@@ -985,7 +989,7 @@ where
     fn try_eagerly_replace_alias(
         &mut self,
         alias_term: ty::AliasTerm<I>,
-    ) -> Result<Option<I::Term>, Ambiguous> {
+    ) -> Result<Option<I::Term>, Result<Ambiguous, NoSolutionOrRerunNonErased>> {
         if alias_term.self_ty() != self.self_ty {
             return Ok(None);
         }
@@ -1009,10 +1013,13 @@ where
             // If there's more than one projection that we can unify here, then we
             // need to stall until inference constrains things so that there's only
             // one choice.
-            return Err(Ambiguous);
+            return Err(Ok(Ambiguous));
         }
 
-        let replacement = self.ecx.instantiate_binder_with_infer(*replacement);
+        let replacement = self
+            .ecx
+            .instantiate_binder_with_infer(self.param_env, *replacement)
+            .map_err(|e| Err(e))?;
         self.nested.extend(
             self.ecx
                 .eq_and_get_goals(self.param_env, alias_term, replacement.projection_term)
@@ -1031,13 +1038,16 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    type Error = Ambiguous;
+    type Error = Result<Ambiguous, NoSolutionOrRerunNonErased>;
 
     fn cx(&self) -> I {
         self.ecx.cx()
     }
 
-    fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Ambiguous> {
+    fn try_fold_ty(
+        &mut self,
+        ty: I::Ty,
+    ) -> Result<I::Ty, Result<Ambiguous, NoSolutionOrRerunNonErased>> {
         if let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Projection { .. }, .. }) = ty.kind()
             && let Some(term) = self.try_eagerly_replace_alias(alias_ty.into())?
         {

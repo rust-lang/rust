@@ -210,7 +210,8 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. })
             | ty::Bound(..)
             | ty::Placeholder(_)
-            | ty::Infer(_) => {
+            | ty::Infer(_)
+            | ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => {
                 bug!("unexpected impl self type of impl: {:?} {:?}", id, self_ty);
             }
             // We could bail out here, but that will silence other useful errors.

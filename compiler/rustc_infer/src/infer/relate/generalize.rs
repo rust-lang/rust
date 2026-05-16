@@ -210,6 +210,9 @@ impl<'tcx> InferCtxt<'tcx> {
                     | ty::AliasTermKind::UnevaluatedConst { .. } => {
                         return Err(TypeError::CyclicConst(source_term.expect_const()));
                     }
+                    ty::AliasTermKind::AmbiguousTy { .. } => {
+                        unreachable!("We shouldn't have `AmbiguousTy` in the old solver")
+                    }
                 }
             }
         } else {

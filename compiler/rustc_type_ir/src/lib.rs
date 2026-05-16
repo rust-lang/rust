@@ -82,7 +82,7 @@ pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintT
 use rustc_type_ir_macros::GenericTypeVisitable;
 pub use ty_info::*;
 pub use ty_kind::*;
-pub use unnormalized::Unnormalized;
+pub use unnormalized::*;
 pub use upcast::*;
 pub use visit::*;
 

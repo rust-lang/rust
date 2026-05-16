@@ -20,6 +20,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::NormalizeExt;
 use tracing::{debug, instrument, trace};
 
 use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
@@ -249,18 +250,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // coroutine. To do so, we use the `CoroutineClosureSignature` to compute
                 // the coroutine type, filling in the tupled_upvars_ty and kind_ty with infer
                 // vars which will get constrained during upvar analysis.
-                let coroutine_output_ty = tcx.liberate_late_bound_regions(
-                    expr_def_id.to_def_id(),
-                    closure_args.coroutine_closure_sig().map_bound(|sig| {
-                        sig.to_coroutine(
-                            tcx,
-                            parent_args,
-                            coroutine_kind_ty,
-                            tcx.coroutine_for_closure(expr_def_id),
-                            coroutine_upvars_ty,
-                        )
-                    }),
-                );
+                let coroutine_output_ty = tcx
+                    .liberate_late_bound_regions(
+                        expr_def_id.to_def_id(),
+                        ty::Unnormalized::new_wip(closure_args.coroutine_closure_sig().map_bound(
+                            |sig| {
+                                sig.to_coroutine(
+                                    tcx,
+                                    parent_args,
+                                    coroutine_kind_ty,
+                                    tcx.coroutine_for_closure(expr_def_id),
+                                    coroutine_upvars_ty,
+                                )
+                            },
+                        )),
+                    )
+                    .skip_norm_wip();
                 liberated_sig = tcx.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
@@ -823,11 +828,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
             let mut all_obligations = PredicateObligations::new();
-            let supplied_sig = self.instantiate_binder_with_fresh_vars(
+            let supplied_sig = self.infcx.instantiate_binder_with_fresh_vars(
                 self.tcx.def_span(expr_def_id),
                 BoundRegionConversionTime::FnCall,
                 supplied_sig,
             );
+
+            let cause = self.misc(self.tcx.def_span(expr_def_id));
+            let InferOk { value: supplied_sig, obligations } =
+                self.at(&cause, self.param_env).renormalize_ambiguous_aliases(supplied_sig);
+            all_obligations.extend(obligations);
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
@@ -1112,8 +1122,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_def_id: LocalDefId,
         bound_sig: ty::PolyFnSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
-        let liberated_sig =
-            self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
+        let liberated_sig = self
+            .tcx()
+            .liberate_late_bound_regions(
+                expr_def_id.to_def_id(),
+                ty::Unnormalized::new_wip(bound_sig),
+            )
+            .skip_norm_wip();
         let liberated_sig =
             self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(liberated_sig));
         ClosureSignatures { bound_sig, liberated_sig }

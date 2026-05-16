@@ -394,6 +394,8 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         item_segment: &rustc_hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
+        // FIXME(#155345): We don't expect ambiguous aliases here as actually
+        // the `poly_trait_ref` is expected to be unnormalized.
         let trait_ref = self.instantiate_binder_with_fresh_vars(
             span,
             // FIXME(mgca): `item_def_id` can be an AssocConst; rename this variant.

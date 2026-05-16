@@ -471,7 +471,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                                                 name: Symbol::intern(&lt_name),
                                             })
                                         }
-                                    ),
+                                    ).no_ambiguous_aliases(),
                                 ),
                             });
                         }

@@ -192,7 +192,8 @@ where
             return Self::match_assumption(ecx, goal, meta_sized_clause, then);
         }
 
-        let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
+        let assumption_trait_pred =
+            ecx.instantiate_binder_with_infer(goal.param_env, trait_clause)?;
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
 
         then(ecx)
@@ -381,7 +382,8 @@ where
         else {
             return ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS);
         };
-        let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
+        let (inputs, output) =
+            ecx.instantiate_binder_with_infer(goal.param_env, tupled_inputs_and_output)?;
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -423,7 +425,10 @@ where
             tupled_inputs_ty,
             output_coroutine_ty,
             coroutine_return_ty: _,
-        } = ecx.instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine);
+        } = ecx.instantiate_binder_with_infer(
+            goal.param_env,
+            tupled_inputs_and_output_and_coroutine,
+        )?;
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
@@ -1076,8 +1081,10 @@ where
                                 target_projection,
                                 param_env,
                                 |ecx, target_projection| {
-                                    let source_projection =
-                                        ecx.instantiate_binder_with_infer(source_projection);
+                                    let source_projection = ecx.instantiate_binder_with_infer(
+                                        param_env,
+                                        source_projection,
+                                    )?;
                                     ecx.eq(param_env, source_projection, target_projection)?;
                                     ecx.try_evaluate_added_goals()
                                 },
@@ -1100,7 +1107,7 @@ where
                             param_env,
                             |ecx, target_principal| {
                                 let source_principal =
-                                    ecx.instantiate_binder_with_infer(source_principal);
+                                    ecx.instantiate_binder_with_infer(param_env, source_principal)?;
                                 ecx.eq(param_env, source_principal, target_principal)?;
                                 ecx.try_evaluate_added_goals()
                             },
@@ -1131,8 +1138,8 @@ where
                             target_projection,
                             param_env,
                             |ecx, target_projection| {
-                                let source_projection =
-                                    ecx.instantiate_binder_with_infer(source_projection);
+                                let source_projection = ecx
+                                    .instantiate_binder_with_infer(param_env, source_projection)?;
                                 ecx.eq(param_env, source_projection, target_projection)?;
                                 ecx.try_evaluate_added_goals()
                             },
@@ -1365,13 +1372,14 @@ where
                 constituent_tys(ecx, goal.predicate.self_ty())?,
                 goal.param_env,
                 |ecx, tys| {
-                    tys.into_iter()
+                    Ok(tys
+                        .into_iter()
                         .map(|ty| {
                             goal.with(ecx.cx(), goal.predicate.with_replaced_self_ty(ecx.cx(), ty))
                         })
-                        .collect::<Vec<_>>()
+                        .collect::<Vec<_>>())
                 },
-            );
+            )?;
             ecx.add_goals(GoalSource::ImplWhereBound, goals);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })

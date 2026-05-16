@@ -28,6 +28,7 @@ use crate::canonical::{
 };
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::normalize::{BinderRenormalizer, NormalizationFolder, NormalizationScope};
 use crate::placeholder::BoundVarReplacer;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::search_graph::SearchGraph;
@@ -879,6 +880,7 @@ where
                 }
             })
         })
+        .map_err(Into::into)
     }
 
     // Recursively evaluates all the goals added to this `EvalCtxt` to completion, returning
@@ -1320,11 +1322,15 @@ where
         Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
     }
 
+    /// Same as the infcx one except we renormalize possible ambiguous aliases
+    /// in the instantiated binder.
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
-        &self,
+        &mut self,
+        param_env: I::ParamEnv,
         value: ty::Binder<I, T>,
-    ) -> T {
-        self.delegate.instantiate_binder_with_infer(value)
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        let instantiated = self.delegate.instantiate_binder_with_infer(value);
+        self.renormalize_ambiguous_aliases(param_env, instantiated)
     }
 
     /// `enter_forall`, but takes `&mut self` and passes it back through the
@@ -1333,14 +1339,18 @@ where
     /// The `param_env` is used to *compute* the assumptions of the binder, not *as* the
     /// assumptions associated with the binder.
     ///
+    /// We renormalize possible ambiguous aliases in the instantiated binder
+    /// before doing anything else.
+    ///
     /// FIXME(inherent_associated_types): fix this?
     pub(super) fn enter_forall_with_assumptions<T: TypeFoldable<I>, U>(
         &mut self,
         value: ty::Binder<I, T>,
         param_env: I::ParamEnv,
-        f: impl FnOnce(&mut Self, T) -> U,
-    ) -> U {
+        f: impl FnOnce(&mut Self, T) -> Result<U, NoSolutionOrRerunNonErased>,
+    ) -> Result<U, NoSolutionOrRerunNonErased> {
         self.delegate.enter_forall(value, |value| {
+            let value = self.renormalize_ambiguous_aliases(param_env, value)?;
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
@@ -1460,12 +1470,24 @@ where
         &mut self,
         param_env: I::ParamEnv,
         uv: ty::UnevaluatedConst<I>,
-    ) -> Result<Option<I::Const>, RerunNonErased> {
+    ) -> Result<Option<I::Const>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
             self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)?;
         }
 
-        Ok(self.delegate.evaluate_const(param_env, uv))
+        if let Some(ct) = self.delegate.evaluate_const(param_env, uv) {
+            Ok(Some(match ct.kind() {
+                // FIXME(adt_const_params): `evaluate_const` currently does not normalize the type
+                // of const values.
+                ty::ConstKind::Value(value) => Const::new_value(
+                    self.cx(),
+                    self.normalize(param_env, ty::Unnormalized::new_wip(value))?,
+                ),
+                _ => ct,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     pub(super) fn evaluate_const_and_instantiate_normalizes_to_term(
@@ -1730,6 +1752,79 @@ where
         }
 
         ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
+    }
+
+    /// Normalizes aliases in a value as much as we can.
+    ///
+    /// Ambiguous goals are added to eval_ctxt.
+    pub fn normalize<T: TypeFoldable<I>>(
+        &mut self,
+        param_env: I::ParamEnv,
+        value: ty::Unnormalized<I, T>,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        self.normalize_inner(param_env, value.skip_normalization(), NormalizationScope::All)
+    }
+
+    /// Only normalizes aliases of `AmbiguousTy` kind.
+    ///
+    /// Ambiguous goals are added to eval_ctxt.
+    ///
+    /// This should be used after instantiating binders to improve perf, assuming that
+    /// other normalizable aliases have been normalized before.
+    pub fn renormalize_ambiguous_aliases<T: TypeFoldable<I>>(
+        &mut self,
+        param_env: I::ParamEnv,
+        value: ty::UnnormalizedAmbiguous<I, T>,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        self.normalize_inner(param_env, value.do_normalize(), NormalizationScope::AmbiguousAlias)
+    }
+
+    fn normalize_inner<T: TypeFoldable<I>>(
+        &mut self,
+        param_env: I::ParamEnv,
+        value: T,
+        scope: NormalizationScope,
+    ) -> Result<T, NoSolutionOrRerunNonErased> {
+        let value = self.delegate.resolve_vars_if_possible(value);
+        // To drop the mutable borrow of self early.
+        let (normalized, stalled_goals) = {
+            let infcx = self.delegate.deref();
+            let normalize_term = |alias_term| -> Result<_, NoSolutionOrRerunNonErased> {
+                let delegate = self.delegate;
+                let infer_term = self.next_term_infer_of_kind(alias_term);
+                let predicate = ty::PredicateKind::AliasRelate(
+                    alias_term.into(),
+                    infer_term.into(),
+                    ty::AliasRelationDirection::Equate,
+                );
+                let goal = Goal::new(self.delegate.cx(), param_env, predicate);
+                let result = self.evaluate_goal(GoalSource::Misc, goal, None)?;
+                let normalized = delegate.resolve_vars_if_possible(infer_term);
+                let stalled_goal = match result.certainty {
+                    Certainty::Yes => None,
+                    Certainty::Maybe { .. } => Some(delegate.resolve_vars_if_possible(result.goal)),
+                };
+                Ok((normalized, stalled_goal))
+            };
+            match scope {
+                NormalizationScope::All => {
+                    let mut folder =
+                        NormalizationFolder::new(infcx, vec![], Default::default(), normalize_term);
+                    let value = value.try_fold_with(&mut folder)?;
+                    (value, folder.stalled_goals())
+                }
+                NormalizationScope::AmbiguousAlias => {
+                    let mut folder =
+                        BinderRenormalizer::new(infcx, Default::default(), normalize_term);
+                    let value = value.try_fold_with(&mut folder)?;
+                    (value, folder.stalled_goals())
+                }
+            }
+        };
+
+        // FIXME: what goal source should we use?
+        self.add_goals(GoalSource::Misc, stalled_goals);
+        Ok(normalized)
     }
 }
 

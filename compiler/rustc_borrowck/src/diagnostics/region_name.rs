@@ -418,8 +418,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // Get the parent fn's signature with liberated late-bound regions,
         // so we have `ReLateParam` instead of `ReBound`.
-        let parent_fn_sig = tcx.fn_sig(parent_def_id).instantiate_identity().skip_norm_wip();
-        let liberated_sig = tcx.liberate_late_bound_regions(parent_def_id, parent_fn_sig);
+        let parent_fn_sig = tcx.fn_sig(parent_def_id).instantiate_identity();
+        let liberated_sig =
+            tcx.liberate_late_bound_regions(parent_def_id, parent_fn_sig).skip_norm_wip();
         let parent_param_ty = *liberated_sig.inputs().get(param_index)?;
 
         // Get the upvar's NLL type (with ReVar regions from renumbering).

@@ -20,6 +20,7 @@ impl<'tcx> Stable<'tcx> for ty::AliasTyKind<'tcx> {
             ty::Inherent { .. } => crate::ty::AliasKind::Inherent,
             ty::Opaque { .. } => crate::ty::AliasKind::Opaque,
             ty::Free { .. } => crate::ty::AliasKind::Free,
+            ty::Ambiguous { .. } => unreachable!(),
         }
     }
 }

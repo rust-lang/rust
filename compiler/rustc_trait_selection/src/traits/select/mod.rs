@@ -625,7 +625,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(data)) => {
-                    self.infcx.enter_forall(bound_predicate.rebind(data), |data| {
+                    self.infcx.enter_forall_old_solver(bound_predicate.rebind(data), |data| {
                         match effects::evaluate_host_effect_obligation(
                             self,
                             &obligation.with(self.tcx(), data),
@@ -1721,7 +1721,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let trait_bound = self.infcx.instantiate_binder_with_fresh_vars(
+        let trait_bound = self.infcx.instantiate_binder_with_fresh_vars_old_solver(
             obligation.cause.span,
             HigherRankedType,
             trait_bound,
@@ -1778,7 +1778,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug_assert_eq!(obligation.predicate.def_id(), env_predicate.item_def_id());
 
         let mut nested_obligations = PredicateObligations::new();
-        let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
+        let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars_old_solver(
             obligation.cause.span,
             BoundRegionConversionTime::HigherRankedType,
             env_predicate,
@@ -2438,6 +2438,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     })
                 }
             }
+            ty::Alias(ty::AliasTy { kind: ty::Ambiguous { .. }, .. }) => unreachable!(),
         })
     }
 
@@ -2531,7 +2532,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
         let placeholder_obligation =
-            self.infcx.enter_forall_and_leak_universe(obligation.predicate);
+            self.infcx.enter_forall_and_leak_universe_old_solver(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
@@ -2622,9 +2623,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
                     nested.extend(
                         self.infcx
-                            .enter_forall(hr_target_principal, |target_principal| {
+                            .enter_forall_old_solver(hr_target_principal, |target_principal| {
                                 let source_principal =
-                                    self.infcx.instantiate_binder_with_fresh_vars(
+                                    self.infcx.instantiate_binder_with_fresh_vars_old_solver(
                                         obligation.cause.span,
                                         HigherRankedType,
                                         hr_source_principal,
@@ -2659,26 +2660,30 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             hr_source_projection.item_def_id() == hr_target_projection.item_def_id()
                                 && self.infcx.probe(|_| {
                                     self.infcx
-                                        .enter_forall(hr_target_projection, |target_projection| {
-                                            let source_projection =
-                                                self.infcx.instantiate_binder_with_fresh_vars(
-                                                    obligation.cause.span,
-                                                    HigherRankedType,
-                                                    hr_source_projection,
-                                                );
-                                            self.infcx
-                                                .at(&obligation.cause, obligation.param_env)
-                                                .eq_trace(
-                                                    DefineOpaqueTypes::Yes,
-                                                    ToTrace::to_trace(
-                                                        &obligation.cause,
-                                                        hr_target_projection,
+                                        .enter_forall_old_solver(
+                                            hr_target_projection,
+                                            |target_projection| {
+                                                let source_projection = self
+                                                    .infcx
+                                                    .instantiate_binder_with_fresh_vars_old_solver(
+                                                        obligation.cause.span,
+                                                        HigherRankedType,
                                                         hr_source_projection,
-                                                    ),
-                                                    target_projection,
-                                                    source_projection,
-                                                )
-                                        })
+                                                    );
+                                                self.infcx
+                                                    .at(&obligation.cause, obligation.param_env)
+                                                    .eq_trace(
+                                                        DefineOpaqueTypes::Yes,
+                                                        ToTrace::to_trace(
+                                                            &obligation.cause,
+                                                            hr_target_projection,
+                                                            hr_source_projection,
+                                                        ),
+                                                        target_projection,
+                                                        source_projection,
+                                                    )
+                                            },
+                                        )
                                         .is_ok()
                                 })
                         });
@@ -2691,9 +2696,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     }
                     nested.extend(
                         self.infcx
-                            .enter_forall(hr_target_projection, |target_projection| {
+                            .enter_forall_old_solver(hr_target_projection, |target_projection| {
                                 let source_projection =
-                                    self.infcx.instantiate_binder_with_fresh_vars(
+                                    self.infcx.instantiate_binder_with_fresh_vars_old_solver(
                                         obligation.cause.span,
                                         HigherRankedType,
                                         hr_source_projection,
@@ -2752,12 +2757,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, ()> {
-        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
-        let trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
-            obligation.cause.span,
-            HigherRankedType,
-            poly_trait_ref,
-        );
+        let predicate =
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate).no_ambiguous_aliases();
+        let trait_ref = self
+            .infcx
+            .instantiate_binder_with_fresh_vars(
+                obligation.cause.span,
+                HigherRankedType,
+                poly_trait_ref,
+            )
+            .no_ambiguous_aliases();
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)

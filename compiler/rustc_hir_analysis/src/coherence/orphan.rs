@@ -180,6 +180,19 @@ pub(crate) fn orphan_check_impl(
                 NonlocalImpl::DisallowOther,
             ),
 
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..)
+            | ty::Alias(ty::AliasTy { kind: ty::Ambiguous, .. }) => {
+                let sp = tcx.def_span(impl_def_id);
+                span_bug!(sp, "weird self type for autotrait impl")
+            }
+
             ty::Alias(ty::AliasTy { kind, .. }) => {
                 let problematic_kind = match kind {
                     // trait Id { type This: ?Sized; }
@@ -203,6 +216,7 @@ pub(crate) fn orphan_check_impl(
                     // ```
                     // FIXME(inherent_associated_types): The example code above currently leads to a cycle
                     ty::Inherent { .. } => "associated type",
+                    ty::Ambiguous { .. } => unreachable!("handled in arm above"),
                 };
                 (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
             }
@@ -222,18 +236,6 @@ pub(crate) fn orphan_check_impl(
             | ty::Never
             | ty::Tuple(..)
             | ty::UnsafeBinder(_) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
-
-            ty::FnDef(..)
-            | ty::Closure(..)
-            | ty::CoroutineClosure(..)
-            | ty::Coroutine(..)
-            | ty::CoroutineWitness(..)
-            | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Infer(..) => {
-                let sp = tcx.def_span(impl_def_id);
-                span_bug!(sp, "weird self type for autotrait impl")
-            }
 
             ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
         };

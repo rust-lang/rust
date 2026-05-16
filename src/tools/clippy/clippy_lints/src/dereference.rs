@@ -904,7 +904,7 @@ impl TyCoercionStability {
                 | ty::Error(_)
                 | ty::Bound(..)
                 | ty::Alias(ty::AliasTy {
-                    kind: ty::Opaque { .. },
+                    kind: ty::Opaque { .. } | ty::Ambiguous,
                     ..
                 })
                 | ty::Placeholder(_)

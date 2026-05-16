@@ -3687,16 +3687,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             trait_ref.def_id,
         )?;
 
+        let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(
+            tcx,
+            trait_ref.args.extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
+        );
         let fn_sig = tcx
-            .fn_sig(assoc.def_id)
-            .instantiate(
-                tcx,
-                trait_ref
-                    .args
-                    .extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
-            )
+            .liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), fn_sig)
             .skip_norm_wip();
-        let fn_sig = tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), fn_sig);
 
         Some(if let Some(arg_idx) = arg_idx {
             *fn_sig.inputs().get(arg_idx)?

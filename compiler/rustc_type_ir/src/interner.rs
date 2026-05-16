@@ -264,6 +264,18 @@ pub trait Interner:
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
+    fn debug_assert_alias_ty_args_compatible(
+        self,
+        alias_ty: ty::AliasTyKind<Self>,
+        args: Self::GenericArgs,
+    );
+
+    fn debug_assert_alias_term_args_compatible(
+        self,
+        alias_ty: ty::AliasTermKind<Self>,
+        args: Self::GenericArgs,
+    );
+
     /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
     /// are compatible with the `DefId`.
     fn debug_assert_existential_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);

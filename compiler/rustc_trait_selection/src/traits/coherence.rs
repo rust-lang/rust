@@ -748,7 +748,12 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // For bound predicates we simply call `infcx.enter_forall`
         // and then prove the resulting predicate as a nested goal.
         let Goal { param_env, predicate } = goal.goal();
-        let predicate_kind = goal.infcx().enter_forall_and_leak_universe(predicate.kind());
+        let ocx = ObligationCtxt::new(infcx);
+        let predicate_kind = ocx.enter_forall_and_leak_universe(
+            &ObligationCause::dummy(),
+            param_env,
+            predicate.kind(),
+        );
         let trait_ref = match predicate_kind {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => tr.trait_ref,
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))
