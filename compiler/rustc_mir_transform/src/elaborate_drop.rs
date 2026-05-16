@@ -277,7 +277,7 @@ where
             (sig.output(), drop_fn_def_id, trait_args)
         };
 
-        let fut = Place::from(self.new_temp(fut_ty));
+        let fut = self.new_temp(fut_ty);
 
         // #1:pin_obj_bb >>> obj_ref = &mut obj
         let obj_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, drop_ty);
@@ -310,9 +310,23 @@ where
         // in existing blocks, in case those are used somewhere else in MIR.
         let succ_with_dead = self.new_block_with_statements(
             unwind,
-            vec![Statement::new(self.source_info, StatementKind::StorageDead(fut.local))],
+            vec![self.storage_dead(fut)],
             TerminatorKind::Goto { target: succ },
         );
+        let dropline_with_dead = dropline.map(|target| {
+            self.new_block_with_statements(
+                unwind,
+                vec![self.storage_dead(fut)],
+                TerminatorKind::Goto { target },
+            )
+        });
+        let unwind_with_dead = unwind.map(|target| {
+            self.new_block_with_statements(
+                Unwind::InCleanup,
+                vec![self.storage_dead(fut)],
+                TerminatorKind::Goto { target },
+            )
+        });
 
         // #3:drop_term_bb
         let drop_term_bb = self.new_block(
@@ -320,10 +334,10 @@ where
             TerminatorKind::Drop {
                 place,
                 target: succ_with_dead,
-                unwind: unwind.into_action(),
+                unwind: unwind_with_dead.into_action(),
                 replace: false,
-                drop: dropline,
-                async_fut: Some(fut.local),
+                drop: dropline_with_dead,
+                async_fut: Some(fut),
             },
         );
 
@@ -348,8 +362,7 @@ where
 
             obj_ref_place
         };
-        call_statements
-            .push(Statement::new(self.source_info, StatementKind::StorageLive(fut.local)));
+        call_statements.push(self.storage_live(fut));
 
         let call_drop_bb = self.new_block_with_statements(
             unwind,
@@ -357,27 +370,13 @@ where
             TerminatorKind::Call {
                 func: Operand::function_handle(tcx, drop_fn_def_id, trait_args, span),
                 args: [Spanned { node: Operand::Move(drop_arg), span: DUMMY_SP }].into(),
-                destination: fut,
+                destination: fut.into(),
                 target: Some(drop_term_bb),
-                unwind: unwind.into_action(),
+                unwind: unwind_with_dead.into_action(),
                 call_source: CallSource::Misc,
                 fn_span: self.source_info.span,
             },
         );
-        // StorageDead(fut) in unwind block (at the begin)
-        if let Unwind::To(block) = unwind {
-            self.elaborator.patch().add_statement(
-                Location { block, statement_index: 0 },
-                StatementKind::StorageDead(fut.local),
-            );
-        }
-        // StorageDead(fut) in dropline block (at the begin)
-        if let Some(block) = dropline {
-            self.elaborator.patch().add_statement(
-                Location { block, statement_index: 0 },
-                StatementKind::StorageDead(fut.local),
-            );
-        }
 
         // #1:pin_obj_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
         self.new_block_with_statements(
@@ -1403,5 +1402,13 @@ where
 
     fn assign(&self, lhs: Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
         Statement::new(self.source_info, StatementKind::Assign(Box::new((lhs, rhs))))
+    }
+
+    fn storage_live(&self, local: Local) -> Statement<'tcx> {
+        Statement::new(self.source_info, StatementKind::StorageLive(local))
+    }
+
+    fn storage_dead(&self, local: Local) -> Statement<'tcx> {
+        Statement::new(self.source_info, StatementKind::StorageDead(local))
     }
 }

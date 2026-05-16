@@ -11,16 +11,14 @@ yields ()
 
     bb0: {
         _3 = move (_1.0: &mut AsyncInt);
-        goto -> bb7;
+        goto -> bb9;
     }
 
     bb1: {
-        StorageDead(_4);
         return;
     }
 
     bb2 (cleanup): {
-        StorageDead(_4);
         resume;
     }
 
@@ -34,16 +32,26 @@ yields ()
     }
 
     bb5: {
-        async drop((*_3); poll=_4) -> [return: bb4, unwind: bb2, drop: bb1];
+        StorageDead(_4);
+        goto -> bb1;
     }
 
-    bb6: {
-        StorageLive(_4);
-        _4 = <AsyncInt as AsyncDrop>::drop(move _6) -> [return: bb5, unwind: bb2];
+    bb6 (cleanup): {
+        StorageDead(_4);
+        goto -> bb2;
     }
 
     bb7: {
+        async drop((*_3); poll=_4) -> [return: bb4, unwind: bb6, drop: bb5];
+    }
+
+    bb8: {
+        StorageLive(_4);
+        _4 = <AsyncInt as AsyncDrop>::drop(move _6) -> [return: bb7, unwind: bb6];
+    }
+
+    bb9: {
         _5 = &mut (*_3);
-        _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb6, unwind: bb2];
+        _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb8, unwind: bb2];
     }
 }

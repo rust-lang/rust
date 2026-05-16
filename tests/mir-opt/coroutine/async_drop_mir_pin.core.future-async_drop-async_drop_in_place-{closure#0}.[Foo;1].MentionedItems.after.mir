@@ -26,7 +26,7 @@ yields ()
 
     bb0: {
         _3 = move (_1.0: &mut [Foo; 1]);
-        goto -> bb19;
+        goto -> bb22;
     }
 
     bb1: {
@@ -44,8 +44,6 @@ yields ()
     }
 
     bb4 (cleanup): {
-        StorageDead(_12);
-        StorageDead(_18);
         _9 = Eq(copy _7, copy _6);
         switchInt(move _9) -> [0: bb3, otherwise: bb2];
     }
@@ -53,11 +51,10 @@ yields ()
     bb5: {
         _10 = &raw mut (*_5)[_7];
         _7 = Add(move _7, const 1_usize);
-        goto -> bb10;
+        goto -> bb11;
     }
 
     bb6: {
-        StorageDead(_18);
         _11 = Eq(copy _7, copy _6);
         switchInt(move _11) -> [0: bb5, otherwise: bb1];
     }
@@ -67,65 +64,80 @@ yields ()
         goto -> bb6;
     }
 
-    bb8: {
-        async drop((*_10); poll=_12) -> [return: bb7, unwind: bb4];
+    bb8 (cleanup): {
+        StorageDead(_12);
+        goto -> bb4;
     }
 
     bb9: {
-        _15 = copy (_14.0: &mut Foo);
-        StorageLive(_12);
-        _12 = async_drop_in_place::<Foo>(move _15) -> [return: bb8, unwind: bb4];
+        async drop((*_10); poll=_12) -> [return: bb7, unwind: bb8];
     }
 
     bb10: {
-        _13 = &mut (*_10);
-        _14 = Pin::<&mut Foo>::new_unchecked(move _13) -> [return: bb9, unwind: bb4];
+        _15 = copy (_14.0: &mut Foo);
+        StorageLive(_12);
+        _12 = async_drop_in_place::<Foo>(move _15) -> [return: bb9, unwind: bb8];
     }
 
     bb11: {
-        _16 = &raw mut (*_5)[_7];
-        _7 = Add(move _7, const 1_usize);
-        goto -> bb16;
+        _13 = &mut (*_10);
+        _14 = Pin::<&mut Foo>::new_unchecked(move _13) -> [return: bb10, unwind: bb4];
     }
 
     bb12: {
-        _17 = Eq(copy _7, copy _6);
-        switchInt(move _17) -> [0: bb11, otherwise: bb1];
+        _16 = &raw mut (*_5)[_7];
+        _7 = Add(move _7, const 1_usize);
+        goto -> bb19;
     }
 
     bb13: {
-        StorageDead(_18);
-        goto -> bb12;
+        _17 = Eq(copy _7, copy _6);
+        switchInt(move _17) -> [0: bb12, otherwise: bb1];
     }
 
     bb14: {
-        async drop((*_16); poll=_18) -> [return: bb13, unwind: bb4, drop: bb6];
+        StorageDead(_18);
+        goto -> bb13;
     }
 
     bb15: {
-        _21 = copy (_20.0: &mut Foo);
-        StorageLive(_18);
-        _18 = async_drop_in_place::<Foo>(move _21) -> [return: bb14, unwind: bb4];
+        StorageDead(_18);
+        goto -> bb6;
     }
 
-    bb16: {
-        _19 = &mut (*_16);
-        _20 = Pin::<&mut Foo>::new_unchecked(move _19) -> [return: bb15, unwind: bb4];
+    bb16 (cleanup): {
+        StorageDead(_18);
+        goto -> bb4;
     }
 
     bb17: {
-        _6 = PtrMetadata(copy _5);
-        _7 = const 0_usize;
-        goto -> bb12;
+        async drop((*_16); poll=_18) -> [return: bb14, unwind: bb16, drop: bb15];
     }
 
     bb18: {
-        goto -> bb17;
+        _21 = copy (_20.0: &mut Foo);
+        StorageLive(_18);
+        _18 = async_drop_in_place::<Foo>(move _21) -> [return: bb17, unwind: bb16];
     }
 
     bb19: {
+        _19 = &mut (*_16);
+        _20 = Pin::<&mut Foo>::new_unchecked(move _19) -> [return: bb18, unwind: bb4];
+    }
+
+    bb20: {
+        _6 = PtrMetadata(copy _5);
+        _7 = const 0_usize;
+        goto -> bb13;
+    }
+
+    bb21: {
+        goto -> bb20;
+    }
+
+    bb22: {
         _4 = &raw mut (*_3);
         _5 = move _4 as *mut [Foo] (PointerCoercion(Unsize, Implicit));
-        goto -> bb18;
+        goto -> bb21;
     }
 }

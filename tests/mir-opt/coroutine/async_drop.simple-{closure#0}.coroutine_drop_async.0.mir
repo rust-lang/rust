@@ -35,11 +35,10 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     bb0: {
         _24 = copy (_1.0: &mut {async fn body of simple()});
         _23 = discriminant((*_24));
-        switchInt(move _23) -> [0: bb13, 2: bb18, 3: bb16, 4: bb17, otherwise: bb19];
+        switchInt(move _23) -> [0: bb15, 2: bb20, 3: bb18, 4: bb19, otherwise: bb21];
     }
 
     bb1: {
-        nop;
         nop;
         goto -> bb2;
     }
@@ -50,13 +49,11 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb3: {
-        StorageDead(_9);
         _0 = Poll::<()>::Ready(const ());
         return;
     }
 
     bb4 (cleanup): {
-        nop;
         nop;
         drop((((*_24) as variant#4).0: SyncInt)) -> [return: bb5, unwind terminate(cleanup)];
     }
@@ -67,69 +64,78 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
     }
 
     bb6 (cleanup): {
-        StorageDead(_9);
-        goto -> bb15;
+        goto -> bb17;
     }
 
     bb7: {
+        nop;
+        goto -> bb1;
+    }
+
+    bb8 (cleanup): {
+        nop;
+        goto -> bb4;
+    }
+
+    bb9: {
         _0 = Poll::<()>::Pending;
         discriminant((*_24)) = 4;
         return;
     }
 
-    bb8: {
+    bb10: {
         StorageLive(_20);
         _19 = &mut (((*_24) as variant#4).2: impl std::future::Future<Output = ()>);
-        _20 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _19) -> [return: bb11, unwind: bb15];
-    }
-
-    bb9: {
-        unreachable;
-    }
-
-    bb10: {
-        StorageDead(_20);
-        _21 = discriminant(_13);
-        switchInt(move _21) -> [0: bb1, 1: bb7, otherwise: bb9];
+        _20 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _19) -> [return: bb13, unwind: bb17];
     }
 
     bb11: {
-        _13 = <impl Future<Output = ()> as Future>::poll(move _20, move _18) -> [return: bb10, unwind: bb4];
+        unreachable;
     }
 
     bb12: {
+        StorageDead(_20);
+        _21 = discriminant(_13);
+        switchInt(move _21) -> [0: bb7, 1: bb9, otherwise: bb11];
+    }
+
+    bb13: {
+        _13 = <impl Future<Output = ()> as Future>::poll(move _20, move _18) -> [return: bb12, unwind: bb8];
+    }
+
+    bb14: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }
 
-    bb13: {
+    bb15: {
+        goto -> bb16;
+    }
+
+    bb16: {
         goto -> bb14;
     }
 
-    bb14: {
-        goto -> bb12;
-    }
-
-    bb15 (cleanup): {
+    bb17 (cleanup): {
         discriminant((*_24)) = 2;
         resume;
     }
 
-    bb16: {
-        _14 = move _2;
-        goto -> bb8;
-    }
-
-    bb17: {
-        _18 = move _2;
-        goto -> bb8;
-    }
-
     bb18: {
-        assert(const false, "`async fn` resumed after panicking") -> [success: bb18, unwind continue];
+        _14 = move _2;
+        goto -> bb10;
     }
 
     bb19: {
+        _18 = move _2;
+        goto -> bb10;
+    }
+
+    bb20: {
+        assert(const false, "`async fn` resumed after panicking") -> [success: bb20, unwind continue];
+    }
+
+    bb21: {
         _0 = Poll::<()>::Ready(const ());
         return;
     }

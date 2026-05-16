@@ -76,27 +76,21 @@
       bb0: {
 -         _3 = move (_1.0: &mut AsyncEnum);
 -         _16 = &mut (*_3);
--         _17 = Pin::<&mut AsyncEnum>::new_unchecked(move _16) -> [return: bb19, unwind: bb15];
+-         _17 = Pin::<&mut AsyncEnum>::new_unchecked(move _16) -> [return: bb23, unwind: bb18];
 +         _43 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<AsyncEnum>()});
 +         _42 = discriminant((*_43));
-+         switchInt(move _42) -> [0: bb34, 1: bb33, 2: bb32, 3: bb27, 4: bb28, 5: bb29, 6: bb30, 7: bb31, otherwise: bb17];
++         switchInt(move _42) -> [0: bb36, 1: bb35, 2: bb34, 3: bb29, 4: bb30, 5: bb31, 6: bb32, 7: bb33, otherwise: bb19];
       }
   
       bb1: {
--         StorageDead(_8);
-+         nop;
 +         _0 = Poll::<()>::Ready(move _41);
 +         discriminant((*_43)) = 1;
           return;
       }
   
       bb2 (cleanup): {
--         StorageDead(_4);
--         StorageDead(_8);
 -         resume;
-+         nop;
-+         nop;
-+         goto -> bb26;
++         goto -> bb28;
       }
   
       bb3 (cleanup): {
@@ -111,194 +105,210 @@
           goto -> bb1;
       }
   
-      bb5: {
--         async drop((((*_3) as A).0: AsyncInt); poll=_4) -> [return: bb4, unwind: bb2];
-+         _24 = move _2;
-+         goto -> bb16;
+      bb5 (cleanup): {
+-         StorageDead(_4);
++         nop;
+          goto -> bb2;
       }
   
       bb6: {
--         _7 = copy (_6.0: &mut AsyncInt);
--         StorageLive(_4);
--         _4 = async_drop_in_place::<AsyncInt>(move _7) -> [return: bb5, unwind: bb2];
-+         _11 = copy (_10.0: &mut AsyncInt);
-+         nop;
-+         (((*_43) as variant#5).0: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb5, unwind: bb2];
+-         async drop((((*_3) as A).0: AsyncInt); poll=_4) -> [return: bb4, unwind: bb5];
++         _24 = move _2;
++         goto -> bb18;
       }
   
       bb7: {
--         _5 = &mut (((*_3) as A).0: AsyncInt);
--         _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb6, unwind: bb2];
-+         _45 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
-+         _9 = &mut (((*_45) as A).0: AsyncInt);
-+         _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb6, unwind: bb2];
+-         _7 = copy (_6.0: &mut AsyncInt);
+-         StorageLive(_4);
+-         _4 = async_drop_in_place::<AsyncInt>(move _7) -> [return: bb6, unwind: bb5];
++         _11 = copy (_10.0: &mut AsyncInt);
++         nop;
++         (((*_43) as variant#5).0: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb6, unwind: bb5];
       }
   
--     bb8: {
+      bb8: {
+-         _5 = &mut (((*_3) as A).0: AsyncInt);
+-         _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb7, unwind: bb2];
++         _45 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
++         _9 = &mut (((*_45) as A).0: AsyncInt);
++         _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb7, unwind: bb2];
+      }
+  
+-     bb9: {
 -         StorageDead(_8);
 -         goto -> bb1;
-+     bb8 (cleanup): {
++     bb9 (cleanup): {
 +         _46 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
 +         drop((((*_46) as B).0: SyncInt)) -> [return: bb2, unwind terminate(cleanup)];
       }
   
-      bb9: {
--         async drop((((*_3) as A).0: AsyncInt); poll=_8) -> [return: bb8, unwind: bb2, drop: bb1];
+      bb10: {
+-         StorageDead(_8);
+-         goto -> bb1;
 +         _47 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
 +         drop((((*_47) as B).0: SyncInt)) -> [return: bb1, unwind: bb2];
       }
   
--     bb10: {
--         _11 = copy (_10.0: &mut AsyncInt);
--         StorageLive(_8);
--         _8 = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb9, unwind: bb2];
-+     bb10 (cleanup): {
-+         nop;
+      bb11 (cleanup): {
+-         StorageDead(_8);
+-         goto -> bb2;
 +         _48 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
 +         _13 = discriminant((*_48));
-+         switchInt(move _13) -> [0: bb3, otherwise: bb8];
++         switchInt(move _13) -> [0: bb3, otherwise: bb9];
       }
   
-      bb11: {
--         _9 = &mut (((*_3) as A).0: AsyncInt);
--         _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb10, unwind: bb2];
+      bb12: {
+-         async drop((((*_3) as A).0: AsyncInt); poll=_8) -> [return: bb9, unwind: bb11, drop: bb10];
 +         nop;
 +         _49 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
 +         _12 = discriminant((*_49));
-+         switchInt(move _12) -> [0: bb7, otherwise: bb9];
++         switchInt(move _12) -> [0: bb8, otherwise: bb10];
       }
   
--     bb12 (cleanup): {
--         drop((((*_3) as B).0: SyncInt)) -> [return: bb2, unwind terminate(cleanup)];
-+     bb12: {
-+         _33 = move _2;
-+         goto -> bb22;
-      }
-  
-      bb13: {
--         drop((((*_3) as B).0: SyncInt)) -> [return: bb1, unwind: bb2];
+-     bb13: {
+-         _11 = copy (_10.0: &mut AsyncInt);
+-         StorageLive(_8);
+-         _8 = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb12, unwind: bb11];
++     bb13 (cleanup): {
 +         nop;
-+         (((*_43) as variant#7).1: impl std::future::Future<Output = ()>) = <AsyncEnum as AsyncDrop>::drop(move _17) -> [return: bb12, unwind: bb10];
++         goto -> bb11;
       }
   
       bb14: {
--         drop((((*_3) as B).0: SyncInt)) -> [return: bb1, unwind: bb2];
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb14, unwind: bb26];
+-         _9 = &mut (((*_3) as A).0: AsyncInt);
+-         _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb13, unwind: bb2];
++         _33 = move _2;
++         goto -> bb24;
       }
   
 -     bb15 (cleanup): {
--         StorageDead(_15);
--         _13 = discriminant((*_3));
--         switchInt(move _13) -> [0: bb3, otherwise: bb12];
+-         drop((((*_3) as B).0: SyncInt)) -> [return: bb2, unwind terminate(cleanup)];
 +     bb15: {
++         nop;
++         (((*_43) as variant#7).1: impl std::future::Future<Output = ()>) = <AsyncEnum as AsyncDrop>::drop(move _17) -> [return: bb14, unwind: bb13];
+      }
+  
+      bb16: {
+-         drop((((*_3) as B).0: SyncInt)) -> [return: bb1, unwind: bb2];
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb16, unwind: bb28];
+      }
+  
+      bb17: {
+-         drop((((*_3) as B).0: SyncInt)) -> [return: bb1, unwind: bb2];
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_43)) = 4;
 +         return;
       }
   
-      bb16: {
--         StorageDead(_15);
--         _14 = discriminant((*_3));
--         switchInt(move _14) -> [0: bb7, otherwise: bb13];
+-     bb18 (cleanup): {
+-         _13 = discriminant((*_3));
+-         switchInt(move _13) -> [0: bb3, otherwise: bb15];
++     bb18: {
 +         StorageLive(_26);
 +         _25 = &mut (((*_43) as variant#5).0: impl std::future::Future<Output = ()>);
-+         _26 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _25) -> [return: bb19, unwind: bb26];
-      }
-  
-      bb17: {
--         StorageDead(_15);
--         _12 = discriminant((*_3));
--         switchInt(move _12) -> [0: bb11, otherwise: bb14];
-+         unreachable;
-      }
-  
-      bb18: {
--         async drop((*_3); poll=_15) -> [return: bb17, unwind: bb15, drop: bb16];
-+         StorageDead(_26);
-+         _27 = discriminant(_23);
-+         switchInt(move _27) -> [0: bb4, 1: bb15, otherwise: bb17];
++         _26 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _25) -> [return: bb21, unwind: bb28];
       }
   
       bb19: {
--         StorageLive(_15);
--         _15 = <AsyncEnum as AsyncDrop>::drop(move _17) -> [return: bb18, unwind: bb15];
-+         _23 = <impl Future<Output = ()> as Future>::poll(move _26, move _24) -> [return: bb18, unwind: bb2];
-+     }
-+ 
-+     bb20: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb20, unwind: bb26];
-+     }
-+ 
+-         StorageDead(_15);
+-         _12 = discriminant((*_3));
+-         switchInt(move _12) -> [0: bb14, otherwise: bb17];
++         unreachable;
+      }
+  
+      bb20: {
+-         StorageDead(_15);
+-         _14 = discriminant((*_3));
+-         switchInt(move _14) -> [0: bb8, otherwise: bb16];
++         StorageDead(_26);
++         _27 = discriminant(_23);
++         switchInt(move _27) -> [0: bb4, 1: bb17, otherwise: bb19];
+      }
+  
+-     bb21 (cleanup): {
+-         StorageDead(_15);
+-         goto -> bb18;
 +     bb21: {
++         _23 = <impl Future<Output = ()> as Future>::poll(move _26, move _24) -> [return: bb20, unwind: bb5];
+      }
+  
+      bb22: {
+-         async drop((*_3); poll=_15) -> [return: bb19, unwind: bb21, drop: bb20];
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb22, unwind: bb28];
+      }
+  
+      bb23: {
+-         StorageLive(_15);
+-         _15 = <AsyncEnum as AsyncDrop>::drop(move _17) -> [return: bb22, unwind: bb21];
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_43)) = 6;
 +         return;
 +     }
 + 
-+     bb22: {
++     bb24: {
 +         StorageLive(_35);
 +         _34 = &mut (((*_43) as variant#7).1: impl std::future::Future<Output = ()>);
-+         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _34) -> [return: bb24, unwind: bb26];
-+     }
-+ 
-+     bb23: {
-+         StorageDead(_35);
-+         _36 = discriminant(_32);
-+         switchInt(move _36) -> [0: bb11, 1: bb21, otherwise: bb17];
-+     }
-+ 
-+     bb24: {
-+         _32 = <impl Future<Output = ()> as Future>::poll(move _35, move _33) -> [return: bb23, unwind: bb10];
++         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _34) -> [return: bb26, unwind: bb28];
 +     }
 + 
 +     bb25: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb25, unwind: bb26];
++         StorageDead(_35);
++         _36 = discriminant(_32);
++         switchInt(move _36) -> [0: bb12, 1: bb23, otherwise: bb19];
 +     }
 + 
-+     bb26 (cleanup): {
++     bb26: {
++         _32 = <impl Future<Output = ()> as Future>::poll(move _35, move _33) -> [return: bb25, unwind: bb13];
++     }
++ 
++     bb27: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb27, unwind: bb28];
++     }
++ 
++     bb28 (cleanup): {
 +         discriminant((*_43)) = 2;
 +         resume;
 +     }
 + 
-+     bb27: {
++     bb29: {
 +         _19 = move _2;
-+         goto -> bb14;
-+     }
-+ 
-+     bb28: {
-+         _24 = move _2;
 +         goto -> bb16;
 +     }
 + 
-+     bb29: {
-+         _28 = move _2;
-+         goto -> bb20;
-+     }
-+ 
 +     bb30: {
-+         _33 = move _2;
-+         goto -> bb22;
++         _24 = move _2;
++         goto -> bb18;
 +     }
 + 
 +     bb31: {
-+         _37 = move _2;
-+         goto -> bb25;
++         _28 = move _2;
++         goto -> bb22;
 +     }
 + 
 +     bb32: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb32, unwind continue];
++         _33 = move _2;
++         goto -> bb24;
 +     }
 + 
 +     bb33: {
++         _37 = move _2;
++         goto -> bb27;
++     }
++ 
++     bb34: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb34, unwind continue];
++     }
++ 
++     bb35: {
 +         _0 = Poll::<()>::Ready(const ());
 +         return;
 +     }
 + 
-+     bb34: {
++     bb36: {
 +         (((*_43) as variant#7).0: &mut AsyncEnum) = move ((*_43).0: &mut AsyncEnum);
 +         _50 = no_retag copy (((*_43) as variant#7).0: &mut AsyncEnum);
 +         _16 = &mut (*_50);
-+         _17 = Pin::<&mut AsyncEnum>::new_unchecked(move _16) -> [return: bb13, unwind: bb10];
++         _17 = Pin::<&mut AsyncEnum>::new_unchecked(move _16) -> [return: bb15, unwind: bb11];
       }
   }
   
