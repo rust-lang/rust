@@ -25,6 +25,7 @@ fn main() {
     test_shutdown_read();
     test_shutdown_write();
     test_readiness_after_short_read();
+    test_readiness_after_short_peek();
     test_readiness_after_short_write();
 }
 
@@ -503,6 +504,55 @@ fn test_readiness_after_short_read() {
         )
         .unwrap()
     };
+}
+
+/// Test that Miri doesn't remove the readable readiness after a short peek.
+fn test_readiness_after_short_peek() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    unsafe {
+        // Change client socket to be non-blocking.
+        errno_check(libc::fcntl(client_sockfd, libc::F_SETFL, libc::O_NONBLOCK));
+    }
+
+    // Write some bytes into the peer socket.
+    libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+
+    // FIXME: Changes in host I/O readiness are only processed when entering the scheduler.
+    // Ensure that we process the effects if the `write_all` by yielding the current (only) thread.
+    // <https://github.com/rust-lang/miri/issues/5047>
+    thread::yield_now();
+
+    // `buffer` is intentionally bigger than `TEST_BYTES.len()` to trigger a short peek.
+    let mut buffer = [0; 128];
+    let bytes_read = unsafe {
+        errno_result(libc::recv(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc::MSG_PEEK,
+        ))
+        .unwrap()
+    } as usize;
+    assert_eq!(bytes_read, TEST_BYTES.len());
+
+    // FIXME(#5047): same as above.
+    thread::yield_now();
+
+    // Ensure that the readable readiness is still set.
+    assert_eq!(current_epoll_readiness::<8>(client_sockfd, EPOLLIN | EPOLLET), EPOLLIN);
+
+    // We should be able to read the buffer without blocking indefinitely.
+    let bytes_read = unsafe {
+        errno_result(libc::recv(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len(), 0))
+            .unwrap()
+    } as usize;
+    assert_eq!(bytes_read, TEST_BYTES.len());
 }
 
 /// Test that Miri correctly removes the writable readiness or emits a new edge after a short write.
