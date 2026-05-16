@@ -1,9 +1,6 @@
 //@ignore-target: windows # no libc
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(io_error_more)]
-#![feature(io_error_uncategorized)]
-
 use std::ffi::{CStr, CString, OsString};
 use std::fs::{File, canonicalize, remove_file};
 use std::io::{Error, ErrorKind, Write};
