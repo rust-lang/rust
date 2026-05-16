@@ -491,13 +491,15 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
+    /// use std::collections::HashMap;
+    /// 
     /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
     /// ]);
     ///
-    /// let mut values: Vec<_> = map.values().copied().collect();
+    /// let mut values: Vec<_> = map.keys().copied().collect();
     /// values.sort();
     ///
     /// assert_eq!(values, vec!["a", "b", "c"]);
@@ -552,6 +554,8 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
+    /// use std::collections::HashMap;
+    /// 
     /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
