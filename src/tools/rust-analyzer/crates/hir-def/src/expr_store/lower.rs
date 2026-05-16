@@ -1894,9 +1894,7 @@ impl<'db> ExprCollector<'db> {
                 };
                 let record_field_list = e.record_expr_field_list()?;
                 let ellipsis = record_field_list.dotdot_token().is_some();
-                // We wanted to emit an error here if `record_field_list.spread().is_some()`,
-                // but that's already a syntax error in rustc, so we decided not to.
-                // See https://github.com/rust-lang/rust-analyzer/pull/22206#discussion_r3156097370
+                // FIXME: Report an error here if `record_field_list.spread().is_some()`.
                 let args = record_field_list
                     .fields()
                     .filter_map(|f| {
