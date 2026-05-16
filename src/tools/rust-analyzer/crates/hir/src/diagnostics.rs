@@ -102,6 +102,7 @@ macro_rules! diagnostics {
 diagnostics![AnyDiagnostic<'db> ->
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
+    CannotBeDereferenced<'db>,
     CastToUnsized<'db>,
     ExpectedArrayOrSlicePat<'db>,
     ExpectedFunction<'db>,
@@ -314,6 +315,12 @@ pub struct InvalidRangePatType {
 #[derive(Debug)]
 pub struct ExpectedFunction<'db> {
     pub call: InFile<ExprOrPatPtr>,
+    pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct CannotBeDereferenced<'db> {
+    pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
 }
 
@@ -922,6 +929,10 @@ impl<'db> AnyDiagnostic<'db> {
                 let expr_ty = Type::new(db, def, expr_ty.as_ref());
                 let cast_ty = Type::new(db, def, cast_ty.as_ref());
                 InvalidCast { expr, error: *error, expr_ty, cast_ty }.into()
+            }
+            InferenceDiagnostic::CannotBeDereferenced { expr, found } => {
+                let expr = expr_syntax(*expr)?;
+                CannotBeDereferenced { expr, found: Type::new(db, def, found.as_ref()) }.into()
             }
             InferenceDiagnostic::TyDiagnostic { source, diag } => {
                 let source_map = match source {

@@ -577,7 +577,8 @@ pub(super) mod resolve_completely {
             diagnostics.retain_mut(|diagnostic| {
                 self.resolve_completely(diagnostic);
 
-                if let InferenceDiagnostic::ExpectedFunction { found: ty, .. }
+                if let InferenceDiagnostic::CannotBeDereferenced { found: ty, .. }
+                | InferenceDiagnostic::ExpectedFunction { found: ty, .. }
                 | InferenceDiagnostic::ExpectedArrayOrSlicePat { found: ty, .. }
                 | InferenceDiagnostic::UnresolvedField { receiver: ty, .. }
                 | InferenceDiagnostic::UnresolvedMethodCall { receiver: ty, .. } = diagnostic

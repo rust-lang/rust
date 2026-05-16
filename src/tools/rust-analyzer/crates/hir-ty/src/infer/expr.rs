@@ -1295,7 +1295,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
                     oprnd_t = ty;
                 } else {
-                    // FIXME: Report an error.
+                    self.push_diagnostic(InferenceDiagnostic::CannotBeDereferenced {
+                        expr,
+                        found: oprnd_t.store(),
+                    });
                     oprnd_t = self.types.types.error;
                 }
             }
