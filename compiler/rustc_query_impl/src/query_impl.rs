@@ -37,20 +37,20 @@ macro_rules! define_queries {
         $(
             pub(crate) mod $name {
                 use super::*;
-                use rustc_middle::queries::$name::{Key, Value};
 
                 // It seems to be important that every query has its own monomorphic
                 // copy of `execute_query_incr` and `execute_query_non_incr`.
                 // Trying to inline these wrapper functions into their generic
                 // "inner" helpers tends to break `tests/run-make/short-ice`.
 
-                pub(crate) struct ExecuteQueryIncr<'tcx>(&'tcx ());
+                pub(crate) mod execute_query_incr {
+                    use super::*;
+                    use rustc_middle::queries::$name::{Key, Value};
 
-                impl<'tcx> ExecuteQueryIncr<'tcx> {
                     // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
                     // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
                     #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'a>(
+                    pub(crate) fn __rust_end_short_backtrace<'tcx, 'a>(
                         tcx: TyCtxt<'tcx>,
                         span: Span,
                         key: Key<'tcx>,
@@ -68,11 +68,12 @@ macro_rules! define_queries {
                     }
                 }
 
-                pub(crate) struct ExecuteQueryNonIncr<'tcx>(&'tcx ());
+                pub(crate) mod execute_query_non_incr {
+                    use super::*;
+                    use rustc_middle::queries::$name::{Key, Value};
 
-                impl<'tcx> ExecuteQueryNonIncr<'tcx> {
                     #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'a>(
+                    pub(crate) fn __rust_end_short_backtrace<'tcx, 'a>(
                         tcx: TyCtxt<'tcx>,
                         span: Span,
                         key: Key<'tcx>,
@@ -196,9 +197,9 @@ macro_rules! define_queries {
                         },
                         create_tagged_key: TaggedQueryKey::$name,
                         execute_query_fn: if incremental {
-                            crate::query_impl::$name::ExecuteQueryIncr::<'tcx>::__rust_end_short_backtrace
+                            crate::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
                         } else {
-                            crate::query_impl::$name::ExecuteQueryNonIncr::<'tcx>::__rust_end_short_backtrace
+                            crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
                     }
                 }
