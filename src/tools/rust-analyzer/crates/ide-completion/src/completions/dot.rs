@@ -1,9 +1,9 @@
 //! Completes references after dot (fields and method calls).
 
-use std::ops::ControlFlow;
+use std::{collections::hash_map, ops::ControlFlow};
 
-use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback};
-use ide_db::FxHashSet;
+use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback, Name};
+use ide_db::{FxHashMap, FxHashSet};
 use itertools::Either;
 use syntax::SmolStr;
 
@@ -239,6 +239,9 @@ fn complete_methods(
         // duplicated, trait methods can. And it is still useful to show all of them (even when there
         // is also an inherent method, especially considering that it may be private, and filtered later).
         seen_methods: FxHashSet<Function>,
+        // However, duplicate inherent methods is usually meaningless
+        // https://github.com/rust-lang/rust-analyzer/issues/20773#issuecomment-4302781553
+        seen_inherent_methods: FxHashMap<Name, Function>,
     }
 
     impl<F> MethodCandidateCallback for Callback<'_, '_, F>
@@ -249,7 +252,21 @@ fn complete_methods(
         // `where` clauses or `dyn Trait`.
         fn on_inherent_method(&mut self, func: hir::Function) -> ControlFlow<()> {
             if func.self_param(self.ctx.db).is_some() && self.seen_methods.insert(func) {
-                (self.f)(func);
+                let same_name = self.seen_inherent_methods.entry(func.name(self.ctx.db));
+                let do_complete = match &same_name {
+                    hash_map::Entry::Vacant(_) => true,
+                    hash_map::Entry::Occupied(same_func) => {
+                        match self.ctx.is_visible(same_func.get()) {
+                            crate::context::Visible::Yes => false,
+                            crate::context::Visible::Editable => true,
+                            crate::context::Visible::No => true,
+                        }
+                    }
+                };
+                same_name.insert_entry(func);
+                if do_complete {
+                    (self.f)(func);
+                }
             }
             ControlFlow::Continue(())
         }
@@ -277,7 +294,12 @@ fn complete_methods(
         &ctx.scope,
         traits_in_scope,
         None,
-        Callback { ctx, f, seen_methods: FxHashSet::default() },
+        Callback {
+            ctx,
+            f,
+            seen_methods: FxHashSet::default(),
+            seen_inherent_methods: FxHashMap::default(),
+        },
     );
 }
 
@@ -865,6 +887,62 @@ fn test(a: A) {
                 fd 0                                                                 u8
                 fd 1                                                                u32
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_inherent_method_no_same_name() {
+        check_no_kw(
+            r#"
+//- minicore: deref
+struct A {}
+struct B {}
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+trait Foo { fn foo(&self) -> u32 {} }
+impl Foo for A {}
+impl Foo for B {}
+impl A { fn foo(&self) -> u8 {} }
+impl B { fn foo(&self) -> u16 {} }
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+                me foo()                                                fn(&self) -> u8
+                me foo() (as Foo)                                      fn(&self) -> u32
+            "#]],
+        );
+
+        check_no_kw(
+            r#"
+//- minicore: deref
+//- /dep.rs crate:dep
+pub struct A {}
+pub struct B {}
+impl core::ops::Deref for A {
+    type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+pub trait Foo { fn foo(&self) -> u32 {} }
+impl Foo for A {}
+impl Foo for B {}
+impl A { fn foo(&self) -> u8 {} }
+impl B { pub fn foo(&self) -> u16 {} }
+//- /main.rs crate:main deps:dep
+use dep::*;
+fn test(a: A) {
+    a.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
+                me foo()                                               fn(&self) -> u16
+                me foo() (as Foo)                                      fn(&self) -> u32
             "#]],
         );
     }
