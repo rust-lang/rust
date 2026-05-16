@@ -6,9 +6,9 @@ use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Spanned, dummy_spanned};
+use rustc_span::{DUMMY_SP, dummy_spanned};
 use tracing::{debug, instrument};
 
 use crate::patch::MirPatch;
@@ -216,6 +216,7 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let span = self.source_info.span;
+        let obj_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, drop_ty);
 
         let async_drop_fn_def_id = if call_destructor_only {
             // Resolving obj.<AsyncDrop::drop>()
@@ -232,32 +233,6 @@ where
             )
             .output();
         let fut = self.new_temp(fut_ty);
-
-        // #1:pin_obj_bb >>> obj_ref = &mut obj
-        let obj_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, drop_ty);
-        let obj_ref_place = Place::from(self.new_temp(obj_ref_ty));
-        let assign_obj_ref_place = self.assign(
-            obj_ref_place,
-            Rvalue::Ref(
-                tcx.lifetimes.re_erased,
-                BorrowKind::Mut { kind: MutBorrowKind::Default },
-                place,
-            ),
-        );
-
-        // pin_obj_place preparation
-        let pin_obj_new_unchecked_fn = Ty::new_fn_def(
-            tcx,
-            tcx.require_lang_item(LangItem::PinNewUnchecked, span),
-            [GenericArg::from(obj_ref_ty)],
-        );
-        let pin_obj_ty = pin_obj_new_unchecked_fn.fn_sig(tcx).output().no_bound_vars().unwrap();
-        let pin_obj_place = Place::from(self.new_temp(pin_obj_ty));
-        let pin_obj_new_unchecked_fn = Operand::Constant(Box::new(ConstOperand {
-            span,
-            user_ty: None,
-            const_: Const::zero_sized(pin_obj_new_unchecked_fn),
-        }));
 
         // Create an intermediate block that does StorageDead(fut) then jumps to succ.
         // This is necessary because we do not want to modify statements
@@ -295,35 +270,24 @@ where
             },
         );
 
-        // #2:call_drop_bb
-        let mut call_statements = Vec::new();
+        // #2:call_drop_bb >>> call AsyncDrop::drop(pin_obj) OR call async_drop_in_place(pin_obj.pointer)
+        let pin_adt_def = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
+        let pin_obj_ty = Ty::new_adt(tcx, pin_adt_def, tcx.mk_args(&[obj_ref_ty.into()]));
+        // Where we store the result of Pin<&drop_ty>::new_unchecked(&mut place).
+        let pin_obj_local = self.new_temp(pin_obj_ty);
         let drop_arg = if call_destructor_only {
-            pin_obj_place
+            // `AsyncDrop::drop` takes `self: Pin<&mut Self>`.
+            Operand::Move(pin_obj_local.into())
         } else {
-            let ty::Adt(adt_def, adt_args) = pin_obj_ty.kind() else {
-                bug!();
-            };
-            let unwrap_ty =
-                adt_def.non_enum_variant().fields[FieldIdx::ZERO].ty(tcx, adt_args).skip_norm_wip();
-            let obj_ref_place = Place::from(self.new_temp(unwrap_ty));
-            call_statements.push(self.assign(
-                obj_ref_place,
-                Rvalue::Use(
-                    Operand::Copy(tcx.mk_place_field(pin_obj_place, FieldIdx::ZERO, unwrap_ty)),
-                    WithRetag::Yes,
-                ),
-            ));
-
-            obj_ref_place
+            // `async_drop_in_place` takes `obj: &mut T`.
+            Operand::Copy(tcx.mk_place_field(pin_obj_local.into(), FieldIdx::ZERO, obj_ref_ty))
         };
-        call_statements.push(self.storage_live(fut));
-
         let call_drop_bb = self.new_block_with_statements(
             unwind,
-            call_statements,
+            vec![self.storage_live(fut)],
             TerminatorKind::Call {
                 func: Operand::function_handle(tcx, async_drop_fn_def_id, [drop_ty.into()], span),
-                args: [Spanned { node: Operand::Move(drop_arg), span: DUMMY_SP }].into(),
+                args: [dummy_spanned(drop_arg)].into(),
                 destination: fut.into(),
                 target: Some(drop_term_bb),
                 unwind: unwind_with_dead.into_action(),
@@ -333,13 +297,28 @@ where
         );
 
         // #1:pin_obj_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
+        let obj_ref_place = Place::from(self.new_temp(obj_ref_ty));
+        let pin_obj_new_unchecked_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, span);
+        let assign_obj_ref_place = self.assign(
+            obj_ref_place,
+            Rvalue::Ref(
+                tcx.lifetimes.re_erased,
+                BorrowKind::Mut { kind: MutBorrowKind::Default },
+                place,
+            ),
+        );
         self.new_block_with_statements(
             unwind,
             vec![assign_obj_ref_place],
             TerminatorKind::Call {
-                func: pin_obj_new_unchecked_fn,
+                func: Operand::function_handle(
+                    tcx,
+                    pin_obj_new_unchecked_fn,
+                    [obj_ref_ty.into()],
+                    span,
+                ),
                 args: [dummy_spanned(Operand::Move(obj_ref_place))].into(),
-                destination: pin_obj_place,
+                destination: pin_obj_local.into(),
                 target: Some(call_drop_bb),
                 unwind: unwind.into_action(),
                 call_source: CallSource::Misc,
@@ -933,8 +912,7 @@ where
             )],
             TerminatorKind::Call {
                 func: Operand::function_handle(tcx, drop_fn, [ty.into()], self.source_info.span),
-                args: [Spanned { node: Operand::Move(Place::from(ref_place)), span: DUMMY_SP }]
-                    .into(),
+                args: [dummy_spanned(Operand::Move(Place::from(ref_place)))].into(),
                 destination: unit_temp,
                 target: Some(succ),
                 unwind: unwind.into_action(),

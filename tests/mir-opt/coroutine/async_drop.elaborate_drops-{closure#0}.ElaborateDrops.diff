@@ -19,45 +19,35 @@
       let mut _21: &AsyncInt;
       let _22: &AsyncInt;
 +     let mut _27: impl std::future::Future<Output = ()>;
-+     let mut _28: &mut {async closure@$DIR/async_drop.rs:80:27: 80:35};
-+     let mut _29: std::pin::Pin<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>;
-+     let mut _30: &mut {async closure@$DIR/async_drop.rs:80:27: 80:35};
-+     let mut _31: impl std::future::Future<Output = ()>;
++     let mut _28: std::pin::Pin<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>;
++     let mut _29: &mut {async closure@$DIR/async_drop.rs:80:27: 80:35};
++     let mut _30: impl std::future::Future<Output = ()>;
++     let mut _31: std::pin::Pin<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>;
 +     let mut _32: &mut {closure@$DIR/async_drop.rs:72:25: 72:27};
-+     let mut _33: std::pin::Pin<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>;
-+     let mut _34: &mut {closure@$DIR/async_drop.rs:72:25: 72:27};
-+     let mut _35: impl std::future::Future<Output = ()>;
-+     let mut _36: &mut AsyncReference<'_>;
-+     let mut _37: std::pin::Pin<&mut AsyncReference<'_>>;
-+     let mut _38: &mut AsyncReference<'_>;
++     let mut _33: impl std::future::Future<Output = ()>;
++     let mut _34: std::pin::Pin<&mut AsyncReference<'_>>;
++     let mut _35: &mut AsyncReference<'_>;
++     let mut _36: impl std::future::Future<Output = ()>;
++     let mut _37: std::pin::Pin<&mut AsyncInt>;
++     let mut _38: &mut AsyncInt;
 +     let mut _39: impl std::future::Future<Output = ()>;
-+     let mut _40: &mut AsyncInt;
-+     let mut _41: std::pin::Pin<&mut AsyncInt>;
-+     let mut _42: &mut AsyncInt;
-+     let mut _43: impl std::future::Future<Output = ()>;
-+     let mut _44: &mut AsyncEnum;
-+     let mut _45: std::pin::Pin<&mut AsyncEnum>;
-+     let mut _46: &mut AsyncEnum;
-+     let mut _47: impl std::future::Future<Output = ()>;
-+     let mut _48: &mut SyncThenAsync;
-+     let mut _49: std::pin::Pin<&mut SyncThenAsync>;
-+     let mut _50: &mut SyncThenAsync;
++     let mut _40: std::pin::Pin<&mut AsyncEnum>;
++     let mut _41: &mut AsyncEnum;
++     let mut _42: impl std::future::Future<Output = ()>;
++     let mut _43: std::pin::Pin<&mut SyncThenAsync>;
++     let mut _44: &mut SyncThenAsync;
++     let mut _45: impl std::future::Future<Output = ()>;
++     let mut _46: std::pin::Pin<&mut AsyncStruct>;
++     let mut _47: &mut AsyncStruct;
++     let mut _48: impl std::future::Future<Output = ()>;
++     let mut _49: std::pin::Pin<&mut [AsyncInt; 2]>;
++     let mut _50: &mut [AsyncInt; 2];
 +     let mut _51: impl std::future::Future<Output = ()>;
-+     let mut _52: &mut AsyncStruct;
-+     let mut _53: std::pin::Pin<&mut AsyncStruct>;
-+     let mut _54: &mut AsyncStruct;
-+     let mut _55: impl std::future::Future<Output = ()>;
-+     let mut _56: &mut [AsyncInt; 2];
-+     let mut _57: std::pin::Pin<&mut [AsyncInt; 2]>;
-+     let mut _58: &mut [AsyncInt; 2];
-+     let mut _59: impl std::future::Future<Output = ()>;
-+     let mut _60: &mut AsyncInt;
-+     let mut _61: std::pin::Pin<&mut AsyncInt>;
-+     let mut _62: &mut AsyncInt;
-+     let mut _63: impl std::future::Future<Output = ()>;
-+     let mut _64: &mut {async fn body of elaborate_drops()};
-+     let mut _65: std::pin::Pin<&mut {async fn body of elaborate_drops()}>;
-+     let mut _66: &mut {async fn body of elaborate_drops()};
++     let mut _52: std::pin::Pin<&mut AsyncInt>;
++     let mut _53: &mut AsyncInt;
++     let mut _54: impl std::future::Future<Output = ()>;
++     let mut _55: std::pin::Pin<&mut {async fn body of elaborate_drops()}>;
++     let mut _56: &mut {async fn body of elaborate_drops()};
       scope 1 {
           debug sync_int => _3;
           let _4: AsyncInt;
@@ -648,284 +638,274 @@
 +     }
 + 
 +     bb87: {
-+         _30 = copy (_29.0: &mut {async closure@$DIR/async_drop.rs:80:27: 80:35});
 +         StorageLive(_27);
-+         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:80:27: 80:35}>(move _30) -> [return: bb86, unwind: bb85];
++         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:80:27: 80:35}>(copy (_28.0: &mut {async closure@$DIR/async_drop.rs:80:27: 80:35})) -> [return: bb86, unwind: bb85];
 +     }
 + 
 +     bb88: {
-+         _28 = &mut _26;
-+         _29 = Pin::<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>::new_unchecked(move _28) -> [return: bb87, unwind: bb44];
++         _29 = &mut _26;
++         _28 = Pin::<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>::new_unchecked(move _29) -> [return: bb87, unwind: bb44];
 +     }
 + 
 +     bb89: {
-+         StorageDead(_31);
++         StorageDead(_30);
 +         goto -> bb12;
 +     }
 + 
 +     bb90: {
-+         StorageDead(_31);
++         StorageDead(_30);
 +         goto -> bb25;
 +     }
 + 
 +     bb91 (cleanup): {
-+         StorageDead(_31);
++         StorageDead(_30);
 +         goto -> bb46;
 +     }
 + 
 +     bb92: {
-+         async drop(_24; poll=_31) -> [return: bb89, unwind: bb91, drop: bb90];
++         async drop(_24; poll=_30) -> [return: bb89, unwind: bb91, drop: bb90];
 +     }
 + 
 +     bb93: {
-+         _34 = copy (_33.0: &mut {closure@$DIR/async_drop.rs:72:25: 72:27});
-+         StorageLive(_31);
-+         _31 = async_drop_in_place::<{closure@$DIR/async_drop.rs:72:25: 72:27}>(move _34) -> [return: bb92, unwind: bb91];
++         StorageLive(_30);
++         _30 = async_drop_in_place::<{closure@$DIR/async_drop.rs:72:25: 72:27}>(copy (_31.0: &mut {closure@$DIR/async_drop.rs:72:25: 72:27})) -> [return: bb92, unwind: bb91];
 +     }
 + 
 +     bb94: {
 +         _32 = &mut _24;
-+         _33 = Pin::<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>::new_unchecked(move _32) -> [return: bb93, unwind: bb46];
++         _31 = Pin::<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>::new_unchecked(move _32) -> [return: bb93, unwind: bb46];
 +     }
 + 
 +     bb95: {
-+         StorageDead(_35);
++         StorageDead(_33);
 +         goto -> bb14;
 +     }
 + 
 +     bb96: {
-+         StorageDead(_35);
++         StorageDead(_33);
 +         goto -> bb27;
 +     }
 + 
 +     bb97 (cleanup): {
-+         StorageDead(_35);
++         StorageDead(_33);
 +         goto -> bb48;
 +     }
 + 
 +     bb98: {
-+         async drop(_20; poll=_35) -> [return: bb95, unwind: bb97, drop: bb96];
++         async drop(_20; poll=_33) -> [return: bb95, unwind: bb97, drop: bb96];
 +     }
 + 
 +     bb99: {
-+         _38 = copy (_37.0: &mut AsyncReference<'_>);
-+         StorageLive(_35);
-+         _35 = async_drop_in_place::<AsyncReference<'_>>(move _38) -> [return: bb98, unwind: bb97];
++         StorageLive(_33);
++         _33 = async_drop_in_place::<AsyncReference<'_>>(copy (_34.0: &mut AsyncReference<'_>)) -> [return: bb98, unwind: bb97];
 +     }
 + 
 +     bb100: {
-+         _36 = &mut _20;
-+         _37 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _36) -> [return: bb99, unwind: bb48];
++         _35 = &mut _20;
++         _34 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _35) -> [return: bb99, unwind: bb48];
 +     }
 + 
 +     bb101: {
-+         StorageDead(_39);
++         StorageDead(_36);
 +         goto -> bb15;
 +     }
 + 
 +     bb102: {
-+         StorageDead(_39);
++         StorageDead(_36);
 +         goto -> bb28;
 +     }
 + 
 +     bb103 (cleanup): {
-+         StorageDead(_39);
++         StorageDead(_36);
 +         goto -> bb49;
 +     }
 + 
 +     bb104: {
-+         async drop(_19; poll=_39) -> [return: bb101, unwind: bb103, drop: bb102];
++         async drop(_19; poll=_36) -> [return: bb101, unwind: bb103, drop: bb102];
 +     }
 + 
 +     bb105: {
-+         _42 = copy (_41.0: &mut AsyncInt);
-+         StorageLive(_39);
-+         _39 = async_drop_in_place::<AsyncInt>(move _42) -> [return: bb104, unwind: bb103];
++         StorageLive(_36);
++         _36 = async_drop_in_place::<AsyncInt>(copy (_37.0: &mut AsyncInt)) -> [return: bb104, unwind: bb103];
 +     }
 + 
 +     bb106: {
-+         _40 = &mut _19;
-+         _41 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb105, unwind: bb49];
++         _38 = &mut _19;
++         _37 = Pin::<&mut AsyncInt>::new_unchecked(move _38) -> [return: bb105, unwind: bb49];
 +     }
 + 
 +     bb107: {
-+         StorageDead(_43);
++         StorageDead(_39);
 +         goto -> bb16;
 +     }
 + 
 +     bb108: {
-+         StorageDead(_43);
++         StorageDead(_39);
 +         goto -> bb30;
 +     }
 + 
 +     bb109 (cleanup): {
-+         StorageDead(_43);
++         StorageDead(_39);
 +         goto -> bb54;
 +     }
 + 
 +     bb110: {
-+         async drop(_15; poll=_43) -> [return: bb107, unwind: bb109, drop: bb108];
++         async drop(_15; poll=_39) -> [return: bb107, unwind: bb109, drop: bb108];
 +     }
 + 
 +     bb111: {
-+         _46 = copy (_45.0: &mut AsyncEnum);
-+         StorageLive(_43);
-+         _43 = async_drop_in_place::<AsyncEnum>(move _46) -> [return: bb110, unwind: bb109];
++         StorageLive(_39);
++         _39 = async_drop_in_place::<AsyncEnum>(copy (_40.0: &mut AsyncEnum)) -> [return: bb110, unwind: bb109];
 +     }
 + 
 +     bb112: {
-+         _44 = &mut _15;
-+         _45 = Pin::<&mut AsyncEnum>::new_unchecked(move _44) -> [return: bb111, unwind: bb54];
++         _41 = &mut _15;
++         _40 = Pin::<&mut AsyncEnum>::new_unchecked(move _41) -> [return: bb111, unwind: bb54];
 +     }
 + 
 +     bb113: {
-+         StorageDead(_47);
++         StorageDead(_42);
 +         goto -> bb17;
 +     }
 + 
 +     bb114: {
-+         StorageDead(_47);
++         StorageDead(_42);
 +         goto -> bb34;
 +     }
 + 
 +     bb115 (cleanup): {
-+         StorageDead(_47);
++         StorageDead(_42);
 +         goto -> bb58;
 +     }
 + 
 +     bb116: {
-+         async drop(_11; poll=_47) -> [return: bb113, unwind: bb115, drop: bb114];
++         async drop(_11; poll=_42) -> [return: bb113, unwind: bb115, drop: bb114];
 +     }
 + 
 +     bb117: {
-+         _50 = copy (_49.0: &mut SyncThenAsync);
-+         StorageLive(_47);
-+         _47 = async_drop_in_place::<SyncThenAsync>(move _50) -> [return: bb116, unwind: bb115];
++         StorageLive(_42);
++         _42 = async_drop_in_place::<SyncThenAsync>(copy (_43.0: &mut SyncThenAsync)) -> [return: bb116, unwind: bb115];
 +     }
 + 
 +     bb118: {
-+         _48 = &mut _11;
-+         _49 = Pin::<&mut SyncThenAsync>::new_unchecked(move _48) -> [return: bb117, unwind: bb58];
++         _44 = &mut _11;
++         _43 = Pin::<&mut SyncThenAsync>::new_unchecked(move _44) -> [return: bb117, unwind: bb58];
 +     }
 + 
 +     bb119: {
-+         StorageDead(_51);
++         StorageDead(_45);
 +         goto -> bb18;
 +     }
 + 
 +     bb120: {
-+         StorageDead(_51);
++         StorageDead(_45);
 +         goto -> bb37;
 +     }
 + 
 +     bb121 (cleanup): {
-+         StorageDead(_51);
++         StorageDead(_45);
 +         goto -> bb61;
 +     }
 + 
 +     bb122: {
-+         async drop(_8; poll=_51) -> [return: bb119, unwind: bb121, drop: bb120];
++         async drop(_8; poll=_45) -> [return: bb119, unwind: bb121, drop: bb120];
 +     }
 + 
 +     bb123: {
-+         _54 = copy (_53.0: &mut AsyncStruct);
-+         StorageLive(_51);
-+         _51 = async_drop_in_place::<AsyncStruct>(move _54) -> [return: bb122, unwind: bb121];
++         StorageLive(_45);
++         _45 = async_drop_in_place::<AsyncStruct>(copy (_46.0: &mut AsyncStruct)) -> [return: bb122, unwind: bb121];
 +     }
 + 
 +     bb124: {
-+         _52 = &mut _8;
-+         _53 = Pin::<&mut AsyncStruct>::new_unchecked(move _52) -> [return: bb123, unwind: bb61];
++         _47 = &mut _8;
++         _46 = Pin::<&mut AsyncStruct>::new_unchecked(move _47) -> [return: bb123, unwind: bb61];
 +     }
 + 
 +     bb125: {
-+         StorageDead(_55);
++         StorageDead(_48);
 +         goto -> bb19;
 +     }
 + 
 +     bb126: {
-+         StorageDead(_55);
++         StorageDead(_48);
 +         goto -> bb40;
 +     }
 + 
 +     bb127 (cleanup): {
-+         StorageDead(_55);
++         StorageDead(_48);
 +         goto -> bb64;
 +     }
 + 
 +     bb128: {
-+         async drop(_5; poll=_55) -> [return: bb125, unwind: bb127, drop: bb126];
++         async drop(_5; poll=_48) -> [return: bb125, unwind: bb127, drop: bb126];
 +     }
 + 
 +     bb129: {
-+         _58 = copy (_57.0: &mut [AsyncInt; 2]);
-+         StorageLive(_55);
-+         _55 = async_drop_in_place::<[AsyncInt; 2]>(move _58) -> [return: bb128, unwind: bb127];
++         StorageLive(_48);
++         _48 = async_drop_in_place::<[AsyncInt; 2]>(copy (_49.0: &mut [AsyncInt; 2])) -> [return: bb128, unwind: bb127];
 +     }
 + 
 +     bb130: {
-+         _56 = &mut _5;
-+         _57 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _56) -> [return: bb129, unwind: bb64];
++         _50 = &mut _5;
++         _49 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _50) -> [return: bb129, unwind: bb64];
 +     }
 + 
 +     bb131: {
-+         StorageDead(_59);
++         StorageDead(_51);
 +         goto -> bb20;
 +     }
 + 
 +     bb132: {
-+         StorageDead(_59);
++         StorageDead(_51);
 +         goto -> bb41;
 +     }
 + 
 +     bb133 (cleanup): {
-+         StorageDead(_59);
++         StorageDead(_51);
 +         goto -> bb65;
 +     }
 + 
 +     bb134: {
-+         async drop(_4; poll=_59) -> [return: bb131, unwind: bb133, drop: bb132];
++         async drop(_4; poll=_51) -> [return: bb131, unwind: bb133, drop: bb132];
 +     }
 + 
 +     bb135: {
-+         _62 = copy (_61.0: &mut AsyncInt);
-+         StorageLive(_59);
-+         _59 = async_drop_in_place::<AsyncInt>(move _62) -> [return: bb134, unwind: bb133];
++         StorageLive(_51);
++         _51 = async_drop_in_place::<AsyncInt>(copy (_52.0: &mut AsyncInt)) -> [return: bb134, unwind: bb133];
 +     }
 + 
 +     bb136: {
-+         _60 = &mut _4;
-+         _61 = Pin::<&mut AsyncInt>::new_unchecked(move _60) -> [return: bb135, unwind: bb65];
++         _53 = &mut _4;
++         _52 = Pin::<&mut AsyncInt>::new_unchecked(move _53) -> [return: bb135, unwind: bb65];
 +     }
 + 
 +     bb137: {
-+         StorageDead(_63);
++         StorageDead(_54);
 +         goto -> bb22;
 +     }
 + 
 +     bb138: {
-+         StorageDead(_63);
++         StorageDead(_54);
 +         goto -> bb43;
 +     }
 + 
 +     bb139 (cleanup): {
-+         StorageDead(_63);
++         StorageDead(_54);
 +         goto -> bb67;
 +     }
 + 
 +     bb140: {
-+         async drop(_1; poll=_63) -> [return: bb137, unwind: bb139, drop: bb138];
++         async drop(_1; poll=_54) -> [return: bb137, unwind: bb139, drop: bb138];
 +     }
 + 
 +     bb141: {
-+         _66 = copy (_65.0: &mut {async fn body of elaborate_drops()});
-+         StorageLive(_63);
-+         _63 = async_drop_in_place::<{async fn body of elaborate_drops()}>(move _66) -> [return: bb140, unwind: bb139];
++         StorageLive(_54);
++         _54 = async_drop_in_place::<{async fn body of elaborate_drops()}>(copy (_55.0: &mut {async fn body of elaborate_drops()})) -> [return: bb140, unwind: bb139];
 +     }
 + 
 +     bb142: {
-+         _64 = &mut _1;
-+         _65 = Pin::<&mut {async fn body of elaborate_drops()}>::new_unchecked(move _64) -> [return: bb141, unwind: bb67];
++         _56 = &mut _1;
++         _55 = Pin::<&mut {async fn body of elaborate_drops()}>::new_unchecked(move _56) -> [return: bb141, unwind: bb67];
       }
   }
   

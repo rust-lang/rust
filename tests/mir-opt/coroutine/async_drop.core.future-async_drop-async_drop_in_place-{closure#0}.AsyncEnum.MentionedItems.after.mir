@@ -6,19 +6,17 @@ yields ()
     let mut _0: ();
     let mut _3: &mut AsyncEnum;
     let mut _4: impl std::future::Future<Output = ()>;
-    let mut _5: &mut AsyncInt;
-    let mut _6: std::pin::Pin<&mut AsyncInt>;
-    let mut _7: &mut AsyncInt;
-    let mut _8: impl std::future::Future<Output = ()>;
+    let mut _5: std::pin::Pin<&mut AsyncInt>;
+    let mut _6: &mut AsyncInt;
+    let mut _7: impl std::future::Future<Output = ()>;
+    let mut _8: std::pin::Pin<&mut AsyncInt>;
     let mut _9: &mut AsyncInt;
-    let mut _10: std::pin::Pin<&mut AsyncInt>;
-    let mut _11: &mut AsyncInt;
+    let mut _10: isize;
+    let mut _11: isize;
     let mut _12: isize;
-    let mut _13: isize;
-    let mut _14: isize;
-    let mut _15: impl std::future::Future<Output = ()>;
-    let mut _16: &mut AsyncEnum;
-    let mut _17: std::pin::Pin<&mut AsyncEnum>;
+    let mut _13: impl std::future::Future<Output = ()>;
+    let mut _14: std::pin::Pin<&mut AsyncEnum>;
+    let mut _15: &mut AsyncEnum;
 
     bb0: {
         _3 = move (_1.0: &mut AsyncEnum);
@@ -60,44 +58,42 @@ yields ()
     }
 
     bb9: {
-        _7 = copy (_6.0: &mut AsyncInt);
         StorageLive(_4);
-        _4 = async_drop_in_place::<AsyncInt>(move _7) -> [return: bb8, unwind: bb7];
+        _4 = async_drop_in_place::<AsyncInt>(copy (_5.0: &mut AsyncInt)) -> [return: bb8, unwind: bb7];
     }
 
     bb10: {
-        _5 = &mut (((*_3) as A).0: AsyncInt);
-        _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb9, unwind: bb2];
+        _6 = &mut (((*_3) as A).0: AsyncInt);
+        _5 = Pin::<&mut AsyncInt>::new_unchecked(move _6) -> [return: bb9, unwind: bb2];
     }
 
     bb11: {
-        StorageDead(_8);
+        StorageDead(_7);
         goto -> bb3;
     }
 
     bb12: {
-        StorageDead(_8);
+        StorageDead(_7);
         goto -> bb1;
     }
 
     bb13 (cleanup): {
-        StorageDead(_8);
+        StorageDead(_7);
         goto -> bb2;
     }
 
     bb14: {
-        async drop((((*_3) as A).0: AsyncInt); poll=_8) -> [return: bb11, unwind: bb13, drop: bb12];
+        async drop((((*_3) as A).0: AsyncInt); poll=_7) -> [return: bb11, unwind: bb13, drop: bb12];
     }
 
     bb15: {
-        _11 = copy (_10.0: &mut AsyncInt);
-        StorageLive(_8);
-        _8 = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb14, unwind: bb13];
+        StorageLive(_7);
+        _7 = async_drop_in_place::<AsyncInt>(copy (_8.0: &mut AsyncInt)) -> [return: bb14, unwind: bb13];
     }
 
     bb16: {
         _9 = &mut (((*_3) as A).0: AsyncInt);
-        _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb15, unwind: bb2];
+        _8 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb15, unwind: bb2];
     }
 
     bb17 (cleanup): {
@@ -117,46 +113,46 @@ yields ()
     }
 
     bb21: {
-        _12 = discriminant((*_3));
-        switchInt(move _12) -> [0: bb16, otherwise: bb20];
+        _10 = discriminant((*_3));
+        switchInt(move _10) -> [0: bb16, otherwise: bb20];
     }
 
     bb22 (cleanup): {
-        _13 = discriminant((*_3));
-        switchInt(move _13) -> [0: bb4, otherwise: bb17];
+        _11 = discriminant((*_3));
+        switchInt(move _11) -> [0: bb4, otherwise: bb17];
     }
 
     bb23: {
-        _14 = discriminant((*_3));
-        switchInt(move _14) -> [0: bb10, otherwise: bb19];
+        _12 = discriminant((*_3));
+        switchInt(move _12) -> [0: bb10, otherwise: bb19];
     }
 
     bb24: {
-        StorageDead(_15);
+        StorageDead(_13);
         goto -> bb21;
     }
 
     bb25: {
-        StorageDead(_15);
+        StorageDead(_13);
         goto -> bb23;
     }
 
     bb26 (cleanup): {
-        StorageDead(_15);
+        StorageDead(_13);
         goto -> bb22;
     }
 
     bb27: {
-        async drop((*_3); poll=_15) -> [return: bb24, unwind: bb26, drop: bb25];
+        async drop((*_3); poll=_13) -> [return: bb24, unwind: bb26, drop: bb25];
     }
 
     bb28: {
-        StorageLive(_15);
-        _15 = <AsyncEnum as AsyncDrop>::drop(move _17) -> [return: bb27, unwind: bb26];
+        StorageLive(_13);
+        _13 = <AsyncEnum as AsyncDrop>::drop(move _14) -> [return: bb27, unwind: bb26];
     }
 
     bb29: {
-        _16 = &mut (*_3);
-        _17 = Pin::<&mut AsyncEnum>::new_unchecked(move _16) -> [return: bb28, unwind: bb22];
+        _15 = &mut (*_3);
+        _14 = Pin::<&mut AsyncEnum>::new_unchecked(move _15) -> [return: bb28, unwind: bb22];
     }
 }

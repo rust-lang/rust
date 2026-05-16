@@ -2,33 +2,32 @@
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _2;
-    debug x => ((*_19).0: T);
+    debug x => ((*_18).0: T);
     let mut _0: std::task::Poll<()>;
     let _3: T;
     let mut _4: impl std::future::Future<Output = ()>;
-    let mut _5: &mut T;
-    let mut _6: std::pin::Pin<&mut T>;
-    let mut _7: &mut T;
-    let mut _8: std::task::Poll<()>;
-    let mut _9: &mut std::task::Context<'_>;
-    let mut _10: &mut impl std::future::Future<Output = ()>;
-    let mut _11: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
-    let mut _12: isize;
-    let mut _13: &mut std::task::Context<'_>;
-    let mut _14: &mut impl std::future::Future<Output = ()>;
-    let mut _15: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
-    let mut _16: isize;
-    let mut _17: ();
-    let mut _18: u32;
-    let mut _19: &mut {async fn body of a<T>()};
+    let mut _5: std::pin::Pin<&mut T>;
+    let mut _6: &mut T;
+    let mut _7: std::task::Poll<()>;
+    let mut _8: &mut std::task::Context<'_>;
+    let mut _9: &mut impl std::future::Future<Output = ()>;
+    let mut _10: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _11: isize;
+    let mut _12: &mut std::task::Context<'_>;
+    let mut _13: &mut impl std::future::Future<Output = ()>;
+    let mut _14: std::pin::Pin<&mut impl std::future::Future<Output = ()>>;
+    let mut _15: isize;
+    let mut _16: ();
+    let mut _17: u32;
+    let mut _18: &mut {async fn body of a<T>()};
     scope 1 {
-        debug x => (((*_19) as variant#4).0: T);
+        debug x => (((*_18) as variant#4).0: T);
     }
 
     bb0: {
-        _19 = copy (_1.0: &mut {async fn body of a<T>()});
-        _18 = discriminant((*_19));
-        switchInt(move _18) -> [0: bb10, 3: bb13, 4: bb14, otherwise: bb15];
+        _18 = copy (_1.0: &mut {async fn body of a<T>()});
+        _17 = discriminant((*_18));
+        switchInt(move _17) -> [0: bb10, 3: bb13, 4: bb14, otherwise: bb15];
     }
 
     bb1: {
@@ -48,14 +47,14 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
 
     bb4: {
         _0 = Poll::<()>::Pending;
-        discriminant((*_19)) = 4;
+        discriminant((*_18)) = 4;
         return;
     }
 
     bb5: {
-        StorageLive(_15);
-        _14 = &mut (((*_19) as variant#4).1: impl std::future::Future<Output = ()>);
-        _15 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _14) -> [return: bb8, unwind unreachable];
+        StorageLive(_14);
+        _13 = &mut (((*_18) as variant#4).1: impl std::future::Future<Output = ()>);
+        _14 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb8, unwind unreachable];
     }
 
     bb6: {
@@ -63,13 +62,13 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb7: {
-        StorageDead(_15);
-        _16 = discriminant(_8);
-        switchInt(move _16) -> [0: bb3, 1: bb4, otherwise: bb6];
+        StorageDead(_14);
+        _15 = discriminant(_7);
+        switchInt(move _15) -> [0: bb3, 1: bb4, otherwise: bb6];
     }
 
     bb8: {
-        _8 = <impl Future<Output = ()> as Future>::poll(move _15, move _13) -> [return: bb7, unwind unreachable];
+        _7 = <impl Future<Output = ()> as Future>::poll(move _14, move _12) -> [return: bb7, unwind unreachable];
     }
 
     bb9: {
@@ -86,16 +85,16 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb12: {
-        drop(((*_19).0: T)) -> [return: bb11, unwind unreachable];
+        drop(((*_18).0: T)) -> [return: bb11, unwind unreachable];
     }
 
     bb13: {
-        _9 = move _2;
+        _8 = move _2;
         goto -> bb5;
     }
 
     bb14: {
-        _13 = move _2;
+        _12 = move _2;
         goto -> bb5;
     }
 

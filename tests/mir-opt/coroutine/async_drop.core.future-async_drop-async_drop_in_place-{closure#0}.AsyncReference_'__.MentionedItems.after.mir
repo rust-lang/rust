@@ -6,8 +6,8 @@ yields ()
     let mut _0: ();
     let mut _3: &mut AsyncReference<'_>;
     let mut _4: impl std::future::Future<Output = ()>;
-    let mut _5: &mut AsyncReference<'_>;
-    let mut _6: std::pin::Pin<&mut AsyncReference<'_>>;
+    let mut _5: std::pin::Pin<&mut AsyncReference<'_>>;
+    let mut _6: &mut AsyncReference<'_>;
 
     bb0: {
         _3 = move (_1.0: &mut AsyncReference<'_>);
@@ -47,11 +47,11 @@ yields ()
 
     bb8: {
         StorageLive(_4);
-        _4 = <AsyncReference<'_> as AsyncDrop>::drop(move _6) -> [return: bb7, unwind: bb6];
+        _4 = <AsyncReference<'_> as AsyncDrop>::drop(move _5) -> [return: bb7, unwind: bb6];
     }
 
     bb9: {
-        _5 = &mut (*_3);
-        _6 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _5) -> [return: bb8, unwind: bb2];
+        _6 = &mut (*_3);
+        _5 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _6) -> [return: bb8, unwind: bb2];
     }
 }

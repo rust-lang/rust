@@ -8,13 +8,11 @@
       let mut _0: ();
       let _3: SyncInt;
 +     let mut _5: impl std::future::Future<Output = ()>;
-+     let mut _6: &mut AsyncInt;
-+     let mut _7: std::pin::Pin<&mut AsyncInt>;
-+     let mut _8: &mut AsyncInt;
-+     let mut _9: impl std::future::Future<Output = ()>;
++     let mut _6: std::pin::Pin<&mut AsyncInt>;
++     let mut _7: &mut AsyncInt;
++     let mut _8: impl std::future::Future<Output = ()>;
++     let mut _9: std::pin::Pin<&mut {async fn body of simple()}>;
 +     let mut _10: &mut {async fn body of simple()};
-+     let mut _11: std::pin::Pin<&mut {async fn body of simple()}>;
-+     let mut _12: &mut {async fn body of simple()};
       scope 1 {
           debug sync_int => _3;
           let _4: AsyncInt;
@@ -104,44 +102,42 @@
 +     }
 + 
 +     bb15: {
-+         _8 = copy (_7.0: &mut AsyncInt);
 +         StorageLive(_5);
-+         _5 = async_drop_in_place::<AsyncInt>(move _8) -> [return: bb14, unwind: bb13];
++         _5 = async_drop_in_place::<AsyncInt>(copy (_6.0: &mut AsyncInt)) -> [return: bb14, unwind: bb13];
 +     }
 + 
 +     bb16: {
-+         _6 = &mut _4;
-+         _7 = Pin::<&mut AsyncInt>::new_unchecked(move _6) -> [return: bb15, unwind: bb7];
++         _7 = &mut _4;
++         _6 = Pin::<&mut AsyncInt>::new_unchecked(move _7) -> [return: bb15, unwind: bb7];
 +     }
 + 
 +     bb17: {
-+         StorageDead(_9);
++         StorageDead(_8);
 +         goto -> bb3;
 +     }
 + 
 +     bb18: {
-+         StorageDead(_9);
++         StorageDead(_8);
 +         goto -> bb6;
 +     }
 + 
 +     bb19 (cleanup): {
-+         StorageDead(_9);
++         StorageDead(_8);
 +         goto -> bb9;
 +     }
 + 
 +     bb20: {
-+         async drop(_1; poll=_9) -> [return: bb17, unwind: bb19, drop: bb18];
++         async drop(_1; poll=_8) -> [return: bb17, unwind: bb19, drop: bb18];
 +     }
 + 
 +     bb21: {
-+         _12 = copy (_11.0: &mut {async fn body of simple()});
-+         StorageLive(_9);
-+         _9 = async_drop_in_place::<{async fn body of simple()}>(move _12) -> [return: bb20, unwind: bb19];
++         StorageLive(_8);
++         _8 = async_drop_in_place::<{async fn body of simple()}>(copy (_9.0: &mut {async fn body of simple()})) -> [return: bb20, unwind: bb19];
 +     }
 + 
 +     bb22: {
 +         _10 = &mut _1;
-+         _11 = Pin::<&mut {async fn body of simple()}>::new_unchecked(move _10) -> [return: bb21, unwind: bb9];
++         _9 = Pin::<&mut {async fn body of simple()}>::new_unchecked(move _10) -> [return: bb21, unwind: bb9];
       }
   }
   
