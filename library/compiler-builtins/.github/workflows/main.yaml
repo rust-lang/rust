@@ -74,6 +74,8 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64-unknown-linux-gnu
           os: ubuntu-24.04
+        - target: powerpc64-unknown-linux-musl
+          os: ["self-hosted", "linux", "powerpc64", "musl"]
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
