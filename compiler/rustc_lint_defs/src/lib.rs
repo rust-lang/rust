@@ -100,47 +100,48 @@ pub enum Applicability {
 /// have that amount of lints listed. `u16` values should therefore suffice.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
-    /// Used for lints emitted during the `EarlyLintPass`. This id is not
-    /// hash stable and should not be cached.
-    Unstable { attr_id: AttrId, lint_index: Option<u16> },
-    /// The [`HirId`] that the lint expectation is attached to. This id is
-    /// stable and can be cached. The additional index ensures that nodes with
-    /// several expectations can correctly match diagnostics to the individual
-    /// expectation.
-    Stable { hir_id: HirId, attr_index: u16, lint_index: Option<u16> },
+    Unstable(UnstableLintExpectationId),
+    Stable(StableLintExpectationId),
 }
 
-impl LintExpectationId {
-    pub fn is_stable(&self) -> bool {
-        match self {
-            LintExpectationId::Unstable { .. } => false,
-            LintExpectationId::Stable { .. } => true,
-        }
-    }
+/// Used for lints emitted during the `EarlyLintPass`. This id is not hash
+/// stable and should not be cached.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct UnstableLintExpectationId {
+    pub attr_id: AttrId,
+    pub lint_index: Option<u16>,
+}
 
-    pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index = new_lint_index
+impl From<UnstableLintExpectationId> for LintExpectationId {
+    fn from(id: UnstableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Unstable(id)
     }
 }
 
-impl StableHash for LintExpectationId {
+/// The [`HirId`] that the lint expectation is attached to. This id is stable
+/// and can be cached. The additional index ensures that nodes with several
+/// expectations can correctly match diagnostics to the individual expectation.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
+pub struct StableLintExpectationId {
+    pub hir_id: HirId,
+    pub attr_index: u16,
+    pub lint_index: Option<u16>,
+}
+
+impl StableHash for StableLintExpectationId {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        match self {
-            LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                hir_id.stable_hash(hcx, hasher);
-                attr_index.stable_hash(hcx, hasher);
-                lint_index.stable_hash(hcx, hasher);
-            }
-            _ => {
-                unreachable!(
-                    "StableHash should only be called for filled and stable `LintExpectationId`"
-                )
-            }
-        }
+        let StableLintExpectationId { hir_id, attr_index, lint_index } = self;
+
+        hir_id.stable_hash(hcx, hasher);
+        attr_index.stable_hash(hcx, hasher);
+        lint_index.expect("must be filled to call `stable_hash`").stable_hash(hcx, hasher);
+    }
+}
+
+impl From<StableLintExpectationId> for LintExpectationId {
+    fn from(id: StableLintExpectationId) -> LintExpectationId {
+        LintExpectationId::Stable(id)
     }
 }
 

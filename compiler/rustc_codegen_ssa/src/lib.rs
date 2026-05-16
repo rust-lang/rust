@@ -26,7 +26,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::lint::LevelSpec;
+use rustc_middle::lint::StableLevelSpec;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -342,8 +342,8 @@ impl CompiledModules {
 /// Instead, encode exactly the information we need.
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
 pub struct CodegenLintLevelSpecs {
-    linker_messages: LevelSpec,
-    linker_info: LevelSpec,
+    linker_messages: StableLevelSpec,
+    linker_info: StableLevelSpec,
 }
 
 impl CodegenLintLevelSpecs {
