@@ -1636,6 +1636,15 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// TODO(Sa4dUs): add docs
+    #[unstable(feature = "gpu_offload", issue = "131513")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
+    #[rustc_builtin_macro]
+    pub macro offload_kernel($item:item) {
+        /* compiler built-in */
+    }
+
     /// Asserts that a boolean expression is `true` at runtime.
     ///
     /// This will invoke the [`panic!`] macro if the provided expression cannot be

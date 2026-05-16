@@ -289,6 +289,7 @@
 #![feature(f16)]
 #![feature(f128)]
 #![feature(ffi_const)]
+#![feature(gpu_offload)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(link_cfg)]
@@ -659,6 +660,12 @@ pub mod simd {
 pub mod autodiff {
     /// This macro handles automatic differentiation.
     pub use core::autodiff::{autodiff_forward, autodiff_reverse};
+}
+
+#[unstable(feature = "gpu_offload", issue = "131513")]
+#[doc = include_str!("../../core/src/offload.md")]
+pub mod offload {
+    pub use core::offload::{offload, offload_kernel};
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
