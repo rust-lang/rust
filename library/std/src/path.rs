@@ -844,12 +844,9 @@ impl<'a> Components<'a> {
     /// that back index is pointing at.
     #[inline]
     fn find_next_separator_front(&mut self) {
-        while self.front < self.back {
-            if is_sep_byte(self.path[self.front]) {
-                self.front += 1;
-                break;
-            }
-            self.front += 1;
+        match self.path[self.front..self.back].iter().position(|b| is_sep_byte(*b)) {
+            None => self.front = self.back,
+            Some(i) => self.front += i + 1,
         }
     }
 
@@ -858,12 +855,11 @@ impl<'a> Components<'a> {
     /// that front index is pointing to.
     #[inline]
     fn find_next_separator_back(&mut self) {
-        while self.back > self.front {
-            if is_sep_byte(self.path[self.back - 1]) {
-                self.back -= 1;
-                break;
-            }
-            self.back -= 1;
+        let path = &self.path[self.front..self.back];
+
+        match path.iter().rposition(|b| is_sep_byte(*b)) {
+            None => self.back = self.front,
+            Some(i) => self.back -= path.len() - i,
         }
     }
 
