@@ -331,6 +331,10 @@ jobs:
       run: |
         cargo run -p stdarch-gen-hexagon --release
         git diff --exit-code
+    - name: Check hexagon scalar
+      run: |
+        cargo run -p stdarch-gen-hexagon-scalar --release
+        git diff --exit-code
 
   # Run some tests with Miri. Most stdarch functions use platform-specific intrinsics
   # that Miri does not support. Also Miri is reltively slow.
