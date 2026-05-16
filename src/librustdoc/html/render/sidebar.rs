@@ -659,25 +659,27 @@ fn sidebar_module(
     ids: &mut IdMap,
     module_like: ModuleLike,
 ) -> LinkBlock<'static> {
-    let item_sections_in_use: FxHashSet<_> = items
-        .iter()
-        .filter(|it| {
-            !it.is_stripped()
-                && it
-                    .name
-                    .or_else(|| {
-                        if let clean::ImportItem(ref i) = it.kind
-                            && let clean::ImportKind::Simple(s) = i.kind
-                        {
-                            Some(s)
-                        } else {
-                            None
-                        }
-                    })
-                    .is_some()
-        })
-        .map(|it| item_ty_to_section(it.type_()))
-        .collect();
+    let mut item_sections_in_use: FxHashSet<_> = Default::default();
+
+    for item in items.iter().filter(|it| {
+        !it.is_stripped()
+            && it
+                .name
+                .or_else(|| {
+                    if let clean::ImportItem(ref i) = it.kind
+                        && let clean::ImportKind::Simple(s) = i.kind
+                    {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                })
+                .is_some()
+    }) {
+        for type_ in item.types() {
+            item_sections_in_use.insert(item_ty_to_section(type_));
+        }
+    }
 
     sidebar_module_like(item_sections_in_use, ids, module_like)
 }
