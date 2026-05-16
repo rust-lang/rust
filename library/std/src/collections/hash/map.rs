@@ -492,7 +492,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// 
+    ///
     /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
@@ -555,7 +555,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// 
+    ///
     /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
