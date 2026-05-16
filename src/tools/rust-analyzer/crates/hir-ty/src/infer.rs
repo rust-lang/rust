@@ -396,6 +396,11 @@ pub enum InferenceDiagnostic {
         call_expr: ExprId,
         found: StoredTy,
     },
+    CannotBeDereferenced {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+        found: StoredTy,
+    },
     TypedHole {
         #[type_visitable(ignore)]
         expr: ExprId,
