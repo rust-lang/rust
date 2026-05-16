@@ -363,3 +363,24 @@ pub fn issue_16642() {
         base += 1;
     }
 }
+
+fn issue_17014(v: Vec<u8>) {
+    let mut count = 0;
+    for item in &v {
+        let Some(_) = Some(0) else {
+            count += 1;
+            continue;
+        };
+    }
+
+    let mut count = 0;
+    for item in &v {
+        //~^ explicit_counter_loop
+        let Some(_) = ({
+            count += 1;
+            Some(0)
+        }) else {
+            continue;
+        };
+    }
+}
