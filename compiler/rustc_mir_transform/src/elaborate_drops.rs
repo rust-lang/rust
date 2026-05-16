@@ -332,8 +332,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
         // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
-            let TerminatorKind::Drop { place, target, unwind, replace, drop, async_fut: _ } =
-                terminator.kind
+            let TerminatorKind::Drop { place, target, unwind, replace, drop } = terminator.kind
             else {
                 continue;
             };

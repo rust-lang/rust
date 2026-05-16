@@ -662,7 +662,6 @@ where
                     unwind: self.unwind.into_action(),
                     replace: false,
                     drop: None,
-                    async_fut: None,
                 },
             );
         }
@@ -1329,7 +1328,6 @@ where
                     unwind: unwind.into_action(),
                     replace: false,
                     drop: None,
-                    async_fut: None,
                 },
             );
         }
@@ -1565,7 +1563,6 @@ where
                 unwind: self.unwind.into_action(),
                 replace: false,
                 drop: self.dropline,
-                async_fut: None,
             },
         );
         self.elaborate_drop(blk);
@@ -1585,7 +1582,6 @@ where
                     unwind: unwind.into_action(),
                     replace: false,
                     drop: None,
-                    async_fut: None,
                 },
             )
         }

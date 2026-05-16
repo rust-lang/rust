@@ -778,8 +778,6 @@ pub enum TerminatorKind<'tcx> {
         replace: bool,
         /// Cleanup to be done if the coroutine is dropped at this suspend point (for async drop).
         drop: Option<BasicBlock>,
-        /// Prepared async future local (for async drop)
-        async_fut: Option<Local>,
     },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of

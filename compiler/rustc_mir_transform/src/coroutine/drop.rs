@@ -87,7 +87,7 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         let (target, unwind, source_info, dropline) = match block_data.terminator() {
             Terminator {
                 source_info,
-                kind: TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut: _ },
+                kind: TerminatorKind::Drop { place, target, unwind, replace: _, drop },
             } => {
                 if let Some(local) = place.as_local()
                     && local == SELF_ARG
@@ -146,7 +146,6 @@ pub(super) fn insert_clean_drop<'tcx>(
         unwind: UnwindAction::Continue,
         replace: false,
         drop: dropline,
-        async_fut: None,
     };
 
     // Create a block to destroy an unresumed coroutines. This can only destroy upvars.
@@ -349,7 +348,6 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         unwind: UnwindAction::Continue,
         replace: false,
         drop: None,
-        async_fut: None,
     };
     body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
 

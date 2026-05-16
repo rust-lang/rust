@@ -96,7 +96,6 @@ pub(super) fn build_async_drop_shim<'tcx>(
                 unwind: UnwindAction::Continue,
                 replace: false,
                 drop: None,
-                async_fut: None,
             }
         } else {
             TerminatorKind::Goto { target: return_block }
