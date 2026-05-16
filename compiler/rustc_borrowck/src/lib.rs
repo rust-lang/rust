@@ -2239,14 +2239,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         // None case => assigning to `x` does not require `x` be initialized.
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
-                ProjectionElem::Index(_/*operand*/) |
-                ProjectionElem::OpaqueCast(_) |
-                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Index(_/*operand*/)
+                | ProjectionElem::OpaqueCast(_)
                 // assigning to P[i] requires P to be valid.
-                ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
-                    // assigning to (P->variant) is okay if assigning to `P` is okay
-                    //
-                    // FIXME: is this true even if P is an adt with a dtor?
+                | ProjectionElem::ConstantIndex { .. }
+                // assigning to (P->variant) is okay if assigning to `P` is okay
+                //
+                // FIXME: is this true even if P is an adt with a dtor?
+                | ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
                     {}
 
                 ProjectionElem::UnwrapUnsafeBinder(_) => {
