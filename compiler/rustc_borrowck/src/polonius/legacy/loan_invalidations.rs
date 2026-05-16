@@ -56,11 +56,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(op)) => {
                 self.consume_operand(location, op);
             }
-            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
-                src,
-                dst,
-                count,
-            })) => {
+            StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
+                CopyNonOverlapping { src, dst, count },
+            )) => {
                 self.consume_operand(location, src);
                 self.consume_operand(location, dst);
                 self.consume_operand(location, count);

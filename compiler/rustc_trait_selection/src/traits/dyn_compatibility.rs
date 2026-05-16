@@ -223,7 +223,17 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..].iter().any(|&arg| contains_illegal_self_type_reference(tcx, trait_def_id, arg, allow_self_projections)).then_some(sp)
+            data.trait_ref.args[1..]
+                .iter()
+                .any(|&arg| {
+                    contains_illegal_self_type_reference(
+                        tcx,
+                        trait_def_id,
+                        arg,
+                        allow_self_projections,
+                    )
+                })
+                .then_some(sp)
         }
         ty::ClauseKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
@@ -241,18 +251,31 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_term.args[1..].iter().any(|&arg| contains_illegal_self_type_reference(tcx, trait_def_id, arg, allow_self_projections)).then_some(sp)
+            data.projection_term.args[1..]
+                .iter()
+                .any(|&arg| {
+                    contains_illegal_self_type_reference(
+                        tcx,
+                        trait_def_id,
+                        arg,
+                        allow_self_projections,
+                    )
+                })
+                .then_some(sp)
         }
-        ty::ClauseKind::ConstArgHasType(_ct, ty) => contains_illegal_self_type_reference(tcx, trait_def_id, ty, allow_self_projections).then_some(sp),
+        ty::ClauseKind::ConstArgHasType(_ct, ty) => {
+            contains_illegal_self_type_reference(tcx, trait_def_id, ty, allow_self_projections)
+                .then_some(sp)
+        }
 
         ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::TypeOutlives(..)
         | ty::ClauseKind::RegionOutlives(..)
-        // FIXME(generic_const_exprs): this can mention `Self`
-        | ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::HostEffect(..)
-        | ty::ClauseKind::UnstableFeature(_)
-         => None,
+        | ty::ClauseKind::UnstableFeature(_) => None,
+
+        // FIXME(generic_const_exprs): this can mention `Self`
+        ty::ClauseKind::ConstEvaluatable(..) => None,
     }
 }
 

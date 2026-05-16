@@ -133,7 +133,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
                 if let Some(fn_sig) = self.cx.tcx.parent_hir_node(expr.hir_id).fn_sig()
                     && let FnRetTy::Return(_ty) = fn_sig.decl.output
                 {
-                    // We cannot check the exact type since it's a `hir::Ty`` which does not implement `is_numeric`
+                    // We cannot check the exact type since it's a `hir::Ty` which does not implement `is_numeric`
                     self.ty_bounds.push(ExplicitTyBound(true));
                     for stmt in *stmts {
                         self.visit_stmt(stmt);
