@@ -34,11 +34,7 @@ where
                     GoalEvaluation { goal: _, certainty, stalled_on: _, has_changed: _ },
                 ) = self.evaluate_goal_raw(GoalSource::TypeRelating, normalizes_to, None)?;
 
-                // Add the nested goals from normalization to our own nested goals.
                 trace!(?nested_goals);
-                for (s, g) in nested_goals {
-                    self.add_goal(s, g);
-                }
 
                 // Normalize alias types in rhs. This is done in `EvalCtxt::add_goal` for nested
                 // goals, but we might be evaluating the root goal.
@@ -69,6 +65,11 @@ where
                 // type contains an ambiguous alias referencing bound regions. We should
                 // consider changing this to only use "shallow structural equality".
                 self.eq_structurally_relating_aliases(goal.param_env, term, unconstrained_term)?;
+
+                // Add the nested goals from normalization to our own nested goals.
+                for (s, g) in nested_goals {
+                    self.add_goal(s, g);
+                }
 
                 self.evaluate_added_goals_and_make_canonical_response(certainty)
             }
