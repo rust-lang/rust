@@ -37,6 +37,7 @@ mod handlers {
     pub(crate) mod elided_lifetimes_in_path;
     pub(crate) mod expected_array_or_slice_pat;
     pub(crate) mod expected_function;
+    pub(crate) mod fru_in_destructuring_assignment;
     pub(crate) mod functional_record_update_on_non_struct;
     pub(crate) mod generic_args_prohibited;
     pub(crate) mod generic_default_refers_to_self;
@@ -533,6 +534,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::PatternArgInExternFn(d) => handlers::pattern_arg_in_extern_fn::pattern_arg_in_extern_fn(&ctx, &d),
             AnyDiagnostic::UnionExprMustHaveExactlyOneField(d) => handlers::union_expr_must_have_exactly_one_field::union_expr_must_have_exactly_one_field(&ctx, &d),
             AnyDiagnostic::UnimplementedTrait(d) => handlers::unimplemented_trait::unimplemented_trait(&ctx, &d),
+            AnyDiagnostic::FruInDestructuringAssignment(d) => handlers::fru_in_destructuring_assignment::fru_in_destructuring_assignment(&ctx, &d),
         };
         res.push(d)
     }

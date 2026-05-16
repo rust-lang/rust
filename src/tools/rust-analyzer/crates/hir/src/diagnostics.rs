@@ -106,6 +106,7 @@ diagnostics![AnyDiagnostic<'db> ->
     CastToUnsized<'db>,
     ExpectedArrayOrSlicePat<'db>,
     ExpectedFunction<'db>,
+    FruInDestructuringAssignment,
     FunctionalRecordUpdateOnNonStruct,
     GenericDefaultRefersToSelf,
     InactiveCode,
@@ -322,6 +323,11 @@ pub struct ExpectedFunction<'db> {
 pub struct CannotBeDereferenced<'db> {
     pub expr: InFile<ExprOrPatPtr>,
     pub found: Type<'db>,
+}
+
+#[derive(Debug)]
+pub struct FruInDestructuringAssignment {
+    pub node: InFile<AstPtr<ast::Expr>>,
 }
 
 #[derive(Debug)]
