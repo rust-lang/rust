@@ -553,17 +553,16 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let map = HashMap::from([
+    /// let map: HashMap<&str, i32> = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
     /// ]);
     ///
-    /// for val in map.values() {
-    ///     println!("{val}");
-    /// }
+    /// let mut values: Vec<_> = map.values().copied().collect();
+    /// values.sort();
+    ///
+    /// assert_eq!(values, vec![1, 2, 3]);
     /// ```
     ///
     /// # Performance
