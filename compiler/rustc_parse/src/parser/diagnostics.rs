@@ -1889,9 +1889,8 @@ impl<'a> Parser<'a> {
         true
     }
 
-    /// Creates a `Diag` for an unexpected token `t` and tries to recover if it is a
-    /// closing delimiter.
-    pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
+    /// Creates a `Diag` for an unexpected token `t`
+    pub(super) fn unexpected_err(&mut self, t: &TokenKind) -> Diag<'a> {
         let token_str = pprust::token_kind_to_string(t);
         let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
@@ -1926,7 +1925,7 @@ impl<'a> Parser<'a> {
             err.span_label(prev_sp, label_exp);
             err.span_label(sp, "unexpected token");
         }
-        Err(err)
+        err
     }
 
     pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {
