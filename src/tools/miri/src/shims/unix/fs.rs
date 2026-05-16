@@ -750,7 +750,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // However, `statx` is allowed to return information that was not requested or to not
         // return information that was requested. This `mask` represents the information we can
         // actually provide for any target.
-        let mut mask = this.eval_libc_u32("STATX_TYPE") | this.eval_libc_u32("STATX_SIZE");
+        let mut mask = this.eval_libc_u32("STATX_TYPE")
+            | this.eval_libc_u32("STATX_MODE")
+            | this.eval_libc_u32("STATX_SIZE");
 
         // Check which pieces of metadata we acquired, and set the appropriate flags in the mask.
         if metadata.ino.is_some() {

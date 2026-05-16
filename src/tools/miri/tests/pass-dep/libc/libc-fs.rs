@@ -64,10 +64,12 @@ fn assert_statx_matches_metadata(stx: &libc::statx, meta: &std::fs::Metadata, ex
     let mask = stx.stx_mask;
 
     // Guaranteed by the shim on any Linux target.
-    assert!(mask & libc::STATX_TYPE != 0);
     assert!(mask & libc::STATX_SIZE != 0);
     assert_eq!(stx.stx_size, expected_size);
-    assert_eq!((stx.stx_mode as u32) & libc::S_IFMT, libc::S_IFREG);
+    assert!(mask & libc::STATX_TYPE != 0);
+    assert_eq!((stx.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFREG);
+    assert!(mask & libc::STATX_MODE != 0);
+    assert_ne!((stx.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
 
     // Host-dependent enrichment: only assert when the mask says the field is real.
     if mask & libc::STATX_INO != 0 {
@@ -85,9 +87,6 @@ fn assert_statx_matches_metadata(stx: &libc::statx, meta: &std::fs::Metadata, ex
     if mask & libc::STATX_BLOCKS != 0 {
         assert_eq!(stx.stx_blocks, meta.blocks());
     }
-
-    // We don't support non-S_IFMT bits in stx_mode.
-    assert_eq!(mask & libc::STATX_MODE, 0);
 
     // Do not assert stx_blksize and stx_dev_* : there are no mask bits for them.
 }
@@ -174,18 +173,21 @@ fn test_statx_empty_path_on_pipe() {
 
         let statx_buf = statx_buf.assume_init();
 
-        assert_ne!(statx_buf.stx_mask & libc::STATX_TYPE, 0);
         assert_ne!(statx_buf.stx_mask & libc::STATX_SIZE, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_MODE, 0);
-        assert_eq!((statx_buf.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFIFO);
         assert_eq!(statx_buf.stx_size, 0);
+        assert_ne!(statx_buf.stx_mask & libc::STATX_TYPE, 0);
+        assert_eq!((statx_buf.stx_mode as libc::mode_t) & libc::S_IFMT, libc::S_IFIFO);
+        assert_ne!(statx_buf.stx_mask & libc::STATX_MODE, 0);
+        assert_ne!((statx_buf.stx_mode as libc::mode_t) & !libc::S_IFMT, 0);
 
-        // Synthetic metadata must not advertise host-only fields.
-        assert_eq!(statx_buf.stx_mask & libc::STATX_INO, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_NLINK, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_UID, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_GID, 0);
-        assert_eq!(statx_buf.stx_mask & libc::STATX_BLOCKS, 0);
+        if cfg!(miri) {
+            // Synthetic metadata must not advertise host-only fields.
+            assert_eq!(statx_buf.stx_mask & libc::STATX_INO, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_NLINK, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_UID, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_GID, 0);
+            assert_eq!(statx_buf.stx_mask & libc::STATX_BLOCKS, 0);
+        }
 
         errno_check(libc::close(fds[0]));
         errno_check(libc::close(fds[1]));
@@ -322,13 +324,16 @@ fn test_ftruncate<T: From<i32>>(
 
 #[cfg(target_os = "linux")]
 fn test_o_tmpfile_flag() {
+    if !cfg!(miri) {
+        return; // checks miri-specific behavior
+    }
+
     use std::fs::{OpenOptions, create_dir};
     use std::os::unix::fs::OpenOptionsExt;
     let dir_path = utils::prepare_dir("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     // test that the `O_TMPFILE` custom flag gracefully errors instead of stopping execution
     assert_eq!(
-        Some(libc::EOPNOTSUPP),
         OpenOptions::new()
             .read(true)
             .write(true)
@@ -336,6 +341,7 @@ fn test_o_tmpfile_flag() {
             .open(dir_path)
             .unwrap_err()
             .raw_os_error(),
+        Some(libc::EOPNOTSUPP),
     );
 }
 
