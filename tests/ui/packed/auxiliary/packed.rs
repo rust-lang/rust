@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 #[repr(packed)]
 pub struct P1S5 {
     a: u8,

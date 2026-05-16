@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 pub struct Named {
     hidden: u8,
 }

@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 trait PrivTrait {
     fn priv_fn(&self);
 }

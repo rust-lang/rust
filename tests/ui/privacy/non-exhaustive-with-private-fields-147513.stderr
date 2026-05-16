@@ -1,5 +1,5 @@
 error[E0639]: cannot create non-exhaustive struct using struct expression
-  --> $DIR/non-exhaustive-with-private-fields-147513.rs:8:15
+  --> $DIR/non-exhaustive-with-private-fields-147513.rs:9:15
    |
 LL |       let foo = Foo {
    |  _______________^
@@ -9,7 +9,7 @@ LL | |     };
    | |_____^
 
 error[E0639]: cannot create non-exhaustive struct using struct expression
-  --> $DIR/non-exhaustive-with-private-fields-147513.rs:13:15
+  --> $DIR/non-exhaustive-with-private-fields-147513.rs:14:15
    |
 LL |       let bar = Bar {
    |  _______________^

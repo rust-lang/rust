@@ -1,6 +1,7 @@
 //@ compile-flags:-Clink-dead-code
 
 #![deny(dead_code)]
+#![allow(unused_unconstructable_pub_structs)]
 #![crate_type = "lib"]
 
 use std::ops::{Add, Deref, Index, IndexMut};

@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 // https://github.com/rust-lang/rust/issues/5708
 //@ run-pass
 #![allow(unused_variables)]

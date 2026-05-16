@@ -2,6 +2,7 @@
 
 #![allow(warnings)]
 #![allow(private_interfaces)]
+#![allow(unused_unconstructable_pub_structs)]
 
 extern crate private_inferred_type as ext;
 

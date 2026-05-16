@@ -1,4 +1,5 @@
 // original problem
+#![allow(unused_unconstructable_pub_structs)]
 pub fn foo<T>() -> isize {
     {
         static foo: isize = 2;

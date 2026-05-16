@@ -1,4 +1,5 @@
 #![feature(adt_const_params, unsized_const_params)]
+#![allow(unused_unconstructable_pub_structs)]
 
 #[derive(std::marker::ConstParamTy, Eq, PartialEq)]
 pub struct Foo([u8]);

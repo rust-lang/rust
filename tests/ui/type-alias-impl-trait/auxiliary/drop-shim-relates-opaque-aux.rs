@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 // crate foo
 
 #![feature(type_alias_impl_trait)]

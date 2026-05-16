@@ -41,6 +41,7 @@ type Foo = [i32; (3 as usize)];
 struct Bar {
     x: [i32; (3 as usize)],
 }
+#[allow(unused_unconstructable_pub_structs)]
 struct TupleBar([i32; (4 as usize)]);
 enum Baz { BazVariant([i32; (5 as usize)]), }
 fn id<T>(x: T) -> T ({ (x as T) } as T)

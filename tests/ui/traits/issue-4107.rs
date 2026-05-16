@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
+#![allow(unused_unconstructable_pub_structs)]
 
 pub fn main() {
     let _id: &Mat2<f64> = &Matrix::identity(1.0);

@@ -1,4 +1,5 @@
 //@ run-rustfix
+#![allow(unused_unconstructable_pub_structs)]
 pub struct LipogramCorpora {
     selections: Vec<(char, Option<String>)>,
 }

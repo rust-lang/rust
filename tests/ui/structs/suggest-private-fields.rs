@@ -1,5 +1,6 @@
 //@ aux-build:struct_field_privacy.rs
 
+#![allow(unused_unconstructable_pub_structs)]
 extern crate struct_field_privacy as xc;
 
 use xc::B;

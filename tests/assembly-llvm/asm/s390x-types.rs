@@ -10,7 +10,7 @@
 #![feature(no_core, repr_simd, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
-#![allow(asm_sub_register, non_camel_case_types)]
+#![allow(asm_sub_register, non_camel_case_types, unused_unconstructable_pub_structs)]
 
 extern crate minicore;
 use minicore::*;

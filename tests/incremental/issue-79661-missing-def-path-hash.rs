@@ -11,5 +11,6 @@
 extern crate issue_79661;
 use issue_79661::Wrapper;
 
+#[allow(unused_unconstructable_pub_structs)]
 pub struct Outer(Wrapper);
 fn main() {}

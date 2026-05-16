@@ -1,5 +1,6 @@
 // Auxiliary crate for testing non-exhaustive struct with private fields
 
+#![allow(unused_unconstructable_pub_structs)]
 #[non_exhaustive]
 pub struct Foo {
     pub my_field: u32,

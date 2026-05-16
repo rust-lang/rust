@@ -1,5 +1,6 @@
 #![crate_type = "rlib"]
 #![feature(never_type)]
+#![allow(unused_unconstructable_pub_structs)]
 
 #[non_exhaustive]
 pub enum UninhabitedEnum {

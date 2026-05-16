@@ -1,5 +1,6 @@
 //@ aux-build:privacy_tuple_struct.rs
 
+#![allow(unused_unconstructable_pub_structs)]
 extern crate privacy_tuple_struct as other;
 
 mod a {

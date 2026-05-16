@@ -1,5 +1,6 @@
 //@ aux-build:empty.rs
 //@ revisions: normal exhaustive_patterns
+#![allow(unused_unconstructable_pub_structs)]
 //
 // This tests a match with no arms on various types, and checks NOTEs.
 #![feature(never_type)]

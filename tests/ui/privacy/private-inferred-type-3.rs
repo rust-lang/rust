@@ -1,6 +1,7 @@
 //@ aux-build:private-inferred-type.rs
 
 #![feature(decl_macro)]
+#![allow(unused_unconstructable_pub_structs)]
 
 extern crate private_inferred_type as ext;
 

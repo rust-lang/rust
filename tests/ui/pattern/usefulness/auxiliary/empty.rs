@@ -1,4 +1,5 @@
 #![crate_type = "rlib"]
+#![allow(unused_unconstructable_pub_structs)]
 pub enum EmptyForeignEnum {}
 
 pub struct VisiblyUninhabitedForeignStruct {

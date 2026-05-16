@@ -2,6 +2,7 @@
 //@ check-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
+#![allow(unused_unconstructable_pub_structs)]
 
 extern crate generics_of_parent;
 

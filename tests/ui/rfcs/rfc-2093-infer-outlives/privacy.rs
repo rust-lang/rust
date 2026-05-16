@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 // Test that we do not get a privacy error here.  Initially, we did,
 // because we inferred an outlives predciate of `<Foo<'a> as
 // Private>::Out: 'a`, but the private trait is -- well -- private,

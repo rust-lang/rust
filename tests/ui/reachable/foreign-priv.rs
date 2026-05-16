@@ -2,6 +2,7 @@
 //@ build-pass
 
 #![crate_type = "lib"]
+#![allow(unused_unconstructable_pub_structs)]
 
 extern crate foreign_priv_aux;
 

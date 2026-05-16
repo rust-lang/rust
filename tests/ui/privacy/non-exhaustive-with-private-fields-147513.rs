@@ -1,5 +1,6 @@
 //@ aux-build:non_exhaustive_with_private.rs
 
+#![allow(unused_unconstructable_pub_structs)]
 extern crate non_exhaustive_with_private;
 
 use non_exhaustive_with_private::{Bar, Foo};

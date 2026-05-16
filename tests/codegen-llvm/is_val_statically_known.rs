@@ -2,6 +2,7 @@
 
 #![feature(core_intrinsics)]
 #![feature(f16, f128)]
+#![allow(unused_unconstructable_pub_structs)]
 
 use std::intrinsics::is_val_statically_known;
 

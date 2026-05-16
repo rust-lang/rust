@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
+#![allow(unused_unconstructable_pub_structs)]
 // regression test for issue 4875
 
 

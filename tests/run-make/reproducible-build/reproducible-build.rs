@@ -20,7 +20,7 @@
 
 // ignore-tidy-linelength
 
-#![allow(dead_code, warnings)]
+#![allow(dead_code, warnings, unused_unconstructable_pub_structs)]
 
 extern crate reproducible_build_aux;
 

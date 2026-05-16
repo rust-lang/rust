@@ -1,5 +1,6 @@
 //@ aux-build:private-fields-diagnostic-aux-issue-151408.rs
 
+#![allow(unused_unconstructable_pub_structs)]
 extern crate private_fields_diagnostic_aux_issue_151408 as aux;
 
 use aux::{Named, NamedWithMultipleFields, PublicTuple};

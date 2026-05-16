@@ -1,4 +1,5 @@
 #![feature(decl_macro)]
+#![allow(unused_unconstructable_pub_structs)]
 
 fn priv_fn() {}
 static PRIV_STATIC: u8 = 0;

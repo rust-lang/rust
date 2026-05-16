@@ -23,6 +23,7 @@ pub struct Bar {
     pub x: [i32; 3]
 }
 
+#[allow(unused_unconstructable_pub_structs)]
 pub struct TupleBar([i32; 4]);
 
 pub enum Baz {

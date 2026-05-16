@@ -1,6 +1,7 @@
 //@ run-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
+#![allow(unused_unconstructable_pub_structs)]
 
 pub trait BlockCipher {
     const BLOCK_SIZE: usize;

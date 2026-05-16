@@ -3,6 +3,7 @@
 #![feature(lang_items, rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_std]
+#![allow(unused_unconstructable_pub_structs)]
 
 pub struct DerefsToF64(f64);
 

@@ -1,5 +1,6 @@
 //@ aux-build:unsized_const_param.rs
 #![feature(adt_const_params)]
+#![allow(unused_unconstructable_pub_structs)]
 
 extern crate unsized_const_param;
 

@@ -1,3 +1,4 @@
+#![allow(unused_unconstructable_pub_structs)]
 // Regression test for issues #100790 and #106439.
 //@ run-rustfix
 

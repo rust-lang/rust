@@ -1,4 +1,5 @@
 #![feature(rustdoc_internals)]
+#![allow(unused_unconstructable_pub_structs)]
 
 #[doc(search_unbox)]
 pub struct Inside<T>(T);

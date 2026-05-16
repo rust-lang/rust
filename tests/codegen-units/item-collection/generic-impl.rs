@@ -1,6 +1,7 @@
 //@ compile-flags:-Clink-dead-code -Zinline-mir=no
 
 #![deny(dead_code)]
+#![allow(unused_unconstructable_pub_structs)]
 #![crate_type = "lib"]
 
 struct Struct<T> {

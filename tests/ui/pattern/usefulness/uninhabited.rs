@@ -1,6 +1,7 @@
 //@ check-pass
 //@ edition: 2024
 //@ aux-build:empty.rs
+#![allow(unused_unconstructable_pub_structs)]
 //
 // This tests plays with matching and uninhabited types. This also serves as a test for the
 // `Ty::is_inhabited_from` function.

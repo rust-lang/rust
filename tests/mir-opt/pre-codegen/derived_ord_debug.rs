@@ -4,6 +4,7 @@
 #![crate_type = "lib"]
 
 #[derive(PartialOrd, Ord, PartialEq, Eq)]
+#[allow(unused_unconstructable_pub_structs)]
 pub struct MultiField(char, i16);
 
 // EMIT_MIR derived_ord_debug.{impl#0}-partial_cmp.runtime-optimized.after.mir

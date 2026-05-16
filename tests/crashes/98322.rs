@@ -1,6 +1,7 @@
 //@ known-bug: #98322
 
 #![feature(generic_const_exprs)]
+#![allow(unused_unconstructable_pub_structs)]
 
 // Main function seems irrelevant
 fn main() {}
