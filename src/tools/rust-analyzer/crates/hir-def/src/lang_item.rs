@@ -7,7 +7,7 @@ use intern::{Symbol, sym};
 use stdx::impl_from;
 
 use crate::{
-    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId,
+    AdtId, AssocItemId, AttrDefId, ConstId, Crate, EnumId, EnumVariantId, FunctionId, ImplId,
     ItemContainerId, MacroId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
     db::DefDatabase,
@@ -25,10 +25,11 @@ pub enum LangItemTarget {
     TypeAliasId(TypeAliasId),
     TraitId(TraitId),
     EnumVariantId(EnumVariantId),
+    ConstId(ConstId),
 }
 
 impl_from!(
-    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId for LangItemTarget
+    EnumId, FunctionId, ImplId, StaticId, StructId, UnionId, TypeAliasId, TraitId, EnumVariantId, ConstId for LangItemTarget
 );
 
 /// Salsa query. This will look for lang items in a specific crate.
@@ -51,7 +52,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                 match assoc {
                     AssocItemId::FunctionId(f) => lang_items.collect_lang_item(db, f),
                     AssocItemId::TypeAliasId(t) => lang_items.collect_lang_item(db, t),
-                    AssocItemId::ConstId(_) => (),
+                    AssocItemId::ConstId(c) => lang_items.collect_lang_item(db, c),
                 }
             }
         }
@@ -68,7 +69,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                             AssocItemId::TypeAliasId(alias) => {
                                 lang_items.collect_lang_item(db, alias)
                             }
-                            AssocItemId::ConstId(_) => {}
+                            AssocItemId::ConstId(c) => lang_items.collect_lang_item(db, c),
                         }
                     });
                 }
@@ -93,6 +94,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
                 ModuleDefId::TypeAliasId(t) => {
                     lang_items.collect_lang_item(db, t);
                 }
+                ModuleDefId::ConstId(c) => lang_items.collect_lang_item(db, c),
                 _ => {}
             }
         }
@@ -645,6 +647,10 @@ language_item_table! { LangItems =>
     Field,                   sym::field,               TraitId;
     FieldBase,               sym::field_base,          TypeAliasId;
     FieldType,               sym::field_type,          TypeAliasId;
+
+    RangeMin,                sym::RangeMin,            ConstId;
+    RangeMax,                sym::RangeMax,            ConstId;
+    RangeSub,                sym::RangeSub,            FunctionId;
 
     @non_lang_core_traits:
     core::default, Default;

@@ -35,8 +35,8 @@ use thin_vec::ThinVec;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, BlockLoc, DefWithBodyId, FunctionId, GenericDefId, ImplId, ItemContainerId,
-    MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
+    AdtId, BlockId, BlockLoc, ConstId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
+    ItemContainerId, MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
     db::DefDatabase,
     expr_store::{
@@ -721,7 +721,7 @@ impl<'db> ExprCollector<'db> {
             ),
             ast::Type::PatternType(inner) => TypeRef::PatternType(
                 self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn),
-                self.collect_pat_top(inner.pat()),
+                self.collect_ty_pat_opt(inner.pat()),
             ),
             ast::Type::MacroType(mt) => match mt.macro_call() {
                 Some(mcall) => {
@@ -2910,6 +2910,93 @@ impl<'db> ExprCollector<'db> {
             },
             _ => Either::Left(self.collect_pat(pat, binding_list)),
         }
+    }
+
+    fn collect_ty_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {
+        match pat {
+            Some(pat) => self.collect_ty_pat(pat),
+            None => self.missing_pat(),
+        }
+    }
+
+    fn collect_ty_pat(&mut self, pat: ast::Pat) -> PatId {
+        let ptr = AstPtr::new(&pat);
+        match pat {
+            ast::Pat::NotNull(_) => self.alloc_pat(Pat::NotNull, ptr),
+            ast::Pat::OrPat(pat) => {
+                let pat = pat.pats().map(|pat| self.collect_ty_pat(pat)).collect();
+                self.alloc_pat(Pat::Or(pat), ptr)
+            }
+            ast::Pat::RangePat(range_pat) => {
+                let start = range_pat
+                    .start()
+                    .map(|pat| {
+                        self.with_fresh_binding_expr_root(|this| this.lower_ty_pat_range_side(pat))
+                    })
+                    .unwrap_or_else(|| self.lower_ty_pat_range_end(self.lang_items().RangeMin));
+                let end = range_pat
+                    .end()
+                    .map(|pat| match range_pat.op_kind() {
+                        Some(ast::RangeOp::Inclusive) | None => self
+                            .with_fresh_binding_expr_root(|this| this.lower_ty_pat_range_side(pat)),
+                        Some(ast::RangeOp::Exclusive) => self.lower_excluded_range_end(pat),
+                    })
+                    .unwrap_or_else(|| self.lower_ty_pat_range_end(self.lang_items().RangeMax));
+                self.alloc_pat(
+                    Pat::Range {
+                        start: Some(start),
+                        end: Some(end),
+                        range_type: ast::RangeOp::Inclusive,
+                    },
+                    ptr,
+                )
+            }
+            ast::Pat::MacroPat(pat) => {
+                let Some(call) = pat.macro_call() else { return self.missing_pat() };
+                let ptr = AstPtr::new(&call);
+                self.collect_macro_call(call, ptr, true, |this, pat| this.collect_ty_pat_opt(pat))
+            }
+            _ => {
+                // FIXME: Emit an error.
+                self.alloc_pat(Pat::Missing, ptr)
+            }
+        }
+    }
+
+    fn lower_ty_pat_range_side(&mut self, pat: ast::Pat) -> ExprId {
+        match &pat {
+            ast::Pat::LiteralPat(it) => {
+                let Some((literal, _)) = pat_literal_to_hir(it) else { return self.missing_expr() };
+                self.alloc_expr_from_pat(Expr::Literal(literal), AstPtr::new(&pat))
+            }
+            _ => self.missing_expr(),
+        }
+    }
+
+    /// When a range has no end specified (`1..` or `1..=`) or no start specified (`..5` or `..=5`),
+    /// we instead use a constant of the MAX/MIN of the type.
+    /// This way the type system does not have to handle the lack of a start/end.
+    fn lower_ty_pat_range_end(&mut self, lang_item: Option<ConstId>) -> ExprId {
+        self.with_fresh_binding_expr_root(|this| {
+            this.alloc_expr_desugared(
+                this.lang_path(lang_item).map(Expr::Path).unwrap_or(Expr::Missing),
+            )
+        })
+    }
+
+    /// Lowers the range end of an exclusive range (`2..5`) to an inclusive range 2..=(5 - 1).
+    /// This way the type system doesn't have to handle the distinction between inclusive/exclusive ranges.
+    fn lower_excluded_range_end(&mut self, pat: ast::Pat) -> ExprId {
+        self.with_fresh_binding_expr_root(|this| {
+            let excluded_end = this.lower_ty_pat_range_side(pat);
+            let range_sub_path =
+                this.lang_path(this.lang_items().RangeSub).map(Expr::Path).unwrap_or(Expr::Missing);
+            let range_sub_path = this.alloc_expr_desugared(range_sub_path);
+            this.alloc_expr_desugared(Expr::Call {
+                callee: range_sub_path,
+                args: Box::new([excluded_end]),
+            })
+        })
     }
 
     // endregion: patterns

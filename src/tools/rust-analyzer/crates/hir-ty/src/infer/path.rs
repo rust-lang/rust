@@ -183,7 +183,30 @@ impl<'db> InferenceContext<'_, 'db> {
             match value_or_partial {
                 ResolveValueResult::ValueNs(it) => {
                     drop_ctx(ctx, no_diagnostics);
-                    (it, None)
+
+                    let args = if let Path::LangItem(..) = path {
+                        let def_and_container = match it {
+                            ValueNs::ConstId(it) => Some((it.into(), it.loc(self.db).container)),
+                            ValueNs::FunctionId(it) => Some((it.into(), it.loc(self.db).container)),
+                            _ => None,
+                        };
+                        let def_and_container =
+                            def_and_container.and_then(|(def, container)| match container {
+                                ItemContainerId::ImplId(it) => Some((def, it.into())),
+                                ItemContainerId::TraitId(it) => Some((def, it.into())),
+                                ItemContainerId::ExternBlockId(_)
+                                | ItemContainerId::ModuleId(_) => None,
+                            });
+                        def_and_container.map(|(def, container)| {
+                            let args = self.infcx().fresh_args_for_item(id.into(), container);
+                            self.write_assoc_resolution(id, def, args);
+                            args
+                        })
+                    } else {
+                        None
+                    };
+
+                    (it, args)
                 }
                 ResolveValueResult::Partial(def, remaining_index) => {
                     // there may be more intermediate segments between the resolved one and

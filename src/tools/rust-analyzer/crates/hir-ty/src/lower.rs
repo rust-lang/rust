@@ -19,7 +19,7 @@ use hir_def::{
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::{
-        ExprId,
+        ExprId, PatId,
         generics::{
             GenericParamDataRef, GenericParams, LocalTypeOrConstParamId, TypeOrConstParamData,
             TypeParamProvenance, WherePredicate,
@@ -63,8 +63,8 @@ use crate::{
     next_solver::{
         AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const, ConstKind,
         DbInterner, DefaultAny, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FnSigKind,
-        FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, Pattern, PolyFnSig, Predicate,
-        Region, StoredClauses, StoredEarlyBinder, StoredGenericArg, StoredGenericArgs,
+        FxIndexMap, GenericArg, GenericArgs, ParamConst, ParamEnv, PatList, Pattern, PolyFnSig,
+        Predicate, Region, StoredClauses, StoredEarlyBinder, StoredGenericArg, StoredGenericArgs,
         StoredPolyFnSig, StoredTraitRef, StoredTy, TraitPredicate, TraitRef, Ty, Tys, Unnormalized,
         abi::Safety, util::BottomUpFolder,
     },
@@ -541,25 +541,39 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
             &TypeRef::PatternType(ty, pat) => {
                 let ty = self.lower_ty(ty);
-                // FIXME: Properly do the lowering here
-                let pat_kind = match self.store[pat] {
-                    hir_def::hir::Pat::Range {
-                        start: Some(start),
-                        end: Some(end),
-                        range_type: _,
-                    } => rustc_type_ir::PatternKind::Range {
-                        start: self.lower_expr_as_const(start, ty),
-                        end: self.lower_expr_as_const(end, ty),
-                    },
-                    hir_def::hir::Pat::NotNull => rustc_type_ir::PatternKind::NotNull,
-                    _ => rustc_type_ir::PatternKind::NotNull,
+                let Some(pat) = self.lower_pattern_type(pat, ty) else {
+                    return (self.types.types.error, res);
                 };
-                let pat = Pattern::new(self.interner, pat_kind);
                 Ty::new_pat(self.interner, ty, pat)
             }
             TypeRef::Error => self.types.types.error,
         };
         (ty, res)
+    }
+
+    fn lower_pattern_type(&mut self, pat: PatId, ty: Ty<'db>) -> Option<Pattern<'db>> {
+        let pat_kind = match self.store[pat] {
+            hir_def::hir::Pat::Range { start: Some(start), end: Some(end), range_type: _ } => {
+                rustc_type_ir::PatternKind::Range {
+                    start: self.lower_expr_as_const(start, ty),
+                    end: self.lower_expr_as_const(end, ty),
+                }
+            }
+            hir_def::hir::Pat::NotNull => rustc_type_ir::PatternKind::NotNull,
+            hir_def::hir::Pat::Or(ref pats) => rustc_type_ir::PatternKind::Or(
+                PatList::new_from_iter(
+                    self.interner,
+                    pats.iter().map(|&pat| self.lower_pattern_type(pat, ty).ok_or(())),
+                )
+                .ok()?,
+            ),
+            hir_def::hir::Pat::Missing => return None,
+            _ => {
+                never!("pattern type can only be Range, NotNull or Or");
+                return None;
+            }
+        };
+        Some(Pattern::new(self.interner, pat_kind))
     }
 
     fn lower_fn_ptr(&mut self, fn_: &FnType) -> Ty<'db> {

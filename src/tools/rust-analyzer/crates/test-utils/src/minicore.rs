@@ -54,12 +54,12 @@
 //!     iterators: iterator, fn
 //!     manually_drop: drop
 //!     matches:
-//!     non_null:
-//!     non_zero: transmute, option
+//!     non_null: pat
+//!     non_zero: pat, transmute, option
 //!     option: panic
 //!     ord: eq, option
 //!     panic: fmt
-//!     pat:
+//!     pat: panic
 //!     phantom_data:
 //!     pin:
 //!     pointee: copy, send, sync, ord, hash, unpin, phantom_data
@@ -539,10 +539,10 @@ pub mod ptr {
 
     // endregion:pointee
     // region:non_null
-    #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
+    #[repr(transparent)]
     pub struct NonNull<T: crate::marker::PointeeSized> {
-        pointer: *const T,
+        pointer: crate::pattern_type!(*const T is !null),
     }
     // region:coerce_unsized
     impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
@@ -2327,28 +2327,50 @@ pub mod pat {
     }
 
     pub const trait RangePattern {
-        /// Trait version of the inherent `MIN` assoc const.
         #[lang = "RangeMin"]
         const MIN: Self;
 
-        /// Trait version of the inherent `MIN` assoc const.
         #[lang = "RangeMax"]
         const MAX: Self;
 
-        /// A compile-time helper to subtract 1 for exclusive ranges.
         #[lang = "RangeSub"]
-        #[track_caller]
         fn sub_one(self) -> Self;
     }
+
+    impl const RangePattern for u8 {
+        const MIN: u8 = 0;
+        const MAX: u8 = 0xFF;
+        fn sub_one(self) -> Self {
+            if self == Self::MIN {
+                panic!("exclusive range end at minimum value of type")
+            } else {
+                self - 1
+            }
+        }
+    }
+
+    // region:coerce_unsized
+    impl<T: crate::marker::PointeeSized, U: crate::marker::PointeeSized>
+        crate::ops::CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null)
+    where
+        T: crate::marker::Unsize<U>,
+    {
+    }
+    // endregion:coerce_unsized
+
+    // region:dispatch_from_dyn
+    impl<T: crate::ops::DispatchFromDyn<U>, U>
+        crate::ops::DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null)
+    {
+    }
+    // endregion:dispatch_from_dyn
 }
 // endregion:pat
 
 // region:non_zero
 pub mod num {
     #[repr(transparent)]
-    #[rustc_layout_scalar_valid_range_start(1)]
-    #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonZeroU8(u8);
+    pub struct NonZeroU8(crate::pattern_type!(u8 is 1..));
 }
 // endregion:non_zero
 
@@ -2457,6 +2479,7 @@ pub mod prelude {
             hash::derive::Hash,                           // :hash, derive
             iter::{FromIterator, IntoIterator, Iterator}, // :iterator
             macros::builtin::{derive, derive_const},      // :derive
+            macros::deref,                                // :deref_pat
             marker::Copy,                                 // :copy
             marker::Send,                                 // :send
             marker::Sized,                                // :sized
@@ -2470,7 +2493,6 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
-            macros::deref,                                // :deref_pat
         };
     }
 

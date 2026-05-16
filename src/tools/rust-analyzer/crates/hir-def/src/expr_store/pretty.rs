@@ -1135,6 +1135,7 @@ impl Printer<'_> {
                 LangItemTarget::TypeAliasId(it) => write_name!(it),
                 LangItemTarget::TraitId(it) => write_name!(it),
                 LangItemTarget::EnumVariantId(it) => write_name!(it),
+                LangItemTarget::ConstId(it) => write_name!(it),
             }
 
             if let Some(s) = s {

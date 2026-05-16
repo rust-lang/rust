@@ -303,6 +303,7 @@ pub(crate) enum CreateConstError<'db> {
     UsedForbiddenParam,
     ResolveToNonConst,
     DoesNotResolve,
+    ConstHasGenerics,
     UnderscoreExpr,
     TypeMismatch {
         #[expect(unused, reason = "will need this for diagnostics")]
@@ -321,9 +322,11 @@ pub(crate) fn path_to_const<'a, 'db>(
     let resolution = resolver
         .resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT)
         .ok_or(CreateConstError::DoesNotResolve)?;
+    let no_generics = |def| crate::generics::generics(db, def).has_no_params();
     let konst = match resolution {
-        ValueNs::ConstId(id) => GeneralConstId::ConstId(id),
+        ValueNs::ConstId(id) if no_generics(id.into()) => GeneralConstId::ConstId(id),
         ValueNs::StaticId(id) => GeneralConstId::StaticId(id),
+        ValueNs::ConstId(_) => return Err(CreateConstError::ConstHasGenerics),
         ValueNs::GenericParam(param) => {
             let index = generics().type_or_const_param_idx(param.into());
             if forbid_params_after.is_some_and(|forbid_after| index >= forbid_after) {
@@ -363,7 +366,10 @@ pub(crate) fn create_anon_const<'a, 'db>(
         Expr::Path(path)
             if let konst =
                 path_to_const(interner.db, resolver, generics, forbid_params_after, path)
-                && !matches!(konst, Err(CreateConstError::DoesNotResolve)) =>
+                && !matches!(
+                    konst,
+                    Err(CreateConstError::DoesNotResolve | CreateConstError::ConstHasGenerics)
+                ) =>
         {
             konst
         }
