@@ -7,8 +7,8 @@ mod libc_utils;
 mod utils;
 
 use std::io::ErrorKind;
-use std::thread;
 use std::time::Duration;
+use std::{ptr, thread};
 
 use libc_utils::*;
 
@@ -37,6 +37,8 @@ fn main() {
     test_accept_connect();
     test_send_peek_recv();
     test_write_read();
+    test_readv();
+    test_writev();
 
     test_getsockname_ipv4();
     test_getsockname_ipv4_random_port();
@@ -340,6 +342,77 @@ fn test_write_read() {
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
+}
+
+/// Test vectored reads with multiple buffers on a connected socket.
+fn test_readv() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let num = unsafe {
+        errno_result(libc::readv(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap()
+    };
+    assert_eq!(num as usize, TEST_BYTES.len());
+    // The vectored read should read the entire buffer because we don't have
+    // short reads on sockets.
+    assert_eq!(&buffer, TEST_BYTES);
+}
+
+/// Test vectored writes with multiple buffers on a connected socket.
+fn test_writev() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    let mut write_buffer = TEST_BYTES.to_owned();
+    let (buffer1, buffer2) = write_buffer.split_at_mut(3);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let num = unsafe {
+        errno_result(libc::writev(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap()
+    };
+    assert_eq!(num as usize, TEST_BYTES.len());
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    libc_utils::read_exact(peerfd, &mut buffer).unwrap();
+    // The vectored write should write the entire buffer because we don't have
+    // short writes on sockets.
+    assert_eq!(&buffer, TEST_BYTES);
 }
 
 /// Test the `getsockname` syscall on an IPv4 socket which is bound.
