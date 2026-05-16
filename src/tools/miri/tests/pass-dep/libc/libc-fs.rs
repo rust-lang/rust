@@ -362,7 +362,7 @@ fn test_posix_mkstemp() {
     assert!(fd > 0);
     let osstr = OsStr::from_bytes(slice.to_bytes());
     let path: &Path = osstr.as_ref();
-    let name = path.file_name().unwrap().to_string_lossy();
+    let name = path.to_string_lossy();
     assert!(name.ne("fooXXXXXX"));
     assert!(name.starts_with("foo"));
     assert_eq!(name.len(), 9);
@@ -372,6 +372,9 @@ fn test_posix_mkstemp() {
     );
     let file = unsafe { File::from_raw_fd(fd) };
     assert!(file.set_len(0).is_ok());
+    // Cleanup. Also checks that the filename actually exists.
+    drop(file);
+    remove_file(path).unwrap();
 
     let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
     for t in invalid_templates {
