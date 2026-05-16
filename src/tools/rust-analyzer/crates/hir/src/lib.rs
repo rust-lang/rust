@@ -2760,6 +2760,13 @@ impl Function {
         }
     }
 
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        match self.id {
+            AnyFunctionId::FunctionId(id) => FunctionSignature::of(db, id).is_unsafe(),
+            AnyFunctionId::BuiltinDeriveImplMethod { .. } => false,
+        }
+    }
+
     pub fn is_varargs(self, db: &dyn HirDatabase) -> bool {
         match self.id {
             AnyFunctionId::FunctionId(id) => FunctionSignature::of(db, id).is_varargs(),
