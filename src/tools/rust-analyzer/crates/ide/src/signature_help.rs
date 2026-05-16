@@ -180,6 +180,9 @@ fn signature_help_for_call(
             if func.is_async(db) {
                 format_to!(res.signature, "async ");
             }
+            if func.is_unsafe(db) {
+                format_to!(res.signature, "unsafe ");
+            }
             format_to!(res.signature, "fn {}", func.name(db).display(db, edition));
 
             let generic_params = GenericDef::Function(func)
@@ -2682,6 +2685,60 @@ fn main() {
             expect![[r#"
                 const fn foo(x: u32, y: u32) -> u32
                              ^^^^^^  ------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_unsafe_function() {
+        check(
+            r#"
+//- minicore: sized, fn
+pub unsafe fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    unsafe { foo($0) }
+}
+            "#,
+            expect![[r#"
+                unsafe fn foo(x: u32, y: u32) -> u32
+                              ^^^^^^  ------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_const_unsafe_function() {
+        check(
+            r#"
+//- minicore: sized, fn
+pub const unsafe fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    unsafe { foo($0) }
+}
+            "#,
+            expect![[r#"
+                const unsafe fn foo(x: u32, y: u32) -> u32
+                                    ^^^^^^  ------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_async_unsafe_function() {
+        check(
+            r#"
+//- minicore: sized, fn, future
+pub async unsafe fn foo(x: u32, y: u32) -> u32 { x + y }
+
+fn main() {
+    unsafe { foo($0) }
+}
+            "#,
+            expect![[r#"
+                async unsafe fn foo(x: u32, y: u32) -> u32
+                                    ^^^^^^  ------
             "#]],
         );
     }
