@@ -868,7 +868,7 @@ fn div_rem_1e16(n: u128) -> (u128, u64) {
     const M_HIGH: u128 = 76624777043294442917917351357515459181;
     const SH_POST: u8 = 51;
 
-    let quot = n.widening_mul(M_HIGH).1 >> SH_POST;
+    let quot = n.carrying_mul(M_HIGH, 0).1 >> SH_POST;
     let rem = n - quot * D;
     (quot, rem as u64)
 }
