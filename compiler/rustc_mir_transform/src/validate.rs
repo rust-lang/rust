@@ -367,6 +367,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
                 if let Some(drop) = drop {
                     self.check_edge(location, *drop, EdgeKind::Normal);
+                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                        self.fail(
+                            location,
+                            "`async drop` should have been removed after drop elaboration",
+                        );
+                    }
                 }
             }
             TerminatorKind::Call { func, args, .. }

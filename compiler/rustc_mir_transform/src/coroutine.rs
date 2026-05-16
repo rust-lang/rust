@@ -56,9 +56,9 @@ use std::ops;
 
 pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use drop::{
-    cleanup_async_drops, create_coroutine_drop_shim, create_coroutine_drop_shim_async,
-    create_coroutine_drop_shim_proxy_async, elaborate_coroutine_drops, expand_async_drops,
-    has_expandable_async_drops, insert_clean_drop,
+    create_coroutine_drop_shim, create_coroutine_drop_shim_async,
+    create_coroutine_drop_shim_proxy_async, elaborate_coroutine_drops, has_async_drops,
+    insert_clean_drop,
 };
 use itertools::izip;
 use rustc_abi::{FieldIdx, VariantIdx};
@@ -70,7 +70,6 @@ use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
@@ -82,8 +81,8 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{
     Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
 };
+use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, Span, dummy_spanned};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -169,7 +168,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
 }
 
 const SELF_ARG: Local = Local::arg(0);
-const CTX_ARG: Local = Local::arg(1);
+pub(crate) const CTX_ARG: Local = Local::arg(1);
 
 /// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {
@@ -585,7 +584,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 /// still using the `ResumeTy` indirection for the time being, and that indirection
 /// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
 #[tracing::instrument(level = "trace", skip(tcx, body), ret)]
-fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty<'tcx> {
+fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let context_mut_ref = Ty::new_task_context(tcx);
 
     // replace the type of the `resume` argument
@@ -615,7 +614,6 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty
             _ => {}
         }
     }
-    context_mut_ref
 }
 
 fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local {
@@ -1510,24 +1508,12 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // (finally in open_drop_for_tuple) before async drop expansion.
         // Async drops, produced by this drop elaboration, will be expanded,
         // and corresponding futures kept in layout.
-        let has_async_drops = matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) && has_expandable_async_drops(tcx, body, coroutine_ty);
+        let coroutine_is_async = coroutine_kind.is_async_desugaring();
+        let has_async_drops = has_async_drops(body);
 
         // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
-        if matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) {
-            let context_mut_ref = transform_async_context(tcx, body);
-            expand_async_drops(tcx, body, context_mut_ref, coroutine_kind, coroutine_ty);
-
-            if let Some(dumper) = MirDumper::new(tcx, "coroutine_async_drop_expand", body) {
-                dumper.dump_mir(body);
-            }
-        } else {
-            cleanup_async_drops(body);
+        if coroutine_is_async {
+            transform_async_context(tcx, body);
         }
 
         let always_live_locals = always_storage_live_locals(body);

@@ -35,7 +35,6 @@ where
 }
 
 // EMIT_MIR async_drop.simple-{closure#0}.ElaborateDrops.diff
-// EMIT_MIR async_drop.simple-{closure#0}.coroutine_async_drop_expand.0.mir
 // EMIT_MIR async_drop.simple-{closure#0}.StateTransform.diff
 // EMIT_MIR async_drop.simple-{closure#0}.coroutine_drop_async.0.mir
 async fn simple() {
@@ -44,7 +43,6 @@ async fn simple() {
 }
 
 // EMIT_MIR async_drop.double-{closure#0}.ElaborateDrops.diff
-// EMIT_MIR async_drop.double-{closure#0}.coroutine_async_drop_expand.0.mir
 // EMIT_MIR async_drop.double-{closure#0}.StateTransform.diff
 // EMIT_MIR async_drop.double-{closure#0}.coroutine_drop_async.0.mir
 async fn double() {

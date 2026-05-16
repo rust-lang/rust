@@ -156,7 +156,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             // Main pass required here is StateTransform to convert sync drop ladder
             // into coroutine.
             // Others are minimal passes as for sync drop glue shim
-            pm::run_passes(
+            pm::run_passes_no_validate(
                 tcx,
                 &mut body,
                 &[
@@ -167,7 +167,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                     &crate::coroutine::StateTransform,
                 ],
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-                pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
             debug!("make_shim({:?}) = {:?}", instance, body);
