@@ -429,9 +429,6 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         self.typing_env
     }
 
-    fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        self.patch.terminator_loc(self.body, bb)
-    }
     fn allow_async_drops(&self) -> bool {
         self.produce_async_drops
     }

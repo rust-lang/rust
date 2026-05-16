@@ -276,7 +276,7 @@
 -         goto -> bb1;
 +         _150 = copy (_1.0: &mut {async fn body of elaborate_drops()});
 +         _149 = discriminant((*_150));
-+         switchInt(move _149) -> [0: bb137, 1: bb136, 2: bb135, 3: bb117, 4: bb118, 5: bb119, 6: bb120, 7: bb121, 8: bb122, 9: bb123, 10: bb124, 11: bb125, 12: bb126, 13: bb127, 14: bb128, 15: bb129, 16: bb130, 17: bb131, 18: bb132, 19: bb133, 20: bb134, otherwise: bb71];
++         switchInt(move _149) -> [0: bb147, 1: bb146, 2: bb145, 3: bb127, 4: bb128, 5: bb129, 6: bb130, 7: bb131, 8: bb132, 9: bb133, 10: bb134, 11: bb135, 12: bb136, 13: bb137, 14: bb138, 15: bb139, 16: bb140, 17: bb141, 18: bb142, 19: bb143, 20: bb144, otherwise: bb81];
       }
   
       bb1: {
@@ -375,13 +375,11 @@
 -         StorageLive(_26);
 -         _26 = {closure@$DIR/async_drop.rs:80:27: 80:35} { foo: move _25 };
 -         _0 = const ();
--         _28 = &mut _26;
--         _29 = Pin::<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>::new_unchecked(move _28) -> [return: bb54, unwind: bb36];
+-         goto -> bb55;
 +         nop;
 +         (((*_150) as variant#4).9: {async closure@$DIR/async_drop.rs:80:27: 80:35}) = {closure@$DIR/async_drop.rs:80:27: 80:35} { foo: move _25 };
 +         (((*_150) as variant#19).0: ()) = const ();
-+         _28 = &mut (((*_150) as variant#4).9: {async closure@$DIR/async_drop.rs:80:27: 80:35});
-+         _29 = Pin::<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>::new_unchecked(move _28) -> [return: bb41, unwind: bb23];
++         goto -> bb42;
       }
   
       bb10: {
@@ -392,10 +390,8 @@
   
       bb11: {
           StorageDead(_25);
--         _32 = &mut _24;
--         _33 = Pin::<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>::new_unchecked(move _32) -> [return: bb57, unwind: bb38];
-+         _32 = &mut (((*_150) as variant#6).8: {closure@$DIR/async_drop.rs:72:25: 72:27});
-+         _33 = Pin::<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>::new_unchecked(move _32) -> [return: bb44, unwind: bb25];
+-         goto -> bb59;
++         goto -> bb46;
       }
   
       bb12: {
@@ -406,65 +402,51 @@
   
       bb13: {
           StorageDead(_23);
--         _36 = &mut _20;
--         _37 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _36) -> [return: bb60, unwind: bb40];
-+         _36 = &mut (((*_150) as variant#8).7: AsyncReference<'_>);
-+         _37 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _36) -> [return: bb47, unwind: bb27];
+-         goto -> bb63;
++         goto -> bb50;
       }
   
       bb14: {
 -         StorageDead(_20);
--         _40 = &mut _19;
--         _41 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb63, unwind: bb41];
+-         goto -> bb67;
 +         nop;
-+         _40 = &mut (((*_150) as variant#10).6: AsyncInt);
-+         _41 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb50, unwind: bb28];
++         goto -> bb54;
       }
   
       bb15: {
 -         StorageDead(_19);
 +         nop;
           StorageDead(_17);
--         _44 = &mut _15;
--         _45 = Pin::<&mut AsyncEnum>::new_unchecked(move _44) -> [return: bb66, unwind: bb45];
-+         _44 = &mut (((*_150) as variant#12).5: AsyncEnum);
-+         _45 = Pin::<&mut AsyncEnum>::new_unchecked(move _44) -> [return: bb53, unwind: bb32];
+-         goto -> bb71;
++         goto -> bb58;
       }
   
       bb16: {
 -         StorageDead(_15);
--         _48 = &mut _11;
--         _49 = Pin::<&mut SyncThenAsync>::new_unchecked(move _48) -> [return: bb69, unwind: bb46];
+-         goto -> bb75;
 +         nop;
-+         _48 = &mut (((*_150) as variant#14).4: SyncThenAsync);
-+         _49 = Pin::<&mut SyncThenAsync>::new_unchecked(move _48) -> [return: bb56, unwind: bb33];
++         goto -> bb62;
       }
   
       bb17: {
 -         StorageDead(_11);
--         _52 = &mut _8;
--         _53 = Pin::<&mut AsyncStruct>::new_unchecked(move _52) -> [return: bb72, unwind: bb47];
+-         goto -> bb79;
 +         nop;
-+         _52 = &mut (((*_150) as variant#16).3: AsyncStruct);
-+         _53 = Pin::<&mut AsyncStruct>::new_unchecked(move _52) -> [return: bb59, unwind: bb34];
++         goto -> bb66;
       }
   
       bb18: {
 -         StorageDead(_8);
--         _56 = &mut _5;
--         _57 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _56) -> [return: bb75, unwind: bb48];
+-         goto -> bb83;
 +         nop;
-+         _56 = &mut (((*_150) as variant#18).2: [AsyncInt; 2]);
-+         _57 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _56) -> [return: bb62, unwind: bb35];
++         goto -> bb70;
       }
   
       bb19: {
 -         StorageDead(_5);
--         _60 = &mut _4;
--         _61 = Pin::<&mut AsyncInt>::new_unchecked(move _60) -> [return: bb78, unwind: bb49];
+-         goto -> bb87;
 +         nop;
-+         _60 = &mut (((*_150) as variant#20).1: AsyncInt);
-+         _61 = Pin::<&mut AsyncInt>::new_unchecked(move _60) -> [return: bb65, unwind: bb36];
++         goto -> bb74;
       }
   
       bb20: {
@@ -476,11 +458,9 @@
   
       bb21: {
 -         StorageDead(_3);
--         _64 = &mut _1;
--         _65 = Pin::<&mut {async fn body of elaborate_drops()}>::new_unchecked(move _64) -> [return: bb81, unwind: bb51];
+-         goto -> bb91;
 +         nop;
-+         _64 = &mut (*_150);
-+         _65 = Pin::<&mut {async fn body of elaborate_drops()}>::new_unchecked(move _64) -> [return: bb68, unwind: bb38];
++         goto -> bb78;
       }
   
       bb22: {
@@ -625,7 +605,7 @@
 -         StorageDead(_24);
 -         goto -> bb39;
 +         StorageDead(_63);
-+         goto -> bb116;
++         goto -> bb126;
       }
   
 -     bb39 (cleanup): {
@@ -642,7 +622,7 @@
 -         drop(_19) -> [return: bb41, unwind terminate(cleanup)];
 +     bb40: {
 +         _68 = move _2;
-+         goto -> bb70;
++         goto -> bb80;
       }
   
 -     bb41 (cleanup): {
@@ -658,25 +638,24 @@
 -     bb42 (cleanup): {
 -         goto -> bb43;
 +     bb42: {
-+         nop;
-+         goto -> bb12;
++         _28 = &mut (((*_150) as variant#4).9: {async closure@$DIR/async_drop.rs:80:27: 80:35});
++         _29 = Pin::<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>::new_unchecked(move _28) -> [return: bb41, unwind: bb23];
       }
   
 -     bb43 (cleanup): {
 -         StorageDead(_18);
 -         goto -> bb44;
 +     bb43: {
-+         _77 = move _2;
-+         goto -> bb76;
++         nop;
++         goto -> bb12;
       }
   
 -     bb44 (cleanup): {
 -         StorageDead(_17);
 -         drop(_15) -> [return: bb45, unwind terminate(cleanup)];
 +     bb44: {
-+         _34 = copy (_33.0: &mut {closure@$DIR/async_drop.rs:72:25: 72:27});
-+         nop;
-+         (((*_150) as variant#6).9: impl std::future::Future<Output = ()>) = async_drop_in_place::<{closure@$DIR/async_drop.rs:72:25: 72:27}>(move _34) -> [return: bb43, unwind: bb25];
++         _77 = move _2;
++         goto -> bb86;
       }
   
 -     bb45 (cleanup): {
@@ -684,8 +663,9 @@
 -         StorageDead(_15);
 -         drop(_11) -> [return: bb46, unwind terminate(cleanup)];
 +     bb45: {
++         _34 = copy (_33.0: &mut {closure@$DIR/async_drop.rs:72:25: 72:27});
 +         nop;
-+         goto -> bb14;
++         (((*_150) as variant#6).9: impl std::future::Future<Output = ()>) = async_drop_in_place::<{closure@$DIR/async_drop.rs:72:25: 72:27}>(move _34) -> [return: bb44, unwind: bb25];
       }
   
 -     bb46 (cleanup): {
@@ -693,8 +673,8 @@
 -         StorageDead(_11);
 -         drop(_8) -> [return: bb47, unwind terminate(cleanup)];
 +     bb46: {
-+         _86 = move _2;
-+         goto -> bb81;
++         _32 = &mut (((*_150) as variant#6).8: {closure@$DIR/async_drop.rs:72:25: 72:27});
++         _33 = Pin::<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>::new_unchecked(move _32) -> [return: bb45, unwind: bb25];
       }
   
 -     bb47 (cleanup): {
@@ -702,9 +682,8 @@
 -         StorageDead(_8);
 -         drop(_5) -> [return: bb48, unwind terminate(cleanup)];
 +     bb47: {
-+         _38 = copy (_37.0: &mut AsyncReference<'_>);
 +         nop;
-+         (((*_150) as variant#8).8: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncReference<'_>>(move _38) -> [return: bb46, unwind: bb27];
++         goto -> bb14;
       }
   
 -     bb48 (cleanup): {
@@ -712,8 +691,8 @@
 -         StorageDead(_5);
 -         drop(_4) -> [return: bb49, unwind terminate(cleanup)];
 +     bb48: {
-+         nop;
-+         goto -> bb15;
++         _86 = move _2;
++         goto -> bb91;
       }
   
 -     bb49 (cleanup): {
@@ -721,17 +700,17 @@
 -         StorageDead(_4);
 -         drop(_3) -> [return: bb50, unwind terminate(cleanup)];
 +     bb49: {
-+         _95 = move _2;
-+         goto -> bb86;
++         _38 = copy (_37.0: &mut AsyncReference<'_>);
++         nop;
++         (((*_150) as variant#8).8: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncReference<'_>>(move _38) -> [return: bb48, unwind: bb27];
       }
   
 -     bb50 (cleanup): {
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb51, unwind terminate(cleanup)];
 +     bb50: {
-+         _42 = copy (_41.0: &mut AsyncInt);
-+         nop;
-+         (((*_150) as variant#10).7: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(move _42) -> [return: bb49, unwind: bb28];
++         _36 = &mut (((*_150) as variant#8).7: AsyncReference<'_>);
++         _37 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _36) -> [return: bb49, unwind: bb27];
       }
   
 -     bb51 (cleanup): {
@@ -739,136 +718,207 @@
 -         resume;
 +     bb51: {
 +         nop;
-+         goto -> bb16;
++         goto -> bb15;
       }
   
       bb52: {
 -         StorageDead(_27);
 -         goto -> bb10;
-+         _104 = move _2;
-+         goto -> bb91;
++         _95 = move _2;
++         goto -> bb96;
       }
   
       bb53: {
 -         async drop(_26; poll=_27) -> [return: bb52, unwind: bb36, drop: bb23];
-+         _46 = copy (_45.0: &mut AsyncEnum);
++         _42 = copy (_41.0: &mut AsyncInt);
 +         nop;
-+         (((*_150) as variant#12).6: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncEnum>(move _46) -> [return: bb52, unwind: bb32];
++         (((*_150) as variant#10).7: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(move _42) -> [return: bb52, unwind: bb28];
       }
   
       bb54: {
 -         _30 = copy (_29.0: &mut {async closure@$DIR/async_drop.rs:80:27: 80:35});
 -         StorageLive(_27);
 -         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:80:27: 80:35}>(move _30) -> [return: bb53, unwind: bb36];
++         _40 = &mut (((*_150) as variant#10).6: AsyncInt);
++         _41 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb53, unwind: bb28];
+      }
+  
+      bb55: {
+-         _28 = &mut _26;
+-         _29 = Pin::<&mut {async closure@$DIR/async_drop.rs:80:27: 80:35}>::new_unchecked(move _28) -> [return: bb54, unwind: bb36];
++         nop;
++         goto -> bb16;
+      }
+  
+      bb56: {
+-         StorageDead(_31);
+-         goto -> bb12;
++         _104 = move _2;
++         goto -> bb101;
+      }
+  
+      bb57: {
+-         async drop(_24; poll=_31) -> [return: bb56, unwind: bb38, drop: bb25];
++         _46 = copy (_45.0: &mut AsyncEnum);
++         nop;
++         (((*_150) as variant#12).6: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncEnum>(move _46) -> [return: bb56, unwind: bb32];
+      }
+  
+      bb58: {
+-         _34 = copy (_33.0: &mut {closure@$DIR/async_drop.rs:72:25: 72:27});
+-         StorageLive(_31);
+-         _31 = async_drop_in_place::<{closure@$DIR/async_drop.rs:72:25: 72:27}>(move _34) -> [return: bb57, unwind: bb38];
++         _44 = &mut (((*_150) as variant#12).5: AsyncEnum);
++         _45 = Pin::<&mut AsyncEnum>::new_unchecked(move _44) -> [return: bb57, unwind: bb32];
+      }
+  
+      bb59: {
+-         _32 = &mut _24;
+-         _33 = Pin::<&mut {closure@$DIR/async_drop.rs:72:25: 72:27}>::new_unchecked(move _32) -> [return: bb58, unwind: bb38];
 +         nop;
 +         goto -> bb17;
       }
   
-      bb55: {
--         StorageDead(_31);
--         goto -> bb12;
+      bb60: {
+-         StorageDead(_35);
+-         goto -> bb14;
 +         _113 = move _2;
-+         goto -> bb96;
++         goto -> bb106;
       }
   
-      bb56: {
--         async drop(_24; poll=_31) -> [return: bb55, unwind: bb38, drop: bb25];
+      bb61: {
+-         async drop(_20; poll=_35) -> [return: bb60, unwind: bb40, drop: bb27];
 +         _50 = copy (_49.0: &mut SyncThenAsync);
 +         nop;
-+         (((*_150) as variant#14).5: impl std::future::Future<Output = ()>) = async_drop_in_place::<SyncThenAsync>(move _50) -> [return: bb55, unwind: bb33];
++         (((*_150) as variant#14).5: impl std::future::Future<Output = ()>) = async_drop_in_place::<SyncThenAsync>(move _50) -> [return: bb60, unwind: bb33];
       }
   
-      bb57: {
--         _34 = copy (_33.0: &mut {closure@$DIR/async_drop.rs:72:25: 72:27});
--         StorageLive(_31);
--         _31 = async_drop_in_place::<{closure@$DIR/async_drop.rs:72:25: 72:27}>(move _34) -> [return: bb56, unwind: bb38];
+      bb62: {
+-         _38 = copy (_37.0: &mut AsyncReference<'_>);
+-         StorageLive(_35);
+-         _35 = async_drop_in_place::<AsyncReference<'_>>(move _38) -> [return: bb61, unwind: bb40];
++         _48 = &mut (((*_150) as variant#14).4: SyncThenAsync);
++         _49 = Pin::<&mut SyncThenAsync>::new_unchecked(move _48) -> [return: bb61, unwind: bb33];
+      }
+  
+      bb63: {
+-         _36 = &mut _20;
+-         _37 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _36) -> [return: bb62, unwind: bb40];
 +         nop;
 +         goto -> bb18;
       }
   
-      bb58: {
--         StorageDead(_35);
--         goto -> bb14;
-+         _122 = move _2;
-+         goto -> bb101;
-      }
-  
-      bb59: {
--         async drop(_20; poll=_35) -> [return: bb58, unwind: bb40, drop: bb27];
-+         _54 = copy (_53.0: &mut AsyncStruct);
-+         nop;
-+         (((*_150) as variant#16).4: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncStruct>(move _54) -> [return: bb58, unwind: bb34];
-      }
-  
-      bb60: {
--         _38 = copy (_37.0: &mut AsyncReference<'_>);
--         StorageLive(_35);
--         _35 = async_drop_in_place::<AsyncReference<'_>>(move _38) -> [return: bb59, unwind: bb40];
-+         nop;
-+         goto -> bb19;
-      }
-  
-      bb61: {
+      bb64: {
 -         StorageDead(_39);
 -         goto -> bb15;
-+         _131 = move _2;
-+         goto -> bb106;
-      }
-  
-      bb62: {
--         async drop(_19; poll=_39) -> [return: bb61, unwind: bb41, drop: bb28];
-+         _58 = copy (_57.0: &mut [AsyncInt; 2]);
-+         nop;
-+         (((*_150) as variant#18).3: impl std::future::Future<Output = ()>) = async_drop_in_place::<[AsyncInt; 2]>(move _58) -> [return: bb61, unwind: bb35];
-      }
-  
-      bb63: {
--         _42 = copy (_41.0: &mut AsyncInt);
--         StorageLive(_39);
--         _39 = async_drop_in_place::<AsyncInt>(move _42) -> [return: bb62, unwind: bb41];
-+         nop;
-+         goto -> bb20;
-      }
-  
-      bb64: {
--         StorageDead(_43);
--         goto -> bb16;
-+         _140 = move _2;
++         _122 = move _2;
 +         goto -> bb111;
       }
   
       bb65: {
--         async drop(_15; poll=_43) -> [return: bb64, unwind: bb45, drop: bb29];
-+         _62 = copy (_61.0: &mut AsyncInt);
+-         async drop(_19; poll=_39) -> [return: bb64, unwind: bb41, drop: bb28];
++         _54 = copy (_53.0: &mut AsyncStruct);
 +         nop;
-+         (((*_150) as variant#20).2: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(move _62) -> [return: bb64, unwind: bb36];
++         (((*_150) as variant#16).4: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncStruct>(move _54) -> [return: bb64, unwind: bb34];
       }
   
       bb66: {
+-         _42 = copy (_41.0: &mut AsyncInt);
+-         StorageLive(_39);
+-         _39 = async_drop_in_place::<AsyncInt>(move _42) -> [return: bb65, unwind: bb41];
++         _52 = &mut (((*_150) as variant#16).3: AsyncStruct);
++         _53 = Pin::<&mut AsyncStruct>::new_unchecked(move _52) -> [return: bb65, unwind: bb34];
+      }
+  
+      bb67: {
+-         _40 = &mut _19;
+-         _41 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb66, unwind: bb41];
++         nop;
++         goto -> bb19;
+      }
+  
+      bb68: {
+-         StorageDead(_43);
+-         goto -> bb16;
++         _131 = move _2;
++         goto -> bb116;
+      }
+  
+      bb69: {
+-         async drop(_15; poll=_43) -> [return: bb68, unwind: bb45, drop: bb29];
++         _58 = copy (_57.0: &mut [AsyncInt; 2]);
++         nop;
++         (((*_150) as variant#18).3: impl std::future::Future<Output = ()>) = async_drop_in_place::<[AsyncInt; 2]>(move _58) -> [return: bb68, unwind: bb35];
+      }
+  
+      bb70: {
 -         _46 = copy (_45.0: &mut AsyncEnum);
 -         StorageLive(_43);
--         _43 = async_drop_in_place::<AsyncEnum>(move _46) -> [return: bb65, unwind: bb45];
+-         _43 = async_drop_in_place::<AsyncEnum>(move _46) -> [return: bb69, unwind: bb45];
++         _56 = &mut (((*_150) as variant#18).2: [AsyncInt; 2]);
++         _57 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _56) -> [return: bb69, unwind: bb35];
+      }
+  
+      bb71: {
+-         _44 = &mut _15;
+-         _45 = Pin::<&mut AsyncEnum>::new_unchecked(move _44) -> [return: bb70, unwind: bb45];
++         nop;
++         goto -> bb20;
+      }
+  
+      bb72: {
+-         StorageDead(_47);
+-         goto -> bb17;
++         _140 = move _2;
++         goto -> bb121;
+      }
+  
+      bb73: {
+-         async drop(_11; poll=_47) -> [return: bb72, unwind: bb46, drop: bb30];
++         _62 = copy (_61.0: &mut AsyncInt);
++         nop;
++         (((*_150) as variant#20).2: impl std::future::Future<Output = ()>) = async_drop_in_place::<AsyncInt>(move _62) -> [return: bb72, unwind: bb36];
+      }
+  
+      bb74: {
+-         _50 = copy (_49.0: &mut SyncThenAsync);
+-         StorageLive(_47);
+-         _47 = async_drop_in_place::<SyncThenAsync>(move _50) -> [return: bb73, unwind: bb46];
++         _60 = &mut (((*_150) as variant#20).1: AsyncInt);
++         _61 = Pin::<&mut AsyncInt>::new_unchecked(move _60) -> [return: bb73, unwind: bb36];
+      }
+  
+      bb75: {
+-         _48 = &mut _11;
+-         _49 = Pin::<&mut SyncThenAsync>::new_unchecked(move _48) -> [return: bb74, unwind: bb46];
 +         StorageDead(_63);
 +         goto -> bb22;
       }
   
-      bb67: {
--         StorageDead(_47);
--         goto -> bb17;
-+         goto -> bb115;
+      bb76: {
+-         StorageDead(_51);
+-         goto -> bb18;
++         goto -> bb125;
       }
   
-      bb68: {
--         async drop(_11; poll=_47) -> [return: bb67, unwind: bb46, drop: bb30];
+      bb77: {
+-         async drop(_8; poll=_51) -> [return: bb76, unwind: bb47, drop: bb31];
 +         _66 = copy (_65.0: &mut {async fn body of elaborate_drops()});
 +         StorageLive(_63);
-+         _63 = async_drop_in_place::<{async fn body of elaborate_drops()}>(move _66) -> [return: bb67, unwind: bb38];
++         _63 = async_drop_in_place::<{async fn body of elaborate_drops()}>(move _66) -> [return: bb76, unwind: bb38];
       }
   
-      bb69: {
--         _50 = copy (_49.0: &mut SyncThenAsync);
--         StorageLive(_47);
--         _47 = async_drop_in_place::<SyncThenAsync>(move _50) -> [return: bb68, unwind: bb46];
+      bb78: {
+-         _54 = copy (_53.0: &mut AsyncStruct);
+-         StorageLive(_51);
+-         _51 = async_drop_in_place::<AsyncStruct>(move _54) -> [return: bb77, unwind: bb47];
++         _64 = &mut (*_150);
++         _65 = Pin::<&mut {async fn body of elaborate_drops()}>::new_unchecked(move _64) -> [return: bb77, unwind: bb38];
+      }
+  
+      bb79: {
+-         _52 = &mut _8;
+-         _53 = Pin::<&mut AsyncStruct>::new_unchecked(move _52) -> [return: bb78, unwind: bb47];
 +         _0 = Poll::<()>::Pending;
 +         StorageDead(_17);
 +         StorageDead(_23);
@@ -877,43 +927,42 @@
 +         return;
       }
   
-      bb70: {
--         StorageDead(_51);
--         goto -> bb18;
+      bb80: {
+-         StorageDead(_55);
+-         goto -> bb19;
 +         StorageLive(_70);
 +         _69 = &mut (((*_150) as variant#4).10: impl std::future::Future<Output = ()>);
-+         _70 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _69) -> [return: bb73, unwind: bb116];
++         _70 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _69) -> [return: bb83, unwind: bb126];
       }
   
-      bb71: {
--         async drop(_8; poll=_51) -> [return: bb70, unwind: bb47, drop: bb31];
+      bb81: {
+-         async drop(_5; poll=_55) -> [return: bb80, unwind: bb48, drop: bb32];
 +         unreachable;
       }
   
-      bb72: {
--         _54 = copy (_53.0: &mut AsyncStruct);
--         StorageLive(_51);
--         _51 = async_drop_in_place::<AsyncStruct>(move _54) -> [return: bb71, unwind: bb47];
-+         StorageDead(_70);
-+         _71 = discriminant(_67);
-+         switchInt(move _71) -> [0: bb39, 1: bb69, otherwise: bb71];
-      }
-  
-      bb73: {
--         StorageDead(_55);
--         goto -> bb19;
-+         _67 = <impl Future<Output = ()> as Future>::poll(move _70, move _68) -> [return: bb72, unwind: bb23];
-      }
-  
-      bb74: {
--         async drop(_5; poll=_55) -> [return: bb73, unwind: bb48, drop: bb32];
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb74, unwind: bb116];
-      }
-  
-      bb75: {
+      bb82: {
 -         _58 = copy (_57.0: &mut [AsyncInt; 2]);
 -         StorageLive(_55);
--         _55 = async_drop_in_place::<[AsyncInt; 2]>(move _58) -> [return: bb74, unwind: bb48];
+-         _55 = async_drop_in_place::<[AsyncInt; 2]>(move _58) -> [return: bb81, unwind: bb48];
++         StorageDead(_70);
++         _71 = discriminant(_67);
++         switchInt(move _71) -> [0: bb39, 1: bb79, otherwise: bb81];
+      }
+  
+      bb83: {
+-         _56 = &mut _5;
+-         _57 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _56) -> [return: bb82, unwind: bb48];
++         _67 = <impl Future<Output = ()> as Future>::poll(move _70, move _68) -> [return: bb82, unwind: bb23];
+      }
+  
+      bb84: {
+-         StorageDead(_59);
+-         goto -> bb20;
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb84, unwind: bb126];
+      }
+  
+      bb85: {
+-         async drop(_4; poll=_59) -> [return: bb84, unwind: bb49, drop: bb33];
 +         _0 = Poll::<()>::Pending;
 +         StorageDead(_17);
 +         StorageDead(_23);
@@ -921,344 +970,345 @@
 +         return;
       }
   
-      bb76: {
--         StorageDead(_59);
--         goto -> bb20;
-+         StorageLive(_79);
-+         _78 = &mut (((*_150) as variant#6).9: impl std::future::Future<Output = ()>);
-+         _79 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _78) -> [return: bb78, unwind: bb116];
-      }
-  
-      bb77: {
--         async drop(_4; poll=_59) -> [return: bb76, unwind: bb49, drop: bb33];
-+         StorageDead(_79);
-+         _80 = discriminant(_76);
-+         switchInt(move _80) -> [0: bb42, 1: bb75, otherwise: bb71];
-      }
-  
-      bb78: {
+      bb86: {
 -         _62 = copy (_61.0: &mut AsyncInt);
 -         StorageLive(_59);
--         _59 = async_drop_in_place::<AsyncInt>(move _62) -> [return: bb77, unwind: bb49];
-+         _76 = <impl Future<Output = ()> as Future>::poll(move _79, move _77) -> [return: bb77, unwind: bb25];
+-         _59 = async_drop_in_place::<AsyncInt>(move _62) -> [return: bb85, unwind: bb49];
++         StorageLive(_79);
++         _78 = &mut (((*_150) as variant#6).9: impl std::future::Future<Output = ()>);
++         _79 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _78) -> [return: bb88, unwind: bb126];
       }
   
-      bb79: {
+      bb87: {
+-         _60 = &mut _4;
+-         _61 = Pin::<&mut AsyncInt>::new_unchecked(move _60) -> [return: bb86, unwind: bb49];
++         StorageDead(_79);
++         _80 = discriminant(_76);
++         switchInt(move _80) -> [0: bb43, 1: bb85, otherwise: bb81];
+      }
+  
+      bb88: {
 -         StorageDead(_63);
 -         goto -> bb22;
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb79, unwind: bb116];
++         _76 = <impl Future<Output = ()> as Future>::poll(move _79, move _77) -> [return: bb87, unwind: bb25];
       }
   
-      bb80: {
--         async drop(_1; poll=_63) -> [return: bb79, unwind: bb51, drop: bb35];
+      bb89: {
+-         async drop(_1; poll=_63) -> [return: bb88, unwind: bb51, drop: bb35];
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb89, unwind: bb126];
+      }
+  
+      bb90: {
+-         _66 = copy (_65.0: &mut {async fn body of elaborate_drops()});
+-         StorageLive(_63);
+-         _63 = async_drop_in_place::<{async fn body of elaborate_drops()}>(move _66) -> [return: bb89, unwind: bb51];
 +         _0 = Poll::<()>::Pending;
 +         StorageDead(_17);
 +         discriminant((*_150)) = 7;
 +         return;
       }
   
-      bb81: {
--         _66 = copy (_65.0: &mut {async fn body of elaborate_drops()});
--         StorageLive(_63);
--         _63 = async_drop_in_place::<{async fn body of elaborate_drops()}>(move _66) -> [return: bb80, unwind: bb51];
+      bb91: {
+-         _64 = &mut _1;
+-         _65 = Pin::<&mut {async fn body of elaborate_drops()}>::new_unchecked(move _64) -> [return: bb90, unwind: bb51];
 +         StorageLive(_88);
 +         _87 = &mut (((*_150) as variant#8).8: impl std::future::Future<Output = ()>);
-+         _88 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _87) -> [return: bb83, unwind: bb116];
++         _88 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _87) -> [return: bb93, unwind: bb126];
 +     }
 + 
-+     bb82: {
++     bb92: {
 +         StorageDead(_88);
 +         _89 = discriminant(_85);
-+         switchInt(move _89) -> [0: bb45, 1: bb80, otherwise: bb71];
++         switchInt(move _89) -> [0: bb47, 1: bb90, otherwise: bb81];
 +     }
 + 
-+     bb83: {
-+         _85 = <impl Future<Output = ()> as Future>::poll(move _88, move _86) -> [return: bb82, unwind: bb27];
++     bb93: {
++         _85 = <impl Future<Output = ()> as Future>::poll(move _88, move _86) -> [return: bb92, unwind: bb27];
 +     }
 + 
-+     bb84: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb84, unwind: bb116];
++     bb94: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb94, unwind: bb126];
 +     }
 + 
-+     bb85: {
++     bb95: {
 +         _0 = Poll::<()>::Pending;
 +         StorageDead(_17);
 +         discriminant((*_150)) = 9;
 +         return;
 +     }
 + 
-+     bb86: {
++     bb96: {
 +         StorageLive(_97);
 +         _96 = &mut (((*_150) as variant#10).7: impl std::future::Future<Output = ()>);
-+         _97 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _96) -> [return: bb88, unwind: bb116];
++         _97 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _96) -> [return: bb98, unwind: bb126];
 +     }
 + 
-+     bb87: {
++     bb97: {
 +         StorageDead(_97);
 +         _98 = discriminant(_94);
-+         switchInt(move _98) -> [0: bb48, 1: bb85, otherwise: bb71];
++         switchInt(move _98) -> [0: bb51, 1: bb95, otherwise: bb81];
 +     }
 + 
-+     bb88: {
-+         _94 = <impl Future<Output = ()> as Future>::poll(move _97, move _95) -> [return: bb87, unwind: bb28];
++     bb98: {
++         _94 = <impl Future<Output = ()> as Future>::poll(move _97, move _95) -> [return: bb97, unwind: bb28];
 +     }
 + 
-+     bb89: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb89, unwind: bb116];
++     bb99: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb99, unwind: bb126];
 +     }
 + 
-+     bb90: {
++     bb100: {
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_150)) = 11;
 +         return;
 +     }
 + 
-+     bb91: {
++     bb101: {
 +         StorageLive(_106);
 +         _105 = &mut (((*_150) as variant#12).6: impl std::future::Future<Output = ()>);
-+         _106 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _105) -> [return: bb93, unwind: bb116];
++         _106 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _105) -> [return: bb103, unwind: bb126];
 +     }
 + 
-+     bb92: {
++     bb102: {
 +         StorageDead(_106);
 +         _107 = discriminant(_103);
-+         switchInt(move _107) -> [0: bb51, 1: bb90, otherwise: bb71];
++         switchInt(move _107) -> [0: bb55, 1: bb100, otherwise: bb81];
 +     }
 + 
-+     bb93: {
-+         _103 = <impl Future<Output = ()> as Future>::poll(move _106, move _104) -> [return: bb92, unwind: bb32];
++     bb103: {
++         _103 = <impl Future<Output = ()> as Future>::poll(move _106, move _104) -> [return: bb102, unwind: bb32];
 +     }
 + 
-+     bb94: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb94, unwind: bb116];
++     bb104: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb104, unwind: bb126];
 +     }
 + 
-+     bb95: {
++     bb105: {
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_150)) = 13;
 +         return;
 +     }
 + 
-+     bb96: {
++     bb106: {
 +         StorageLive(_115);
 +         _114 = &mut (((*_150) as variant#14).5: impl std::future::Future<Output = ()>);
-+         _115 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _114) -> [return: bb98, unwind: bb116];
++         _115 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _114) -> [return: bb108, unwind: bb126];
 +     }
 + 
-+     bb97: {
++     bb107: {
 +         StorageDead(_115);
 +         _116 = discriminant(_112);
-+         switchInt(move _116) -> [0: bb54, 1: bb95, otherwise: bb71];
++         switchInt(move _116) -> [0: bb59, 1: bb105, otherwise: bb81];
 +     }
 + 
-+     bb98: {
-+         _112 = <impl Future<Output = ()> as Future>::poll(move _115, move _113) -> [return: bb97, unwind: bb33];
++     bb108: {
++         _112 = <impl Future<Output = ()> as Future>::poll(move _115, move _113) -> [return: bb107, unwind: bb33];
 +     }
 + 
-+     bb99: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb99, unwind: bb116];
++     bb109: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb109, unwind: bb126];
 +     }
 + 
-+     bb100: {
++     bb110: {
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_150)) = 15;
 +         return;
 +     }
 + 
-+     bb101: {
++     bb111: {
 +         StorageLive(_124);
 +         _123 = &mut (((*_150) as variant#16).4: impl std::future::Future<Output = ()>);
-+         _124 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _123) -> [return: bb103, unwind: bb116];
++         _124 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _123) -> [return: bb113, unwind: bb126];
 +     }
 + 
-+     bb102: {
++     bb112: {
 +         StorageDead(_124);
 +         _125 = discriminant(_121);
-+         switchInt(move _125) -> [0: bb57, 1: bb100, otherwise: bb71];
++         switchInt(move _125) -> [0: bb63, 1: bb110, otherwise: bb81];
 +     }
 + 
-+     bb103: {
-+         _121 = <impl Future<Output = ()> as Future>::poll(move _124, move _122) -> [return: bb102, unwind: bb34];
++     bb113: {
++         _121 = <impl Future<Output = ()> as Future>::poll(move _124, move _122) -> [return: bb112, unwind: bb34];
 +     }
 + 
-+     bb104: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb104, unwind: bb116];
++     bb114: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb114, unwind: bb126];
 +     }
 + 
-+     bb105: {
++     bb115: {
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_150)) = 17;
 +         return;
 +     }
 + 
-+     bb106: {
++     bb116: {
 +         StorageLive(_133);
 +         _132 = &mut (((*_150) as variant#18).3: impl std::future::Future<Output = ()>);
-+         _133 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _132) -> [return: bb108, unwind: bb116];
++         _133 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _132) -> [return: bb118, unwind: bb126];
 +     }
 + 
-+     bb107: {
++     bb117: {
 +         StorageDead(_133);
 +         _134 = discriminant(_130);
-+         switchInt(move _134) -> [0: bb60, 1: bb105, otherwise: bb71];
++         switchInt(move _134) -> [0: bb67, 1: bb115, otherwise: bb81];
 +     }
 + 
-+     bb108: {
-+         _130 = <impl Future<Output = ()> as Future>::poll(move _133, move _131) -> [return: bb107, unwind: bb35];
++     bb118: {
++         _130 = <impl Future<Output = ()> as Future>::poll(move _133, move _131) -> [return: bb117, unwind: bb35];
 +     }
 + 
-+     bb109: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb109, unwind: bb116];
++     bb119: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb119, unwind: bb126];
 +     }
 + 
-+     bb110: {
++     bb120: {
 +         _0 = Poll::<()>::Pending;
 +         discriminant((*_150)) = 19;
 +         return;
 +     }
 + 
-+     bb111: {
++     bb121: {
 +         StorageLive(_142);
 +         _141 = &mut (((*_150) as variant#20).2: impl std::future::Future<Output = ()>);
-+         _142 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _141) -> [return: bb113, unwind: bb116];
++         _142 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _141) -> [return: bb123, unwind: bb126];
 +     }
 + 
-+     bb112: {
++     bb122: {
 +         StorageDead(_142);
 +         _143 = discriminant(_139);
-+         switchInt(move _143) -> [0: bb63, 1: bb110, otherwise: bb71];
++         switchInt(move _143) -> [0: bb71, 1: bb120, otherwise: bb81];
 +     }
 + 
-+     bb113: {
-+         _139 = <impl Future<Output = ()> as Future>::poll(move _142, move _140) -> [return: bb112, unwind: bb36];
++     bb123: {
++         _139 = <impl Future<Output = ()> as Future>::poll(move _142, move _140) -> [return: bb122, unwind: bb36];
 +     }
 + 
-+     bb114: {
-+         assert(const false, "`async fn` resumed after async drop") -> [success: bb114, unwind: bb116];
++     bb124: {
++         assert(const false, "`async fn` resumed after async drop") -> [success: bb124, unwind: bb126];
 +     }
 + 
-+     bb115: {
-+         goto -> bb66;
++     bb125: {
++         goto -> bb75;
 +     }
 + 
-+     bb116 (cleanup): {
++     bb126 (cleanup): {
 +         discriminant((*_150)) = 2;
 +         resume;
 +     }
 + 
-+     bb117: {
++     bb127: {
 +         StorageLive(_17);
 +         StorageLive(_23);
 +         StorageLive(_25);
 +         _68 = move _2;
-+         goto -> bb70;
++         goto -> bb80;
 +     }
 + 
-+     bb118: {
++     bb128: {
 +         StorageLive(_17);
 +         StorageLive(_23);
 +         StorageLive(_25);
 +         _72 = move _2;
-+         goto -> bb74;
-+     }
-+ 
-+     bb119: {
-+         StorageLive(_17);
-+         StorageLive(_23);
-+         _77 = move _2;
-+         goto -> bb76;
-+     }
-+ 
-+     bb120: {
-+         StorageLive(_17);
-+         StorageLive(_23);
-+         _81 = move _2;
-+         goto -> bb79;
-+     }
-+ 
-+     bb121: {
-+         StorageLive(_17);
-+         _86 = move _2;
-+         goto -> bb81;
-+     }
-+ 
-+     bb122: {
-+         StorageLive(_17);
-+         _90 = move _2;
 +         goto -> bb84;
 +     }
 + 
-+     bb123: {
++     bb129: {
 +         StorageLive(_17);
-+         _95 = move _2;
++         StorageLive(_23);
++         _77 = move _2;
 +         goto -> bb86;
 +     }
 + 
-+     bb124: {
++     bb130: {
 +         StorageLive(_17);
-+         _99 = move _2;
++         StorageLive(_23);
++         _81 = move _2;
 +         goto -> bb89;
 +     }
 + 
-+     bb125: {
-+         _104 = move _2;
++     bb131: {
++         StorageLive(_17);
++         _86 = move _2;
 +         goto -> bb91;
 +     }
 + 
-+     bb126: {
-+         _108 = move _2;
++     bb132: {
++         StorageLive(_17);
++         _90 = move _2;
 +         goto -> bb94;
 +     }
 + 
-+     bb127: {
-+         _113 = move _2;
++     bb133: {
++         StorageLive(_17);
++         _95 = move _2;
 +         goto -> bb96;
 +     }
 + 
-+     bb128: {
-+         _117 = move _2;
++     bb134: {
++         StorageLive(_17);
++         _99 = move _2;
 +         goto -> bb99;
 +     }
 + 
-+     bb129: {
-+         _122 = move _2;
++     bb135: {
++         _104 = move _2;
 +         goto -> bb101;
 +     }
 + 
-+     bb130: {
-+         _126 = move _2;
++     bb136: {
++         _108 = move _2;
 +         goto -> bb104;
 +     }
 + 
-+     bb131: {
-+         _131 = move _2;
++     bb137: {
++         _113 = move _2;
 +         goto -> bb106;
 +     }
 + 
-+     bb132: {
-+         _135 = move _2;
++     bb138: {
++         _117 = move _2;
 +         goto -> bb109;
 +     }
 + 
-+     bb133: {
-+         _140 = move _2;
++     bb139: {
++         _122 = move _2;
 +         goto -> bb111;
 +     }
 + 
-+     bb134: {
-+         _144 = move _2;
++     bb140: {
++         _126 = move _2;
 +         goto -> bb114;
 +     }
 + 
-+     bb135: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb135, unwind continue];
++     bb141: {
++         _131 = move _2;
++         goto -> bb116;
 +     }
 + 
-+     bb136: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb136, unwind continue];
++     bb142: {
++         _135 = move _2;
++         goto -> bb119;
 +     }
 + 
-+     bb137: {
++     bb143: {
++         _140 = move _2;
++         goto -> bb121;
++     }
++ 
++     bb144: {
++         _144 = move _2;
++         goto -> bb124;
++     }
++ 
++     bb145: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb145, unwind continue];
++     }
++ 
++     bb146: {
++         assert(const false, "`async fn` resumed after completion") -> [success: bb146, unwind continue];
++     }
++ 
++     bb147: {
 +         nop;
 +         (((*_150) as variant#20).0: SyncInt) = SyncInt(const 0_i32);
 +         nop;

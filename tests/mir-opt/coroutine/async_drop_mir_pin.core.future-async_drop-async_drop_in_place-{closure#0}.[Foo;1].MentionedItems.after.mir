@@ -26,7 +26,7 @@ yields ()
 
     bb0: {
         _3 = move (_1.0: &mut [Foo; 1]);
-        goto -> bb17;
+        goto -> bb19;
     }
 
     bb1: {
@@ -53,8 +53,7 @@ yields ()
     bb5: {
         _10 = &raw mut (*_5)[_7];
         _7 = Add(move _7, const 1_usize);
-        _13 = &mut (*_10);
-        _14 = Pin::<&mut Foo>::new_unchecked(move _13) -> [return: bb9, unwind: bb4];
+        goto -> bb10;
     }
 
     bb6: {
@@ -79,45 +78,54 @@ yields ()
     }
 
     bb10: {
-        _16 = &raw mut (*_5)[_7];
-        _7 = Add(move _7, const 1_usize);
-        _19 = &mut (*_16);
-        _20 = Pin::<&mut Foo>::new_unchecked(move _19) -> [return: bb14, unwind: bb4];
+        _13 = &mut (*_10);
+        _14 = Pin::<&mut Foo>::new_unchecked(move _13) -> [return: bb9, unwind: bb4];
     }
 
     bb11: {
-        _17 = Eq(copy _7, copy _6);
-        switchInt(move _17) -> [0: bb10, otherwise: bb1];
+        _16 = &raw mut (*_5)[_7];
+        _7 = Add(move _7, const 1_usize);
+        goto -> bb16;
     }
 
     bb12: {
-        StorageDead(_18);
-        goto -> bb11;
+        _17 = Eq(copy _7, copy _6);
+        switchInt(move _17) -> [0: bb11, otherwise: bb1];
     }
 
     bb13: {
-        async drop((*_16); poll=_18) -> [return: bb12, unwind: bb4, drop: bb6];
+        StorageDead(_18);
+        goto -> bb12;
     }
 
     bb14: {
-        _21 = copy (_20.0: &mut Foo);
-        StorageLive(_18);
-        _18 = async_drop_in_place::<Foo>(move _21) -> [return: bb13, unwind: bb4];
+        async drop((*_16); poll=_18) -> [return: bb13, unwind: bb4, drop: bb6];
     }
 
     bb15: {
-        _6 = PtrMetadata(copy _5);
-        _7 = const 0_usize;
-        goto -> bb11;
+        _21 = copy (_20.0: &mut Foo);
+        StorageLive(_18);
+        _18 = async_drop_in_place::<Foo>(move _21) -> [return: bb14, unwind: bb4];
     }
 
     bb16: {
-        goto -> bb15;
+        _19 = &mut (*_16);
+        _20 = Pin::<&mut Foo>::new_unchecked(move _19) -> [return: bb15, unwind: bb4];
     }
 
     bb17: {
+        _6 = PtrMetadata(copy _5);
+        _7 = const 0_usize;
+        goto -> bb12;
+    }
+
+    bb18: {
+        goto -> bb17;
+    }
+
+    bb19: {
         _4 = &raw mut (*_3);
         _5 = move _4 as *mut [Foo] (PointerCoercion(Unsize, Implicit));
-        goto -> bb16;
+        goto -> bb18;
     }
 }

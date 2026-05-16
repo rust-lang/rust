@@ -96,8 +96,6 @@ pub(crate) trait DropElaborator<'a, 'tcx>: fmt::Debug {
     fn typing_env(&self) -> ty::TypingEnv<'tcx>;
     fn allow_async_drops(&self) -> bool;
 
-    fn terminator_loc(&self, bb: BasicBlock) -> Location;
-
     // Drop logic
 
     /// Returns how `path` should be dropped, given `mode`.
@@ -200,19 +198,18 @@ where
         self.elaborator.tcx()
     }
 
-    // Generates three blocks:
-    // * #1:pin_obj_bb:   call Pin<ObjTy>::new_unchecked(&mut obj)
-    // * #2:call_drop_bb: fut = call obj.<AsyncDrop::drop>() OR call async_drop_in_place<T>(obj)
-    // * #3:drop_term_bb: drop (obj, fut, ...)
-    // We keep async drop unexpanded to poll-loop here, to expand it later, at StateTransform -
-    //   into states expand.
-    // call_destructor_only - to call only AsyncDrop::drop, not full async_drop_in_place glue
+    /// Generates three blocks:
+    /// * #1:pin_obj_bb:   call Pin<ObjTy>::new_unchecked(&mut obj)
+    /// * #2:call_drop_bb: fut = call obj.<AsyncDrop::drop>() OR call async_drop_in_place<T>(obj)
+    /// * #3:drop_term_bb: drop (obj, fut, ...)
+    /// We keep async drop unexpanded to poll-loop here, to expand it later, at StateTransform -
+    ///   into states expand.
+    /// call_destructor_only - to call only AsyncDrop::drop, not full async_drop_in_place glue
     #[instrument(level = "debug", skip(self), ret)]
     fn build_async_drop(
         &mut self,
         place: Place<'tcx>,
         drop_ty: Ty<'tcx>,
-        bb: Option<BasicBlock>,
         succ: BasicBlock,
         unwind: Unwind,
         dropline: Option<BasicBlock>,
@@ -220,11 +217,6 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let span = self.source_info.span;
-
-        let pin_obj_bb = bb.unwrap_or_else(|| {
-            // Temporary terminator, will be replaced by patch
-            self.new_block(unwind, TerminatorKind::Return)
-        });
 
         let (fut_ty, drop_fn_def_id, trait_args) = if call_destructor_only {
             // Resolving obj.<AsyncDrop::drop>()
@@ -260,8 +252,8 @@ where
                     self.elaborator.body().span,
                     "AsyncDrop type without correct `async fn drop(...)`.",
                 );
-                self.elaborator.patch().patch_terminator(
-                    pin_obj_bb,
+                return self.new_block(
+                    unwind,
                     TerminatorKind::Drop {
                         place,
                         target: succ,
@@ -271,7 +263,6 @@ where
                         async_fut: None,
                     },
                 );
-                return pin_obj_bb;
             };
             let drop_fn = Ty::new_fn_def(tcx, drop_fn_def_id, trait_args);
             let sig = drop_fn.fn_sig(tcx);
@@ -291,10 +282,7 @@ where
         // #1:pin_obj_bb >>> obj_ref = &mut obj
         let obj_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, drop_ty);
         let obj_ref_place = Place::from(self.new_temp(obj_ref_ty));
-
-        let term_loc = self.elaborator.terminator_loc(pin_obj_bb);
-        self.elaborator.patch().add_assign(
-            term_loc,
+        let assign_obj_ref_place = self.assign(
             obj_ref_place,
             Rvalue::Ref(
                 tcx.lifetimes.re_erased,
@@ -318,10 +306,8 @@ where
         }));
 
         // Create an intermediate block that does StorageDead(fut) then jumps to succ.
-        // This is necessary because `succ` may differ from `self.succ` (e.g. when
-        // build_async_drop is called from drop_loop, `succ` is the loop header).
-        // Placing StorageDead directly at `self.succ` would miss the loop-back edge,
-        // causing StorageLive(fut) to fire again without a preceding StorageDead.
+        // This is necessary because we do not want to modify statements
+        // in existing blocks, in case those are used somewhere else in MIR.
         let succ_with_dead = self.new_block_with_statements(
             unwind,
             vec![Statement::new(self.source_info, StatementKind::StorageDead(fut.local))],
@@ -394,8 +380,9 @@ where
         }
 
         // #1:pin_obj_bb >>> call Pin<ObjTy>::new_unchecked(&mut obj)
-        self.elaborator.patch().patch_terminator(
-            pin_obj_bb,
+        self.new_block_with_statements(
+            unwind,
+            vec![assign_obj_ref_place],
             TerminatorKind::Call {
                 func: pin_obj_new_unchecked_fn,
                 args: [dummy_spanned(Operand::Move(obj_ref_place))].into(),
@@ -405,8 +392,7 @@ where
                 call_source: CallSource::Misc,
                 fn_span: span,
             },
-        );
-        pin_obj_bb
+        )
     }
 
     fn build_drop(&mut self, bb: BasicBlock) {
@@ -414,15 +400,17 @@ where
         if !self.elaborator.patch_ref().block(self.elaborator.body(), bb).is_cleanup
             && self.check_if_can_async_drop(drop_ty, false)
         {
-            self.build_async_drop(
+            let async_drop_bb = self.build_async_drop(
                 self.place,
                 drop_ty,
-                Some(bb),
                 self.succ,
                 self.unwind,
                 self.dropline,
                 false,
             );
+            self.elaborator
+                .patch()
+                .patch_terminator(bb, TerminatorKind::Goto { target: async_drop_bb });
         } else {
             self.elaborator.patch().patch_terminator(
                 bb,
@@ -1012,7 +1000,7 @@ where
     ) -> BasicBlock {
         let ty = self.place_ty(self.place);
         if !unwind.is_cleanup() && self.check_if_can_async_drop(ty, true) {
-            self.build_async_drop(self.place, ty, None, succ, unwind, dropline, true)
+            self.build_async_drop(self.place, ty, succ, unwind, dropline, true)
         } else {
             self.destructor_call_block_sync(succ, unwind)
         }
@@ -1074,15 +1062,11 @@ where
 
         let place = tcx.mk_place_deref(ptr);
         if !unwind.is_cleanup() && self.check_if_can_async_drop(ety, false) {
-            self.build_async_drop(
-                place,
-                ety,
-                Some(drop_block),
-                loop_block,
-                unwind,
-                dropline,
-                false,
-            );
+            let async_drop_bb =
+                self.build_async_drop(place, ety, loop_block, unwind, dropline, false);
+            self.elaborator
+                .patch()
+                .patch_terminator(drop_block, TerminatorKind::Goto { target: async_drop_bb });
         } else {
             self.elaborator.patch().patch_terminator(
                 drop_block,
@@ -1338,15 +1322,7 @@ where
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let drop_ty = self.place_ty(self.place);
         if !unwind.is_cleanup() && self.check_if_can_async_drop(drop_ty, false) {
-            self.build_async_drop(
-                self.place,
-                drop_ty,
-                None,
-                self.succ,
-                unwind,
-                self.dropline,
-                false,
-            )
+            self.build_async_drop(self.place, drop_ty, self.succ, unwind, self.dropline, false)
         } else {
             self.new_block(
                 unwind,

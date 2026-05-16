@@ -11,7 +11,7 @@ yields ()
 
     bb0: {
         _3 = move (_1.0: &mut AsyncReference<'_>);
-        goto -> bb4;
+        goto -> bb7;
     }
 
     bb1: {
@@ -29,21 +29,21 @@ yields ()
     }
 
     bb4: {
-        _5 = &mut (*_3);
-        _6 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _5) -> [return: bb7, unwind: bb2];
-    }
-
-    bb5: {
         StorageDead(_4);
         goto -> bb3;
     }
 
+    bb5: {
+        async drop((*_3); poll=_4) -> [return: bb4, unwind: bb2, drop: bb1];
+    }
+
     bb6: {
-        async drop((*_3); poll=_4) -> [return: bb5, unwind: bb2, drop: bb1];
+        StorageLive(_4);
+        _4 = <AsyncReference<'_> as AsyncDrop>::drop(move _6) -> [return: bb5, unwind: bb2];
     }
 
     bb7: {
-        StorageLive(_4);
-        _4 = <AsyncReference<'_> as AsyncDrop>::drop(move _6) -> [return: bb6, unwind: bb2];
+        _5 = &mut (*_3);
+        _6 = Pin::<&mut AsyncReference<'_>>::new_unchecked(move _5) -> [return: bb6, unwind: bb2];
     }
 }

@@ -59,96 +59,96 @@ yields ()
     }
 
     bb7: {
-        _5 = &mut ((*_3).3: AsyncInt);
-        _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb10, unwind: bb2];
-    }
-
-    bb8: {
         StorageDead(_4);
         goto -> bb1;
     }
 
+    bb8: {
+        async drop(((*_3).3: AsyncInt); poll=_4) -> [return: bb7, unwind: bb2];
+    }
+
     bb9: {
-        async drop(((*_3).3: AsyncInt); poll=_4) -> [return: bb8, unwind: bb2];
+        _7 = copy (_6.0: &mut AsyncInt);
+        StorageLive(_4);
+        _4 = async_drop_in_place::<AsyncInt>(move _7) -> [return: bb8, unwind: bb2];
     }
 
     bb10: {
-        _7 = copy (_6.0: &mut AsyncInt);
-        StorageLive(_4);
-        _4 = async_drop_in_place::<AsyncInt>(move _7) -> [return: bb9, unwind: bb2];
+        _5 = &mut ((*_3).3: AsyncInt);
+        _6 = Pin::<&mut AsyncInt>::new_unchecked(move _5) -> [return: bb9, unwind: bb2];
     }
 
     bb11: {
         StorageDead(_16);
-        drop(((*_3).2: SyncInt)) -> [return: bb7, unwind: bb4];
+        drop(((*_3).2: SyncInt)) -> [return: bb10, unwind: bb4];
     }
 
     bb12: {
-        _9 = &mut ((*_3).1: AsyncInt);
-        _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb15, unwind: bb5];
-    }
-
-    bb13: {
         StorageDead(_8);
         goto -> bb11;
     }
 
+    bb13: {
+        async drop(((*_3).1: AsyncInt); poll=_8) -> [return: bb12, unwind: bb5];
+    }
+
     bb14: {
-        async drop(((*_3).1: AsyncInt); poll=_8) -> [return: bb13, unwind: bb5];
+        _11 = copy (_10.0: &mut AsyncInt);
+        StorageLive(_8);
+        _8 = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb13, unwind: bb5];
     }
 
     bb15: {
-        _11 = copy (_10.0: &mut AsyncInt);
-        StorageLive(_8);
-        _8 = async_drop_in_place::<AsyncInt>(move _11) -> [return: bb14, unwind: bb5];
+        _9 = &mut ((*_3).1: AsyncInt);
+        _10 = Pin::<&mut AsyncInt>::new_unchecked(move _9) -> [return: bb14, unwind: bb5];
     }
 
     bb16: {
-        _13 = &mut ((*_3).3: AsyncInt);
-        _14 = Pin::<&mut AsyncInt>::new_unchecked(move _13) -> [return: bb19, unwind: bb2];
-    }
-
-    bb17: {
         StorageDead(_12);
         goto -> bb3;
     }
 
+    bb17: {
+        async drop(((*_3).3: AsyncInt); poll=_12) -> [return: bb16, unwind: bb2, drop: bb1];
+    }
+
     bb18: {
-        async drop(((*_3).3: AsyncInt); poll=_12) -> [return: bb17, unwind: bb2, drop: bb1];
+        _15 = copy (_14.0: &mut AsyncInt);
+        StorageLive(_12);
+        _12 = async_drop_in_place::<AsyncInt>(move _15) -> [return: bb17, unwind: bb2];
     }
 
     bb19: {
-        _15 = copy (_14.0: &mut AsyncInt);
-        StorageLive(_12);
-        _12 = async_drop_in_place::<AsyncInt>(move _15) -> [return: bb18, unwind: bb2];
+        _13 = &mut ((*_3).3: AsyncInt);
+        _14 = Pin::<&mut AsyncInt>::new_unchecked(move _13) -> [return: bb18, unwind: bb2];
     }
 
     bb20: {
-        drop(((*_3).2: SyncInt)) -> [return: bb16, unwind: bb4];
+        drop(((*_3).2: SyncInt)) -> [return: bb19, unwind: bb4];
     }
 
     bb21: {
-        _17 = &mut ((*_3).1: AsyncInt);
-        _18 = Pin::<&mut AsyncInt>::new_unchecked(move _17) -> [return: bb24, unwind: bb5];
-    }
-
-    bb22: {
         StorageDead(_16);
         goto -> bb20;
     }
 
+    bb22: {
+        async drop(((*_3).1: AsyncInt); poll=_16) -> [return: bb21, unwind: bb5, drop: bb11];
+    }
+
     bb23: {
-        async drop(((*_3).1: AsyncInt); poll=_16) -> [return: bb22, unwind: bb5, drop: bb11];
+        _19 = copy (_18.0: &mut AsyncInt);
+        StorageLive(_16);
+        _16 = async_drop_in_place::<AsyncInt>(move _19) -> [return: bb22, unwind: bb5];
     }
 
     bb24: {
-        _19 = copy (_18.0: &mut AsyncInt);
-        StorageLive(_16);
-        _16 = async_drop_in_place::<AsyncInt>(move _19) -> [return: bb23, unwind: bb5];
+        _17 = &mut ((*_3).1: AsyncInt);
+        _18 = Pin::<&mut AsyncInt>::new_unchecked(move _17) -> [return: bb23, unwind: bb5];
     }
 
     bb25: {
         _20 = &mut (*_3);
-        _21 = <SyncThenAsync as Drop>::drop(move _20) -> [return: bb21, unwind: bb6];
+        _21 = <SyncThenAsync as Drop>::drop(move _20) -> [return: bb24, unwind: bb6];
     }
 }

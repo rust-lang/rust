@@ -40,15 +40,13 @@
           _5 = AsyncInt(const 0_i32);
           _0 = const ();
 -         drop(_5) -> [return: bb1, unwind: bb9, drop: bb5];
-+         _7 = &mut _5;
-+         _8 = Pin::<&mut AsyncInt>::new_unchecked(move _7) -> [return: bb17, unwind: bb9];
++         goto -> bb18;
       }
   
       bb1: {
           StorageDead(_5);
 -         drop(_4) -> [return: bb2, unwind: bb10, drop: bb6];
-+         _11 = &mut _4;
-+         _12 = Pin::<&mut AsyncInt>::new_unchecked(move _11) -> [return: bb20, unwind: bb10];
++         goto -> bb22;
       }
   
       bb2: {
@@ -59,8 +57,7 @@
       bb3: {
           StorageDead(_3);
 -         drop(_1) -> [return: bb4, drop: bb8, unwind continue];
-+         _15 = &mut _1;
-+         _16 = Pin::<&mut {async fn body of double()}>::new_unchecked(move _15) -> [return: bb23, unwind: bb12];
++         goto -> bb26;
       }
   
       bb4: {
@@ -142,33 +139,48 @@
 +     }
 + 
 +     bb18: {
++         _7 = &mut _5;
++         _8 = Pin::<&mut AsyncInt>::new_unchecked(move _7) -> [return: bb17, unwind: bb9];
++     }
++ 
++     bb19: {
 +         StorageDead(_10);
 +         goto -> bb2;
 +     }
 + 
-+     bb19: {
-+         async drop(_4; poll=_10) -> [return: bb18, unwind: bb10, drop: bb6];
-+     }
-+ 
 +     bb20: {
-+         _13 = copy (_12.0: &mut AsyncInt);
-+         StorageLive(_10);
-+         _10 = async_drop_in_place::<AsyncInt>(move _13) -> [return: bb19, unwind: bb10];
++         async drop(_4; poll=_10) -> [return: bb19, unwind: bb10, drop: bb6];
 +     }
 + 
 +     bb21: {
++         _13 = copy (_12.0: &mut AsyncInt);
++         StorageLive(_10);
++         _10 = async_drop_in_place::<AsyncInt>(move _13) -> [return: bb20, unwind: bb10];
++     }
++ 
++     bb22: {
++         _11 = &mut _4;
++         _12 = Pin::<&mut AsyncInt>::new_unchecked(move _11) -> [return: bb21, unwind: bb10];
++     }
++ 
++     bb23: {
 +         StorageDead(_14);
 +         goto -> bb4;
 +     }
 + 
-+     bb22: {
-+         async drop(_1; poll=_14) -> [return: bb21, unwind: bb12, drop: bb8];
++     bb24: {
++         async drop(_1; poll=_14) -> [return: bb23, unwind: bb12, drop: bb8];
 +     }
 + 
-+     bb23: {
++     bb25: {
 +         _17 = copy (_16.0: &mut {async fn body of double()});
 +         StorageLive(_14);
-+         _14 = async_drop_in_place::<{async fn body of double()}>(move _17) -> [return: bb22, unwind: bb12];
++         _14 = async_drop_in_place::<{async fn body of double()}>(move _17) -> [return: bb24, unwind: bb12];
++     }
++ 
++     bb26: {
++         _15 = &mut _1;
++         _16 = Pin::<&mut {async fn body of double()}>::new_unchecked(move _15) -> [return: bb25, unwind: bb12];
       }
   }
   

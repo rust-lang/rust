@@ -162,10 +162,6 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
         true
     }
 
-    fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        self.patch.terminator_loc(self.body, bb)
-    }
-
     #[instrument(level = "debug", skip(self), ret)]
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
         let ((maybe_init, maybe_uninit), multipart) = match mode {
