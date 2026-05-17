@@ -13,10 +13,10 @@ LL | impl AsExpression<Text> for &'_ str {
    = help: for that trait implementation, expected `Text`, found `Integer`
 
 error[E0277]: the trait bound `X: A` is not satisfied
-  --> $DIR/as_expression.rs:60:5
+  --> $DIR/as_expression.rs:60:15
    |
 LL |     X.start().foo().finish();
-   |     ^^^^^^^^^ unsatisfied trait bound
+   |               ^^^ unsatisfied trait bound
    |
 help: the trait `A` is not implemented for `X`
   --> $DIR/as_expression.rs:70:1
