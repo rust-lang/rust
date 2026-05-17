@@ -25,9 +25,4 @@ Allocations can never be larger than `isize::MAX` bytes and they can only contai
 representable by `usize`, so technically the last condition implies the first two. This implies, for
 instance, that `vec.as_ptr().add(vec.len())` (for `vec: Vec<T>`) is always safe.
 
-Consider using [`wrapping_add`] instead if these constraints are
-difficult to satisfy. The only advantage of this method is that it
-enables more aggressive compiler optimizations.
-
-[`wrapping_add`]: #method.wrapping_add
 [allocation]: crate::ptr#allocation

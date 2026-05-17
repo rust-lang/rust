@@ -22,9 +22,4 @@ Allocations can never be larger than `isize::MAX` bytes and they can only contai
 representable by `usize`, so technically the last condition implies the first two. This implies, for
 instance, that `vec.as_ptr().offset(vec.len() as isize)` (for `vec: Vec<T>`) is always safe.
 
-Consider using [`wrapping_offset`] instead if these constraints are
-difficult to satisfy. The only advantage of this method is that it
-enables more aggressive compiler optimizations.
-
-[`wrapping_offset`]: #method.wrapping_offset
 [allocation]: crate::ptr#allocation

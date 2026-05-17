@@ -24,9 +24,4 @@ This must fit in a `usize`.
 Allocations can never be larger than `isize::MAX` bytes and they can only contain addresses
 representable by `usize`, so technically the last condition implies the first two.
 
-Consider using [`wrapping_sub`] instead if these constraints are
-difficult to satisfy. The only advantage of this method is that it
-enables more aggressive compiler optimizations.
-
-[`wrapping_sub`]: #method.wrapping_sub
 [allocation]: crate::ptr#allocation

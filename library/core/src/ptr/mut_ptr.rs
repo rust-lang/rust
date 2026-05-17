@@ -333,6 +333,10 @@ impl<T: PointeeSized> *mut T {
 
     #[doc = include_str!("./docs/offset.md")]
     ///
+    /// Consider using [`wrapping_offset`](#method.wrapping_offset) instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
     /// # Examples
     ///
     /// ```
@@ -908,6 +912,10 @@ impl<T: PointeeSized> *mut T {
 
     #[doc = include_str!("./docs/add.md")]
     ///
+    /// Consider using [`wrapping_add`](#method.wrapping_add) instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
     /// # Examples
     ///
     /// ```
@@ -982,6 +990,10 @@ impl<T: PointeeSized> *mut T {
     }
 
     #[doc = include_str!("./docs/sub.md")]
+    ///
+    /// Consider using [`wrapping_sub`](#method.wrapping_sub) instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
     ///
     /// # Examples
     ///
