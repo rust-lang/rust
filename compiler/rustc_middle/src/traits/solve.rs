@@ -81,8 +81,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        try_visit!(self.region_constraints.visit_with(visitor));
-        try_visit!(self.opaque_types.visit_with(visitor));
-        self.normalization_nested_goals.visit_with(visitor)
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            normalization_nested_goals,
+        } = &**self;
+
+        try_visit!(region_constraints.visit_with(visitor));
+        try_visit!(opaque_types.visit_with(visitor));
+        normalization_nested_goals.visit_with(visitor)
     }
 }

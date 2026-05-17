@@ -389,12 +389,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_raw_ptr();
 
+                tcx.assert_fully_normalized(typing_env, pointee);
                 let tail = tcx.struct_tail_raw(
                     pointee,
                     &ObligationCause::dummy(),
-                    |ty| match tcx
-                        .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
-                    {
+                    |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
                         Err(e) => Ty::new_error_with_message(
                             tcx,
@@ -465,7 +464,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     let i = VariantIdx::from_usize(i);
                     let fields = def.variant(i).fields.iter().map(|field| {
                         SizeSkeleton::compute_inner(
-                            field.ty(tcx, args),
+                            field.ty(tcx, args).skip_norm_wip(),
                             tcx,
                             typing_env,
                             span,
@@ -952,7 +951,7 @@ where
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
-                            TyMaybeWithLayout::Ty(field.ty(tcx, args))
+                            TyMaybeWithLayout::Ty(field.ty(tcx, args).skip_norm_wip())
                         }
                         Variants::Empty => panic!("there is no field in Variants::Empty types"),
 
@@ -1291,6 +1290,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptM
         | RiscvInterruptS
         | RustInvalid
+        | Swift
         | Unadjusted => false,
         Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
     }

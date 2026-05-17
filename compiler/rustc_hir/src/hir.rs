@@ -1088,6 +1088,93 @@ impl<'hir> Generics<'hir> {
             bound_span.with_lo(bounds[bound_pos - 1].span().hi())
         }
     }
+
+    /// Computes the span representing the removal of a generic parameter at `param_index`.
+    ///
+    /// This function identifies the correct slice of source code to delete so that the
+    /// remaining generic list remains syntactically valid (handling commas and brackets).
+    ///
+    /// ### Examples
+    ///
+    /// 1. **With a following parameter:** (Includes the trailing comma)
+    ///    - Input: `<T, U>` (index 0)
+    ///    - Produces span for: `T, `
+    ///
+    /// 2. **With a previous parameter:** (Includes the leading comma and bounds)
+    ///    - Input: `<T: Clone, U>` (index 1)
+    ///    - Produces span for: `, U`
+    ///
+    /// 3. **The only parameter:** (Includes the angle brackets)
+    ///    - Input: `<T>` (index 0)
+    ///    - Produces span for: `<T>`
+    ///
+    /// 4. **Parameter with where-clause bounds:**
+    ///    - Input: `fn foo<T, U>() where T: Copy` (index 0)
+    ///    - Produces span for: `T, ` (The where-clause remains for other logic to handle).
+    pub fn span_for_param_removal(&self, param_index: usize) -> Span {
+        if param_index >= self.params.len() {
+            return self.span.shrink_to_hi();
+        }
+
+        let is_param_explicit = |par: &&GenericParam<'_>| match par.kind {
+            GenericParamKind::Type { .. }
+            | GenericParamKind::Const { .. }
+            | GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit } => true,
+            _ => false,
+        };
+
+        // Find the span of the type parameter.
+        if let Some(next) = self.params[param_index + 1..].iter().find(is_param_explicit) {
+            self.params[param_index].span.until(next.span)
+        } else if let Some(prev) = self.params[..param_index].iter().rfind(is_param_explicit) {
+            let mut prev_span = prev.span;
+            // Consider the span of the bounds with the previous generic parameter when there is.
+            if let Some(prev_bounds_span) = self.span_for_param_bounds(prev) {
+                prev_span = prev_span.to(prev_bounds_span);
+            }
+
+            // Consider the span of the bounds with the current generic parameter when there is.
+            prev_span.shrink_to_hi().to(
+                if let Some(cur_bounds_span) = self.span_for_param_bounds(&self.params[param_index])
+                {
+                    cur_bounds_span
+                } else {
+                    self.params[param_index].span
+                },
+            )
+        } else {
+            // Remove also angle brackets <> when there is just ONE generic parameter.
+            self.span
+        }
+    }
+
+    /// Returns the span of the `WherePredicate` associated with the given `GenericParam`, if any.
+    ///
+    /// This looks specifically for predicates in the `where` clause that were generated
+    /// from the parameter definition (e.g., `T` in `where T: Bound`).
+    ///
+    /// ### Example
+    ///
+    /// - Input: `param` representing `T`
+    /// - Context: `where T: Clone + Default, U: Copy`
+    /// - Returns: Span of `T: Clone + Default`
+    fn span_for_param_bounds(&self, param: &GenericParam<'hir>) -> Option<Span> {
+        self.predicates
+            .iter()
+            .find(|pred| {
+                if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+                    origin: PredicateOrigin::GenericParam,
+                    bounded_ty,
+                    ..
+                }) = pred.kind
+                {
+                    bounded_ty.span == param.span
+                } else {
+                    false
+                }
+            })
+            .map(|pred| pred.span)
+    }
 }
 
 /// A single predicate in a where-clause.
@@ -1696,6 +1783,14 @@ pub struct Closure<'hir> {
     /// The span of the argument block `|...|`
     pub fn_arg_span: Option<Span>,
     pub kind: ClosureKind,
+    pub explicit_captures: &'hir [ExplicitCapture],
+}
+
+/// A HIR local that must be captured by value even if ordinary closure capture
+/// analysis would infer a weaker capture kind from its uses in the body.
+#[derive(Debug, Clone, Copy, StableHash)]
+pub struct ExplicitCapture {
+    pub var_hir_id: HirId,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, StableHash, Encodable, Decodable)]
@@ -2463,12 +2558,10 @@ impl Expr<'_> {
         };
 
         match &self.kind {
-            ExprKind::Closure(closure) => {
-                match closure.fn_decl.output {
-                    FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
-                    FnRetTy::Return(_) => prefix_attrs_precedence(),
-                }
-            }
+            ExprKind::Closure(closure) => match closure.fn_decl.output {
+                FnRetTy::DefaultReturn(_) => ExprPrecedence::Jump,
+                FnRetTy::Return(_) => prefix_attrs_precedence(),
+            },
 
             ExprKind::Break(..)
             | ExprKind::Ret(..)
@@ -2479,17 +2572,16 @@ impl Expr<'_> {
             ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
-            ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
+            ExprKind::Assign(..) | ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
-            ExprKind::AddrOf(..)
+            ExprKind::AddrOf(..) => ExprPrecedence::Prefix,
+
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprKind::Let(..)
-            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
+            ExprKind::Let(..) | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)

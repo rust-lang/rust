@@ -49,7 +49,9 @@ use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, errors, meth, mir};
+use crate::{
+    CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, ModuleCodegen, errors, meth, mir,
+};
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match (op, signed) {
@@ -953,7 +955,7 @@ impl CrateInfo {
             dependency_formats: Arc::clone(tcx.dependency_formats(())),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
-            lint_levels: CodegenLintLevels::from_tcx(tcx),
+            lint_level_specs: CodegenLintLevelSpecs::from_tcx(tcx),
             metadata_symbol: exported_symbols::metadata_symbol_name(tcx),
             each_linked_rlib_file_for_lto: Default::default(),
             exported_symbols_for_lto: Default::default(),

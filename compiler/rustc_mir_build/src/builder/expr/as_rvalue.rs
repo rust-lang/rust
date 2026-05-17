@@ -242,7 +242,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
-            ExprKind::Closure(box ClosureExpr {
+            ExprKind::Closure(ClosureExpr {
                 closure_id,
                 args,
                 ref upvars,

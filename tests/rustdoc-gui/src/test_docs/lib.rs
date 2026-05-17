@@ -8,6 +8,8 @@
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
 #![feature(associated_type_defaults)]
+#![feature(macro_attr)]
+#![feature(macro_derive)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy

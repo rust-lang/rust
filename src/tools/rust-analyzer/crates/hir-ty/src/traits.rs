@@ -232,11 +232,11 @@ pub fn is_inherent_impl_coherent(db: &dyn HirDatabase, def_map: &DefMap, impl_id
 
 /// Checks whether the impl satisfies the orphan rules.
 ///
-/// Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an `impl`` is valid only if at least one of the following is true:
+/// Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an `impl` is valid only if at least one of the following is true:
 /// - Trait is a local trait
 /// - All of
-///   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
-///   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+///   - At least one of the types `T0..=Tn` must be a local type. Let `Ti` be the first such type.
+///   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti` (excluding `Ti`)
 pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool {
     let Some(impl_trait) = db.impl_trait(impl_) else {
         // not a trait impl
@@ -277,10 +277,10 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
             }
         }
     };
-    //   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
+    //   - At least one of the types `T0..=Tn` must be a local type. Let `Ti` be the first such type.
 
     // FIXME: param coverage
-    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti` (excluding `Ti`)
     let is_not_orphan = trait_ref.args.types().any(|ty| match unwrap_fundamental(ty).kind() {
         TyKind::Adt(adt_def, _) => is_local(adt_def.def_id().module(db).krate(db)),
         TyKind::Error(_) => true,

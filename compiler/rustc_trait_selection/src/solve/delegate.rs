@@ -73,6 +73,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         span: Span,
     ) -> Option<Certainty> {
+        // FIXME(-Zassumptions-on-binders): actually handle fast path
+        if self.tcx.assumptions_on_binders() {
+            return None;
+        }
+
         let pred = goal.predicate.kind();
         match pred.skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {

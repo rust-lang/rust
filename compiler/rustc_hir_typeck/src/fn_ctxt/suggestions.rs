@@ -2592,7 +2592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // suggestions would be often wrong. So suppress the suggestion. See #145294.
                     if let (ty::Adt(exp_adt, _), ty::Adt(act_adt, _)) = (expected.kind(), expr_ty.kind())
                         && exp_adt.did() == act_adt.did()
-                        && sole_field.ty(self.tcx, args).is_ty_var() {
+                        && sole_field.ty(self.tcx, args).skip_norm_wip().is_ty_var() {
                             return None;
                     }
 
@@ -2609,7 +2609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
                         .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
-                    let sole_field_ty = sole_field.ty(self.tcx, args);
+                    let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.may_coerce(expr_ty, sole_field_ty) {
                         let variant_path =
                             with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));

@@ -236,14 +236,7 @@ fn vtable_entries<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
 ) -> &'tcx [VtblEntry<'tcx>] {
     debug_assert!(!trait_ref.has_non_region_infer() && !trait_ref.has_non_region_param());
-    debug_assert_eq!(
-        tcx.normalize_erasing_regions(
-            ty::TypingEnv::fully_monomorphized(),
-            Unnormalized::new_wip(trait_ref)
-        ),
-        trait_ref,
-        "vtable trait ref should be normalized"
-    );
+    tcx.debug_assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), trait_ref);
 
     debug!("vtable_entries({:?})", trait_ref);
 
@@ -323,14 +316,7 @@ fn vtable_entries<'tcx>(
 // for `Supertrait`'s methods in the vtable of `Subtrait`.
 pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRef<'tcx>) -> usize {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
-    debug_assert_eq!(
-        tcx.normalize_erasing_regions(
-            ty::TypingEnv::fully_monomorphized(),
-            Unnormalized::new_wip(key)
-        ),
-        key,
-        "vtable trait ref should be normalized"
-    );
+    tcx.debug_assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
 
     let ty::Dynamic(source, _) = *key.self_ty().kind() else {
         bug!();
@@ -390,14 +376,7 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     ),
 ) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
-    debug_assert_eq!(
-        tcx.normalize_erasing_regions(
-            ty::TypingEnv::fully_monomorphized(),
-            Unnormalized::new_wip(key)
-        ),
-        key,
-        "upcasting trait refs should be normalized"
-    );
+    tcx.debug_assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
 
     let (source, target) = key;
 

@@ -492,7 +492,7 @@ Using `--pass check` can run the UI
 test suite much faster (roughly twice as fast on my system), though obviously
 not exercising as much.
 
-The `ignore-pass` directive can be used to ignore the `--pass` CLI flag if the
+The `no-pass-override` directive can be used to ignore the `--pass` CLI flag if the
 test won't work properly with that override.
 
 

@@ -11,7 +11,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.codegen_stmt_debuginfos(bx, &statement.debuginfos);
         self.set_debug_loc(bx, statement.source_info);
         match statement.kind {
-            mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
+            mir::StatementKind::Assign((ref place, ref rvalue)) => {
                 if let Some(index) = place.as_local() {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => self.codegen_rvalue(bx, cg_dest, rvalue),
@@ -47,8 +47,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.codegen_rvalue(bx, cg_dest, rvalue);
                 }
             }
-            mir::StatementKind::SetDiscriminant { box ref place, variant_index } => {
-                self.codegen_place(bx, place.as_ref()).codegen_set_discr(bx, variant_index);
+            mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
+                self.codegen_place(bx, (**place).as_ref()).codegen_set_discr(bx, variant_index);
             }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
@@ -67,11 +67,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::StatementKind::Coverage(ref kind) => {
                 self.codegen_coverage(bx, kind, statement.source_info.scope);
             }
-            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
+            mir::StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(ref op)) => {
                 let op_val = self.codegen_operand(bx, op);
                 bx.assume(op_val.immediate());
             }
-            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            mir::StatementKind::Intrinsic(NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },
             )) => {
                 let dst_val = self.codegen_operand(bx, dst);

@@ -7,7 +7,7 @@ fn get_bool(c: bool) -> bool {
     c
 }
 
-// EMIT_MIR while_storage.while_loop.PreCodegen.after.mir
+// EMIT_MIR while_storage.while_loop.runtime-optimized.after.mir
 fn while_loop(c: bool) {
     // CHECK-LABEL: fn while_loop(
     // CHECK: bb0: {

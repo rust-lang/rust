@@ -21,7 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(rustc_attrs)]
 #![feature(titlecase)]

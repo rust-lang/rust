@@ -2,7 +2,10 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
   --> $DIR/leaking-vars-in-cause-code-2.rs:19:9
    |
 LL | impl<T, U> Trait<()> for B<T>
-   |         ^ unconstrained type parameter
+   |       --^
+   |       | |
+   |       | unconstrained type parameter
+   |       help: remove the unused type parameter `U`
 
 error[E0277]: the trait bound `(): IncompleteGuidance` is not satisfied
   --> $DIR/leaking-vars-in-cause-code-2.rs:29:19

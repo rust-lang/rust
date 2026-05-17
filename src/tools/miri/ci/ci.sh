@@ -63,10 +63,9 @@ function run_tests {
 
   ## ui test suite
   if [ -n "${GC_STRESS-}" ]; then
-    time MIRIFLAGS="${MIRIFLAGS-} -Zmiri-provenance-gc=1" ./miri test $TARGET_FLAG
-  else
-    time ./miri test $FEATURES $TARGET_FLAG
+    MIRIFLAGS_EXTRA="-Zmiri-provenance-gc=1"
   fi
+  time MIRIFLAGS="${MIRIFLAGS-} ${MIRIFLAGS_EXTRA-}" ./miri test $FEATURES $TARGET_FLAG
 
   ## advanced tests
   if [ -n "${MIR_OPT-}" ]; then
@@ -169,6 +168,7 @@ case $HOST_TARGET in
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-freebsd run_tests
     MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests
+    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
     ;;
   armv7-unknown-linux-gnueabihf)
     # Host
@@ -177,6 +177,7 @@ case $HOST_TARGET in
     TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std
     # Not officially supported tier 2
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
+    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     ;;
   aarch64-apple-darwin)
     # Host
@@ -184,9 +185,6 @@ case $HOST_TARGET in
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
     MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
     ;;
   i686-pc-windows-msvc)
     # Host

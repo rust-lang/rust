@@ -553,9 +553,6 @@ fn test_shutdown() {
         assert_eq!(bytes_read, 0);
     }
 
-    // TODO: Once epoll is available for TCP sockets, ensure that the rdhup and hup readiness
-    // are set.
-
     // Closing should affect previously duplicated handles.
     unsafe {
         let err =
@@ -599,7 +596,6 @@ fn test_shutdown_readable_after_write_close() {
     unsafe {
         // Close the write end.
         libc::shutdown(client_sockfd, libc::SHUT_WR);
-
         // Ensure that we're still readable.
         let mut byte = [0u8];
         errno_result(libc::read(client_sockfd, byte.as_mut_ptr().cast(), 1)).unwrap();
@@ -624,7 +620,6 @@ fn test_shutdown_writable_after_read_close() {
     unsafe {
         // Close the read end.
         libc::shutdown(client_sockfd, libc::SHUT_RD);
-
         // Ensure that we're still writable.
         errno_result(libc::write(client_sockfd, [1u8].as_ptr().cast(), 1)).unwrap();
     }

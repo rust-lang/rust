@@ -1219,7 +1219,7 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(box StaticItem {
+                        ItemKind::Static(StaticItem {
                             ident,
                             ty,
                             safety: _,
@@ -1475,7 +1475,7 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(box ConstItem { ident, ty, rhs_kind, .. }) => {
+                        ItemKind::Const(ConstItem { ident, ty, rhs_kind, .. }) => {
                             let const_span = Some(span.with_hi(ident.span.lo()))
                                 .filter(|span| span.can_be_used_for_suggestions());
                             self.dcx().emit_err(errors::ExternItemCannotBeConst {
@@ -1510,7 +1510,7 @@ impl<'a> Parser<'a> {
         let span = self.psess.source_map().guess_head_span(span);
         let descr = kind.descr();
         let help = match kind {
-            ItemKind::DelegationMac(box DelegationMac {
+            ItemKind::DelegationMac(DelegationMac {
                 suffixes: DelegationSuffixes::Glob(_),
                 ..
             }) => false,

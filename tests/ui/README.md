@@ -109,6 +109,10 @@ Tests focused on associated types. If the associated type is not in a trait defi
 
 See [Associated Types | Reference](https://doc.rust-lang.org/reference/items/associated-items.html#associated-types).
 
+## `tests/ui/assumptions_on_binders`: -Zassumptions-on-binders
+
+Tests focused on the -Zassumptions-on-binders flag.
+
 ## `tests/ui/async-await`: Async/Await
 
 Tests for the async/await related features. E.g. async functions, await expressions, and their interaction with other language features.
@@ -926,6 +930,10 @@ Something is missing which could be added to fix (e.g. suggestions).
 Tests on the module system.
 
 **FIXME**: `tests/ui/imports/` should probably be merged with this.
+
+## `tests/ui/move-expr/`
+
+Tests for `#![feature(move_expr)]`.
 
 ## `tests/ui/moves`
 

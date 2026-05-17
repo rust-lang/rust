@@ -3,8 +3,8 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(box_patterns)]
 #![feature(decl_macro)]
+#![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]

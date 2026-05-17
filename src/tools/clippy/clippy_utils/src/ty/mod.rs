@@ -65,7 +65,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
     }
     match ty.kind() {
         ty::Param(_) => false,
-        ty::Adt(def, subs) => def.all_fields().any(|f| !is_copy(cx, f.ty(cx.tcx, subs))),
+        ty::Adt(def, subs) => def.all_fields().any(|f| !is_copy(cx, f.ty(cx.tcx, subs).skip_norm_wip())),
         _ => true,
     }
 }
@@ -425,7 +425,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
                 ty::Array(ty, _) => needs_ordered_drop_inner(cx, *ty, seen),
                 ty::Adt(adt, subs) => adt
                     .all_fields()
-                    .map(|f| f.ty(cx.tcx, subs))
+                    .map(|f| f.ty(cx.tcx, subs).skip_norm_wip())
                     .any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
                 _ => true,
             }
@@ -524,7 +524,7 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
         // This purposefully ignores enums as they may have a discriminant that can't be uninit.
         ty::Adt(adt, args) if adt.is_struct() => adt
             .all_fields()
-            .all(|field| is_uninit_value_valid_for_ty(cx, field.ty(cx.tcx, args))),
+            .all(|field| is_uninit_value_valid_for_ty(cx, field.ty(cx.tcx, args).skip_norm_wip())),
         // For the rest, conservatively assume that they cannot be uninit.
         _ => false,
     }
@@ -868,7 +868,7 @@ impl AdtVariantInfo {
                     .fields
                     .iter()
                     .enumerate()
-                    .map(|(i, f)| (i, approx_ty_size(cx, f.ty(cx.tcx, subst))))
+                    .map(|(i, f)| (i, approx_ty_size(cx, f.ty(cx.tcx, subst).skip_norm_wip())))
                     .collect::<Vec<_>>();
                 fields_size.sort_by_key(|(_, a_size)| *a_size);
 
@@ -932,7 +932,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
                     .sum::<u64>()
             })
             .sum(),
@@ -942,7 +942,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
                     .sum::<u64>()
             })
             .max()
@@ -953,7 +953,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
                     .max()
                     .unwrap_or_default()
             })
@@ -1193,7 +1193,7 @@ impl<'tcx> InteriorMut<'tcx> {
                     None
                 } else {
                     def.all_fields()
-                        .find_map(|f| self.interior_mut_ty_chain_inner(cx, f.ty(cx.tcx, args), depth))
+                        .find_map(|f| self.interior_mut_ty_chain_inner(cx, f.ty(cx.tcx, args).skip_norm_wip(), depth))
                 }
             },
             ty::Alias(AliasTy {
@@ -1312,7 +1312,7 @@ pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) ->
             .fields
             .iter()
             .find(|f| f.name == name)
-            .map(|f| f.ty(tcx, args)),
+            .map(|f| f.ty(tcx, args).skip_norm_wip()),
         ty::Tuple(args) => name.as_str().parse::<usize>().ok().and_then(|i| args.get(i).copied()),
         _ => None,
     }
@@ -1344,10 +1344,10 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 /// types, or `PhantomData` types containing any of the previous. This can be used to check whether
 /// skipping iterating over an iterator will change its behavior.
 pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>) -> bool {
-    fn normalize_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn normalize_ty<'tcx>(cx: &LateContext<'tcx>, ty: Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx> {
         cx.tcx
-            .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
-            .unwrap_or(ty)
+            .try_normalize_erasing_regions(cx.typing_env(), ty)
+            .unwrap_or(ty.skip_norm_wip())
     }
 
     /// Check if `ty` contains mutable references or equivalent, which includes:

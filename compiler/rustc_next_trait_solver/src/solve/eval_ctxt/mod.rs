@@ -5,13 +5,14 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
 use rustc_type_ir::solve::{
-    AccessedOpaques, FetchEligibleAssocItemResponse, MaybeInfo, NoSolutionOrRerunNonErased,
-    OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition, RerunNonErased, RerunReason,
-    RerunResultExt, SmallCopyList,
+    AccessedOpaques, ExternalRegionConstraints, FetchEligibleAssocItemResponse, MaybeInfo,
+    NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
+    RerunNonErased, RerunReason, RerunResultExt, SmallCopyList,
 };
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
@@ -39,6 +40,7 @@ use crate::solve::{
 };
 
 mod probe;
+mod solver_region_constraints;
 
 /// The kind of goal we're currently proving.
 ///
@@ -823,7 +825,7 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         let Goal { param_env, predicate } = goal;
         let kind = predicate.kind();
-        self.enter_forall(kind, |ecx, kind| {
+        self.enter_forall_with_assumptions(kind, param_env, |ecx, kind| {
             Ok(match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                     ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)?
@@ -1327,12 +1329,27 @@ where
 
     /// `enter_forall`, but takes `&mut self` and passes it back through the
     /// callback since it can't be aliased during the call.
-    pub(super) fn enter_forall<T: TypeFoldable<I>, U>(
+    ///
+    /// The `param_env` is used to *compute* the assumptions of the binder, not *as* the
+    /// assumptions associated with the binder.
+    ///
+    /// FIXME(inherent_associated_types): fix this?
+    pub(super) fn enter_forall_with_assumptions<T: TypeFoldable<I>, U>(
         &mut self,
         value: ty::Binder<I, T>,
+        param_env: I::ParamEnv,
         f: impl FnOnce(&mut Self, T) -> U,
     ) -> U {
-        self.delegate.enter_forall(value, |value| f(self, value))
+        self.delegate.enter_forall(value, |value| {
+            let u = self.delegate.universe();
+            let assumptions = if self.cx().assumptions_on_binders() {
+                self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
+            } else {
+                None
+            };
+            self.delegate.insert_placeholder_assumptions(u, assumptions);
+            f(self, value)
+        })
     }
 
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
@@ -1360,6 +1377,10 @@ where
             self.inspect.add_var_value(arg);
         }
         args
+    }
+
+    pub(super) fn register_solver_region_constraint(&self, c: RegionConstraint<I>) {
+        self.delegate.register_solver_region_constraint(c);
     }
 
     pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
@@ -1553,12 +1574,22 @@ where
             previous call to `try_evaluate_added_goals!`"
         );
 
-        // We only check for leaks from universes which were entered inside
-        // of the query.
-        self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
-            trace!("failed the leak check");
-            NoSolution
-        })?;
+        let goals_certainty = match self.delegate.cx().assumptions_on_binders() {
+            true => {
+                let certainty = self.eagerly_handle_placeholders()?;
+                certainty.and(goals_certainty)
+            }
+            false => {
+                // We only check for leaks from universes which were entered inside
+                // of the query.
+                self.delegate.leak_check(self.max_input_universe).map_err(|NoSolution| {
+                    trace!("failed the leak check");
+                    NoSolution
+                })?;
+
+                goals_certainty
+            }
+        };
 
         let (certainty, normalization_nested_goals) =
             match (self.current_goal_kind, shallow_certainty) {
@@ -1618,9 +1649,9 @@ where
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
-        external_constraints
-            .region_constraints
-            .retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
+        if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
+            r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
+        }
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1672,10 +1703,18 @@ where
         // region constraints from an ambiguous nested goal. This is tested in both
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
-        let region_constraints = if certainty == Certainty::Yes {
-            self.delegate.make_deduplicated_region_constraints()
+        let region_constraints = if self.cx().assumptions_on_binders() {
+            ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
+                self.delegate.get_solver_region_constraint()
+            } else {
+                RegionConstraint::new_true()
+            })
         } else {
-            Default::default()
+            ExternalRegionConstraints::Old(if let Certainty::Yes = certainty {
+                self.delegate.make_deduplicated_region_constraints()
+            } else {
+                vec![]
+            })
         };
 
         // We only return *newly defined* opaque types from canonical queries.

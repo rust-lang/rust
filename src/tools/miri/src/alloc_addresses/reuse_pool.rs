@@ -1,6 +1,6 @@
 //! Manages a pool of addresses that can be reused.
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 use rustc_abi::{Align, Size};
 
 use crate::concurrency::VClock;

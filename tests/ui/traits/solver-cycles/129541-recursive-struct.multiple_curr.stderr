@@ -1,4 +1,4 @@
-error: reached the recursion limit finding the struct tail for `<[Hello] as Normalize>::Assoc`
+error: reached the recursion limit finding the struct tail for `Hello`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
 

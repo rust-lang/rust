@@ -219,7 +219,7 @@ fn run_tests(
         config.program.args.push("-Zmiri-disable-stacked-borrows".into());
     }
 
-    eprintln!("   Compiler: {}", config.program.display());
+    println!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         // Only run one test suite. In the future we can add all test suites to one `Vec` and run
         // them all at once, making best use of systems with high parallelism.
@@ -303,7 +303,7 @@ fn ui(
     tmpdir: &Path,
 ) -> Result<()> {
     let msg = format!("## Running ui tests in {path} for {target}");
-    eprintln!("{}", msg.green().bold());
+    println!("{}", msg.green().bold());
 
     let with_dependencies = match with_dependencies {
         WithDependencies => true,

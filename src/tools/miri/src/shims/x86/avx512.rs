@@ -120,6 +120,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 permute2(this, left, indices, right, dest)?;
             }
+            // Used to implement the _mm512_permutex2var_epi8 intrinsic.
+            "vpermi2var.qi.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+
+                let [left, indices, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                permute2(this, left, indices, right, dest)?;
+            }
             // Used to implement the _mm512_shuffle_epi8 intrinsic.
             "pshuf.b.512" => {
                 let [left, right] =

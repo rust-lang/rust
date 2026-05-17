@@ -1,3 +1,5 @@
+//@ compile-flags: -Z deduplicate-diagnostics=yes
+
 #![feature(fn_delegation)]
 
 trait Trait {
@@ -14,6 +16,7 @@ fn foo(x: i32) -> i32 { x }
 fn bar<T: Default>(_: T) {
     reuse Trait::static_method {
     //~^ ERROR mismatched types
+    //~| ERROR: delegation self type is not specified
         let _ = T::Default();
         //~^ ERROR can't use generic parameters from outer item
     }

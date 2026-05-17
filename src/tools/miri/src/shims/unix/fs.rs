@@ -863,9 +863,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         let path = this.read_path_from_c_str(path_ptr)?;
 
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`chmod`", reject_with)?;
+            return this.set_last_error_and_return_i32(LibcError("EACCES"));
+        }
+
         let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
         if let Err(err) = fs::set_permissions(path, permissions) {
-            return this.set_last_error_and_return_i32(IoError::HostError(err));
+            return this.set_last_error_and_return_i32(err);
         }
 
         interp_ok(Scalar::from_i32(0))
@@ -885,9 +891,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("`fchmod` is only supported on regular files")
         };
 
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`fchmod`", reject_with)?;
+            return this.set_last_error_and_return_i32(LibcError("EACCES"));
+        }
+
         let permissions = this.host_permissions_from_mode(mode.try_into().unwrap())?;
         if let Err(err) = file.file.set_permissions(permissions) {
-            return this.set_last_error_and_return_i32(IoError::HostError(err));
+            return this.set_last_error_and_return_i32(err);
         }
 
         interp_ok(Scalar::from_i32(0))
@@ -1629,7 +1641,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let rng = this.machine.rng.get_mut();
 
             // Generate a random unique suffix.
-            let unique_suffix = SUBSTITUTIONS.choose_multiple(rng, 6).collect::<String>();
+            let unique_suffix =
+                (0..6).map(|_| SUBSTITUTIONS.choose(rng).unwrap()).collect::<String>();
 
             // Replace the template string with the random string.
             template_bytes[start_pos..end_pos].copy_from_slice(unique_suffix.as_bytes());

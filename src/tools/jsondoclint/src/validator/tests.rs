@@ -78,7 +78,7 @@ fn errors_on_local_in_paths_and_not_index() {
                     span: None,
                     visibility: Visibility::Public,
                     docs: None,
-                    links: FxHashMap::from_iter([(("prim@i32".to_owned(), Id(2)))]),
+                    links: FxHashMap::from_iter([("prim@i32".to_owned(), Id(2))]),
                     attrs: Vec::new(),
                     deprecation: None,
                     inner: ItemEnum::Module(Module {

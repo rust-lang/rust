@@ -2459,8 +2459,8 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
-        let level = self.lint_level_at_node(lint, hir_id);
-        emit_lint_base(self.sess, lint, level, Some(span.into()), decorator)
+        let level_spec = self.lint_level_spec_at_node(lint, hir_id);
+        emit_lint_base(self.sess, lint, level_spec, Some(span.into()), decorator)
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2502,8 +2502,8 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
-        let level = self.lint_level_at_node(lint, id);
-        emit_lint_base(self.sess, lint, level, None, decorator);
+        let level_spec = self.lint_level_spec_at_node(lint, id);
+        emit_lint_base(self.sess, lint, level_spec, None, decorator);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
@@ -2650,6 +2650,10 @@ impl<'tcx> TyCtxt<'tcx> {
     #[allow(rustc::bad_opt_access)]
     pub fn use_typing_mode_borrowck(self) -> bool {
         self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
+    }
+
+    pub fn assumptions_on_binders(self) -> bool {
+        self.sess.opts.unstable_opts.assumptions_on_binders
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

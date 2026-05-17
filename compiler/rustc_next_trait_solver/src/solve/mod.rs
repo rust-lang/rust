@@ -91,7 +91,15 @@ where
         goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
-        self.register_ty_outlives(ty, lt);
+
+        if self.cx().assumptions_on_binders() {
+            // FIXME(-Zassumptions-on-binders): we need to normalize `ty`
+            let constraint = self.destructure_type_outlives(ty, lt);
+            self.register_solver_region_constraint(constraint);
+        } else {
+            self.register_ty_outlives(ty, lt);
+        }
+
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -101,7 +109,15 @@ where
         goal: Goal<I, ty::OutlivesPredicate<I, I::Region>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesPredicate(a, b) = goal.predicate;
-        self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
+
+        if self.cx().assumptions_on_binders() {
+            let constraint =
+                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b);
+            self.register_solver_region_constraint(constraint);
+        } else {
+            self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
+        }
+
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 

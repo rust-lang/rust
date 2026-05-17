@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {
             && let ExprKind::Path(QPath::TypeRelative(ty, fn_path)) = path_expr.kind
             && fn_path.ident.name == sym::from_raw_parts
             && args.len() >= 3
-            && eq_expr_value(cx, &args[1], &args[2])
+            && eq_expr_value(cx, expr.span.ctxt(), &args[1], &args[2])
         {
             let middle_ty = cx.typeck_results().node_type(ty.hir_id);
             if middle_ty.is_diag_item(cx, rustc_sym::Vec) {

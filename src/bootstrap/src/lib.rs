@@ -1679,6 +1679,9 @@ impl Build {
 
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
+        if self.config.dry_run() {
+            return "0.0.0 (dry-run)".into();
+        }
         let toml_file_name = self.src.join(format!("src/tools/{package}/Cargo.toml"));
         let toml = t!(fs::read_to_string(toml_file_name));
         for line in toml.lines() {

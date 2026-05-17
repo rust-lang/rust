@@ -49,7 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
 
         for (block, data) in body.basic_blocks.as_mut().iter_enumerated_mut() {
             for (statement_index, st) in data.statements.iter_mut().enumerate() {
-                let StatementKind::Assign(box (
+                let StatementKind::Assign((
                     lhs,
                     Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs), _),
                 )) = &st.kind

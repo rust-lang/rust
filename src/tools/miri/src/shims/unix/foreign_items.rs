@@ -19,8 +19,8 @@ use crate::{shim_sig, *};
 
 pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
     match name {
-        // Used for tests.
-        "isatty" => true,
+        // Used for (std and Miri) tests.
+        "strlen" => true,
         // `signal` is set up as a weak symbol in `init_extern_statics` (on Android) so we might as
         // well allow it in `dlsym`.
         "signal" => true,

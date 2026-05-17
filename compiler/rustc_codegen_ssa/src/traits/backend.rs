@@ -131,6 +131,10 @@ pub trait CodegenBackend {
 
     fn print_statistics(&self) {}
 
+    fn print_statistics_json(&self) -> String {
+        String::new()
+    }
+
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(
         &self,

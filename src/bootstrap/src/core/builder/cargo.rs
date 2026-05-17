@@ -1079,6 +1079,12 @@ impl Builder<'_> {
                         format!("{}={map_to}", self.build.src.display()),
                         // remap OUT_DIR so they don't leak into artifacts.
                         format!("{}={map_to}/out", self.build.out.display()),
+                        // on windows, rustc may use forward slashes internally
+                        #[cfg(windows)]
+                        format!(
+                            "{}={map_to}\\out",
+                            self.build.out.display().to_string().replace('/', "\\")
+                        ),
                     ]
                     .join("\t");
                     cargo.env("RUSTC_DEBUGINFO_MAP", map);
@@ -1101,6 +1107,12 @@ impl Builder<'_> {
                         format!("{}={map_to}", self.build.src.display()),
                         // remap OUT_DIR so they don't leak into artifacts.
                         format!("{}={map_to}/out", self.build.out.display()),
+                        // on windows, rustc may use forward slashes internally
+                        #[cfg(windows)]
+                        format!(
+                            "{}={map_to}\\out",
+                            self.build.out.display().to_string().replace('/', "\\")
+                        ),
                     ]
                     .join("\t");
                     cargo.env("RUSTC_DEBUGINFO_MAP", map);

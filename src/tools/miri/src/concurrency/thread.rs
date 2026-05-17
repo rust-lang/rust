@@ -5,6 +5,7 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 use std::{io, mem};
 
+use rand::RngExt;
 use rand::seq::IteratorRandom;
 use rustc_abi::ExternAbi;
 use rustc_const_eval::CTRL_C_RECEIVED;
@@ -1333,8 +1334,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     #[inline]
     fn maybe_preempt_active_thread(&mut self) {
-        use rand::Rng as _;
-
         let this = self.eval_context_mut();
         if !this.machine.threads.fixed_scheduling
             && this.machine.rng.get_mut().random_bool(this.machine.preemption_rate)
