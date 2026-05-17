@@ -3962,3 +3962,18 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn no_completion_for_autorefd_traits_in_path_mode() {
+    check(
+        r#"
+//- minicore: clone
+trait Test1 {}
+
+fn test<H: Test1>(test: H) {
+    H::$0
+}
+    "#,
+        expect![""],
+    );
+}
