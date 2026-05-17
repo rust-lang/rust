@@ -905,6 +905,99 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdarchGenCheck {
+    host: TargetSelection,
+}
+
+impl Step for StdarchGenCheck {
+    type Output = ();
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("stdarch-gen-check")
+            .path("library/stdarch/crates/stdarch-gen-arm")
+            .path("library/stdarch/crates/stdarch-gen-loongarch")
+            .path("library/stdarch/crates/stdarch-gen-hexagon")
+            .path("library/stdarch/crates/stdarch-gen-hexagon-scalar")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(StdarchGenCheck { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let stdarch_root = builder.src.join("library/stdarch");
+        let bless = builder.config.cmd.bless();
+
+        // The generators shell out to rustfmt to format their output so we need
+        // it discoverable on PATH. Bootstrap downloads one and exposes it here.
+        let rustfmt_path = builder.config.initial_rustfmt.clone().unwrap_or_else(|| {
+            eprintln!(
+                "stdarch-gen-check: a rustfmt binary is required but none was found.\n\
+                 Set `rustfmt = true` in `bootstrap.toml` so bootstrap downloads one."
+            );
+            crate::exit!(1);
+        });
+
+        let mut path_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(cargo_dir) = builder.initial_cargo.parent() {
+            path_dirs.push(cargo_dir.to_path_buf());
+        }
+        if let Some(rustfmt_dir) = rustfmt_path.parent() {
+            path_dirs.push(rustfmt_dir.to_path_buf());
+        }
+        let old_path = env::var_os("PATH").unwrap_or_default();
+        let new_path = env::join_paths(path_dirs.into_iter().chain(env::split_paths(&old_path)))
+            .expect("could not build PATH for stdarch-gen-check");
+
+        // Mirrors `library/stdarch/.github/workflows/main.yml` (check-stdarch-gen job).
+        let invocations: &[(&str, &str, Option<&str>)] = &[
+            ("--bin", "stdarch-gen-arm", Some("crates/stdarch-gen-arm/spec")),
+            ("--bin", "stdarch-gen-loongarch", Some("crates/stdarch-gen-loongarch/lsx.spec")),
+            ("--bin", "stdarch-gen-loongarch", Some("crates/stdarch-gen-loongarch/lasx.spec")),
+            ("-p", "stdarch-gen-hexagon", None),
+            ("-p", "stdarch-gen-hexagon-scalar", None),
+        ];
+
+        for (selector, pkg, spec) in invocations {
+            let mut cmd = command(&builder.initial_cargo);
+            cmd.current_dir(&stdarch_root);
+            cmd.arg("run").arg(selector).arg(pkg).arg("--release");
+            if let Some(spec) = spec {
+                cmd.arg("--").arg(spec);
+            }
+            // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("PATH", &new_path);
+            cmd.run(builder);
+        }
+
+        let mut git = command("git");
+        git.current_dir(&stdarch_root);
+        git.arg("diff").arg("--exit-code").arg("--").arg("crates/core_arch");
+        let clean = git.allow_failure().run(builder);
+
+        if !clean {
+            if bless {
+                builder.info(
+                    "stdarch-gen-check: generated files updated. Review the diff and commit.",
+                );
+            } else {
+                eprintln!(
+                    "stdarch-gen-check: generated files are out of date.\n\
+                     Run `./x test stdarch-gen-check --bless` to update them, then commit."
+                );
+                crate::exit!(1);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
 }

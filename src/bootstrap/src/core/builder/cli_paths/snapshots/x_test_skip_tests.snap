@@ -144,6 +144,13 @@ expression: test --skip=tests
 [Test] test::RustcBook
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/doc/rustc})
+[Test] test::StdarchGenCheck
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::library/stdarch/crates/stdarch-gen-arm})
+    - Set({test::library/stdarch/crates/stdarch-gen-hexagon})
+    - Set({test::library/stdarch/crates/stdarch-gen-hexagon-scalar})
+    - Set({test::library/stdarch/crates/stdarch-gen-loongarch})
+    - Set({test::stdarch-gen-check})
 [Test] test::RustdocTheme
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/tools/rustdoc-themes})
