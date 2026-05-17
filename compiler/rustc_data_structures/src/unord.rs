@@ -35,6 +35,11 @@ pub struct UnordItems<T, I: Iterator<Item = T>>(I);
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     #[inline]
+    pub fn new(iter: I) -> UnordItems<T, I> {
+        UnordItems(iter)
+    }
+
+    #[inline]
     pub fn map<U, F: Fn(T) -> U>(self, f: F) -> UnordItems<U, impl Iterator<Item = U>> {
         UnordItems(self.0.map(f))
     }
@@ -60,6 +65,14 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
         f: F,
     ) -> UnordItems<U, impl Iterator<Item = U>> {
         UnordItems(self.0.filter_map(f))
+    }
+
+    #[inline]
+    pub fn chain(
+        self,
+        other: UnordItems<T, impl Iterator<Item = T>>,
+    ) -> UnordItems<T, impl Iterator<Item = T>> {
+        UnordItems(self.0.chain(other.0))
     }
 
     #[inline]
@@ -102,10 +115,10 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     #[inline]
     pub fn flat_map<U, F, O>(self, f: F) -> UnordItems<O, impl Iterator<Item = O>>
     where
-        U: IntoIterator<Item = O>,
-        F: Fn(T) -> U,
+        U: Iterator<Item = O>,
+        F: Fn(T) -> UnordItems<O, U>,
     {
-        UnordItems(self.0.flat_map(f))
+        UnordItems(self.0.flat_map(move |x| f(x).0))
     }
 
     pub fn collect<C: From<UnordItems<T, I>>>(self) -> C {

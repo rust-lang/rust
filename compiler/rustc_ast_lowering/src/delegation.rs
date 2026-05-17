@@ -122,8 +122,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
 
         // Delegation can be unresolved in illegal places such as function bodies in extern blocks (see #151356)
-        let sig_id = if let Some(delegation_info) =
-            self.resolver.delegation_info(self.local_def_id(item_id))
+        let sig_id = if let Some(delegation_info) = self.resolver.delegation_info(self.owner.def_id)
         {
             self.get_sig_id(delegation_info.resolution_node, span)
         } else {
@@ -143,8 +142,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let (param_count, c_variadic) = self.param_count(sig_id);
 
-                let mut generics =
-                    self.uplift_delegation_generics(delegation, sig_id, item_id, is_method);
+                let mut generics = self.uplift_delegation_generics(delegation, sig_id, is_method);
 
                 let body_id = self.lower_delegation_body(
                     delegation,

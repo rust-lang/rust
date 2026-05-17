@@ -84,7 +84,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (dest, rvalue)) => {
+            StatementKind::Assign((dest, rvalue)) => {
                 let forbid_aliasing = match rvalue {
                     Rvalue::Use(..)
                     | Rvalue::CopyForDeref(..)

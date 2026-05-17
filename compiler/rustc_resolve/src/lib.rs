@@ -22,9 +22,9 @@
 
 use std::cell::Ref;
 use std::collections::BTreeSet;
-use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::{fmt, mem};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -39,14 +39,14 @@ use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
-    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, Expr, ExprKind, GenericArg, GenericArgs,
-    Generics, NodeId, Path, attr,
+    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, DUMMY_NODE_ID, Expr, ExprKind,
+    GenericArg, GenericArgs, Generics, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::{UnordItems, UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -65,8 +65,8 @@ use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, DelegationInfo, MainDefinition, RegisteredTools, ResolverAstLowering, ResolverGlobalCtxt,
-    TyCtxt, TyCtxtFeed, Visibility,
+    self, DelegationInfo, MainDefinition, PerOwnerResolverData, RegisteredTools,
+    ResolverAstLowering, ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
@@ -74,7 +74,7 @@ use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 type Res = def::Res<NodeId>;
 
@@ -188,6 +188,7 @@ struct InvocationParent {
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
     const_arg_context: ConstArgContext,
+    owner: NodeId,
 }
 
 impl InvocationParent {
@@ -196,6 +197,7 @@ impl InvocationParent {
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
         const_arg_context: ConstArgContext::NonDirect,
+        owner: CRATE_NODE_ID,
     };
 }
 
@@ -1499,7 +1501,11 @@ pub struct Resolver<'ra, 'tcx> {
 
     next_node_id: NodeId = CRATE_NODE_ID,
 
-    node_id_to_def_id: NodeMap<LocalDefId>,
+    /// Preserves per owner data once the owner is finished resolving.
+    owners: NodeMap<PerOwnerResolverData>,
+
+    /// An entry of `owners` that gets taken out and reinserted whenever an owner is handled.
+    current_owner: PerOwnerResolverData,
 
     disambiguators: LocalDefIdMap<PerParentDisambiguatorState>,
 
@@ -1530,6 +1536,8 @@ pub struct Resolver<'ra, 'tcx> {
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>> = Vec::new(),
 
     effective_visibilities: EffectiveVisibilities,
+    macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
+
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
     all_macro_rules: UnordSet<Symbol> = Default::default(),
@@ -1639,16 +1647,28 @@ impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for Resolver<'ra, 'tcx> {
 }
 
 impl<'tcx> Resolver<'_, 'tcx> {
-    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.node_id_to_def_id.get(&node).copied()
+    /// Only call this in analyses after the resolver has finished.
+    /// Panics if the node id is currently not in the owner storage,
+    /// e.g. because it's further up in the current visitor stack.
+    fn owner_def_id(&self, owner: NodeId) -> LocalDefId {
+        self.owners[&owner].def_id
     }
 
+    /// Only call this in analyses after the resolver has finished.
+    /// Panics if the node id is currently not in the owner storage,
+    /// e.g. because it's further up in the current visitor stack.
+    fn child_def_id(&self, owner: NodeId, id: NodeId) -> LocalDefId {
+        self.owners[&owner].node_id_to_def_id[&id]
+    }
+
+    /// Get the `DefId` of a child of the current owner
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.current_owner.node_id_to_def_id.get(&node).copied()
+    }
+
+    /// Get the `DefId` of a child of the current owner
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
-    }
-
-    fn local_def_kind(&self, node: NodeId) -> DefKind {
-        self.tcx.def_kind(self.local_def_id(node))
     }
 
     /// Adds a definition with a parent definition.
@@ -1660,14 +1680,17 @@ impl<'tcx> Resolver<'_, 'tcx> {
         def_kind: DefKind,
         expn_id: ExpnId,
         span: Span,
+        is_owner: bool,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         assert!(
-            !self.node_id_to_def_id.contains_key(&node_id),
+            !self.current_owner.node_id_to_def_id.contains_key(&node_id),
             "adding a def for node-id {:?}, name {:?}, data {:?} but a previous def exists: {:?}",
             node_id,
             name,
             def_kind,
-            self.tcx.definitions_untracked().def_key(self.node_id_to_def_id[&node_id]),
+            self.tcx
+                .definitions_untracked()
+                .def_key(self.current_owner.node_id_to_def_id[&node_id]),
         );
 
         let disambiguator = self.disambiguators.get_or_create(parent);
@@ -1689,9 +1712,9 @@ impl<'tcx> Resolver<'_, 'tcx> {
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
         // we don't need a mapping from `NodeId` to `LocalDefId`.
-        if node_id != ast::DUMMY_NODE_ID {
+        if node_id != ast::DUMMY_NODE_ID && !is_owner {
             debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-            self.node_id_to_def_id.insert(node_id, def_id);
+            self.current_owner.node_id_to_def_id.insert(node_id, def_id);
         }
 
         feed
@@ -1736,12 +1759,19 @@ impl<'tcx> Resolver<'_, 'tcx> {
     }
 
     /// This function is very slow, as it iterates over the entire
-    /// [Resolver::node_id_to_def_id] map just to find the [NodeId]
+    /// [PerOwnerResolverData::node_id_to_def_id] map for all [Resolver::owners]
+    /// just to find the [NodeId]
     /// that corresponds to the given [LocalDefId]. Only use this in
-    /// diagnostics code paths.
+    /// diagnostics code paths. Do not use this during macro expansion,
+    /// as it will not find any node ids within your current expansion's stack.
     fn def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
-        self.node_id_to_def_id
+        self.owners
             .items()
+            .flat_map(|(_, data)| {
+                data.node_id_to_def_id
+                    .items()
+                    .chain(UnordItems::new([(&data.id, &data.def_id)].into_iter()))
+            })
             .filter(|(_, v)| **v == def_id)
             .map(|(k, _)| *k)
             .get_only()
@@ -1779,11 +1809,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             arenas,
         );
 
-        let mut node_id_to_def_id = NodeMap::default();
+        let owner_data = PerOwnerResolverData::new(CRATE_NODE_ID, CRATE_DEF_ID);
         let crate_feed = tcx.create_local_crate_def_id(crate_span);
 
         crate_feed.def_kind(DefKind::Mod);
-        node_id_to_def_id.insert(CRATE_NODE_ID, CRATE_DEF_ID);
+        let mut owners = NodeMap::default();
+        owners.insert(CRATE_NODE_ID, owner_data);
 
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
@@ -1846,12 +1877,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             lint_buffer: LintBuffer::default(),
-            node_id_to_def_id,
+            owners,
+            current_owner: PerOwnerResolverData::new(DUMMY_NODE_ID, CRATE_DEF_ID),
             invocation_parents,
             trait_impls: Default::default(),
             confused_type_with_std_module: Default::default(),
             stripped_cfg_items: Default::default(),
             effective_visibilities: Default::default(),
+            macro_reachable_adts: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
@@ -1948,7 +1981,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .stripped_cfg_items
             .into_iter()
             .filter_map(|item| {
-                let parent_scope = self.node_id_to_def_id.get(&item.parent_scope)?.to_def_id();
+                let parent_scope = self.owners.get(&item.parent_scope)?.def_id.to_def_id();
                 Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg })
             })
             .collect();
@@ -1962,6 +1995,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             expn_that_defined,
             visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
+            macro_reachable_adts: self.macro_reachable_adts,
             extern_crate_map,
             module_children: self.module_children,
             ambig_module_children: self.ambig_module_children,
@@ -1983,7 +2017,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
-            node_id_to_def_id: self.node_id_to_def_id,
+            owners: self.owners,
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
@@ -2642,6 +2676,33 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
+}
+
+fn with_owner<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
+    this: &mut R,
+    owner: NodeId,
+    work: impl FnOnce(&mut R) -> T,
+) -> T {
+    let tables = this.as_mut().owners.remove(&owner).unwrap();
+    with_owner_tables(this, owner, tables, work)
+}
+
+#[instrument(level = "debug", skip(this, work))]
+fn with_owner_tables<'ra, 'tcx, R: AsMut<Resolver<'ra, 'tcx>>, T>(
+    this: &mut R,
+    owner: NodeId,
+    tables: PerOwnerResolverData,
+    work: impl FnOnce(&mut R) -> T,
+) -> T {
+    debug_assert!(!this.as_mut().owners.contains_key(&owner));
+    let resolver = this.as_mut();
+    let old_owner = mem::replace(&mut resolver.current_owner, tables);
+    let ret = work(this);
+    let resolver = this.as_mut();
+    let overwritten =
+        resolver.owners.insert(owner, mem::replace(&mut resolver.current_owner, old_owner));
+    assert!(overwritten.is_none());
+    ret
 }
 
 fn build_extern_prelude<'tcx, 'ra>(

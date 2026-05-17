@@ -119,7 +119,7 @@ fn value_assigned_to_local<'a, 'tcx>(
     stmt: &'a mir::Statement<'tcx>,
     local: Local,
 ) -> Option<&'a mir::Rvalue<'tcx>> {
-    if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+    if let mir::StatementKind::Assign((place, rvalue)) = &stmt.kind
         && let Some(l) = place.as_local()
         && local == l
     {

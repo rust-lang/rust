@@ -1,6 +1,6 @@
 // tidy-alphabetical-start
 #![feature(associated_type_defaults)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(exact_size_is_empty)]
 #![feature(file_buffered)]
 #![feature(never_type)]

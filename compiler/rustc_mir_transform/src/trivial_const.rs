@@ -82,7 +82,7 @@ where
         return None;
     }
 
-    let StatementKind::Assign(box (place, rvalue)) = &block.statements[0].kind else {
+    let StatementKind::Assign((place, rvalue)) = &block.statements[0].kind else {
         return None;
     };
 

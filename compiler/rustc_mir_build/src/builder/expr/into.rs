@@ -247,7 +247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::LoopMatch {
                 state,
                 region_scope,
-                match_data: box LoopMatchMatchData { box ref arms, span: match_span, scrutinee },
+                match_data: LoopMatchMatchData { ref arms, span: match_span, scrutinee },
             } => {
                 // Intuitively, this is a combination of a loop containing a labeled block
                 // containing a match.
@@ -347,7 +347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             LintLevel::Inherited,
                             move |this| {
                                 this.in_const_continuable_scope(
-                                    Box::from(arms),
+                                    arms.clone(),
                                     built_tree.clone(),
                                     state_place,
                                     expr_span,
@@ -587,7 +587,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt(box AdtExpr {
+            ExprKind::Adt(AdtExpr {
                 adt_def,
                 variant_index,
                 args,
@@ -698,7 +698,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm(box InlineAsmExpr {
+            ExprKind::InlineAsm(InlineAsmExpr {
                 asm_macro,
                 template,
                 ref operands,

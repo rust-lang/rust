@@ -24,7 +24,10 @@ error[E0207]: the const parameter `X` is not constrained by the impl trait, self
   --> $DIR/next-solver-opaque-inherent-no-ice.rs:6:6
    |
 LL | impl<const X: y> Foo {
-   |      ^^^^^^^^^^ unconstrained const parameter
+   |     -^^^^^^^^^^-
+   |     ||
+   |     |unconstrained const parameter
+   |     help: remove the unused type parameter `X`
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported

@@ -1754,15 +1754,15 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
-            | ty::Error(_)
+            | ty::Error(_) => Ok(tcx.types.unit),
             // Extern types have metadata = ().
-            | ty::Foreign(..)
+            ty::Foreign(..) => Ok(tcx.types.unit),
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
-            | ty::Adt(..)
+            ty::Adt(..) => Ok(tcx.types.unit),
             // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
-            | ty::Tuple(..) => Ok(tcx.types.unit),
+            ty::Tuple(..) => Ok(tcx.types.unit),
 
             ty::Str | ty::Slice(_) => Ok(tcx.types.usize),
 
@@ -1775,7 +1775,7 @@ impl<'tcx> Ty<'tcx> {
             // metadata of `tail`.
             ty::Param(_) | ty::Alias(..) => Err(tail),
 
-            | ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
 
             ty::Infer(ty::TyVar(_))
             | ty::Pat(..)

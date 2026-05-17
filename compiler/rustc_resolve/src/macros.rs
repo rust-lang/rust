@@ -165,7 +165,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn mark_scope_with_compile_error(&mut self, id: NodeId) {
-        if let Some(id) = self.opt_local_def_id(id)
+        if let Some(id) = self.owners.get(&id).map(|i| i.def_id)
             && self.tcx.def_kind(id).is_module_like()
         {
             self.mods_with_parse_errors.insert(id.to_def_id());
@@ -215,7 +215,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
         let parent_module =
-            parent_module_id.map(|module_id| self.local_def_id(module_id).to_def_id());
+            parent_module_id.map(|module_id| self.owner_def_id(module_id).to_def_id());
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -489,7 +489,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
-        self.proc_macros.push(self.local_def_id(id))
+        self.proc_macros.push(self.owner_def_id(id))
     }
 
     fn append_stripped_cfg_item(
@@ -1273,8 +1273,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PathResult::NonModule(..) |
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
-                    self.dcx()
-                        .emit_err(errors::CfgAccessibleUnsure { span });
+                    self.dcx().emit_err(errors::CfgAccessibleUnsure { span });
 
                     // If we get a partially resolved NonModule in one namespace, we should get the
                     // same result in any other namespaces, so we can return early.

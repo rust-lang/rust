@@ -49,6 +49,10 @@ impl Process {
         unsupported()
     }
 
+    pub fn send_process_group_signal(&self, _signal: i32) -> io::Result<()> {
+        unsupported()
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         unsupported()
     }

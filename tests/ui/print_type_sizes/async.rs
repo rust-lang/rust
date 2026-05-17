@@ -4,7 +4,7 @@
 //@ needs-deterministic-layouts
 //@ edition:2021
 //@ build-pass
-//@ ignore-pass
+//@ no-pass-override (codegen affects -Zprint-type-sizes)
 //@ only-x86_64
 
 #![allow(dropping_copy_types)]

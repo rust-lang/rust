@@ -26,18 +26,16 @@ impl<'a> Parser<'a> {
                 | MetaVarKind::Pat(_)
                 | MetaVarKind::Expr { .. }
                 | MetaVarKind::Ty { .. }
-                | MetaVarKind::Literal // `true`, `false`
                 | MetaVarKind::Meta { .. }
                 | MetaVarKind::Path => true,
+                // `true`, `false`
+                MetaVarKind::Literal => true,
 
-                MetaVarKind::Item
-                | MetaVarKind::Block
-                | MetaVarKind::Vis
-                | MetaVarKind::Guard => false,
+                MetaVarKind::Item | MetaVarKind::Block | MetaVarKind::Vis | MetaVarKind::Guard => {
+                    false
+                }
 
-                MetaVarKind::Ident
-                | MetaVarKind::Lifetime
-                | MetaVarKind::TT => unreachable!(),
+                MetaVarKind::Ident | MetaVarKind::Lifetime | MetaVarKind::TT => unreachable!(),
             }
         }
 

@@ -3,7 +3,7 @@
 
 use std::intrinsics::mir::*;
 
-// EMIT_MIR dead_on_invalid_place.invalid_place.PreCodegen.after.mir
+// EMIT_MIR dead_on_invalid_place.invalid_place.runtime-optimized.after.mir
 #[custom_mir(dialect = "runtime")]
 pub fn invalid_place(c: bool) -> bool {
     // CHECK-LABEL: fn invalid_place

@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(trim_prefix_suffix)]
@@ -333,7 +334,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }
@@ -713,7 +714,7 @@ fn print_crate_info(
                 let lint_store = crate::unerased_lint_store(sess);
                 let features = rustc_expand::config::features(sess, attrs, crate_name);
                 let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs, sess);
-                let lint_levels = rustc_lint::LintLevelsBuilder::crate_root(
+                let builder = rustc_lint::LintLevelsBuilder::crate_root(
                     sess,
                     &features,
                     true,
@@ -728,7 +729,7 @@ fn print_crate_info(
                         // lint is unstable and feature gate isn't active, don't print
                         continue;
                     }
-                    let level = lint_levels.lint_level(lint).level;
+                    let level = builder.lint_level_spec(lint).level();
                     println_info!("{}={}", lint.name_lower(), level.as_str());
                 }
             }

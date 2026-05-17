@@ -1,0 +1,22 @@
+// MIR for `eq_ipv4` after runtime-optimized
+
+fn eq_ipv4(_1: &[u8; 4], _2: &[u8; 4]) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    let mut _3: u32;
+    let mut _4: u32;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &[u8; 4]>::eq) {
+        scope 2 (inlined array::equality::<impl PartialEq for [u8; 4]>::eq) {
+            scope 3 (inlined <u8 as array::equality::SpecArrayEq<u8, 4>>::spec_eq) {
+            }
+        }
+    }
+
+    bb0: {
+        _3 = copy (*_1) as u32 (Transmute);
+        _4 = copy (*_2) as u32 (Transmute);
+        _0 = Eq(move _3, move _4);
+        return;
+    }
+}

@@ -75,8 +75,8 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
             prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
         cx.mod_item_in(item)?;
-        let (clean::StrippedItem(box clean::ModuleItem(ref module))
-        | clean::ModuleItem(ref module)) = item.inner.kind
+        let (clean::StrippedItem(clean::ModuleItem(ref module)) | clean::ModuleItem(ref module)) =
+            item.inner.kind
         else {
             unreachable!()
         };

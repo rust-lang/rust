@@ -373,6 +373,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         print!("{stats}");
     }
 
+    fn print_statistics_json(&self) -> String {
+        llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap()
+    }
+
     fn link(
         &self,
         sess: &Session,

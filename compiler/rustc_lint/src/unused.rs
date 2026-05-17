@@ -761,23 +761,39 @@ impl EarlyLintPass for UnusedParens {
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
-            Paren(_)
+            Paren(_) => {}
             // The other cases do not contain sub-patterns.
-            | Missing | Wild | Never | Rest | Expr(..) | MacCall(..) | Range(..) | Ident(.., None)
-            | Path(..) | Err(_) => {},
+            Missing
+            | Wild
+            | Never
+            | Rest
+            | Expr(..)
+            | MacCall(..)
+            | Range(..)
+            | Ident(.., None)
+            | Path(..)
+            | Err(_) => {}
             // These are list-like patterns; parens can always be removed.
-            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
-                self.check_unused_parens_pat(cx, p, false, false, keep_space);
-            },
-            Struct(_, _, fps, _) => for f in fps {
-                self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
-            },
+            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => {
+                for p in ps {
+                    self.check_unused_parens_pat(cx, p, false, false, keep_space);
+                }
+            }
+            Struct(_, _, fps, _) => {
+                for f in fps {
+                    self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
+                }
+            }
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
+            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => {
+                self.check_unused_parens_pat(cx, p, true, false, keep_space)
+            }
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
             // FIXME(pin_ergonomics): check pinned patterns
-            Ref(p, _, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
+            Ref(p, _, m) => {
+                self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space)
+            }
         }
     }
 

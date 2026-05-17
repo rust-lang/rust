@@ -156,8 +156,10 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
             StatementKind::StorageDead(l) => state.kill(*l),
 
             // If a place is assigned to in a statement, it needs storage for that statement.
-            StatementKind::Assign(box (place, _))
-            | StatementKind::SetDiscriminant { box place, .. } => {
+            StatementKind::Assign((place, _)) => {
+                state.gen_(place.local);
+            }
+            StatementKind::SetDiscriminant { place, .. } => {
                 state.gen_(place.local);
             }
 

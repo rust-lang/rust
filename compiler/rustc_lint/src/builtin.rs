@@ -30,7 +30,6 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 use rustc_middle::bug;
-use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -61,7 +60,8 @@ use crate::lints::{
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
     ///
@@ -695,9 +695,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         }
 
         // Avoid listing trait impls if the trait is allowed.
-        let LevelAndSource { level, .. } =
-            cx.tcx.lint_level_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id());
-        if level == Level::Allow {
+        if cx.tcx.lint_level_spec_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id()).is_allow() {
             return;
         }
 
@@ -1510,8 +1508,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
                     ClauseKind::Trait(..) => "trait",
-                    ClauseKind::TypeOutlives(..) |
-                    ClauseKind::RegionOutlives(..) => "lifetime",
+                    ClauseKind::TypeOutlives(..) | ClauseKind::RegionOutlives(..) => "lifetime",
 
                     ClauseKind::UnstableFeature(_)
                     // `ConstArgHasType` is never global as `ct` is always a param

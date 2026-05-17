@@ -199,8 +199,8 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
         multi_handler(PassFailMode::STR_VARIANTS, |config, ln, props| {
             props.update_pass_fail_mode(ln, config);
         }),
-        handler(IGNORE_PASS, |config, ln, props| {
-            config.set_name_directive(ln, IGNORE_PASS, &mut props.ignore_pass);
+        handler("no-pass-override", |config, ln, props| {
+            config.set_name_directive(ln, ln.name, &mut props.no_pass_override);
         }),
         multi_handler(
             &[

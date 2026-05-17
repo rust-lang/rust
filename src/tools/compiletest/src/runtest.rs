@@ -298,9 +298,9 @@ impl<'test> TestCx<'test> {
         let declared = self.props.pass_fail_mode?;
 
         // Specifying `--pass` only overrides `//@ pass-*` modes, and only if
-        // the test doesn't opt out with `//@ ignore-pass`.
+        // the test doesn't opt out with `//@ no-pass-override`.
         if let Some(force_pass_mode) = self.config.force_pass_mode
-            && !self.props.ignore_pass
+            && !self.props.no_pass_override
             && declared.is_pass()
         {
             match force_pass_mode {

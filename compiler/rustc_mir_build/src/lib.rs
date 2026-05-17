@@ -1,7 +1,7 @@
 //! Construction of MIR from HIR.
 
 // tidy-alphabetical-start
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
