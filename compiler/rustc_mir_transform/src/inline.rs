@@ -1072,8 +1072,7 @@ fn make_call_args<'tcx, I: Inliner<'tcx>>(
     //
     // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
     if callsite.fn_sig.abi() == ExternAbi::RustCall && callee_body.spread_arg.is_none() {
-        // FIXME(edition_2024): switch back to a normal method call.
-        let mut args = <_>::into_iter(args);
+        let mut args = args.into_iter();
         let self_ = create_temp_if_necessary(
             inliner,
             args.next().unwrap().node,
