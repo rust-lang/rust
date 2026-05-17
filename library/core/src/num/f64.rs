@@ -1150,7 +1150,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     pub const fn midpoint(self, other: f64) -> f64 {
-        const HI: f64 = f64::MAX / 2.;
+        const HI: f64 = f64::MAX * 0.5;
 
         let (a, b) = (self, other);
         let abs_a = a.abs();
@@ -1158,9 +1158,9 @@ impl f64 {
 
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
-            (a + b) / 2.
+            (a + b) * 0.5
         } else {
-            (a / 2.) + (b / 2.)
+            (a * 0.5) + (b * 0.5)
         }
     }
 
