@@ -263,8 +263,8 @@ fn complete_methods(
                         }
                     }
                 };
-                same_name.insert_entry(func);
                 if do_complete {
+                    same_name.insert_entry(func);
                     (self.f)(func);
                 }
             }
@@ -924,8 +924,28 @@ fn test(a: A) {
 //- /dep.rs crate:dep
 pub struct A {}
 pub struct B {}
+pub struct C {}
+pub struct D {}
+pub struct E {}
+pub struct F {}
 impl core::ops::Deref for A {
     type Target = B;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for B {
+    type Target = C;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for C {
+    type Target = D;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for D {
+    type Target = E;
+    fn deref(&self) -> &Self::Target { loop {} }
+}
+impl core::ops::Deref for E {
+    type Target = F;
     fn deref(&self) -> &Self::Target { loop {} }
 }
 pub trait Foo { fn foo(&self) -> u32 {} }
@@ -933,6 +953,10 @@ impl Foo for A {}
 impl Foo for B {}
 impl A { fn foo(&self) -> u8 {} }
 impl B { pub fn foo(&self) -> u16 {} }
+impl C { fn foo(&self) -> i8 {} }
+impl D { fn foo(&self) -> i16 {} }
+impl E { pub fn foo(&self) -> i32 {} }
+impl F { pub fn foo(&self) -> f32 {} }
 //- /main.rs crate:main deps:dep
 use dep::*;
 fn test(a: A) {
