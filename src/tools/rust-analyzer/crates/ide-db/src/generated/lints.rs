@@ -2458,6 +2458,22 @@ The tracking issue for this feature is: [#111889]
         deny_since: None,
     },
     Lint {
+        label: "abi_swift",
+        description: r##"# `abi_swift`
+
+Allows `extern "Swift" fn()`.
+
+The tracking issue for this feature is: [#156481]
+
+[#156481]: https://github.com/rust-lang/rust/issues/156481
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "abi_unadjusted",
         description: r##"# `abi_unadjusted`
 
@@ -11167,6 +11183,22 @@ The tracking issue for this feature is: [#147456]
         deny_since: None,
     },
     Lint {
+        label: "move_expr",
+        description: r##"# `move_expr`
+
+Allows `move(expr)` in closures.
+
+The tracking issue for this feature is: [#155050]
+
+[#155050]: https://github.com/rust-lang/rust/issues/155050
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "movrs_target_feature",
         description: r##"# `movrs_target_feature`
 
@@ -13459,6 +13491,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#138099]
 
 [#138099]: https://github.com/rust-lang/rust/issues/138099
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "return_address",
+        description: r##"# `return_address`
+
+
+
+The tracking issue for this feature is: [#154966]
+
+[#154966]: https://github.com/rust-lang/rust/issues/154966
 
 ------------------------
 "##,
@@ -16298,6 +16346,22 @@ The tracking issue for this feature is: [#112566]
 The tracking issue for this feature is: [#89517]
 
 [#89517]: https://github.com/rust-lang/rust/issues/89517
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "unix_kill_process_group",
+        description: r##"# `unix_kill_process_group`
+
+
+
+The tracking issue for this feature is: [#156537]
+
+[#156537]: https://github.com/rust-lang/rust/issues/156537
 
 ------------------------
 "##,
