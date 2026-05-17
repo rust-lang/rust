@@ -847,10 +847,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert!(!constant.const_.ty().has_param());
         let (uv, ty) = match constant.const_ {
             mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
-            mir::Const::Ty(_, c) => match c.kind() {
+            mir::Const::Ty(ty, c) => match c.kind() {
                 // A constant that came from a const generic but was then used as an argument to
                 // old-style simd_shuffle (passing as argument instead of as a generic param).
                 ty::ConstKind::Value(cv) => return Ok((cv.valtree, cv.ty)),
+                ty::ConstKind::Unevaluated(uv) => (uv, ty),
                 other => span_bug!(constant.span, "{other:#?}"),
             },
             mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
