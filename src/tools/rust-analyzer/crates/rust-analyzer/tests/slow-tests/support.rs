@@ -372,9 +372,13 @@ impl Server {
                 Message::Request(req) => {
                     if req.method == "client/registerCapability" {
                         let params = req.params.to_string();
-                        if ["workspace/didChangeWatchedFiles", "textDocument/didSave"]
-                            .into_iter()
-                            .any(|it| params.contains(it))
+                        if [
+                            "workspace/diagnostic/refresh",
+                            "workspace/didChangeWatchedFiles",
+                            "textDocument/didSave",
+                        ]
+                        .into_iter()
+                        .any(|it| params.contains(it))
                         {
                             continue;
                         }
