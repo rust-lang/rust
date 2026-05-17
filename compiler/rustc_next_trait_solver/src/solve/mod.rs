@@ -171,7 +171,7 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
-                self.add_goals(GoalSource::Misc, goals);
+                self.add_goals(GoalSource::Misc, goals)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
@@ -381,7 +381,7 @@ where
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, alias_relate_goal);
+            self.add_goal(GoalSource::TypeRelating, alias_relate_goal)?;
             self.try_evaluate_added_goals()?;
             Ok(self.resolve_vars_if_possible(normalized_term))
         } else {

@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `(): Trait<<T as Proj<'static>>::Assoc>`
+error[E0275]: overflow evaluating the requirement `(): Trait<for<'b> fn(<T as Proj<'b>>::Assoc)>`
   --> $DIR/find-param-recursion-issue-152716.rs:16:9
    |
 LL |     (): Trait<<T as Proj<'static>>::Assoc>

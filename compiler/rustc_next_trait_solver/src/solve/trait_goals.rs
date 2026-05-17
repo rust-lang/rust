@@ -106,7 +106,7 @@ where
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
-            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
+            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // We currently elaborate all supertrait outlives obligations from impls.
             // This can be removed when we actually do coinduction correctly, and prove
@@ -117,7 +117,7 @@ where
                     .iter_instantiated(cx, impl_args)
                     .map(Unnormalized::skip_norm_wip)
                     .map(|pred| goal.with(cx, pred)),
-            );
+            )?;
 
             then(ecx, maximal_certainty).map_err(Into::into)
         })
@@ -286,7 +286,7 @@ where
             // `GoalSource::ImplWhereClause` here would be incorrect, as we also
             // impl them, which means we're "stepping out of the impl constructor"
             // again. To handle this, we treat these cycles as ambiguous for now.
-            ecx.add_goals(GoalSource::Misc, nested_obligations);
+            ecx.add_goals(GoalSource::Misc, nested_obligations)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -736,13 +736,13 @@ where
                         tys.iter().map(|elem_ty| {
                             goal.with(cx, ty::TraitRef::new(cx, goal.predicate.def_id(), [elem_ty]))
                         }),
-                    );
+                    )?;
                 }
                 ty::Array(elem_ty, _) => {
                     ecx.add_goal(
                         GoalSource::ImplWhereBound,
                         goal.with(cx, ty::TraitRef::new(cx, goal.predicate.def_id(), [elem_ty])),
-                    );
+                    )?;
                 }
 
                 // All other types implement `BikeshedGuaranteedNoDrop` only if
@@ -783,7 +783,7 @@ where
                                 [ty],
                             ),
                         ),
-                    );
+                    )?;
                 }
 
                 ty::Bound(..)
@@ -865,6 +865,8 @@ where
         }
     }
 
+    // FIXME(field_projections): This function does some questionable incomplete stuff by
+    // returning `Err(NoSolution)` on ambiguity.
     fn consider_builtin_field_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -890,14 +892,14 @@ where
                         param_env: goal.param_env,
                         predicate: TraitRef::new(ecx.cx(), sized_trait, [base]).upcast(ecx.cx()),
                     },
-                );
+                )?;
                 ecx.add_goal(
                     GoalSource::ImplWhereBound,
                     Goal {
                         param_env: goal.param_env,
                         predicate: TraitRef::new(ecx.cx(), sized_trait, [ty]).upcast(ecx.cx()),
                     },
-                );
+                )?;
                 ecx.try_evaluate_added_goals()? == Certainty::Yes
             }
             && match base.kind() {
@@ -1015,7 +1017,7 @@ where
             ecx.add_goals(
                 GoalSource::ImplWhereBound,
                 b_data.iter().map(|pred| goal.with(cx, pred.with_self_ty(cx, a_ty))),
-            );
+            )?;
 
             // The type must be `Sized` to be unsized.
             ecx.add_goal(
@@ -1028,10 +1030,10 @@ where
                         [a_ty],
                     ),
                 ),
-            );
+            )?;
 
             // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesPredicate(a_ty, b_region)));
+            ecx.add_goal(GoalSource::Misc, goal.with(cx, ty::OutlivesPredicate(a_ty, b_region)))?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1151,7 +1153,7 @@ where
             ecx.add_goal(
                 GoalSource::ImplWhereBound,
                 Goal::new(ecx.cx(), param_env, ty::OutlivesPredicate(a_region, b_region)),
-            );
+            )?;
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
         })
@@ -1232,7 +1234,7 @@ where
                     [a_tail_ty, b_tail_ty],
                 ),
             ),
-        );
+        )?;
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
@@ -1372,7 +1374,7 @@ where
                         .collect::<Vec<_>>()
                 },
             );
-            ecx.add_goals(GoalSource::ImplWhereBound, goals);
+            ecx.add_goals(GoalSource::ImplWhereBound, goals)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }

@@ -6,7 +6,7 @@
 
 type const A: () = A;
 //~^ ERROR type mismatch resolving `A normalizes-to _`
-//~| ERROR the constant `A` is not of type `()`
+//~| ERROR type mismatch resolving `A normalizes-to _`
 
 fn main() {
     A;
