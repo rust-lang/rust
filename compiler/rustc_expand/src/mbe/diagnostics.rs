@@ -306,6 +306,20 @@ pub(super) fn emit_frag_parse_err(
     if parser.token.kind == token::Dollar {
         parser.bump();
         if let token::Ident(name, _) = parser.token.kind {
+            // Replace the misleading "expected expression, found `$`" headline
+            // with one that identifies the missing macro parameter. The
+            // branches below add typo/label hints.
+            // FIXME(diagnostics): avoid depending on the error message text.
+            if matches!(&e.messages[0].0, DiagMessage::Str(_)) {
+                let span = e.messages[0].1;
+                e.messages[0] = (
+                    DiagMessage::from(format!(
+                        "cannot find macro parameter `${name}` in this scope",
+                    )),
+                    span,
+                );
+            }
+
             let mut bindings_names = vec![];
             for rule in bindings {
                 let MacroRule::Func { lhs, .. } = rule else { continue };

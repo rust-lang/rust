@@ -1,4 +1,4 @@
-error: expected expression, found `$`
+error: cannot find macro parameter `$nonexistent` in this scope
   --> $DIR/issue-6596-1.rs:3:9
    |
 LL |         $nonexistent

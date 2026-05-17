@@ -1,7 +1,7 @@
 macro_rules! e {
     ($inp:ident) => (
         $nonexistent
-        //~^ ERROR expected expression, found `$`
+        //~^ ERROR cannot find macro parameter `$nonexistent` in this scope
     );
 }
 

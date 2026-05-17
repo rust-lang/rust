@@ -1,4 +1,4 @@
-error: expected expression, found `$`
+error: cannot find macro parameter `$arg` in this scope
   --> $DIR/typo-in-norepeat-expr.rs:4:10
    |
 LL |         [$arg]

@@ -1,4 +1,4 @@
-error: expected expression, found `$`
+error: cannot find macro parameter `$t` in this scope
   --> $DIR/issue-35450.rs:4:8
    |
 LL |     m!($t);

@@ -1,7 +1,7 @@
 //@ run-rustfix
 macro_rules! m {
     (begin $ard:ident end) => {
-        [$ard] //~ ERROR: expected expression, found `$`
+        [$ard] //~ ERROR: cannot find macro parameter `$arg` in this scope
         //~^ HELP: there is a macro metavariable with a similar name
     };
 }
