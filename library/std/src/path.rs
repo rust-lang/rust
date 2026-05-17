@@ -613,7 +613,7 @@ enum FirstComponent {
 /// ```
 ///
 /// [`components`]: Path::components
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -811,7 +811,8 @@ impl<'a> Components<'a> {
     /// that back index is pointing at.
     #[inline]
     fn find_next_separator_front(&mut self) {
-        match self.path[self.front..self.back].iter().position(|b| is_sep_byte(*b)) {
+        let path = &self.path[self.front..self.back];
+        match path.iter().position(|b| is_sep_byte(*b)) {
             None => self.front = self.back,
             Some(i) => self.front += i + 1,
         }
@@ -823,7 +824,6 @@ impl<'a> Components<'a> {
     #[inline]
     fn find_next_separator_back(&mut self) {
         let path = &self.path[self.front..self.back];
-
         match path.iter().rposition(|b| is_sep_byte(*b)) {
             None => self.back = self.front,
             Some(i) => self.back -= path.len() - i,
@@ -846,32 +846,31 @@ impl<'a> Components<'a> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
-        if let Some(first_comp) = self.first_comp {
-            match first_comp {
-                FirstComponent::AbsolutePath => {
-                    if self.back == 0 {
-                        return Path::new("/");
-                    }
+        match self.first_comp {
+            Some(FirstComponent::AbsolutePath) => {
+                // If back index is at 0 (e.g parsing backward
+                // through "/foo") and we have an unconsumed
+                // Root component, Components::as_path needs to
+                // return "/" path
+                if self.back == 0 {
+                    return Path::new("/");
                 }
-                FirstComponent::Prefix => {
-                    // We don't want to trim away separators from a Prefix
-                    // component
-                    if self.front == self.back {
-                        // SAFETY: If the first component is not consumed, then
-                        // front index encodes the whole length of the Prefix
-                        // component
-                        return unsafe { Path::from_u8_slice(&self.path[..self.front]) };
-                    }
-                    // SAFETY: Our back index is guaranteed to delimit at an ascii
-                    // separator byte, so this should present a valid path
-                    return unsafe {
-                        Path::from_u8_slice(&self.path[..self.back]).trim_trailing_sep()
-                    };
-                }
-                FirstComponent::RelativePath => {}
             }
+            Some(FirstComponent::Prefix) => {
+                // We don't want to trim away separators from a Prefix
+                // component
+                if self.front == self.back {
+                    // SAFETY: If the first component is not consumed, then
+                    // front index encodes the whole length of the Prefix
+                    // component
+                    return unsafe { Path::from_u8_slice(&self.path[..self.front]) };
+                }
+                // SAFETY: Our back index is guaranteed to delimit at an ascii
+                // separator byte, so this should present a valid path
+                return unsafe { Path::from_u8_slice(&self.path[..self.back]).trim_trailing_sep() };
+            }
+            _ => {}
         }
-
         // SAFETY: front and back index are delimited by ascii separator bytes,
         // where front is a byte after an ascii separator and back is at an ascii
         // separator, so this will always produce a valid path.
@@ -3306,63 +3305,8 @@ impl Path {
     /// [`CurDir`]: Component::CurDir
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components<'_> {
-        /// Normalizes the trailing portion of given path
-        /// and returns the number of bytes that it occupied
-        #[inline]
-        fn trailing_path_length(path_bytes: &[u8]) -> usize {
-            let path_len = path_bytes.len();
-            // this won't panic because "" does not have
-            // a trailing separator
-            let mut idx = path_len;
-
-            // `Some(false)` is used to denote that
-            // we haven't seen a '.' component *yet*,
-            // `Some(true)` means we have seen a '.' component,
-            // and `None` means that the component is not '.'
-            let mut curr_dir = false;
-            // We rebound to the original index for path components
-            // like '..' or 'abc.'
-            let mut rebound_idx: Option<usize> = None;
-            while idx > 0 {
-                if is_sep_byte(path_bytes[idx - 1]) {
-                    if curr_dir {
-                        rebound_idx = None;
-                        curr_dir = false;
-                    }
-                } else {
-                    if path_bytes[idx - 1] == b'.' {
-                        if !curr_dir {
-                            rebound_idx = Some(idx);
-                            curr_dir = true;
-                        } else {
-                            if let Some(r_idx) = rebound_idx {
-                                curr_dir = false;
-                                idx = r_idx;
-                            }
-                            break;
-                        }
-                    } else {
-                        if let Some(r_idx) = rebound_idx {
-                            curr_dir = false;
-                            idx = r_idx;
-                        }
-                        break;
-                    }
-                }
-                idx -= 1;
-            }
-
-            // If our path is `./a/b/c`, this `.` is not normalized
-            // away because it's treated as its own component
-            if curr_dir {
-                idx += 1;
-            }
-            path_len - idx
-        }
-
         let os_str_path = self.as_os_str();
         let path_bytes = os_str_path.as_encoded_bytes();
-        let trailing_seps = trailing_path_length(path_bytes);
 
         // Windows specific component
         let prefix = parse_prefix(os_str_path);
@@ -3380,11 +3324,15 @@ impl Path {
 
         // If we have a prefix, we encode that index into front
         let front = prefix.map(|prefix| prefix.len()).unwrap_or(0);
-        // Set our back pointer to the last separator byte (without trailing)
-        // or last byte
-        let back = path_bytes.len() - trailing_seps;
+        let back = path_bytes.len();
 
-        Components { path: path_bytes, has_physical_root: has_root, front, back, first_comp }
+        let mut components =
+            Components { path: path_bytes, has_physical_root: has_root, front, back, first_comp };
+
+        // Normalize any trailing separators or cur dir (".") components away
+        components.normalize_back();
+
+        components
     }
 
     /// Produces an iterator over the path's components viewed as [`OsStr`]
