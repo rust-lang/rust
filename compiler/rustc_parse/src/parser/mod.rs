@@ -409,7 +409,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Ok(Recovered::No)
             } else {
-                self.unexpected_try_recover(&exp.tok)
+                Err(self.unexpected_err(&exp.tok))
             }
         } else {
             self.expect_one_of(slice::from_ref(&exp), &[])
