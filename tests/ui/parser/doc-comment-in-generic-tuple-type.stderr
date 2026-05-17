@@ -1,5 +1,5 @@
 error: expected type, found doc comment `/// Docstring`
-  --> $DIR/doc-comment-in-generic-tuple-type.rs:3:9
+  --> $DIR/doc-comment-in-generic-tuple-type.rs:4:9
    |
 LL | struct Foo {
    |        --- while parsing this struct
