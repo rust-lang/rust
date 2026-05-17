@@ -2068,4 +2068,29 @@ fn main() {
         "#,
         );
     }
+
+    #[test]
+    fn foreign_enum_variant() {
+        check_assist(
+            auto_import,
+            r#"
+//- /foo.rs crate:foo
+pub enum ControlFlow {
+    Continue,
+}
+
+//- /main.rs crate:main deps:foo
+fn main() {
+    Continue$0;
+}
+        "#,
+            r#"
+use foo::ControlFlow::Continue;
+
+fn main() {
+    Continue;
+}
+        "#,
+        );
+    }
 }
