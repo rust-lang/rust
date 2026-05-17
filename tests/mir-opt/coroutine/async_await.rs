@@ -8,7 +8,7 @@
 
 #![crate_type = "lib"]
 
-// EMIT_MIR async_await.a-{closure#0}.coroutine_resume.0.mir
+// EMIT_MIR async_await.a-{closure#0}.StateTransform.diff
 async fn a() {
     // CHECK-LABEL: fn a::{closure#0}(
     // CHECK-SAME: _1: Pin<&mut {async fn body of a()}>
@@ -17,7 +17,7 @@ async fn a() {
     // CHECK-NOT: get_context
 }
 
-// EMIT_MIR async_await.b-{closure#0}.coroutine_resume.0.mir
+// EMIT_MIR async_await.b-{closure#0}.StateTransform.diff
 pub async fn b() {
     // CHECK-LABEL: fn b::{closure#0}(
     // CHECK-SAME: _1: Pin<&mut {async fn body of b()}>

@@ -1,4 +1,3 @@
-//@ skip-filecheck
 //! Tests that coroutines that cannot return or unwind don't have unnecessary
 //! panic branches.
 
@@ -15,7 +14,7 @@ impl Drop for HasDrop {
 
 fn callee() {}
 
-// EMIT_MIR coroutine_tiny.main-{closure#0}.coroutine_resume.0.mir
+// EMIT_MIR coroutine_tiny.main-{closure#0}.StateTransform.diff
 fn main() {
     let _gen = #[coroutine]
     |_x: u8| {
@@ -26,3 +25,6 @@ fn main() {
         }
     };
 }
+
+// CHECK-NOT: panic
+// CHECK-NOT: cleanup

@@ -1,0 +1,141 @@
+- // MIR for `main::{closure#0}` before StateTransform
++ // MIR for `main::{closure#0}` after StateTransform
+  
+- fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7}, _2: ()) -> ()
+- yields ()
+-  {
+-     let mut _0: ();
++ fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7}>, _2: ()) -> CoroutineState<(), ()> {
++     coroutine layout {
++         field _s0: Foo;
++         field _s1: Bar;
++         variant_fields = {
++             Unresumed(0): [],
++             Returned (1): [],
++             Panicked (2): [],
++             Suspend0 (3): [_s0, _s1],
++         }
++         storage_conflicts = BitMatrix(2x2) {(_s0, _s0), (_s0, _s1), (_s1, _s0), (_s1, _s1)}
++     }
++     coroutine debug a => _s0;
++     let mut _0: std::ops::CoroutineState<(), ()>;
+      let _3: Foo;
+      let _5: ();
+      let mut _6: ();
+      let _7: ();
+      let mut _8: Foo;
+      let _9: ();
+      let mut _10: Bar;
++     let mut _11: ();
++     let mut _12: u32;
++     let mut _13: &mut {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7};
+      scope 1 {
+-         debug a => _3;
++         debug a => (((*_13) as variant#3).0: Foo);
++         coroutine debug b => _s1;
+          let _4: Bar;
+          scope 2 {
+-             debug b => _4;
++             debug b => (((*_13) as variant#3).1: Bar);
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
+-         _3 = Foo(const 5_i32);
+-         StorageLive(_4);
+-         _4 = Bar(const 6_i32);
+-         StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = ();
+-         _5 = yield(move _6) -> [resume: bb1, drop: bb6];
++         _13 = copy (_1.0: &mut {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7});
++         _12 = discriminant((*_13));
++         switchInt(move _12) -> [0: bb10, 1: bb8, 3: bb7, otherwise: bb9];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_7);
+          StorageLive(_8);
+-         _8 = move _3;
++         _8 = move (((*_13) as variant#3).0: Foo);
+          _7 = take::<Foo>(move _8) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_9);
+          StorageLive(_10);
+-         _10 = move _4;
++         _10 = move (((*_13) as variant#3).1: Bar);
+          _9 = take::<Bar>(move _10) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_10);
+          StorageDead(_9);
+-         _0 = const ();
+-         StorageDead(_4);
++         _11 = const ();
++         nop;
+          goto -> bb4;
+      }
+  
+      bb4: {
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb5, unwind unreachable];
++         nop;
++         goto -> bb6;
+      }
+  
+      bb5: {
++         _0 = CoroutineState::<(), ()>::Complete(move _11);
++         discriminant((*_13)) = 1;
+          return;
+      }
+  
+      bb6: {
+-         StorageDead(_6);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         drop(_3) -> [return: bb7, unwind unreachable];
++         goto -> bb5;
+      }
+  
+      bb7: {
+-         StorageDead(_3);
+-         drop(_1) -> [return: bb8, unwind unreachable];
++         StorageLive(_5);
++         StorageLive(_6);
++         _5 = move _2;
++         goto -> bb1;
+      }
+  
+      bb8: {
+-         coroutine_drop;
++         assert(const false, "coroutine resumed after completion") -> [success: bb8, unwind unreachable];
++     }
++ 
++     bb9: {
++         unreachable;
++     }
++ 
++     bb10: {
++         nop;
++         (((*_13) as variant#3).0: Foo) = Foo(const 5_i32);
++         nop;
++         (((*_13) as variant#3).1: Bar) = Bar(const 6_i32);
++         StorageLive(_5);
++         StorageLive(_6);
++         _6 = ();
++         _0 = CoroutineState::<(), ()>::Yielded(move _6);
++         StorageDead(_5);
++         StorageDead(_6);
++         discriminant((*_13)) = 3;
++         return;
+      }
+  }
+  
