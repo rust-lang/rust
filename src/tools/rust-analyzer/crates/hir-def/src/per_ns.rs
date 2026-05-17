@@ -109,16 +109,16 @@ impl PerNs {
         self.values.map(|it| it.def)
     }
 
-    pub fn take_values_import(self) -> Option<(ModuleDefId, Option<ImportOrGlob>)> {
-        self.values.map(|it| (it.def, it.import))
+    pub fn take_values_full(self) -> Option<ValuesItem> {
+        self.values
     }
 
     pub fn take_macros(self) -> Option<MacroId> {
         self.macros.map(|it| it.def)
     }
 
-    pub fn take_macros_import(self) -> Option<(MacroId, Option<ImportOrExternCrate>)> {
-        self.macros.map(|it| (it.def, it.import))
+    pub fn take_macros_full(self) -> Option<MacrosItem> {
+        self.macros
     }
 
     pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
