@@ -1619,7 +1619,7 @@ pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
 #[rustc_const_unstable(feature = "mem_conjure_zst", issue = "95383")]
 pub const unsafe fn conjure_zst<T>() -> T {
     const_assert!(
-        size_of::<T>() == 0,
+        T::IS_ZST,
         "mem::conjure_zst invoked on a non-zero-sized type",
         "mem::conjure_zst invoked on type {name}, which is not zero-sized",
         name: &str = crate::any::type_name::<T>()
