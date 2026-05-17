@@ -20,14 +20,17 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
 use rustc_middle::bug;
-use rustc_middle::lint::LevelSpec;
+use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode, Unnormalized,
 };
-use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintExpectationId, LintId};
+use rustc_session::lint::{
+    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
+    UnstableLintExpectationId,
+};
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -510,6 +513,8 @@ pub struct EarlyContext<'a> {
 }
 
 pub trait LintContext {
+    type LintExpectationId: Copy + Into<LintExpectationId>;
+
     fn sess(&self) -> &Session;
 
     // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
@@ -538,7 +543,7 @@ pub trait LintContext {
     }
 
     /// This returns the lint level spec for the given lint at the current location.
-    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec;
+    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec<Self::LintExpectationId>;
 
     /// This function can be used to manually fulfill an expectation. This can
     /// be used for lints which contain several spans, and should be suppressed,
@@ -547,7 +552,7 @@ pub trait LintContext {
     /// Note that this function should only be called for [`LintExpectationId`]s
     /// retrieved from the current lint pass. Buffered or manually created ids can
     /// cause ICEs.
-    fn fulfill_expectation(&self, expectation: LintExpectationId) {
+    fn fulfill_expectation(&self, expectation: Self::LintExpectationId) {
         // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
         // and stored between compilation sessions. To not manually do these steps, we simply create
         // a dummy diagnostic and emit it as usual, which will be suppressed and stored like a
@@ -556,7 +561,7 @@ pub trait LintContext {
             .dcx()
             .struct_expect(
                 "this is a dummy diagnostic, to submit and store an expectation",
-                expectation,
+                expectation.into(),
             )
             .emit();
     }
@@ -585,6 +590,8 @@ impl<'a> EarlyContext<'a> {
 }
 
 impl<'tcx> LintContext for LateContext<'tcx> {
+    type LintExpectationId = StableLintExpectationId;
+
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         self.tcx.sess
@@ -604,12 +611,14 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         }
     }
 
-    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec {
+    fn get_lint_level_spec(&self, lint: &'static Lint) -> StableLevelSpec {
         self.tcx.lint_level_spec_at_node(lint, self.last_node_with_lint_attrs)
     }
 }
 
 impl LintContext for EarlyContext<'_> {
+    type LintExpectationId = UnstableLintExpectationId;
+
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         self.builder.sess()
@@ -624,7 +633,7 @@ impl LintContext for EarlyContext<'_> {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
     }
 
-    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec {
+    fn get_lint_level_spec(&self, lint: &'static Lint) -> UnstableLevelSpec {
         self.builder.lint_level_spec(lint)
     }
 }

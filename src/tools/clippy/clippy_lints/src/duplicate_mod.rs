@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Crate, Inline, Item, ItemKind, ModKind};
 use rustc_errors::MultiSpan;
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
-use rustc_middle::lint::LevelSpec;
+use rustc_middle::lint::UnstableLevelSpec;
 use rustc_session::impl_lint_pass;
 use rustc_span::{FileName, Span};
 use std::collections::BTreeMap;
@@ -51,7 +51,7 @@ impl_lint_pass!(DuplicateMod => [DUPLICATE_MOD]);
 struct Modules {
     local_path: PathBuf,
     spans: Vec<Span>,
-    lint_level_specs: Vec<LevelSpec>,
+    lint_level_specs: Vec<UnstableLevelSpec>,
 }
 
 #[derive(Default)]
@@ -96,7 +96,7 @@ impl EarlyLintPass for DuplicateMod {
                 .zip(lint_level_specs)
                 .filter_map(|(span, level_spec)| {
                     if let Some(id) = level_spec.lint_id() {
-                        cx.fulfill_expectation(id);
+                        cx.fulfill_expectation(id.into());
                     }
 
                     (!matches!(level_spec.level(), Level::Allow | Level::Expect)).then_some(*span)

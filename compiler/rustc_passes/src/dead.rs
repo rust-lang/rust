@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
-use rustc_session::lint::{self, Lint, LintExpectationId};
+use rustc_session::lint::{self, Lint, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
@@ -1035,7 +1035,7 @@ fn mark_live_symbols_and_ignored_derived_traits(
 struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
-    level_plus: (lint::Level, Option<LintExpectationId>),
+    level_plus: (lint::Level, Option<StableLintExpectationId>),
 }
 
 struct DeadVisitor<'tcx> {
@@ -1082,7 +1082,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes
     }
 
-    fn def_lint_level_plus(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
+    fn def_lint_level_plus(
+        &self,
+        id: LocalDefId,
+    ) -> (lint::Level, Option<StableLintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
         let level_spec = self.tcx.lint_level_spec_at_node(self.target_lint, hir_id);
         (level_spec.level(), level_spec.lint_id())
@@ -1267,7 +1270,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         // FIXME: `dead_codes` should probably be morally equivalent to
-        // `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
+        // `IndexMap<(Level, StableLintExpectationId), (DefId, Symbol)>`
         dead_codes.sort_by_key(|v| v.level_plus.0);
         for group in dead_codes.chunk_by(|a, b| a.level_plus == b.level_plus) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);

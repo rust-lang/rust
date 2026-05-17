@@ -8,7 +8,8 @@ use rustc_lint_defs::EditionFcw;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_session::Session;
 use rustc_session::lint::{
-    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId, builtin,
+    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId, StableLintExpectationId,
+    UnstableLintExpectationId, builtin,
 };
 use rustc_span::{DUMMY_SP, ExpnKind, Span, Symbol, kw};
 use tracing::instrument;
@@ -55,7 +56,7 @@ impl LintLevelSource {
 
 /// Convenience helper for things that are frequently used together.
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable)]
-pub struct LevelSpec {
+pub struct LevelSpec<Id = LintExpectationId> {
     // This field *must* be private. It must be set in tandem with `lint_id`, only in
     // `LevelSpec::new`, because only certain `level`/`lint_id` combinations are valid. See
     // `LevelSpec::new` for those combinations.
@@ -68,18 +69,17 @@ pub struct LevelSpec {
     level: Level,
 
     // This field *must* be private. See the comment on `level`.
-    lint_id: Option<LintExpectationId>,
+    lint_id: Option<Id>,
 
     pub src: LintLevelSource,
 }
 
-impl LevelSpec {
+pub type UnstableLevelSpec = LevelSpec<UnstableLintExpectationId>;
+pub type StableLevelSpec = LevelSpec<StableLintExpectationId>;
+
+impl<Id: Copy> LevelSpec<Id> {
     // Panics if an invalid `level`/`lint_id` combination is given.
-    pub fn new(
-        level: Level,
-        lint_id: Option<LintExpectationId>,
-        src: LintLevelSource,
-    ) -> LevelSpec {
+    pub fn new(level: Level, lint_id: Option<Id>, src: LintLevelSource) -> LevelSpec<Id> {
         match (level, lint_id) {
             (Level::Allow | Level::Warn | Level::Deny | Level::Forbid, None) => {}
             (Level::Expect, Some(_)) => {}
@@ -101,29 +101,48 @@ impl LevelSpec {
         self.level == Level::Expect
     }
 
-    pub fn lint_id(self) -> Option<LintExpectationId> {
+    pub fn lint_id(self) -> Option<Id> {
         self.lint_id
+    }
+}
+
+impl From<UnstableLevelSpec> for LevelSpec {
+    fn from(level: UnstableLevelSpec) -> LevelSpec {
+        let LevelSpec { level, lint_id, src } = level;
+        let lint_id = lint_id.map(LintExpectationId::Unstable);
+        LevelSpec { level, lint_id, src }
+    }
+}
+
+impl From<StableLevelSpec> for LevelSpec {
+    fn from(level: StableLevelSpec) -> LevelSpec {
+        let LevelSpec { level, lint_id, src } = level;
+        let lint_id = lint_id.map(LintExpectationId::Stable);
+        LevelSpec { level, lint_id, src }
     }
 }
 
 /// Return type for the `shallow_lint_levels_on` query.
 ///
-/// This map represents the set of allowed lints and allowance levels given
-/// by the attributes for *a single HirId*.
+/// This map represents lints levels given by the attributes for *a single HirId*.
 #[derive(Default, Debug, StableHash)]
 pub struct ShallowLintLevelMap {
-    pub expectations: Vec<(LintExpectationId, LintExpectation)>,
-    pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelSpec>>,
+    // All the specs for this HirId. This is accessed frequently, e.g. for every lint emitted.
+    pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, StableLevelSpec>>,
+
+    // Additional information about the `expect` specs for this HirId. This is consulted only once
+    // per compilation session, in `check_expectations`/`lint_expectations`.
+    pub expectations: Vec<(StableLintExpectationId, LintExpectation)>,
 }
 
 /// Verify the effect of special annotations: `warnings` lint level and lint caps.
 ///
 /// The return of this function is suitable for diagnostics.
-pub fn reveal_actual_level_spec(
+pub fn reveal_actual_level_spec<Id: Copy>(
     sess: &Session,
     lint: LintId,
-    probe_for_lint_level_spec: impl Fn(LintId) -> Option<LevelSpec>,
-) -> LevelSpec {
+    probe_for_lint_level_spec: impl Fn(LintId) -> Option<LevelSpec<Id>>,
+) -> LevelSpec<Id> {
     let level_spec = probe_for_lint_level_spec(lint);
 
     // If `level` is none then we actually assume the default level for this lint.
@@ -180,7 +199,7 @@ impl ShallowLintLevelMap {
         tcx: TyCtxt<'_>,
         id: LintId,
         start: HirId,
-    ) -> Option<LevelSpec> {
+    ) -> Option<StableLevelSpec> {
         if let Some(map) = self.specs.get(&start.local_id)
             && let Some(level_spec) = map.get(&id)
         {
@@ -207,7 +226,12 @@ impl ShallowLintLevelMap {
 
     /// Fetch and return the user-visible lint level spec for the given lint at the given HirId.
     #[instrument(level = "trace", skip(self, tcx), ret)]
-    pub fn lint_level_spec_at_node(&self, tcx: TyCtxt<'_>, lint: LintId, cur: HirId) -> LevelSpec {
+    pub fn lint_level_spec_at_node(
+        &self,
+        tcx: TyCtxt<'_>,
+        lint: LintId,
+        cur: HirId,
+    ) -> StableLevelSpec {
         reveal_actual_level_spec(tcx.sess, lint, |lint| {
             self.probe_for_lint_level_spec(tcx, lint, cur)
         })
@@ -216,7 +240,7 @@ impl ShallowLintLevelMap {
 
 impl TyCtxt<'_> {
     /// Fetch and return the user-visible lint level spec for the given lint at the given HirId.
-    pub fn lint_level_spec_at_node(self, lint: &'static Lint, id: HirId) -> LevelSpec {
+    pub fn lint_level_spec_at_node(self, lint: &'static Lint, id: HirId) -> StableLevelSpec {
         self.shallow_lint_levels_on(id.owner).lint_level_spec_at_node(self, LintId::of(lint), id)
     }
 }
@@ -357,7 +381,7 @@ fn explain_lint_level_source(
 pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     sess: &'a Session,
     lint: &'static Lint,
-    level_spec: LevelSpec,
+    level_spec: impl Into<LevelSpec>,
     span: Option<MultiSpan>,
     decorate: D,
 ) {
@@ -551,7 +575,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     emit_lint_base_impl(
         sess,
         lint,
-        level_spec,
+        level_spec.into(),
         span,
         Box::new(move |dcx, level| decorate.into_diag(dcx, level)),
     );
