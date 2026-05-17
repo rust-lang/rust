@@ -1157,11 +1157,38 @@ fn complete_module_colons() {
         r#"mod module {} fn foo() { module:: }"#,
     );
 
+    check_edit(
+        "module",
+        r#"mod module {} fn foo() { $0foo::bar }"#,
+        r#"mod module {} fn foo() { module::foo::bar }"#,
+    );
+
     check_edit_with_config(
         CompletionConfig { add_colons_to_module: false, ..TEST_CONFIG },
         "module",
         r#"mod module {} fn foo() { $0 }"#,
         r#"mod module {} fn foo() { module }"#,
+    );
+}
+
+#[test]
+fn complete_module_exists_colons() {
+    check_edit(
+        "module",
+        r#"mod module {} fn foo() { $0::bar }"#,
+        r#"mod module {} fn foo() { module::bar }"#,
+    );
+
+    check_edit(
+        "module",
+        r#"
+macro_rules! i { ($i:ident) => { $i::bar } }
+mod module {}
+fn foo() { i!($0) }"#,
+        r#"
+macro_rules! i { ($i:ident) => { $i::bar } }
+mod module {}
+fn foo() { i!(module) }"#,
     );
 }
 
