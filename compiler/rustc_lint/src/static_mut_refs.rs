@@ -201,6 +201,10 @@ fn emit_static_mut_refs(
     );
 }
 
+// FIXME: This builds suggestion spans by handcrafting from source text.
+// Replace this with HIR-based handling once we can identify the `mut` token
+// in the static declaration that way.
+// Context: https://github.com/rust-lang/rust/pull/151362/changes#r3210767018
 fn interior_mutability_suggestion(
     cx: &LateContext<'_>,
     def_id: DefId,
