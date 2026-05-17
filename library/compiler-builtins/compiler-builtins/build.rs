@@ -245,15 +245,6 @@ mod c {
             build.flag_if_supported("-fomit-frame-pointer");
             build.define("VISIBILITY_HIDDEN", None);
 
-            // Enable CET Indirect Branch Tracking on x86_64. Emits ENDBR64
-            // at indirect branch targets and adds the IBT ELF property note.
-            // Without this, these objects prevent IBT enforcement in any
-            // binary they are linked into (the linker ANDs the property
-            // across all objects).
-            if cfg.target_arch == "x86_64" {
-                build.flag_if_supported("-fcf-protection=branch");
-            }
-
             if let "aarch64" | "arm64ec" = cfg.target_arch.as_str() {
                 // FIXME(llvm20): Older GCCs on A64 fail to build with
                 // -Werror=implicit-function-declaration due to a compiler-rt bug.
