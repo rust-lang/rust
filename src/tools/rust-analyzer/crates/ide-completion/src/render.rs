@@ -471,7 +471,9 @@ fn render_resolution_path(
                 .insert_snippet(cap, ""); // set is snippet
         }
     }
-    let allow_module_path = matches!(path_ctx.kind, PathKind::Use) || !config.add_colons_to_module;
+    let allow_module_path = matches!(path_ctx.kind, PathKind::Use)
+        || completion.token.next_token().is_some_and(|it| it.kind() == syntax::T![::])
+        || !config.add_colons_to_module;
     if !allow_module_path && matches!(resolution, ScopeDef::ModuleDef(Module(_))) {
         insert_text = format_smolstr!("{insert_text}::");
         item.lookup_by(name.clone()).label(insert_text.clone());
