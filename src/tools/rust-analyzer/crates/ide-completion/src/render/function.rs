@@ -132,10 +132,10 @@ fn render(
             super::path_ref_match(completion, path_ctx, &ret_type, &mut item);
         }
         FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
-            if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone())
+            if let Some(original_expr) = completion.sema.original_range_opt(receiver.syntax())
                 && let Some(ref_mode) = compute_ref_match(completion, &ret_type)
             {
-                item.ref_match(ref_mode, original_expr.syntax().text_range().start());
+                item.ref_match(ref_mode, original_expr.range.start());
             }
         }
         _ => (),
