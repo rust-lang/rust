@@ -478,6 +478,16 @@ pub enum InferenceDiagnostic {
         found: StoredTy,
     },
     SolverDiagnostic(SolverDiagnostic),
+    ExplicitDropMethodUse {
+        #[type_visitable(ignore)]
+        kind: ExplicitDropMethodUseKind,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ExplicitDropMethodUseKind {
+    MethodCall(ExprId),
+    Path(ExprOrPatId),
 }
 
 /// Represents coercing a value to a different type of value.
