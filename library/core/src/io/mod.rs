@@ -15,6 +15,3 @@ pub use self::error::ErrorKind;
 pub use self::error::RawOsError;
 #[unstable(feature = "core_io", issue = "154046")]
 pub use self::util::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::util::{chain, take};

@@ -1184,7 +1184,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        core::io::chain(self, next)
+        Chain { first: self, second: next, done_first: false }
     }
 
     /// Creates an adapter which will read at most `limit` bytes from it.
@@ -1223,7 +1223,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        core::io::take(self, limit)
+        Take { inner: self, len: limit, limit }
     }
 
     /// Read and return a fixed array of bytes from this source.

@@ -132,7 +132,6 @@ pub const fn sink() -> Sink {
 /// [`chain`]: ../../std/io/trait.Read.html#method.chain
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct Chain<T, U> {
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -224,14 +223,6 @@ impl<T, U> Chain<T, U> {
     }
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-#[must_use]
-#[inline]
-pub const fn chain<T, U>(first: T, second: U) -> Chain<T, U> {
-    Chain { first, second, done_first: false }
-}
-
 /// Reader adapter which limits the bytes read from an underlying reader.
 ///
 /// This struct is generally created by calling [`take`] on a reader.
@@ -240,7 +231,6 @@ pub const fn chain<T, U>(first: T, second: U) -> Chain<T, U> {
 /// [`take`]: ../../std/io/trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct Take<T> {
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -404,12 +394,4 @@ impl<T> Take<T> {
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }
-}
-
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-#[must_use]
-#[inline]
-pub const fn take<T>(inner: T, limit: u64) -> Take<T> {
-    Take { inner, limit, len: limit }
 }
