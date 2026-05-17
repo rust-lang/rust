@@ -2037,4 +2037,35 @@ fn baz() {
             "Import `foo::Ext` without `as _`",
         );
     }
+
+    #[test]
+    fn local_enum_variant() {
+        check_assist(
+            auto_import,
+            r#"
+mod foo {
+    pub enum ControlFlow {
+        Continue,
+    }
+}
+
+fn main() {
+    Continue$0;
+}
+        "#,
+            r#"
+use foo::ControlFlow::Continue;
+
+mod foo {
+    pub enum ControlFlow {
+        Continue,
+    }
+}
+
+fn main() {
+    Continue;
+}
+        "#,
+        );
+    }
 }

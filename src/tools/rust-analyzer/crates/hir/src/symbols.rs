@@ -191,7 +191,7 @@ impl<'a> SymbolCollector<'a> {
                     this.with_container_name(Some(enum_name), |this| {
                         let variants = id.enum_variants(this.db);
                         for (variant_name, (variant_id, _)) in &variants.variants {
-                            this.push_decl(*variant_id, variant_name, true, None);
+                            this.push_decl(*variant_id, variant_name, false, None);
                         }
                     });
                 }
