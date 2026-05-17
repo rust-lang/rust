@@ -992,6 +992,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                         InlineAsmOperand::Const { value } => {
                             write!(fmt, "const {value:?}")?;
                         }
+                        InlineAsmOperand::Interpolate { value } => {
+                            write!(fmt, "interpolate {value:?}")?;
+                        }
                         InlineAsmOperand::SymFn { value } => {
                             write!(fmt, "sym_fn {value:?}")?;
                         }

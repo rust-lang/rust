@@ -628,6 +628,10 @@ pub enum InlineAsmOperand<'tcx> {
         value: mir::Const<'tcx>,
         span: Span,
     },
+    Interpolate {
+        value: mir::Const<'tcx>,
+        span: Span,
+    },
     SymFn {
         value: ExprId,
     },

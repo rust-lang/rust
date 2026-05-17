@@ -28,6 +28,9 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
     Const {
         string: String,
     },
+    Interpolate {
+        string: &'tcx str,
+    },
     SymFn {
         instance: Instance<'tcx>,
     },
@@ -42,6 +45,7 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 #[derive(Debug)]
 pub enum GlobalAsmOperandRef<'tcx> {
     Const { string: String },
+    Interpolate { string: &'tcx str },
     SymFn { instance: Instance<'tcx> },
     SymStatic { def_id: DefId },
 }

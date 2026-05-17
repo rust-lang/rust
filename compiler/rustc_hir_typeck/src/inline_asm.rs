@@ -17,7 +17,7 @@ use rustc_target::asm::{
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::FnCtxt;
-use crate::errors::RegisterTypeUnstable;
+use crate::errors::{AsmInterpolateUnstable, RegisterTypeUnstable};
 
 pub(crate) struct InlineAsmCtxt<'a, 'tcx> {
     target_features: &'tcx FxIndexSet<Symbol>,
@@ -556,6 +556,34 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     format!("is {} `{}`", ty.kind().article(), ty),
                                 )
                                 .with_help("`const` operands must be of an integer type")
+                                .emit();
+                        }
+                    }
+                }
+                hir::InlineAsmOperand::Interpolate { anon_const } => {
+                    let ty = self.expr_ty(self.tcx().hir_body(anon_const.body).value);
+                    match ty.kind() {
+                        ty::Error(_) => {}
+                        _ if ty.is_imm_ref_str() => {
+                            if !self.tcx().features().asm_interpolate() {
+                                self.tcx()
+                                    .sess
+                                    .create_feature_err(
+                                        AsmInterpolateUnstable { span: op_sp },
+                                        sym::asm_interpolate,
+                                    )
+                                    .emit();
+                            }
+                        }
+                        _ => {
+                            self.fcx
+                                .dcx()
+                                .struct_span_err(op_sp, "invalid type for `interpolate` operand")
+                                .with_span_label(
+                                    self.tcx().def_span(anon_const.def_id),
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .with_help("`interpolate` operands must be of an `&str` type")
                                 .emit();
                         }
                     }

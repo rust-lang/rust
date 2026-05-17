@@ -219,6 +219,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
                         }
                         InlineAsmOperand::In { .. }
                         | InlineAsmOperand::Const { .. }
+                        | InlineAsmOperand::Interpolate { .. }
                         | InlineAsmOperand::SymFn { .. }
                         | InlineAsmOperand::SymStatic { .. }
                         | InlineAsmOperand::Label { .. } => {}

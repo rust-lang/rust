@@ -111,6 +111,9 @@ fn codegen_global_asm_inner<'tcx>(
                     GlobalAsmOperandRef::Const { ref string } => {
                         global_asm.push_str(string);
                     }
+                    GlobalAsmOperandRef::Interpolate { string } => {
+                        global_asm.push_str(string);
+                    }
                     GlobalAsmOperandRef::SymFn { instance } => {
                         if cfg!(not(feature = "inline_asm_sym")) {
                             tcx.dcx().span_err(

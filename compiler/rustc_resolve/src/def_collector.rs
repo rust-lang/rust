@@ -661,7 +661,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                         self.visit_expr(expr);
                     }
                 }
-                InlineAsmOperand::Const { anon_const } => {
+                InlineAsmOperand::Const { anon_const }
+                | InlineAsmOperand::Interpolate { anon_const } => {
                     let def = self
                         .create_def(
                             anon_const.id,

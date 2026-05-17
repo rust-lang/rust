@@ -307,6 +307,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     constants_len += string.len() + att_dialect as usize;
                 }
 
+                InlineAsmOperandRef::Interpolate { string } => {
+                    constants_len += string.len() + att_dialect as usize;
+                }
+
                 InlineAsmOperandRef::SymFn { instance } => {
                     // FIXME(@Amanieu): Additional mangling is needed on
                     // some targets to add a leading underscore (Mach-O)
@@ -422,6 +426,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // processed in the previous pass
                 }
 
+                InlineAsmOperandRef::Interpolate { .. } => {
+                    // processed in the previous pass
+                }
+
                 InlineAsmOperandRef::Label { .. } => {
                     // processed in the previous pass
                 }
@@ -512,6 +520,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::Const { ref string } => {
+                            template_str.push_str(string);
+                        }
+
+                        InlineAsmOperandRef::Interpolate { string } => {
                             template_str.push_str(string);
                         }
 
@@ -916,6 +928,13 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     match operands[operand_idx] {
                         GlobalAsmOperandRef::Const { ref string } => {
                             // Const operands get injected directly into the
+                            // template. Note that we don't need to escape %
+                            // here unlike normal inline assembly.
+                            template_str.push_str(string);
+                        }
+
+                        GlobalAsmOperandRef::Interpolate { string } => {
+                            // Interpolate operands get injected directly into the
                             // template. Note that we don't need to escape %
                             // here unlike normal inline assembly.
                             template_str.push_str(string);

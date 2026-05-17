@@ -13,10 +13,10 @@ use super::LoweringContext;
 use super::errors::{
     AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
     InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
-    InvalidAsmTemplateModifierLabel, InvalidAsmTemplateModifierRegClass,
-    InvalidAsmTemplateModifierRegClassSub, InvalidAsmTemplateModifierSym, InvalidRegister,
-    InvalidRegisterClass, RegisterClassOnlyClobber, RegisterClassOnlyClobberStable,
-    RegisterConflict,
+    InvalidAsmTemplateModifierInterpolate, InvalidAsmTemplateModifierLabel,
+    InvalidAsmTemplateModifierRegClass, InvalidAsmTemplateModifierRegClassSub,
+    InvalidAsmTemplateModifierSym, InvalidRegister, InvalidRegisterClass, RegisterClassOnlyClobber,
+    RegisterClassOnlyClobberStable, RegisterConflict,
 };
 use crate::{AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode};
 
@@ -199,6 +199,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     InlineAsmOperand::Const { anon_const } => hir::InlineAsmOperand::Const {
                         anon_const: self.lower_const_block(anon_const),
                     },
+                    InlineAsmOperand::Interpolate { anon_const } => {
+                        hir::InlineAsmOperand::Interpolate {
+                            anon_const: self.lower_const_block(anon_const),
+                        }
+                    }
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
                             .get_partial_res(sym.id)
@@ -285,6 +290,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             op_span: op_sp,
                         });
                     }
+                    hir::InlineAsmOperand::Interpolate { .. } => {
+                        self.dcx().emit_err(InvalidAsmTemplateModifierInterpolate {
+                            placeholder_span,
+                            op_span: op_sp,
+                        });
+                    }
                     hir::InlineAsmOperand::SymFn { .. }
                     | hir::InlineAsmOperand::SymStatic { .. } => {
                         self.dcx().emit_err(InvalidAsmTemplateModifierSym {
@@ -354,6 +365,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         | hir::InlineAsmOperand::SplitInOut { .. } => (true, true),
 
                         hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::Interpolate { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
                         | hir::InlineAsmOperand::SymStatic { .. }
                         | hir::InlineAsmOperand::Label { .. } => {

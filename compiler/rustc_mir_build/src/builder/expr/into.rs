@@ -754,6 +754,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }),
                             }
                         }
+                        thir::InlineAsmOperand::Interpolate { value, span } => {
+                            mir::InlineAsmOperand::Interpolate {
+                                value: Box::new(ConstOperand {
+                                    span,
+                                    user_ty: None,
+                                    const_: value,
+                                }),
+                            }
+                        }
                         thir::InlineAsmOperand::SymFn { value } => mir::InlineAsmOperand::SymFn {
                             value: Box::new(this.as_constant(&this.thir[value])),
                         },

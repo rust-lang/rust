@@ -3715,7 +3715,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
-                hir::InlineAsmOperand::Const { ref anon_const } => {
+                hir::InlineAsmOperand::Const { ref anon_const }
+                | hir::InlineAsmOperand::Interpolate { ref anon_const } => {
                     self.check_expr_const_block(anon_const, Expectation::NoExpectation);
                 }
                 hir::InlineAsmOperand::SymFn { expr } => {

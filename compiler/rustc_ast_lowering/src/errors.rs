@@ -259,6 +259,16 @@ pub(crate) struct InvalidAsmTemplateModifierConst {
 }
 
 #[derive(Diagnostic)]
+#[diag("asm template modifiers are not allowed for `interpolate` arguments")]
+pub(crate) struct InvalidAsmTemplateModifierInterpolate {
+    #[primary_span]
+    #[label("template modifier")]
+    pub placeholder_span: Span,
+    #[label("argument")]
+    pub op_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("asm template modifiers are not allowed for `sym` arguments")]
 pub(crate) struct InvalidAsmTemplateModifierSym {
     #[primary_span]

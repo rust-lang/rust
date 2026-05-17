@@ -1087,6 +1087,9 @@ pub enum InlineAsmOperand<'tcx> {
     Const {
         value: Box<ConstOperand<'tcx>>,
     },
+    Interpolate {
+        value: Box<ConstOperand<'tcx>>,
+    },
     SymFn {
         value: Box<ConstOperand<'tcx>>,
     },

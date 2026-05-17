@@ -71,6 +71,7 @@ fn has_in_operand_pointer(cx: &LateContext<'_>, asm_op: &InlineAsmOperand<'_>) -
         InlineAsmOperand::SymStatic { .. }
         | InlineAsmOperand::Out { .. }
         | InlineAsmOperand::Const { .. }
+        | InlineAsmOperand::Interpolate { .. }
         | InlineAsmOperand::SymFn { .. }
         | InlineAsmOperand::Label { .. } => return false,
         InlineAsmOperand::SplitInOut { in_expr, .. } => in_expr,

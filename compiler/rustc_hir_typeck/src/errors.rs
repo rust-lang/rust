@@ -19,6 +19,13 @@ use rustc_span::{Ident, Span, Spanned, Symbol};
 use crate::FnCtxt;
 
 #[derive(Diagnostic)]
+#[diag("using the ASM `interpolate` operator is experimental")]
+pub(crate) struct AsmInterpolateUnstable {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("base expression required after `..`", code = E0797)]
 pub(crate) struct BaseExpressionDoubleDot {
     #[primary_span]

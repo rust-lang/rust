@@ -3972,6 +3972,9 @@ pub enum InlineAsmOperand<'hir> {
     Const {
         anon_const: ConstBlock,
     },
+    Interpolate {
+        anon_const: ConstBlock,
+    },
     SymFn {
         expr: &'hir Expr<'hir>,
     },
@@ -3992,6 +3995,7 @@ impl<'hir> InlineAsmOperand<'hir> {
             | Self::InOut { reg, .. }
             | Self::SplitInOut { reg, .. } => Some(reg),
             Self::Const { .. }
+            | Self::Interpolate { .. }
             | Self::SymFn { .. }
             | Self::SymStatic { .. }
             | Self::Label { .. } => None,

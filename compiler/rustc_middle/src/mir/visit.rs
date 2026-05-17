@@ -646,6 +646,7 @@ macro_rules! make_mir_visitor {
                                     }
                                 }
                                 InlineAsmOperand::Const { value }
+                                | InlineAsmOperand::Interpolate { value }
                                 | InlineAsmOperand::SymFn { value } => {
                                     self.visit_const_operand(value, location);
                                 }

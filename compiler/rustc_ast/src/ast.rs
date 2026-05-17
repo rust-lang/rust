@@ -2841,6 +2841,9 @@ pub enum InlineAsmOperand {
     Const {
         anon_const: AnonConst,
     },
+    Interpolate {
+        anon_const: AnonConst,
+    },
     Sym {
         sym: InlineAsmSym,
     },
@@ -2856,7 +2859,10 @@ impl InlineAsmOperand {
             | Self::Out { reg, .. }
             | Self::InOut { reg, .. }
             | Self::SplitInOut { reg, .. } => Some(reg),
-            Self::Const { .. } | Self::Sym { .. } | Self::Label { .. } => None,
+            Self::Const { .. }
+            | Self::Interpolate { .. }
+            | Self::Sym { .. }
+            | Self::Label { .. } => None,
         }
     }
 }

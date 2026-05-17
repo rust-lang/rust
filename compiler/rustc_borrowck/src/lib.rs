@@ -965,6 +965,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                             }
                         }
                         InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::Interpolate { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ }
                         | InlineAsmOperand::Label { target_index: _ } => {}

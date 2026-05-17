@@ -1665,6 +1665,7 @@ impl<'a> State<'a> {
                     matches!(reg, InlineAsmRegOrRegClass::Reg(_))
                 }
                 InlineAsmOperand::Const { .. }
+                | InlineAsmOperand::Interpolate { .. }
                 | InlineAsmOperand::Sym { .. }
                 | InlineAsmOperand::Label { .. } => false,
             }
@@ -1802,6 +1803,11 @@ impl<'a> State<'a> {
                     }
                     InlineAsmOperand::Const { anon_const } => {
                         s.word("const");
+                        s.space();
+                        s.print_expr(&anon_const.value, FixupContext::default());
+                    }
+                    InlineAsmOperand::Interpolate { anon_const } => {
+                        s.word("interpolate");
                         s.space();
                         s.print_expr(&anon_const.value, FixupContext::default());
                     }

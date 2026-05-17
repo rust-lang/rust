@@ -413,9 +413,10 @@ fn never_loop_expr<'tcx>(
                 local_labels,
                 main_loop_id,
             ),
-            InlineAsmOperand::Const { .. } | InlineAsmOperand::SymFn { .. } | InlineAsmOperand::SymStatic { .. } => {
-                NeverLoopResult::Normal
-            },
+            InlineAsmOperand::Const { .. }
+            | InlineAsmOperand::Interpolate { .. }
+            | InlineAsmOperand::SymFn { .. }
+            | InlineAsmOperand::SymStatic { .. } => NeverLoopResult::Normal,
             InlineAsmOperand::Label { block } =>
             // We do not know whether the label will be executed or not, so `Diverging` must be
             // downgraded to `Normal`.

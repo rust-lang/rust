@@ -494,6 +494,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         }
                         hir::InlineAsmOperand::Out { expr: None, .. }
                         | hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::Interpolate { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {}
                         hir::InlineAsmOperand::Label { block } => {

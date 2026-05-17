@@ -1,7 +1,9 @@
 #![allow(non_camel_case_types)]
 
+use rustc_abi::{BackendRepr, Primitive, Scalar, Size};
 use rustc_hir::LangItem;
 use rustc_hir::attrs::PeImportNameType;
+use rustc_middle::mir::interpret::{self, alloc_range};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
@@ -168,6 +170,63 @@ pub fn asm_const_to_str<'tcx>(
         },
         _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
     }
+}
+
+pub fn asm_interpolate_to_str<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sp: Span,
+    const_value: mir::ConstValue,
+    ty_and_layout: TyAndLayout<'tcx>,
+) -> &'tcx str {
+    let (alloc_id, range) = match const_value {
+        mir::ConstValue::Slice { alloc_id, meta } => {
+            (alloc_id, alloc_range(Size::ZERO, Size::from_bytes(meta)))
+        }
+        mir::ConstValue::Indirect { alloc_id, offset } => {
+            let alloc = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+
+            let BackendRepr::ScalarPair(
+                a @ Scalar::Initialized { value: Primitive::Pointer(_), .. },
+                b @ Scalar::Initialized { value: Primitive::Int(..), .. },
+            ) = ty_and_layout.backend_repr
+            else {
+                span_bug!(
+                    sp,
+                    "expected slice ABI in Indirect for promoted asm interpolate, but got {:#?}",
+                    ty_and_layout.backend_repr
+                )
+            };
+
+            let (a_size, b_size) = (a.size(&tcx), b.size(&tcx));
+            let b_offset = (offset + a_size).align_to(b.align(&tcx).abi);
+
+            let ptr = alloc.read_scalar(&tcx, alloc_range(offset, a_size), true);
+            let size = alloc.read_scalar(&tcx, alloc_range(b_offset, b_size), false);
+            let Ok(interpret::Scalar::Ptr(ptr, _)) = ptr else {
+                span_bug!(
+                    sp,
+                    "expected Ptr in ScalarPair for promoted asm interpolate, but got {ptr:#?}",
+                )
+            };
+            let Ok(interpret::Scalar::Int(size)) = size else {
+                span_bug!(
+                    sp,
+                    "expected Int in ScalarPair for promoted asm interpolate, but got {size:#?}",
+                )
+            };
+
+            (ptr.provenance.alloc_id(), alloc_range(Size::ZERO, Size::from_bytes(size)))
+        }
+        _ => span_bug!(
+            sp,
+            "expected Slice or Indirect for promoted asm interpolate, but got {:#?}",
+            const_value
+        ),
+    };
+
+    let alloc = tcx.global_alloc(alloc_id).unwrap_memory().inner();
+    let bytes = alloc.get_bytes_strip_provenance(&tcx, range).unwrap();
+    unsafe { str::from_utf8_unchecked(bytes) }
 }
 
 pub fn is_mingw_gnu_toolchain(target: &Target) -> bool {
