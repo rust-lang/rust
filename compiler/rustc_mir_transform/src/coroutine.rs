@@ -1173,40 +1173,8 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     }
 
     // Unwinds can only start at certain terminators.
-    for block in body.basic_blocks.iter() {
-        match block.terminator().kind {
-            // These never unwind.
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {}
-
-            // Resume will *continue* unwinding, but if there's no other unwinding terminator it
-            // will never be reached.
-            TerminatorKind::UnwindResume => {}
-
-            TerminatorKind::Yield { .. } => {
-                unreachable!("`can_unwind` called before coroutine transform")
-            }
-
-            // These may unwind.
-            TerminatorKind::Drop { .. }
-            | TerminatorKind::Call { .. }
-            | TerminatorKind::InlineAsm { .. }
-            | TerminatorKind::Assert { .. } => return true,
-
-            TerminatorKind::TailCall { .. } => {
-                unreachable!("tail calls can't be present in generators")
-            }
-        }
-    }
-
+    body.basic_blocks.iter().any(|block| block.terminator().unwind().is_some())
     // If we didn't find an unwinding terminator, the function cannot unwind.
-    false
 }
 
 // Poison the coroutine when it unwinds
