@@ -6,6 +6,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, Integer,
     NumScalableVectors, Primitive, Size, WrappingRange,
 };
+use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
@@ -1047,6 +1048,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
     }
+
+    fn retag_reg(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) -> Self::Value {
+        codegen_retag_inner(self, "__rust_retag_reg", ptr, info)
+    }
+
+    fn retag_mem(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) {
+        codegen_retag_inner(self, "__rust_retag_mem", ptr, info);
+    }
 }
 
 fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
@@ -1761,6 +1770,24 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
+}
+
+fn codegen_retag_inner<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    name: &'static str,
+    ptr: &'ll Value,
+    info: &RetagInfo<&'ll Value>,
+) -> &'ll Value {
+    let size = bx.const_usize(info.size.bytes());
+    let perms = bx.const_u8(info.flags.bits());
+
+    bx.call_intrinsic(
+        name,
+        // Retag intrinsics have special handling within `CodegenCx::declare_intrinsic`
+        // to ensure that each form has the correct return type.
+        &[bx.type_ptr(), bx.val_ty(size), bx.type_i8(), bx.type_ptr(), bx.type_ptr()],
+        &[ptr, size, perms, info.im_layout, info.pin_layout],
+    )
 }
 
 fn codegen_autodiff<'ll, 'tcx>(
