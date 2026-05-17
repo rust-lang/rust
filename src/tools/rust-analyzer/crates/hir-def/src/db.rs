@@ -75,6 +75,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(in_file, it),
             MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(in_file, it),
             MacroExpander::BuiltInEager(it) => MacroDefKind::BuiltInEager(in_file, it),
+            MacroExpander::UnimplementedBuiltIn => MacroDefKind::UnimplementedBuiltIn(in_file),
         }
     };
 

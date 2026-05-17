@@ -442,6 +442,7 @@ pub enum MacroExpander {
     BuiltInAttr(BuiltinAttrExpander),
     BuiltInDerive(BuiltinDeriveExpander),
     BuiltInEager(EagerExpander),
+    UnimplementedBuiltIn,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

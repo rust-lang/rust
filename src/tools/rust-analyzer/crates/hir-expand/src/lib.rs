@@ -249,6 +249,7 @@ pub enum MacroDefKind {
     BuiltInAttr(AstId<ast::Macro>, BuiltinAttrExpander),
     BuiltInDerive(AstId<ast::Macro>, BuiltinDeriveExpander),
     BuiltInEager(AstId<ast::Macro>, EagerExpander),
+    UnimplementedBuiltIn(AstId<ast::Macro>),
     ProcMacro(AstId<ast::Fn>, CustomProcMacroExpander, ProcMacroKind),
 }
 
@@ -265,7 +266,8 @@ impl MacroDefKind {
             | MacroDefKind::BuiltInAttr(id, _)
             | MacroDefKind::BuiltInDerive(id, _)
             | MacroDefKind::BuiltInEager(id, _)
-            | MacroDefKind::Declarative(id, ..) => id.erase(),
+            | MacroDefKind::Declarative(id, ..)
+            | MacroDefKind::UnimplementedBuiltIn(id) => id.erase(),
         }
     }
 }
@@ -500,6 +502,7 @@ impl MacroCallId {
             MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr) => MacroKind::Attr,
             MacroDefKind::ProcMacro(_, _, ProcMacroKind::Bang) => MacroKind::ProcMacro,
             MacroDefKind::BuiltInAttr(..) => MacroKind::AttrBuiltIn,
+            MacroDefKind::UnimplementedBuiltIn(..) => MacroKind::Declarative,
         }
     }
 
@@ -551,7 +554,8 @@ impl MacroDefId {
             | MacroDefKind::BuiltIn(id, _)
             | MacroDefKind::BuiltInAttr(id, _)
             | MacroDefKind::BuiltInDerive(id, _)
-            | MacroDefKind::BuiltInEager(id, _) => {
+            | MacroDefKind::BuiltInEager(id, _)
+            | MacroDefKind::UnimplementedBuiltIn(id) => {
                 id.with_value(db.ast_id_map(id.file_id).get(id.value).text_range())
             }
             MacroDefKind::ProcMacro(id, _, _) => {
@@ -567,7 +571,8 @@ impl MacroDefId {
             | MacroDefKind::BuiltIn(id, _)
             | MacroDefKind::BuiltInAttr(id, _)
             | MacroDefKind::BuiltInDerive(id, _)
-            | MacroDefKind::BuiltInEager(id, _) => Either::Left(id),
+            | MacroDefKind::BuiltInEager(id, _)
+            | MacroDefKind::UnimplementedBuiltIn(id) => Either::Left(id),
         }
     }
 
@@ -577,9 +582,9 @@ impl MacroDefId {
 
     pub fn is_attribute(&self) -> bool {
         match self.kind {
-            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr) => {
-                true
-            }
+            MacroDefKind::BuiltInAttr(..)
+            | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr)
+            | MacroDefKind::UnimplementedBuiltIn(_) => true,
             MacroDefKind::Declarative(_, styles) => styles.contains(MacroCallStyles::ATTR),
             _ => false,
         }
@@ -588,7 +593,8 @@ impl MacroDefId {
     pub fn is_derive(&self) -> bool {
         match self.kind {
             MacroDefKind::BuiltInDerive(..)
-            | MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive) => true,
+            | MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive)
+            | MacroDefKind::UnimplementedBuiltIn(_) => true,
             MacroDefKind::Declarative(_, styles) => styles.contains(MacroCallStyles::DERIVE),
             _ => false,
         }
@@ -601,6 +607,7 @@ impl MacroDefId {
                 | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Bang)
                 | MacroDefKind::BuiltInEager(..)
                 | MacroDefKind::Declarative(..)
+                | MacroDefKind::UnimplementedBuiltIn(_)
         )
     }
 
