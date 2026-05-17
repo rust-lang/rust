@@ -700,14 +700,14 @@ impl<'a> Components<'a> {
             Some(FirstComponent::AbsolutePath) => {
                 self.first_comp = None;
                 if dir_front {
-                    self.advance_through_trailing_sep_front();
+                    self.normalize_front();
                 }
                 return Some(Component::RootDir);
             }
             Some(FirstComponent::Prefix) => {
                 self.first_comp = None;
                 if dir_front {
-                    self.advance_through_trailing_sep_front();
+                    self.normalize_front();
                 }
 
                 // SAFETY: Our front has the length of our Prefix component encoded at the start,
@@ -735,107 +735,74 @@ impl<'a> Components<'a> {
     /// Normalizes away trailing separators and current directory ('.') components
     /// in the forward direction.
     #[inline]
-    fn advance_through_trailing_sep_front(&mut self) {
-        // `Some(false)` is used to denote that
-        // we haven't seen a '.' component *yet*,
-        // `Some(true)` means we have seen a '.' component,
-        // and `None` means that the component is not '.'
-        let mut curr_dir = Some(false);
-        // We rebound to the original index for path components
-        // like '..' or 'abc.'
-        let mut rebound_ind: Option<usize> = None;
-        loop {
-            if self.front == self.back {
-                if let Some(front_ind) = rebound_ind {
-                    self.front = front_ind;
-                }
-                break;
-            }
-
-            if is_sep_byte(self.path[self.front]) {
-                if let Some(curr_dir_present) = curr_dir
-                    && curr_dir_present
-                {
-                    curr_dir = Some(false);
-                    rebound_ind = None;
+    fn normalize_front(&mut self) {
+        let path = &self.path[self.front..self.back];
+        // ".a", ".." needs to rebound back to index
+        // before the "." character
+        let mut cur_dir_present = false;
+        match path.iter().position(|b| {
+            if !is_sep_byte(*b) {
+                if *b == b'.' && !cur_dir_present {
+                    cur_dir_present = true;
+                    false
+                } else {
+                    true
                 }
             } else {
-                if self.path[self.front] == b'.' {
-                    if let Some(curr_dir_present) = curr_dir {
-                        if !curr_dir_present {
-                            curr_dir = Some(true);
-                            rebound_ind = Some(self.front);
-                        } else {
-                            curr_dir = None;
-                        }
-                    } else {
-                        if let Some(front_ind) = rebound_ind {
-                            self.front = front_ind;
-                        }
-                        break;
-                    }
+                cur_dir_present = false;
+                false
+            }
+        }) {
+            None => self.front = self.back,
+            Some(i) => {
+                if cur_dir_present {
+                    self.front += i - 1;
                 } else {
-                    if let Some(front_ind) = rebound_ind {
-                        self.front = front_ind;
-                    }
-                    break;
+                    self.front += i;
                 }
             }
-
-            self.front += 1;
         }
     }
 
     /// Normalizes away trailing separators and current directory ('.') components
     /// in the backward direction.
     #[inline]
-    fn advance_through_trailing_sep_back(&mut self) {
-        // `Some(false)` is used to denote that
-        // we haven't seen a '.' component *yet*,
-        // `Some(true)` means we have seen a '.' component,
-        // and `None` means that the component is not '.'
-        let mut curr_dir = Some(false);
-        // We rebound to the original index for path components
-        // like '..' or 'abc.'
-        let mut rebound_ind: Option<usize> = None;
-        loop {
-            if self.back == self.front {
-                if let Some(back_ind) = rebound_ind {
-                    self.back = back_ind;
-                }
-                break;
-            }
-
-            if is_sep_byte(self.path[self.back - 1]) {
-                if let Some(curr_dir_present) = curr_dir
-                    && curr_dir_present
-                {
-                    curr_dir = Some(false);
-                    rebound_ind = None;
+    fn normalize_back(&mut self) {
+        let path = &self.path[self.front..self.back];
+        // "a.", ".." needs to rebound back to index
+        // before the "." character
+        let mut cur_dir_present = false;
+        match path.iter().rposition(|b| {
+            if !is_sep_byte(*b) {
+                if *b == b'.' && !cur_dir_present {
+                    cur_dir_present = true;
+                    false
+                } else {
+                    true
                 }
             } else {
-                if self.path[self.back - 1] == b'.' {
-                    if let Some(curr_dir_present) = curr_dir {
-                        if !curr_dir_present {
-                            curr_dir = Some(true);
-                            rebound_ind = Some(self.back);
-                        } else {
-                            curr_dir = None;
-                        }
-                    } else {
-                        if let Some(back_ind) = rebound_ind {
-                            self.back = back_ind;
-                        }
-                        break;
-                    }
+                cur_dir_present = false;
+                false
+            }
+        }) {
+            None => {
+                // For cases like "./a", where our path
+                // will observe "." at the end, and we need to return
+                // that we observed "." component instead of
+                // returning an empty path.
+                if cur_dir_present {
+                    self.back = self.front + 1;
                 } else {
-                    if let Some(back_ind) = rebound_ind {
-                        self.back = back_ind;
-                    }
-                    break;
+                    self.back = self.front;
                 }
             }
-            self.back -= 1;
+            Some(i) => {
+                if cur_dir_present {
+                    self.back -= path.len() - i - 2;
+                } else {
+                    self.back -= path.len() - i - 1;
+                }
+            }
         }
     }
 
@@ -942,7 +909,7 @@ impl<'a> Components<'a> {
         let curr_front = self.front;
         // Normalizes trailing seps and curr dirs in preparation for
         // next front component
-        self.advance_through_trailing_sep_front();
+        self.normalize_front();
 
         // SAFETY: Our curr_front index always stops a byte after the ascii
         // separator byte or at self.back (should there be no ascii separator
@@ -968,7 +935,7 @@ impl<'a> Components<'a> {
         let curr_back = self.back;
         // Normalizes trailing seps and curr dirs in preparation for
         // next back component
-        self.advance_through_trailing_sep_back();
+        self.normalize_back();
 
         // Our curr_back is at the byte before an ascii separator byte or self.front,
         // (should there be no ascii separator in traversal), so we can always
@@ -1111,8 +1078,6 @@ impl<'a> PartialEq for Components<'a> {
     #[inline]
     fn eq(&self, other: &Components<'a>) -> bool {
         // Fast path for exact matches, e.g. for hashmap lookups.
-        // Don't explicitly compare the prefix or has_physical_root fields since they'll
-        // either be covered by the `path` buffer or are only relevant for `prefix_verbatim()`.
         if self.path.len() == other.path.len()
             && self.front == other.front
             && self.back == other.back
@@ -1168,24 +1133,20 @@ fn compare_components(left: Components<'_>, right: Components<'_>) -> cmp::Order
     // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
     // - if found update state to only do a component-wise comparison on the remainder,
     //   otherwise do it on the full path
-    //
-    // The fast path isn't taken for paths with a PrefixComponent to avoid backtracking into
-    // the middle of one
-    // possible future improvement: a [u8]::first_mismatch simd implementation
 
-    let (left_path_len, left_path) = if left.first_comp.is_some() {
-        (left.back, &left.path[..left.back])
+    let left_path = if matches!(left.first_comp, Some(FirstComponent::Prefix)) {
+        &left.path[..left.back]
     } else {
-        (left.back - left.front, &left.path[left.front..left.back])
+        &left.path[left.front..left.back]
     };
-    let (right_path_len, right_path) = if right.first_comp.is_some() {
-        (right.back, &right.path[..right.back])
+    let right_path = if matches!(right.first_comp, Some(FirstComponent::Prefix)) {
+        &right.path[..right.back]
     } else {
-        (right.back - right.front, &right.path[right.front..right.back])
+        &right.path[right.front..right.back]
     };
     match left_path.iter().zip(right_path).position(|(&a, &b)| a != b) {
         // Left path and right path are exactly the same
-        None if left_path_len == right_path_len => return cmp::Ordering::Equal,
+        None if left_path.len() == right_path.len() => return cmp::Ordering::Equal,
         // FIXME: This should check the character that they conflict on so you
         // can return Ordering::Greater or Ordering::Less if the conflicting
         // characters is not a slash ("/") or current directory character (".")
