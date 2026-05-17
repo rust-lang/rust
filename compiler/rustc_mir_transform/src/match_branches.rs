@@ -240,7 +240,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         // _2 = discriminant(*_1); // "*_1" is the expected the copy source.
         // switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
         let &Statement {
-            kind: StatementKind::Assign(box (discr_place, Rvalue::Discriminant(copy_src_place))),
+            kind: StatementKind::Assign((discr_place, Rvalue::Discriminant(copy_src_place))),
             ..
         } = bbs[self.switch_bb].statements.last()?
         else {
@@ -264,7 +264,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         for &(case, rvalue) in rvals.iter() {
             match rvalue {
                 // Check if `_3 = const Foo::B` can be transformed to `_3 = copy *_1`.
-                Rvalue::Use(Operand::Constant(box constant), _)
+                Rvalue::Use(Operand::Constant(constant), _)
                     if let Const::Val(const_, ty) = constant.const_ =>
                 {
                     let (ecx, op) = mk_eval_cx_for_const_val(
@@ -284,7 +284,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
                 }
                 Rvalue::Use(Operand::Copy(src_place), _) if *src_place == copy_src_place => {}
                 // Check if `_3 = Foo::B` can be transformed to `_3 = copy *_1`.
-                Rvalue::Aggregate(box AggregateKind::Adt(_, variant_index, _, _, None), fields)
+                Rvalue::Aggregate(AggregateKind::Adt(_, variant_index, _, _, None), fields)
                     if fields.is_empty()
                         && let Some(Discr { val, .. }) =
                             src_ty.ty.discriminant_for_variant(self.tcx, *variant_index)
@@ -510,18 +510,18 @@ fn candidate_const<'tcx, 'a>(
 ) -> Option<(Vec<(u128, &'a ConstOperand<'tcx>)>, Option<&'a ConstOperand<'tcx>>)> {
     // We ignore the retag mode here, which means the `Use` we insert later must be without retag.
     let otherwise = if let Some(otherwise) = otherwise {
-        let Rvalue::Use(Operand::Constant(box const_), _) = otherwise else {
+        let Rvalue::Use(Operand::Constant(const_), _) = otherwise else {
             return None;
         };
-        Some(const_)
+        Some(&**const_)
     } else {
         None
     };
     let consts = rvals
         .into_iter()
         .map(|&(case, rval)| {
-            let Rvalue::Use(Operand::Constant(box const_), _) = rval else { return None };
-            Some((case, const_))
+            let Rvalue::Use(Operand::Constant(const_), _) = rval else { return None };
+            Some((case, &**const_))
         })
         .try_collect()?;
     Some((consts, otherwise))

@@ -26,7 +26,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::lint::LevelAndSource;
+use rustc_middle::lint::LevelSpec;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -223,7 +223,7 @@ pub struct CrateInfo {
     pub dependency_formats: Arc<Dependencies>,
     pub windows_subsystem: Option<WindowsSubsystemKind>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
-    pub lint_levels: CodegenLintLevels,
+    pub lint_level_specs: CodegenLintLevelSpecs,
     pub metadata_symbol: String,
     pub each_linked_rlib_file_for_lto: Vec<PathBuf>,
     pub exported_symbols_for_lto: Vec<String>,
@@ -341,16 +341,16 @@ impl CompiledModules {
 /// solely from the `.rlink` file. `Lint`s are defined too early to be encodeable.
 /// Instead, encode exactly the information we need.
 #[derive(Copy, Clone, Debug, Encodable, Decodable)]
-pub struct CodegenLintLevels {
-    linker_messages: LevelAndSource,
-    linker_info: LevelAndSource,
+pub struct CodegenLintLevelSpecs {
+    linker_messages: LevelSpec,
+    linker_info: LevelSpec,
 }
 
-impl CodegenLintLevels {
+impl CodegenLintLevelSpecs {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> Self {
         Self {
-            linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
-            linker_info: tcx.lint_level_at_node(LINKER_INFO, CRATE_HIR_ID),
+            linker_messages: tcx.lint_level_spec_at_node(LINKER_MESSAGES, CRATE_HIR_ID),
+            linker_info: tcx.lint_level_spec_at_node(LINKER_INFO, CRATE_HIR_ID),
         }
     }
 }

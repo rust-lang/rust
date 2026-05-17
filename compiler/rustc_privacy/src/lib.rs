@@ -15,7 +15,6 @@ use errors::{
     ItemIsPrivate, PrivateInterfacesOrBoundsLint, ReportEffectiveVisibility, UnnameableTypesLint,
     UnnamedItemIsPrivate,
 };
-use rustc_ast::MacroDef;
 use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
@@ -34,7 +33,6 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
 
@@ -419,22 +417,8 @@ impl VisibilityLike for EffectiveVisibility {
 /// The embargo visitor, used to determine the exports of the AST.
 struct EmbargoVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-
     /// Effective visibilities for reachable nodes.
     effective_visibilities: EffectiveVisibilities,
-    /// A set of pairs corresponding to modules, where the first module is
-    /// reachable via a macro that's defined in the second module. This cannot
-    /// be represented as reachable because it can't handle the following case:
-    ///
-    /// pub mod n {                         // Should be `Public`
-    ///     pub(crate) mod p {              // Should *not* be accessible
-    ///         pub fn f() -> i32 { 12 }    // Must be `Reachable`
-    ///     }
-    /// }
-    /// pub macro m() {
-    ///     n::p::f()
-    /// }
-    macro_reachable: FxHashSet<(LocalModDefId, LocalModDefId)>,
     /// Has something changed in the level map?
     changed: bool,
 }
@@ -509,161 +493,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             level: Level::ReachableThroughImplTrait,
         }
     }
-
-    // We have to make sure that the items that macros might reference
-    // are reachable, since they might be exported transitively.
-    fn update_reachability_from_macro(
-        &mut self,
-        local_def_id: LocalDefId,
-        md: &MacroDef,
-        macro_ev: EffectiveVisibility,
-    ) {
-        // Non-opaque macros cannot make other items more accessible than they already are.
-        let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
-        let attrs = self.tcx.hir_attrs(hir_id);
-
-        if find_attr!(attrs, RustcMacroTransparency(x) => *x)
-            .unwrap_or(Transparency::fallback(md.macro_rules))
-            != Transparency::Opaque
-        {
-            return;
-        }
-
-        let macro_module_def_id = self.tcx.local_parent(local_def_id);
-        if self.tcx.def_kind(macro_module_def_id) != DefKind::Mod {
-            // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
-            return;
-        }
-        // FIXME(typed_def_id): Introduce checked constructors that check def_kind.
-        let macro_module_def_id = LocalModDefId::new_unchecked(macro_module_def_id);
-
-        if self.effective_visibilities.public_at_level(local_def_id).is_none() {
-            return;
-        }
-
-        // Since we are starting from an externally visible module,
-        // all the parents in the loop below are also guaranteed to be modules.
-        let mut module_def_id = macro_module_def_id;
-        loop {
-            let changed_reachability =
-                self.update_macro_reachable(module_def_id, macro_module_def_id, macro_ev);
-            if changed_reachability || module_def_id == LocalModDefId::CRATE_DEF_ID {
-                break;
-            }
-            module_def_id = LocalModDefId::new_unchecked(self.tcx.local_parent(module_def_id));
-        }
-    }
-
-    /// Updates the item as being reachable through a macro defined in the given
-    /// module. Returns `true` if the level has changed.
-    fn update_macro_reachable(
-        &mut self,
-        module_def_id: LocalModDefId,
-        defining_mod: LocalModDefId,
-        macro_ev: EffectiveVisibility,
-    ) -> bool {
-        if self.macro_reachable.insert((module_def_id, defining_mod)) {
-            for child in self.tcx.module_children_local(module_def_id.to_local_def_id()) {
-                if let Res::Def(def_kind, def_id) = child.res
-                    && let Some(def_id) = def_id.as_local()
-                    && child.vis.is_accessible_from(defining_mod, self.tcx)
-                {
-                    let vis = self.tcx.local_visibility(def_id);
-                    self.update_macro_reachable_def(def_id, def_kind, vis, defining_mod, macro_ev);
-                }
-            }
-            true
-        } else {
-            false
-        }
-    }
-
-    fn update_macro_reachable_def(
-        &mut self,
-        def_id: LocalDefId,
-        def_kind: DefKind,
-        vis: ty::Visibility,
-        module: LocalModDefId,
-        macro_ev: EffectiveVisibility,
-    ) {
-        self.update(def_id, macro_ev, Level::Reachable);
-        match def_kind {
-            // No type privacy, so can be directly marked as reachable.
-            DefKind::Const { .. }
-            | DefKind::Static { .. }
-            | DefKind::TraitAlias
-            | DefKind::TyAlias => {
-                if vis.is_accessible_from(module, self.tcx) {
-                    self.update(def_id, macro_ev, Level::Reachable);
-                }
-            }
-
-            // Hygiene isn't really implemented for `macro_rules!` macros at the
-            // moment. Accordingly, marking them as reachable is unwise. `macro` macros
-            // have normal hygiene, so we can treat them like other items without type
-            // privacy and mark them reachable.
-            DefKind::Macro(_) => {
-                let item = self.tcx.hir_expect_item(def_id);
-                if let hir::ItemKind::Macro(_, MacroDef { macro_rules: false, .. }, _) = item.kind {
-                    if vis.is_accessible_from(module, self.tcx) {
-                        self.update(def_id, macro_ev, Level::Reachable);
-                    }
-                }
-            }
-
-            // We can't use a module name as the final segment of a path, except
-            // in use statements. Since re-export checking doesn't consider
-            // hygiene these don't need to be marked reachable. The contents of
-            // the module, however may be reachable.
-            DefKind::Mod => {
-                if vis.is_accessible_from(module, self.tcx) {
-                    self.update_macro_reachable(
-                        LocalModDefId::new_unchecked(def_id),
-                        module,
-                        macro_ev,
-                    );
-                }
-            }
-
-            DefKind::Struct | DefKind::Union => {
-                // While structs and unions have type privacy, their fields do not.
-                let struct_def = self.tcx.adt_def(def_id);
-                for field in &struct_def.non_enum_variant().fields {
-                    let def_id = field.did.expect_local();
-                    let field_vis = self.tcx.local_visibility(def_id);
-                    if field_vis.is_accessible_from(module, self.tcx) {
-                        self.reach(def_id, macro_ev).ty();
-                    }
-                }
-            }
-
-            // These have type privacy, so are not reachable unless they're
-            // public, or are not namespaced at all.
-            DefKind::AssocConst { .. }
-            | DefKind::AssocTy
-            | DefKind::ConstParam
-            | DefKind::Ctor(_, _)
-            | DefKind::Enum
-            | DefKind::ForeignTy
-            | DefKind::Fn
-            | DefKind::OpaqueTy
-            | DefKind::AssocFn
-            | DefKind::Trait
-            | DefKind::TyParam
-            | DefKind::Variant
-            | DefKind::LifetimeParam
-            | DefKind::ExternCrate
-            | DefKind::Use
-            | DefKind::ForeignMod
-            | DefKind::AnonConst
-            | DefKind::InlineConst
-            | DefKind::Field
-            | DefKind::GlobalAsm
-            | DefKind::Impl { .. }
-            | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody => (),
-        }
-    }
 }
 
 impl<'tcx> EmbargoVisitor<'tcx> {
@@ -689,13 +518,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             DefKind::Use | DefKind::ExternCrate | DefKind::GlobalAsm => {}
             // The interface is empty, and all nested items are processed by `check_def_id`.
             DefKind::Mod => {}
-            DefKind::Macro { .. } => {
-                if let Some(item_ev) = item_ev {
-                    let (_, macro_def, _) =
-                        self.tcx.hir_expect_item(owner_id.def_id).expect_macro();
-                    self.update_reachability_from_macro(owner_id.def_id, macro_def, item_ev);
-                }
-            }
+            // Effective visibilities for macros are processed earlier.
+            DefKind::Macro { .. } => {}
             DefKind::ForeignTy
             | DefKind::Const { .. }
             | DefKind::Static { .. }
@@ -1815,7 +1639,6 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
     let mut visitor = EmbargoVisitor {
         tcx,
         effective_visibilities: tcx.resolutions(()).effective_visibilities.clone(),
-        macro_reachable: Default::default(),
         changed: false,
     };
 
@@ -1870,6 +1693,26 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
         }
 
         visitor.changed = false;
+    }
+
+    // FIXME: remove this once proper support for defs reachability from macros is implemented.
+    // See `ResolverGlobalCtxt::macro_reachable_adts` comment.
+    for (&adt_def_id, macro_mods) in &tcx.resolutions(()).macro_reachable_adts {
+        let struct_def = tcx.adt_def(adt_def_id);
+        let Some(struct_ev) = visitor.effective_visibilities.effective_vis(adt_def_id).copied()
+        else {
+            continue;
+        };
+        for field in &struct_def.non_enum_variant().fields {
+            let def_id = field.did.expect_local();
+            let field_vis = tcx.local_visibility(def_id);
+
+            for &macro_mod in macro_mods {
+                if field_vis.is_accessible_from(macro_mod, tcx) {
+                    visitor.reach(def_id, struct_ev).ty();
+                }
+            }
+        }
     }
 
     let crate_items = tcx.hir_crate_items(());

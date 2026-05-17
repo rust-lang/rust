@@ -179,6 +179,12 @@ pub struct ResolverGlobalCtxt {
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: UnordMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
+    // FIXME: This table contains ADTs reachable from macro 2.0.
+    // Currently, reachability of a definition from a macro is determined by nominal visibility
+    // (see `compute_effective_visibilities`). This is incorrect and leads to the necessity
+    // of traversing ADT fields in `rustc_privacy`. Remove this workaround once the
+    // correct reachability logic is implemented for macros.
+    pub macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
@@ -198,6 +204,21 @@ pub struct ResolverGlobalCtxt {
     pub stripped_cfg_items: Vec<StrippedCfgItem>,
 }
 
+#[derive(Debug)]
+pub struct PerOwnerResolverData {
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    /// The id of the owner
+    pub id: ast::NodeId,
+    /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
+    pub def_id: LocalDefId,
+}
+
+impl PerOwnerResolverData {
+    pub fn new(id: ast::NodeId, def_id: LocalDefId) -> PerOwnerResolverData {
+        PerOwnerResolverData { node_id_to_def_id: Default::default(), id, def_id }
+    }
+}
+
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
@@ -215,7 +236,7 @@ pub struct ResolverAstLowering<'tcx> {
 
     pub next_node_id: ast::NodeId,
 
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub owners: NodeMap<PerOwnerResolverData>,
 
     pub trait_map: NodeMap<&'tcx [hir::TraitCandidate<'tcx>]>,
     /// List functions and methods for which lifetime elision was successful.

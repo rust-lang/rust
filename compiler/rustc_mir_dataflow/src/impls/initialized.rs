@@ -54,7 +54,7 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
         let block_data = &body[block];
         for statement in block_data.statements.iter().rev() {
             match statement.kind {
-                mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(enum_place)))
+                mir::StatementKind::Assign((lhs, mir::Rvalue::Discriminant(enum_place)))
                     if lhs == discr =>
                 {
                     match enum_place.ty(body, tcx).ty.kind() {

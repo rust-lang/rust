@@ -171,7 +171,7 @@ pub(crate) struct TestProps {
     /// None for non-UI tests, and for auxiliary crates used by UI tests.
     pub(crate) pass_fail_mode: Option<PassFailMode>,
     // Ignore `--pass` overrides from the command line for this test.
-    pub(crate) ignore_pass: bool,
+    pub(crate) no_pass_override: bool,
     // rustdoc will test the output of the `--test` option
     pub(crate) check_test_line_numbers_match: bool,
     // customized normalization rules
@@ -244,7 +244,6 @@ mod directives {
     pub(crate) const UNSET_RUSTC_ENV: &str = "unset-rustc-env";
     pub(crate) const FORBID_OUTPUT: &str = "forbid-output";
     pub(crate) const CHECK_TEST_LINE_NUMBERS_MATCH: &str = "check-test-line-numbers-match";
-    pub(crate) const IGNORE_PASS: &str = "ignore-pass";
     pub(crate) const FAILURE_STATUS: &str = "failure-status";
     pub(crate) const DONT_CHECK_FAILURE_STATUS: &str = "dont-check-failure-status";
     pub(crate) const RUN_RUSTFIX: &str = "run-rustfix";
@@ -298,7 +297,7 @@ impl TestProps {
             incremental: false,
             known_bug: false,
             pass_fail_mode: None,
-            ignore_pass: false,
+            no_pass_override: false,
             check_test_line_numbers_match: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
@@ -332,7 +331,7 @@ impl TestProps {
 
         // copy over select properties to the aux build:
         props.incremental_dir = self.incremental_dir.clone();
-        props.ignore_pass = true;
+        props.no_pass_override = true;
         props.load_from(testfile, revision, config);
 
         props
@@ -618,7 +617,11 @@ impl Config {
     }
 
     fn parse_pp_exact(&self, line: &DirectiveLine<'_>) -> Option<Utf8PathBuf> {
-        if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
+        // Unusually, `//@ pp-exact` can be used with or without a colon, so to avoid a panic
+        // in the parse method we need to make sure there is a colon before calling it.
+        if line.value_after_colon().is_some()
+            && let Some(s) = self.parse_name_value_directive(line, "pp-exact")
+        {
             Some(Utf8PathBuf::from(&s))
         } else if self.parse_name_directive(line, "pp-exact") {
             line.file_path.file_name().map(Utf8PathBuf::from)
@@ -648,10 +651,17 @@ impl Config {
     }
 
     fn parse_name_directive(&self, line: &DirectiveLine<'_>, directive: &str) -> bool {
-        // FIXME(Zalathar): Ideally, this should raise an error if a name-only
-        // directive is followed by a colon, since that's the wrong syntax.
-        // But we would need to fix tests that rely on the current behaviour.
-        line.name == directive
+        if line.name != directive {
+            return false;
+        }
+
+        if line.value_after_colon().is_some() {
+            let &DirectiveLine { file_path, line_number, .. } = line;
+            panic!(
+                "{file_path}:{line_number}: directive `{directive}` must not be followed by a colon"
+            );
+        }
+        true
     }
 
     fn parse_name_value_directive(
@@ -665,10 +675,9 @@ impl Config {
             return None;
         };
 
-        // FIXME(Zalathar): This silently discards directives with a matching
-        // name but no colon. Unfortunately, some directives (e.g. "pp-exact")
-        // currently rely on _not_ panicking here.
-        let value = line.value_after_colon()?;
+        let value = line.value_after_colon().unwrap_or_else(|| {
+            panic!("{file_path}:{line_number}: directive `{directive}` must be followed by a colon and value");
+        });
         debug!("{}: {}", directive, value);
         let value = expand_variables(value.to_owned(), self);
 

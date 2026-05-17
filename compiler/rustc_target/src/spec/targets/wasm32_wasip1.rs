@@ -41,10 +41,6 @@ pub(crate) fn target() -> Target {
     // without a main function.
     options.crt_static_allows_dylibs = true;
 
-    // WASI's `sys::args::init` function ignores its arguments; instead,
-    // `args::args()` makes the WASI API calls itself.
-    options.main_needs_argc_argv = false;
-
     // And, WASI mangles the name of "main" to distinguish between different
     // signatures.
     options.entry_name = "__main_void".into();

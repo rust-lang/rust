@@ -2,6 +2,8 @@
 
 use std::cell::Cell;
 use std::fmt::Write;
+use std::fs::File;
+use std::io;
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
@@ -12,7 +14,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_public::rustc_internal::pretty::write_smir_pretty;
 use rustc_session::Session;
-use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
+use rustc_session::config::{OutFileName, OutputType, PpHirMode, PpMode, PpSourceMode};
 use rustc_span::{FileName, Ident};
 use tracing::debug;
 
@@ -339,4 +341,22 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
     };
 
     write_or_print(&out, sess);
+}
+
+/// Implementation of `--emit=mir`.
+pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
+    match tcx.output_filenames(()).path(OutputType::Mir) {
+        OutFileName::Stdout => {
+            let mut f = io::stdout();
+            write_mir_pretty(tcx, &mut f)?;
+        }
+        OutFileName::Real(path) => {
+            let mut f = File::create_buffered(&path)?;
+            write_mir_pretty(tcx, &mut f)?;
+            if tcx.sess.opts.json_artifact_notifications {
+                tcx.dcx().emit_artifact_notification(&path, "mir");
+            }
+        }
+    }
+    Ok(())
 }

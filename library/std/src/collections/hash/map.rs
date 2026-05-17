@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests;
 
-use hashbrown::hash_map as base;
+use hashbrown::hash_map::{self as base, RustcOccupiedError};
 
 use self::Entry::*;
 use crate::alloc::{Allocator, Global};
 use crate::borrow::Borrow;
 use crate::collections::{TryReserveError, TryReserveErrorKind};
-use crate::error::Error;
 use crate::fmt::{self, Debug};
 use crate::hash::{BuildHasher, Hash, RandomState};
 use crate::iter::FusedIterator;
@@ -1333,7 +1332,7 @@ where
     /// a mutable reference to the value in the entry.
     ///
     /// If the map already had this key present, nothing is updated, and
-    /// an error containing the occupied entry and the value is returned.
+    /// an error containing the occupied entry, key, and the value is returned.
     ///
     /// # Examples
     ///
@@ -1350,13 +1349,16 @@ where
     /// let err = map.try_insert(37, "b").unwrap_err();
     /// assert_eq!(err.entry.key(), &37);
     /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.key, 37);
     /// assert_eq!(err.value, "b");
     /// ```
     #[unstable(feature = "map_try_insert", issue = "82766")]
     pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V, A>> {
-        match self.entry(key) {
-            Occupied(entry) => Err(OccupiedError { entry, value }),
-            Vacant(entry) => Ok(entry.insert(value)),
+        match self.base.rustc_try_insert(key, value) {
+            Result::Ok(value) => Ok(value),
+            Result::Err(RustcOccupiedError { entry, key, value, .. }) => {
+                Err(OccupiedError { entry: OccupiedEntry { base: entry }, key, value })
+            }
         }
     }
 
@@ -2007,8 +2009,9 @@ impl<K: Debug, V, A: Allocator> Debug for VacantEntry<'_, K, V, A> {
 
 /// The error returned by [`try_insert`](HashMap::try_insert) when the key already exists.
 ///
-/// Contains the occupied entry, and the value that was not inserted.
+/// Contains the occupied entry, key, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "82766")]
+#[non_exhaustive]
 pub struct OccupiedError<
     'a,
     K: 'a,
@@ -2017,6 +2020,8 @@ pub struct OccupiedError<
 > {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,
+    /// The key which was not inserted, because the entry was already occupied.
+    pub key: K,
     /// The value which was not inserted, because the entry was already occupied.
     pub value: V,
 }
@@ -2026,27 +2031,12 @@ impl<K: Debug, V: Debug, A: Allocator> Debug for OccupiedError<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedError")
             .field("key", self.entry.key())
+            .field("uninserted_key", &self.key)
             .field("old_value", self.entry.get())
             .field("new_value", &self.value)
             .finish_non_exhaustive()
     }
 }
-
-#[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: Debug, V: Debug, A: Allocator> fmt::Display for OccupiedError<'a, K, V, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "failed to insert {:?}, key {:?} already exists with value {:?}",
-            self.value,
-            self.entry.key(),
-            self.entry.get(),
-        )
-    }
-}
-
-#[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: Debug, V: Debug, A: Allocator> Error for OccupiedError<'a, K, V, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S, A: Allocator> IntoIterator for &'a HashMap<K, V, S, A> {

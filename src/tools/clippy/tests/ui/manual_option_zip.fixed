@@ -116,3 +116,10 @@ impl NotOption {
         self.0.and_then(f)
     }
 }
+
+fn issue16968() {
+    let a = Some(1);
+
+    let opts = [1, 2];
+    let _ = a.and_then(|a| opts.into_iter().find(|b| *b == a).map(|b| (a, b)));
+}

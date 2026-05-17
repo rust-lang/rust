@@ -89,13 +89,13 @@ fn check_index_usage<'tcx>(
             // `Index` directly and no deref to `str` would happen in that case).
             if cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_str()
                 && BYTE_INDEX_METHODS.contains(&segment.ident.name)
-                && eq_expr_value(cx, chars_recv, recv) =>
+                && eq_expr_value(cx, expr.span.ctxt(), chars_recv, recv) =>
         {
             "passing a character position to a method that expects a byte index"
         },
         ExprKind::Index(target, ..)
             if is_string_like(cx.typeck_results().expr_ty_adjusted(target).peel_refs())
-                && eq_expr_value(cx, chars_recv, target) =>
+                && eq_expr_value(cx, expr.span.ctxt(), chars_recv, target) =>
         {
             "indexing into a string with a character position where a byte index is expected"
         },

@@ -6,23 +6,27 @@
    LL|       |//
    LL|       |// Reported in <https://github.com/rust-lang/rust/issues/147339>.
    LL|       |
-   LL|       |macro_rules! foo {
-   LL|       |    ($($m:ident $($f:ident $v:tt)+),*) => {
-   LL|       |        $($(macro_rules! $f { () => { $v } })+)*
-   LL|      0|        $(macro_rules! $m { () => { $(fn $f() -> i32 { $v })+ } })*
-  ------------------
-  | Unexecuted instantiation: context_mismatch_issue_147339::a
-  ------------------
-  | Unexecuted instantiation: context_mismatch_issue_147339::b
-  ------------------
-  | Unexecuted instantiation: context_mismatch_issue_147339::c
-  ------------------
-   LL|       |    }
+   LL|       |macro_rules! outer_macro {
+   LL|       |    (
+   LL|       |        $v:tt
+   LL|       |    ) => {
+   LL|       |        macro_rules! _other_macro_that_mentions_v {
+   LL|       |            () => {
+   LL|       |                $v
+   LL|       |            };
+   LL|       |        }
+   LL|       |        macro_rules! inner_macro {
+   LL|       |            () => {
+   LL|      0|                fn _function() -> i32 {
+   LL|       |                    $v
+   LL|      0|                }
+   LL|       |            };
+   LL|       |        }
+   LL|       |    };
    LL|       |}
    LL|       |
-   LL|       |foo!(m a 1 b 2, n c 3);
-   LL|       |m!();
-   LL|       |n!();
+   LL|       |outer_macro!(1);
+   LL|       |inner_macro!();
    LL|       |
    LL|      1|fn main() {}
 

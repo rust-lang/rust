@@ -15,6 +15,8 @@ pub(crate) mod wrong_number_of_generic_args;
 mod precise_captures;
 pub(crate) use precise_captures::*;
 
+pub(crate) mod remove_or_use_generic;
+
 #[derive(Diagnostic)]
 #[diag("ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`")]
 pub(crate) struct AmbiguousAssocItem<'a> {
@@ -1668,6 +1670,14 @@ pub(crate) struct UnsupportedDelegation<'a> {
     pub descr: &'a str,
     #[label("callee defined here")]
     pub callee_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("delegation self type is not specified")]
+#[help("consider explicitly specifying self type: `reuse </* Type */ as Trait>::function`")]
+pub(crate) struct DelegationSelfTypeNotSpecified {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

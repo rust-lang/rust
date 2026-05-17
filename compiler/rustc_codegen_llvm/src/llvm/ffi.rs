@@ -166,6 +166,7 @@ pub(crate) enum CallConv {
     ColdCallConv = 9,
     PreserveMost = 14,
     PreserveAll = 15,
+    SwiftCallConv = 16,
     Tail = 18,
     PreserveNone = 21,
     X86StdcallCallConv = 64,
@@ -2113,6 +2114,9 @@ unsafe extern "C" {
 
     /// Prints the statistics collected by `-Zprint-codegen-stats`.
     pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
+
+    /// Save the statistics collected by `-Zprint-codegen-stats-json`
+    pub(crate) fn LLVMRustPrintStatisticsJSON(OutStr: &RustString);
 
     pub(crate) fn LLVMRustInlineAsmVerify(
         Ty: &Type,

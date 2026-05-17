@@ -31,6 +31,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan};
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::LocalDefId;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
@@ -81,9 +82,8 @@ struct ExternCrateToLint {
 impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     // We have information about whether `use` (import) items are actually
     // used now. If an import is not used at all, we signal a lint error.
-    fn check_import(&mut self, id: ast::NodeId) {
+    fn check_import(&mut self, id: ast::NodeId, def_id: LocalDefId) {
         let used = self.r.used_imports.contains(&id);
-        let def_id = self.r.local_def_id(id);
         if !used {
             if self.r.maybe_unused_trait_imports.contains(&def_id) {
                 // Check later.
@@ -102,7 +102,8 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
     }
 
     fn check_use_tree(&mut self, use_tree: &'a ast::UseTree, id: ast::NodeId) {
-        if self.r.effective_visibilities.is_exported(self.r.local_def_id(id)) {
+        let def_id = self.r.owner_def_id(id);
+        if self.r.effective_visibilities.is_exported(def_id) {
             self.check_import_as_underscore(use_tree, id);
             return;
         }
@@ -112,7 +113,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 self.unused_import(self.base_id).add(id);
             }
         } else {
-            self.check_import(id);
+            self.check_import(id, def_id);
         }
     }
 
@@ -212,7 +213,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
 
             let module = self
                 .r
-                .get_nearest_non_block_module(self.r.local_def_id(extern_crate.id).to_def_id());
+                .get_nearest_non_block_module(self.r.owner_def_id(extern_crate.id).to_def_id());
             if module.no_implicit_prelude {
                 // If the module has `no_implicit_prelude`, then we don't suggest
                 // replacing the extern crate with a use, as it would not be
@@ -494,7 +495,7 @@ impl Resolver<'_, '_> {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(
-                    visitor.r.local_def_id(unused.use_tree_id).to_def_id(),
+                    visitor.r.owner_def_id(unused.use_tree_id).to_def_id(),
                 );
                 match module_to_string(parent_module) {
                     Some(module)

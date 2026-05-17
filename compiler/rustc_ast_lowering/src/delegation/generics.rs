@@ -231,11 +231,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         delegation: &Delegation,
         sig_id: DefId,
-        item_id: NodeId,
         is_method: bool,
     ) -> GenericsGenerationResults<'hir> {
-        let delegation_parent_kind =
-            self.tcx.def_kind(self.tcx.local_parent(self.local_def_id(item_id)));
+        let delegation_parent_kind = self.tcx.def_kind(self.tcx.local_parent(self.owner.def_id));
 
         let segments = &delegation.path.segments;
         let len = segments.len();

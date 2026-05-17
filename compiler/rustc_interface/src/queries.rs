@@ -70,6 +70,22 @@ impl Linker {
             codegen_backend.print_statistics()
         }
 
+        if let Some(out_path) = sess.print_llvm_stats_json() {
+            let llvm_stats_json = codegen_backend.print_statistics_json();
+
+            if !llvm_stats_json.is_empty() {
+                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                    sess.dcx().err(format!("failed to write stats to {}: {}", out_path, e));
+                }
+            } else {
+                sess.dcx().warn(format!(
+                    "requested to print LLVM statistics to JSON file {}, but the codegen backend \
+                    did not provide any statistics",
+                    out_path,
+                ));
+            }
+        }
+
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()

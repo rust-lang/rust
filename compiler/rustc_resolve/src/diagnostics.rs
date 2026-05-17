@@ -3261,7 +3261,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .stripped_cfg_items
                 .iter()
                 .filter_map(|item| {
-                    let parent_scope = self.opt_local_def_id(item.parent_scope)?.to_def_id();
+                    let parent_scope = self.local_modules.iter().find_map(|m| match m.kind {
+                        ModuleKind::Def(_, def_id, node_id, _) if node_id == item.parent_scope => {
+                            Some(def_id)
+                        }
+                        _ => None,
+                    })?;
                     Some(StrippedCfgItem { parent_scope, ident: item.ident, cfg: item.cfg.clone() })
                 })
                 .collect::<Vec<_>>();

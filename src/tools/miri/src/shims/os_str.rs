@@ -282,7 +282,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     *c = sep;
                 }
             }
-            // If this starts with `//?/`, it was probably produced by `unix_to_windows`` and we
+            // If this starts with `//?/`, it was probably produced by `unix_to_windows` and we
             // remove the `//?` that got added to get the Unix path back out.
             if path.get(0..4) == Some(&[sep, sep, b'?'.into(), sep]) {
                 // Remove first 3 characters. It still starts with `/` so it is absolute on Unix.

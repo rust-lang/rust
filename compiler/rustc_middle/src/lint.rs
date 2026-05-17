@@ -1,4 +1,4 @@
-use std::cmp;
+use std::cmp::min;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -53,12 +53,57 @@ impl LintLevelSource {
     }
 }
 
-/// Convenience helper for moving things around together that frequently are paired
+/// Convenience helper for things that are frequently used together.
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable)]
-pub struct LevelAndSource {
-    pub level: Level,
-    pub lint_id: Option<LintExpectationId>,
+pub struct LevelSpec {
+    // This field *must* be private. It must be set in tandem with `lint_id`, only in
+    // `LevelSpec::new`, because only certain `level`/`lint_id` combinations are valid. See
+    // `LevelSpec::new` for those combinations.
+    //
+    // If you are thinking right now that `level` and `lint_id` should be combined into a single
+    // type that excludes the invalid combinations, that's a reasonable thought, but in practice
+    // it's painful because `level` needs to be used by itself, without `lint_id`, in many places.
+    // Making the fields private prevents invalid combinations while retaining the flexibility of
+    // two separate fields.
+    level: Level,
+
+    // This field *must* be private. See the comment on `level`.
+    lint_id: Option<LintExpectationId>,
+
     pub src: LintLevelSource,
+}
+
+impl LevelSpec {
+    // Panics if an invalid `level`/`lint_id` combination is given.
+    pub fn new(
+        level: Level,
+        lint_id: Option<LintExpectationId>,
+        src: LintLevelSource,
+    ) -> LevelSpec {
+        match (level, lint_id) {
+            (Level::Allow | Level::Warn | Level::Deny | Level::Forbid, None) => {}
+            (Level::Expect, Some(_)) => {}
+            (Level::ForceWarn, _) => {}
+            _ => panic!("invalid level/lint_id combination"),
+        }
+        LevelSpec { level, lint_id, src }
+    }
+
+    pub fn level(self) -> Level {
+        self.level
+    }
+
+    pub fn is_allow(self) -> bool {
+        self.level == Level::Allow
+    }
+
+    pub fn is_expect(self) -> bool {
+        self.level == Level::Expect
+    }
+
+    pub fn lint_id(self) -> Option<LintExpectationId> {
+        self.lint_id
+    }
 }
 
 /// Return type for the `shallow_lint_levels_on` query.
@@ -68,34 +113,32 @@ pub struct LevelAndSource {
 #[derive(Default, Debug, StableHash)]
 pub struct ShallowLintLevelMap {
     pub expectations: Vec<(LintExpectationId, LintExpectation)>,
-    pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelAndSource>>,
+    pub specs: SortedMap<ItemLocalId, FxIndexMap<LintId, LevelSpec>>,
 }
 
-/// From an initial level and source, verify the effect of special annotations:
-/// `warnings` lint level and lint caps.
+/// Verify the effect of special annotations: `warnings` lint level and lint caps.
 ///
 /// The return of this function is suitable for diagnostics.
-pub fn reveal_actual_level(
-    level: Option<(Level, Option<LintExpectationId>)>,
-    src: &mut LintLevelSource,
+pub fn reveal_actual_level_spec(
     sess: &Session,
     lint: LintId,
-    probe_for_lint_level: impl FnOnce(
-        LintId,
-    )
-        -> (Option<(Level, Option<LintExpectationId>)>, LintLevelSource),
-) -> (Level, Option<LintExpectationId>) {
+    probe_for_lint_level_spec: impl Fn(LintId) -> Option<LevelSpec>,
+) -> LevelSpec {
+    let level_spec = probe_for_lint_level_spec(lint);
+
     // If `level` is none then we actually assume the default level for this lint.
-    let (mut level, mut lint_id) =
-        level.unwrap_or_else(|| (lint.lint.default_level(sess.edition()), None));
+    let mut level_spec = level_spec.unwrap_or_else(|| {
+        LevelSpec::new(lint.lint.default_level(sess.edition()), None, LintLevelSource::Default)
+    });
 
     // If we're about to issue a warning, check at the last minute for any
     // directives against the `warnings` lint group. If, for example, there's an
     // `allow(warnings)` in scope then we want to respect that instead.
-    if level == Level::Warn {
-        let (warnings_level, warnings_src) = probe_for_lint_level(LintId::of(builtin::WARNINGS));
-        if let Some((configured_warning_level, configured_lint_id)) = warnings_level {
-            let respect_warnings_lint_group = match configured_warning_level {
+    if level_spec.level == Level::Warn {
+        if let Some(configured_level_spec) =
+            probe_for_lint_level_spec(LintId::of(builtin::WARNINGS))
+        {
+            let respect_warnings_lint_group = match configured_level_spec.level {
                 // -Wwarnings is a no-op.
                 Level::Warn => false,
                 // Some warnings cannot be denied from the `warnings` lint group, only individually.
@@ -107,50 +150,46 @@ pub fn reveal_actual_level(
                 Level::Expect => true,
                 Level::ForceWarn => {
                     sess.dcx().span_delayed_bug(
-                        warnings_src.span(),
+                        configured_level_spec.src.span(),
                         "cannot --force-warn the `warnings` lint group",
                     );
                     false
                 }
             };
             if respect_warnings_lint_group {
-                level = configured_warning_level;
-                lint_id = configured_lint_id;
-                *src = warnings_src;
+                level_spec = configured_level_spec;
             }
         }
     }
 
     // Ensure that we never exceed the `--cap-lints` argument unless the source is a --force-warn
-    level = if let LintLevelSource::CommandLine(_, Level::ForceWarn) = src {
-        level
-    } else {
-        cmp::min(level, sess.opts.lint_cap.unwrap_or(Level::Forbid))
+    if !matches!(level_spec.src, LintLevelSource::CommandLine(_, Level::ForceWarn)) {
+        level_spec.level = min(level_spec.level, sess.opts.lint_cap.unwrap_or(Level::Forbid));
     };
 
+    // Ensure that we never exceed driver level.
     if let Some(driver_level) = sess.driver_lint_caps.get(&lint) {
-        // Ensure that we never exceed driver level.
-        level = cmp::min(*driver_level, level);
+        level_spec.level = min(level_spec.level, *driver_level);
     }
 
-    (level, lint_id)
+    level_spec
 }
 
 impl ShallowLintLevelMap {
-    /// Perform a deep probe in the HIR tree looking for the actual level for the lint.
-    /// This lint level is not usable for diagnostics, it needs to be corrected by
+    /// Perform a deep probe in the HIR tree looking for the actual level spec for the lint.
+    /// This lint level spec is not usable for diagnostics, it needs to be corrected by
     /// `reveal_actual_level` beforehand.
     #[instrument(level = "trace", skip(self, tcx), ret)]
-    fn probe_for_lint_level(
+    fn probe_for_lint_level_spec(
         &self,
         tcx: TyCtxt<'_>,
         id: LintId,
         start: HirId,
-    ) -> (Option<(Level, Option<LintExpectationId>)>, LintLevelSource) {
+    ) -> Option<LevelSpec> {
         if let Some(map) = self.specs.get(&start.local_id)
-            && let Some(&LevelAndSource { level, lint_id, src }) = map.get(&id)
+            && let Some(level_spec) = map.get(&id)
         {
-            return (Some((level, lint_id)), src);
+            return Some(*level_spec);
         }
 
         let mut owner = start.owner;
@@ -162,35 +201,28 @@ impl ShallowLintLevelMap {
                 specs = &tcx.shallow_lint_levels_on(owner).specs;
             }
             if let Some(map) = specs.get(&parent.local_id)
-                && let Some(&LevelAndSource { level, lint_id, src }) = map.get(&id)
+                && let Some(level_spec) = map.get(&id)
             {
-                return (Some((level, lint_id)), src);
+                return Some(*level_spec);
             }
         }
 
-        (None, LintLevelSource::Default)
+        None
     }
 
-    /// Fetch and return the user-visible lint level for the given lint at the given HirId.
+    /// Fetch and return the user-visible lint level spec for the given lint at the given HirId.
     #[instrument(level = "trace", skip(self, tcx), ret)]
-    pub fn lint_level_id_at_node(
-        &self,
-        tcx: TyCtxt<'_>,
-        lint: LintId,
-        cur: HirId,
-    ) -> LevelAndSource {
-        let (level, mut src) = self.probe_for_lint_level(tcx, lint, cur);
-        let (level, lint_id) = reveal_actual_level(level, &mut src, tcx.sess, lint, |lint| {
-            self.probe_for_lint_level(tcx, lint, cur)
-        });
-        LevelAndSource { level, lint_id, src }
+    pub fn lint_level_spec_at_node(&self, tcx: TyCtxt<'_>, lint: LintId, cur: HirId) -> LevelSpec {
+        reveal_actual_level_spec(tcx.sess, lint, |lint| {
+            self.probe_for_lint_level_spec(tcx, lint, cur)
+        })
     }
 }
 
 impl TyCtxt<'_> {
-    /// Fetch and return the user-visible lint level for the given lint at the given HirId.
-    pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> LevelAndSource {
-        self.shallow_lint_levels_on(id.owner).lint_level_id_at_node(self, LintId::of(lint), id)
+    /// Fetch and return the user-visible lint level spec for the given lint at the given HirId.
+    pub fn lint_level_spec_at_node(self, lint: &'static Lint, id: HirId) -> LevelSpec {
+        self.shallow_lint_levels_on(id.owner).lint_level_spec_at_node(self, LintId::of(lint), id)
     }
 }
 
@@ -330,7 +362,7 @@ fn explain_lint_level_source(
 pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     sess: &'a Session,
     lint: &'static Lint,
-    level: LevelAndSource,
+    level_spec: LevelSpec,
     span: Option<MultiSpan>,
     decorate: D,
 ) {
@@ -340,13 +372,13 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     fn emit_lint_base_impl<'a>(
         sess: &'a Session,
         lint: &'static Lint,
-        level: LevelAndSource,
+        level_spec: LevelSpec,
         span: Option<MultiSpan>,
         decorate: Box<
             dyn FnOnce(rustc_errors::DiagCtxtHandle<'a>, rustc_errors::Level) -> Diag<'a, ()> + 'a,
         >,
     ) {
-        let LevelAndSource { level, lint_id, src } = level;
+        let LevelSpec { level, lint_id, src } = level_spec;
 
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;
@@ -524,7 +556,7 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a, ()> + 'a>(
     emit_lint_base_impl(
         sess,
         lint,
-        level,
+        level_spec,
         span,
         Box::new(move |dcx, level| decorate.into_diag(dcx, level)),
     );

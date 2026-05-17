@@ -118,13 +118,6 @@ impl LintExpectationId {
         }
     }
 
-    pub fn get_lint_index(&self) -> Option<u16> {
-        let (LintExpectationId::Unstable { lint_index, .. }
-        | LintExpectationId::Stable { lint_index, .. }) = self;
-
-        *lint_index
-    }
-
     pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
         let (LintExpectationId::Unstable { lint_index, .. }
         | LintExpectationId::Stable { lint_index, .. }) = self;
@@ -215,34 +208,19 @@ impl Level {
         }
     }
 
-    /// Converts an `Attribute` to a level.
-    pub fn from_attr(
-        attr_name: Option<Symbol>,
-        attr_id: impl Fn() -> AttrId,
-    ) -> Option<(Self, Option<LintExpectationId>)> {
-        attr_name.and_then(|name| Self::from_symbol(name, || Some(attr_id())))
+    /// Converts an `Option<Symbol>` to a level.
+    pub fn from_opt_symbol(s: Option<Symbol>) -> Option<Self> {
+        s.and_then(Self::from_symbol)
     }
 
     /// Converts a `Symbol` to a level.
-    pub fn from_symbol(
-        s: Symbol,
-        id: impl FnOnce() -> Option<AttrId>,
-    ) -> Option<(Self, Option<LintExpectationId>)> {
+    pub fn from_symbol(s: Symbol) -> Option<Self> {
         match s {
-            sym::allow => Some((Level::Allow, None)),
-            sym::expect => {
-                if let Some(attr_id) = id() {
-                    Some((
-                        Level::Expect,
-                        Some(LintExpectationId::Unstable { attr_id, lint_index: None }),
-                    ))
-                } else {
-                    None
-                }
-            }
-            sym::warn => Some((Level::Warn, None)),
-            sym::deny => Some((Level::Deny, None)),
-            sym::forbid => Some((Level::Forbid, None)),
+            sym::allow => Some(Level::Allow),
+            sym::expect => Some(Level::Expect),
+            sym::warn => Some(Level::Warn),
+            sym::deny => Some(Level::Deny),
+            sym::forbid => Some(Level::Forbid),
             _ => None,
         }
     }

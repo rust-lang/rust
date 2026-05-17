@@ -60,7 +60,7 @@ use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
-use crate::{CodegenLintLevels, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
+use crate::{CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors};
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -728,7 +728,12 @@ fn is_windows_gnu_clang(sess: &Session) -> bool {
         && sess.target.options.cfg_abi == CfgAbi::Llvm
 }
 
-fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8], stderr: &[u8]) {
+fn report_linker_output(
+    sess: &Session,
+    levels: CodegenLintLevelSpecs,
+    stdout: &[u8],
+    stderr: &[u8],
+) {
     let mut escaped_stderr = escape_string(&stderr);
     let mut escaped_stdout = escape_string(&stdout);
     let mut linker_info = String::new();
@@ -1106,7 +1111,7 @@ fn link_natively(
             }
 
             info!("reporting linker output: flavor={flavor:?}");
-            report_linker_output(sess, crate_info.lint_levels, &prog.stdout, &prog.stderr);
+            report_linker_output(sess, crate_info.lint_level_specs, &prog.stdout, &prog.stderr);
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;

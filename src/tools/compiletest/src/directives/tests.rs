@@ -1153,7 +1153,6 @@ fn edition_order() {
 #[test]
 fn test_parse_edition_range() {
     assert_eq!(None, parse_edition_range("hello-world"));
-    assert_eq!(None, parse_edition_range("edition"));
 
     assert_eq!(Some(EditionRange::Exact(2018.into())), parse_edition_range("edition: 2018"));
     assert_eq!(Some(EditionRange::Exact(2021.into())), parse_edition_range("edition:2021"));

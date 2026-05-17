@@ -20,7 +20,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
 use rustc_middle::bug;
-use rustc_middle::lint::LevelAndSource;
+use rustc_middle::lint::LevelSpec;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
@@ -537,8 +537,8 @@ pub trait LintContext {
         self.opt_span_lint(lint, Some(span), decorator);
     }
 
-    /// This returns the lint level for the given lint at the current location.
-    fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource;
+    /// This returns the lint level spec for the given lint at the current location.
+    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec;
 
     /// This function can be used to manually fulfill an expectation. This can
     /// be used for lints which contain several spans, and should be suppressed,
@@ -604,8 +604,8 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         }
     }
 
-    fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
-        self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs)
+    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec {
+        self.tcx.lint_level_spec_at_node(lint, self.last_node_with_lint_attrs)
     }
 }
 
@@ -624,8 +624,8 @@ impl LintContext for EarlyContext<'_> {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
     }
 
-    fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
-        self.builder.lint_level(lint)
+    fn get_lint_level_spec(&self, lint: &'static Lint) -> LevelSpec {
+        self.builder.lint_level_spec(lint)
     }
 }
 

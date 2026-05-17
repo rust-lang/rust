@@ -688,10 +688,10 @@ impl Token {
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             OpenInvisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Block |
-                MetaVarKind::Expr { .. } |
-                MetaVarKind::Literal |
-                MetaVarKind::Path
+                MetaVarKind::Block
+                | MetaVarKind::Expr { .. }
+                | MetaVarKind::Literal
+                | MetaVarKind::Path,
             )) => true,
             _ => false,
         }
@@ -717,12 +717,12 @@ impl Token {
             Shl => true,                         // path (double UFCS)
             Or => matches!(pat_kind, PatWithOr), // leading vert `|` or-pattern
             OpenInvisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Expr { .. } |
-                MetaVarKind::Literal |
-                MetaVarKind::Meta { .. } |
-                MetaVarKind::Pat(_) |
-                MetaVarKind::Path |
-                MetaVarKind::Ty { .. }
+                MetaVarKind::Expr { .. }
+                | MetaVarKind::Literal
+                | MetaVarKind::Meta { .. }
+                | MetaVarKind::Pat(_)
+                | MetaVarKind::Path
+                | MetaVarKind::Ty { .. },
             )) => true,
             _ => false,
         }
@@ -733,20 +733,19 @@ impl Token {
         match self.uninterpolate().kind {
             Ident(name, is_raw) =>
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
-            OpenParen                         | // tuple
-            OpenBracket                       | // array
-            Bang                              | // never
-            Star                              | // raw pointer
-            And                               | // reference
-            AndAnd                            | // double reference
-            Question                          | // maybe bound in trait object
-            Lifetime(..)                      | // lifetime bound in trait object
-            Lt | Shl                          | // associated path
-            PathSep => true,                    // global path
-            OpenInvisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Ty { .. } |
-                MetaVarKind::Path
-            )) => true,
+            OpenParen          // tuple
+            | OpenBracket      // array
+            | Bang             // never
+            | Star             // raw pointer
+            | And              // reference
+            | AndAnd           // double reference
+            | Question         // maybe bound in trait object
+            | Lifetime(..)     // lifetime bound in trait object
+            | Lt | Shl         // associated path
+            | PathSep => true, // global path
+            OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Ty { .. } | MetaVarKind::Path)) => {
+                true
+            }
             // For anonymous structs or unions, which only appear in specific positions
             // (type of struct fields or union fields), we don't consider them as regular types
             _ => false,

@@ -1101,7 +1101,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
-            Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+            Rvalue::BinaryOp(op, (ref mut lhs, ref mut rhs)) => {
                 return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
@@ -1200,7 +1200,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let tcx = self.tcx;
         let ty = rvalue.ty(self.local_decls, tcx);
 
-        let Rvalue::Aggregate(box ref kind, ref mut field_ops) = *rvalue else { bug!() };
+        let Rvalue::Aggregate(ref kind, ref mut field_ops) = *rvalue else { bug!() };
 
         if field_ops.is_empty() {
             let is_zst = match *kind {
