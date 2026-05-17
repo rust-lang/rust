@@ -6,7 +6,6 @@ use hir_def::{
 };
 use rustc_hash::FxHashSet;
 use rustc_type_ir::inherent::{AdtDef, GenericArgs as _, IntoKind};
-use stdx::never;
 
 use crate::{
     consteval,
@@ -177,9 +176,7 @@ fn has_drop_glue_impl<'db>(
             }
         }
         TyKind::Infer(..) => unreachable!("inference vars shouldn't exist out of inference"),
-        TyKind::Pat(..) | TyKind::UnsafeBinder(..) => {
-            never!("we do not handle pattern and unsafe binder types");
-            DropGlue::None
-        }
+        TyKind::Pat(ty, _) => has_drop_glue_impl(infcx, ty, env, visited),
+        TyKind::UnsafeBinder(ty) => has_drop_glue_impl(infcx, ty.skip_binder(), env, visited),
     }
 }
