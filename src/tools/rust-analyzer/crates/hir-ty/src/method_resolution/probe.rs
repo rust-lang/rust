@@ -3,6 +3,7 @@
 
 use std::{cell::RefCell, convert::Infallible, ops::ControlFlow};
 
+use base_db::FxIndexMap;
 use hir_def::{
     AssocItemId, FunctionId, GenericParamId, ImplId, ItemContainerId, TraitId,
     hir::generics::GenericParams,
@@ -10,7 +11,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
@@ -719,7 +720,7 @@ impl<'db> ProbeChoice<'db> for ProbeForNameChoice<'db> {
 
 #[derive(Debug)]
 struct ProbeAllChoice<'db> {
-    candidates: RefCell<FxHashMap<CandidateId, CandidateWithPrivate<'db>>>,
+    candidates: RefCell<FxIndexMap<CandidateId, CandidateWithPrivate<'db>>>,
     considering_visible_candidates: bool,
 }
 
