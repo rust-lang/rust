@@ -2,7 +2,7 @@ use derive_where::derive_where;
 use rustc_abi::ExternAbi;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::solve::NoSolution;
+use crate::solve::{NoSolution, NoSolutionOrRerunNonErased};
 use crate::{self as ty, Interner};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -98,5 +98,11 @@ impl<I: Interner> TypeError<I> {
 impl<I: Interner> From<TypeError<I>> for NoSolution {
     fn from(_: TypeError<I>) -> NoSolution {
         NoSolution
+    }
+}
+
+impl<I: Interner> From<TypeError<I>> for NoSolutionOrRerunNonErased {
+    fn from(_: TypeError<I>) -> NoSolutionOrRerunNonErased {
+        NoSolutionOrRerunNonErased::NoSolution(NoSolution)
     }
 }
