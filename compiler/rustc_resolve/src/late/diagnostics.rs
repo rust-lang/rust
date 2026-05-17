@@ -3474,7 +3474,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if !self.diag_metadata.currently_processing_generic_args && !single_uppercase_char {
             return (None, None);
         }
-        match (self.diag_metadata.current_item, single_uppercase_char, self.diag_metadata.currently_processing_generic_args) {
+        match (
+            self.diag_metadata.current_item,
+            single_uppercase_char,
+            self.diag_metadata.currently_processing_generic_args,
+        ) {
             (Some(Item { kind: ItemKind::Fn(fn_), .. }), _, _) if fn_.ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
@@ -3487,7 +3491,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         | kind @ ItemKind::Union(..),
                     ..
                 }),
-                true, _
+                true,
+                _,
             )
             // Without the 2nd `true`, we'd suggest `impl <T>` for `impl T` when a type `T` isn't found
             | (Some(Item { kind: kind @ ItemKind::Impl(..), .. }), true, true)
@@ -3507,7 +3512,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                     let (msg, sugg) = match source {
                         PathSource::Type | PathSource::PreciseCapturingArg(TypeNS) => {
-                            if let Some(err) = self.detect_and_suggest_const_parameter_error(path, source) {
+                            if let Some(err) =
+                                self.detect_and_suggest_const_parameter_error(path, source)
+                            {
                                 return (None, Some(err));
                             }
                             ("you might be missing a type parameter", ident)
@@ -3522,8 +3529,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
                         } else if let GenericParam {
-                            kind: GenericParamKind::Const { ty, span: _, default  }, ..
-                        } = param {
+                            kind: GenericParamKind::Const { ty, span: _, default },
+                            ..
+                        } = param
+                        {
                             default.as_ref().map(|def| def.value.span).unwrap_or(ty.span)
                         } else {
                             param.ident.span
@@ -3534,12 +3543,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     };
                     // Do not suggest if this is coming from macro expansion.
                     if span.can_be_used_for_suggestions() {
-                        return (Some((
-                            span.shrink_to_hi(),
-                            msg,
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        )), None);
+                        return (
+                            Some((span.shrink_to_hi(), msg, sugg, Applicability::MaybeIncorrect)),
+                            None,
+                        );
                     }
                 }
             }

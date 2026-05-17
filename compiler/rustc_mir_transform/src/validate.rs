@@ -145,26 +145,21 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             let src = self.body.basic_blocks.get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
-                (false, false, EdgeKind::Normal)
+                (false, false, EdgeKind::Normal) => {}
                 // Cleanup blocks can jump to cleanup blocks along non-unwind edges
-                | (true, true, EdgeKind::Normal) => {}
+                (true, true, EdgeKind::Normal) => {}
                 // Non-cleanup blocks can jump to cleanup blocks along unwind edges
                 (false, true, EdgeKind::Unwind) => {
                     self.unwind_edge_count += 1;
                 }
                 // All other jumps are invalid
-                _ => {
-                    self.fail(
-                        location,
-                        format!(
-                            "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
-                            edge_kind,
-                            bb,
-                            src.is_cleanup,
-                            bb.is_cleanup,
-                        )
-                    )
-                }
+                _ => self.fail(
+                    location,
+                    format!(
+                        "{:?} edge to {:?} violates unwind invariants (cleanup {:?} -> {:?})",
+                        edge_kind, bb, src.is_cleanup, bb.is_cleanup,
+                    ),
+                ),
             }
         } else {
             self.fail(location, format!("encountered jump to invalid basic block {bb:?}"))

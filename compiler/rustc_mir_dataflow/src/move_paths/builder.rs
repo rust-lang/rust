@@ -450,12 +450,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
         match term.kind {
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::FalseUnwind { .. } => {}
             // In some sense returning moves the return place into the current
             // call's destination, however, since there are no statements after
             // this that could possibly access the return place, this doesn't
             // need recording.
-            | TerminatorKind::Return
+            TerminatorKind::Return
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::CoroutineDrop
@@ -510,8 +510,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                         => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.gather_operand(value);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {

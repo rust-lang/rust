@@ -871,8 +871,9 @@ fn try_write_constant<'tcx>(
         ty::FnDef(..) => {}
 
         // Those are scalars, must be handled above.
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char =>
-            throw_machine_stop_str!("primitive type with provenance"),
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
+            throw_machine_stop_str!("primitive type with provenance")
+        }
 
         ty::Tuple(elem_tys) => {
             for (i, elem) in elem_tys.iter().enumerate() {
@@ -898,7 +899,9 @@ fn try_write_constant<'tcx>(
                     throw_machine_stop_str!("discriminant with provenance")
                 };
                 let discr_bits = discr.to_bits(discr.size());
-                let Some((variant, _)) = def.discriminants(*ecx.tcx).find(|(_, var)| discr_bits == var.val) else {
+                let Some((variant, _)) =
+                    def.discriminants(*ecx.tcx).find(|(_, var)| discr_bits == var.val)
+                else {
                     throw_machine_stop_str!("illegal discriminant for enum")
                 };
                 let Some(variant_place) = map.apply(place, TrackElem::Variant(variant)) else {
