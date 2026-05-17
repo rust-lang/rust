@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use rustc_data_structures::sso::{SsoHashMap, SsoHashSet};
 use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
@@ -23,6 +24,7 @@ where
     infcx: &'a Infcx,
     universes: Vec<Option<UniverseIndex>>,
     normalize: F,
+    cache: SsoHashMap<I::Ty, I::Ty>,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -45,6 +47,7 @@ where
 {
     infcx: &'a Infcx,
     max_universe: ty::UniverseIndex,
+    cache: SsoHashSet<I::Ty>,
 }
 
 impl<'a, Infcx, I> MaxUniverse<'a, Infcx, I>
@@ -53,7 +56,7 @@ where
     I: Interner,
 {
     fn new(infcx: &'a Infcx) -> Self {
-        MaxUniverse { infcx, max_universe: ty::UniverseIndex::ROOT }
+        MaxUniverse { infcx, max_universe: ty::UniverseIndex::ROOT, cache: Default::default() }
     }
 
     fn max_universe(self) -> ty::UniverseIndex {
@@ -79,7 +82,9 @@ where
             self.max_universe = self.max_universe.max(self.infcx.universe_of_ty(vid).unwrap());
         }
 
-        t.super_visit_with(self)
+        if self.cache.insert(t) {
+            t.super_visit_with(self)
+        }
     }
 
     fn visit_const(&mut self, c: I::Const) {
@@ -110,7 +115,7 @@ where
     F: FnMut(AliasTerm<I>) -> Result<(I::Term, NormalizationWasAmbiguous), E>,
 {
     pub fn new(infcx: &'a Infcx, universes: Vec<Option<UniverseIndex>>, normalize: F) -> Self {
-        Self { infcx, universes, normalize }
+        Self { infcx, universes, normalize, cache: Default::default() }
     }
 
     fn normalize_alias_term(
@@ -176,12 +181,16 @@ where
             return Ok(ty);
         }
 
+        if let Some(ty) = self.cache.get(&ty) {
+            return Ok(*ty);
+        }
+
         // With eager normalization, we should normalize the args of alias before
         // normalizing the alias itself.
-        let ty = ty.try_super_fold_with(self)?;
-        let ty::Alias(alias_ty) = ty.kind() else { return Ok(ty) };
+        let folded_ty = ty.try_super_fold_with(self)?;
+        let ty::Alias(alias_ty) = folded_ty.kind() else { return Ok(folded_ty) };
 
-        if ty.has_escaping_bound_vars() {
+        let result = if folded_ty.has_escaping_bound_vars() {
             let (alias_ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, alias_ty);
             let normalized_term = ensure_sufficient_stack(|| {
@@ -195,13 +204,16 @@ where
                 &self.universes,
                 normalized_term.expect_ty(),
             );
-            Ok(normalized_ty)
+            normalized_ty
         } else {
-            Ok(ensure_sufficient_stack(|| {
+            ensure_sufficient_stack(|| {
                 self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::No)
             })?
-            .expect_ty())
-        }
+            .expect_ty()
+        };
+
+        assert!(self.cache.insert(ty, result).is_none(), "{ty:?} {result:?} {:?}",self.cache);
+        Ok(result)
     }
 
     #[instrument(level = "trace", skip(self), ret)]

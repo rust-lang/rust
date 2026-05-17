@@ -33,7 +33,7 @@ fn test_free() {
 
 fn test_free_mismatch() {
     let (mut arr, mut arr_with_weird_len) = free();
-    //[next]~^ ERROR type mismatch resolving `FREE::<10> == 2` 
+    //[next]~^ ERROR type mismatch resolving `FREE::<10> == 2`
     arr_with_weird_len = [(); 2];
     arr = [(); 10];
 }
