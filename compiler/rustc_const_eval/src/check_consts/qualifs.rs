@@ -237,7 +237,7 @@ where
         | Rvalue::UnaryOp(_, operand)
         | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
-        Rvalue::BinaryOp(_, box (lhs, rhs)) => {
+        Rvalue::BinaryOp(_, (lhs, rhs)) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
         }
 

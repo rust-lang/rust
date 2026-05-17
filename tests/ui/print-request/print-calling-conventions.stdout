@@ -1,6 +1,7 @@
 C
 C-unwind
 Rust
+Swift
 aapcs
 aapcs-unwind
 avr-interrupt

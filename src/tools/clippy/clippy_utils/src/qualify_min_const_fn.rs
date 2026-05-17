@@ -134,10 +134,11 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::Reborrow(_, _, place) | Rvalue::RawPtr(_, place) => {
-            check_place(cx, *place, span, body, msrv)
-        },
-        Rvalue::CopyForDeref(place) => check_place(cx, *place, span, body, msrv),
+        Rvalue::Discriminant(place)
+        | Rvalue::Ref(_, _, place)
+        | Rvalue::Reborrow(_, _, place)
+        | Rvalue::RawPtr(_, place)
+        | Rvalue::CopyForDeref(place) => check_place(cx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand, _)
         | Rvalue::WrapUnsafeBinder(operand, _)

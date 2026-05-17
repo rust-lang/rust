@@ -4,7 +4,7 @@
 use std::io;
 use std::io::ErrorKind;
 
-use rand::Rng;
+use rand::RngExt;
 use rustc_abi::Size;
 use rustc_target::spec::Os;
 

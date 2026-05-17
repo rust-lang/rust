@@ -1557,12 +1557,10 @@ impl Expr {
         }
 
         match &self.kind {
-            ExprKind::Closure(closure) => {
-                match closure.fn_decl.output {
-                    FnRetTy::Default(_) => ExprPrecedence::Jump,
-                    FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
-                }
-            }
+            ExprKind::Closure(closure) => match closure.fn_decl.output {
+                FnRetTy::Default(_) => ExprPrecedence::Jump,
+                FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
+            },
 
             ExprKind::Break(_ /*label*/, value)
             | ExprKind::Ret(value)
@@ -1584,17 +1582,16 @@ impl Expr {
             ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
-            ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
+            ExprKind::Assign(..) | ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
-            ExprKind::AddrOf(..)
+            ExprKind::AddrOf(..) => ExprPrecedence::Prefix,
+
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprKind::Let(..)
-            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
+            ExprKind::Let(..) | ExprKind::Move(..) | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
@@ -1763,6 +1760,8 @@ pub enum ExprKind {
     Binary(BinOp, Box<Expr>, Box<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, Box<Expr>),
+    /// A `move(expr)` expression.
+    Move(Box<Expr>, Span),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
@@ -3862,6 +3861,19 @@ pub struct Fn {
     /// This means, there was an EII declared somewhere and this function is the
     /// implementation that should be run when the declaration is called.
     pub eii_impls: ThinVec<EiiImpl>,
+}
+
+impl Fn {
+    pub fn is_pin_drop_sugar(&self) -> bool {
+        self.ident.name == sym::drop
+            && self
+                .sig
+                .decl
+                .inputs
+                .first()
+                .and_then(|param| param.to_self())
+                .is_some_and(|eself| matches!(eself.node, SelfKind::Pinned(None, Mutability::Mut)))
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

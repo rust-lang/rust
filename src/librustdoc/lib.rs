@@ -5,7 +5,7 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
@@ -13,6 +13,7 @@
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
+#![feature(variant_count)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
@@ -533,7 +534,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
-            Unstable,
+            Stable,
             Multi,
             "",
             "emit",

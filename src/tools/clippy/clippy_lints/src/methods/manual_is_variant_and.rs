@@ -256,7 +256,7 @@ pub(super) fn check_or<'tcx>(
             .expr_ty_adjusted(some_recv)
             .peel_refs()
             .is_diag_item(cx, sym::Option)
-        && SpanlessEq::new(cx).eq_expr(none_recv, some_recv)
+        && SpanlessEq::new(cx).eq_expr(expr.span.ctxt(), none_recv, some_recv)
     {
         (some_recv, some_arg)
     } else {

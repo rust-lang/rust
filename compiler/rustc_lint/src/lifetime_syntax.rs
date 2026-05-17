@@ -169,28 +169,19 @@ impl LifetimeSyntaxCategory {
             // E.g. `ContainsLifetime<'_>`.
             (ExplicitAnonymous, Path { .. }) |
             // E.g. `+ '_`, `+ use<'_>`.
-            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => {
-                Some(Self::Elided)
-            }
+            (ExplicitAnonymous, OutlivesBound | PreciseCapturing) => Some(Self::Elided),
 
             // E.g. `ContainsLifetime`.
-            (Implicit, Path { .. }) => {
-                Some(Self::Hidden)
-            }
+            (Implicit, Path { .. }) => Some(Self::Hidden),
 
             // E.g. `&'a T`.
             (ExplicitBound, Reference) |
             // E.g. `ContainsLifetime<'a>`.
             (ExplicitBound, Path { .. }) |
             // E.g. `+ 'a`, `+ use<'a>`.
-            (ExplicitBound, OutlivesBound | PreciseCapturing) => {
-                Some(Self::Named)
-            }
+            (ExplicitBound, OutlivesBound | PreciseCapturing) => Some(Self::Named),
 
-            (Implicit, OutlivesBound | PreciseCapturing) |
-            (_, Other) => {
-                None
-            }
+            (Implicit, OutlivesBound | PreciseCapturing) | (_, Other) => None,
         }
     }
 }

@@ -787,7 +787,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 let block = &self.body.basic_blocks[location.block];
 
                 let kind = if let Some(&Statement {
-                    kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), place)),
+                    kind: StatementKind::FakeRead((FakeReadCause::ForLet(_), place)),
                     ..
                 }) = block.statements.get(location.statement_index)
                 {
@@ -849,7 +849,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         // will only ever have one item at any given time, but by using a vector, we can pop from
         // it which simplifies the termination logic.
         let mut queue = vec![location];
-        let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) = stmt else {
+        let Some(Statement { kind: StatementKind::Assign((place, _)), .. }) = stmt else {
             return false;
         };
         let Some(mut target) = place.as_local() else { return false };
@@ -865,7 +865,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...
-                if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
+                if let StatementKind::Assign((place, rvalue)) = &stmt.kind {
                     let Some(into) = place.local_or_deref_local() else {
                         // Continue at the next location.
                         queue.push(current_location.successor_within_block());

@@ -56,9 +56,9 @@ pub(crate) fn expand_test_case(
     // `#[test_case]` is valid on functions, consts, and statics. Only modify
     // the item in those cases.
     match &mut item.kind {
-        ast::ItemKind::Fn(box ast::Fn { ident, .. })
-        | ast::ItemKind::Const(box ast::ConstItem { ident, .. })
-        | ast::ItemKind::Static(box ast::StaticItem { ident, .. }) => {
+        ast::ItemKind::Fn(ast::Fn { ident, .. })
+        | ast::ItemKind::Const(ast::ConstItem { ident, .. })
+        | ast::ItemKind::Static(ast::StaticItem { ident, .. }) => {
             ident.span = ident.span.with_ctxt(sp.ctxt());
             let test_path_symbol = Symbol::intern(&item_path(
                 // skip the name of the root module
@@ -114,7 +114,7 @@ pub(crate) fn expand_test_or_bench(
 ) -> Vec<Annotatable> {
     let (item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
-        Annotatable::Stmt(box ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
+        Annotatable::Stmt(ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
             not_testable_error(cx, is_bench, attr_sp, None);
             return vec![other];

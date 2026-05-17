@@ -439,7 +439,7 @@ fn layout_of_uncached<'tcx>(
                             Unnormalized::new_wip(tcx.struct_tail_raw(
                                 pointee,
                                 &ObligationCause::dummy(),
-                                |ty| ty,
+                                |ty| ty.skip_norm_wip(),
                                 || {},
                             )),
                         ) {
@@ -613,7 +613,7 @@ fn layout_of_uncached<'tcx>(
                 .is_struct()
                 .then(|| &def.variant(FIRST_VARIANT).fields)
                 .filter(|fields| fields.len() == 1)
-                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).kind())
+                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip().kind())
             else {
                 // Invalid SIMD types should have been caught by typeck by now.
                 let guar = tcx.dcx().delayed_bug("#[repr(simd)] was applied to an invalid ADT");
@@ -654,7 +654,7 @@ fn layout_of_uncached<'tcx>(
                 .map(|v| {
                     v.fields
                         .iter()
-                        .map(|field| cx.layout_of(field.ty(tcx, args)))
+                        .map(|field| cx.layout_of(field.ty(tcx, args).skip_norm_wip()))
                         .try_collect::<IndexVec<_, _>>()
                 })
                 .try_collect::<IndexVec<VariantIdx, _>>()?;
@@ -713,7 +713,12 @@ fn layout_of_uncached<'tcx>(
             // If the struct tail is sized and can be unsized, check that unsizing doesn't move the fields around.
             if cfg!(debug_assertions)
                 && maybe_unsized
-                && def.non_enum_variant().tail().ty(tcx, args).is_sized(tcx, cx.typing_env)
+                && def
+                    .non_enum_variant()
+                    .tail()
+                    .ty(tcx, args)
+                    .skip_norm_wip()
+                    .is_sized(tcx, cx.typing_env)
             {
                 let mut variants = variants;
                 let tail_replacement = cx.layout_of(Ty::new_slice(tcx, tcx.types.u8)).unwrap();

@@ -327,6 +327,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.features()
     }
 
+    fn assumptions_on_binders(self) -> bool {
+        self.assumptions_on_binders()
+    }
+
     fn coroutine_hidden_types(
         self,
         def_id: DefId,

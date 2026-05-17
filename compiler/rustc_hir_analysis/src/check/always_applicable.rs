@@ -197,7 +197,7 @@ fn ensure_all_fields_are_const_destruct<'tcx>(
     let args = ty::GenericArgs::identity_for_item(tcx, impl_def_id);
     let destruct_trait = tcx.lang_items().destruct_trait().unwrap();
     for field in tcx.adt_def(adt_def_id).all_fields() {
-        let field_ty = field.ty(tcx, args);
+        let field_ty = field.ty(tcx, args).skip_norm_wip();
         let cause = traits::ObligationCause::new(
             tcx.def_span(field.did),
             impl_def_id,

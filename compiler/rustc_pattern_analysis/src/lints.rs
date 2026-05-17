@@ -1,4 +1,3 @@
-use rustc_middle::lint::LevelAndSource;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::ErrorGuaranteed;
 use tracing::instrument;
@@ -64,10 +63,11 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
     pat_column: &PatternColumn<'p, RustcPatCtxt<'p, 'tcx>>,
     scrut_ty: RevealedTy<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    if !matches!(
-        rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, rcx.match_lint_level).level,
-        rustc_session::lint::Level::Allow
-    ) {
+    if !rcx
+        .tcx
+        .lint_level_spec_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, rcx.match_lint_level)
+        .is_allow()
+    {
         let witnesses = collect_nonexhaustive_missing_variants(rcx, pat_column)?;
         if !witnesses.is_empty() {
             // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
@@ -89,12 +89,13 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
         // arm. This no longer makes sense so we warn users, to avoid silently breaking their
         // usage of the lint.
         for arm in arms {
-            let LevelAndSource { level, src, .. } =
-                rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.arm_data);
-            if !matches!(level, rustc_session::lint::Level::Allow) {
+            let level_spec =
+                rcx.tcx.lint_level_spec_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.arm_data);
+            let level = level_spec.level();
+            if level != rustc_session::lint::Level::Allow {
                 rcx.tcx.dcx().emit_warn(NonExhaustiveOmittedPatternLintOnArm {
                     span: arm.pat.data().span,
-                    lint_span: src.span(),
+                    lint_span: level_spec.src.span(),
                     suggest_lint_on_match: rcx.whole_match_span.map(|span| span.shrink_to_lo()),
                     lint_level: level.as_str(),
                     lint_name: "non_exhaustive_omitted_patterns",

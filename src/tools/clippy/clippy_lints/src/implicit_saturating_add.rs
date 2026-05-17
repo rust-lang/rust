@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             && let ctxt = expr.span.ctxt()
             && ex.span.ctxt() == ctxt
             && cond.span.ctxt() == ctxt
-            && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
+            && clippy_utils::SpanlessEq::new(cx).eq_expr(ctxt, l, target)
             && AssignOpKind::AddAssign == op1.node
             && let ExprKind::Lit(lit) = value.kind
             && let LitKind::Int(Pu128(1), LitIntType::Unsuffixed) = lit.node

@@ -31,7 +31,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         }
 
         if def.variant(data_idx).fields.len() == 1 {
-            return def.variant(data_idx).single_field().ty(tcx, args);
+            return def.variant(data_idx).single_field().ty(tcx, args).skip_norm_wip();
         }
     }
 

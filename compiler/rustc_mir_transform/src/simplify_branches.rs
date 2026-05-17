@@ -51,7 +51,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
             for (statement_index, stmt) in block.statements.iter().enumerate() {
                 let has_place_const = pre_place_const.take();
                 // Simplify `assume` of a known value: either a NOP or unreachable.
-                if let StatementKind::Intrinsic(box ref intrinsic) = stmt.kind
+                if let StatementKind::Intrinsic(ref intrinsic) = stmt.kind
                     && let NonDivergingIntrinsic::Assume(discr) = intrinsic
                     && let Some(c) = try_get_const(discr, has_place_const)
                     && let Some(constant) = c.const_.try_eval_bool(tcx, typing_env)
@@ -62,7 +62,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                         patch.patch_terminator(bb, TerminatorKind::Unreachable);
                         continue 'blocks;
                     }
-                } else if let StatementKind::Assign(box (lhs, ref rvalue)) = stmt.kind
+                } else if let StatementKind::Assign((lhs, ref rvalue)) = stmt.kind
                     && let Rvalue::Use(Operand::Constant(c), _) = rvalue
                 {
                     pre_place_const = Some((lhs, c));

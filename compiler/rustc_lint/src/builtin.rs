@@ -30,7 +30,6 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
 use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
 use rustc_middle::bug;
-use rustc_middle::lint::LevelAndSource;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -61,7 +60,8 @@ use crate::lints::{
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
     ///
@@ -260,12 +260,12 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
-            ast::ItemKind::Trait(box ast::Trait { safety: ast::Safety::Unsafe(_), .. }) => {
+            ast::ItemKind::Trait(ast::Trait { safety: ast::Safety::Unsafe(_), .. }) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
             }
 
             ast::ItemKind::Impl(ast::Impl {
-                of_trait: Some(box ast::TraitImplHeader { safety: ast::Safety::Unsafe(_), .. }),
+                of_trait: Some(ast::TraitImplHeader { safety: ast::Safety::Unsafe(_), .. }),
                 ..
             }) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
@@ -695,9 +695,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         }
 
         // Avoid listing trait impls if the trait is allowed.
-        let LevelAndSource { level, .. } =
-            cx.tcx.lint_level_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id());
-        if level == Level::Allow {
+        if cx.tcx.lint_level_spec_at_node(MISSING_DEBUG_IMPLEMENTATIONS, item.hir_id()).is_allow() {
             return;
         }
 
@@ -779,7 +777,7 @@ impl EarlyLintPass for AnonymousParameters {
             // This is a hard error in future editions; avoid linting and erroring
             return;
         }
-        if let ast::AssocItemKind::Fn(box Fn { ref sig, .. }) = it.kind {
+        if let ast::AssocItemKind::Fn(Fn { ref sig, .. }) = it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Missing = arg.pat.kind {
                     let ty_snip = cx.sess().source_map().span_to_snippet(arg.ty.span);
@@ -1510,8 +1508,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
                     ClauseKind::Trait(..) => "trait",
-                    ClauseKind::TypeOutlives(..) |
-                    ClauseKind::RegionOutlives(..) => "lifetime",
+                    ClauseKind::TypeOutlives(..) | ClauseKind::RegionOutlives(..) => "lifetime",
 
                     ClauseKind::UnstableFeature(_)
                     // `ConstArgHasType` is never global as `ct` is always a param
@@ -2476,19 +2473,21 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             init: InitKind,
         ) -> Option<InitError> {
             let mut field_err = variant.fields.iter().find_map(|field| {
-                ty_find_init_error(cx, field.ty(cx.tcx, args), init).map(|mut err| {
-                    if !field.did.is_local() {
-                        err
-                    } else if err.span.is_none() {
-                        err.span = Some(cx.tcx.def_span(field.did));
-                        write!(&mut err.message, " (in this {descr})").unwrap();
-                        err
-                    } else {
-                        InitError::from(format!("in this {descr}"))
-                            .spanned(cx.tcx.def_span(field.did))
-                            .nested(err)
-                    }
-                })
+                ty_find_init_error(cx, field.ty(cx.tcx, args).skip_norm_wip(), init).map(
+                    |mut err| {
+                        if !field.did.is_local() {
+                            err
+                        } else if err.span.is_none() {
+                            err.span = Some(cx.tcx.def_span(field.did));
+                            write!(&mut err.message, " (in this {descr})").unwrap();
+                            err
+                        } else {
+                            InitError::from(format!("in this {descr}"))
+                                .spanned(cx.tcx.def_span(field.did))
+                                .nested(err)
+                        }
+                    },
+                )
             });
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).

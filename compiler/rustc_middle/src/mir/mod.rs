@@ -1694,7 +1694,7 @@ pub fn find_self_call<'tcx>(
     debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
     if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
         &body[block].terminator
-        && let Operand::Constant(box ConstOperand { const_, .. }) = func
+        && let Operand::Constant(ConstOperand { const_, .. }) = func
         && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
         && let Some(item) = tcx.opt_associated_item(def_id)
         && item.is_method()
@@ -1708,7 +1708,7 @@ pub fn find_self_call<'tcx>(
         // Handle the case where `self_place` gets reborrowed.
         // This happens when the receiver is `&T`.
         for stmt in &body[block].statements {
-            if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+            if let StatementKind::Assign((place, rvalue)) = &stmt.kind
                 && let Some(reborrow_local) = place.as_local()
                 && self_place.as_local() == Some(reborrow_local)
                 && let Rvalue::Ref(_, _, deref_place) = rvalue

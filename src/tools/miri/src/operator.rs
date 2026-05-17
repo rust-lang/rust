@@ -1,6 +1,6 @@
 use std::iter;
 
-use rand::Rng;
+use rand::RngExt;
 use rand::seq::IteratorRandom;
 use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};

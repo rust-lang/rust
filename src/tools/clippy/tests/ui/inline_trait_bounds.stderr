@@ -1,0 +1,162 @@
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:5:17
+   |
+LL | fn inline_simple<T: Clone>() {}
+   |                 ^^^^^^^^^^
+   |
+   = note: `-D clippy::inline-trait-bounds` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::inline_trait_bounds)]`
+help: move bounds to a `where` clause
+   |
+LL - fn inline_simple<T: Clone>() {}
+LL + fn inline_simple<T>() where T: Clone {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:8:19
+   |
+LL | fn inline_multiple<T: Clone + Copy, U: core::fmt::Debug>() {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL - fn inline_multiple<T: Clone + Copy, U: core::fmt::Debug>() {}
+LL + fn inline_multiple<T, U>() where T: Clone + Copy, U: core::fmt::Debug {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:11:19
+   |
+LL | fn inline_lifetime<'a: 'b, 'b>(x: &'a str, y: &'b str) -> &'b str {
+   |                   ^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL - fn inline_lifetime<'a: 'b, 'b>(x: &'a str, y: &'b str) -> &'b str {
+LL + fn inline_lifetime<'a, 'b>(x: &'a str, y: &'b str) -> &'b str where 'a: 'b {
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:17:21
+   |
+LL | fn inline_with_where<T: Clone>()
+   |                     ^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL ~ fn inline_with_where<T>()
+LL |
+LL | where
+LL ~     T: core::fmt::Debug, T: Clone,
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:24:21
+   |
+LL | fn inline_with_const<T: Clone, const N: usize>() {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL - fn inline_with_const<T: Clone, const N: usize>() {}
+LL + fn inline_with_const<T, const N: usize>() where T: Clone {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:27:22
+   |
+LL | fn inline_with_return<T: Clone>(val: T) -> T {
+   |                      ^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL - fn inline_with_return<T: Clone>(val: T) -> T {
+LL + fn inline_with_return<T>(val: T) -> T where T: Clone {
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:35:27
+   |
+LL |     fn trait_method_inline<T: Clone>(&self);
+   |                           ^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -     fn trait_method_inline<T: Clone>(&self);
+LL +     fn trait_method_inline<T>(&self) where T: Clone;
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:38:28
+   |
+LL |     fn trait_method_default<T: Clone + Copy>(&self) {}
+   |                            ^^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -     fn trait_method_default<T: Clone + Copy>(&self) {}
+LL +     fn trait_method_default<T>(&self) where T: Clone + Copy {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:51:26
+   |
+LL |     fn impl_method_inline<T: Clone>(&self) {}
+   |                          ^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -     fn impl_method_inline<T: Clone>(&self) {}
+LL +     fn impl_method_inline<T>(&self) where T: Clone {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:54:28
+   |
+LL |     fn impl_method_multiple<T: Clone, U: core::fmt::Debug>(&self) {}
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -     fn impl_method_multiple<T: Clone, U: core::fmt::Debug>(&self) {}
+LL +     fn impl_method_multiple<T, U>(&self) where T: Clone, U: core::fmt::Debug {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:59:27
+   |
+LL |     fn trait_method_inline<T: Clone>(&self) {}
+   |                           ^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -     fn trait_method_inline<T: Clone>(&self) {}
+LL +     fn trait_method_inline<T>(&self) where T: Clone {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:62:28
+   |
+LL |     fn trait_method_default<T: Clone + Copy>(&self) {}
+   |                            ^^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL -     fn trait_method_default<T: Clone + Copy>(&self) {}
+LL +     fn trait_method_default<T>(&self) where T: Clone + Copy {}
+   |
+
+error: inline trait bounds used
+  --> tests/ui/inline_trait_bounds.rs:92:22
+   |
+LL | fn with_default_value<T: Clone = u32>(x: T) -> T {
+   |                      ^^^^^^^^^^^^^^^^
+   |
+help: move bounds to a `where` clause
+   |
+LL - fn with_default_value<T: Clone = u32>(x: T) -> T {
+LL + fn with_default_value<T = u32>(x: T) -> T where T: Clone {
+   |
+
+error: aborting due to 13 previous errors
+

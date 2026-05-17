@@ -658,13 +658,7 @@ fn push_generic_args_internal<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    assert_eq!(
-        args,
-        tcx.normalize_erasing_regions(
-            ty::TypingEnv::fully_monomorphized(),
-            Unnormalized::new_wip(args)
-        )
-    );
+    tcx.assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), args);
     let mut args = args.non_erasable_generics().peekable();
     if args.peek().is_none() {
         return false;

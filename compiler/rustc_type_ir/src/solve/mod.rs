@@ -13,6 +13,7 @@ use rustc_type_ir_macros::{
 use tracing::debug;
 
 use crate::lang_items::SolverTraitLangItem;
+use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
     self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
@@ -578,12 +579,32 @@ pub struct Response<I: Interner> {
 
 impl<I: Interner> Eq for Response<I> {}
 
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum ExternalRegionConstraints<I: Interner> {
+    /// normal region constraints used on stable/when -Znext-solver is used by itself
+    Old(Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>),
+    /// new form of region constraints used when `-Zassumptions-on-binders` is enabled.
+    /// supports ORs.
+    NextGen(RegionConstraint<I>),
+}
+
+impl<I: Interner> ExternalRegionConstraints<I> {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Old(r) => r.is_empty(),
+            Self::NextGen(r) => r.is_true(),
+        }
+    }
+}
+
 /// Additional constraints returned on success.
-#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
-    pub region_constraints: Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>,
+    pub region_constraints: ExternalRegionConstraints<I>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }
@@ -591,10 +612,28 @@ pub struct ExternalConstraintsData<I: Interner> {
 impl<I: Interner> Eq for ExternalConstraintsData<I> {}
 
 impl<I: Interner> ExternalConstraintsData<I> {
+    pub fn new(cx: I) -> Self {
+        let region_constraints = match cx.assumptions_on_binders() {
+            true => ExternalRegionConstraints::NextGen(RegionConstraint::new_true()),
+            false => ExternalRegionConstraints::Old(vec![]),
+        };
+
+        Self {
+            region_constraints,
+            opaque_types: vec![],
+            normalization_nested_goals: NestedNormalizationGoals::default(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.region_constraints.is_empty()
-            && self.opaque_types.is_empty()
-            && self.normalization_nested_goals.is_empty()
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            normalization_nested_goals,
+        } = self;
+        region_constraints.is_empty()
+            && opaque_types.is_empty()
+            && normalization_nested_goals.is_empty()
     }
 }
 

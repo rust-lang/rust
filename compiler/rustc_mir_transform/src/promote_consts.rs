@@ -461,7 +461,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, box (lhs, rhs)) => {
+            Rvalue::BinaryOp(op, (lhs, rhs)) => {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
@@ -796,7 +796,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         if loc.statement_index < num_stmts {
             let (mut rvalue, source_info) = {
                 let statement = &mut self.source[loc.block].statements[loc.statement_index];
-                let StatementKind::Assign(box (_, rhs)) = &mut statement.kind else {
+                let StatementKind::Assign((_, rhs)) = &mut statement.kind else {
                     span_bug!(statement.source_info.span, "{:?} is not an assignment", statement);
                 };
 
@@ -901,7 +901,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
-            let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) =
+            let StatementKind::Assign((_, Rvalue::Ref(region, borrow_kind, place))) =
                 &mut statement.kind
             else {
                 bug!()
@@ -1013,7 +1013,7 @@ fn promote_candidates<'tcx>(
     let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
         let Location { block, statement_index } = candidate.location;
-        if let StatementKind::Assign(box (place, _)) = &body[block].statements[statement_index].kind
+        if let StatementKind::Assign((place, _)) = &body[block].statements[statement_index].kind
             && let Some(local) = place.as_local()
         {
             if temps[local] == TempState::PromotedOut {
@@ -1069,7 +1069,7 @@ fn promote_candidates<'tcx>(
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
     for block in body.basic_blocks_mut() {
         block.retain_statements(|statement| match &statement.kind {
-            StatementKind::Assign(box (place, _)) => {
+            StatementKind::Assign((place, _)) => {
                 if let Some(index) = place.as_local() {
                     !promoted(index)
                 } else {

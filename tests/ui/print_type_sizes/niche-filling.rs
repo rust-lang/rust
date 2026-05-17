@@ -11,7 +11,7 @@
 //@ compile-flags: -Z print-type-sizes --crate-type lib
 //@ ignore-std-debug-assertions (debug assertions will print more types)
 //@ build-pass
-//@ ignore-pass
+//@ no-pass-override (codegen affects -Zprint-type-sizes)
 //  ^-- needed because `--pass check` does not emit the output needed.
 //      FIXME: consider using an attribute instead of side-effects.
 #![allow(dead_code)]

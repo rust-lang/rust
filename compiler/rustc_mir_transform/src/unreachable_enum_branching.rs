@@ -36,7 +36,7 @@ fn get_switched_on_type<'tcx>(
 
     let stmt_before_term = block_data.statements.last()?;
 
-    if let StatementKind::Assign(box (l, Rvalue::Discriminant(place))) = stmt_before_term.kind
+    if let StatementKind::Assign((l, Rvalue::Discriminant(place))) = stmt_before_term.kind
         && l.as_local() == Some(local)
     {
         let ty = place.ty(body, tcx).ty;

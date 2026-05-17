@@ -246,7 +246,7 @@ fn structurally_same_type_impl<'tcx>(
                     // continue with `ty`'s non-ZST field,
                     // otherwise `ty` is a ZST and we can return
                     if let Some(field) = types::transparent_newtype_field(tcx, v) {
-                        ty = field.ty(tcx, args);
+                        ty = field.ty(tcx, args).skip_norm_wip();
                         continue;
                     }
                 }

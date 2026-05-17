@@ -95,7 +95,7 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
     fn visit_statement(&mut self, stmt: &Statement<'tcx>, loc: Location) {
-        if let StatementKind::Assign(box (lhs, _)) = &stmt.kind {
+        if let StatementKind::Assign((lhs, _)) = &stmt.kind {
             // Check for assignment to fields of a constant
             // Assigning directly to a constant (e.g. `FOO = true;`) is a hard error,
             // so emitting a lint would be redundant.

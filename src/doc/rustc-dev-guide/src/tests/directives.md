@@ -78,7 +78,7 @@ See [Controlling pass/fail expectations](ui.md#controlling-passfail-expectations
 | `run-fail`                  | Program must exit with code `1..=127`       | `ui`                                      | N/A             |
 | `run-crash`                 | Program must crash                          | `ui`                                      | N/A             |
 | `run-fail-or-crash`         | Program must `run-fail` or `run-crash`      | `ui`                                      | N/A             |
-| `ignore-pass`               | Ignore `--pass` flag                        | `ui`                                      | N/A             |
+| `no-pass-override`          | Ignore `--pass` flag                        | `ui`                                      | N/A             |
 | `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                       | N/A             |
 | `failure-status`            | On failure, the compiler must exit with this status code. To expect an ICE, use `//@ failure-status: 101`. | `ui`, `incremental` | Any `u16` |
 | `should-fail`               | Compiletest self-test                       | All                                       | N/A             |

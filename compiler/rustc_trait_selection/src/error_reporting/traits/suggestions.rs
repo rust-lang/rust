@@ -365,7 +365,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .unwrap_or_else(|| self.tcx.def_span(field_def.did));
 
             if field_def.vis.is_accessible_from(def_scope, self.tcx) {
-                let accessible_field_ty = field_def.ty(self.tcx, args);
+                let accessible_field_ty = field_def.ty(self.tcx, args).skip_norm_wip();
                 if let Some((private_base_ty, private_field_ty, private_field_span)) =
                     private_candidate
                     && !self.can_eq(param_env, private_field_ty, accessible_field_ty)
@@ -457,7 +457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             private_candidate.get_or_insert((
                 deref_base_ty,
-                field_def.ty(self.tcx, args),
+                field_def.ty(self.tcx, args).skip_norm_wip(),
                 field_span,
             ));
         }
@@ -4630,7 +4630,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         is_derivable_trait &&
             // Ensure all fields impl the trait.
             adt.all_fields().all(|field| {
-                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args));
+                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args).skip_norm_wip());
                 let trait_args = match diagnostic_name {
                     sym::PartialEq | sym::PartialOrd => {
                         Some(field_ty)

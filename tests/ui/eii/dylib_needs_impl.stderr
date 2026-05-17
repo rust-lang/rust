@@ -1,0 +1,10 @@
+error: `#[eii1]` required, but not found
+  --> $DIR/dylib_needs_impl.rs:6:7
+   |
+LL | #[eii(eii1)]
+   |       ^^^^ expected because `#[eii1]` was declared here in crate `dylib_needs_impl`
+   |
+   = help: expected at least one implementation in crate `dylib_needs_impl` or any of its dependencies
+
+error: aborting due to 1 previous error
+

@@ -259,7 +259,7 @@ where
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait(ecx, self_ty)?;
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.enter_forall(constituent_tys, |ecx, tys| {
+            ecx.enter_forall_with_assumptions(constituent_tys, goal.param_env, |ecx, tys| {
                 ecx.add_goals(
                     GoalSource::ImplWhereBound,
                     tys.into_iter().map(|ty| {

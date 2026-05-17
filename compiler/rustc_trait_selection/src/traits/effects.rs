@@ -458,7 +458,9 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         ty::Adt(adt_def, args) => {
             let mut const_conditions: ThinVec<_> = adt_def
                 .all_fields()
-                .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
+                .map(|field| {
+                    ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args).skip_norm_wip()])
+                })
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.

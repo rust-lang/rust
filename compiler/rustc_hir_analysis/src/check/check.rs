@@ -168,7 +168,12 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
     let args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
 
     for field in &def.non_enum_variant().fields {
-        if !allowed_union_or_unsafe_field(tcx, field.ty(tcx, args), typing_env, span) {
+        if !allowed_union_or_unsafe_field(
+            tcx,
+            field.ty(tcx, args).skip_norm_wip(),
+            typing_env,
+            span,
+        ) {
             let (field_span, ty_span) = match tcx.hir_get_if_local(field.did) {
                 // We are currently checking the type this field came from, so it must be local.
                 Some(Node::Field(field)) => (field.span, field.ty.span),
@@ -738,7 +743,7 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
     let (([], [field]) | ([field], [])) = (&var_one.fields.raw[..], &var_two.fields.raw[..]) else {
         return false;
     };
-    matches!(field.ty(tcx, args).kind(), ty::FnPtr(..) | ty::Ref(..))
+    matches!(field.ty(tcx, args).skip_norm_wip().kind(), ty::FnPtr(..) | ty::Ref(..))
 }
 
 fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -1440,7 +1445,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         }
 
         let array_field = &fields[FieldIdx::ZERO];
-        let array_ty = array_field.ty(tcx, args);
+        let array_ty = array_field.ty(tcx, args).skip_norm_wip();
         let ty::Array(element_ty, len_const) = array_ty.kind() else {
             struct_span_code_err!(
                 tcx.dcx(),
@@ -1545,7 +1550,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
 
     match scalable {
         ScalableElt::ElementCount(..) => {
-            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args);
+            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip();
 
             // Check that `element_ty` only uses types valid in the lanes of a scalable vector
             // register: scalar types which directly match a "machine" type - integers, floats and
@@ -1565,7 +1570,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
         ScalableElt::Container => {
             let mut prev_field_ty = None;
             for field in fields.iter() {
-                let element_ty = field.ty(tcx, args);
+                let element_ty = field.ty(tcx, args).skip_norm_wip();
                 if let ty::Adt(def, _) = element_ty.kind()
                     && def.repr().scalable()
                 {
@@ -1683,7 +1688,7 @@ pub(super) fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, args).kind()
+                if let ty::Adt(def, _) = field.ty(tcx, args).skip_norm_wip().kind()
                     && !stack.contains(&def.did())
                     && let Some(mut defs) = check_packed_inner(tcx, def.did(), stack)
                 {
@@ -1761,7 +1766,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
     }
 
     let field_infos = adt.all_fields().map(|field| {
-        let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
+        let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did)).skip_norm_wip();
         let layout = tcx.layout_of(typing_env.as_query_input(ty));
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
@@ -1828,7 +1833,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                     return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::ReprC });
                 }
                 def.all_fields()
-                    .map(|field| field.ty(tcx, args))
+                    .map(|field| field.ty(tcx, args).skip_norm_wip())
                     .try_for_each(|t| check_unsuited(tcx, typing_env, t))
             }
             _ => ControlFlow::Continue(()),

@@ -2420,7 +2420,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::Adt(def, args) => ty::Binder::dummy(AutoImplConstituents {
-                types: def.all_fields().map(|f| f.ty(self.tcx(), args)).collect(),
+                types: def.all_fields().map(|f| f.ty(self.tcx(), args).skip_norm_wip()).collect(),
                 assumptions: vec![],
             }),
 

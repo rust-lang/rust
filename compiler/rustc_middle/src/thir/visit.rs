@@ -81,7 +81,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             visitor.visit_pat(pat);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
-        LoopMatch { match_data: box LoopMatchMatchData { scrutinee, ref arms, .. }, .. }
+        LoopMatch { match_data: LoopMatchMatchData { scrutinee, ref arms, .. }, .. }
         | Match { scrutinee, ref arms, .. } => {
             visitor.visit_expr(&visitor.thir()[scrutinee]);
             for &arm in &**arms {
@@ -123,7 +123,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt(box AdtExpr {
+        Adt(AdtExpr {
             ref fields,
             ref base,
             adt_def: _,
@@ -145,7 +145,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         PlaceUnwrapUnsafeBinder { source }
         | ValueUnwrapUnsafeBinder { source }
         | WrapUnsafeBinder { source } => visitor.visit_expr(&visitor.thir()[source]),
-        Closure(box ClosureExpr {
+        Closure(ClosureExpr {
             closure_id: _,
             args: _,
             upvars: _,
@@ -158,7 +158,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         NamedConst { def_id: _, args: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
-        InlineAsm(box InlineAsmExpr {
+        InlineAsm(InlineAsmExpr {
             asm_macro: _,
             ref operands,
             template: _,

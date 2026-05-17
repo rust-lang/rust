@@ -194,7 +194,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             variant_def.fields.len() as u64,
             |this, i, place| {
                 let field_def = &variant_def.fields[FieldIdx::from_usize(i as usize)];
-                let field_ty = field_def.ty(*this.tcx, generics);
+                let field_ty = field_def.ty(*this.tcx, generics).skip_norm_wip();
                 this.write_field(field_ty, place, variant_layout, Some(field_def.name), i)
             },
         )

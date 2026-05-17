@@ -379,7 +379,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         debug!("gather_statement({:?}, {:?})", self.loc, stmt);
         match &stmt.kind {
-            StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
+            StatementKind::Assign((place, Rvalue::CopyForDeref(reffed))) => {
                 let local = place.as_local().unwrap();
                 assert!(self.body.local_decls[local].is_deref_temp());
 
@@ -389,12 +389,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 let base_local = rev_lookup.un_derefer.deref_chain(local).first().unwrap().local;
                 rev_lookup.locals[local] = rev_lookup.locals[base_local];
             }
-            StatementKind::Assign(box (place, rval)) => {
+            StatementKind::Assign((place, rval)) => {
                 self.create_move_path(*place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
                 self.gather_rvalue(rval);
             }
-            StatementKind::FakeRead(box (_, place)) => {
+            StatementKind::FakeRead((_, place)) => {
                 self.create_move_path(*place);
             }
             StatementKind::StorageLive(_) => {}
@@ -428,7 +428,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::UnaryOp(_, ref operand)
             | Rvalue::WrapUnsafeBinder(ref operand, _) => self.gather_operand(operand),
-            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(ref _binop, (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
             }
@@ -450,12 +450,12 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
         match term.kind {
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::FalseUnwind { .. } => {}
             // In some sense returning moves the return place into the current
             // call's destination, however, since there are no statements after
             // this that could possibly access the return place, this doesn't
             // need recording.
-            | TerminatorKind::Return
+            TerminatorKind::Return
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::CoroutineDrop
@@ -510,8 +510,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                         => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.gather_operand(value);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {

@@ -8,6 +8,7 @@ use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -265,7 +266,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
         {
             let is_matching_resize = if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // If we have a size expression, check that it is equal to what's passed to `resize`
-                SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                SpanlessEq::new(self.cx).eq_expr(SyntaxContext::root(), len_arg, size_expr)
                     || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.name == sym::capacity)
             } else {
                 self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
@@ -287,7 +288,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
         {
             if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // Check that len expression is equals to `with_capacity` expression
-                return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                return SpanlessEq::new(self.cx).eq_expr(SyntaxContext::root(), len_arg, size_expr)
                     || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.name == sym::capacity);
             }
 

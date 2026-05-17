@@ -65,6 +65,10 @@ impl EffectiveVisibility {
         }
     }
 
+    pub fn public_at_level(&self) -> Option<Level> {
+        Level::all_levels().into_iter().find(|&level| self.is_public_at_level(level))
+    }
+
     pub fn is_public_at_level(&self, level: Level) -> bool {
         self.at_level(level).is_public()
     }
@@ -120,9 +124,7 @@ impl EffectiveVisibilities {
     }
 
     pub fn public_at_level(&self, id: LocalDefId) -> Option<Level> {
-        self.effective_vis(id).and_then(|effective_vis| {
-            Level::all_levels().into_iter().find(|&level| effective_vis.is_public_at_level(level))
-        })
+        self.effective_vis(id).and_then(|effective_vis| effective_vis.public_at_level())
     }
 
     pub fn update_root(&mut self) {

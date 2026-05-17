@@ -96,12 +96,7 @@ pub trait Interner:
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
-    type BoundVarKinds: Copy
-        + Debug
-        + Hash
-        + Eq
-        + SliceLike<Item = ty::BoundVariableKind<Self>>
-        + Default;
+    type BoundVarKinds: BoundVarKinds<Self>;
 
     type PredefinedOpaques: Copy
         + Debug
@@ -289,6 +284,8 @@ pub trait Interner:
 
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
+
+    fn assumptions_on_binders(self) -> bool;
 
     fn coroutine_hidden_types(
         self,
