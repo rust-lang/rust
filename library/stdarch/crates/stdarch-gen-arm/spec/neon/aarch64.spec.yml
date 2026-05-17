@@ -2274,6 +2274,7 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
+    big_endian_inverse: true
     safety: safe
     types:
       - poly64x2_t
@@ -2291,6 +2292,7 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-stable
     static_defs: ['const N: i32']
+    big_endian_inverse: true
     safety: safe
     types:
       - [poly64x1_t, poly64x2_t]
@@ -2482,6 +2484,7 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-stable
     static_defs: ['const N: i32']
+    big_endian_inverse: true
     safety: safe
     types:
       - poly64x2_t
@@ -5705,6 +5708,7 @@ intrinsics:
       - *neon-unstable-fcma
     assert_instr: [fcadd]
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float32x4_t
@@ -5725,6 +5729,7 @@ intrinsics:
       - *neon-unstable-fcma
     assert_instr: [fcadd]
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float32x4_t
@@ -5747,6 +5752,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fcadd]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -5768,6 +5774,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fcadd]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -5787,6 +5794,7 @@ intrinsics:
       - *neon-unstable-fcma
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float32x4_t
@@ -5809,6 +5817,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -5828,6 +5837,7 @@ intrinsics:
       - *neon-unstable-fcma
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float32x4_t
@@ -5850,6 +5860,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -5869,6 +5880,7 @@ intrinsics:
       - *neon-unstable-fcma
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float32x4_t
@@ -5892,6 +5904,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -6043,6 +6056,7 @@ intrinsics:
       - *neon-unstable-fcma
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float32x4_t
@@ -6066,6 +6080,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fcmla]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -6661,6 +6676,7 @@ intrinsics:
     attr: [*neon-stable]
     assert_instr: [faddp]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x4_t, "4"]
       - [float64x2_t, "2"]
@@ -6683,6 +6699,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [faddp]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x8_t, "8"]
     compose:
@@ -6704,6 +6721,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fmaxp]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -6725,6 +6743,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fmaxnmp]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -6746,6 +6765,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fminp]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -6767,6 +6787,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fminnmp]
     safety: safe
+    big_endian_inverse: true
     types:
       - float16x4_t
       - float16x8_t
@@ -6806,6 +6827,7 @@ intrinsics:
     attr: [*neon-stable]
     assert_instr: [fminp]
     safety: safe
+    big_endian_inverse: true
     types:
       - ["s_f32", float32x2_t, f32]
       - ["qd_f64", float64x2_t, f64]
@@ -7061,7 +7083,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal]]}]]
       - *neon-stable
     safety: safe
     types:
@@ -7089,7 +7111,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {neon_type[2]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlal, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlal, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -7175,7 +7197,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {type[1]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl]]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl]]}]]
       - *neon-stable
     safety: safe
     types:
@@ -7203,7 +7225,7 @@ intrinsics:
     arguments: ["a: {type[0]}", "b: {type[1]}", "c: {neon_type[2]}"]
     return_type: "{type[0]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sqdmlsl, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [sqdmlsl, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - *neon-stable
     static_defs: ['const LANE: i32']
@@ -8455,7 +8477,6 @@ intrinsics:
     attr: [*neon-stable]
     assert_instr: [nop]
     safety: safe
-    big_endian_inverse: true
     types:
       - [float64x1_t, int8x8_t]
       - [float64x1_t, int16x4_t]
@@ -8512,7 +8533,6 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [nop]
     safety: safe
-    big_endian_inverse: true
     types:
       - [float64x1_t, float16x4_t]
       - [float16x4_t, float64x1_t]
@@ -8779,6 +8799,7 @@ intrinsics:
       - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [poly64x2_t, poly64x2_t, poly64x2_t, '1', '1']
     compose:
@@ -8841,6 +8862,7 @@ intrinsics:
       - *neon-stable
     static_defs: ['const LANE1: i32, const LANE2: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - [poly64x2_t, poly64x1_t]
     compose:
@@ -8874,7 +8896,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
       - *neon-stable
     safety: safe
-    big_endian_inverse: true
     types:
       - ["u64", float64x1_t]
     compose:
@@ -8890,6 +8911,7 @@ intrinsics:
       - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["f64", float64x1_t, float64x1_t]
     compose:
@@ -8906,6 +8928,7 @@ intrinsics:
       - *neon-stable
     static_defs: ['const LANE: i32']
     safety: safe
+    big_endian_inverse: true
     types:
       - ["f64", float64x2_t, float64x2_t]
     compose:
@@ -9019,6 +9042,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sm3partw1]]}]]
       - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint32x4_t
     compose:
@@ -9037,6 +9061,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sm3partw2]]}]]
       - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint32x4_t
     compose:
@@ -9055,6 +9080,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sm3ss1]]}]]
       - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint32x4_t
     compose:
@@ -9073,6 +9099,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sm4ekey]]}]]
       - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint32x4_t
     compose:
@@ -9091,6 +9118,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sm4e]]}]]
       - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint32x4_t
     compose:
@@ -9127,6 +9155,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sha512h]]}]]
       - FnCall: [stable, ['feature = "stdarch_neon_sha3"', 'since = "1.79.0"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint64x2_t
     compose:
@@ -9145,6 +9174,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sha512h2]]}]]
       - FnCall: [stable, ['feature = "stdarch_neon_sha3"', 'since = "1.79.0"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint64x2_t
     compose:
@@ -9163,6 +9193,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sha512su0]]}]]
       - FnCall: [stable, ['feature = "stdarch_neon_sha3"', 'since = "1.79.0"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint64x2_t
     compose:
@@ -9181,6 +9212,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sha512su1]]}]]
       - FnCall: [stable, ['feature = "stdarch_neon_sha3"', 'since = "1.79.0"']]
     safety: safe
+    big_endian_inverse: true
     types:
       - uint64x2_t
     compose:
@@ -9201,6 +9233,7 @@ intrinsics:
       - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
     static_defs: ["const IMM2: i32"]
     safety: safe
+    big_endian_inverse: true
     types:
       - ['1aq_u32', uint32x4_t, 'sm3tt1a', 'SM3TT1A']
       - ['1bq_u32', uint32x4_t, 'sm3tt1b', 'SM3TT1B']
@@ -9445,6 +9478,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, '[0, 8, 2, 10, 4, 12, 6, 14]']
       - [int8x16_t, '[0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]']
@@ -9475,6 +9509,7 @@ intrinsics:
       - *target-not-arm64ec
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, '[0, 4, 2, 6]']
       - [float16x8_t, '[0, 8, 2, 10, 4, 12, 6, 14]']
@@ -9489,6 +9524,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, '[0, 2]']
       - [int64x2_t, '[0, 2]']
@@ -9508,6 +9544,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, '[1, 9, 3, 11, 5, 13, 7, 15]']
       - [int8x16_t, '[1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]']
@@ -9537,6 +9574,7 @@ intrinsics:
       - *target-not-arm64ec
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [trn2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, '[1, 5, 3, 7]']
       - [float16x8_t, '[1, 9, 3, 11, 5, 13, 7, 15]']
@@ -9551,6 +9589,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, '[1, 3]']
       - [int64x2_t, '[1, 3]']
@@ -9570,6 +9609,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, '[4, 12, 5, 13, 6, 14, 7, 15]']
       - [int8x16_t, '[8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]']
@@ -9606,6 +9646,7 @@ intrinsics:
       - *target-not-arm64ec
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, '[2, 6, 3, 7]']
       - [float16x8_t, '[4, 12, 5, 13, 6, 14, 7, 15]']
@@ -9620,6 +9661,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, '[0, 8, 1, 9, 2, 10, 3, 11]']
       - [int8x16_t, '[0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]']
@@ -9657,6 +9699,7 @@ intrinsics:
       - *target-not-arm64ec
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, '[0, 4, 1, 5]']
       - [float16x8_t, '[0, 8, 1, 9, 2, 10, 3, 11]']
@@ -9671,6 +9714,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, '[0, 2]']
       - [int64x2_t, '[0, 2]']
@@ -9690,6 +9734,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, '[0, 2, 4, 6, 8, 10, 12, 14]']
       - [int8x16_t, '[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]']
@@ -9719,6 +9764,7 @@ intrinsics:
       - *target-not-arm64ec
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp1]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, '[0, 2, 4, 6]']
       - [float16x8_t, '[0, 2, 4, 6, 8, 10, 12, 14]']
@@ -9733,6 +9779,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [zip2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int32x2_t, '[1, 3]']
       - [int64x2_t, '[1, 3]']
@@ -9752,6 +9799,7 @@ intrinsics:
       - *neon-stable
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, '[1, 3, 5, 7, 9, 11, 13, 15]']
       - [int8x16_t, '[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]']
@@ -9785,6 +9833,7 @@ intrinsics:
       - *target-not-arm64ec
       - FnCall: [cfg_attr, [*cfg-test-not-msvc-little-endian, {FnCall: [assert_instr, [uzp2]]}]]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float16x4_t, '[1, 3, 5, 7]']
       - [float16x8_t, '[1, 3, 5, 7, 9, 11, 13, 15]']
@@ -9942,6 +9991,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmaxnmp]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float64x2_t
@@ -11326,6 +11376,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fminnmp]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['s_f32', float32x2_t, "f32"]
       - ['qd_f64', float64x2_t, "f64"]
@@ -11344,6 +11395,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmaxnmp]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['s_f32', float32x2_t, "f32"]
       - ['qd_f64', float64x2_t, "f64"]
@@ -11575,6 +11627,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fminnmp]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x2_t
       - float64x2_t
@@ -12089,6 +12142,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, int8x16_t, uint8x8_t, vqtbx1]
       - [int8x16_t, int8x16_t, uint8x16_t, vqtbx1q]
@@ -12108,6 +12162,7 @@ intrinsics:
       - [poly8x8_t, "poly8x16_t", uint8x8_t, "vqtbx1", "_p8"]
       - [uint8x16_t, "uint8x16_t", uint8x16_t, "vqtbx1q", "q_u8"]
       - [poly8x16_t, "poly8x16_t", uint8x16_t, "vqtbx1q", "q_p8"]
+    big_endian_inverse: true
     compose:
       - FnCall:
           - transmute
@@ -12284,6 +12339,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['int8x16_t', uint8x8_t, 'vqtbl1', 'int8x8_t']
       - ['int8x16_t', uint8x16_t, 'vqtbl1q', 'int8x16_t']
@@ -12303,6 +12359,7 @@ intrinsics:
       - ['poly8x16_t', uint8x8_t, 'vqtbl1', 'poly8x8_t']
       - ['uint8x16_t', uint8x16_t, 'vqtbl1q', 'uint8x16_t']
       - ['poly8x16_t', uint8x16_t, 'vqtbl1q', 'poly8x16_t']
+    big_endian_inverse: true
     compose:
       - FnCall:
           - transmute
@@ -12319,6 +12376,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - ['int8x16x2_t', uint8x8_t, 'vqtbl2', 'int8x8_t']
       - ['int8x16x2_t', uint8x16_t, 'vqtbl2q', 'int8x16_t']
@@ -12332,6 +12390,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - ['uint8x16x2_t', uint8x8_t, 'vqtbl2', 'uint8x8_t']
@@ -12355,6 +12414,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, 'int8x16x2_t', uint8x8_t, 'vqtbx2']
       - [int8x16_t, 'int8x16x2_t', uint8x16_t, 'vqtbx2q']
@@ -12368,6 +12428,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - [uint8x8_t, 'uint8x16x2_t', uint8x8_t, 'vqtbx2']
@@ -12391,6 +12452,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - ['int8x8_t', 'int8x16x3_t', uint8x8_t, 'vqtbl3']
@@ -12405,6 +12467,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - ['uint8x8_t', 'uint8x16x3_t', uint8x8_t, 'vqtbl3']
@@ -12429,6 +12492,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, 'int8x16x3_t', uint8x8_t, 'vqtbx3']
       - [int8x16_t, 'int8x16x3_t', uint8x16_t, 'vqtbx3q']
@@ -12442,6 +12506,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - [uint8x8_t, 'uint8x16x3_t', uint8x8_t, 'vqtbx3']
@@ -12466,6 +12531,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - ['int8x16x4_t', uint8x8_t, 'vqtbl4', 'int8x8_t']
@@ -12480,6 +12546,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - ['uint8x16x4_t', uint8x8_t, 'vqtbl4', 'uint8x8_t']
@@ -12505,6 +12572,7 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x8_t, 'int8x16x4_t', uint8x8_t, 'vqtbx4']
       - [int8x16_t, 'int8x16x4_t', uint8x16_t, 'vqtbx4q']
@@ -12518,6 +12586,7 @@ intrinsics:
     attr:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
       - *neon-stable
+    big_endian_inverse: true
     safety: safe
     types:
       - [uint8x8_t, 'uint8x16x4_t', uint8x8_t, 'vqtbx4']
@@ -12964,6 +13033,7 @@ intrinsics:
       - *neon-stable
     assert_instr: [addp]
     safety: safe
+    big_endian_inverse: true
     types:
       - [int8x16_t, "16"]
       - [int16x8_t, "8"]
@@ -13252,6 +13322,7 @@ intrinsics:
       - *neon-stable
     assert_instr: ['sminp']
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x16_t
       - int16x8_t
@@ -13271,6 +13342,7 @@ intrinsics:
       - *neon-stable
     assert_instr: ['uminp']
     safety: safe
+    big_endian_inverse: true
     types:
       - uint8x16_t
       - uint16x8_t
@@ -13290,6 +13362,7 @@ intrinsics:
       - *neon-stable
     assert_instr: ['fminp']
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x4_t
       - float64x2_t
@@ -13308,6 +13381,7 @@ intrinsics:
       - *neon-stable
     assert_instr: ['smaxp']
     safety: safe
+    big_endian_inverse: true
     types:
       - int8x16_t
       - int16x8_t
@@ -13327,6 +13401,7 @@ intrinsics:
       - *neon-stable
     assert_instr: ['umaxp']
     safety: safe
+    big_endian_inverse: true
     types:
       - uint8x16_t
       - uint16x8_t
@@ -13346,6 +13421,7 @@ intrinsics:
       - *neon-stable
     assert_instr: ['fmaxp']
     safety: safe
+    big_endian_inverse: true
     types:
       - float32x4_t
       - float64x2_t
@@ -13500,6 +13576,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fmlal2]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x2_t, float16x4_t, '_high_']
       - [float32x4_t, float16x8_t, 'q_high_']
@@ -13548,6 +13625,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fmlal]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x2_t, float16x4_t, '_low_']
       - [float32x4_t, float16x8_t, 'q_low_']
@@ -13596,6 +13674,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fmlsl2]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x2_t, float16x4_t, '_high_']
       - [float32x4_t, float16x8_t, 'q_high_']
@@ -13643,6 +13722,7 @@ intrinsics:
       - *target-not-arm64ec
     assert_instr: [fmlsl]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float32x2_t, float16x4_t, '_low_']
       - [float32x4_t, float16x8_t, 'q_low_']
@@ -14104,8 +14184,9 @@ intrinsics:
       - *neon-stable
     assert_instr: ['{type[3]}']
     safety: safe
+    big_endian_inverse: true
     types:
-      - ['vget_high_f64', 'float64x2_t', 'float64x1_t', 'fmov', 'float64x1_t([simd_extract!(a, 1)])']
+      - ['vget_high_f64', 'float64x2_t', 'float64x1_t', 'nop', 'float64x1_t([simd_extract!(a, 1)])']
       - ['vget_low_f64', 'float64x2_t', 'float64x1_t', 'nop', 'float64x1_t([simd_extract!(a, 0)])']
     compose:
       - Identifier: ['{type[4]}', UnsafeSymbol]
@@ -14118,6 +14199,7 @@ intrinsics:
       - *neon-stable
     assert_instr: [mov]
     safety: safe
+    big_endian_inverse: true
     types:
       - [float64x1_t, float64x2_t, '[0, 1]']
     compose:
@@ -14132,6 +14214,7 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
     assert_instr: [['nop', 'IMM5 = 0']]
     safety: safe
+    big_endian_inverse: true
     static_defs: ["const IMM5: i32"]
     types:
       - ['float64x2_t', 'f64']

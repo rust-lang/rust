@@ -1,11 +1,9 @@
 FROM ubuntu:25.10
 RUN apt-get update && apt-get install -y --no-install-recommends \
   gcc \
-  g++ \
   ca-certificates \
   libc6-dev \
   gcc-aarch64-linux-gnu \
-  g++-aarch64-linux-gnu \
   libc6-dev-arm64-cross \
   qemu-user \
   make \
