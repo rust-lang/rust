@@ -2,6 +2,7 @@ use rustc_middle::ty;
 use rustc_span::Span;
 
 use super::BackendTypes;
+use crate::RetagInfo;
 use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 
@@ -49,4 +50,8 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
     /// Trait method used to inject `va_end` on the "spoofed" `VaList` before
     /// Rust defined C-variadic functions return.
     fn va_end(&mut self, val: Self::Value) -> Self::Value;
+    /// Trait method used to retag a pointer stored within a place.
+    fn retag_mem(&mut self, place: Self::Value, info: &RetagInfo<Self::Value>);
+    /// Trait method used to retag a pointer that has been loaded into a register.
+    fn retag_reg(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) -> Self::Value;
 }
