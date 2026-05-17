@@ -1,5 +1,5 @@
 error: cannot find macro parameter `$x` in this scope
-  --> $DIR/issue-95943.rs:9:9
+  --> $DIR/undeclared-macro-param-issue-95943.rs:9:9
    |
 LL |         $x;
    |         ^-
