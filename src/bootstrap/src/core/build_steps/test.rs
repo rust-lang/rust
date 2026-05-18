@@ -973,6 +973,7 @@ impl Step for StdarchGenCheck {
             // RUSTC_BOOTSTRAP=1 allow nightly features when building tools against stage0.
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.env("PATH", &new_path);
+            cmd.env("CARGO_TARGET_DIR", builder.out.join("stdarch-gen-check"));
             cmd.run(builder);
         }
 
