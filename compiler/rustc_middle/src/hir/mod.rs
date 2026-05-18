@@ -475,7 +475,7 @@ pub enum ProjectedMaybeOwner<'tcx> {
 }
 
 impl<'tcx> ProjectedMaybeOwner<'tcx> {
-    pub fn create_from(value: MaybeOwner<'tcx>, def_id: LocalDefId) -> Self {
+    pub fn new(value: MaybeOwner<'tcx>, def_id: LocalDefId) -> Self {
         match value {
             MaybeOwner::Owner(o) => ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
                 nodes: &o.nodes,
@@ -507,9 +507,8 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.hir_owner = |tcx, def_id| {
-        ProjectedMaybeOwner::create_from(tcx.hir_crate(()).owner(tcx, def_id), def_id)
-    };
+    providers.hir_owner =
+        |tcx, def_id| ProjectedMaybeOwner::new(tcx.hir_crate(()).owner(tcx, def_id), def_id);
     providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {

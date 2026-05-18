@@ -126,12 +126,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         id: OwnerId,
     ) -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
-        self.hir_owner(id.def_id).as_owner().map(|owner_info| owner_info.trait_map)
+        self.hir_owner(id.def_id).as_owner().map(|o| o.trait_map)
     }
 
     #[inline]
     pub fn opt_hir_owner_nodes(self, def_id: LocalDefId) -> Option<&'tcx OwnerNodes<'tcx>> {
-        self.hir_owner(def_id).as_owner().map(|i| i.nodes)
+        self.hir_owner(def_id).as_owner().map(|o| o.nodes)
     }
 
     #[inline]
