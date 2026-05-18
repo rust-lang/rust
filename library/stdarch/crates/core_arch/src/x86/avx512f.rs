@@ -58246,7 +58246,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    #[cfg_attr(miri, ignore)]
+    #[cfg_attr(miri, ignore)] // Inline asm (for non-temporal store), which is not supported by Miri
     fn test_mm512_stream_ps() {
         #[repr(align(64))]
         struct Memory {
@@ -58265,7 +58265,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    #[cfg_attr(miri, ignore)]
+    #[cfg_attr(miri, ignore)] // Inline asm (for non-temporal store), which is not supported by Miri
     fn test_mm512_stream_pd() {
         #[repr(align(64))]
         struct Memory {
@@ -58284,7 +58284,7 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
-    #[cfg_attr(miri, ignore)]
+    #[cfg_attr(miri, ignore)] // Inline asm (for non-temporal store), which is not supported by Miri
     fn test_mm512_stream_si512() {
         #[repr(align(64))]
         struct Memory {
