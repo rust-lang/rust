@@ -181,9 +181,9 @@ pub(crate) fn render_field(
 
         if !expected_fn_type
             && let Some(receiver) = &dot_access.receiver
-            && let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone())
+            && let Some(receiver) = ctx.completion.sema.original_range_opt(receiver.syntax())
         {
-            builder.insert(receiver.syntax().text_range().start(), "(".to_owned());
+            builder.insert(receiver.range.start(), "(".to_owned());
             builder.insert(ctx.source_range().end(), ")".to_owned());
 
             let is_parens_needed = !matches!(dot_access.kind, DotAccessKind::Method);
@@ -198,10 +198,10 @@ pub(crate) fn render_field(
         item.insert_text(field_with_receiver(receiver.as_deref(), &escaped_name));
     }
     if let Some(receiver) = &dot_access.receiver
-        && let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone())
+        && let Some(original) = ctx.completion.sema.original_range_opt(receiver.syntax())
         && let Some(ref_mode) = compute_ref_match(ctx.completion, ty)
     {
-        item.ref_match(ref_mode, original.syntax().text_range().start());
+        item.ref_match(ref_mode, original.range.start());
     }
     item.doc_aliases(ctx.doc_aliases);
     item.build(db)
@@ -758,10 +758,10 @@ fn path_ref_match(
 ) {
     if let Some(original_path) = &path_ctx.original_path {
         // At least one char was typed by the user already, in that case look for the original path
-        if let Some(original_path) = completion.sema.original_ast_node(original_path.clone())
+        if let Some(original_path) = completion.sema.original_range_opt(original_path.syntax())
             && let Some(ref_mode) = compute_ref_match(completion, ty)
         {
-            item.ref_match(ref_mode, original_path.syntax().text_range().start());
+            item.ref_match(ref_mode, original_path.range.start());
         }
     } else {
         // completion requested on an empty identifier, there is no path here yet.
@@ -2705,6 +2705,202 @@ fn main() {
                             is_deprecated: false,
                         },
                         ref_match: "&@65",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_ref_match_in_macro() {
+        check_kinds(
+            r#"
+macro_rules! id { ($($t:tt)*) => ($($t)*); }
+fn foo(data: &i32) {}
+fn main() {
+    let indent = 2i32;
+    id!(foo(i$0))
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Local)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "indent",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 114..115,
+                        delete: 114..115,
+                        insert: "indent",
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: "i32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: true,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: false,
+                        },
+                        ref_match: "&@114",
+                    },
+                ]
+            "#]],
+        );
+
+        check_kinds(
+            r#"
+macro_rules! id { ($($t:tt)*) => ($($t)*); }
+fn foo(data: &i32) {}
+fn indent() -> i32 { i32 }
+fn main() {
+    id!(foo(i$0))
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Function)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "foo(…)",
+                        detail_left: None,
+                        detail_right: Some(
+                            "fn(&i32)",
+                        ),
+                        source_range: 118..119,
+                        delete: 118..119,
+                        insert: "foo(${1:data})$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "fn(&i32)",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "indent()",
+                        detail_left: None,
+                        detail_right: Some(
+                            "fn() -> i32",
+                        ),
+                        source_range: 118..119,
+                        delete: 118..119,
+                        insert: "indent()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "indent",
+                        detail: "fn() -> i32",
+                        ref_match: "&@118",
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        detail_left: None,
+                        detail_right: Some(
+                            "fn()",
+                        ),
+                        source_range: 118..119,
+                        delete: 118..119,
+                        insert: "main()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "fn()",
+                    },
+                ]
+            "#]],
+        );
+
+        // FIXME: It is best to test `S.in` if speculative execution is implemented
+        check_kinds(
+            r#"
+macro_rules! id { ($($t:tt)*) => ($($t)*); }
+fn foo(data: &i32) {}
+struct S;
+impl S {fn indent(&self) -> i32 { i32 }}
+fn main() {
+    id!(foo(S.i$0))
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Method)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "indent()",
+                        detail_left: None,
+                        detail_right: Some(
+                            "fn(&self) -> i32",
+                        ),
+                        source_range: 144..145,
+                        delete: 144..145,
+                        insert: "indent()$0",
+                        kind: SymbolKind(
+                            Method,
+                        ),
+                        lookup: "indent",
+                        detail: "fn(&self) -> i32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: true,
+                                    return_type: Other,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                            is_deprecated: false,
+                        },
+                        ref_match: "&@142",
+                    },
+                ]
+            "#]],
+        );
+
+        check_kinds(
+            r#"
+macro_rules! id { ($($t:tt)*) => ($($t)*); }
+fn foo(data: &i32) {}
+struct S { indent: i32 }
+fn main(s: S) {
+    id!(foo(s.i$0))
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Field)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "indent",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 122..123,
+                        delete: 122..123,
+                        insert: "indent",
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "i32",
+                        ref_match: "&@120",
                     },
                 ]
             "#]],
