@@ -109,11 +109,15 @@ use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_middle::mir::StatementKind;
+use rustc_middle::mir::{
+    AssertKind, Body, CastKind, InlineAsmOperand, NonDivergingIntrinsic, Operand, Place, PlaceElem,
+    ProjectionElem, Rvalue, StatementKind, TerminatorKind,
+};
 use rustc_middle::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, MonoItem, MonoItemData,
     MonoItemPartitions, Visibility,
 };
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::{self, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
@@ -1334,21 +1338,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             | InstanceKind::DropGlue(..)
             | InstanceKind::AsyncDropGlueCtorShim(..) => {
                 let mir = tcx.instance_mir(instance.def);
-                mir.basic_blocks
-                    .iter()
-                    .map(|bb| {
-                        bb.statements
-                            .iter()
-                            .filter_map(|stmt| match stmt.kind {
-                                StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
-                                    None
-                                }
-                                _ => Some(stmt),
-                            })
-                            .count()
-                            + 1
-                    })
-                    .sum()
+                size_estimate_mir(tcx, mir)
             }
             // Other compiler-generated shims size estimate: 1
             _ => 1,
@@ -1356,4 +1346,214 @@ pub(crate) fn provide(providers: &mut Providers) {
     };
 
     collector::provide(providers);
+}
+
+fn size_estimate_mir<'tcx>(tcx: TyCtxt<'tcx>, mir: &Body<'tcx>) -> usize {
+    let size: usize = mir
+        .basic_blocks
+        .iter()
+        .map(|bb| {
+            let statements = bb.statements.iter().map(|stmt| match &stmt.kind {
+                StatementKind::Assign(assign) => {
+                    place_size_estimate(&assign.0) + rvalue_size_estimate(tcx, &assign.1)
+                }
+                StatementKind::SetDiscriminant { place, .. } => place_size_estimate(place) + 1,
+                StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
+                    usize::from(tcx.sess.emit_lifetime_markers())
+                }
+                StatementKind::Coverage(_) => usize::from(tcx.sess.instrument_coverage()),
+                StatementKind::Intrinsic(intrinsic) => intrinsic_size_estimate(intrinsic),
+                StatementKind::PlaceMention(_)
+                | StatementKind::AscribeUserType(_, _)
+                | StatementKind::ConstEvalCounter
+                | StatementKind::Nop
+                | StatementKind::BackwardIncompatibleDropHint { .. }
+                | StatementKind::FakeRead(_) => 0,
+            });
+
+            statements.sum::<usize>() + terminator_size_estimate(&bb.terminator().kind)
+        })
+        .sum();
+
+    // This is an empirical algorithm calibrated against both estimated values and the
+    // actual amount of generated LLVM IR, so that each unit’s final estimate converges
+    // toward the real LLVM IR count.
+    if size > 20 { size.div_ceil(3) } else { cmp::max(size.div_ceil(2), 1) }
+}
+
+fn intrinsic_size_estimate(intrinsic: &NonDivergingIntrinsic<'_>) -> usize {
+    match intrinsic {
+        NonDivergingIntrinsic::Assume(op) => operand_size_estimate(op) + 1,
+        NonDivergingIntrinsic::CopyNonOverlapping(copy) => {
+            operand_size_estimate(&copy.dst)
+                + operand_size_estimate(&copy.src)
+                + operand_size_estimate(&copy.count)
+                + 2 // byte count multiplication plus the memcpy intrinsic call
+        }
+    }
+}
+
+fn rvalue_size_estimate<'tcx>(tcx: TyCtxt<'tcx>, rvalue: &Rvalue<'tcx>) -> usize {
+    match rvalue {
+        Rvalue::Use(operand, _) => operand_size_estimate(operand) + 1,
+        Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => place_size_estimate(place) + 1,
+        Rvalue::Reborrow(_, _, place) => place_size_estimate(place) + 2,
+        Rvalue::CopyForDeref(_) => 0,
+        Rvalue::WrapUnsafeBinder(operand, _) => operand_size_estimate(operand) + 1,
+        Rvalue::UnaryOp(..) => 2,
+        Rvalue::Discriminant(place) => place_size_estimate(place) + 3,
+        Rvalue::Cast(kind, operand, _) => {
+            operand_size_estimate(operand) + cast_kind_size_estimate(*kind) + 1
+        }
+        Rvalue::BinaryOp(op, operands) => {
+            let (lhs, rhs) = &**operands;
+            let op_cost = if op.overflowing_to_wrapping().is_some() { 6 } else { 2 };
+            operand_size_estimate(lhs) + operand_size_estimate(rhs) + op_cost + 1
+        }
+        Rvalue::Repeat(elem, _) => operand_size_estimate(elem) + 4,
+        Rvalue::ThreadLocalRef(def_id) => {
+            if !def_id.is_local() && tcx.needs_thread_local_shim(*def_id) { 2 } else { 1 }
+        }
+        Rvalue::Aggregate(kind, fields) => {
+            let fields_size = fields.iter().map(operand_size_estimate).sum::<usize>();
+            let stores = fields.len();
+            let discr = usize::from(!matches!(**kind, rustc_middle::mir::AggregateKind::Array(_)));
+            fields_size + stores + discr
+        }
+    }
+}
+
+fn cast_kind_size_estimate(kind: CastKind) -> usize {
+    match kind {
+        CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer, _)
+        | CastKind::PointerCoercion(
+            PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+            _,
+        )
+        | CastKind::Subtype => 0,
+        CastKind::PointerCoercion(
+            PointerCoercion::ReifyFnPointer(_) | PointerCoercion::ClosureFnPointer(_),
+            _,
+        ) => 1,
+        CastKind::PointerCoercion(PointerCoercion::Unsize, _) => 5,
+        CastKind::PtrToPtr | CastKind::FnPtrToPtr => 1,
+        CastKind::IntToInt
+        | CastKind::FloatToInt
+        | CastKind::FloatToFloat
+        | CastKind::IntToFloat
+        | CastKind::PointerExposeProvenance
+        | CastKind::PointerWithExposedProvenance => 2,
+        CastKind::Transmute => 3,
+    }
+}
+
+fn operand_size_estimate(operand: &Operand<'_>) -> usize {
+    match operand {
+        Operand::Copy(place) | Operand::Move(place) => place_size_estimate(place) + 1,
+        Operand::Constant(_) => 0,
+        Operand::RuntimeChecks(_) => 1,
+    }
+}
+
+fn place_size_estimate(place: &Place<'_>) -> usize {
+    place.projection.iter().map(|elem| projection_elem_size_estimate(elem)).sum()
+}
+
+fn projection_elem_size_estimate(elem: PlaceElem<'_>) -> usize {
+    match elem {
+        ProjectionElem::Deref => 1,
+        ProjectionElem::Index(_) => 2,
+        ProjectionElem::ConstantIndex { from_end, .. } => 1 + usize::from(from_end),
+        ProjectionElem::Subslice { from_end, .. } => 2 + usize::from(from_end),
+        ProjectionElem::Field(..)
+        | ProjectionElem::Downcast(..)
+        | ProjectionElem::OpaqueCast(_)
+        | ProjectionElem::UnwrapUnsafeBinder(_) => 0,
+    }
+}
+
+fn terminator_size_estimate(terminator: &TerminatorKind<'_>) -> usize {
+    match terminator {
+        TerminatorKind::Goto { .. } | TerminatorKind::Unreachable => 1,
+        TerminatorKind::Return => 2,
+        TerminatorKind::UnwindResume => 4,
+        TerminatorKind::UnwindTerminate(_) => 2,
+        TerminatorKind::CoroutineDrop
+        | TerminatorKind::FalseEdge { .. }
+        | TerminatorKind::FalseUnwind { .. } => 0,
+        TerminatorKind::SwitchInt { discr, targets } => {
+            let branch =
+                if targets.iter().len() == 1 { 2 } else { 1 + targets.all_targets().len() };
+            operand_size_estimate(discr) + branch
+        }
+        TerminatorKind::Drop { place, unwind, drop, async_fut, .. } => {
+            place_size_estimate(place)
+                + 3
+                + unwind_size_estimate(*unwind)
+                + usize::from(drop.is_some())
+                + usize::from(async_fut.is_some())
+        }
+        TerminatorKind::Call { func, args, target, unwind, .. } => {
+            operand_size_estimate(func)
+                + args.iter().map(|arg| operand_size_estimate(&arg.node)).sum::<usize>()
+                + 2
+                + usize::from(target.is_some())
+                + unwind_size_estimate(*unwind)
+        }
+        TerminatorKind::TailCall { func, args, .. } => {
+            operand_size_estimate(func)
+                + args.iter().map(|arg| operand_size_estimate(&arg.node)).sum::<usize>()
+                + 1
+        }
+        TerminatorKind::Assert { cond, msg, unwind, .. } => {
+            operand_size_estimate(cond)
+                + assert_message_size_estimate(msg)
+                + 3
+                + unwind_size_estimate(*unwind)
+        }
+        TerminatorKind::Yield { drop, .. } => 3 + usize::from(drop.is_some()),
+        TerminatorKind::InlineAsm { operands, targets, unwind, .. } => {
+            operands.iter().map(inline_asm_operand_size_estimate).sum::<usize>()
+                + 1
+                + targets.len()
+                + unwind_size_estimate(*unwind)
+        }
+    }
+}
+
+fn assert_message_size_estimate(msg: &rustc_middle::mir::AssertMessage<'_>) -> usize {
+    match msg {
+        AssertKind::BoundsCheck { len, index }
+        | AssertKind::MisalignedPointerDereference { required: len, found: index } => {
+            operand_size_estimate(len) + operand_size_estimate(index) + 1
+        }
+        AssertKind::Overflow(_, lhs, rhs) => {
+            operand_size_estimate(lhs) + operand_size_estimate(rhs) + 1
+        }
+        AssertKind::OverflowNeg(op)
+        | AssertKind::DivisionByZero(op)
+        | AssertKind::RemainderByZero(op)
+        | AssertKind::InvalidEnumConstruction(op) => operand_size_estimate(op) + 1,
+        AssertKind::ResumedAfterReturn(_)
+        | AssertKind::ResumedAfterPanic(_)
+        | AssertKind::ResumedAfterDrop(_)
+        | AssertKind::NullPointerDereference => 1,
+    }
+}
+
+fn inline_asm_operand_size_estimate(operand: &InlineAsmOperand<'_>) -> usize {
+    match operand {
+        InlineAsmOperand::In { value, .. } | InlineAsmOperand::InOut { in_value: value, .. } => {
+            operand_size_estimate(value)
+        }
+        InlineAsmOperand::Out { place, .. } => place.as_ref().map_or(0, place_size_estimate),
+        InlineAsmOperand::Const { .. }
+        | InlineAsmOperand::SymFn { .. }
+        | InlineAsmOperand::SymStatic { .. }
+        | InlineAsmOperand::Label { .. } => 0,
+    }
+}
+
+fn unwind_size_estimate(unwind: rustc_middle::mir::UnwindAction) -> usize {
+    usize::from(matches!(unwind, rustc_middle::mir::UnwindAction::Cleanup(_)))
 }
