@@ -24,9 +24,6 @@ pub use self::{
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
-    error::{
-        Custom, CustomOwner, OsFunctions, decode_error_kind, format_os_error, is_interrupted,
-        set_functions,
-    },
+    error::{Custom, CustomOwner, OsFunctions},
     util::{chain, take},
 };

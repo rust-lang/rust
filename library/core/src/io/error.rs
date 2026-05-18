@@ -21,9 +21,7 @@ mod repr;
 #[cfg_attr(not(target_has_atomic_load_store = "ptr"), path = "error/os_functions.rs")]
 mod os_functions;
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
+use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
 use self::repr::Repr;
 use crate::{error, fmt, result};
 
@@ -572,8 +570,7 @@ impl OsFunctions {
 #[repr(align(4))]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub struct Custom {
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub kind: ErrorKind,
+    kind: ErrorKind,
     error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
     error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
     outer_drop: unsafe fn(*mut Self),
@@ -628,16 +625,14 @@ impl Custom {
         ptr
     }
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static) {
+    fn error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static) {
         // SAFETY:
         // `from_raw` ensures `error` is a valid pointer up to a static lifetime
         // and is owned by `self`
         unsafe { self.error.as_ref() }
     }
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static) {
+    fn error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static) {
         // SAFETY:
         // `from_raw` ensures `error` is a valid pointer up to a static lifetime
         // and is owned by `self`
@@ -673,6 +668,7 @@ impl CustomOwner {
     /// # Safety
     ///
     /// * The `outer_drop` of the provided `custom` must be safe to call exactly once.
+    #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
     pub unsafe fn from_raw(custom: crate::ptr::NonNull<Custom>) -> CustomOwner {
         CustomOwner(custom)
@@ -685,16 +681,16 @@ impl CustomOwner {
         ptr
     }
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn custom_ref(&self) -> &Custom {
+    #[allow(dead_code, reason = "only used for unpacked representation")]
+    fn custom_ref(&self) -> &Custom {
         // SAFETY:
         // `from_raw` ensures `0` is a valid pointer up to a static lifetime
         // and is owned by `self`
         unsafe { self.0.as_ref() }
     }
 
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn custom_mut(&mut self) -> &mut Custom {
+    #[allow(dead_code, reason = "only used for unpacked representation")]
+    fn custom_mut(&mut self) -> &mut Custom {
         // SAFETY:
         // `from_raw` ensures `0` is a valid pointer up to a static lifetime
         // and is owned by `self`
@@ -968,7 +964,7 @@ pub enum ErrorKind {
 }
 
 impl ErrorKind {
-    pub(crate) const fn as_str(&self) -> &'static str {
+    const fn as_str(&self) -> &'static str {
         use ErrorKind::*;
         match *self {
             // tidy-alphabetical-start
@@ -1022,9 +1018,8 @@ impl ErrorKind {
     // unsafe, or to hard-code max ErrorKind or its size in a way the compiler
     // couldn't verify.
     #[inline]
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    #[doc(hidden)]
-    pub const fn from_prim(ek: u32) -> Option<Self> {
+    #[allow(dead_code, reason = "only used for packed representation")]
+    const fn from_prim(ek: u32) -> Option<Self> {
         macro_rules! from_prim {
             ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
                 // Force a compile error if the list gets out of date.
