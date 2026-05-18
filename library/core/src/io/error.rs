@@ -1,6 +1,30 @@
 #![unstable(feature = "core_io", issue = "154046")]
 
+#[cfg_attr(target_has_atomic_load_store = "ptr", path = "error/os_functions_atomic.rs")]
+#[cfg_attr(not(target_has_atomic_load_store = "ptr"), path = "error/os_functions.rs")]
+mod os_functions;
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
 use crate::{error, fmt};
+
+#[doc(hidden)]
+#[derive(Debug)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub struct OsFunctions {
+    pub format_os_error: fn(_: RawOsError, _: &mut fmt::Formatter<'_>) -> fmt::Result,
+    pub decode_error_kind: fn(_: RawOsError) -> ErrorKind,
+    pub is_interrupted: fn(_: RawOsError) -> bool,
+}
+
+impl OsFunctions {
+    const DEFAULT: &'static OsFunctions = &OsFunctions {
+        format_os_error: |_, _| Ok(()),
+        decode_error_kind: |_| ErrorKind::Uncategorized,
+        is_interrupted: |_| false,
+    };
+}
 
 // As with `SimpleMessage`: `#[repr(align(4))]` here is just because
 // repr_bitpacked's encoding requires it. In practice it almost certainly be
