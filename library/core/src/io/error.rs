@@ -1,6 +1,143 @@
 #![unstable(feature = "core_io", issue = "154046")]
 
-use crate::fmt;
+use crate::{error, fmt};
+
+// As with `SimpleMessage`: `#[repr(align(4))]` here is just because
+// repr_bitpacked's encoding requires it. In practice it almost certainly be
+// already be this high or higher.
+#[doc(hidden)]
+#[repr(align(4))]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub struct Custom {
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub kind: ErrorKind,
+    error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
+    error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
+    outer_drop: unsafe fn(*mut Self),
+}
+
+// SAFETY: All members of `Custom` are `Send`
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+unsafe impl Send for Custom {}
+
+// SAFETY: All members of `Custom` are `Sync`
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+unsafe impl Sync for Custom {}
+
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl fmt::Debug for Custom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Custom").field("kind", &self.kind).field("error", self.error_ref()).finish()
+    }
+}
+
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl Drop for Custom {
+    fn drop(&mut self) {
+        // SAFETY: `Custom::from_raw` ensures this call is safe.
+        unsafe {
+            (self.error_drop)(self.error.as_ptr());
+        }
+    }
+}
+
+impl Custom {
+    /// # Safety
+    ///
+    /// * `error` must be valid for up to a static lifetime, and own its pointee.
+    /// * `error_drop` must be safe to call for the pointer `error` exactly once.
+    /// * `outer_drop` must be safe to call on a pointer to this instance of `Custom`
+    ///   if it were stored within a [`CustomOwner`].
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub unsafe fn from_raw(
+        kind: ErrorKind,
+        error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
+        error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
+        outer_drop: unsafe fn(*mut Self),
+    ) -> Custom {
+        Custom { kind, error, error_drop, outer_drop }
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn into_raw(self) -> crate::ptr::NonNull<dyn error::Error + Send + Sync> {
+        let ptr = self.error;
+        core::mem::forget(self);
+        ptr
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static) {
+        // SAFETY:
+        // `from_raw` ensures `error` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.error.as_ref() }
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static) {
+        // SAFETY:
+        // `from_raw` ensures `error` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.error.as_mut() }
+    }
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
+pub struct CustomOwner(crate::ptr::NonNull<Custom>);
+
+// SAFETY: Custom is `Send`
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+unsafe impl Send for CustomOwner {}
+
+// SAFETY: Custom is `Sync`
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+unsafe impl Sync for CustomOwner {}
+
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+impl Drop for CustomOwner {
+    fn drop(&mut self) {
+        // SAFETY: `CustomOwner::from_raw` ensures this call is safe.
+        unsafe {
+            (self.0.as_ref().outer_drop)(self.0.as_ptr());
+        }
+    }
+}
+
+impl CustomOwner {
+    /// # Safety
+    ///
+    /// * The `outer_drop` of the provided `custom` must be safe to call exactly once.
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub unsafe fn from_raw(custom: crate::ptr::NonNull<Custom>) -> CustomOwner {
+        CustomOwner(custom)
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn into_raw(self) -> crate::ptr::NonNull<Custom> {
+        let ptr = self.0;
+        core::mem::forget(self);
+        ptr
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn custom_ref(&self) -> &Custom {
+        // SAFETY:
+        // `from_raw` ensures `0` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.0.as_ref() }
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn custom_mut(&mut self) -> &mut Custom {
+        // SAFETY:
+        // `from_raw` ensures `0` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.0.as_mut() }
+    }
+}
 
 /// The type of raw OS error codes.
 ///

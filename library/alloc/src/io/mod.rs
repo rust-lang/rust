@@ -1,5 +1,7 @@
 //! Traits, helpers, and type definitions for core I/O functionality.
 
+mod error;
+
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use core::io::RawOsError;
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
@@ -10,4 +12,9 @@ pub use core::io::{
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub use core::io::{chain, take};
+pub use core::io::{Custom, CustomOwner, chain, take};
+
+#[cfg(not(no_global_oom_handling))]
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub use self::error::custom_owner_from_box;
