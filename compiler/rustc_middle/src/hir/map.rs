@@ -117,6 +117,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// to obtain delayed lints from non-eval-always `owner` query.
     #[inline]
     pub fn opt_ast_lowering_delayed_lints(self, id: OwnerId) -> Option<&'tcx Steal<DelayedLints>> {
+        self.dep_graph.assert_eval_always();
         self.owner(id.def_id).as_owner().map(|o| o.delayed_lints)
     }
 

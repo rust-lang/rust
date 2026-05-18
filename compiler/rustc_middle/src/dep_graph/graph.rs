@@ -213,6 +213,14 @@ impl DepGraph {
         }
     }
 
+    pub fn assert_eval_always(&self) {
+        self.data.as_ref().inspect(|_| {
+            read_deps(|deps| {
+                assert_matches!(deps, TaskDepsRef::EvalAlways, "expected eval always context")
+            });
+        });
+    }
+
     pub fn with_ignore<OP, R>(&self, op: OP) -> R
     where
         OP: FnOnce() -> R,
