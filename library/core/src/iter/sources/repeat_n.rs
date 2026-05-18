@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::iter::{FusedIterator, TrustedLen, UncheckedIterator};
+use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -211,5 +211,3 @@ impl<A: Clone> FusedIterator for RepeatN<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for RepeatN<A> {}
-#[stable(feature = "iter_repeat_n", since = "1.82.0")]
-impl<A: Clone> UncheckedIterator for RepeatN<A> {}
