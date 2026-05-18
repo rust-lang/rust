@@ -39,6 +39,25 @@ where
         self.def_id()
     }
 
+    fn fast_reject_param_env(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<(), NoSolution> {
+        if let Some(host_clause) = assumption.as_host_effect_clause()
+            && host_clause.def_id() == goal.predicate.def_id()
+            && host_clause.constness().satisfies(goal.predicate.constness)
+            && DeepRejectCtxt::relate_fully_normalized(ecx.cx()).args_may_unify(
+                goal.predicate.trait_ref.args,
+                host_clause.skip_binder().trait_ref.args,
+            )
+        {
+            Ok(())
+        } else {
+            Err(NoSolution)
+        }
+    }
+
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

@@ -212,7 +212,7 @@ where
             .expect_ty()
         };
 
-        assert!(self.cache.insert(ty, result).is_none(), "{ty:?} {result:?} {:?}",self.cache);
+        assert!(self.cache.insert(ty, result).is_none(), "{ty:?} {result:?} {:?}", self.cache);
         Ok(result)
     }
 

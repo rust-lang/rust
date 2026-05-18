@@ -137,7 +137,7 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
-        match Self::fast_reject_assumption(ecx, goal, assumption) {
+        match Self::fast_reject_param_env(ecx, goal, assumption) {
             Ok(()) => {}
             Err(NoSolution) => return Ok(Err(CandidateHeadUsages::default())),
         }
@@ -192,6 +192,12 @@ where
         ecx.probe_trait_candidate(source)
             .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
     }
+
+    fn fast_reject_param_env(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<(), NoSolution>;
 
     /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
     /// and `DefId`.

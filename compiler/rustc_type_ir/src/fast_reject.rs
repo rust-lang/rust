@@ -161,6 +161,10 @@ impl<DefId> SimplifiedType<DefId> {
     }
 }
 
+const HANDLE_AS_INFER: u8 = 0;
+const HANDLE_UNNORMALIZED: u8 = 1;
+const HANDLE_FULLY_NORMALIZED: u8 = 2;
+
 /// Given generic arguments, could they be unified after
 /// replacing parameters with inference variables or placeholders.
 /// This behavior is toggled using the const generics.
@@ -172,37 +176,45 @@ impl<DefId> SimplifiedType<DefId> {
 /// impls only have to overlap for some value, so we treat parameters
 /// on both sides like inference variables.
 #[derive(Debug, Clone, Copy)]
-pub struct DeepRejectCtxt<
-    I: Interner,
-    const INSTANTIATE_LHS_WITH_INFER: bool,
-    const INSTANTIATE_RHS_WITH_INFER: bool,
-> {
+pub struct DeepRejectCtxt<I: Interner, const HANDLE_LHS: u8, const HANDLE_RHS: u8> {
     _interner: PhantomData<I>,
 }
 
-impl<I: Interner> DeepRejectCtxt<I, false, false> {
+impl<I: Interner> DeepRejectCtxt<I, HANDLE_UNNORMALIZED, HANDLE_UNNORMALIZED> {
     /// Treat parameters in both the lhs and the rhs as rigid.
-    pub fn relate_rigid_rigid(_interner: I) -> DeepRejectCtxt<I, false, false> {
+    pub fn relate_rigid_rigid(
+        _interner: I,
+    ) -> DeepRejectCtxt<I, HANDLE_UNNORMALIZED, HANDLE_UNNORMALIZED> {
         DeepRejectCtxt { _interner: PhantomData }
     }
 }
 
-impl<I: Interner> DeepRejectCtxt<I, true, true> {
+impl<I: Interner> DeepRejectCtxt<I, HANDLE_AS_INFER, HANDLE_AS_INFER> {
     /// Treat parameters in both the lhs and the rhs as infer vars.
-    pub fn relate_infer_infer(_interner: I) -> DeepRejectCtxt<I, true, true> {
+    pub fn relate_infer_infer(_interner: I) -> DeepRejectCtxt<I, HANDLE_AS_INFER, HANDLE_AS_INFER> {
         DeepRejectCtxt { _interner: PhantomData }
     }
 }
 
-impl<I: Interner> DeepRejectCtxt<I, false, true> {
+impl<I: Interner> DeepRejectCtxt<I, HANDLE_UNNORMALIZED, HANDLE_AS_INFER> {
     /// Treat parameters in the lhs as rigid, and in rhs as infer vars.
-    pub fn relate_rigid_infer(_interner: I) -> DeepRejectCtxt<I, false, true> {
+    pub fn relate_rigid_infer(
+        _interner: I,
+    ) -> DeepRejectCtxt<I, HANDLE_UNNORMALIZED, HANDLE_AS_INFER> {
         DeepRejectCtxt { _interner: PhantomData }
     }
 }
 
-impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_WITH_INFER: bool>
-    DeepRejectCtxt<I, INSTANTIATE_LHS_WITH_INFER, INSTANTIATE_RHS_WITH_INFER>
+impl<I: Interner> DeepRejectCtxt<I, HANDLE_FULLY_NORMALIZED, HANDLE_FULLY_NORMALIZED> {
+    pub fn relate_fully_normalized(
+        _interner: I,
+    ) -> DeepRejectCtxt<I, HANDLE_FULLY_NORMALIZED, HANDLE_FULLY_NORMALIZED> {
+        DeepRejectCtxt { _interner: PhantomData }
+    }
+}
+
+impl<I: Interner, const HANDLE_LHS: u8, const HANDLE_RHS: u8>
+    DeepRejectCtxt<I, HANDLE_LHS, HANDLE_RHS>
 {
     // Quite arbitrary. Large enough to only affect a very tiny amount of impls/crates
     // and small enough to prevent hangs.
@@ -257,11 +269,16 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             // Start by checking whether the `rhs` type may unify with
             // pretty much everything. Just return `true` in that case.
             ty::Param(_) => {
-                if INSTANTIATE_RHS_WITH_INFER {
+                if HANDLE_RHS < HANDLE_UNNORMALIZED {
                     return true;
                 }
             }
-            ty::Error(_) | ty::Alias(..) | ty::Bound(..) => return true,
+            ty::Alias(_) => {
+                if HANDLE_RHS < HANDLE_FULLY_NORMALIZED {
+                    return true;
+                }
+            }
+            ty::Error(_) | ty::Bound(..) => return true,
             ty::Infer(var) => return self.var_and_ty_may_unify(var, lhs),
 
             // These types only unify with inference variables or their own
@@ -324,7 +341,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             // Depending on the value of const generics, we either treat generic parameters
             // like placeholders or like inference variables.
             ty::Param(lhs) => {
-                INSTANTIATE_LHS_WITH_INFER
+                HANDLE_LHS < HANDLE_UNNORMALIZED
                     || match rhs.kind() {
                         ty::Param(rhs) => lhs == rhs,
                         _ => false,
@@ -343,7 +360,15 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             // projections can unify with other stuff.
             //
             // Looking forward to lazy normalization this is the safer strategy anyways.
-            ty::Alias(..) => true,
+            ty::Alias(lhs) => {
+                HANDLE_LHS < HANDLE_FULLY_NORMALIZED
+                    || match rhs.kind() {
+                        ty::Alias(rhs) => {
+                            lhs.kind == rhs.kind && self.args_may_unify(lhs.args, rhs.args)
+                        }
+                        _ => false,
+                    }
+            }
 
             ty::Int(_)
             | ty::Uint(_)
@@ -462,7 +487,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     fn consts_may_unify_inner(self, lhs: I::Const, rhs: I::Const) -> bool {
         match rhs.kind() {
             ty::ConstKind::Param(_) => {
-                if INSTANTIATE_RHS_WITH_INFER {
+                if HANDLE_RHS < HANDLE_UNNORMALIZED {
                     return true;
                 }
             }
@@ -485,7 +510,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             },
 
             ty::ConstKind::Param(lhs) => {
-                INSTANTIATE_LHS_WITH_INFER
+                HANDLE_LHS < HANDLE_UNNORMALIZED
                     || match rhs.kind() {
                         ty::ConstKind::Param(rhs) => lhs == rhs,
                         _ => false,
