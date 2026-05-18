@@ -1740,6 +1740,27 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
+    /// Converts the Vec into a boxed array. This conversion will discard any spare capacity, if there is any, see [`Vec::shrink_to_fit`].
+    /// If you merely wish for a reference to an array, use [`as_array`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_array).
+    ///
+    /// If `N` is not exactly equal to [`Vec::len`], then this method returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(alloc_slice_into_array)]
+    /// let vec: Vec<i32> = vec![1, 2, 3];
+    /// let box_array: Box<[i32; 3]> = vec.clone().into_array().unwrap();
+    /// let not_enough_elements: Result<Box<[i32; 4]>, Vec<i32>> = vec.into_array::<4>();
+    /// assert_eq!(not_enough_elements, Err(vec![1, 2, 3]));
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Result<Box<[T; N], A>, Self> {
+        if self.len() == N { Ok(self.into_boxed_slice().into_array().unwrap()) } else { Err(self) }
+    }
+
     /// Shortens the vector, keeping the first `len` elements and dropping
     /// the rest.
     ///
