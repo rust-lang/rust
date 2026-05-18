@@ -586,7 +586,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Feeds the HIR delayed owner during AST -> HIR delayed lowering.
     pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
         self.dep_graph.assert_ignored();
-        TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
+        TyCtxtFeed { tcx: self, key }.hir_delayed_owner(owner);
     }
 
     // Trait impl item visibility is inherited from its trait when not specified
@@ -627,7 +627,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 
     // Fills in all the important parts needed by HIR queries
     pub fn feed_hir(&self) {
-        self.owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
+        self.hir_owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
             nodes: self.tcx.arena.alloc(hir::OwnerNodes::synthetic()),
             parenting: self.tcx.arena.alloc(Default::default()),
             delayed_lints: self.tcx.arena.alloc(Steal::new(Default::default())),

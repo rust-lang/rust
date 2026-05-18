@@ -17,7 +17,7 @@ pub mod x {
     }
 
     #[cfg(bpass2)]
-    #[rustc_clean(except = "owner,optimized_mir", cfg = "bpass2")]
+    #[rustc_clean(except = "hir_owner,optimized_mir", cfg = "bpass2")]
     pub fn x() {
         println!("{}", "2");
     }

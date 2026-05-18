@@ -73,7 +73,7 @@ impl<'hir> Crate<'hir> {
             tcx.ensure_done().lower_delayed_owner(def_id);
         }
 
-        tcx.delayed_owner(def_id)
+        tcx.hir_delayed_owner(def_id)
     }
 }
 
@@ -423,7 +423,7 @@ impl<'tcx> TyCtxt<'tcx> {
             HirId {
                 owner: parent_owner_id,
                 local_id: self
-                    .owner(parent_owner_id.def_id)
+                    .hir_owner(parent_owner_id.def_id)
                     .unwrap()
                     .parenting
                     .get(&owner_id.def_id)
@@ -507,7 +507,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
-    providers.owner = |tcx, def_id| {
+    providers.hir_owner = |tcx, def_id| {
         ProjectedMaybeOwner::create_from(tcx.hir_crate(()).owner(tcx, def_id), def_id)
     };
     providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);

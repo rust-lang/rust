@@ -113,7 +113,9 @@ impl<'tcx> IfThisChanged<'tcx> {
         for attr in attrs {
             if let Attribute::Parsed(AttributeKind::RustcIfThisChanged(span, dep_node)) = *attr {
                 let dep_node = match dep_node {
-                    None => DepNode::from_def_path_hash(self.tcx, def_path_hash, DepKind::owner),
+                    None => {
+                        DepNode::from_def_path_hash(self.tcx, def_path_hash, DepKind::hir_owner)
+                    }
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,

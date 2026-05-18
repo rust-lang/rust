@@ -106,7 +106,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn local_def_id_to_hir_id(self, def_id: impl IntoQueryKey<LocalDefId>) -> HirId {
         let def_id = def_id.into_query_key();
-        match self.owner(def_id) {
+        match self.hir_owner(def_id) {
             ProjectedMaybeOwner::Owner(_) => HirId::make_owner(def_id),
             ProjectedMaybeOwner::NonOwner(hir_id) => hir_id,
         }
@@ -118,7 +118,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn opt_ast_lowering_delayed_lints(self, id: OwnerId) -> Option<&'tcx Steal<DelayedLints>> {
         self.dep_graph.assert_eval_always();
-        self.owner(id.def_id).as_owner().map(|o| o.delayed_lints)
+        self.hir_owner(id.def_id).as_owner().map(|o| o.delayed_lints)
     }
 
     #[inline]
@@ -126,12 +126,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         id: OwnerId,
     ) -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
-        self.owner(id.def_id).as_owner().map(|owner_info| owner_info.trait_map)
+        self.hir_owner(id.def_id).as_owner().map(|owner_info| owner_info.trait_map)
     }
 
     #[inline]
     pub fn opt_hir_owner_nodes(self, def_id: LocalDefId) -> Option<&'tcx OwnerNodes<'tcx>> {
-        self.owner(def_id).as_owner().map(|i| i.nodes)
+        self.hir_owner(def_id).as_owner().map(|i| i.nodes)
     }
 
     #[inline]
