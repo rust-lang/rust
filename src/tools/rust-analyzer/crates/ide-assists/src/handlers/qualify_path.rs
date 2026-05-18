@@ -4,7 +4,7 @@ use std::iter;
 use hir::AsAssocItem;
 use ide_db::RootDatabase;
 use ide_db::{
-    helpers::mod_path_to_ast,
+    helpers::mod_path_to_ast_with_factory,
     imports::import_assets::{ImportCandidate, LocatedImport},
 };
 use syntax::Edition;
@@ -34,7 +34,7 @@ use crate::{
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
-pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (import_assets, syntax_under_caret, expected) = find_importable_node(ctx)?;
     let cfg = ctx.config.import_path_config();
 
@@ -129,7 +129,7 @@ impl QualifyCandidate<'_> {
         item: hir::ItemInNs,
         edition: Edition,
     ) {
-        let import = mod_path_to_ast(import, edition);
+        let import = mod_path_to_ast_with_factory(editor.make(), import, edition);
         match self {
             QualifyCandidate::QualifierStart(segment, generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);

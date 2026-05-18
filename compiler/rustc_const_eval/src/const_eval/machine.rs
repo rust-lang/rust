@@ -735,11 +735,11 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let hir_id = ecx.machine.best_lint_scope(*ecx.tcx);
                 let is_error = ecx
                     .tcx
-                    .lint_level_at_node(
+                    .lint_level_spec_at_node(
                         rustc_session::lint::builtin::LONG_RUNNING_CONST_EVAL,
                         hir_id,
                     )
-                    .level
+                    .level()
                     .is_error();
                 let span = ecx.cur_span();
                 ecx.tcx.emit_node_span_lint(

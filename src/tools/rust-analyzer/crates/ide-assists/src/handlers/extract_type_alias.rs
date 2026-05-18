@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 //     field: Type,
 // }
 // ```
-pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     if ctx.has_empty_selection() {
         return None;
     }
@@ -75,7 +75,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 generics.map(|it| make.generic_param_list(it.into_iter().cloned()));
 
             // Replace original type with the alias
-            let ty_args = generic_params.as_ref().map(|it| it.to_generic_args().generic_args());
+            let ty_args = generic_params.as_ref().map(|it| it.to_generic_args(make).generic_args());
             let new_ty = if let Some(ty_args) = ty_args {
                 make.generic_ty_path_segment(make.name_ref(name), ty_args)
             } else {

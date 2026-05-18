@@ -105,7 +105,7 @@ fn recurse_build<'tcx>(
         // }
         // ```
         ExprKind::Block { block } => {
-            if let thir::Block { stmts: box [], expr: Some(e), .. } = &body.blocks[*block] {
+            if let thir::Block { stmts: [], expr: Some(e), .. } = &body.blocks[*block] {
                 recurse_build(tcx, body, *e, root_span)?
             } else {
                 maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?

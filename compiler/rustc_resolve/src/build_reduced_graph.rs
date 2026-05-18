@@ -253,7 +253,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match vis.kind {
             ast::VisibilityKind::Public => Ok(Visibility::Public),
             ast::VisibilityKind::Inherited => {
-                Ok(match parent_scope.module.kind {
+                Ok(match parent_scope.module.expect_local().kind {
                     // Any inherited visibility resolved directly inside an enum or trait
                     // (i.e. variants, fields, and trait items) inherits from the visibility
                     // of the enum or trait.
@@ -535,7 +535,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         root_id: NodeId,
         vis: Visibility,
     ) {
-        let current_module = self.parent_scope.module;
+        let current_module = self.parent_scope.module.expect_local();
         let import = self.r.arenas.alloc_import(ImportData {
             kind,
             parent_scope: self.parent_scope,
@@ -560,7 +560,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 if target.name != kw::Underscore {
                     self.r.per_ns(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
-                        this.resolution_or_default(current_module, key, target.span)
+                        this.resolution_or_default(current_module.to_module(), key, target.span)
                             .borrow_mut(this)
                             .single_imports
                             .insert(import);
@@ -743,12 +743,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 for &(ref tree, id) in items {
-                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
-                    self.build_reduced_graph_for_use_tree(
-                        // This particular use tree
-                        tree, id, &prefix, true, false, // The whole `use` item
-                        item, vis, root_span, feed,
-                    );
+                    self.with_owner(id, None, DefKind::Use, use_tree.span(), |this, feed| {
+                        this.build_reduced_graph_for_use_tree(
+                            // This particular use tree
+                            tree, id, &prefix, true, false, // The whole `use` item
+                            item, vis, root_span, feed,
+                        )
+                    });
                 }
 
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
@@ -866,12 +867,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Const(box ConstItem { ident, .. })
-            | ItemKind::Delegation(box Delegation { ident, .. })
-            | ItemKind::Static(box StaticItem { ident, .. }) => {
+            ItemKind::Const(ConstItem { ident, .. })
+            | ItemKind::Delegation(Delegation { ident, .. })
+            | ItemKind::Static(StaticItem { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
             }
-            ItemKind::Fn(box Fn { ident, .. }) => {
+            ItemKind::Fn(Fn { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
 
                 // Functions introducing procedural macros reserve a slot
@@ -880,12 +881,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(box TyAlias { ident, .. })
-            | ItemKind::TraitAlias(box TraitAlias { ident, .. }) => {
+            ItemKind::TyAlias(TyAlias { ident, .. })
+            | ItemKind::TraitAlias(TraitAlias { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
             }
 
-            ItemKind::Enum(ident, _, _) | ItemKind::Trait(box ast::Trait { ident, .. }) => {
+            ItemKind::Enum(ident, _, _) | ItemKind::Trait(ast::Trait { ident, .. }) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
 
                 let module = self.r.new_local_module(
@@ -1136,7 +1137,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
             AttributeParser::parse_limited(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
         {
-            if self.parent_scope.module.parent.is_some() {
+            if self.parent_scope.module.expect_local().parent.is_some() {
                 self.r
                     .dcx()
                     .emit_err(errors::ExternCrateLoadingMacroNotAtCrateRoot { span: item.span });
@@ -1247,7 +1248,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     /// directly into its parent scope's module.
     pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
-        self.parent_scope.module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
+        let module = self.parent_scope.module.expect_local();
+        module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
@@ -1295,7 +1297,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             ItemKind::MacroDef(ident, def) => {
                 (self.res(def_id), *ident, item.span, def.macro_rules)
             }
-            ItemKind::Fn(box ast::Fn { ident: fn_ident, .. }) => {
+            ItemKind::Fn(ast::Fn { ident: fn_ident, .. }) => {
                 match self.proc_macro_stub(item, *fn_ident) {
                     Some((macro_kind, ident, span)) => {
                         let macro_kinds = macro_kind.into();

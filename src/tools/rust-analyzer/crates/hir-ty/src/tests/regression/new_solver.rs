@@ -34,7 +34,6 @@ impl Space for [u8; 1] {
             223..227 'iter': IntoIter<u8>
             230..231 'a': Vec<u8>
             230..243 'a.into_iter()': IntoIter<u8>
-            322..323 '1': usize
         "#]],
     );
 }
@@ -473,8 +472,6 @@ fn foo() {
             249..257 'to_bytes': fn to_bytes() -> [u8; _]
             249..259 'to_bytes()': [u8; _]
             249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
-            205..206 '_': usize
-            156..157 'N': usize
         "#]],
     );
 }
@@ -516,15 +513,15 @@ fn test_at_most() {
     "#,
         expect![[r#"
             48..49 '0': usize
-            182..186 'self': Between<M, _, T>
+            182..186 'self': Between<M, 0, T>
             188..192 '_sep': &'? str
-            200..206 '_other': Between<M, _, T>
-            222..242 '{     ...     }': Between<M, _, T>
-            232..236 'self': Between<M, _, T>
+            200..206 '_other': Between<M, 0, T>
+            222..242 '{     ...     }': Between<M, 0, T>
+            232..236 'self': Between<M, 0, T>
             300..304 'self': Self
-            343..372 '{     ...     }': Between<M, _, Self>
-            353..360 'Between': fn Between<M, _, Self>(Self) -> Between<M, _, Self>
-            353..366 'Between(self)': Between<M, _, Self>
+            343..372 '{     ...     }': Between<M, 0, Self>
+            353..360 'Between': fn Between<M, 0, Self>(Self) -> Between<M, 0, Self>
+            353..366 'Between(self)': Between<M, 0, Self>
             361..365 'self': Self
             404..408 'self': Self
             433..462 '{     ...     }': Between<0, N, Self>
@@ -532,21 +529,22 @@ fn test_at_most() {
             443..456 'Between(self)': Between<0, N, Self>
             451..455 'self': Self
             510..587 '{     ...um); }': ()
-            520..523 'num': Between<1, _, char>
+            520..523 'num': Between<1, 0, char>
             526..529 ''9'': char
-            526..545 ''9'.at...:<1>()': Between<1, _, char>
-            555..559 '_ver': Between<1, _, char>
-            562..565 'num': Between<1, _, char>
-            562..584 'num.se..., num)': Between<1, _, char>
+            526..545 ''9'.at...:<1>()': Between<1, 0, char>
+            541..542 '1': usize
+            555..559 '_ver': Between<1, 0, char>
+            562..565 'num': Between<1, 0, char>
+            562..584 'num.se..., num)': Between<1, 0, char>
             575..578 '"."': &'static str
-            580..583 'num': Between<1, _, char>
+            580..583 'num': Between<1, 0, char>
             607..644 '{     ...>(); }': ()
             617..620 'num': Between<0, 1, char>
             623..626 ''9'': char
             623..641 ''9'.at...:<1>()': Between<0, 1, char>
+            637..638 '1': usize
             320..335 '{ Consts::MAX }': usize
             322..333 'Consts::MAX': usize
-            421..422 '0': i32
             144..159 '{ Consts::MAX }': usize
             146..157 'Consts::MAX': usize
         "#]],

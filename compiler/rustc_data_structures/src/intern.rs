@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::ptr;
 
-use crate::stable_hasher::{StableHash, StableHashCtxt, StableHasher};
+use crate::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 
 mod private {
     #[derive(Clone, Copy, Debug)]

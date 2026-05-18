@@ -10,7 +10,7 @@ use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     InferTy, TypeVisitableExt, UintTy, elaborate,
     error::TypeError,
-    inherent::{AdtDef, BoundExistentialPredicates as _, IntoKind, Ty as _},
+    inherent::{BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use stdx::never;
 
@@ -125,13 +125,14 @@ impl<'db> CastCheck<'db> {
         &mut self,
         ctx: &mut InferenceContext<'_, 'db>,
     ) -> Result<(), InferenceDiagnostic> {
-        self.expr_ty = ctx.table.try_structurally_resolve_type(self.expr_ty);
-        self.cast_ty = ctx.table.try_structurally_resolve_type(self.cast_ty);
+        self.expr_ty =
+            ctx.table.try_structurally_resolve_type(self.source_expr.into(), self.expr_ty);
+        self.cast_ty = ctx.table.try_structurally_resolve_type(self.expr.into(), self.cast_ty);
 
         // This should always come first so that we apply the coercion, which impacts infer vars.
         if ctx
             .coerce(
-                self.source_expr.into(),
+                self.source_expr,
                 self.expr_ty,
                 self.cast_ty,
                 AllowTwoPhase::No,
@@ -147,7 +148,8 @@ impl<'db> CastCheck<'db> {
             return Ok(());
         }
 
-        if !self.cast_ty.has_infer_types() && !ctx.table.is_sized(self.cast_ty) {
+        if !self.cast_ty.has_infer_types() && !ctx.table.type_is_sized_modulo_regions(self.cast_ty)
+        {
             return Err(InferenceDiagnostic::CastToUnsized {
                 expr: self.expr,
                 cast_ty: self.cast_ty.store(),
@@ -167,7 +169,7 @@ impl<'db> CastCheck<'db> {
                         let sig = self.expr_ty.fn_sig(ctx.interner());
                         let fn_ptr = Ty::new_fn_ptr(ctx.interner(), sig);
                         match ctx.coerce(
-                            self.source_expr.into(),
+                            self.source_expr,
                             self.expr_ty,
                             fn_ptr,
                             AllowTwoPhase::No,
@@ -198,8 +200,9 @@ impl<'db> CastCheck<'db> {
                             },
                             // array-ptr-cast
                             CastTy::Ptr(t, m) => {
-                                let t = ctx.table.try_structurally_resolve_type(t);
-                                if !ctx.table.is_sized(t) {
+                                let t =
+                                    ctx.table.try_structurally_resolve_type(self.expr.into(), t);
+                                if !ctx.table.type_is_sized_modulo_regions(t) {
                                     return Err(CastError::IllegalCast);
                                 }
                                 self.check_ref_cast(ctx, inner_ty, mutbl, t, m)
@@ -261,8 +264,8 @@ impl<'db> CastCheck<'db> {
         t_cast: Ty<'db>,
         m_cast: Mutability,
     ) -> Result<(), CastError> {
-        let t_expr = ctx.table.try_structurally_resolve_type(t_expr);
-        let t_cast = ctx.table.try_structurally_resolve_type(t_cast);
+        let t_expr = ctx.table.try_structurally_resolve_type(self.expr.into(), t_expr);
+        let t_cast = ctx.table.try_structurally_resolve_type(self.expr.into(), t_cast);
 
         if m_expr >= m_cast
             && let TyKind::Array(ety, _) = t_expr.kind()
@@ -275,7 +278,7 @@ impl<'db> CastCheck<'db> {
             let array_ptr_type = Ty::new_ptr(ctx.interner(), t_expr, m_expr);
             if ctx
                 .coerce(
-                    self.source_expr.into(),
+                    self.source_expr,
                     self.expr_ty,
                     array_ptr_type,
                     AllowTwoPhase::No,
@@ -305,8 +308,8 @@ impl<'db> CastCheck<'db> {
         src: Ty<'db>,
         dst: Ty<'db>,
     ) -> Result<(), CastError> {
-        let src_kind = pointer_kind(src, ctx).map_err(|_| CastError::Unknown)?;
-        let dst_kind = pointer_kind(dst, ctx).map_err(|_| CastError::Unknown)?;
+        let src_kind = pointer_kind(self.expr, src, ctx).map_err(|_| CastError::Unknown)?;
+        let dst_kind = pointer_kind(self.expr, dst, ctx).map_err(|_| CastError::Unknown)?;
 
         match (src_kind, dst_kind) {
             (Some(PointerKind::Error), _) | (_, Some(PointerKind::Error)) => Ok(()),
@@ -371,7 +374,7 @@ impl<'db> CastCheck<'db> {
                         // This is `fcx.demand_eqtype`, but inlined to give a better error.
                         if ctx
                             .table
-                            .at(&ObligationCause::dummy())
+                            .at(&ObligationCause::new(self.expr))
                             .eq(src_obj, dst_obj)
                             .map(|infer_ok| ctx.table.register_infer_ok(infer_ok))
                             .is_err()
@@ -456,7 +459,7 @@ impl<'db> CastCheck<'db> {
         ctx: &mut InferenceContext<'_, 'db>,
         expr_ty: Ty<'db>,
     ) -> Result<(), CastError> {
-        match pointer_kind(expr_ty, ctx).map_err(|_| CastError::Unknown)? {
+        match pointer_kind(self.expr, expr_ty, ctx).map_err(|_| CastError::Unknown)? {
             // None => Err(CastError::UnknownExprPtrKind),
             None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
@@ -470,7 +473,7 @@ impl<'db> CastCheck<'db> {
         ctx: &mut InferenceContext<'_, 'db>,
         cast_ty: Ty<'db>,
     ) -> Result<(), CastError> {
-        match pointer_kind(cast_ty, ctx).map_err(|_| CastError::Unknown)? {
+        match pointer_kind(self.expr, cast_ty, ctx).map_err(|_| CastError::Unknown)? {
             // None => Err(CastError::UnknownCastPtrKind),
             None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
@@ -486,7 +489,7 @@ impl<'db> CastCheck<'db> {
         ctx: &mut InferenceContext<'_, 'db>,
         cast_ty: Ty<'db>,
     ) -> Result<(), CastError> {
-        match pointer_kind(cast_ty, ctx).map_err(|_| CastError::Unknown)? {
+        match pointer_kind(self.expr, cast_ty, ctx).map_err(|_| CastError::Unknown)? {
             // None => Err(CastError::UnknownCastPtrKind),
             None => Ok(()),
             Some(PointerKind::Error) => Ok(()),
@@ -515,12 +518,13 @@ enum PointerKind<'db> {
 }
 
 fn pointer_kind<'db>(
+    expr: ExprId,
     ty: Ty<'db>,
     ctx: &mut InferenceContext<'_, 'db>,
 ) -> Result<Option<PointerKind<'db>>, ()> {
-    let ty = ctx.table.try_structurally_resolve_type(ty);
+    let ty = ctx.table.try_structurally_resolve_type(expr.into(), ty);
 
-    if ctx.table.is_sized(ty) {
+    if ctx.table.type_is_sized_modulo_regions(ty) {
         return Ok(Some(PointerKind::Thin));
     }
 
@@ -528,7 +532,7 @@ fn pointer_kind<'db>(
         TyKind::Slice(_) | TyKind::Str => Ok(Some(PointerKind::Length)),
         TyKind::Dynamic(bounds, _) => Ok(Some(PointerKind::VTable(bounds))),
         TyKind::Adt(adt_def, subst) => {
-            let id = adt_def.def_id().0;
+            let id = adt_def.def_id();
             let AdtId::StructId(id) = id else {
                 never!("`{:?}` should be sized but is not?", ty);
                 return Err(());
@@ -538,15 +542,16 @@ fn pointer_kind<'db>(
             if let Some((last_field, _)) = struct_data.fields().iter().last() {
                 let last_field_ty = ctx.db.field_types(id.into())[last_field]
                     .get()
-                    .instantiate(ctx.interner(), subst);
-                pointer_kind(last_field_ty, ctx)
+                    .instantiate(ctx.interner(), subst)
+                    .skip_norm_wip();
+                pointer_kind(expr, last_field_ty, ctx)
             } else {
                 Ok(Some(PointerKind::Thin))
             }
         }
         TyKind::Tuple(subst) => match subst.iter().next_back() {
             None => Ok(Some(PointerKind::Thin)),
-            Some(ty) => pointer_kind(ty, ctx),
+            Some(ty) => pointer_kind(expr, ty, ctx),
         },
         TyKind::Foreign(_) => Ok(Some(PointerKind::Thin)),
         TyKind::Alias(..) => Ok(Some(PointerKind::OfAlias)),

@@ -5,7 +5,7 @@ use std::{collections::hash_map::Entry, fmt::Display, iter};
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
+    FieldId, StaticId, TupleFieldId, UnionId, VariantId,
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
@@ -16,7 +16,7 @@ use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
 
 use crate::{
-    CallableDefId, InferenceResult, MemoryMap,
+    CallableDefId, InferBodyId, InferenceResult, MemoryMap,
     consteval::usize_const,
     db::{HirDatabase, InternedClosureId},
     display::{DisplayTarget, HirDisplay},
@@ -46,9 +46,6 @@ pub use lower::{
 pub use monomorphization::{
     monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };
-
-pub(crate) use lower::mir_body_cycle_result;
-pub(crate) use monomorphization::monomorphized_mir_body_cycle_result;
 
 use super::consteval::try_const_usize;
 
@@ -200,9 +197,10 @@ impl<V: PartialEq> ProjectionElem<V> {
                 }
             },
             ProjectionElem::Field(Either::Left(f)) => match base.kind() {
-                TyKind::Adt(_, subst) => {
-                    db.field_types(f.parent)[f.local_id].get().instantiate(interner, subst)
-                }
+                TyKind::Adt(_, subst) => db.field_types(f.parent)[f.local_id]
+                    .get()
+                    .instantiate(interner, subst)
+                    .skip_norm_wip(),
                 ty => {
                     never!("Only adt has field, found {:?}", ty);
                     Ty::new_error(interner, ErrorGuaranteed)
@@ -1087,7 +1085,7 @@ pub struct MirBody {
     pub basic_blocks: Arena<BasicBlock>,
     pub locals: Arena<Local>,
     pub start_block: BasicBlockId,
-    pub owner: DefWithBodyId,
+    pub owner: InferBodyId,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
     pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,

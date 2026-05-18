@@ -135,12 +135,12 @@ fn parse_cfg_entry_version(
             cx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral { span: list.span })
         );
     };
-    let Some(version_lit) = version.lit() else {
+    let Some(version_lit) = version.as_lit() else {
         return Err(
             cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version.span() })
         );
     };
-    let Some(version_str) = version_lit.value_str() else {
+    let Some(version_str) = version_lit.value_as_str() else {
         return Err(
             cx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: version_lit.span })
         );

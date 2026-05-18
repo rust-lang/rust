@@ -202,7 +202,7 @@ There are a few options for running tests:
 
 Pass UI tests now have three modes, `check-pass`, `build-pass` and `run-pass`.
 When `--pass $mode` is passed, these tests will be forced to run under the given
-`$mode` unless the directive `//@ ignore-pass` exists in the test file.
+`$mode` unless the directive `//@ no-pass-override` exists in the test file.
 For example, you can run all the tests in `tests/ui` as `check-pass`:
 
 ```text

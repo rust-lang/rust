@@ -15,7 +15,7 @@ use rustc_type_ir::{
     InferTy, TypeVisitableExt, Upcast, Variance,
     elaborate::{self, supertrait_def_ids},
     fast_reject::{DeepRejectCtxt, TreatParams, simplify_type},
-    inherent::{AdtDef as _, BoundExistentialPredicates as _, IntoKind, Ty as _},
+    inherent::{BoundExistentialPredicates as _, IntoKind, Ty as _},
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -32,7 +32,7 @@ use crate::{
     },
     next_solver::{
         Binder, Canonical, ClauseKind, DbInterner, FnSig, GenericArg, GenericArgs, Goal, ParamEnv,
-        PolyTraitRef, Predicate, Region, SimplifiedType, TraitRef, Ty, TyKind,
+        PolyTraitRef, Predicate, Region, SimplifiedType, TraitRef, Ty, TyKind, Unnormalized,
         infer::{
             BoundRegionConversionTime, InferCtxt, InferOk,
             canonical::{QueryResponse, canonicalizer::OriginalQueryValues},
@@ -284,7 +284,8 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = self.infcx;
-                let (self_ty, var_values) = infcx.instantiate_canonical(&query_input);
+                let (self_ty, var_values) =
+                    infcx.instantiate_canonical(self.call_span, &query_input);
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 let prev_opaque_entries =
                     self.infcx.inner.borrow_mut().opaque_types().num_entries();
@@ -315,7 +316,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
             if bad_ty.reached_raw_pointer
-                && !self.unstable_features.arbitrary_self_types_pointers
+                && !self.features.arbitrary_self_types_pointers
                 && self.edition.at_least_2018()
             {
                 // this case used to be allowed by the compiler,
@@ -338,7 +339,7 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
                 let ty = self
                     .infcx
                     .instantiate_query_response_and_region_obligations(
-                        &ObligationCause::new(),
+                        &ObligationCause::new(self.receiver_span),
                         self.param_env,
                         &orig_values,
                         ty,
@@ -380,7 +381,8 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
             // chain to support recursive calls. We do error if the final
             // infer var is not an opaque.
             let infcx = self.infcx;
-            let (self_ty, inference_vars) = infcx.instantiate_canonical(self_ty);
+            let (self_ty, inference_vars) =
+                infcx.instantiate_canonical(self.receiver_span, self_ty);
             let prev_opaque_entries = infcx.inner.borrow_mut().opaque_types().num_entries();
 
             let self_ty_is_opaque = |ty: Ty<'_>| {
@@ -401,18 +403,20 @@ impl<'a, 'db> MethodResolutionContext<'a, 'db> {
             // converted to, in order to find out which of those methods might actually
             // be callable.
             let mut autoderef_via_deref =
-                Autoderef::new(infcx, self.param_env, self_ty).include_raw_pointers();
+                Autoderef::new(infcx, self.param_env, self_ty, self.receiver_span)
+                    .include_raw_pointers();
 
             let mut reached_raw_pointer = false;
-            let arbitrary_self_types_enabled = self.unstable_features.arbitrary_self_types
-                || self.unstable_features.arbitrary_self_types_pointers;
+            let arbitrary_self_types_enabled =
+                self.features.arbitrary_self_types || self.features.arbitrary_self_types_pointers;
             let (mut steps, reached_recursion_limit) = if arbitrary_self_types_enabled {
                 let reachable_via_deref =
                     autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
 
-                let mut autoderef_via_receiver = Autoderef::new(infcx, self.param_env, self_ty)
-                    .include_raw_pointers()
-                    .use_receiver_trait();
+                let mut autoderef_via_receiver =
+                    Autoderef::new(infcx, self.param_env, self_ty, self.receiver_span)
+                        .include_raw_pointers()
+                        .use_receiver_trait();
                 let steps = autoderef_via_receiver
                     .by_ref()
                     .zip(reachable_via_deref)
@@ -613,7 +617,7 @@ impl<'db> ProbeChoice<'db> for ProbeForNameChoice<'db> {
             // We collapse to a subtrait pick *after* filtering unstable candidates
             // to make sure we don't prefer a unstable subtrait method over a stable
             // supertrait method.
-            if this.ctx.unstable_features.supertrait_item_shadowing
+            if this.ctx.features.supertrait_item_shadowing
                 && let Some(pick) =
                     this.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
             {
@@ -921,7 +925,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     // will still match the original object type, but it won't pollute our
                     // type variables in any form, so just do that!
                     let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
-                        self.infcx().instantiate_canonical(self_ty);
+                        self.infcx().instantiate_canonical(self.ctx.call_span, self_ty);
 
                     self.assemble_inherent_candidates_from_object(generalized_self_ty);
                     self.assemble_inherent_impl_candidates_for_type(
@@ -935,7 +939,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                 }
             }
             TyKind::Adt(def, _) => {
-                let def_id = def.def_id().0;
+                let def_id = def.def_id();
                 self.assemble_inherent_impl_candidates_for_type(
                     &SimplifiedType::Adt(def_id.into()),
                     receiver_steps,
@@ -1117,7 +1121,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     #[instrument(level = "debug", skip(self))]
     fn assemble_extension_candidates_for_trait(&mut self, trait_def_id: TraitId) {
-        let trait_args = self.infcx().fresh_args_for_item(trait_def_id.into());
+        let trait_args = self.infcx().fresh_args_for_item(self.ctx.call_span, trait_def_id.into());
         let trait_ref = TraitRef::new_from_args(self.interner(), trait_def_id.into(), trait_args);
 
         self.with_trait_item(trait_def_id, |this, item| {
@@ -1183,8 +1187,8 @@ impl<'a, 'db> ProbeContext<'a, 'db, ProbeForNameChoice<'db>> {
         // The errors emitted by this function are part of
         // the arbitrary self types work, and should not impact
         // other users.
-        if !self.ctx.unstable_features.arbitrary_self_types
-            && !self.ctx.unstable_features.arbitrary_self_types_pointers
+        if !self.ctx.features.arbitrary_self_types
+            && !self.ctx.features.arbitrary_self_types_pointers
         {
             return Ok(());
         }
@@ -1268,7 +1272,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                 let InferOk { value: self_ty, obligations: instantiate_self_ty_obligations } = self
                     .infcx()
                     .instantiate_query_response_and_region_obligations(
-                        &ObligationCause::new(),
+                        &ObligationCause::new(self.ctx.receiver_span),
                         self.param_env(),
                         self.orig_steps_var_values,
                         &step.self_ty,
@@ -1495,8 +1499,12 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         &self,
         trait_ref: TraitRef<'db>,
     ) -> SelectionResult<'db, Selection<'db>> {
-        let obligation =
-            Obligation::new(self.interner(), ObligationCause::new(), self.param_env(), trait_ref);
+        let obligation = Obligation::new(
+            self.interner(),
+            ObligationCause::new(self.ctx.call_span),
+            self.param_env(),
+            trait_ref,
+        );
         self.infcx().select(&obligation)
     }
 
@@ -1510,6 +1518,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             }
             TraitCandidate(trait_ref) => self.infcx().probe(|_| {
                 let trait_ref = self.infcx().instantiate_binder_with_fresh_vars(
+                    self.ctx.call_span,
                     BoundRegionConversionTime::FnCall,
                     trait_ref,
                 );
@@ -1522,7 +1531,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                 // up with the `self` parameter of the method.
                 let _ = self
                     .infcx()
-                    .at(&ObligationCause::dummy(), self.param_env())
+                    .at(&ObligationCause::new(self.ctx.call_span), self.param_env())
                     .sup(xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
                     Ok(Some(ImplSource::UserDefined(ref impl_data))) => {
@@ -1553,7 +1562,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     ) -> ProbeResult {
         self.infcx().probe(|_| {
             let mut result = ProbeResult::Match;
-            let cause = &ObligationCause::new();
+            let cause = &ObligationCause::new(self.ctx.call_span);
             let mut ocx = ObligationCtxt::new(self.infcx());
 
             // Subtle: we're not *really* instantiating the current self type while
@@ -1574,9 +1583,13 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
             match probe.kind {
                 InherentImplCandidate { impl_def_id, .. } => {
-                    let impl_args = self.infcx().fresh_args_for_item(impl_def_id.into());
-                    let impl_ty =
-                        self.db().impl_self_ty(impl_def_id).instantiate(self.interner(), impl_args);
+                    let impl_args =
+                        self.infcx().fresh_args_for_item(self.ctx.call_span, impl_def_id.into());
+                    let impl_ty = self
+                        .db()
+                        .impl_self_ty(impl_def_id)
+                        .instantiate(self.interner(), impl_args)
+                        .skip_norm_wip();
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args.as_slice());
                     match ocx.relate(
@@ -1595,8 +1608,10 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_bounds = GenericPredicates::query_all(self.db(), impl_def_id.into());
                     let impl_bounds = clauses_as_obligations(
-                        impl_bounds.iter_instantiated(self.interner(), impl_args.as_slice()),
-                        ObligationCause::new(),
+                        impl_bounds
+                            .iter_instantiated(self.interner(), impl_args.as_slice())
+                            .map(Unnormalized::skip_norm_wip),
+                        ObligationCause::new(self.ctx.call_span),
                         self.param_env(),
                     );
                     // Convert the bounds into obligations.
@@ -1632,6 +1647,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     }
 
                     let trait_ref = self.infcx().instantiate_binder_with_fresh_vars(
+                        self.ctx.call_span,
                         BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
@@ -1655,7 +1671,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     }
                     let obligation = Obligation::new(
                         self.interner(),
-                        cause.clone(),
+                        *cause,
                         self.param_env(),
                         Binder::dummy(trait_ref),
                     );
@@ -1667,6 +1683,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                 }
                 ObjectCandidate(poly_trait_ref) | WhereClauseCandidate(poly_trait_ref) => {
                     let trait_ref = self.infcx().instantiate_binder_with_fresh_vars(
+                        self.ctx.call_span,
                         BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
@@ -1728,7 +1745,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             if let Some(xform_ret_ty) = xform_ret_ty {
                 ocx.register_obligation(Obligation::new(
                     self.interner(),
-                    cause.clone(),
+                    *cause,
                     self.param_env(),
                     ClauseKind::WellFormed(xform_ret_ty.into()),
                 ));
@@ -1799,7 +1816,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     // reachable. In this case we don't care about opaque
                     // types there.
                     let Ok(ok) = self.infcx().instantiate_query_response_and_region_obligations(
-                        &ObligationCause::new(),
+                        &ObligationCause::new(self.ctx.receiver_span),
                         self.param_env(),
                         self.orig_steps_var_values,
                         &step.self_ty,
@@ -2029,8 +2046,12 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                                 // In general, during probe we erase regions.
                                 Region::new_erased(self.interner()).into()
                             }
-                            GenericParamId::TypeParamId(_) => self.infcx().next_ty_var().into(),
-                            GenericParamId::ConstParamId(_) => self.infcx().next_const_var().into(),
+                            GenericParamId::TypeParamId(_) => {
+                                self.infcx().next_ty_var(self.ctx.call_span).into()
+                            }
+                            GenericParamId::ConstParamId(_) => {
+                                self.infcx().next_const_var(self.ctx.call_span).into()
+                            }
                         }
                     }
                 },
@@ -2038,7 +2059,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             fn_sig.instantiate(self.interner(), args)
         };
 
-        self.interner().instantiate_bound_regions_with_erased(xform_fn_sig)
+        self.interner().instantiate_bound_regions_with_erased(xform_fn_sig.skip_norm_wip())
     }
 
     fn with_impl_item(&mut self, def_id: ImplId, callback: impl FnMut(&mut Self, CandidateId)) {

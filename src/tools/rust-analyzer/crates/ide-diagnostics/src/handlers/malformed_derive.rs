@@ -4,7 +4,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is shown when the derive attribute has invalid input.
 pub(crate) fn malformed_derive(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     d: &hir::MalformedDerive,
 ) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range_for_range(d.range);

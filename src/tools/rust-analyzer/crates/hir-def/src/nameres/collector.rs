@@ -316,7 +316,7 @@ impl<'db> DefCollector<'db> {
                                 _ => None,
                             },
                         );
-                    crate_data.unstable_features.extend(features);
+                    features.for_each(|feature| crate_data.unstable_features.enable(feature));
                 }
                 () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
@@ -2840,6 +2840,6 @@ foo!(KABOOM);
         assert_eq!(def_map.recursion_limit(), 4);
         assert!(def_map.is_no_core());
         assert!(def_map.is_no_std());
-        assert!(def_map.is_unstable_feature_enabled(&sym::register_tool));
+        assert!(def_map.features().is_enabled(&sym::register_tool));
     }
 }

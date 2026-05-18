@@ -17,7 +17,7 @@ pub(crate) struct RenderedLiteral {
 /// Render a record type (or sub-type) to a `RenderedCompound`. Use `None` for
 /// the `name` argument for an anonymous type.
 pub(crate) fn render_record_lit(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     path: &str,
@@ -63,7 +63,7 @@ pub(crate) fn render_record_lit(
 /// Render a tuple type (or sub-type) to a `RenderedCompound`. Use `None` for
 /// the `name` argument for an anonymous type.
 pub(crate) fn render_tuple_lit(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     path: &str,
@@ -93,7 +93,7 @@ pub(crate) fn render_tuple_lit(
 /// fields, plus a boolean for whether the list is comprehensive (contains no
 /// private fields and its item is not marked `#[non_exhaustive]`).
 pub(crate) fn visible_fields(
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     fields: &[hir::Field],
     item: impl HasAttrs + HasCrate + Copy,
 ) -> Option<(Vec<hir::Field>, bool)> {

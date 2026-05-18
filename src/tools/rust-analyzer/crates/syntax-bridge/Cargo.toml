@@ -25,6 +25,7 @@ span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
 
 [dev-dependencies]
+expect-test = "1.5.1"
 test-utils.workspace = true
 
 [features]

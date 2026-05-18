@@ -315,7 +315,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(mir::Statement {
                     source_info,
                     kind:
-                        mir::StatementKind::Assign(box (
+                        mir::StatementKind::Assign((
                             _,
                             mir::Rvalue::Ref(
                                 _,
@@ -1418,10 +1418,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let Some(mir::Statement {
                     source_info: _,
                     kind:
-                        mir::StatementKind::Assign(box (
-                            _,
-                            mir::Rvalue::Use(mir::Operand::Copy(place), _),
-                        )),
+                        mir::StatementKind::Assign((_, mir::Rvalue::Use(mir::Operand::Copy(place), _))),
                     ..
                 }) = first_assignment_stmt
                 {
@@ -1879,7 +1876,7 @@ fn suggest_ampmut<'tcx>(
     //                ^^ lifetime annotation not allowed
     //
     if let Some(rhs_stmt) = opt_assignment_rhs_stmt
-        && let StatementKind::Assign(box (lhs, rvalue)) = &rhs_stmt.kind
+        && let StatementKind::Assign((lhs, rvalue)) = &rhs_stmt.kind
         && let mut rhs_span = rhs_stmt.source_info.span
         && let Ok(mut rhs_str) = tcx.sess.source_map().span_to_snippet(rhs_span)
     {
@@ -1900,7 +1897,7 @@ fn suggest_ampmut<'tcx>(
                 && let [user_ty_proj] = user_ty_projs.contents.as_slice()
                 && user_ty_proj.projs.is_empty()
                 && let Either::Left(rhs_stmt_new) = body.stmt_at(*assign)
-                && let StatementKind::Assign(box (_, rvalue_new)) = &rhs_stmt_new.kind
+                && let StatementKind::Assign((_, rvalue_new)) = &rhs_stmt_new.kind
                 && let rhs_span_new = rhs_stmt_new.source_info.span
                 && let Ok(rhs_str_new) = tcx.sess.source_map().span_to_snippet(rhs_span_new)
             {
@@ -1908,9 +1905,8 @@ fn suggest_ampmut<'tcx>(
             }
 
             if let Either::Right(call) = body.stmt_at(*assign)
-                && let TerminatorKind::Call {
-                    func: Operand::Constant(box const_operand), args, ..
-                } = &call.kind
+                && let TerminatorKind::Call { func: Operand::Constant(const_operand), args, .. } =
+                    &call.kind
                 && let ty::FnDef(method_def_id, method_args) = *const_operand.ty().kind()
                 && let Some(trait_) = tcx.trait_of_assoc(method_def_id)
                 && tcx.is_lang_item(trait_, hir::LangItem::Index)

@@ -1,7 +1,6 @@
 //! MIR lowering for places
 
 use hir_def::FunctionId;
-use intern::sym;
 use rustc_type_ir::inherent::{Region as _, Ty as _};
 
 use super::*;
@@ -131,7 +130,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         match &self.store[expr_id] {
             Expr::Path(p) => {
                 let resolver_guard =
-                    self.resolver.update_to_inner_scope(self.db, self.owner, expr_id);
+                    self.resolver.update_to_inner_scope(self.db, self.store_owner, expr_id);
                 let hygiene = self.store.expr_path_hygiene(expr_id);
                 let resolved = self.resolver.resolve_path_in_value_ns_fully(self.db, p, hygiene);
                 self.resolver.reset_to_guard(resolver_guard);
@@ -183,10 +182,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                         expr_id.into(),
                         'b: {
                             if let Some((f, _)) = self.infer.method_resolution(expr_id)
-                                && let Some(deref_trait) = self.lang_items().DerefMut
-                                && let Some(deref_fn) = deref_trait
-                                    .trait_items(self.db)
-                                    .method_by_name(&Name::new_symbol_root(sym::deref_mut))
+                                && let Some(deref_fn) = self.lang_items().DerefMut_deref_mut
                             {
                                 break 'b deref_fn == f;
                             }
@@ -315,18 +311,12 @@ impl<'db> MirLowerCtx<'_, 'db> {
         mutability: bool,
     ) -> Result<'db, Option<(Place, BasicBlockId)>> {
         let lang_items = self.lang_items();
-        let (mutability, trait_lang_item, trait_method_name, borrow_kind) = if !mutability {
-            (
-                Mutability::Not,
-                lang_items.Deref,
-                Name::new_symbol_root(sym::deref),
-                BorrowKind::Shared,
-            )
+        let (mutability, deref_fn, borrow_kind) = if !mutability {
+            (Mutability::Not, lang_items.Deref_deref, BorrowKind::Shared)
         } else {
             (
                 Mutability::Mut,
-                lang_items.DerefMut,
-                Name::new_symbol_root(sym::deref_mut),
+                lang_items.DerefMut_deref_mut,
                 BorrowKind::Mut { kind: MutBorrowKind::Default },
             )
         };
@@ -335,11 +325,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
         let target_ty_ref = Ty::new_ref(self.interner(), error_region, target_ty, mutability);
         let ref_place: Place = self.temp(ty_ref, current, span)?.into();
         self.push_assignment(current, ref_place, Rvalue::Ref(borrow_kind, place), span);
-        let deref_trait = trait_lang_item.ok_or(MirLowerError::LangItemNotFound)?;
-        let deref_fn = deref_trait
-            .trait_items(self.db)
-            .method_by_name(&trait_method_name)
-            .ok_or(MirLowerError::LangItemNotFound)?;
+        let deref_fn = deref_fn.ok_or(MirLowerError::LangItemNotFound)?;
         let deref_fn_op = Operand::const_zst(Ty::new_fn_def(
             self.interner(),
             CallableDefId::FunctionId(deref_fn).into(),

@@ -12,7 +12,7 @@ use crate::{
 
 pub(crate) fn complete_use_path(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     path_ctx @ PathCompletionCtx { qualified, use_tree_parent, .. }: &PathCompletionCtx<'_>,
     name_ref: &Option<ast::NameRef>,
 ) {

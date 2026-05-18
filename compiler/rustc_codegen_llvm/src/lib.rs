@@ -314,6 +314,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm::LLVMRustLLVMHasZstdCompression()
     }
 
+    fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
+        llvm_util::target_has_mnemonic(sess, mnemonic)
+    }
+
     fn target_config(&self, sess: &Session) -> TargetConfig {
         target_config(sess)
     }
@@ -367,6 +371,10 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn print_statistics(&self) {
         let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
         print!("{stats}");
+    }
+
+    fn print_statistics_json(&self) -> String {
+        llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap()
     }
 
     fn link(

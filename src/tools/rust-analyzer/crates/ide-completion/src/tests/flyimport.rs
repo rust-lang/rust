@@ -781,9 +781,9 @@ fn main() {
 }
 "#,
         expect![[r#"
+            me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait)           u8 DEPRECATED
             fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
-            me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
 }
@@ -1772,7 +1772,7 @@ fn function() {
 "#,
         expect![[r#"
             st FooStruct (use outer::FooStruct) BarStruct
-            md foo (use outer::foo)
+            md foo:: (use outer::foo)
             fn foo_fun() (use outer::foo_fun)        fn()
         "#]],
     );
@@ -1809,9 +1809,8 @@ fn intrinsics() {
         r#"
     //- /core.rs crate:core
     pub mod intrinsics {
-        extern "rust-intrinsic" {
-            pub fn transmute<Src, Dst>(src: Src) -> Dst;
-        }
+        #[rustc_intrinsic]
+        pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
     }
     pub mod mem {
         pub use crate::intrinsics::transmute;
@@ -1829,9 +1828,8 @@ fn intrinsics() {
         r#"
 //- /core.rs crate:core
 pub mod intrinsics {
-    extern "rust-intrinsic" {
-        pub fn transmute<Src, Dst>(src: Src) -> Dst;
-    }
+    #[rustc_intrinsic]
+    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 }
 pub mod mem {
     pub use crate::intrinsics::transmute;

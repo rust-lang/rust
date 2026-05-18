@@ -4,7 +4,7 @@ use hir_def::{hir::ExprId, signatures::VariantFields};
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
 
 use crate::{
-    BindingMode,
+    BindingMode, ByRef,
     mir::{
         LocalId, MutBorrowKind, Operand, OperandKind,
         lower::{
@@ -104,7 +104,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
     ) -> Result<'db, (BasicBlockId, Option<BasicBlockId>)> {
         self.pattern_match_binding(
             id,
-            BindingMode::Move,
+            BindingMode(ByRef::No, rustc_ast_ir::Mutability::Not),
             local.into(),
             MirSpan::SelfParam,
             current,
@@ -132,7 +132,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 .into(),
         );
         Ok(match &self.store[pattern] {
-            Pat::Missing => return Err(MirLowerError::IncompletePattern),
+            Pat::Missing | Pat::Rest => return Err(MirLowerError::IncompletePattern),
             Pat::Wild => (current, current_else),
             Pat::Tuple { args, ellipsis } => {
                 let subst = match self.infer.pat_ty(pattern).kind() {
@@ -248,9 +248,18 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 (current, current_else)
             }
             Pat::Slice { prefix, slice, suffix } => {
+                let pat_ty = self.infer.pat_ty(pattern);
+                // FIXME: MIR lowering should be skipped for bodies with inference errors. Once
+                // that happens, this recovery for invalid slice patterns can be removed.
+                if !matches!(pat_ty.kind(), TyKind::Array(..) | TyKind::Slice(_)) {
+                    return Err(MirLowerError::TypeError(
+                        "non array or slice type matched with slice pattern",
+                    ));
+                }
+
                 if mode == MatchingMode::Check {
                     // emit runtime length check for slice
-                    if let TyKind::Slice(_) = self.infer.pat_ty(pattern).kind() {
+                    if let TyKind::Slice(_) = pat_ty.kind() {
                         let pattern_len = prefix.len() + suffix.len();
                         let place_len: Place = self
                             .temp(Ty::new_usize(self.interner()), current, pattern.into())?
@@ -385,7 +394,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                         self.push_match_assignment(
                             current,
                             local,
-                            BindingMode::Move,
+                            BindingMode(ByRef::No, rustc_ast_ir::Mutability::Not),
                             cond_place,
                             pattern.into(),
                         );
@@ -504,6 +513,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                 (current, current_else)
             }
             Pat::Box { .. } => not_supported!("box pattern"),
+            Pat::Deref { .. } => not_supported!("deref pattern"),
             Pat::ConstBlock(_) => not_supported!("const block pattern"),
         })
     }
@@ -535,13 +545,13 @@ impl<'db> MirLowerCtx<'_, 'db> {
             current,
             target_place.into(),
             match mode {
-                BindingMode::Move => {
+                BindingMode(ByRef::No, _) => {
                     Operand { kind: OperandKind::Copy(cond_place), span: None }.into()
                 }
-                BindingMode::Ref(rustc_ast_ir::Mutability::Not) => {
+                BindingMode(ByRef::Yes(rustc_ast_ir::Mutability::Not), _) => {
                     Rvalue::Ref(BorrowKind::Shared, cond_place)
                 }
-                BindingMode::Ref(rustc_ast_ir::Mutability::Mut) => {
+                BindingMode(ByRef::Yes(rustc_ast_ir::Mutability::Mut), _) => {
                     Rvalue::Ref(BorrowKind::Mut { kind: MutBorrowKind::Default }, cond_place)
                 }
             },

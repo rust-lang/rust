@@ -7,7 +7,7 @@ use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKi
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 // TODO: add `ReadBuf` (RFC 2930) in "How to fix" once it is available in std
 declare_clippy_lint! {
@@ -64,15 +64,23 @@ declare_lint_pass!(UninitVec => [UNINIT_VEC]);
 // Threads: https://github.com/rust-lang/rust-clippy/pull/7682#discussion_r710998368
 impl<'tcx> LateLintPass<'tcx> for UninitVec {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
-        if !block.span.in_external_macro(cx.tcx.sess.source_map()) {
-            for w in block.stmts.windows(2) {
-                if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = w[1].kind {
-                    handle_uninit_vec_pair(cx, &w[0], expr);
+        let ctxt = block.span.ctxt();
+        if !ctxt.in_external_macro(cx.tcx.sess.source_map()) {
+            for [stmt1, stmt2] in block.stmts.array_windows::<2>() {
+                if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt2.kind
+                    && stmt1.span.ctxt() == ctxt
+                    && stmt2.span.ctxt() == ctxt
+                    && expr.span.ctxt() == ctxt
+                {
+                    handle_uninit_vec_pair(cx, ctxt, stmt1, expr);
                 }
             }
 
-            if let (Some(stmt), Some(expr)) = (block.stmts.last(), block.expr) {
-                handle_uninit_vec_pair(cx, stmt, expr);
+            if let (Some(stmt), Some(expr)) = (block.stmts.last(), block.expr)
+                && stmt.span.ctxt() == ctxt
+                && expr.span.ctxt() == ctxt
+            {
+                handle_uninit_vec_pair(cx, ctxt, stmt, expr);
             }
         }
     }
@@ -80,12 +88,13 @@ impl<'tcx> LateLintPass<'tcx> for UninitVec {
 
 fn handle_uninit_vec_pair<'tcx>(
     cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
     maybe_init_or_reserve: &'tcx Stmt<'tcx>,
     maybe_set_len: &'tcx Expr<'tcx>,
 ) {
     if let Some(vec) = extract_init_or_reserve_target(cx, maybe_init_or_reserve)
         && let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len)
-        && vec.location.eq_expr(cx, set_len_self)
+        && vec.location.eq_expr(cx, ctxt, set_len_self)
         && let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind()
         && let ty::Adt(_, args) = vec_ty.kind()
         // `#[allow(...)]` attribute can be set on enclosing unsafe block of `set_len()`
@@ -138,10 +147,10 @@ enum VecLocation<'tcx> {
 }
 
 impl<'tcx> VecLocation<'tcx> {
-    pub fn eq_expr(self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    pub fn eq_expr(self, cx: &LateContext<'tcx>, ctxt: SyntaxContext, expr: &'tcx Expr<'tcx>) -> bool {
         match self {
             VecLocation::Local(hir_id) => expr.res_local_id() == Some(hir_id),
-            VecLocation::Expr(self_expr) => SpanlessEq::new(cx).eq_expr(self_expr, expr),
+            VecLocation::Expr(self_expr) => SpanlessEq::new(cx).eq_expr(ctxt, self_expr, expr),
         }
     }
 }

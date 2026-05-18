@@ -152,14 +152,9 @@ impl SingleAttributeParser for RustcLintOptDenyFieldAccessParser {
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let arg = cx.expect_single_element_list(args, cx.attr_span)?;
+        let lint_message = cx.expect_string_literal(arg)?;
 
-        let MetaItemOrLitParser::Lit(MetaItemLit { kind: LitKind::Str(lint_message, _), .. }) = arg
-        else {
-            cx.adcx().expected_string_literal(arg.span(), arg.lit());
-            return None;
-        };
-
-        Some(AttributeKind::RustcLintOptDenyFieldAccess { lint_message: *lint_message })
+        Some(AttributeKind::RustcLintOptDenyFieldAccess { lint_message })
     }
 }
 
@@ -204,10 +199,7 @@ fn parse_cgu_fields(
             }
         };
 
-        let Some(str) = arg.value_as_str() else {
-            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-            continue;
-        };
+        let str = cx.expect_string_literal(arg)?;
 
         if res.is_some() {
             cx.adcx().duplicate_key(ident.span.to(arg.args_span()), ident.name);
@@ -324,10 +316,7 @@ impl SingleAttributeParser for RustcDeprecatedSafe2024Parser {
             return None;
         };
 
-        let Some(suggestion) = arg.value_as_str() else {
-            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-            return None;
-        };
+        let suggestion = cx.expect_string_literal(arg)?;
 
         Some(AttributeKind::RustcDeprecatedSafe2024 { suggestion })
     }
@@ -388,10 +377,7 @@ impl SingleAttributeParser for RustcNeverTypeOptionsParser {
                 }
             };
 
-            let Some(field) = arg.value_as_str() else {
-                cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-                continue;
-            };
+            let field = cx.expect_string_literal(arg)?;
 
             if res.is_some() {
                 cx.adcx().duplicate_key(ident.span, ident.name);
@@ -551,10 +537,7 @@ impl SingleAttributeParser for LangParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(name) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let name = cx.expect_string_literal(nv)?;
         let Some(lang_item) = LangItem::from_name(name) else {
             cx.emit_err(UnknownLangItem { span: cx.attr_span, name });
             return None;
@@ -649,10 +632,7 @@ impl CombineAttributeParser for RustcMirParser {
                                 mi.span(),
                                 Some(sym::borrowck_graphviz_postflow),
                             )?;
-                            let Some(path) = nv.value_as_str() else {
-                                cx.adcx().expected_string_literal(nv.value_span, None);
-                                return None;
-                            };
+                            let path = cx.expect_string_literal(nv)?;
                             let path = PathBuf::from(path.to_string());
                             if path.file_name().is_some() {
                                 Some(RustcMirKind::BorrowckGraphvizPostflow { path })
@@ -757,8 +737,7 @@ impl CombineAttributeParser for RustcCleanParser {
                 continue;
             };
             let value_span = value.value_span;
-            let Some(value) = value.value_as_str() else {
-                cx.adcx().expected_string_literal(value_span, None);
+            let Some(value) = cx.expect_string_literal(value) else {
                 continue;
             };
             match ident.name {
@@ -983,10 +962,7 @@ impl SingleAttributeParser for RustcDiagnosticItemParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let Some(value) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let value = cx.expect_string_literal(nv)?;
         Some(AttributeKind::RustcDiagnosticItem(value))
     }
 }
@@ -1038,11 +1014,7 @@ impl SingleAttributeParser for RustcReservationImplParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-
-        let Some(value_str) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let value_str = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::RustcReservationImpl(value_str))
     }
@@ -1065,11 +1037,7 @@ impl SingleAttributeParser for RustcDocPrimitiveParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-
-        let Some(value_str) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-            return None;
-        };
+        let value_str = cx.expect_string_literal(nv)?;
 
         Some(AttributeKind::RustcDocPrimitive(cx.attr_span, value_str))
     }

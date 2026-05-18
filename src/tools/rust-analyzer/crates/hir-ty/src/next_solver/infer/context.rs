@@ -5,12 +5,16 @@ use rustc_type_ir::{
     RegionVid, TyVid, TypeFoldable, TypingMode, UniverseIndex,
     inherent::{Const as _, IntoKind, Ty as _},
     relate::combine::PredicateEmittingRelation,
+    solve::VisibleForLeakCheck,
 };
 
-use crate::next_solver::{
-    Binder, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, OpaqueTypeKey, Region,
-    SolverDefId, Span, Ty, TyKind,
-    infer::opaque_types::{OpaqueHiddenType, table::OpaqueTypeStorageEntries},
+use crate::{
+    Span,
+    next_solver::{
+        Binder, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, OpaqueTypeKey, Region,
+        SolverDefId, Ty, TyKind,
+        infer::opaque_types::{OpaqueHiddenType, table::OpaqueTypeStorageEntries},
+    },
 };
 
 use super::{BoundRegionConversionTime, InferCtxt, relate::RelateResult};
@@ -26,8 +30,12 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         true
     }
 
-    fn typing_mode(&self) -> TypingMode<DbInterner<'db>> {
-        self.typing_mode()
+    fn disable_trait_solver_fast_paths(&self) -> bool {
+        false
+    }
+
+    fn typing_mode_raw(&self) -> TypingMode<DbInterner<'db>> {
+        self.typing_mode_raw()
     }
 
     fn universe(&self) -> UniverseIndex {
@@ -139,26 +147,30 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
     }
 
     fn next_ty_infer(&self) -> Ty<'db> {
-        self.next_ty_var()
+        self.next_ty_var(Span::Dummy)
     }
 
     fn next_region_infer(&self) -> <Self::Interner as rustc_type_ir::Interner>::Region {
-        self.next_region_var()
+        self.next_region_var(Span::Dummy)
     }
 
     fn next_const_infer(&self) -> Const<'db> {
-        self.next_const_var()
+        self.next_const_var(Span::Dummy)
     }
 
     fn fresh_args_for_item(&self, def_id: SolverDefId) -> GenericArgs<'db> {
-        self.fresh_args_for_item(def_id)
+        self.fresh_args_for_item(Span::Dummy, def_id)
     }
 
     fn instantiate_binder_with_infer<T: TypeFoldable<DbInterner<'db>> + Clone>(
         &self,
         value: Binder<'db, T>,
     ) -> T {
-        self.instantiate_binder_with_fresh_vars(BoundRegionConversionTime::HigherRankedType, value)
+        self.instantiate_binder_with_fresh_vars(
+            Span::Dummy,
+            BoundRegionConversionTime::HigherRankedType,
+            value,
+        )
     }
 
     fn enter_forall<T: TypeFoldable<DbInterner<'db>> + Clone, U>(
@@ -250,11 +262,23 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
         self.probe(|_| probe())
     }
 
-    fn sub_regions(&self, sub: Region<'db>, sup: Region<'db>, _span: Span) {
+    fn sub_regions(
+        &self,
+        sub: Region<'db>,
+        sup: Region<'db>,
+        _vis: VisibleForLeakCheck,
+        _span: Span,
+    ) {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(sub, sup);
     }
 
-    fn equate_regions(&self, a: Region<'db>, b: Region<'db>, _span: Span) {
+    fn equate_regions(
+        &self,
+        a: Region<'db>,
+        b: Region<'db>,
+        _vis: VisibleForLeakCheck,
+        _span: Span,
+    ) {
         self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(a, b);
     }
 

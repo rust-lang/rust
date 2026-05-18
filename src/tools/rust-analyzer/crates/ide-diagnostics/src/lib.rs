@@ -32,9 +32,13 @@ mod handlers {
     pub(crate) mod await_outside_of_async;
     pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
+    pub(crate) mod duplicate_field;
     pub(crate) mod elided_lifetimes_in_path;
+    pub(crate) mod expected_array_or_slice_pat;
     pub(crate) mod expected_function;
+    pub(crate) mod functional_record_update_on_non_struct;
     pub(crate) mod generic_args_prohibited;
+    pub(crate) mod generic_default_refers_to_self;
     pub(crate) mod inactive_code;
     pub(crate) mod incoherent_impl;
     pub(crate) mod incorrect_case;
@@ -42,9 +46,11 @@ mod handlers {
     pub(crate) mod incorrect_generics_order;
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
+    pub(crate) mod invalid_lhs_of_assignment;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
     pub(crate) mod mismatched_arg_count;
+    pub(crate) mod mismatched_array_pat_len;
     pub(crate) mod missing_fields;
     pub(crate) mod missing_lifetime;
     pub(crate) mod missing_match_arms;
@@ -53,7 +59,9 @@ mod handlers {
     pub(crate) mod mutability_errors;
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
+    pub(crate) mod non_exhaustive_record_expr;
     pub(crate) mod parenthesized_generic_args_without_fn_trait;
+    pub(crate) mod pattern_arg_in_extern_fn;
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
     pub(crate) mod remove_trailing_return;
@@ -64,9 +72,12 @@ mod handlers {
     pub(crate) mod trait_impl_orphan;
     pub(crate) mod trait_impl_redundant_assoc_item;
     pub(crate) mod type_mismatch;
+    pub(crate) mod type_must_be_known;
     pub(crate) mod typed_hole;
     pub(crate) mod undeclared_label;
     pub(crate) mod unimplemented_builtin_macro;
+    pub(crate) mod unimplemented_trait;
+    pub(crate) mod union_expr_must_have_exactly_one_field;
     pub(crate) mod unreachable_label;
     pub(crate) mod unresolved_assoc_item;
     pub(crate) mod unresolved_extern_crate;
@@ -76,6 +87,7 @@ mod handlers {
     pub(crate) mod unresolved_macro_call;
     pub(crate) mod unresolved_method;
     pub(crate) mod unresolved_module;
+    pub(crate) mod unused_must_use;
     pub(crate) mod unused_variables;
 
     // The handlers below are unusual, the implement the diagnostics as well.
@@ -91,7 +103,8 @@ mod tests;
 use std::sync::LazyLock;
 
 use hir::{
-    Crate, DisplayTarget, InFile, Semantics, db::ExpandDatabase, diagnostics::AnyDiagnostic,
+    Crate, DisplayTarget, InFile, MacroCallIdExt, Semantics, db::ExpandDatabase,
+    diagnostics::AnyDiagnostic,
 };
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
@@ -190,7 +203,7 @@ impl Diagnostic {
     }
 
     fn new_with_syntax_node_ptr(
-        ctx: &DiagnosticsContext<'_>,
+        ctx: &DiagnosticsContext<'_, '_>,
         code: DiagnosticCode,
         message: impl Into<String>,
         node: InFile<SyntaxNodePtr>,
@@ -217,6 +230,25 @@ impl Diagnostic {
     fn with_unused(mut self, unused: bool) -> Diagnostic {
         self.unused = unused;
         self
+    }
+
+    fn main_node(&self, sema: &Semantics<'_, RootDatabase>) -> Option<InFile<SyntaxNode>> {
+        self.main_node.map(|ptr| ptr.with_value(sema.to_node_syntax(ptr))).or_else(|| {
+            let token = sema
+                .parse_guess_edition(self.range.file_id)
+                .syntax()
+                .token_at_offset(self.range.range.start())
+                .right_biased()?;
+            sema.descend_into_macros(token).into_iter().find_map(|token| {
+                let node = sema.ancestors_with_macros(token.parent().unwrap()).find(|node| {
+                    let original_range = sema.original_range(node);
+                    original_range.file_id.file_id(sema.db) == self.range.file_id
+                        && original_range.range.contains_range(self.range.range)
+                })?;
+                let file = sema.hir_file_for(&node);
+                Some(InFile::new(file, node))
+            })
+        })
     }
 }
 
@@ -276,17 +308,17 @@ impl DiagnosticsConfig {
     }
 }
 
-struct DiagnosticsContext<'a> {
+struct DiagnosticsContext<'a, 'db> {
     config: &'a DiagnosticsConfig,
-    sema: Semantics<'a, RootDatabase>,
+    sema: Semantics<'db, RootDatabase>,
     resolve: &'a AssistResolveStrategy,
     edition: Edition,
     display_target: DisplayTarget,
     is_nightly: bool,
 }
 
-impl<'a> DiagnosticsContext<'a> {
-    fn db(&self) -> &'a RootDatabase {
+impl<'db> DiagnosticsContext<'_, 'db> {
+    fn db(&self) -> &'db RootDatabase {
         self.sema.db
     }
 }
@@ -395,7 +427,9 @@ pub fn semantic_diagnostics(
         let d = match diag {
             AnyDiagnostic::AwaitOutsideOfAsync(d) => handlers::await_outside_of_async::await_outside_of_async(&ctx, &d),
             AnyDiagnostic::CastToUnsized(d) => handlers::invalid_cast::cast_to_unsized(&ctx, &d),
+            AnyDiagnostic::ExpectedArrayOrSlicePat(d) => handlers::expected_array_or_slice_pat::expected_array_or_slice_pat(&ctx, &d),
             AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),
+            AnyDiagnostic::FunctionalRecordUpdateOnNonStruct(d) => handlers::functional_record_update_on_non_struct::functional_record_update_on_non_struct(&ctx, &d),
             AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
                 None => continue,
@@ -419,6 +453,7 @@ pub fn semantic_diagnostics(
             },
             AnyDiagnostic::MalformedDerive(d) => handlers::malformed_derive::malformed_derive(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => handlers::mismatched_arg_count::mismatched_arg_count(&ctx, &d),
+            AnyDiagnostic::MismatchedArrayPatLen(d) => handlers::mismatched_array_pat_len::mismatched_array_pat_len(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
@@ -428,7 +463,11 @@ pub fn semantic_diagnostics(
                 None => continue,
             },
             AnyDiagnostic::NonExhaustiveLet(d) => handlers::non_exhaustive_let::non_exhaustive_let(&ctx, &d),
+            AnyDiagnostic::NonExhaustiveRecordExpr(d) => {
+                handlers::non_exhaustive_record_expr::non_exhaustive_record_expr(&ctx, &d)
+            }
             AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
+            AnyDiagnostic::DuplicateField(d) => handlers::duplicate_field::duplicate_field(&ctx, &d),
             AnyDiagnostic::PrivateAssocItem(d) => handlers::private_assoc_item::private_assoc_item(&ctx, &d),
             AnyDiagnostic::PrivateField(d) => handlers::private_field::private_field(&ctx, &d),
             AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => handlers::replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
@@ -452,6 +491,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::UnresolvedMacroCall(d) => handlers::unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::UnresolvedMethodCall(d) => handlers::unresolved_method::unresolved_method(&ctx, &d),
             AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
+            AnyDiagnostic::UnusedMustUse(d) => handlers::unused_must_use::unused_must_use(&ctx, &d),
             AnyDiagnostic::UnusedMut(d) => match handlers::mutability_errors::unused_mut(&ctx, &d) {
                 Some(it) => it,
                 None => continue,
@@ -477,6 +517,12 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::IncorrectGenericsOrder(d) => handlers::incorrect_generics_order::incorrect_generics_order(&ctx, &d),
             AnyDiagnostic::MissingLifetime(d) => handlers::missing_lifetime::missing_lifetime(&ctx, &d),
             AnyDiagnostic::ElidedLifetimesInPath(d) => handlers::elided_lifetimes_in_path::elided_lifetimes_in_path(&ctx, &d),
+            AnyDiagnostic::GenericDefaultRefersToSelf(d) => handlers::generic_default_refers_to_self::generic_default_refers_to_self(&ctx, &d),
+            AnyDiagnostic::InvalidLhsOfAssignment(d) => handlers::invalid_lhs_of_assignment::invalid_lhs_of_assignment(&ctx, &d),
+            AnyDiagnostic::TypeMustBeKnown(d) => handlers::type_must_be_known::type_must_be_known(&ctx, &d),
+            AnyDiagnostic::PatternArgInExternFn(d) => handlers::pattern_arg_in_extern_fn::pattern_arg_in_extern_fn(&ctx, &d),
+            AnyDiagnostic::UnionExprMustHaveExactlyOneField(d) => handlers::union_expr_must_have_exactly_one_field::union_expr_must_have_exactly_one_field(&ctx, &d),
+            AnyDiagnostic::UnimplementedTrait(d) => handlers::unimplemented_trait::unimplemented_trait(&ctx, &d),
         };
         res.push(d)
     }
@@ -489,14 +535,7 @@ pub fn semantic_diagnostics(
     let mut lints = res
         .iter_mut()
         .filter(|it| matches!(it.code, DiagnosticCode::Clippy(_) | DiagnosticCode::RustcLint(_)))
-        .filter_map(|it| {
-            Some((
-                it.main_node.map(|ptr| {
-                    ptr.map(|node| node.to_node(&ctx.sema.parse_or_expand(ptr.file_id)))
-                })?,
-                it,
-            ))
-        })
+        .filter_map(|it| Some((it.main_node(&ctx.sema)?, it)))
         .collect::<Vec<_>>();
 
     // The edition isn't accurate (each diagnostics may have its own edition due to macros),
@@ -543,7 +582,7 @@ fn handle_diag_from_macros(
     let mut spans = span_map.spans_for_range(node.text_range());
     if spans.any(|span| {
         span.ctx.outer_expn(sema.db).is_some_and(|expansion| {
-            let macro_call = sema.db.lookup_intern_macro_call(expansion.into());
+            let macro_call = expansion.loc(sema.db);
             // We don't want to show diagnostics for non-local macros at all, but proc macros authors
             // seem to rely on being able to emit non-warning-free code, so we don't want to show warnings
             // for them even when the proc macro comes from the same workspace (in rustc that's not a
@@ -766,7 +805,7 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 }
 
 fn adjusted_display_range<N: AstNode>(
-    ctx: &DiagnosticsContext<'_>,
+    ctx: &DiagnosticsContext<'_, '_>,
     diag_ptr: InFile<AstPtr<N>>,
     adj: &dyn Fn(N) -> Option<TextRange>,
 ) -> FileRange {

@@ -4,6 +4,7 @@ use rustc_type_ir::{TypeVisitableExt, fold_regions};
 use tracing::{debug, instrument};
 
 use crate::{
+    Span,
     infer::InferenceContext,
     next_solver::{
         EarlyBinder, OpaqueTypeKey, SolverDefId, TypingMode,
@@ -68,13 +69,13 @@ impl<'db> InferenceContext<'_, 'db> {
         mut opaque_types: Vec<(OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)>,
     ) {
         for entry in opaque_types.iter_mut() {
-            *entry = self.table.infer_ctxt.resolve_vars_if_possible(*entry);
+            *entry = self.resolve_vars_if_possible(*entry);
         }
         debug!(?opaque_types);
 
         let interner = self.interner();
         let TypingMode::Analysis { defining_opaque_types_and_generators } =
-            self.table.infer_ctxt.typing_mode()
+            self.table.infer_ctxt.typing_mode_raw()
         else {
             unreachable!();
         };
@@ -107,8 +108,9 @@ impl<'db> InferenceContext<'_, 'db> {
                         continue;
                     }
 
-                    let expected =
-                        EarlyBinder::bind(ty.ty).instantiate(interner, opaque_type_key.args);
+                    let expected = EarlyBinder::bind(ty.ty)
+                        .instantiate(interner, opaque_type_key.args)
+                        .skip_norm_wip();
                     _ = self.demand_eqtype_fixme_no_diag(expected, hidden_type.ty);
                 }
 
@@ -135,7 +137,8 @@ impl<'db> InferenceContext<'_, 'db> {
             return UsageKind::UnconstrainedHiddenType(hidden_type);
         }
 
-        let cause = ObligationCause::new();
+        // FIXME: This should not use a dummy span.
+        let cause = ObligationCause::new(Span::Dummy);
         let at = self.table.infer_ctxt.at(&cause, self.table.param_env);
         let hidden_type = match at.deeply_normalize(hidden_type) {
             Ok(hidden_type) => hidden_type,

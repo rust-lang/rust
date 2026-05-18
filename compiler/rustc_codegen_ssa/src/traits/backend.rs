@@ -92,6 +92,14 @@ pub trait CodegenBackend {
         false
     }
 
+    /// Value printed by `--print=backend-has-mnemonic:...`.
+    ///
+    /// Used by compiletest to determine whether tests involving `asm!()` should
+    /// be executed or skipped.
+    fn has_mnemonic(&self, _sess: &Session, _mnemonic: &str) -> bool {
+        false
+    }
+
     /// The metadata loader used to load rlib and dylib metadata.
     ///
     /// Alternative codegen backends may want to use different rlib or dylib formats than the
@@ -122,6 +130,10 @@ pub trait CodegenBackend {
     fn print_pass_timings(&self) {}
 
     fn print_statistics(&self) {}
+
+    fn print_statistics_json(&self) -> String {
+        String::new()
+    }
 
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(

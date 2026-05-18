@@ -74,8 +74,7 @@ fn extract_value(
         return;
     }
 
-    let Some(value_sym) = val.value_as_str() else {
-        cx.adcx().expected_string_literal(val.value_span, Some(val.value_as_lit()));
+    let Some(value_sym) = cx.expect_string_literal(val) else {
         *failed = true;
         return;
     };

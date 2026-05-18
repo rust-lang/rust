@@ -57,7 +57,8 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::OpaqueType => "opaque type ",
             ConstraintCategory::ClosureUpvar(_) => "closure capture ",
             ConstraintCategory::Usage => "this usage ",
-            ConstraintCategory::Predicate(_)
+            ConstraintCategory::SolverRegionConstraint(_)
+            | ConstraintCategory::Predicate(_)
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
@@ -473,6 +474,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let errci = ErrorConstraintInfo { fr, outlived_fr, category, span: cause.span };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
+            (ConstraintCategory::SolverRegionConstraint(span), _, _) => {
+                let mut d = self.dcx().struct_span_err(
+                    span,
+                    "unsatisfied lifetime constraint from -Zassumptions-on-binders :3",
+                );
+                d.note("meoow :c");
+                d
+            }
             (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
                 self.report_fnmut_error(&errci, kind)
             }

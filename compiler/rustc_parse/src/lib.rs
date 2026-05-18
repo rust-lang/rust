@@ -2,9 +2,9 @@
 
 // tidy-alphabetical-start
 #![cfg_attr(test, feature(iter_order_by))]
-#![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(default_field_values)]
+#![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end

@@ -10,7 +10,10 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // Diagnostic: missing-unsafe
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
-pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
+pub(crate) fn missing_unsafe(
+    ctx: &DiagnosticsContext<'_, '_>,
+    d: &hir::MissingUnsafe,
+) -> Diagnostic {
     let code = match d.lint {
         UnsafeLint::HardError => DiagnosticCode::RustcHardError("E0133"),
         UnsafeLint::UnsafeOpInUnsafeFn => DiagnosticCode::RustcLint("unsafe_op_in_unsafe_fn"),
@@ -38,7 +41,7 @@ fn display_unsafety_reason(reason: UnsafetyReason) -> &'static str {
     }
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &hir::MissingUnsafe) -> Option<Vec<Assist>> {
     // The fixit will not work correctly for macro expansions, so we don't offer it in that case.
     if d.node.file_id.is_macro() {
         return None;
@@ -271,25 +274,6 @@ fn main() {
     }
 
     #[test]
-    fn no_missing_unsafe_diagnostic_with_legacy_safe_intrinsic() {
-        check_diagnostics(
-            r#"
-extern "rust-intrinsic" {
-    #[rustc_safe_intrinsic]
-    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
-    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
-}
-
-fn main() {
-    let _ = bitreverse(12);
-    let _ = floorf32(12.0);
-          //^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
-}
-"#,
-        );
-    }
-
-    #[test]
     fn no_missing_unsafe_diagnostic_with_deprecated_safe_2024() {
         check_diagnostics(
             r#"
@@ -414,30 +398,6 @@ fn main() {
     }
 
     #[test]
-    fn add_unsafe_block_when_calling_unsafe_intrinsic() {
-        check_fix(
-            r#"
-extern "rust-intrinsic" {
-    pub fn floorf32(x: f32) -> f32;
-}
-
-fn main() {
-    let _ = floorf32$0(12.0);
-}
-"#,
-            r#"
-extern "rust-intrinsic" {
-    pub fn floorf32(x: f32) -> f32;
-}
-
-fn main() {
-    let _ = unsafe { floorf32(12.0) };
-}
-"#,
-        )
-    }
-
-    #[test]
     fn unsafe_expr_as_a_receiver_of_a_method_call() {
         check_fix(
             r#"
@@ -485,7 +445,7 @@ fn main() {
 
     let b = &raw const x.a;
 
-    let tmp = Vec::from([1, 2, 3]);
+    let tmp = [1, 2, 3];
 
     let c = &raw const tmp[x.a];
                         // ^^^ 💡 error: access to union field is unsafe and requires an unsafe function or block
@@ -1059,7 +1019,7 @@ impl FooTrait for S2 {
     fn no_false_positive_on_format_args_since_1_89_0() {
         check_diagnostics(
             r#"
-//- minicore: fmt
+//- minicore: fmt, builtin_impls
 fn test() {
     let foo = 10;
     let bar = true;

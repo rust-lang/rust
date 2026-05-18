@@ -1,0 +1,8 @@
+error: `move(expr)` is only supported in plain closures
+  --> $DIR/async-closures.rs:8:9
+   |
+LL |         move(s);
+   |         ^^^^
+
+error: aborting due to 1 previous error
+

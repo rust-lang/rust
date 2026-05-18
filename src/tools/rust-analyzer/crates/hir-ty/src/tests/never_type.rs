@@ -354,10 +354,10 @@ fn diverging_expression_3_break() {
             11..85 '{     ...} }; }': ()
             54..55 'x': u32
             63..82 '{ loop...k; } }': u32
-            65..80 'loop { break; }': ()
+            65..80 'loop { break; }': u32
             70..80 '{ break; }': ()
             72..77 'break': !
-            65..80: expected u32, got ()
+            72..77: expected u32, got ()
             97..343 '{     ...; }; }': ()
             140..141 'x': u32
             149..175 '{ for ...; }; }': u32

@@ -77,11 +77,7 @@ impl Kind {
     }
 
     pub fn can_appear_in_glob_import(self) -> bool {
-        match self {
-            Kind::Module => true,
-            Kind::Enum => true,
-            _ => false,
-        }
+        matches!(self, Kind::Module | Kind::Enum)
     }
 
     pub fn can_appear_in_trait(self) -> bool {

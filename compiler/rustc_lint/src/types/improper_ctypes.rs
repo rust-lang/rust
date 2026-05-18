@@ -562,10 +562,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let transparent_with_all_zst_fields = if def.repr().transparent() {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
-                let field_ty = maybe_normalize_erasing_regions(
-                    self.cx,
-                    Unnormalized::new_wip(field.ty(self.cx.tcx, args)),
-                );
+                let field_ty =
+                    maybe_normalize_erasing_regions(self.cx, field.ty(self.cx.tcx, args));
                 match self.visit_type(state.next(ty), field_ty) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
@@ -584,10 +582,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            let field_ty = maybe_normalize_erasing_regions(
-                self.cx,
-                Unnormalized::new_wip(field.ty(self.cx.tcx, args)),
-            );
+            let field_ty = maybe_normalize_erasing_regions(self.cx, field.ty(self.cx.tcx, args));
             all_phantom &= match self.visit_type(state.next(ty), field_ty) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!

@@ -11,6 +11,7 @@
 //!     add:
 //!     asm:
 //!     assert:
+//!     async_iterator: option, future, pin
 //!     as_mut: sized
 //!     as_ref: sized
 //!     async_fn: fn, tuple, future, copy
@@ -27,12 +28,14 @@
 //!     default: sized
 //!     deref_mut: deref
 //!     deref: sized
+//!     deref_pat: deref
 //!     derive:
 //!     discriminant:
 //!     drop: sized
 //!     env: option
 //!     eq: sized
 //!     error: fmt
+//!     float_consts:
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fmt_before_1_93_0: fmt
 //!     fmt_before_1_89_0: fmt_before_1_93_0
@@ -50,6 +53,7 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
+//!     matches:
 //!     non_null:
 //!     non_zero:
 //!     option: panic
@@ -66,7 +70,7 @@
 //!     size_of: sized
 //!     sized:
 //!     slice:
-//!     str:
+//!     str: sized, result
 //!     sync: sized
 //!     transmute:
 //!     try: infallible
@@ -614,6 +618,15 @@ pub mod ops {
         }
         // endregion:deref_mut
 
+        // region:deref_pat
+        #[lang = "deref_pure"]
+        #[rustc_dyn_incompatible_trait]
+        pub unsafe trait DerefPure: PointeeSized {}
+
+        unsafe impl<T: ?Sized> DerefPure for &T {}
+        unsafe impl<T: ?Sized> DerefPure for &mut T {}
+        // endregion:deref_pat
+
         // region:receiver
         #[lang = "receiver"]
         pub trait Receiver: PointeeSized {
@@ -631,8 +644,9 @@ pub mod ops {
     }
     pub use self::deref::{
         Deref,
-        DerefMut, // :deref_mut
-        Receiver, // :receiver
+        DerefMut,  // :deref_mut
+        DerefPure, // :deref_pat
+        Receiver,  // :receiver
     };
     // endregion:deref
 
@@ -698,6 +712,37 @@ pub mod ops {
         unsafe impl<T> SliceIndex<[T]> for usize {
             type Output = T;
         }
+
+        macro_rules! impl_index_range {
+            ( $($range:ty,)* ) => {
+                $(
+                    unsafe impl<T> SliceIndex<[T]> for $range {
+                        type Output = [T];
+                    }
+                )*
+            }
+        }
+
+        // region:range
+        impl_index_range!(
+            crate::ops::RangeFull,
+            crate::ops::Range<usize>,
+            crate::ops::RangeFrom<usize>,
+            crate::ops::RangeTo<usize>,
+            crate::ops::RangeInclusive<usize>,
+            crate::ops::RangeToInclusive<usize>,
+        );
+        // endregion:range
+
+        // region:new_range
+        impl_index_range!(
+            crate::range::Range<usize>,
+            crate::range::RangeFrom<usize>,
+            crate::range::RangeInclusive<usize>,
+            crate::range::RangeToInclusive<usize>,
+        );
+        // endregion:new_range
+
         // endregion:slice
     }
     pub use self::index::{Index, IndexMut};
@@ -735,6 +780,30 @@ pub mod ops {
         pub struct RangeToInclusive<Idx> {
             pub end: Idx,
         }
+
+        // region:iterator
+        pub trait Step {}
+        macro_rules! impl_step {
+            ( $( $ty:ty ),* $(,)? ) => {
+                $(
+                    impl Step for $ty {}
+                )*
+            };
+        }
+        impl_step!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+        macro_rules! impl_iterator {
+            ( $( $range:ident ),* $(,)? ) => {
+                $(
+                    impl<Idx: Step> Iterator for $range<Idx> {
+                        type Item = Idx;
+                        fn next(&mut self) -> Option<Self::Item> { loop {} }
+                    }
+                )*
+            };
+        }
+        impl_iterator!(Range, RangeFrom, RangeTo, RangeInclusive, RangeToInclusive);
+        // endregion:iterator
     }
     pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
     pub use self::range::{RangeInclusive, RangeToInclusive};
@@ -1289,6 +1358,38 @@ pub mod fmt {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
 
+    impl<T: ?Sized + Debug> Debug for &T {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            T::fmt(&**self, f)
+        }
+    }
+    impl<T: ?Sized + Display> Display for &T {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+            T::fmt(&**self, f)
+        }
+    }
+
+    macro_rules! impl_fmt_traits {
+        ( $($ty:ty),* $(,)? ) => {
+            $(
+                impl Debug for $ty {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> Result { loop {} }
+                }
+                impl Display for $ty {
+                    fn fmt(&self, f: &mut Formatter<'_>) -> Result { loop {} }
+                }
+            )*
+        }
+    }
+
+    impl_fmt_traits!(str);
+
+    // region:builtin_impls
+    impl_fmt_traits!(
+        i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, bool, char,
+    );
+    // endregion:builtin_impls
+
     mod rt {
         use super::*;
 
@@ -1529,6 +1630,7 @@ pub mod slice {
 
 // region:option
 pub mod option {
+    #[lang = "Option"]
     pub enum Option<T> {
         #[lang = "None"]
         None,
@@ -1678,6 +1780,7 @@ pub mod future {
     }
 }
 pub mod task {
+    #[lang = "Poll"]
     pub enum Poll<T> {
         #[lang = "Ready"]
         Ready(T),
@@ -1690,6 +1793,22 @@ pub mod task {
     }
 }
 // endregion:future
+
+// region:async_iterator
+pub mod async_iter {
+    use crate::{
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    #[lang = "async_iterator"]
+    pub trait AsyncIterator {
+        type Item;
+
+        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
+    }
+}
+// endregion:async_iterator
 
 // region:iterator
 pub mod iter {
@@ -1721,6 +1840,22 @@ pub mod iter {
             type Item = I::Item;
 
             fn next(&mut self) -> Option<I::Item> {
+                loop {}
+            }
+        }
+
+        pub struct Map<I, F> {
+            iter: I,
+            f: F,
+        }
+        impl<B, I: Iterator, F> Iterator for Map<I, F>
+        where
+            F: FnMut(I::Item) -> B,
+        {
+            type Item = B;
+
+            #[inline]
+            fn next(&mut self) -> B {
                 loop {}
             }
         }
@@ -1799,6 +1934,13 @@ pub mod iter {
                 {
                     loop {}
                 }
+                fn map<B, F>(self, _f: F) -> crate::iter::Map<Self, F>
+                where
+                    Self: Sized,
+                    F: FnMut(Self::Item) -> B,
+                {
+                    loop {}
+                }
                 fn filter_map<B, F>(self, _f: F) -> crate::iter::FilterMap<Self, F>
                 where
                     Self: Sized,
@@ -1861,7 +2003,7 @@ pub mod iter {
             pub struct Iter<'a, T> {
                 slice: &'a [T],
             }
-            impl<'a, T> IntoIterator for &'a [T; N] {
+            impl<'a, T, const N: usize> IntoIterator for &'a [T; N] {
                 type Item = &'a T;
                 type IntoIter = Iter<'a, T>;
                 fn into_iter(self) -> Self::IntoIter {
@@ -2127,6 +2269,13 @@ mod macros {
     #[macro_export]
     macro_rules! option_env {}
     // endregion:env
+
+    // region:deref_pat
+    #[allow_internal_unstable(builtin_syntax)]
+    pub macro deref($pat:pat) {
+        builtin # deref($pat)
+    }
+    // endregion:deref_pat
 }
 
 // region:non_zero
@@ -2181,6 +2330,32 @@ pub mod error {
 }
 // endregion:error
 
+// region:float_consts
+impl f32 {
+    pub const INFINITY: f32 = 0.0;
+    pub const NEG_INFINITY: f32 = -0.0;
+}
+
+impl f64 {
+    pub const INFINITY: f64 = 0.0;
+    pub const NEG_INFINITY: f64 = -0.0;
+}
+
+pub mod f32 {
+    #[deprecated]
+    pub const INFINITY: f32 = 0.0;
+    #[deprecated]
+    pub const NEG_INFINITY: f32 = -0.0;
+}
+
+pub mod f64 {
+    #[deprecated]
+    pub const INFINITY: f64 = 0.0;
+    #[deprecated]
+    pub const NEG_INFINITY: f64 = -0.0;
+}
+// endregion:float_consts
+
 // region:column
 #[rustc_builtin_macro]
 #[macro_export]
@@ -2188,6 +2363,20 @@ macro_rules! column {
     () => {};
 }
 // endregion:column
+
+// region:matches
+#[macro_export]
+#[allow_internal_unstable(non_exhaustive_omitted_patterns_lint, stmt_expr_attributes)]
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+        #[allow(non_exhaustive_omitted_patterns)]
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+// endregion:matches
 
 pub mod prelude {
     pub mod v1 {
@@ -2216,6 +2405,7 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
+            macros::deref,                                // :deref_pat
         };
     }
 

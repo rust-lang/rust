@@ -253,12 +253,13 @@ impl<'db> UnsafeVisitor<'db> {
                 | Pat::TupleStruct { .. }
                 | Pat::Ref { .. }
                 | Pat::Box { .. }
+                | Pat::Deref { .. }
                 | Pat::Expr(..)
                 | Pat::ConstBlock(..) => {
                     self.on_unsafe_op(current.into(), UnsafetyReason::UnionField)
                 }
                 // `Or` only wraps other patterns, and `Missing`/`Wild` do not constitute a read.
-                Pat::Missing | Pat::Wild | Pat::Or(_) => {}
+                Pat::Missing | Pat::Rest | Pat::Wild | Pat::Or(_) => {}
             }
         }
 
@@ -297,7 +298,7 @@ impl<'db> UnsafeVisitor<'db> {
                     self.check_call(current, func);
                 }
                 if let TyKind::FnPtr(_, hdr) = callee.kind()
-                    && hdr.safety == Safety::Unsafe
+                    && hdr.safety() == Safety::Unsafe
                 {
                     self.on_unsafe_op(current.into(), UnsafetyReason::UnsafeFnCall);
                 }
@@ -424,7 +425,6 @@ impl<'db> UnsafeVisitor<'db> {
             Expr::Closure { args, .. } => {
                 self.walk_pats_top(args.iter().copied(), current);
             }
-            Expr::Const(e) => self.walk_expr(*e),
             _ => {}
         }
 

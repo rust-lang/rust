@@ -1,5 +1,6 @@
 //! Implementation of [`rustc_type_ir::Interner`] for [`TyCtxt`].
 
+use std::ops::ControlFlow;
 use std::{debug_assert_matches, fmt};
 
 use rustc_errors::ErrorGuaranteed;
@@ -9,7 +10,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
-use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, Unnormalized, search_graph};
+use rustc_type_ir::{
+    CollectAndApply, Interner, TypeFoldable, Unnormalized, VisitorResult, search_graph,
+};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
@@ -324,6 +327,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.features()
     }
 
+    fn assumptions_on_binders(self) -> bool {
+        self.assumptions_on_binders()
+    }
+
     fn coroutine_hidden_types(
         self,
         def_id: DefId,
@@ -522,20 +529,31 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     // This implementation is a bit different from `TyCtxt::for_each_relevant_impl`,
     // since we want to skip over blanket impls for non-rigid aliases, and also we
     // only want to consider types that *actually* unify with float/int vars.
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        mut f: impl FnMut(DefId),
-    ) {
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
+        macro_rules! ret {
+            ($e: expr) => {
+                match $e.branch() {
+                    ControlFlow::Break(b) => return R::from_residual(b),
+                    ControlFlow::Continue(()) => {}
+                }
+            };
+        }
+
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
-                    f(impl_def_id);
+                    ret!(f(impl_def_id))
                 }
             }
+
+            R::output()
         };
 
         match self_ty.kind() {
@@ -566,7 +584,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
                 ) {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -595,7 +613,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -610,7 +628,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 ];
 
                 for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -634,11 +652,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         #[allow(rustc::usage_of_type_ir_traits)]
         self.for_each_blanket_impl(trait_def_id, f)
     }
-    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: DefId,
+        mut f: impl FnMut(DefId) -> R,
+    ) -> R {
         let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
-            f(impl_def_id);
+            match f(impl_def_id).branch() {
+                ControlFlow::Break(b) => return R::from_residual(b),
+                ControlFlow::Continue(()) => {}
+            }
         }
+
+        R::output()
     }
 
     fn has_item_definition(self, def_id: DefId) -> bool {

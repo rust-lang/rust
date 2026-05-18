@@ -193,7 +193,10 @@ impl NameGenerator {
     pub fn for_impl_trait_as_generic(&mut self, ty: &ast::ImplTraitType) -> SmolStr {
         let c = ty
             .type_bound_list()
-            .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
+            .and_then(|bounds| {
+                let ty = bounds.bounds().next()?.ty()?;
+                ty.syntax().text().char_at(0.into()).filter(|ch| ch.is_alphabetic())
+            })
             .unwrap_or('T');
 
         self.suggest_name(&c.to_string())

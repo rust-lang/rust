@@ -1,0 +1,41 @@
+warning: value assigned to `x` is never read
+  --> $DIR/unused-assignments-diverging-branch-issue-156416.rs:10:9
+   |
+LL |         x = 35;
+   |         ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+note: the lint level is defined here
+  --> $DIR/unused-assignments-diverging-branch-issue-156416.rs:3:9
+   |
+LL | #![warn(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: value assigned to `x` is never read
+  --> $DIR/unused-assignments-diverging-branch-issue-156416.rs:21:13
+   |
+LL |             x = 35;
+   |             ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `x` is never read
+  --> $DIR/unused-assignments-diverging-branch-issue-156416.rs:36:9
+   |
+LL |         x = 42;
+   |         ^^^^^^ this value is reassigned later and never used
+...
+LL |     x = 99;
+   |     ------ `x` is overwritten here before the previous value is read
+
+warning: value assigned to `x` is never read
+  --> $DIR/unused-assignments-diverging-branch-issue-156416.rs:33:9
+   |
+LL |         x = 35;
+   |         ^^^^^^ this value is reassigned later and never used
+...
+LL |     x = 99;
+   |     ------ `x` is overwritten here before the previous value is read
+
+warning: 4 warnings emitted
+

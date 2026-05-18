@@ -54,6 +54,7 @@ fn test_file() {
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
+    assert!(!file.metadata().unwrap().permissions().readonly()); // new file shouldn't be read-only
     // Writing 0 bytes should not change the file contents.
     file.write(&mut []).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 0);

@@ -292,7 +292,7 @@ impl<'tcx> InstanceKind<'tcx> {
         use rustc_hir::definitions::DefPathData;
         let def_id = match *self {
             ty::InstanceKind::Item(def) => def,
-            ty::InstanceKind::DropGlue(_, Some(_)) => return false,
+            ty::InstanceKind::DropGlue(_, Some(ty)) => return ty.is_array(),
             ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => return ty.is_coroutine(),
             ty::InstanceKind::FutureDropPollShim(_, _, _) => return false,
             ty::InstanceKind::AsyncDropGlue(_, _) => return false,

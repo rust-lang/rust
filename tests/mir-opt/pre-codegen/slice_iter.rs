@@ -16,43 +16,43 @@
 // As such, feel free to `--bless` whatever changes you get here, so long as
 // doing so doesn't add substantially more MIR.
 
-// EMIT_MIR slice_iter.slice_iter_generic_is_empty.PreCodegen.after.mir
+// EMIT_MIR slice_iter.slice_iter_generic_is_empty.runtime-optimized.after.mir
 pub fn slice_iter_generic_is_empty<T>(it: &std::slice::Iter<'_, T>) -> bool {
     it.is_empty()
 }
 
-// EMIT_MIR slice_iter.slice_iter_next.PreCodegen.after.mir
+// EMIT_MIR slice_iter.slice_iter_next.runtime-optimized.after.mir
 pub fn slice_iter_next<'a, T>(it: &mut std::slice::Iter<'a, T>) -> Option<&'a T> {
     it.next()
 }
 
-// EMIT_MIR slice_iter.slice_iter_mut_next_back.PreCodegen.after.mir
+// EMIT_MIR slice_iter.slice_iter_mut_next_back.runtime-optimized.after.mir
 pub fn slice_iter_mut_next_back<'a, T>(it: &mut std::slice::IterMut<'a, T>) -> Option<&'a mut T> {
     it.next_back()
 }
 
-// EMIT_MIR slice_iter.forward_loop.PreCodegen.after.mir
+// EMIT_MIR slice_iter.forward_loop.runtime-optimized.after.mir
 pub fn forward_loop<'a, T>(slice: &'a [T], f: impl Fn(&T)) {
     for x in slice.iter() {
         f(x)
     }
 }
 
-// EMIT_MIR slice_iter.reverse_loop.PreCodegen.after.mir
+// EMIT_MIR slice_iter.reverse_loop.runtime-optimized.after.mir
 pub fn reverse_loop<'a, T>(slice: &'a [T], f: impl Fn(&T)) {
     for x in slice.iter().rev() {
         f(x)
     }
 }
 
-// EMIT_MIR slice_iter.enumerated_loop.PreCodegen.after.mir
+// EMIT_MIR slice_iter.enumerated_loop.runtime-optimized.after.mir
 pub fn enumerated_loop<'a, T>(slice: &'a [T], f: impl Fn(usize, &T)) {
     for (i, x) in slice.iter().enumerate() {
         f(i, x)
     }
 }
 
-// EMIT_MIR slice_iter.range_loop.PreCodegen.after.mir
+// EMIT_MIR slice_iter.range_loop.runtime-optimized.after.mir
 pub fn range_loop<'a, T>(slice: &'a [T], f: impl Fn(usize, &T)) {
     for i in 0..slice.len() {
         let x = &slice[i];

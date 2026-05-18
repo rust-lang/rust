@@ -33,7 +33,7 @@ use crate::{
 //     };
 // }
 // ```
-pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
     let op_kind = assign_expr.op_kind()?;
@@ -115,13 +115,13 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     )
 }
 
-struct AssignmentsCollector<'a> {
-    sema: &'a hir::Semantics<'a, ide_db::RootDatabase>,
+struct AssignmentsCollector<'a, 'db> {
+    sema: &'a hir::Semantics<'db, ide_db::RootDatabase>,
     common_lhs: ast::Expr,
     assignments: Vec<(ast::BinExpr, ast::Expr)>,
 }
 
-impl AssignmentsCollector<'_> {
+impl AssignmentsCollector<'_, '_> {
     fn collect_match(&mut self, match_expr: &ast::MatchExpr) -> Option<()> {
         for arm in match_expr.match_arm_list()?.arms() {
             match arm.expr()? {

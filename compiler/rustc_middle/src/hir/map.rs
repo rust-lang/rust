@@ -5,7 +5,7 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
@@ -980,8 +980,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 span,
                 ..
             }) => {
-                // Ensure that the returned span has the item's SyntaxContext.
-                fn_decl_span.find_ancestor_inside(*span).unwrap_or(*span)
+                // Ensure that the returned span has the closure expression's SyntaxContext.
+                fn_decl_span.find_ancestor_inside_same_ctxt(*span).unwrap_or(*span)
             }
             _ => self.hir_span_with_body(hir_id),
         };

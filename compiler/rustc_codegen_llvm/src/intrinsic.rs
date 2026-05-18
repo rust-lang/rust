@@ -6,6 +6,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, Integer,
     NumScalableVectors, Primitive, Size, WrappingRange,
 };
+use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
@@ -18,9 +19,7 @@ use rustc_hir::find_attr;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{
-    self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv, Unnormalized,
-};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::errors::feature_err;
@@ -849,6 +848,29 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
+            sym::return_address => {
+                match self.sess().target.arch {
+                    // Expand this list as needed
+                    | Arch::Wasm32
+                    | Arch::Wasm64 => {
+                        let ty = self.type_ptr();
+                        self.const_null(ty)
+                    }
+                    _ => {
+                        let ty = self.type_ix(32);
+                        let val = self.const_int(ty, 0);
+
+                        let type_params: &[&'ll Type] = if llvm_version < (23, 0, 0) {
+                            &[]
+                        } else {
+                            &[self.type_ptr()]
+                        };
+
+                        self.call_intrinsic("llvm.returnaddress", type_params, &[val])
+                    }
+                }
+            }
+
             _ => {
                 debug!("unknown intrinsic '{}' -- falling back to default body", name);
                 // Call the fallback body instead of generating the intrinsic code
@@ -1025,6 +1047,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
+    }
+
+    fn retag_reg(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) -> Self::Value {
+        codegen_retag_inner(self, "__rust_retag_reg", ptr, info)
+    }
+
+    fn retag_mem(&mut self, ptr: Self::Value, info: &RetagInfo<Self::Value>) {
+        codegen_retag_inner(self, "__rust_retag_mem", ptr, info);
     }
 }
 
@@ -1740,6 +1770,24 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
+}
+
+fn codegen_retag_inner<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    name: &'static str,
+    ptr: &'ll Value,
+    info: &RetagInfo<&'ll Value>,
+) -> &'ll Value {
+    let size = bx.const_usize(info.size.bytes());
+    let perms = bx.const_u8(info.flags.bits());
+
+    bx.call_intrinsic(
+        name,
+        // Retag intrinsics have special handling within `CodegenCx::declare_intrinsic`
+        // to ensure that each form has the correct return type.
+        &[bx.type_ptr(), bx.val_ty(size), bx.type_i8(), bx.type_ptr(), bx.type_ptr()],
+        &[ptr, size, perms, info.im_layout, info.pin_layout],
+    )
 }
 
 fn codegen_autodiff<'ll, 'tcx>(
@@ -3030,7 +3078,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(bx.typing_env(), Unnormalized::new_wip(ty))
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -3044,7 +3092,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(bx.typing_env(), Unnormalized::new_wip(ty))
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),

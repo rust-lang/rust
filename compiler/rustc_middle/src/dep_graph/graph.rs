@@ -8,7 +8,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
-use rustc_data_structures::stable_hasher::{StableHash, StableHasher};
+use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
@@ -25,7 +25,7 @@ use super::retained::RetainedDepGraph;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
-use crate::ich::StableHashingContext;
+use crate::ich::StableHashState;
 use crate::ty::TyCtxt;
 use crate::verify_ich::incremental_verify_ich;
 
@@ -121,7 +121,7 @@ pub struct DepGraphData {
     debug_loaded_from_disk: Lock<FxHashSet<DepNode>>,
 }
 
-pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
+pub fn hash_result<R>(hcx: &mut StableHashState<'_>, result: &R) -> Fingerprint
 where
     R: StableHash,
 {
@@ -279,7 +279,7 @@ impl DepGraph {
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
         op: OP,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&mut StableHashState<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
@@ -317,7 +317,7 @@ impl DepGraphData {
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
         op: OP,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&mut StableHashState<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
@@ -433,7 +433,7 @@ impl DepGraphData {
         node: DepNode,
         edges: EdgesVec,
         result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&mut StableHashState<'_>, &R) -> Fingerprint>,
     ) -> DepNodeIndex {
         let hashing_timer = tcx.prof.incr_result_hashing();
         let current_fingerprint = hash_result.map(|hash_result| {
@@ -558,7 +558,7 @@ impl DepGraph {
         node: DepNode,
         tcx: TyCtxt<'tcx>,
         result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: Option<fn(&mut StableHashState<'_>, &R) -> Fingerprint>,
         format_value_fn: fn(&R) -> String,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {

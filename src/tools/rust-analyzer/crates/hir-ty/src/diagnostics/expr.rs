@@ -7,7 +7,8 @@ use std::fmt;
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
+    AdtId, AssocItemId, CallableDefId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
+    attrs::AttrFlags,
     lang_item::LangItems,
     resolver::{HasResolver, ValueNs},
 };
@@ -15,7 +16,7 @@ use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use rustc_type_ir::inherent::IntoKind;
 use syntax::{
     AstNode,
     ast::{self, UnaryOp},
@@ -33,7 +34,7 @@ use crate::{
     },
     display::{DisplayTarget, HirDisplay},
     next_solver::{
-        DbInterner, ParamEnv, Ty, TyKind, TypingMode,
+        CallableIdWrapper, DbInterner, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -44,7 +45,7 @@ pub(crate) use hir_def::{
     hir::{Expr, ExprId, MatchArm, Pat, PatId, RecordSpread, Statement},
 };
 
-pub enum BodyValidationDiagnostic {
+pub enum BodyValidationDiagnostic<'db> {
     RecordMissingFields {
         record: Either<ExprId, PatId>,
         variant: VariantId,
@@ -67,14 +68,18 @@ pub enum BodyValidationDiagnostic {
     RemoveUnnecessaryElse {
         if_expr: ExprId,
     },
+    UnusedMustUse {
+        expr: ExprId,
+        message: Option<&'db str>,
+    },
 }
 
-impl BodyValidationDiagnostic {
+impl<'db> BodyValidationDiagnostic<'db> {
     pub fn collect(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
         validate_lints: bool,
-    ) -> Vec<BodyValidationDiagnostic> {
+    ) -> Vec<BodyValidationDiagnostic<'db>> {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
         let infer = InferenceResult::of(db, owner);
         let body = Body::of(db, owner);
@@ -101,7 +106,7 @@ struct ExprValidator<'db> {
     body: &'db Body,
     infer: &'db InferenceResult,
     env: ParamEnv<'db>,
-    diagnostics: Vec<BodyValidationDiagnostic>,
+    diagnostics: Vec<BodyValidationDiagnostic<'db>>,
     validate_lints: bool,
     infcx: InferCtxt<'db>,
 }
@@ -177,7 +182,7 @@ impl<'db> ExprValidator<'db> {
         }
         // Check that the number of arguments matches the number of parameters.
 
-        if self.infer.expr_type_mismatches().next().is_some() {
+        if self.infer.exprs_have_type_mismatches() {
             // FIXME: Due to shortcomings in the current type system implementation, only emit
             // this diagnostic if there are no type mismatches in the containing function.
         } else if let Expr::MethodCall { receiver, .. } = expr {
@@ -218,9 +223,7 @@ impl<'db> ExprValidator<'db> {
         // Note: Skipping the entire diagnostic rather than just not including a faulty match arm is
         // preferred to avoid the chance of false positives.
         for arm in arms {
-            let Some(pat_ty) = self.infer.type_of_pat_with_adjust(arm.pat) else {
-                return;
-            };
+            let pat_ty = self.infer.type_of_pat_with_adjust(arm.pat);
             if pat_ty.references_non_lt_error() {
                 return;
             }
@@ -313,7 +316,7 @@ impl<'db> ExprValidator<'db> {
                 value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.expr_ty(*expr).kind() {
-                TyKind::Adt(adt, ..) if matches!(adt.def_id().0, AdtId::UnionId(_)) => false,
+                TyKind::Adt(adt, ..) if matches!(adt.def_id(), AdtId::UnionId(_)) => false,
                 _ => self.is_known_valid_scrutinee(*expr),
             },
             Expr::Index { base, .. } => self.is_known_valid_scrutinee(*base),
@@ -330,52 +333,71 @@ impl<'db> ExprValidator<'db> {
         let pattern_arena = Arena::new();
         let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env);
         for stmt in &**statements {
-            let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
-                continue;
-            };
-            if self.infer.type_mismatch_for_pat(pat).is_some() {
-                continue;
-            }
-            let Some(initializer) = initializer else { continue };
-            let Some(ty) = self.infer.type_of_expr_with_adjust(initializer) else { continue };
-            if ty.references_non_lt_error() {
-                continue;
-            }
-
-            let mut have_errors = false;
-            let deconstructed_pat = self.lower_pattern(&cx, pat, &mut have_errors);
-
-            // optimization, wildcard trivially hold
-            if have_errors || matches!(deconstructed_pat.ctor(), Constructor::Wildcard) {
-                continue;
-            }
-
-            let match_arm = rustc_pattern_analysis::MatchArm {
-                pat: pattern_arena.alloc(deconstructed_pat),
-                has_guard: false,
-                arm_data: (),
-            };
-            let report = match cx.compute_match_usefulness(&[match_arm], ty, None) {
-                Ok(v) => v,
-                Err(e) => {
-                    debug!(?e, "match usefulness error");
-                    continue;
+            let diag = match *stmt {
+                Statement::Expr { expr: stmt_expr, has_semi: true } if self.validate_lints => {
+                    self.check_unused_must_use(stmt_expr)
                 }
+                Statement::Let { pat, initializer, else_branch: None, .. } => {
+                    self.check_non_exhaustive_let(&cx, &pattern_arena, pat, initializer)
+                }
+                _ => None,
             };
-            let witnesses = report.non_exhaustiveness_witnesses;
-            if !witnesses.is_empty() {
-                self.diagnostics.push(BodyValidationDiagnostic::NonExhaustiveLet {
-                    pat,
-                    uncovered_patterns: missing_match_arms(
-                        &cx,
-                        ty,
-                        witnesses,
-                        false,
-                        self.owner.krate(self.db()),
-                    ),
-                });
+            if let Some(diag) = diag {
+                self.diagnostics.push(diag);
             }
         }
+    }
+
+    fn check_non_exhaustive_let<'a>(
+        &self,
+        cx: &MatchCheckCtx<'a, 'db>,
+        pattern_arena: &'a Arena<DeconstructedPat<'a, 'db>>,
+        pat: PatId,
+        initializer: Option<ExprId>,
+    ) -> Option<BodyValidationDiagnostic<'db>> {
+        if self.infer.pat_has_type_mismatch(pat) {
+            return None;
+        }
+        let initializer = initializer?;
+        let ty = self.infer.type_of_expr_with_adjust(initializer)?;
+        if ty.references_non_lt_error() {
+            return None;
+        }
+
+        let mut have_errors = false;
+        let deconstructed_pat = self.lower_pattern(cx, pat, &mut have_errors);
+
+        // optimization, wildcard trivially hold
+        if have_errors || matches!(deconstructed_pat.ctor(), Constructor::Wildcard) {
+            return None;
+        }
+
+        let match_arm = rustc_pattern_analysis::MatchArm {
+            pat: pattern_arena.alloc(deconstructed_pat),
+            has_guard: false,
+            arm_data: (),
+        };
+        let report = match cx.compute_match_usefulness(&[match_arm], ty, None) {
+            Ok(v) => v,
+            Err(e) => {
+                debug!(?e, "match usefulness error");
+                return None;
+            }
+        };
+        let witnesses = report.non_exhaustiveness_witnesses;
+        if witnesses.is_empty() {
+            return None;
+        }
+        Some(BodyValidationDiagnostic::NonExhaustiveLet {
+            pat,
+            uncovered_patterns: missing_match_arms(
+                cx,
+                ty,
+                witnesses,
+                false,
+                self.owner.krate(self.db()),
+            ),
+        })
     }
 
     fn lower_pattern<'a>(
@@ -391,6 +413,34 @@ impl<'db> ExprValidator<'db> {
             *have_errors = true;
         }
         pattern
+    }
+
+    fn check_unused_must_use(&self, expr: ExprId) -> Option<BodyValidationDiagnostic<'db>> {
+        let fn_def = match &self.body[expr] {
+            Expr::Call { callee, .. } => {
+                let callee_ty = self.infer.expr_ty(*callee);
+                if let TyKind::FnDef(CallableIdWrapper(CallableDefId::FunctionId(func)), _) =
+                    callee_ty.kind()
+                {
+                    Some(func.into())
+                } else {
+                    None
+                }
+            }
+            Expr::MethodCall { .. } => {
+                self.infer.method_resolution(expr).map(|(func, _)| func.into())
+            }
+            _ => return None,
+        };
+        let ty_def = self.infer.type_of_expr_with_adjust(expr).and_then(|ty| match ty.kind() {
+            TyKind::Adt(adt, _) => Some(adt.def_id().into()),
+            _ => None,
+        });
+        let must_use_diag = |owner| {
+            AttrFlags::must_use_message(self.db(), owner?)
+                .map(|message| BodyValidationDiagnostic::UnusedMustUse { expr, message })
+        };
+        must_use_diag(fn_def).or_else(|| must_use_diag(ty_def))
     }
 
     fn check_for_trailing_return(&mut self, body_expr: ExprId, body: &Body) {
@@ -630,13 +680,13 @@ pub fn record_pattern_missing_fields(
 
 fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult) -> bool {
     fn walk(pat: PatId, body: &Body, infer: &InferenceResult, has_type_mismatches: &mut bool) {
-        match infer.type_mismatch_for_pat(pat) {
-            Some(_) => *has_type_mismatches = true,
-            None if *has_type_mismatches => (),
-            None => {
+        match infer.pat_has_type_mismatch(pat) {
+            true => *has_type_mismatches = true,
+            false if *has_type_mismatches => (),
+            false => {
                 let pat = &body[pat];
                 if let Pat::ConstBlock(expr) | Pat::Lit(expr) = *pat {
-                    *has_type_mismatches |= infer.type_mismatch_for_expr(expr).is_some();
+                    *has_type_mismatches |= infer.expr_has_type_mismatch(expr);
                     if *has_type_mismatches {
                         return;
                     }

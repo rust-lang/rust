@@ -161,7 +161,7 @@ pub trait Pattern: Sized {
         }
     }
 
-    /// Returns the pattern as utf-8 bytes if possible.
+    /// Returns the pattern as UTF-8 if possible.
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
         None
     }
@@ -172,7 +172,9 @@ pub trait Pattern: Sized {
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Utf8Pattern<'a> {
     /// Type returned by String and str types.
-    StringPattern(&'a [u8]),
+    /// This stores `str` rather than bytes so callers cannot describe
+    /// non-UTF-8 string patterns through this API.
+    StringPattern(&'a str),
     /// Type returned by char types.
     CharPattern(char),
 }
@@ -1049,7 +1051,7 @@ impl<'b> Pattern for &'b str {
 
     #[inline]
     fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
-        Some(Utf8Pattern::StringPattern(self.as_bytes()))
+        Some(Utf8Pattern::StringPattern(*self))
     }
 }
 

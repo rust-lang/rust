@@ -65,10 +65,10 @@ pub fn do_call() {
         // CHECK: call void @test_i8x2_arr(<2 x i8> <i8 32, i8 64>
         test_i8x2_arr(const { i8x2::from_array([32, 64]) });
 
-        // CHECK: call void @test_f32x2(<2 x float> <float 0x3FD47AE140000000, float 0x3FE47AE140000000>
+        // CHECK: call void @test_f32x2(<2 x float> <float {{0x3FD47AE140000000|3.200000e-01}}, float {{0x3FE47AE140000000|6.400000e-01}}>
         test_f32x2(const { f32x2::from_array([0.32, 0.64]) });
 
-        // CHECK: void @test_f32x2_arr(<2 x float> <float 0x3FD47AE140000000, float 0x3FE47AE140000000>
+        // CHECK: void @test_f32x2_arr(<2 x float> <float {{0x3FD47AE140000000|3.200000e-01}}, float {{0x3FE47AE140000000|6.400000e-01}}>
         test_f32x2_arr(const { f32x2::from_array([0.32, 0.64]) });
 
         // CHECK: call void @test_simd(<4 x i32> <i32 2, i32 4, i32 6, i32 8>

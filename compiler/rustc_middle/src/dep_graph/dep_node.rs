@@ -51,7 +51,7 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::stable_hasher::{StableHasher, StableOrd};
+use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 use rustc_macros::{Decodable, Encodable, StableHash};

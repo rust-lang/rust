@@ -9,7 +9,7 @@
 pub fn callee() {}
 
 // EMIT_MIR rustc_no_mir_inline.caller.Inline.diff
-// EMIT_MIR rustc_no_mir_inline.caller.PreCodegen.after.mir
+// EMIT_MIR rustc_no_mir_inline.caller.runtime-optimized.after.mir
 pub fn caller() {
     // CHECK-LABEL: fn caller(
     // CHECK: callee()

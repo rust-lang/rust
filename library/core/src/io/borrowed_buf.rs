@@ -92,7 +92,7 @@ impl<'data> BorrowedBuf<'data> {
         self.filled
     }
 
-    /// Returns the length of the initialized part of the buffer.
+    /// Returns `true` if the buffer is initialized.
     #[unstable(feature = "borrowed_buf_init", issue = "78485")]
     #[inline]
     pub fn is_init(&self) -> bool {

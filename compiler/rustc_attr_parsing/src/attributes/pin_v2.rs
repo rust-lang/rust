@@ -15,5 +15,5 @@ impl NoArgsAttributeParser for PinV2Parser {
         Allow(Target::Struct),
         Allow(Target::Union),
     ]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PinV2;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::PinV2;
 }

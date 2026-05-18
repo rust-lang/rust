@@ -544,7 +544,7 @@ pub(super) fn definition(
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
                         let span_map = db.expansion_span_map(macro_file);
-                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+                        body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
                         format!("{body}\n{}", render_const_eval_error(db, err, display_target))
@@ -576,7 +576,7 @@ pub(super) fn definition(
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
                         let span_map = db.expansion_span_map(macro_file);
-                        body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
+                        body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
                         format!("{body}\n{}", render_const_eval_error(db, err, display_target))
@@ -1136,12 +1136,12 @@ fn markup(
     }
 }
 
-fn render_memory_layout(
+fn render_memory_layout<'db>(
     config: Option<MemoryLayoutHoverConfig>,
-    layout: impl FnOnce() -> Result<Layout, LayoutError>,
-    offset: impl FnOnce(&Layout) -> Option<u64>,
-    padding: impl FnOnce(&Layout) -> Option<(&str, u64)>,
-    tag: impl FnOnce(&Layout) -> Option<usize>,
+    layout: impl FnOnce() -> Result<Layout<'db>, LayoutError>,
+    offset: impl FnOnce(&Layout<'db>) -> Option<u64>,
+    padding: impl for<'a> FnOnce(&'a Layout<'db>) -> Option<(&'a str, u64)>,
+    tag: impl FnOnce(&Layout<'db>) -> Option<usize>,
 ) -> Option<String> {
     let config = config?;
     let layout = layout().ok()?;

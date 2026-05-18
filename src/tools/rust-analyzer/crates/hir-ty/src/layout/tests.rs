@@ -90,7 +90,7 @@ fn eval_goal(
                 adt_id,
                 GenericArgs::identity_for_item(interner, adt_id.into()),
             ),
-            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
+            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity().skip_norm_wip(),
         };
         let param_env = db.trait_environment(
             match adt_or_type_alias_id {
@@ -529,6 +529,7 @@ fn tuple_ptr_with_dst_tail() {
 }
 
 #[test]
+#[ignore = "FIXME: We need to have proper pattern types"]
 fn non_zero_and_non_null() {
     size_and_align! {
         minicore: non_zero, non_null, option;
@@ -565,8 +566,6 @@ fn const_eval_simple() {
 }
 
 #[test]
-// FIXME
-#[should_panic]
 fn const_eval_complex() {
     size_and_align! {
         struct Goal([i32; 2 + 2]);

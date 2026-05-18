@@ -312,13 +312,9 @@ impl<'a, 'tcx> MirDumper<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Whole MIR bodies
 
-/// Write out a human-readable textual representation for the given MIR, with the default
-/// [PrettyPrintMirOptions].
-pub fn write_mir_pretty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    single: Option<DefId>,
-    w: &mut dyn io::Write,
-) -> io::Result<()> {
+/// Write out a human-readable textual representation of this crate's MIR,
+/// with the default [`PrettyPrintMirOptions`].
+pub fn write_mir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
     let writer = MirWriter::new(tcx);
 
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
@@ -326,7 +322,7 @@ pub fn write_mir_pretty<'tcx>(
     writeln!(w, "// HINT: See also -Z dump-mir for MIR at specific points during compilation.")?;
 
     let mut first = true;
-    for def_id in dump_mir_def_ids(tcx, single) {
+    for &def_id in tcx.mir_keys(()) {
         if first {
             first = false;
         } else {
@@ -360,7 +356,7 @@ pub fn write_mir_pretty<'tcx>(
                 }
                 writeln!(w, ": {} = const {};", ty, Const::Val(val, ty))?;
             } else {
-                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
+                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id.to_def_id()));
                 render_body(w, instance_mir)?;
             }
         }
@@ -522,7 +518,7 @@ fn write_scope_tree(
 
 impl Debug for VarDebugInfo<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(box VarDebugInfoFragment { ty, ref projection }) = self.composite {
+        if let Some(VarDebugInfoFragment { ty, ref projection }) = self.composite {
             pre_fmt_projection(&projection[..], fmt)?;
             write!(fmt, "({}: {})", self.name, ty)?;
             post_fmt_projection(&projection[..], fmt)?;
@@ -698,14 +694,6 @@ fn write_user_type_annotations(
     Ok(())
 }
 
-pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
-    if let Some(i) = single {
-        vec![i]
-    } else {
-        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Basic blocks and their parts (statements, terminators, ...)
 
@@ -806,8 +794,8 @@ impl Debug for StatementKind<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match *self {
-            Assign(box (ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
-            FakeRead(box (ref cause, ref place)) => {
+            Assign((ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
+            FakeRead((ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
             }
             StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
@@ -818,11 +806,11 @@ impl Debug for StatementKind<'_> {
             PlaceMention(ref place) => {
                 write!(fmt, "PlaceMention({place:?})")
             }
-            AscribeUserType(box (ref place, ref c_ty), ref variance) => {
+            AscribeUserType((ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({place:?}, {variance:?}, {c_ty:?})")
             }
             Coverage(ref kind) => write!(fmt, "Coverage::{kind:?}"),
-            Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
+            Intrinsic(ref intrinsic) => write!(fmt, "{intrinsic}"),
             ConstEvalCounter => write!(fmt, "ConstEvalCounter"),
             Nop => write!(fmt, "nop"),
             BackwardIncompatibleDropHint { ref place, reason: _ } => {
@@ -1096,7 +1084,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Cast(ref kind, ref place, ref ty) => {
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }
-            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
+            BinaryOp(ref op, (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
             ThreadLocalRef(did) => ty::tls::with(|tcx| {

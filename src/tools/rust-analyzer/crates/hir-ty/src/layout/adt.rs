@@ -1,6 +1,6 @@
 //! Compute the binary representation of structs, unions and enums
 
-use std::{cmp, ops::Bound};
+use std::cmp;
 
 use hir_def::{
     AdtId, VariantId,
@@ -29,7 +29,7 @@ pub fn layout_of_adt_query(
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
-    let dl = &*target;
+    let dl = target;
     let cx = LayoutCx::new(dl);
     let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
@@ -79,7 +79,6 @@ pub fn layout_of_adt_query(
             &variants,
             matches!(def, AdtId::EnumId(..)),
             is_special_no_niche,
-            layout_scalar_valid_range(db, def),
             |min, max| repr_discr(dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
                 let AdtId::EnumId(e) = def else { return None };
@@ -105,15 +104,6 @@ pub(crate) fn layout_of_adt_cycle_result(
     _trait_env: StoredParamEnvAndCrate,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
-}
-
-fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, Bound<u128>) {
-    let range = AttrFlags::rustc_layout_scalar_valid_range(db, def);
-    let get = |value| match value {
-        Some(it) => Bound::Included(it),
-        None => Bound::Unbounded,
-    };
-    (get(range.start), get(range.end))
 }
 
 /// Finds the appropriate Integer type and signedness for the given

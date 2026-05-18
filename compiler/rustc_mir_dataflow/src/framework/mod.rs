@@ -38,9 +38,7 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges, traversal,
-};
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -212,6 +210,7 @@ pub trait Analysis<'tcx> {
     fn get_switch_int_data(
         &self,
         _block: mir::BasicBlock,
+        _targets: &mir::SwitchTargets,
         _discr: &mir::Operand<'tcx>,
     ) -> Option<Self::SwitchIntData> {
         None
@@ -220,10 +219,9 @@ pub trait Analysis<'tcx> {
     /// See comments on `get_switch_int_data`.
     fn apply_switch_int_edge_effect(
         &self,
-        _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
-        _value: SwitchTargetValue,
-        _targets: &mir::SwitchTargets,
+        _data: &mut Self::SwitchIntData,
+        _target_idx: SwitchTargetIndex,
     ) {
         unreachable!();
     }
@@ -311,6 +309,14 @@ pub trait Analysis<'tcx> {
 
         results
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SwitchTargetIndex {
+    // Index of a normal switch target.
+    Normal(usize),
+    // The final "otherwise" fallback target.
+    Otherwise,
 }
 
 /// The legal operations for a transfer function in a gen/kill problem.

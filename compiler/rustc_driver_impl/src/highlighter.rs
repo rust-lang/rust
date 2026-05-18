@@ -106,7 +106,7 @@ impl Highlighter {
                     // This heuristic test is to detect if the identifier is
                     // a function call. If it is, then the function identifier is
                     // colored differently.
-                    if code[*len_accum..*len_accum + len + 1].ends_with('(') {
+                    if code[*len_accum + len..].starts_with('(') {
                         style = style.fg_color(Some(Color::Ansi(FUNCTION_COLOR)));
                     }
                     // The `derive` keyword is colored differently.

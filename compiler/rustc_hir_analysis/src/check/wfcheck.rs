@@ -197,7 +197,7 @@ where
 
     lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
-    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env);
+    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
     if errors.is_empty() {
         return Ok(());
     }
@@ -211,7 +211,8 @@ where
         // the implied bounds hack if this contains `bevy_ecs`'s `ParamSet` type.
         false,
     );
-    let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
+    let errors_compat =
+        infcx_compat.resolve_regions_with_outlives_env(&outlives_env, tcx.def_span(body_def_id));
     if errors_compat.is_empty() {
         // FIXME: Once we fix bevy, this would be the place to insert a warning
         // to upgrade bevy.
@@ -1313,7 +1314,7 @@ pub(crate) fn check_static_item<'tcx>(
             let tail = tcx.struct_tail_raw(
                 item_ty,
                 &ObligationCause::dummy(),
-                |ty| wfcx.deeply_normalize(span, loc, Unnormalized::new_wip(ty)),
+                |ty| wfcx.deeply_normalize(span, loc, ty),
                 || {},
             );
 

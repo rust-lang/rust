@@ -17,7 +17,7 @@ type EpollEventKey = (FdId, FdNum);
 
 /// An `Epoll` file descriptor connects file handles and epoll events
 #[derive(Debug, Default)]
-struct Epoll {
+pub struct Epoll {
     /// A map of EpollEventInterests registered under this epoll instance. Each entry is
     /// differentiated using FdId and file descriptor value.
     interest_list: RefCell<BTreeMap<EpollEventKey, EpollEventInterest>>,
@@ -55,9 +55,9 @@ pub struct EpollEventInterest {
     data: u64,
 }
 
-/// EpollReadyEvents reflects the readiness of a file description.
+/// Struct reflecting the readiness of a file description.
 #[derive(Debug)]
-pub struct EpollEvents {
+pub struct EpollReadiness {
     /// The associated file is available for read(2) operations, in the sense that a read will not block.
     /// (I.e., returning EOF is considered "ready".)
     pub epollin: bool,
@@ -76,9 +76,9 @@ pub struct EpollEvents {
     pub epollerr: bool,
 }
 
-impl EpollEvents {
-    pub fn new() -> Self {
-        EpollEvents {
+impl EpollReadiness {
+    pub fn empty() -> Self {
+        EpollReadiness {
             epollin: false,
             epollout: false,
             epollrdhup: false,
@@ -111,6 +111,19 @@ impl EpollEvents {
             bitmask |= epollerr;
         }
         bitmask
+    }
+}
+
+// Best-effort mapping from cross platform readiness to epoll readiness.
+impl From<&BlockingIoSourceReadiness> for EpollReadiness {
+    fn from(readiness: &BlockingIoSourceReadiness) -> Self {
+        Self {
+            epollin: readiness.readable,
+            epollout: readiness.writable,
+            epollrdhup: readiness.read_closed,
+            epollhup: readiness.write_closed,
+            epollerr: readiness.error,
+        }
     }
 }
 
@@ -354,11 +367,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 interest.data = data;
             }
 
+            let active_events = fd_ref.as_unix(this).epoll_active_events()?.get_event_bitmask(this);
+
             // Deliver events for the new interest.
             update_readiness(
                 this,
                 &epfd,
-                fd_ref.as_unix(this).epoll_active_events()?.get_event_bitmask(this),
+                active_events,
                 /* force_edge */ true,
                 move |callback| {
                     // Need to release the RefCell when this closure returns, so we have to move
@@ -479,7 +494,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // This means there'll be a leak if we never wake up, but that anyway would imply
             // a thread is permanently blocked so this is fine.
             this.block_thread(
-                BlockReason::Epoll,
+                BlockReason::Epoll { epfd: epfd.clone() },
                 timeout,
                 callback!(
                     @capture<'tcx> {
@@ -547,6 +562,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(())
     }
+
+    /// Recursively check whether the [`Epoll`] file description contains
+    /// interests which are host I/O source file descriptions.
+    fn has_epoll_host_interests(&self, epfd: &FileDescriptionRef<Epoll>) -> bool {
+        let this = self.eval_context_ref();
+        epfd.interest_list.borrow().iter().any(|((fd_id, _fd_num), _)| {
+            // By looking up whether the file description is currently registered,
+            // we get whether it's a host I/O source file description.
+            this.machine.blocking_io.contains_source(fd_id)
+        })
+    }
 }
 
 /// Call this when the interests denoted by `for_each_interest` have their active event set changed
@@ -557,7 +583,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 /// be waking up threads which might require access to those `RefCell`.
 fn update_readiness<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    epoll: &Epoll,
+    epoll: &FileDescriptionRef<Epoll>,
     active_events: u32,
     force_edge: bool,
     for_each_interest: impl FnOnce(
@@ -587,7 +613,7 @@ fn update_readiness<'tcx>(
         && let Some(thread_id) = epoll.queue.borrow_mut().pop_front()
     {
         drop(ready_set); // release the "lock" so the unblocked thread can have it
-        ecx.unblock_thread(thread_id, BlockReason::Epoll)?;
+        ecx.unblock_thread(thread_id, BlockReason::Epoll { epfd: epoll.clone() })?;
         ready_set = epoll.ready_set.borrow_mut();
     }
 
@@ -612,7 +638,7 @@ fn return_ready_list<'tcx>(
         for (key, interest) in interest_list.iter() {
             // Ensure this matches the latest readiness of this FD.
             // We have to do an FD lookup by ID for this. The FdNum might be already closed.
-            let fd = &ecx.machine.fds.fds.values().find(|fd| fd.id() == key.0).unwrap();
+            let fd = ecx.machine.fds.fds.values().find(|fd| fd.id() == key.0).unwrap();
             let current_active = fd.as_unix(ecx).epoll_active_events()?.get_event_bitmask(ecx);
             assert_eq!(interest.active_events, current_active & interest.relevant_events);
         }

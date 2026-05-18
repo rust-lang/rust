@@ -4,7 +4,9 @@ set -ex
 
 ##### Test stage 1 #####
 
-../x.py --stage 1 test --skip src/tools/tidy
+# linkchecker is skipped because mixing old rustc/rustdoc with new standard
+# library causes problems with generating correct links.
+../x.py --stage 1 test --skip src/tools/tidy --skip src/tools/linkchecker
 
 # Run the `mir-opt` tests again but this time for a 32-bit target.
 # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have

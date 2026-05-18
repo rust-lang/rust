@@ -299,6 +299,8 @@ mod tests;
 
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use core::io::{BorrowedBuf, BorrowedCursor};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::io::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
 use core::slice::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
@@ -328,7 +330,6 @@ pub use self::{
     cursor::Cursor,
     error::{Error, ErrorKind, Result},
     stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
-    util::{Empty, Repeat, Sink, empty, repeat, sink},
 };
 use crate::mem::{MaybeUninit, take};
 use crate::ops::{Deref, DerefMut};
@@ -1183,7 +1184,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Chain { first: self, second: next, done_first: false }
+        core::io::chain(self, next)
     }
 
     /// Creates an adapter which will read at most `limit` bytes from it.
@@ -1222,7 +1223,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Take { inner: self, len: limit, limit }
+        core::io::take(self, limit)
     }
 
     /// Read and return a fixed array of bytes from this source.
@@ -2704,99 +2705,6 @@ pub trait BufRead: Read {
     }
 }
 
-/// Adapter to chain together two readers.
-///
-/// This struct is generally created by calling [`chain`] on a reader.
-/// Please see the documentation of [`chain`] for more details.
-///
-/// [`chain`]: Read::chain
-#[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
-pub struct Chain<T, U> {
-    first: T,
-    second: U,
-    done_first: bool,
-}
-
-impl<T, U> Chain<T, U> {
-    /// Consumes the `Chain`, returning the wrapped readers.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut foo_file = File::open("foo.txt")?;
-    ///     let mut bar_file = File::open("bar.txt")?;
-    ///
-    ///     let chain = foo_file.chain(bar_file);
-    ///     let (foo_file, bar_file) = chain.into_inner();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub fn into_inner(self) -> (T, U) {
-        (self.first, self.second)
-    }
-
-    /// Gets references to the underlying readers in this `Chain`.
-    ///
-    /// Care should be taken to avoid modifying the internal I/O state of the
-    /// underlying readers as doing so may corrupt the internal state of this
-    /// `Chain`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut foo_file = File::open("foo.txt")?;
-    ///     let mut bar_file = File::open("bar.txt")?;
-    ///
-    ///     let chain = foo_file.chain(bar_file);
-    ///     let (foo_file, bar_file) = chain.get_ref();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub fn get_ref(&self) -> (&T, &U) {
-        (&self.first, &self.second)
-    }
-
-    /// Gets mutable references to the underlying readers in this `Chain`.
-    ///
-    /// Care should be taken to avoid modifying the internal I/O state of the
-    /// underlying readers as doing so may corrupt the internal state of this
-    /// `Chain`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut foo_file = File::open("foo.txt")?;
-    ///     let mut bar_file = File::open("bar.txt")?;
-    ///
-    ///     let mut chain = foo_file.chain(bar_file);
-    ///     let (foo_file, bar_file) = chain.get_mut();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub fn get_mut(&mut self) -> (&mut T, &mut U) {
-        (&mut self.first, &mut self.second)
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -2903,170 +2811,6 @@ impl<T, U> SizeHint for Chain<T, U> {
             (Some(first), Some(second)) => first.checked_add(second),
             _ => None,
         }
-    }
-}
-
-/// Reader adapter which limits the bytes read from an underlying reader.
-///
-/// This struct is generally created by calling [`take`] on a reader.
-/// Please see the documentation of [`take`] for more details.
-///
-/// [`take`]: Read::take
-#[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
-pub struct Take<T> {
-    inner: T,
-    len: u64,
-    limit: u64,
-}
-
-impl<T> Take<T> {
-    /// Returns the number of bytes that can be read before this instance will
-    /// return EOF.
-    ///
-    /// # Note
-    ///
-    /// This instance may reach `EOF` after reading fewer bytes than indicated by
-    /// this method if the underlying [`Read`] instance reaches EOF.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
-    ///
-    ///     // read at most five bytes
-    ///     let handle = f.take(5);
-    ///
-    ///     println!("limit: {}", handle.limit());
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn limit(&self) -> u64 {
-        self.limit
-    }
-
-    /// Returns the number of bytes read so far.
-    #[unstable(feature = "seek_io_take_position", issue = "97227")]
-    pub fn position(&self) -> u64 {
-        self.len - self.limit
-    }
-
-    /// Sets the number of bytes that can be read before this instance will
-    /// return EOF. This is the same as constructing a new `Take` instance, so
-    /// the amount of bytes read and the previous limit value don't matter when
-    /// calling this method.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
-    ///
-    ///     // read at most five bytes
-    ///     let mut handle = f.take(5);
-    ///     handle.set_limit(10);
-    ///
-    ///     assert_eq!(handle.limit(), 10);
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "take_set_limit", since = "1.27.0")]
-    pub fn set_limit(&mut self, limit: u64) {
-        self.len = limit;
-        self.limit = limit;
-    }
-
-    /// Consumes the `Take`, returning the wrapped reader.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut file = File::open("foo.txt")?;
-    ///
-    ///     let mut buffer = [0; 5];
-    ///     let mut handle = file.take(5);
-    ///     handle.read(&mut buffer)?;
-    ///
-    ///     let file = handle.into_inner();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "io_take_into_inner", since = "1.15.0")]
-    pub fn into_inner(self) -> T {
-        self.inner
-    }
-
-    /// Gets a reference to the underlying reader.
-    ///
-    /// Care should be taken to avoid modifying the internal I/O state of the
-    /// underlying reader as doing so may corrupt the internal limit of this
-    /// `Take`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut file = File::open("foo.txt")?;
-    ///
-    ///     let mut buffer = [0; 5];
-    ///     let mut handle = file.take(5);
-    ///     handle.read(&mut buffer)?;
-    ///
-    ///     let file = handle.get_ref();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub fn get_ref(&self) -> &T {
-        &self.inner
-    }
-
-    /// Gets a mutable reference to the underlying reader.
-    ///
-    /// Care should be taken to avoid modifying the internal I/O state of the
-    /// underlying reader as doing so may corrupt the internal limit of this
-    /// `Take`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut file = File::open("foo.txt")?;
-    ///
-    ///     let mut buffer = [0; 5];
-    ///     let mut handle = file.take(5);
-    ///     handle.read(&mut buffer)?;
-    ///
-    ///     let file = handle.get_mut();
-    ///     Ok(())
-    /// }
-    /// ```
-    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub fn get_mut(&mut self) -> &mut T {
-        &mut self.inner
     }
 }
 

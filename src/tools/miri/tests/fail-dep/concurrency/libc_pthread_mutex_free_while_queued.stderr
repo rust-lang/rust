@@ -10,9 +10,9 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    = note: stack backtrace:
            0: <std::boxed::Box<Mutex> as std::ops::Drop>::drop
                at RUSTLIB/alloc/src/boxed.rs:LL:CC
-           1: std::ptr::drop_glue))
+           1: std::ptr::drop_glue::<std::boxed::Box<Mutex>> - shim(Some(std::boxed::Box<Mutex>))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-           2: std::mem::drop
+           2: std::mem::drop::<std::boxed::Box<Mutex>>
                at RUSTLIB/core/src/mem/mod.rs:LL:CC
            3: main::{closure#0}::{closure#2}
                at tests/fail-dep/concurrency/libc_pthread_mutex_free_while_queued.rs:LL:CC

@@ -58,7 +58,7 @@ use syntax::{
 // ```
 pub(crate) fn generate_blanket_trait_impl(
     acc: &mut Assists,
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let traitd = ast::Trait::cast(name.syntax().parent()?)?;
@@ -89,7 +89,24 @@ pub(crate) fn generate_blanket_trait_impl(
             ))]);
 
             let trait_gen_args =
-                traitd.generic_param_list().map(|param_list| param_list.to_generic_args());
+                traitd.generic_param_list().map(|param_list| param_list.to_generic_args(make));
+
+            let body = traitd.assoc_item_list().and_then(|trait_assoc_list| {
+                let items = trait_assoc_list
+                    .assoc_items()
+                    .filter_map(|item| {
+                        let item = match item {
+                            ast::AssocItem::Fn(method) if method.body().is_none() => {
+                                todo_fn(make, &method, ctx.config).into()
+                            }
+                            ast::AssocItem::Const(_) | ast::AssocItem::TypeAlias(_) => item,
+                            _ => return None,
+                        };
+                        Some(item.reset_indent().indent(1.into()))
+                    })
+                    .collect::<Vec<_>>();
+                (!items.is_empty()).then(|| make.assoc_item_list(items))
+            });
 
             let impl_ = make.impl_trait(
                 cfg_attrs(&traitd),
@@ -103,22 +120,8 @@ pub(crate) fn generate_blanket_trait_impl(
                 thisty.into(),
                 trait_where_clause,
                 None,
-                None,
+                body,
             );
-
-            if let Some(trait_assoc_list) = traitd.assoc_item_list() {
-                let assoc_item_list = impl_.get_or_create_assoc_item_list_with_editor(&editor);
-                for item in trait_assoc_list.assoc_items() {
-                    let item = match item {
-                        ast::AssocItem::Fn(method) if method.body().is_none() => {
-                            todo_fn(make, &method, ctx.config).into()
-                        }
-                        ast::AssocItem::Const(_) | ast::AssocItem::TypeAlias(_) => item,
-                        _ => continue,
-                    };
-                    assoc_item_list.add_item(item.reset_indent().indent(1.into()));
-                }
-            }
 
             let impl_ = impl_.indent(indent);
 

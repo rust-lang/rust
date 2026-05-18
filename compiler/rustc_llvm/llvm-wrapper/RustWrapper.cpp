@@ -155,6 +155,11 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
+extern "C" void LLVMRustPrintStatisticsJSON(RustStringRef OutBuf) {
+  auto OS = RawRustStringOstream(OutBuf);
+  llvm::PrintStatisticsJSON(OS);
+}
+
 // Some of the functions here rely on LLVM modules that may not always be
 // available. As such, we only try to build it in the first place, if
 // llvm.offload is enabled.

@@ -152,6 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
             )
         {
             let lint_span = stmt1_span.to(stmt2_span);
+            let ctxt = lint_span.ctxt();
 
             // if recv1.is_diag_item(cx, sym1) && .. {
             //     ..
@@ -161,8 +162,8 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
             // }
             if let Some(first @ (span1, (cx1, recv1, _))) = extract_nested_is_diag_item(cx, cond1)
                 && let Some(second @ (span2, (cx2, recv2, _))) = extract_nested_is_diag_item(cx, cond2)
-                && eq_expr_value(cx, cx1, cx2)
-                && eq_expr_value(cx, recv1, recv2)
+                && eq_expr_value(cx, ctxt, cx1, cx2)
+                && eq_expr_value(cx, ctxt, recv1, recv2)
             {
                 let recv_ty =
                     with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
@@ -208,8 +209,8 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
             // }
             if let Some(first @ (span1, (tcx1, did1, _))) = extract_nested_is_diagnostic_item(cx, cond1)
                 && let Some(second @ (span2, (tcx2, did2, _))) = extract_nested_is_diagnostic_item(cx, cond2)
-                && eq_expr_value(cx, tcx1, tcx2)
-                && eq_expr_value(cx, did1, did2)
+                && eq_expr_value(cx, ctxt, tcx1, tcx2)
+                && eq_expr_value(cx, ctxt, did1, did2)
             {
                 span_lint_and_then(
                     cx,
@@ -264,11 +265,13 @@ impl<'tcx> LateLintPass<'tcx> for RepeatedIsDiagnosticItem {
 }
 
 fn check_ors(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_>) {
+    let ctxt = span.ctxt();
+
     // recv1.is_diag_item(cx, sym1) || recv2.is_diag_item(cx, sym2)
     if let Some((cx1, recv1, sym1)) = extract_is_diag_item(cx, left)
         && let Some((cx2, recv2, sym2)) = extract_is_diag_item(cx, right)
-        && eq_expr_value(cx, cx1, cx2)
-        && eq_expr_value(cx, recv1, recv2)
+        && eq_expr_value(cx, ctxt, cx1, cx2)
+        && eq_expr_value(cx, ctxt, recv1, recv2)
     {
         let recv_ty =
             with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
@@ -300,8 +303,8 @@ fn check_ors(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_>
     // cx.tcx.is_diagnostic_item(sym1, did) || cx.tcx.is_diagnostic_item(sym2, did)
     if let Some((tcx1, did1, sym1)) = extract_is_diagnostic_item(cx, left)
         && let Some((tcx2, did2, sym2)) = extract_is_diagnostic_item(cx, right)
-        && eq_expr_value(cx, tcx1, tcx2)
-        && eq_expr_value(cx, did1, did2)
+        && eq_expr_value(cx, ctxt, tcx1, tcx2)
+        && eq_expr_value(cx, ctxt, did1, did2)
     {
         span_lint_and_then(
             cx,
@@ -328,11 +331,13 @@ fn check_ors(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_>
 }
 
 fn check_ands(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_>) {
+    let ctxt = span.ctxt();
+
     // !recv1.is_diag_item(cx, sym1) && !recv2.is_diag_item(cx, sym2)
     if let Some((cx1, recv1, sym1)) = extract_is_diag_item(cx, left)
         && let Some((cx2, recv2, sym2)) = extract_is_diag_item(cx, right)
-        && eq_expr_value(cx, cx1, cx2)
-        && eq_expr_value(cx, recv1, recv2)
+        && eq_expr_value(cx, ctxt, cx1, cx2)
+        && eq_expr_value(cx, ctxt, recv1, recv2)
     {
         let recv_ty =
             with_forced_trimmed_paths!(format!("{}", cx.typeck_results().expr_ty_adjusted(recv1).peel_refs()));
@@ -364,8 +369,8 @@ fn check_ands(cx: &LateContext<'_>, span: Span, left: &Expr<'_>, right: &Expr<'_
     // !cx.tcx.is_diagnostic_item(sym1, did) && !cx.tcx.is_diagnostic_item(sym2, did)
     if let Some((tcx1, did1, sym1)) = extract_is_diagnostic_item(cx, left)
         && let Some((tcx2, did2, sym2)) = extract_is_diagnostic_item(cx, right)
-        && eq_expr_value(cx, tcx1, tcx2)
-        && eq_expr_value(cx, did1, did2)
+        && eq_expr_value(cx, ctxt, tcx1, tcx2)
+        && eq_expr_value(cx, ctxt, did1, did2)
     {
         span_lint_and_then(
             cx,
@@ -400,9 +405,10 @@ fn check_if_chains<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, conds: Vec<&'t
     //     ..
     // }
     let mut found = conds.iter().filter_map(|cond| extract_nested_is_diag_item(cx, cond));
+    let ctxt = expr.span.ctxt();
     if let Some(first @ (_, (cx_1, recv1, _))) = found.next()
-        && let other =
-            found.filter(|(_, (cx_, recv, _))| eq_expr_value(cx, cx_, cx_1) && eq_expr_value(cx, recv, recv1))
+        && let other = found
+            .filter(|(_, (cx_, recv, _))| eq_expr_value(cx, ctxt, cx_, cx_1) && eq_expr_value(cx, ctxt, recv, recv1))
         && let results = iter::once(first).chain(other).collect::<Vec<_>>()
         && results.len() > 1
     {
@@ -457,7 +463,8 @@ fn check_if_chains<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, conds: Vec<&'t
         .into_iter()
         .filter_map(|cond| extract_nested_is_diagnostic_item(cx, cond));
     if let Some(first @ (_, (tcx1, did1, _))) = found.next()
-        && let other = found.filter(|(_, (tcx, did, _))| eq_expr_value(cx, tcx, tcx1) && eq_expr_value(cx, did, did1))
+        && let other =
+            found.filter(|(_, (tcx, did, _))| eq_expr_value(cx, ctxt, tcx, tcx1) && eq_expr_value(cx, ctxt, did, did1))
         && let results = iter::once(first).chain(other).collect::<Vec<_>>()
         && results.len() > 1
     {

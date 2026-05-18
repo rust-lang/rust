@@ -5,6 +5,7 @@ use std::iter;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::{NoSolution, OutlivesBound};
 use rustc_middle::ty;
+use rustc_span::Span;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -49,8 +50,9 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::PolyTypeOutlivesPredicate<'tcx>,
             SubregionOrigin<'tcx>,
         ) -> Result<ty::PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
+        span: Span,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        match self.process_registered_region_obligations(outlives_env, deeply_normalize_ty) {
+        match self.process_registered_region_obligations(outlives_env, deeply_normalize_ty, span) {
             Ok(()) => {}
             Err((clause, origin)) => {
                 return vec![RegionResolutionError::CannotNormalize(clause, origin)];

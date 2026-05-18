@@ -297,14 +297,14 @@ impl<'tcx> NonCopyConst<'tcx> {
                         IsFreeze::from_fields(
                             v.fields
                                 .iter()
-                                .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args))),
+                                .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args).skip_norm_wip())),
                         )
                     })),
                     // Workaround for `ManuallyDrop`-like unions.
                     ty::Adt(adt, args)
                         if adt.is_union()
                             && adt.non_enum_variant().fields.iter().any(|f| {
-                                tcx.layout_of(typing_env.as_query_input(f.ty(tcx, args)))
+                                tcx.layout_of(typing_env.as_query_input(f.ty(tcx, args).skip_norm_wip()))
                                     .is_ok_and(|l| l.layout.size().bytes() == 0)
                             }) =>
                     {
@@ -316,7 +316,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                         adt.non_enum_variant()
                             .fields
                             .iter()
-                            .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args))),
+                            .map(|f| self.is_ty_freeze(tcx, typing_env, f.ty(tcx, args).skip_norm_wip())),
                     ),
                     ty::Array(ty, _) | ty::Pat(ty, _) => self.is_ty_freeze(tcx, typing_env, ty),
                     ty::Tuple(tys) => {

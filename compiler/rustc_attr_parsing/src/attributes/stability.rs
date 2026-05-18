@@ -105,8 +105,7 @@ impl AttributeParser for StabilityParser {
                 let Some(nv) = cx.expect_name_value(args, cx.attr_span, None) else {
                     return;
                 };
-                let Some(value_str) = nv.value_as_str() else {
-                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                let Some(value_str) = cx.expect_string_literal(nv) else {
                     return;
                 };
                 this.allowed_through_unstable_modules = Some(value_str);
@@ -292,11 +291,7 @@ fn insert_value_into_option_or_error(
     }
 
     let (_ident, arg) = cx.expect_name_value(param, param.span(), Some(name.name))?;
-
-    let Some(s) = arg.value_as_str() else {
-        cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
-        return None;
-    };
+    let s = cx.expect_string_literal(arg)?;
 
     *item = Some(s);
 

@@ -332,8 +332,37 @@ impl<'tcx> SizeSkeleton<'tcx> {
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
+        span: Span,
+    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
+        Self::compute_inner(ty, tcx, typing_env, span, 0)
+    }
+
+    fn compute_inner(
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        span: Span,
+        depth: usize,
     ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
+
+        // Bail out if we've recursed too deeply (issue #156137); a cyclic type
+        // alias can otherwise blow the stack here. Using `>=` rather than `>`
+        // means we fire exactly at the limit, which lets us report the
+        // cycle-root type (`Thing<T>`) instead of an innocent field type.
+        let recursion_limit = tcx.recursion_limit();
+        if depth >= recursion_limit.0 {
+            let suggested_limit = match recursion_limit {
+                hir::limit::Limit(0) => hir::limit::Limit(2),
+                limit => limit * 2,
+            };
+            let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
+                span,
+                ty,
+                suggested_limit,
+            });
+            return Err(tcx.arena.alloc(LayoutError::ReferencesError(reported)));
+        }
 
         // First try computing a static layout.
         let err = match tcx.layout_of(typing_env.as_query_input(ty)) {
@@ -360,12 +389,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_raw_ptr();
 
+                tcx.assert_fully_normalized(typing_env, pointee);
                 let tail = tcx.struct_tail_raw(
                     pointee,
                     &ObligationCause::dummy(),
-                    |ty| match tcx
-                        .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
-                    {
+                    |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
                         Ok(ty) => ty,
                         Err(e) => Ty::new_error_with_message(
                             tcx,
@@ -407,7 +435,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     return Ok(SizeSkeleton::Known(Size::from_bytes(0), None));
                 }
 
-                match SizeSkeleton::compute(inner, tcx, typing_env)? {
+                match SizeSkeleton::compute_inner(inner, tcx, typing_env, span, depth + 1)? {
                     // This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
                     SizeSkeleton::Known(s, a) => {
@@ -434,10 +462,15 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 // Get a zero-sized variant or a pointer newtype.
                 let zero_or_ptr_variant = |i| {
                     let i = VariantIdx::from_usize(i);
-                    let fields =
-                        def.variant(i).fields.iter().map(|field| {
-                            SizeSkeleton::compute(field.ty(tcx, args), tcx, typing_env)
-                        });
+                    let fields = def.variant(i).fields.iter().map(|field| {
+                        SizeSkeleton::compute_inner(
+                            field.ty(tcx, args).skip_norm_wip(),
+                            tcx,
+                            typing_env,
+                            span,
+                            depth + 1,
+                        )
+                    });
                     let mut ptr = None;
                     for field in fields {
                         let field = field?;
@@ -487,13 +520,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 if ty == normalized {
                     Err(err)
                 } else {
-                    SizeSkeleton::compute(normalized, tcx, typing_env)
+                    SizeSkeleton::compute_inner(normalized, tcx, typing_env, span, depth + 1)
                 }
             }
 
             ty::Pat(base, pat) => {
                 // Pattern types are always the same size as their base.
-                let base = SizeSkeleton::compute(base, tcx, typing_env);
+                let base = SizeSkeleton::compute_inner(base, tcx, typing_env, span, depth + 1);
                 match *pat {
                     ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => base,
                     // But in the case of `!null` patterns we need to note that in the
@@ -528,12 +561,6 @@ pub trait HasTyCtxt<'tcx>: HasDataLayout {
 
 pub trait HasTypingEnv<'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx>;
-
-    /// FIXME(#132279): This method should not be used as in the future
-    /// everything should take a `TypingEnv` instead. Remove it as that point.
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.typing_env().param_env
-    }
 }
 
 impl<'tcx> HasDataLayout for TyCtxt<'tcx> {
@@ -754,8 +781,8 @@ where
                 tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
             }
 
-            Variants::Multiple { ref variants, .. } => {
-                cx.tcx().mk_layout(variants[variant_index].clone())
+            Variants::Multiple { .. } => {
+                cx.tcx().mk_layout(LayoutData::for_variant(&this, variant_index))
             }
         };
 
@@ -924,7 +951,7 @@ where
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
-                            TyMaybeWithLayout::Ty(field.ty(tcx, args))
+                            TyMaybeWithLayout::Ty(field.ty(tcx, args).skip_norm_wip())
                         }
                         Variants::Empty => panic!("there is no field in Variants::Empty types"),
 
@@ -1263,6 +1290,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         | RiscvInterruptM
         | RiscvInterruptS
         | RustInvalid
+        | Swift
         | Unadjusted => false,
         Rust | RustCall | RustCold | RustPreserveNone => tcx.sess.panic_strategy().unwinds(),
     }

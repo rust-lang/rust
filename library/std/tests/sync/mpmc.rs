@@ -419,34 +419,48 @@ fn oneshot_multi_thread_send_recv_stress() {
 
 #[test]
 fn stream_send_recv_stress() {
-    for _ in 0..stress_factor() {
-        let (tx, rx) = channel();
+    thread::scope(|s| {
+        for _ in 0..stress_factor() {
+            let (tx, rx) = channel();
 
-        send(tx, 0);
-        recv(rx, 0);
+            send(tx, 0, s);
+            recv(rx, 0, s);
 
-        fn send(tx: Sender<Box<i32>>, i: i32) {
-            if i == 10 {
-                return;
+            fn send<'scope, 'env>(
+                tx: Sender<Box<i32>>,
+                i: i32,
+                s: &'scope thread::Scope<'scope, 'env>,
+            ) where
+                'env: 'scope,
+            {
+                if i == 10 {
+                    return;
+                }
+
+                s.spawn(move || {
+                    tx.send(Box::new(i)).unwrap();
+                    send(tx, i + 1, s);
+                });
             }
 
-            thread::spawn(move || {
-                tx.send(Box::new(i)).unwrap();
-                send(tx, i + 1);
-            });
-        }
+            fn recv<'scope, 'env>(
+                rx: Receiver<Box<i32>>,
+                i: i32,
+                s: &'scope thread::Scope<'scope, 'env>,
+            ) where
+                'env: 'scope,
+            {
+                if i == 10 {
+                    return;
+                }
 
-        fn recv(rx: Receiver<Box<i32>>, i: i32) {
-            if i == 10 {
-                return;
+                s.spawn(move || {
+                    assert!(*rx.recv().unwrap() == i);
+                    recv(rx, i + 1, s);
+                });
             }
-
-            thread::spawn(move || {
-                assert!(*rx.recv().unwrap() == i);
-                recv(rx, i + 1);
-            });
         }
-    }
+    })
 }
 
 #[test]

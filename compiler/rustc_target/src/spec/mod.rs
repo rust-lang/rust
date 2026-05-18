@@ -2485,13 +2485,6 @@ pub struct TargetOptions {
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
-    /// The MinGW toolchain has a known issue that prevents it from correctly
-    /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
-    /// symbol needs its own COMDAT section, weak linkage implies a large
-    /// number sections that easily exceeds the given limit for larger
-    /// codebases. Consequently we want a way to disallow weak linkage on some
-    /// platforms.
-    pub allows_weak_linkage: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
     pub has_rpath: bool,
     /// Whether to disable linking to the default libraries, typically corresponds
@@ -2878,7 +2871,6 @@ impl Default for TargetOptions {
             is_like_vexos: false,
             binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
-            allows_weak_linkage: true,
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,

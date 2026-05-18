@@ -298,7 +298,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             error.code,
             FulfillmentErrorCode::Select(crate::traits::SelectionError::Unimplemented)
                 | FulfillmentErrorCode::Project(_)
-        ) && self.apply_do_not_recommend(&mut error.obligation)
+        ) && self.apply_do_not_recommend(&mut error.obligation, &error.root_obligation)
         {
             error.code = FulfillmentErrorCode::Select(SelectionError::Unimplemented);
         }

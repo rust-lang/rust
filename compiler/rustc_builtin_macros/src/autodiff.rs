@@ -75,7 +75,7 @@ mod llvm_enzyme {
     // Get information about the function the macro is applied to
     fn extract_item_info(iitem: &Box<ast::Item>) -> Option<(Visibility, FnSig, Ident, Generics)> {
         match &iitem.kind {
-            ItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => {
+            ItemKind::Fn(ast::Fn { sig, ident, generics, .. }) => {
                 Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
             }
             _ => None,
@@ -226,7 +226,7 @@ mod llvm_enzyme {
             },
             Annotatable::AssocItem(assoc_item, _ctxt @ (Impl { of_trait: _ } | Trait)) => {
                 match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => Some((
+                    ast::AssocItemKind::Fn(ast::Fn { sig, ident, generics, .. }) => Some((
                         assoc_item.vis.clone(),
                         sig.clone(),
                         ident.clone(),

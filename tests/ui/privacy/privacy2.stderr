@@ -20,6 +20,11 @@ note: ...and refers to the function `foo` which is defined here
    |
 LL | pub fn foo() {}
    | ^^^^^^^^^^^^ you could import this directly
+help: import `foo` directly
+   |
+LL -     use bar::glob::foo;
+LL +     use crate::foo;
+   |
 
 error: requires `sized` lang_item
   --> $DIR/privacy2.rs:17:14

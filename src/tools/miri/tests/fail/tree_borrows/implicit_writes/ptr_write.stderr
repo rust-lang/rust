@@ -20,7 +20,7 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
 LL | fn dereference<T>(x: T, y: *mut u8) -> T {
    |                   ^
    = note: stack backtrace:
-           0: dereference
+           0: dereference::<&mut u8>
                at tests/fail/tree_borrows/implicit_writes/ptr_write.rs:LL:CC
            1: main
                at tests/fail/tree_borrows/implicit_writes/ptr_write.rs:LL:CC

@@ -61,6 +61,14 @@ impl<T: ?Sized> FileDescriptionRef<T> {
     }
 }
 
+impl<T: ?Sized> PartialEq for FileDescriptionRef<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.id == other.0.id
+    }
+}
+
+impl<T: ?Sized> Eq for FileDescriptionRef<T> {}
+
 /// Holds a weak reference to the actual file description.
 #[derive(Debug)]
 pub struct WeakFileDescriptionRef<T: ?Sized>(Weak<FdIdWith<T>>);

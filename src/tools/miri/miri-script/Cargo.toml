@@ -1,5 +1,4 @@
 [package]
-authors = ["Miri Team"]
 description = "Helpers for miri maintenance"
 license = "MIT OR Apache-2.0"
 name = "miri-script"

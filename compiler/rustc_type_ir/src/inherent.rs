@@ -531,6 +531,18 @@ pub trait Clause<I: Interner<Clause = Self>>:
 {
     fn as_predicate(self) -> I::Predicate;
 
+    fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesPredicate<I, I::Ty>>> {
+        self.kind()
+            .map_bound(|clause| {
+                if let ty::ClauseKind::TypeOutlives(outlives) = clause {
+                    Some(outlives)
+                } else {
+                    None
+                }
+            })
+            .transpose()
+    }
+
     fn as_trait_clause(self) -> Option<ty::Binder<I, ty::TraitPredicate<I>>> {
         self.kind()
             .map_bound(|clause| if let ty::ClauseKind::Trait(t) = clause { Some(t) } else { None })
@@ -688,6 +700,12 @@ pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
     /// reevaluating a goal. For now, this is only when the number of non-duplicated
     /// entries changed.
     fn needs_reevaluation(self, canonicalized: usize) -> bool;
+}
+
+pub trait BoundVarKinds<I: Interner>:
+    Copy + Debug + Hash + Eq + SliceLike<Item = ty::BoundVariableKind<I>> + Default
+{
+    fn from_vars(cx: I, iter: impl IntoIterator<Item = ty::BoundVariableKind<I>>) -> Self;
 }
 
 pub trait SliceLike: Sized + Copy {

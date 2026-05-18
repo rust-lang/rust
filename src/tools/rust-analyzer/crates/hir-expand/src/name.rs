@@ -33,12 +33,14 @@ impl fmt::Debug for Name {
 }
 
 impl Ord for Name {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.symbol.as_str().cmp(other.symbol.as_str())
     }
 }
 
 impl PartialOrd for Name {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
@@ -46,74 +48,62 @@ impl PartialOrd for Name {
 
 // No need to strip `r#`, all comparisons are done against well-known symbols.
 impl PartialEq<Symbol> for Name {
+    #[inline]
     fn eq(&self, sym: &Symbol) -> bool {
         self.symbol == *sym
     }
 }
 
 impl PartialEq<&Symbol> for Name {
+    #[inline]
     fn eq(&self, &sym: &&Symbol) -> bool {
         self.symbol == *sym
     }
 }
 
 impl PartialEq<Name> for Symbol {
+    #[inline]
     fn eq(&self, name: &Name) -> bool {
         *self == name.symbol
     }
 }
 
 impl PartialEq<Name> for &Symbol {
+    #[inline]
     fn eq(&self, name: &Name) -> bool {
         **self == name.symbol
     }
 }
 
 impl Name {
+    #[inline]
     fn new_text(text: &str) -> Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
+    #[inline]
     pub fn new(text: &str, mut ctx: SyntaxContext) -> Name {
         // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
         // and we don't know which edition it came from.
         // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
         ctx.remove_root_edition();
         _ = ctx;
-        match text.strip_prefix("r#") {
-            Some(text) => Self::new_text(text),
-            None => Self::new_text(text),
-        }
+        let text = text.strip_prefix("r#").unwrap_or(text);
+        Self::new_text(text)
     }
 
+    #[inline]
     pub fn new_root(text: &str) -> Name {
         // The edition doesn't matter for hygiene.
         Self::new(text, SyntaxContext::root(Edition::Edition2015))
     }
 
+    #[inline]
     pub fn new_tuple_field(idx: usize) -> Name {
-        let symbol = match idx {
-            0 => sym::INTEGER_0,
-            1 => sym::INTEGER_1,
-            2 => sym::INTEGER_2,
-            3 => sym::INTEGER_3,
-            4 => sym::INTEGER_4,
-            5 => sym::INTEGER_5,
-            6 => sym::INTEGER_6,
-            7 => sym::INTEGER_7,
-            8 => sym::INTEGER_8,
-            9 => sym::INTEGER_9,
-            10 => sym::INTEGER_10,
-            11 => sym::INTEGER_11,
-            12 => sym::INTEGER_12,
-            13 => sym::INTEGER_13,
-            14 => sym::INTEGER_14,
-            15 => sym::INTEGER_15,
-            _ => Symbol::intern(&idx.to_string()),
-        };
-        Name { symbol, ctx: () }
+        Name::new_symbol_root(sym::Integer::get(idx))
     }
 
+    #[inline]
     pub fn new_lifetime(lt: &str) -> Name {
         match lt.strip_prefix("'r#") {
             Some(lt) => Self::new_text(&format_smolstr!("'{lt}")),
@@ -121,6 +111,7 @@ impl Name {
         }
     }
 
+    #[inline]
     pub fn new_symbol(symbol: Symbol, ctx: SyntaxContext) -> Self {
         debug_assert!(!symbol.as_str().starts_with("r#"));
         _ = ctx;
@@ -128,6 +119,7 @@ impl Name {
     }
 
     // FIXME: This needs to go once we have hygiene
+    #[inline]
     pub fn new_symbol_root(sym: Symbol) -> Self {
         Self::new_symbol(sym, SyntaxContext::root(Edition::Edition2015))
     }
@@ -141,6 +133,7 @@ impl Name {
     /// Ideally, we want a `gensym` semantics for missing names -- each missing
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
+    #[inline]
     pub const fn missing() -> Name {
         Name { symbol: sym::MISSING_NAME, ctx: () }
     }
@@ -150,23 +143,27 @@ impl Name {
     ///
     /// Use this method instead of comparing with `Self::missing()` as missing names
     /// (ideally should) have a `gensym` semantics.
+    #[inline]
     pub fn is_missing(&self) -> bool {
-        self == &Name::missing()
+        self.symbol == sym::MISSING_NAME
     }
 
     /// Generates a new name that attempts to be unique. Should only be used when body lowering and
     /// creating desugared locals and labels. The caller is responsible for picking an index
     /// that is stable across re-executions
+    #[inline]
     pub fn generate_new_name(idx: usize) -> Name {
-        Name::new_text(&format!("<ra@gennew>{idx}"))
+        Name::new_symbol_root(sym::RaGeneratedName::get(idx))
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.
+    #[inline]
     pub fn as_tuple_index(&self) -> Option<usize> {
-        self.symbol.as_str().parse().ok()
+        sym::Integer::as_uint(&self.symbol)
     }
 
     /// Whether this name needs to be escaped in the given edition via `r#`.
+    #[inline]
     pub fn needs_escape(&self, edition: Edition) -> bool {
         is_raw_identifier(self.symbol.as_str(), edition)
     }
@@ -175,10 +172,12 @@ impl Name {
     ///
     /// Do not use this for user-facing text, use `display` instead to handle editions properly.
     // FIXME: This should take a database argument to hide the interning
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.symbol.as_str()
     }
 
+    #[inline]
     pub fn display<'a>(
         &'a self,
         db: &dyn crate::db::ExpandDatabase,
@@ -190,14 +189,17 @@ impl Name {
 
     // FIXME: Remove this in favor of `display`, see fixme on `as_str`
     #[doc(hidden)]
+    #[inline]
     pub fn display_no_db(&self, edition: Edition) -> impl fmt::Display + '_ {
         Display { name: self, edition }
     }
 
+    #[inline]
     pub fn symbol(&self) -> &Symbol {
         &self.symbol
     }
 
+    #[inline]
     pub fn is_generated(&self) -> bool {
         self.as_str().starts_with("<ra@gennew>")
     }

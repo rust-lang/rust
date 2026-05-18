@@ -630,6 +630,11 @@ impl<'a> State<'a> {
                 );
                 self.word(".await");
             }
+            ast::ExprKind::Move(expr, _) => {
+                self.word("move(");
+                self.print_expr(expr, FixupContext::default());
+                self.word(")");
+            }
             ast::ExprKind::Use(expr, _) => {
                 self.print_expr_cond_paren(
                     expr,

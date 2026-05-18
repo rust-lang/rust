@@ -13,7 +13,7 @@ use crate::{
 
 pub(crate) fn complete_record_pattern_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     pattern_ctx: &PatternContext,
 ) {
     if let PatternContext { record_pat: Some(record_pat), .. } = pattern_ctx {
@@ -44,7 +44,7 @@ pub(crate) fn complete_record_pattern_fields(
 
 pub(crate) fn complete_record_expr_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     record_expr: &ast::RecordExpr,
     &dot_prefix: &bool,
 ) {
@@ -98,7 +98,7 @@ pub(crate) fn complete_record_expr_fields(
 
 pub(crate) fn add_default_update(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     ty: Option<&hir::TypeInfo<'_>>,
 ) {
     let default_trait = ctx.famous_defs().core_default_Default();
@@ -127,7 +127,7 @@ pub(crate) fn add_default_update(
 
 fn complete_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext<'_>,
+    ctx: &CompletionContext<'_, '_>,
     missing_fields: Vec<(hir::Field, hir::Type<'_>)>,
 ) {
     for (field, ty) in missing_fields {

@@ -7,7 +7,7 @@ use std::{
 
 use either::Either;
 use hir_def::{
-    expr_store::Body,
+    expr_store::ExpressionStore,
     hir::BindingId,
     signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
 };
@@ -15,6 +15,7 @@ use hir_expand::{Lookup, name::Name};
 use la_arena::ArenaMap;
 
 use crate::{
+    InferBodyId,
     db::{HirDatabase, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
     mir::{PlaceElem, ProjectionElem, StatementKind, TerminatorKind},
@@ -42,18 +43,18 @@ macro_rules! wln {
 
 impl MirBody {
     pub fn pretty_print(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
-        let hir_body = Body::of(db, self.owner);
+        let hir_body = ExpressionStore::of(db, self.owner.expression_store_owner(db));
         let mut ctx = MirPrettyCtx::new(self, hir_body, db, display_target);
         ctx.for_body(|this| match ctx.body.owner {
-            hir_def::DefWithBodyId::FunctionId(id) => {
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::FunctionId(id)) => {
                 let data = FunctionSignature::of(db, id);
                 w!(this, "fn {}() ", data.name.display(db, this.display_target.edition));
             }
-            hir_def::DefWithBodyId::StaticId(id) => {
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::StaticId(id)) => {
                 let data = StaticSignature::of(db, id);
                 w!(this, "static {}: _ = ", data.name.display(db, this.display_target.edition));
             }
-            hir_def::DefWithBodyId::ConstId(id) => {
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::ConstId(id)) => {
                 let data = ConstSignature::of(db, id);
                 w!(
                     this,
@@ -64,7 +65,7 @@ impl MirBody {
                         .display(db, this.display_target.edition)
                 );
             }
-            hir_def::DefWithBodyId::VariantId(id) => {
+            InferBodyId::DefWithBodyId(hir_def::DefWithBodyId::VariantId(id)) => {
                 let loc = id.lookup(db);
                 let edition = this.display_target.edition;
                 w!(
@@ -78,6 +79,7 @@ impl MirBody {
                         .display(db, edition),
                 )
             }
+            InferBodyId::AnonConstId(_) => w!(this, "{{const}}"),
         });
         ctx.result
     }
@@ -97,7 +99,7 @@ impl MirBody {
 
 struct MirPrettyCtx<'a, 'db> {
     body: &'a MirBody,
-    hir_body: &'a Body,
+    hir_body: &'a ExpressionStore,
     db: &'db dyn HirDatabase,
     result: String,
     indent: String,
@@ -160,7 +162,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         let result = mem::take(&mut self.result);
         let indent = mem::take(&mut self.indent);
         let mut ctx = MirPrettyCtx {
-            body: &body,
+            body,
             local_to_binding: body.local_to_binding_map(),
             result,
             indent,
@@ -184,7 +186,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
 
     fn new(
         body: &'a MirBody,
-        hir_body: &'a Body,
+        hir_body: &'a ExpressionStore,
         db: &'db dyn HirDatabase,
         display_target: DisplayTarget,
     ) -> Self {

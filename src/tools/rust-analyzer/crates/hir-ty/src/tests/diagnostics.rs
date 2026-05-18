@@ -1,6 +1,4 @@
-use crate::tests::check_no_mismatches;
-
-use super::check;
+use super::{check, check_no_mismatches};
 
 #[test]
 fn function_return_type_mismatch_1() {

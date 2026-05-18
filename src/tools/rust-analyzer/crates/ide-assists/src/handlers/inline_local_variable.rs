@@ -32,7 +32,7 @@ use crate::{
 //     (1 + 2) * 4;
 // }
 // ```
-pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let file_id = ctx.file_id();
     let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
@@ -724,6 +724,7 @@ fn foo() {
         check_assist(
             inline_local_variable,
             r"
+//- minicore: iterator
 fn foo() {
     let a$0 = vec![10, 20];
     for i in a {}

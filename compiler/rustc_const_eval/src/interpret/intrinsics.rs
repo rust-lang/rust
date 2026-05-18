@@ -1386,7 +1386,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            if field.ty(*self.tcx, substs).is_raw_ptr() {
+            if field.ty(*self.tcx, substs).skip_norm_wip().is_raw_ptr() {
                 return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
             }
         }

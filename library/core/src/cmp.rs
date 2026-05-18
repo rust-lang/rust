@@ -280,8 +280,9 @@ pub macro PartialEq($item:item) {
 /// The primary difference to [`PartialEq`] is the additional requirement for reflexivity. A type
 /// that implements [`PartialEq`] guarantees that for all `a`, `b` and `c`:
 ///
-/// - symmetric: `a == b` implies `b == a` and `a != b` implies `!(a == b)`
+/// - symmetric: `a == b` implies `b == a`
 /// - transitive: `a == b` and `b == c` implies `a == c`
+/// - consistent: `a != b` if and only if `!(a == b)`
 ///
 /// `Eq`, which builds on top of [`PartialEq`] also implies:
 ///

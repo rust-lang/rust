@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use ast::make;
 use either::Either;
 use hir::{
     FileRange, PathResolution, Semantics, TypeInfo,
@@ -8,22 +7,23 @@ use hir::{
     sym,
 };
 use ide_db::{
-    EditionedFileId, RootDatabase,
+    EditionedFileId, FileId, FxHashMap, RootDatabase,
     base_db::Crate,
     defs::Definition,
-    imports::insert_use::remove_path_if_in_use_stmt,
+    imports::insert_use::remove_use_tree_if_simple,
     path_transform::PathTransform,
     search::{FileReference, FileReferenceNode, SearchScope},
-    source_change::SourceChangeBuilder,
     syntax_helpers::{node_ext::expr_as_name_ref, prettify_macro_expansion},
 };
 use itertools::{Itertools, izip};
 use syntax::{
-    AstNode, NodeOrToken, SyntaxKind,
+    AstNode, NodeOrToken, SyntaxKind, TextRange,
     ast::{
-        self, HasArgList, HasGenericArgs, Pat, PathExpr, edit::IndentLevel, edit_in_place::Indent,
+        self, HasArgList, HasGenericArgs, Pat, PathExpr,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
     },
-    ted,
+    syntax_editor::SyntaxEditor,
 };
 
 use crate::{
@@ -69,7 +69,7 @@ use crate::{
 //     };
 // }
 // ```
-pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let def_file = ctx.file_id();
     let vfs_def_file = ctx.vfs_file_id();
     let name = ctx.find_node_at_offset::<ast::Name>()?;
@@ -106,37 +106,59 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let mut usages = usages.all();
             let current_file_usage = usages.references.remove(&def_file);
 
+            let mut file_editors: FxHashMap<FileId, SyntaxEditor> = FxHashMap::default();
             let mut remove_def = true;
             let mut inline_refs_for_file = |file_id: EditionedFileId, refs: Vec<FileReference>| {
                 let file_id = file_id.file_id(ctx.db());
                 builder.edit_file(file_id);
                 let call_krate = ctx.sema.file_to_module_def(file_id).map(|it| it.krate(ctx.db()));
                 let count = refs.len();
-                // The collects are required as we are otherwise iterating while mutating 🙅‍♀️🙅‍♂️
-                let (name_refs, name_refs_use) = split_refs_and_uses(builder, refs, Some);
+                let (name_refs, use_trees) = split_refs_and_uses(refs, Some);
                 let call_infos: Vec<_> = name_refs
                     .into_iter()
                     .filter_map(|it| CallInfo::from_name_ref(it, call_krate?.into()))
                     // FIXME: do not handle callsites in macros' parameters, because
                     // directly inlining into macros may cause errors.
                     .filter(|call_info| !ctx.sema.hir_file_for(call_info.node.syntax()).is_macro())
-                    .map(|call_info| {
-                        let mut_node = builder.make_syntax_mut(call_info.node.syntax().clone());
-                        (call_info, mut_node)
-                    })
                     .collect();
-                let replaced = call_infos
-                    .into_iter()
-                    .map(|(call_info, mut_node)| {
-                        let replacement =
-                            inline(&ctx.sema, def_file, function, &func_body, &params, &call_info);
-                        ted::replace(mut_node, replacement.syntax());
-                    })
-                    .count();
-                if replaced + name_refs_use.len() == count {
-                    // we replaced all usages in this file, so we can remove the imports
-                    name_refs_use.iter().for_each(remove_path_if_in_use_stmt);
-                } else {
+
+                // Skip calls nested inside other calls being inlined to avoid overlapping
+                // edits. Nested calls are implicitly replaced when the outer call is inlined.
+                let all_ranges: Vec<TextRange> =
+                    call_infos.iter().map(|ci| ci.node.syntax().text_range()).collect();
+                let (call_infos, nested_infos): (Vec<_>, Vec<_>) =
+                    call_infos.into_iter().partition(|ci| {
+                        let r = ci.node.syntax().text_range();
+                        !all_ranges.iter().any(|&other| other != r && other.contains_range(r))
+                    });
+                let nested_count = nested_infos.len();
+
+                let anchor = call_infos
+                    .first()
+                    .map(|ci| ci.node.syntax().clone())
+                    .or_else(|| use_trees.first().map(|ut| ut.syntax().clone()));
+                if let Some(anchor) = anchor {
+                    let editor =
+                        file_editors.entry(file_id).or_insert_with(|| builder.make_editor(&anchor));
+                    let replaced = call_infos
+                        .into_iter()
+                        .map(|call_info| {
+                            let replacement = inline(
+                                &ctx.sema, def_file, function, &func_body, &params, &call_info,
+                                editor,
+                            );
+                            editor.replace(call_info.node.syntax(), replacement.syntax());
+                        })
+                        .count();
+                    if replaced + nested_count + use_trees.len() == count {
+                        // we replaced all usages in this file, so we can remove the imports
+                        for use_tree in &use_trees {
+                            remove_use_tree_if_simple(use_tree, editor);
+                        }
+                    } else {
+                        remove_def = false;
+                    }
+                } else if use_trees.len() != count {
                     remove_def = false;
                 }
             };
@@ -148,24 +170,29 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 None => builder.edit_file(vfs_def_file),
             }
             if remove_def {
-                builder.delete(ast_func.syntax().text_range());
+                let editor = file_editors
+                    .entry(vfs_def_file)
+                    .or_insert_with(|| builder.make_editor(ast_func.syntax()));
+                editor.delete(ast_func.syntax());
+            }
+            for (file_id, editor) in file_editors {
+                builder.add_file_edits(file_id, editor);
             }
         },
     )
 }
 
 pub(super) fn split_refs_and_uses<T: ast::AstNode>(
-    builder: &mut SourceChangeBuilder,
     iter: impl IntoIterator<Item = FileReference>,
     mut map_ref: impl FnMut(ast::NameRef) -> Option<T>,
-) -> (Vec<T>, Vec<ast::Path>) {
+) -> (Vec<T>, Vec<ast::UseTree>) {
     iter.into_iter()
         .filter_map(|file_ref| match file_ref.name {
             FileReferenceNode::NameRef(name_ref) => Some(name_ref),
             _ => None,
         })
         .filter_map(|name_ref| match name_ref.syntax().ancestors().find_map(ast::UseTree::cast) {
-            Some(use_tree) => builder.make_mut(use_tree).path().map(Either::Right),
+            Some(use_tree) => Some(Either::Right(use_tree)),
             None => map_ref(name_ref).map(Either::Left),
         })
         .partition_map(|either| either)
@@ -192,7 +219,7 @@ pub(super) fn split_refs_and_uses<T: ast::AstNode>(
 //         };
 // }
 // ```
-pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
     let call_info = CallInfo::from_name_ref(
         name_ref.clone(),
@@ -235,14 +262,11 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
     let syntax = call_info.node.syntax().clone();
     acc.add(AssistId::refactor_inline("inline_call"), label, syntax.text_range(), |builder| {
-        let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
-        builder.replace_ast(
-            match call_info.node {
-                ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
-                ast::CallableExpr::MethodCall(it) => ast::Expr::MethodCallExpr(it),
-            },
-            replacement,
-        );
+        let editor = builder.make_editor(call_info.node.syntax());
+        let replacement =
+            inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info, &editor);
+        editor.replace(call_info.node.syntax(), replacement.syntax());
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
@@ -318,21 +342,25 @@ fn inline(
     fn_body: &ast::BlockExpr,
     params: &[(ast::Pat, Option<ast::Type>, hir::Param<'_>)],
     CallInfo { node, arguments, generic_arg_list, krate }: &CallInfo,
+    file_editor: &SyntaxEditor,
 ) -> ast::Expr {
+    let make = file_editor.make();
     let file_id = sema.hir_file_for(fn_body.syntax());
-    let mut body = if let Some(macro_file) = file_id.macro_file() {
+    let body_to_clone = if let Some(macro_file) = file_id.macro_file() {
         cov_mark::hit!(inline_call_defined_in_macro);
         let span_map = sema.db.expansion_span_map(macro_file);
         let body_prettified =
-            prettify_macro_expansion(sema.db, fn_body.syntax().clone(), &span_map, *krate);
-        if let Some(body) = ast::BlockExpr::cast(body_prettified) {
-            body
-        } else {
-            fn_body.clone_for_update()
-        }
+            prettify_macro_expansion(sema.db, fn_body.syntax().clone(), span_map, *krate);
+        if let Some(body) = ast::BlockExpr::cast(body_prettified) { body } else { fn_body.clone() }
     } else {
-        fn_body.clone_for_update()
+        fn_body.clone()
     };
+
+    // Capture before `with_ast_node` re-roots and loses the source-relative position.
+    let mut original_body_indent = IndentLevel::from_node(body_to_clone.syntax());
+    let body_offset = body_to_clone.syntax().text_range().start();
+    let (editor, body) = SyntaxEditor::with_ast_node(&body_to_clone);
+
     let usages_for_locals = |local| {
         Definition::Local(local)
             .usages(sema)
@@ -355,7 +383,7 @@ fn inline(
                     .map(|FileReference { name, range, .. }| match name {
                         FileReferenceNode::NameRef(_) => body
                             .syntax()
-                            .covering_element(range)
+                            .covering_element(range - body_offset)
                             .ancestors()
                             .nth(3)
                             .and_then(ast::PathExpr::cast),
@@ -368,48 +396,60 @@ fn inline(
         })
         .collect();
 
-    if function.self_param(sema.db).is_some() {
-        let this = || {
-            make::name_ref("this")
-                .syntax()
-                .clone_for_update()
-                .first_token()
-                .expect("NameRef should have had a token.")
-        };
-        if let Some(self_local) = params[0].2.as_local(sema.db) {
-            usages_for_locals(self_local)
-                .filter_map(|FileReference { name, range, .. }| match name {
-                    FileReferenceNode::NameRef(_) => Some(body.syntax().covering_element(range)),
-                    _ => None,
-                })
-                .for_each(|usage| {
-                    ted::replace(usage, this());
-                });
-        }
-    }
+    let has_self_param = function.self_param(sema.db).is_some();
 
-    // We should place the following code after last usage of `usages_for_locals`
-    // because `ted::replace` will change the offset in syntax tree, which makes
-    // `FileReference` incorrect
+    // Collect all self token usages upfront (needed when a let binding is emitted).
+    // When self can be directly inlined, the parameter loop handles those PathExprs;
+    // when a let stmt is needed, we rename all self tokens to `this` here.
+    let self_token_usages: Vec<_> = if has_self_param {
+        params[0]
+            .2
+            .as_local(sema.db)
+            .map(|self_local| {
+                usages_for_locals(self_local)
+                    .filter_map(|FileReference { name, range, .. }| match name {
+                        FileReferenceNode::NameRef(_) => {
+                            Some(body.syntax().covering_element(range - body_offset))
+                        }
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    // Replace `Self` type keywords with the actual impl type
     if let Some(imp) =
         sema.ancestors_with_macros(fn_body.syntax().clone()).find_map(ast::Impl::cast)
         && !node.syntax().ancestors().any(|anc| &anc == imp.syntax())
         && let Some(t) = imp.self_ty()
     {
-        while let Some(self_tok) = body
+        let self_tokens: Vec<_> = body
             .syntax()
             .descendants_with_tokens()
             .filter_map(NodeOrToken::into_token)
-            .find(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
-        {
-            let replace_with = t.clone_subtree().syntax().clone_for_update();
-            if !is_in_type_path(&self_tok)
-                && let Some(ty) = ast::Type::cast(replace_with.clone())
-                && let Some(generic_arg_list) = ty.generic_arg_list()
+            .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+            .collect();
+        for self_tok in self_tokens {
+            let replace_with = if !is_in_type_path(&self_tok)
+                && let Some(generic_arg_list) = t.generic_arg_list()
             {
-                ted::remove(generic_arg_list.syntax());
-            }
-            ted::replace(self_tok, replace_with);
+                // Strip the outer generic arg list and reparse, since turbofish-less
+                // generics aren't valid in expression position. The outermost
+                // `GenericArgList` text is unique within `t`'s text (any inner generics
+                // are nested inside it), so `replacen(.., 1)` is safe.
+                let stripped = t.syntax().text().to_string().replacen(
+                    &generic_arg_list.syntax().text().to_string(),
+                    "",
+                    1,
+                );
+                editor.make().ty(&stripped).syntax().clone()
+            } else {
+                t.syntax().clone()
+            };
+            editor.replace(self_tok, replace_with);
         }
     }
 
@@ -428,7 +468,19 @@ fn inline(
         }
     }
 
-    let mut let_stmts = Vec::new();
+    let mut let_stmts: Vec<ast::Stmt> = Vec::new();
+
+    let this_token = editor
+        .make()
+        .name_ref("this")
+        .syntax()
+        .first_token()
+        .expect("NameRef should have had a token.");
+    let rewrite_self_to_this = |editor: &SyntaxEditor| {
+        for usage in &self_token_usages {
+            editor.replace(usage.clone(), this_token.clone());
+        }
+    };
 
     // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
     for ((pat, param_ty, param), usages, expr) in izip!(params, param_use_nodes, arguments) {
@@ -444,7 +496,7 @@ fn inline(
                     let param_ty_prettified = prettify_macro_expansion(
                         sema.db,
                         param_ty.syntax().clone(),
-                        &span_map,
+                        span_map,
                         *krate,
                     );
                     ast::Type::cast(param_ty_prettified).unwrap_or(param_ty)
@@ -458,7 +510,7 @@ fn inline(
             let is_self = param.name(sema.db).is_some_and(|name| name == sym::self_);
 
             if is_self {
-                let mut this_pat = make::ident_pat(false, false, make::name("this"));
+                let mut this_pat = make.ident_pat(false, false, make.name("this"));
                 let mut expr = expr.clone();
                 if let Pat::IdentPat(pat) = pat {
                     match (pat.ref_token(), pat.mut_token()) {
@@ -466,11 +518,11 @@ fn inline(
                         (None, None) => {}
                         // mut self => let mut this = obj
                         (None, Some(_)) => {
-                            this_pat = make::ident_pat(false, true, make::name("this"));
+                            this_pat = make.ident_pat(false, true, make.name("this"));
                         }
                         // &self => let this = &obj
                         (Some(_), None) => {
-                            expr = make::expr_ref(expr, false);
+                            expr = make.expr_ref(expr, false);
                         }
                         // let foo = &mut X; &mut self => let this = &mut obj
                         // let mut foo = X;  &mut self => let this = &mut *obj (reborrow)
@@ -479,35 +531,38 @@ fn inline(
                                 .type_of_expr(&expr)
                                 .map(|ty| ty.original.is_mutable_reference());
                             expr = if let Some(true) = should_reborrow {
-                                make::expr_reborrow(expr)
+                                make.expr_reborrow(expr)
                             } else {
-                                make::expr_ref(expr, true)
+                                make.expr_ref(expr, true)
                             };
                         }
                     }
                 };
-                let_stmts
-                    .push(make::let_stmt(this_pat.into(), ty, Some(expr)).clone_for_update().into())
+                let_stmts.push(make.let_stmt(this_pat.into(), ty, Some(expr)).into())
             } else {
-                let_stmts.push(
-                    make::let_stmt(pat.clone(), ty, Some(expr.clone())).clone_for_update().into(),
-                );
+                let_stmts.push(make.let_stmt(pat.clone(), ty, Some(expr.clone())).into());
             }
         };
+
+        let is_self_param =
+            has_self_param && param.name(sema.db).is_some_and(|name| name == sym::self_);
 
         // check if there is a local var in the function that conflicts with parameter
         // if it does then emit a let statement and continue
         if func_let_vars.contains(&expr.syntax().text().to_string()) {
+            if is_self_param {
+                rewrite_self_to_this(&editor);
+            }
             insert_let_stmt();
             continue;
         }
 
-        let inline_direct = |usage, replacement: &ast::Expr| {
+        let inline_direct = |editor: &SyntaxEditor, usage: &PathExpr, replacement: &ast::Expr| {
             if let Some(field) = path_expr_as_record_field(usage) {
                 cov_mark::hit!(inline_call_inline_direct_field);
-                field.replace_expr(replacement.clone_for_update());
+                field.replace_expr(editor, replacement.clone());
             } else {
-                ted::replace(usage.syntax(), replacement.syntax().clone_for_update());
+                editor.replace(usage.syntax(), replacement.syntax());
             }
         };
 
@@ -518,66 +573,74 @@ fn inline(
                     && usage.syntax().parent().and_then(ast::Expr::cast).is_some() =>
             {
                 cov_mark::hit!(inline_call_inline_closure);
-                let expr = make::expr_paren(expr.clone()).into();
-                inline_direct(usage, &expr);
+                let expr = editor.make().expr_paren(expr.clone()).into();
+                inline_direct(&editor, usage, &expr);
             }
             // inline single use literals
             [usage] if matches!(expr, ast::Expr::Literal(_)) => {
                 cov_mark::hit!(inline_call_inline_literal);
-                inline_direct(usage, expr);
+                inline_direct(&editor, usage, expr);
             }
             // inline direct local arguments
             [_, ..] if expr_as_name_ref(expr).is_some() => {
                 cov_mark::hit!(inline_call_inline_locals);
-                usages.iter().for_each(|usage| inline_direct(usage, expr));
+                usages.iter().for_each(|usage| inline_direct(&editor, usage, expr));
             }
             // can't inline, emit a let statement
             _ => {
+                if is_self_param {
+                    // Rename all `self` tokens to `this` so the let binding matches.
+                    rewrite_self_to_this(&editor);
+                }
                 insert_let_stmt();
             }
         }
     }
 
+    // Apply all edits to get the transformed body
+    let edit = editor.finish();
+    let mut body = ast::BlockExpr::cast(edit.new_root().clone())
+        .expect("editor root should still be a BlockExpr");
+
+    // Apply generic substitution (needs immutable tree)
     if let Some(generic_arg_list) = generic_arg_list.clone()
         && let Some((target, source)) = &sema.scope(node.syntax()).zip(sema.scope(fn_body.syntax()))
-    {
-        body.reindent_to(IndentLevel(0));
-        if let Some(new_body) = ast::BlockExpr::cast(
+        && let Some(new_body) = ast::BlockExpr::cast(
             PathTransform::function_call(target, source, function, generic_arg_list)
                 .apply(body.syntax()),
-        ) {
-            body = new_body;
-        }
+        )
+    {
+        body = new_body;
     }
 
     let is_async_fn = function.is_async(sema.db);
     if is_async_fn {
         cov_mark::hit!(inline_call_async_fn);
-        body = make::async_move_block_expr(body.statements(), body.tail_expr()).clone_for_update();
+        body = make.async_move_block_expr(body.statements(), body.tail_expr());
 
         // Arguments should be evaluated outside the async block, and then moved into it.
         if !let_stmts.is_empty() {
             cov_mark::hit!(inline_call_async_fn_with_let_stmts);
-            body.indent(IndentLevel(1));
-            body = make::block_expr(let_stmts, Some(body.into())).clone_for_update();
+            body = body.indent(IndentLevel(1));
+            body = make.block_expr(let_stmts, Some(body.into()));
         }
-    } else if let Some(stmt_list) = body.stmt_list() {
-        let position = stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing.");
-        let_stmts.into_iter().rev().for_each(|let_stmt| {
-            ted::insert(ted::Position::after(position.clone()), let_stmt.syntax().clone());
-        });
+    } else if !let_stmts.is_empty() {
+        // Prepend let statements to the body's existing statements
+        let stmts: Vec<ast::Stmt> = let_stmts.into_iter().chain(body.statements()).collect();
+        body = make.block_expr(stmts, body.tail_expr());
+        original_body_indent = IndentLevel(0);
     }
 
     let original_indentation = match node {
         ast::CallableExpr::Call(it) => it.indent_level(),
         ast::CallableExpr::MethodCall(it) => it.indent_level(),
     };
-    body.reindent_to(original_indentation);
+    body = body.dedent(original_body_indent).indent(original_indentation);
 
     let no_stmts = body.statements().next().is_none();
     match body.tail_expr() {
         Some(expr) if matches!(expr, ast::Expr::ClosureExpr(_)) && no_stmts => {
-            make::expr_paren(expr).clone_for_update().into()
+            make.expr_paren(expr).into()
         }
         Some(expr) if !is_async_fn && no_stmts => expr,
         _ => match node
@@ -587,7 +650,7 @@ fn inline(
             .and_then(|bin_expr| bin_expr.lhs())
         {
             Some(lhs) if lhs.syntax() == node.syntax() => {
-                make::expr_paren(ast::Expr::BlockExpr(body)).clone_for_update().into()
+                make.expr_paren(ast::Expr::BlockExpr(body)).into()
             }
             _ => ast::Expr::BlockExpr(body),
         },
@@ -1503,8 +1566,11 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn(async move {
-        bar(42).await * 2
+    spawn({
+        let arg = 42;
+        async move {
+            bar(arg).await * 2
+        }
     });
 }
 "#,
@@ -1535,9 +1601,12 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn(async move {
-        bar(42).await;
-        42
+    spawn({
+        let arg = 42;
+        async move {
+            bar(arg).await;
+            42
+        }
     });
 }
 "#,
@@ -1572,10 +1641,11 @@ fn spawn<T>(_: T) {}
 fn main() {
     let var = 42;
     spawn({
+        let x = var;
         let y = var + 1;
         let z: &u32 = &var;
         async move {
-            bar(var).await;
+            bar(x).await;
             y + y + *z
         }
     });
@@ -1863,6 +1933,28 @@ fn _hash2(self_: &u64, state: &mut u64) {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn inline_callers_nested_calls() {
+        check_assist(
+            inline_into_callers,
+            r#"
+fn id$0(x: u32) -> u32 { x }
+fn main() {
+    let x = id(id(1));
+}
+"#,
+            r#"
+
+fn main() {
+    let x = {
+        let x = id(1);
+        x
+    };
+}
+"#,
+        );
     }
 
     #[test]

@@ -1,0 +1,70 @@
+error[E0407]: method `drop` is not a member of trait `HasDrop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:26:5
+   |
+LL |     fn drop(&pin mut self) {}
+   |     ^^^----^^^^^^^^^^^^^^^^^^
+   |     |  |
+   |     |  help: there is an associated function with a similar name: `drop`
+   |     not a member of trait `HasDrop`
+
+error[E0407]: method `drop` is not a member of trait `HasPinnedDropReceiver`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:36:5
+   |
+LL |     fn drop(&pin mut self) {}
+   |     ^^^----^^^^^^^^^^^^^^^^^^
+   |     |  |
+   |     |  help: there is an associated function with a similar name: `drop`
+   |     not a member of trait `HasPinnedDropReceiver`
+
+error: method `drop` with `&pin mut self` is only supported for the `Drop` trait
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:16:5
+   |
+LL |     fn drop(&pin mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ not a `Drop::pin_drop` implementation
+
+error: method `drop` with `&pin mut self` is only supported for the `Drop` trait
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:57:9
+   |
+LL |         fn drop(&pin mut self) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ not a `Drop::pin_drop` implementation
+
+error[E0046]: not all trait items implemented, missing: `pin_drop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:14:1
+   |
+LL |     fn pin_drop(self: Pin<&mut Self>);
+   |     ---------------------------------- `pin_drop` from trait
+...
+LL | impl NeedsPinDrop for S {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ missing `pin_drop` in implementation
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:24:1
+   |
+LL |     fn drop(self: Pin<&mut Self>);
+   |     ------------------------------ `drop` from trait
+...
+LL | impl HasDrop for S {
+   | ^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+
+error[E0046]: not all trait items implemented, missing: `drop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:34:1
+   |
+LL |     fn drop(self: &pin mut Self);
+   |     ----------------------------- `drop` from trait
+...
+LL | impl HasPinnedDropReceiver for S {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `drop` in implementation
+
+error[E0046]: not all trait items implemented, missing: `pin_drop`
+  --> $DIR/pinned-drop-sugar-not-other-traits.rs:55:5
+   |
+LL |         fn pin_drop(self: Pin<&mut Self>);
+   |         ---------------------------------- `pin_drop` from trait
+...
+LL |     impl Drop for S {
+   |     ^^^^^^^^^^^^^^^ missing `pin_drop` in implementation
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0046, E0407.
+For more information about an error, try `rustc --explain E0046`.

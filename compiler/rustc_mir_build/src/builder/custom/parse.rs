@@ -53,7 +53,7 @@ macro_rules! parse_by_kind {
                 } => $call_expr,
             )*
             $(
-                ExprKind::Adt(box AdtExpr { adt_def, variant_index, .. }) if {
+                ExprKind::Adt(AdtExpr { adt_def, variant_index, .. }) if {
                     $self.tcx.is_diagnostic_item(rustc_span::sym::$adt, adt_def.did()) &&
                     adt_def.variants()[*variant_index].name == rustc_span::sym::$variant
                 } => $variant_expr,

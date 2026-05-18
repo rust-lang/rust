@@ -32,7 +32,7 @@ use crate::assist_context::{AssistContext, Assists};
 //     let country = Countries::Lesotho;
 // }
 // ```
-pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     let parent = PathParent::new(&path)?;
 
@@ -104,7 +104,7 @@ impl PathParent {
 
     fn make_field_list(
         &self,
-        ctx: &AssistContext<'_>,
+        ctx: &AssistContext<'_, '_>,
         make: &SyntaxFactory,
     ) -> Option<ast::FieldList> {
         let scope = ctx.sema.scope(self.syntax())?;
@@ -156,7 +156,7 @@ fn name_from_field_shorthand(field: &ast::RecordExprField) -> Option<String> {
 }
 
 fn expr_ty(
-    ctx: &AssistContext<'_>,
+    ctx: &AssistContext<'_, '_>,
     make: &SyntaxFactory,
     arg: ast::Expr,
     scope: &hir::SemanticsScope<'_>,

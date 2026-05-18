@@ -124,6 +124,25 @@ async fn test() {
 }
 
 #[test]
+fn infer_async_gen_closure() {
+    check(
+        r#"
+//- minicore: async_iterator, fn, add, builtin_impls
+//- /main.rs edition:2024
+fn test() {
+    let f = async gen move |x: i32| {
+        yield x + 42;
+            //^^^^^^ expected Poll<Option<{unknown}>>, got i32
+    };
+    let a = f(4);
+    a;
+//  ^ type: impl AsyncIterator<Item = {unknown}>
+}
+"#,
+    );
+}
+
+#[test]
 fn auto_sized_async_block() {
     check_no_mismatches(
         r#"
@@ -1271,7 +1290,6 @@ fn bar() {
             241..245 'R::B': fn B<(), i32>(i32) -> R<(), i32>
             241..248 'R::B(7)': R<(), i32>
             246..247 '7': i32
-            46..47 '2': usize
         "#]],
     );
 }
@@ -3783,8 +3801,6 @@ fn main() {
             371..373 'v4': usize
             376..378 'v3': [u8; 4]
             376..389 'v3.do_thing()': usize
-            86..87 '4': usize
-            192..193 '2': usize
         "#]],
     )
 }
@@ -3824,9 +3840,6 @@ fn main() {
             240..242 'v2': [u8; 2]
             245..246 'v': [u8; 2]
             245..257 'v.do_thing()': [u8; 2]
-            130..131 'L': usize
-            102..103 'L': usize
-            130..131 'L': usize
         "#]],
     )
 }
@@ -4911,6 +4924,7 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
     "#,
         expect![[r#"
             37..38 'a': T
+            37..38 'a': T
             43..83 '{     ...ait; }': ()
             53..57 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             60..61 'a': T
@@ -4919,6 +4933,7 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             70..74 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             70..80 'fut1.await': i32
             124..129 'mut b': T
+            124..129 'mut b': T
             134..174 '{     ...ait; }': ()
             144..148 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             151..152 'b': T
@@ -4926,6 +4941,7 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             153..154 '0': u32
             161..165 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             161..171 'fut2.await': i32
+            216..217 'c': T
             216..217 'c': T
             222..262 '{     ...ait; }': ()
             232..236 'fut3': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture

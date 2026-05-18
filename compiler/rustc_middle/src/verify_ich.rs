@@ -6,7 +6,7 @@ use rustc_session::utils::was_invoked_from_cargo;
 use tracing::instrument;
 
 use crate::dep_graph::{DepGraphData, SerializedDepNodeIndex};
-use crate::ich::StableHashingContext;
+use crate::ich::StableHashState;
 use crate::ty::TyCtxt;
 
 #[inline]
@@ -16,7 +16,7 @@ pub fn incremental_verify_ich<'tcx, V>(
     dep_graph_data: &DepGraphData,
     result: &V,
     prev_index: SerializedDepNodeIndex,
-    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+    hash_result: Option<fn(&mut StableHashState<'_>, &V) -> Fingerprint>,
     format_value: fn(&V) -> String,
 ) {
     if !dep_graph_data.is_index_green(prev_index) {

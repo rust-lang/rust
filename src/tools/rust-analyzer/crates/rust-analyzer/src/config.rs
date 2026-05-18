@@ -627,6 +627,11 @@ config_data! {
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
 
+        /// Automatically add `::` when completing the module.
+        ///
+        /// Will not be completed in `use`.
+        completion_addColonsToModule: bool = true,
+
         /// Automatically add a semicolon when completing unit-returning functions.
         ///
         /// In `match` arms it completes a comma instead.
@@ -1901,6 +1906,7 @@ impl Config {
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
+            add_colons_to_module: *self.completion_addColonsToModule(source_root),
             add_semicolon_to_unit: *self.completion_addSemicolonToUnit(source_root),
             snippet_cap: SnippetCap::new(self.completion_snippet()),
             insert_use: self.insert_use_config(source_root),

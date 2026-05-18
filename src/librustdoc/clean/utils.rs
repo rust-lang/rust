@@ -5,6 +5,7 @@ use std::{ascii, mem};
 
 use rustc_ast as ast;
 use rustc_ast::join_path_idents;
+use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
@@ -585,38 +586,77 @@ pub(crate) static RUSTDOC_VERSION: Lazy<&'static str> =
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.
-fn render_macro_arms<'a>(
+fn render_macro_arms(
     tcx: TyCtxt<'_>,
-    matchers: impl Iterator<Item = &'a TokenTree>,
+    tokens: &rustc_ast::tokenstream::TokenStream,
     arm_delim: &str,
 ) -> String {
+    let mut tokens = tokens.iter();
     let mut out = String::new();
-    for matcher in matchers {
+    while let Some(mut token) = tokens.next() {
+        // If this an attr/derive rule, it looks like `attr() () => {}`, so the token needs to be
+        // handled at the same time as the actual matcher.
+        //
+        // Without that, we would end up with `attr()` on one line and the matcher `()` on another.
+        let pre = if matches!(token, TokenTree::Token(..)) {
+            let pre = format!("{}() ", render_macro_matcher(tcx, token));
+            // Skipping the always empty `()` following the attr/derive ident.
+            tokens.next();
+            let Some(next) = tokens.next() else {
+                return out;
+            };
+            token = next;
+            pre
+        } else {
+            String::new()
+        };
         writeln!(
             out,
-            "    {matcher} => {{ ... }}{arm_delim}",
-            matcher = render_macro_matcher(tcx, matcher),
+            "    {pre}{matcher} => {{ ... }}{arm_delim}",
+            matcher = render_macro_matcher(tcx, token),
         )
         .unwrap();
+        // We skip the `=>`, macro "body" and the delimiter closing that "body" since we don't
+        // render them.
+        let _token = tokens.next();
+        // The `=>`.
+        debug_assert_matches!(
+            _token,
+            Some(TokenTree::Token(Token { kind: TokenKind::FatArrow, .. }, _))
+        );
+        let _token = tokens.next();
+        // The arm body.
+        debug_assert_matches!(_token, Some(TokenTree::Delimited(..)));
+        // The delimiter (which may be omitted on the last arm's body).
+        let _token = tokens.next();
+        debug_assert_matches!(_token, None | Some(TokenTree::Token(Token { .. }, _)));
     }
     out
 }
 
 pub(super) fn display_macro_source(tcx: TyCtxt<'_>, name: Symbol, def: &ast::MacroDef) -> String {
     // Extract the spans of all matchers. They represent the "interface" of the macro.
-    let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
-
     if def.macro_rules {
-        format!("macro_rules! {name} {{\n{arms}}}", arms = render_macro_arms(tcx, matchers, ";"))
+        format!(
+            "macro_rules! {name} {{\n{arms}}}",
+            arms = render_macro_arms(tcx, &def.body.tokens, ";")
+        )
     } else {
-        if matchers.len() <= 1 {
+        if def.body.tokens.len() <= 4 {
             format!(
                 "macro {name}{matchers} {{\n    ...\n}}",
-                matchers =
-                    matchers.map(|matcher| render_macro_matcher(tcx, matcher)).collect::<String>(),
+                matchers = def
+                    .body
+                    .tokens
+                    .get(0)
+                    .map(|matcher| render_macro_matcher(tcx, matcher))
+                    .unwrap_or_default(),
             )
         } else {
-            format!("macro {name} {{\n{arms}}}", arms = render_macro_arms(tcx, matchers, ","))
+            format!(
+                "macro {name} {{\n{arms}}}",
+                arms = render_macro_arms(tcx, &def.body.tokens, ",")
+            )
         }
     }
 }
