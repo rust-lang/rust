@@ -719,7 +719,7 @@ pub type RawOsError = cfg_select! {
 ///
 /// It is used with the [`io::Error`][error] type.
 ///
-/// [error]: ../../std/io/struct.Error.html
+/// [error]: Error
 ///
 /// # Handling errors and matching on `ErrorKind`
 ///
@@ -949,7 +949,7 @@ pub enum ErrorKind {
     /// error kinds cannot be `match`ed on, and will only match a wildcard (`_`) pattern.
     /// New [`ErrorKind`]s might be added in the future for some of those.
     ///
-    /// [error]: ../../std/io/struct.Error.html
+    /// [error]: Error
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
