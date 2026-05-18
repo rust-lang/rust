@@ -188,7 +188,7 @@ where
     ) -> Result<(), NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause()
             && projection_pred.item_def_id() == goal.predicate.def_id()
-            && DeepRejectCtxt::relate_fully_normalized(ecx.cx()).args_may_unify(
+            && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.alias.args,
                 projection_pred.skip_binder().projection_term.args,
             )
