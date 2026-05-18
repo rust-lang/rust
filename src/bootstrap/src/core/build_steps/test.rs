@@ -1296,8 +1296,7 @@ impl Step for StdarchGenCheck {
             cmd.run(builder);
         }
 
-        let mut git = command("git");
-        git.current_dir(&stdarch_root);
+        let mut git = helpers::git(Some(&stdarch_root));
         git.arg("diff").arg("--exit-code").arg("--").arg("crates/core_arch");
         let clean = git.allow_failure().run(builder);
 
