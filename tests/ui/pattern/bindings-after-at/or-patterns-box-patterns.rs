@@ -2,7 +2,7 @@
 
 //@ run-pass
 
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {
@@ -20,12 +20,12 @@ enum Test {
 
 fn test(foo: Option<Box<Test>>) -> MatchArm {
     match foo {
-        ref bar @ Some(box Test::Foo | box Test::Bar) => {
+        ref bar @ Some(deref!(Test::Foo) | deref!(Test::Bar)) => {
             assert_eq!(bar, &foo);
 
             MatchArm::Arm(0)
         },
-        Some(ref bar @ box Test::Baz | ref bar @ box Test::Qux) => {
+        Some(ref bar @ deref!(Test::Baz) | ref bar @ deref!(Test::Qux)) => {
             assert!(**bar == Test::Baz || **bar == Test::Qux);
 
             MatchArm::Arm(1)

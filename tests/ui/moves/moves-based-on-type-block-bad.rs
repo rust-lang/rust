@@ -1,4 +1,4 @@
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 
 
 struct S {
@@ -20,9 +20,9 @@ fn main() {
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
-                box E::Foo(_) => {}
-                box E::Bar(x) => println!("{}", x.to_string()),
-                box E::Baz => {}
+                E::Foo(_) => {}
+                E::Bar(x) => println!("{}", x.to_string()),
+                E::Baz => {}
             }
         })
     }

@@ -3,13 +3,13 @@ error[E0508]: cannot move out of type `[A]`, a non-copy slice
    |
 LL |     match a {
    |           ^ cannot move out of here
-LL |         box [a] => {},
-   |              - data moved here because `a` has type `A`, which does not implement the `Copy` trait
+LL |         [a] => {},
+   |          - data moved here because `a` has type `A`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
-LL |         box [ref a] => {},
-   |              +++
+LL |         [ref a] => {},
+   |          +++
 
 error: aborting due to 1 previous error
 

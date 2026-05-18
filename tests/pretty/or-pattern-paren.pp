@@ -1,6 +1,6 @@
 #![feature(prelude_import)]
 #![no_std]
-#![feature(box_patterns)]
+#![feature(deref_patterns)]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
@@ -23,5 +23,5 @@ fn check_at(x: Option<i32>) {
     }
 }
 fn check_ref(x: &i32) { match x { &(1 | 2 | 3) => {} _ => {} } }
-fn check_box(x: Box<i32>) { match x { box (1 | 2 | 3) => {} _ => {} } }
+fn check_box(x: Box<i32>) { match x { deref!(1 | 2 | 3) => {} _ => {} } }
 fn main() { check_at(Some(2)); check_ref(&1); check_box(Box::new(1)); }
